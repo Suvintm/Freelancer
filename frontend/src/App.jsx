@@ -1,4 +1,5 @@
-import { BrowserRouter as Routes, Route } from "react-router-dom";
+// App.jsx
+import { Routes, Route } from "react-router-dom";
 import Homepage from "./pages/Homepage.jsx";
 import ClientHome from "./pages/clientHome.jsx";
 import EditorHome from "./pages/EditorHome.jsx";
