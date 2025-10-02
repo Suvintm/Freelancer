@@ -2,6 +2,7 @@ import Navbar from "../components/Navbar";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthForm from "../components/AuthForm";
+import { useAppContext } from "../context/AppContext";
 
 import banner1 from "../assets/banner1.jpg";
 import banner2 from "../assets/banner2.jpg";
@@ -15,17 +16,21 @@ import {
   FaTwitter,
   FaInstagram,
   FaLinkedin,
+  FaUserTie,
+  FaBriefcase,
+  FaCheckCircle,
 } from "react-icons/fa";
+
 
 const images = [banner1, banner2, banner3, banner4, banner5, banner6];
 
 const Homepage = () => {
-  const [user, setUser] = useState(null);
-  const [showAuth, setShowAuth] = useState(false);
+  const { user, showAuth, setShowAuth } = useAppContext();
   const [selectedRole, setSelectedRole] = useState("editor");
   const [currentBg, setCurrentBg] = useState(0);
   const navigate = useNavigate();
 
+  // Preload banner images
   useEffect(() => {
     images.forEach((img) => {
       const preImg = new Image();
@@ -33,11 +38,7 @@ const Homepage = () => {
     });
   }, []);
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) setUser(JSON.parse(storedUser));
-  }, []);
-
+  // Background slider
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentBg((prev) => (prev + 1) % images.length);
@@ -52,7 +53,7 @@ const Homepage = () => {
 
   return (
     <div className="relative flex flex-col min-h-screen">
-      <Navbar user={user} setUser={setUser} setShowAuth={setShowAuth} />
+      <Navbar />
 
       {/* Header Section */}
       <div className="relative min-h-[60vh] flex flex-col justify-center items-center overflow-hidden">
@@ -66,6 +67,15 @@ const Homepage = () => {
             }`}
           />
         ))}
+        {/* Role Badge with Icon */}
+        {user && (
+          <div className="absolute z-50 top-4 right-4 flex items-center gap-2 bg-black text-white px-3 py-1 rounded-full shadow-lg text-sm font-semibold">
+            {user.role === "editor" ? <FaUserTie /> : <FaBriefcase />}
+            <span className="capitalize">{user.role}</span>
+            <FaCheckCircle className="text-blue-400 ml-1" />
+          </div>
+        )}
+
         <div className="absolute inset-0 bg-black/70"></div>
         <div className="relative z-10 text-white text-center flex flex-col items-center px-4">
           <h1 className="text-3xl sm:text-5xl font-bold mb-4">
@@ -218,10 +228,8 @@ const Homepage = () => {
         </div>
       </footer>
 
-      {/* Auth modal */}
-      {!user && showAuth && (
-        <AuthForm onClose={() => setShowAuth(false)} role={selectedRole} />
-      )}
+      {/* Auth Modal */}
+      {!user && showAuth && <AuthForm />}
     </div>
   );
 };
