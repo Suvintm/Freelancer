@@ -7,7 +7,7 @@ import { useAppContext } from "../context/AppContext";
 const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
 const AuthForm = () => {
-  const { showAuth, setShowAuth, backendURL, setUser } = useAppContext(); // ✅ added setUser
+  const { showAuth, setShowAuth, backendURL, setUser } = useAppContext();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
@@ -59,12 +59,10 @@ const AuthForm = () => {
         });
       }
 
-      const user = res.data.user;
-      const token = res.data.token;
+      const user = { ...res.data.user, token: res.data.token }; // ✅ merge token into user
 
       // ✅ Save to localStorage
       localStorage.setItem("user", JSON.stringify(user));
-      localStorage.setItem("token", token);
 
       // ✅ Update context state immediately
       setUser(user);
@@ -73,7 +71,7 @@ const AuthForm = () => {
       if (user.role === "editor") navigate("/editor-home");
       else navigate("/client-home");
 
-      setShowAuth(false); // close modal after success
+      setShowAuth(false);
     } catch (error) {
       console.error(error);
       setMessage(error.response?.data?.message || "Something went wrong.");
@@ -82,19 +80,19 @@ const AuthForm = () => {
     }
   };
 
-  if (!showAuth) return null; // don't render modal if not showing
+  if (!showAuth) return null;
 
   return (
     <div
       className="fixed inset-0 bg-black/20 flex justify-center items-center z-50 p-4"
-      onClick={() => setShowAuth(false)} // close when clicking outside
+      onClick={() => setShowAuth(false)}
     >
       <div
         className="bg-white rounded-xl w-full max-w-md p-6 relative"
-        onClick={(e) => e.stopPropagation()} // prevent bubbling
+        onClick={(e) => e.stopPropagation()}
       >
         <button
-          onClick={() => setShowAuth(false)} // close on cross icon
+          onClick={() => setShowAuth(false)}
           className="absolute top-4 right-4 text-2xl font-bold text-gray-600 hover:text-gray-900"
         >
           <FaTimes />
@@ -144,13 +142,13 @@ const AuthForm = () => {
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className="p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="p-3 border border-gray-200 rounded-2xl"
               />
               <select
                 name="role"
                 value={formData.role}
                 onChange={handleChange}
-                className="p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="p-3 border border-gray-200 rounded-2xl"
               >
                 <option value="editor">Editor</option>
                 <option value="client">Client</option>
@@ -164,7 +162,7 @@ const AuthForm = () => {
             value={formData.email}
             onChange={handleChange}
             required
-            className="p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="p-3 border border-gray-200 rounded-2xl"
           />
           <input
             type="password"
@@ -173,7 +171,7 @@ const AuthForm = () => {
             value={formData.password}
             onChange={handleChange}
             required
-            className="p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="p-3 border border-gray-200 rounded-2xl"
           />
           <button
             type="submit"

@@ -69,9 +69,9 @@ const EditorHome = () => {
 
   const stats = [
     { title: "Total Orders", value: 12 },
-    { title: "Active Projects", value: 3 },
+    { title: "Active Orders", value: 3 },
     { title: "Earnings", value: "$450" },
-    { title: "Pending Reviews", value: 2 },
+    { title: "Completed Orders", value: 2 },
   ];
 
  useEffect(() => {
@@ -125,7 +125,7 @@ const EditorHome = () => {
           </button>
           <button
             className="flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-gray-200"
-            onClick={() => alert("Profile Page coming soon!")}
+            onClick={() => navigate("/editor-profile")}
           >
             <FaUserTie /> Profile
           </button>
@@ -154,12 +154,17 @@ const EditorHome = () => {
       <div className="md:hidden flex justify-between items-center bg-white shadow-md px-4 py-3">
         <button onClick={() => setSidebarOpen(true)}>☰</button>
         <div className="flex items-center gap-2">
-          <img src={logo} alt="SuviX" className="w-8 h-8" />
+          <img
+            onClick={() => navigate("/")}
+            src={logo}
+            alt="SuviX"
+            className="w-8 h-8"
+          />
           <h2 className="text-lg font-bold">SuviX</h2>
         </div>
-        <div className="relative">
+        <div onClick={() => navigate("/editor-profile")} className="relative">
           <img
-            src={profile?.avatar || demoEditors[0].avatar}
+            src={profile?.profilePicture || demoEditors[0].avatar}
             alt="Profile"
             className="w-8 h-8 rounded-full border-2 border-green-500 cursor-pointer"
           />
@@ -173,6 +178,13 @@ const EditorHome = () => {
           className="relative px-3 py-2 bg-green-500 text-white rounded-xl"
         >
           My Orders
+          <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+        </button>
+        <button
+          onClick={() => navigate("/editor-messages")}
+          className="relative px-3 py-2 bg-zinc-500 text-white rounded-xl"
+        >
+          My Messages
           <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
         </button>
         <button

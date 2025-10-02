@@ -1,6 +1,4 @@
-// src/pages/MyOrders.jsx
 import { useState, useEffect } from "react";
-import { FaUserTie, FaCheckCircle } from "react-icons/fa";
 import logo from "../assets/logo.png";
 import { useAppContext } from "../context/AppContext";
 import axios from "axios";
@@ -12,16 +10,44 @@ const EditorMyOrdersPage = () => {
   const [activeTab, setActiveTab] = useState("gig");
   const navigate = useNavigate();
 
-  // Fetch orders from backend
+  const demoOrders = [
+    {
+      id: 1,
+      type: "gig",
+      gigTitle: "YouTube Video Editing",
+      description:
+        "Edit a 10-min vlog with transitions, color grading, and music.",
+      clientName: "John Doe",
+      clientId: "c123", // add clientId for chat
+      amount: 120,
+      requestedDate: "2025-09-20",
+      deadline: "2025-09-25",
+      status: "pending",
+    },
+    {
+      id: 2,
+      type: "requested",
+      gigTitle: "Corporate Promo Video",
+      description: "Edit a 2-min promo with animations and branding.",
+      clientName: "Sarah Johnson",
+      clientId: "c456",
+      amount: 300,
+      requestedDate: "2025-09-15",
+      deadline: "2025-09-30",
+      status: "completed",
+    },
+  ];
+
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         const res = await axios.get(`${backendURL}/orders/my-orders`, {
           withCredentials: true,
         });
-        setOrders(res.data);
+        setOrders(res.data.length > 0 ? res.data : demoOrders);
       } catch (err) {
         console.error("Error fetching orders:", err);
+        setOrders(demoOrders);
       }
     };
     fetchOrders();
@@ -34,7 +60,12 @@ const EditorMyOrdersPage = () => {
       {/* Navbar */}
       <div className="flex justify-between items-center bg-white shadow-md px-4 py-3">
         <div className="flex items-center gap-2">
-          <img src={logo} alt="SuviX" className="w-8 h-8" />
+          <img
+            onClick={() => navigate("/editor-home")}
+            src={logo}
+            alt="SuviX"
+            className="w-8 h-8 cursor-pointer"
+          />
           <h1 className="text-lg font-bold">My Orders</h1>
         </div>
         <div className="flex items-center gap-2">
@@ -43,7 +74,9 @@ const EditorMyOrdersPage = () => {
           </span>
           <img
             src={
-              user?.avatar || "https://randomuser.me/api/portraits/men/46.jpg"
+              user?.profilePicture ||
+              user?.avatar ||
+              "https://cdn-icons-png.flaticon.com/512/149/149071.png"
             }
             alt="Profile"
             className="w-8 h-8 rounded-full border-2 border-green-500"
@@ -81,7 +114,8 @@ const EditorMyOrdersPage = () => {
           filteredOrders.map((order) => (
             <div
               key={order.id}
-              className="bg-white p-4 sm:p-6 rounded-xl shadow-md hover:shadow-xl transition flex flex-col justify-between"
+              onClick={() => navigate(`/chat/${order.id}`)} // 👈 Navigate to chat
+              className="bg-white p-4 sm:p-6 rounded-xl shadow-md hover:shadow-xl transition cursor-pointer flex flex-col justify-between"
             >
               <h3 className="font-bold text-lg mb-2">
                 {order.gigTitle || "Custom Order"}
@@ -103,17 +137,13 @@ const EditorMyOrdersPage = () => {
                     ? "text-green-500"
                     : order.status === "pending"
                     ? "text-yellow-500"
+                    : order.status === "completed"
+                    ? "text-blue-500"
                     : "text-gray-500"
                 }`}
               >
                 Status: {order.status}
               </p>
-
-              {order.status === "pending" && (
-                <button className="mt-2 w-full px-3 py-1 bg-green-500 text-white rounded-xl hover:bg-green-600 text-sm">
-                  Accept
-                </button>
-              )}
             </div>
           ))
         ) : (
@@ -121,22 +151,6 @@ const EditorMyOrdersPage = () => {
             No orders available.
           </p>
         )}
-      </div>
-
-      {/* Mobile Quick Access */}
-      <div className="md:hidden fixed bottom-0 left-0 w-full bg-white p-2 flex justify-around shadow-t-md">
-        <button
-          className="px-4 py-2 bg-green-500 text-white rounded-xl"
-          onClick={() => setActiveTab("gig")}
-        >
-          Orders from Gigs
-        </button>
-        <button
-          className="px-4 py-2 bg-white text-gray-700 rounded-xl shadow-md"
-          onClick={() => setActiveTab("requested")}
-        >
-          Requested Orders
-        </button>
       </div>
     </div>
   );

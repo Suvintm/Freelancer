@@ -20,7 +20,7 @@ export const AppProvider = ({ children }) => {
         setUser,
         showAuth,
         setShowAuth,
-        backendURL: import.meta.env.VITE_BACKEND_URL, // global backend URL
+        backendURL: import.meta.env.VITE_BACKEND_URL,
       }}
     >
       {children}
@@ -28,5 +28,4 @@ export const AppProvider = ({ children }) => {
   );
 };
 
-// Custom hook for easier usage
 export const useAppContext = () => useContext(AppContext);
