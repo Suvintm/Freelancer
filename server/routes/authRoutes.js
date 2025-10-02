@@ -3,6 +3,7 @@ import {
   register,
   login,
   logout,
+  getProfile,
   updateProfilePicture,
 } from "../controllers/authcontroller.js";
 import { upload } from "../middleware/upload.js";
@@ -13,6 +14,12 @@ const router = express.Router();
 router.post("/register", upload.single("profilePicture"), register);
 router.post("/login", login);
 router.post("/logout", protect, logout);
+
+ 
+
+router.get("/profile", protect, getProfile);
+
+
 router.patch(
   "/update-profile-picture",
   protect,

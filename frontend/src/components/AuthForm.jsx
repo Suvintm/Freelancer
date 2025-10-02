@@ -7,7 +7,7 @@ import { useAppContext } from "../context/AppContext";
 const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
 const AuthForm = () => {
-  const { showAuth, setShowAuth, backendURL } = useAppContext(); // ✅ use backendURL
+  const { showAuth, setShowAuth, backendURL, setUser } = useAppContext(); // ✅ added setUser
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
@@ -61,9 +61,15 @@ const AuthForm = () => {
 
       const user = res.data.user;
       const token = res.data.token;
+
+      // ✅ Save to localStorage
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("token", token);
 
+      // ✅ Update context state immediately
+      setUser(user);
+
+      // ✅ Redirect to workspace
       if (user.role === "editor") navigate("/editor-home");
       else navigate("/client-home");
 
