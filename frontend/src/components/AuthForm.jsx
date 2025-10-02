@@ -77,18 +77,29 @@ const AuthForm = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/20 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-xl w-full max-w-md p-6 relative">
+    // 🔹 Overlay closes modal on click
+    <div
+      className="fixed inset-0 bg-black/20 flex justify-center items-center z-50 p-4"
+      onClick={onClose}
+    >
+      {/* 🔹 Stop click bubbling inside modal */}
+      <div
+        className="bg-white rounded-xl w-full max-w-md p-6 relative"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close button */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-2xl font-bold text-gray-600 hover:text-gray-900"
         >
           &times;
         </button>
+
         <h2 className="text-2xl font-semibold text-center mb-4">
           {isLogin ? "Login" : "Register"}
         </h2>
 
+        {/* Profile picture (Register only) */}
         {!isLogin && (
           <div className="flex justify-center mb-4">
             <label className="relative cursor-pointer">
@@ -102,7 +113,7 @@ const AuthForm = ({ onClose }) => {
                 className="w-24 h-24 rounded-full border-2 border-gray-300 object-cover"
               />
               <div className="absolute bottom-0 right-0 bg-green-400 w-7 h-7 rounded-full flex justify-center items-center text-white text-sm border-2 border-white">
-                <FaPlus className=" " />
+                <FaPlus />
               </div>
               <input
                 type="file"
@@ -115,6 +126,7 @@ const AuthForm = ({ onClose }) => {
           </div>
         )}
 
+        {/* Form */}
         <form
           onSubmit={handleSubmit}
           className="flex flex-col gap-3"
@@ -137,8 +149,12 @@ const AuthForm = ({ onClose }) => {
                 onChange={handleChange}
                 className="p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
-                <option className="bg-gray-300 rounded-2xl" value="editor">Editor</option>
-                <option className="bg-gray-300 rounded-2xl" value="client">Client</option>
+                <option className="bg-gray-300 rounded-2xl" value="editor">
+                  Editor
+                </option>
+                <option className="bg-gray-300 rounded-2xl" value="client">
+                  Client
+                </option>
               </select>
             </>
           )}
@@ -169,6 +185,7 @@ const AuthForm = ({ onClose }) => {
           </button>
         </form>
 
+        {/* Toggle */}
         <p
           onClick={toggleForm}
           className="text-green-400 text-center mt-3 cursor-pointer hover:underline"
@@ -177,6 +194,8 @@ const AuthForm = ({ onClose }) => {
             ? "Don't have an account? Register here"
             : "Already have an account? Login"}
         </p>
+
+        {/* Message */}
         {message && <p className="text-red-600 text-center mt-2">{message}</p>}
       </div>
     </div>
