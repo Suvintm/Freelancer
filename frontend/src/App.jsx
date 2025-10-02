@@ -10,8 +10,7 @@ function App() {
       <Route path="/" element={<Homepage />} />
       <Route path="/client-home" element={<ClientHome />} />
       <Route path="/editor-home" element={<EditorHome />} />
-      <Route path="/my-orders" element={<EditorMyorderspage />} />{" "}
-      {/* new route */}
+      <Route path="/editor-my-orders" element={<EditorMyorderspage />} />
     </Routes>
   );
 }
