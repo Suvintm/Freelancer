@@ -1,11 +1,13 @@
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { FaPlus } from "react-icons/fa"; // install react-icons if not already
+import { FaPlus, FaTimes } from "react-icons/fa";
+import { useAppContext } from "../context/AppContext";
 
 const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
-const AuthForm = ({ onClose }) => {
+const AuthForm = () => {
+  const { showAuth, setShowAuth, backendURL } = useAppContext(); // ✅ use backendURL
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
@@ -39,7 +41,7 @@ const AuthForm = ({ onClose }) => {
     try {
       let res;
       if (isLogin) {
-        res = await axios.post("http://localhost:5000/api/auth/login", {
+        res = await axios.post(`${backendURL}/api/auth/login`, {
           email: formData.email,
           password: formData.password,
         });
@@ -52,11 +54,9 @@ const AuthForm = ({ onClose }) => {
         if (formData.profilePicture)
           data.append("profilePicture", formData.profilePicture);
 
-        res = await axios.post(
-          "http://localhost:5000/api/auth/register",
-          data,
-          { headers: { "Content-Type": "multipart/form-data" } }
-        );
+        res = await axios.post(`${backendURL}/api/auth/register`, data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
       }
 
       const user = res.data.user;
@@ -67,7 +67,7 @@ const AuthForm = ({ onClose }) => {
       if (user.role === "editor") navigate("/editor-home");
       else navigate("/client-home");
 
-      onClose();
+      setShowAuth(false); // close modal after success
     } catch (error) {
       console.error(error);
       setMessage(error.response?.data?.message || "Something went wrong.");
@@ -76,30 +76,28 @@ const AuthForm = ({ onClose }) => {
     }
   };
 
+  if (!showAuth) return null; // don't render modal if not showing
+
   return (
-    // 🔹 Overlay closes modal on click
     <div
       className="fixed inset-0 bg-black/20 flex justify-center items-center z-50 p-4"
-      onClick={onClose}
+      onClick={() => setShowAuth(false)} // close when clicking outside
     >
-      {/* 🔹 Stop click bubbling inside modal */}
       <div
         className="bg-white rounded-xl w-full max-w-md p-6 relative"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()} // prevent bubbling
       >
-        {/* Close button */}
         <button
-          onClick={onClose}
+          onClick={() => setShowAuth(false)} // close on cross icon
           className="absolute top-4 right-4 text-2xl font-bold text-gray-600 hover:text-gray-900"
         >
-          &times;
+          <FaTimes />
         </button>
 
         <h2 className="text-2xl font-semibold text-center mb-4">
           {isLogin ? "Login" : "Register"}
         </h2>
 
-        {/* Profile picture (Register only) */}
         {!isLogin && (
           <div className="flex justify-center mb-4">
             <label className="relative cursor-pointer">
@@ -126,7 +124,6 @@ const AuthForm = ({ onClose }) => {
           </div>
         )}
 
-        {/* Form */}
         <form
           onSubmit={handleSubmit}
           className="flex flex-col gap-3"
@@ -149,12 +146,8 @@ const AuthForm = ({ onClose }) => {
                 onChange={handleChange}
                 className="p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
-                <option className="bg-gray-300 rounded-2xl" value="editor">
-                  Editor
-                </option>
-                <option className="bg-gray-300 rounded-2xl" value="client">
-                  Client
-                </option>
+                <option value="editor">Editor</option>
+                <option value="client">Client</option>
               </select>
             </>
           )}
@@ -185,7 +178,6 @@ const AuthForm = ({ onClose }) => {
           </button>
         </form>
 
-        {/* Toggle */}
         <p
           onClick={toggleForm}
           className="text-green-400 text-center mt-3 cursor-pointer hover:underline"
@@ -195,7 +187,6 @@ const AuthForm = ({ onClose }) => {
             : "Already have an account? Login"}
         </p>
 
-        {/* Message */}
         {message && <p className="text-red-600 text-center mt-2">{message}</p>}
       </div>
     </div>
