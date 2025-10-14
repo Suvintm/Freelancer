@@ -5,7 +5,9 @@ import cors from "cors";
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
-import editorRoutes from "./routes/editorRoutes.js";
+import profileRoutes from "./routes/profileRoutes.js";
+import portfolioRoutes from "./routes/portfolioRoutes.js";
+import exploreRoutes from "./routes/exploreRoutes.js"; // New route
 
 dotenv.config();
 
@@ -25,7 +27,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/editor", editorRoutes); // Added editor routes
+app.use("/api/profile", profileRoutes);
+app.use("/api/portfolio", portfolioRoutes);
+app.use("/api/explore", exploreRoutes); // ✅ Explore editors
 
 // Optional root route
 app.get("/", (req, res) => res.send("Backend is running!"));

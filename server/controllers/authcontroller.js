@@ -2,15 +2,16 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
+import { Profile } from "../models/Profile.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = "7d";
 
 // ---------------- REGISTER ----------------
 export const register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
-    let profilePicture = undefined;
+    let profilePicture;
 
     if (!name || !email || !password || !role) {
       return res.status(400).json({ message: "All fields are required." });
@@ -20,18 +21,32 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: "Invalid user role." });
     }
 
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    const existingUseremail = await User.findOne({ email });
+    const existingUsername = await User.findOne({ name });
+
+    if (existingUseremail) {
       return res.status(400).json({ message: "Email already registered." });
     }
+    if (existingUsername) {
+      return res.status(400).json({
+        message: "This name already exists, choose another one.",
+      });
+    }
 
+    // Hash password
     const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // ✅ Upload profile picture and store only URL string
     if (req.file) {
-      profilePicture = await uploadToCloudinary(req.file.buffer, "profiles");
+      const uploadResult = await uploadToCloudinary(
+        req.file.buffer,
+        "profiles"
+      );
+      profilePicture = uploadResult.url; // store only the URL string
     }
 
+    // Create User
     const user = await User.create({
       name,
       email,
@@ -40,12 +55,27 @@ export const register = async (req, res) => {
       profilePicture,
     });
 
+    // ✅ Auto-create Profile document
+    await Profile.create({
+      user: user._id,
+      about: "",
+      portfolio: [],
+      skills: [""],
+      languages: [""],
+      experience: "",
+      certifications: [{ title: "", image: "" }],
+      contactEmail: "",
+      location: { country: "" },
+    });
+
+    // Generate JWT
     const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, {
       expiresIn: JWT_EXPIRES_IN,
     });
 
     res.status(201).json({
-      message: "User registered successfully",
+      message:
+        "User registered successfully and profile created automatically.",
       user: {
         id: user._id,
         name: user.name,
@@ -102,11 +132,9 @@ export const login = async (req, res) => {
   }
 };
 
-
 // ---------------- LOGOUT ----------------
 export const logout = async (req, res) => {
   try {
-    // No server-side token invalidation needed in JWT stateless auth
     res.status(200).json({
       message: "Logout successful. Please remove token from client.",
     });
@@ -117,16 +145,26 @@ export const logout = async (req, res) => {
 };
 
 
+
+// GET /api/auth/me
+export const getCurrentUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select("-password");
+    res.status(200).json({ user });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 // ---------------- UPDATE PROFILE IMAGE ----------------
 export const updateProfilePicture = async (req, res) => {
   try {
     if (!req.file)
       return res.status(400).json({ message: "No file uploaded." });
 
-    const profilePicture = await uploadToCloudinary(
-      req.file.buffer,
-      "profiles"
-    );
+    // ✅ Only save the URL string
+    const uploadResult = await uploadToCloudinary(req.file.buffer, "profiles");
+    const profilePicture = uploadResult.url;
 
     const user = await User.findByIdAndUpdate(
       req.user._id,
@@ -140,19 +178,6 @@ export const updateProfilePicture = async (req, res) => {
     });
   } catch (error) {
     console.error("Update Profile Picture Error:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
-// ---------------- GET PROFILE ----------------
-export const getProfile = async (req, res) => {
-  try {
-    // req.user is populated by the protect middleware
-    const user = await User.findById(req.user._id).select("-password");
-    if (!user) return res.status(404).json({ message: "User not found." });
-
-    res.status(200).json(user);
-  } catch (error) {
-    console.error("Get Profile Error:", error);
     res.status(500).json({ message: error.message });
   }
 };

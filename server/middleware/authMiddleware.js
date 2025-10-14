@@ -3,7 +3,7 @@ import User from "../models/User.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
 
-export const protect = async (req, res, next) => {
+const protect = async (req, res, next) => {
   let token;
 
   if (
@@ -26,3 +26,4 @@ export const protect = async (req, res, next) => {
     return res.status(401).json({ message: "Not authorized, token invalid" });
   }
 };
+export default protect;

@@ -1,5 +1,5 @@
 import multer from "multer";
 
-// Memory storage (no uploads folder needed)
+// Memory storage (buffer available in req.file.buffer)
 const storage = multer.memoryStorage();
 export const upload = multer({ storage });
