@@ -5,11 +5,17 @@ import {
   getPortfolio,
   updatePortfolio,
   deletePortfolio,
+  getPortfoliosByUserId,
 } from "../controllers/portfolioController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import { upload } from "../middleware/upload.js";
 
 const router = express.Router();
+
+
+// ---------------- PUBLIC ROUTE ----------------
+// ✅ Fetch portfolios by user ID (for Public Editor Profile)
+router.get("/user/:userId", getPortfoliosByUserId);
 
 // Protect all routes
 router.use(authMiddleware);

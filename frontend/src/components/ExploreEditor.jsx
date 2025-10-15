@@ -11,6 +11,8 @@ import {
   FaArrowRight,
 } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
+import { useNavigate } from "react-router-dom";
+
 
 const ExploreEditors = () => {
   const { backendURL, user } = useAppContext();
@@ -23,6 +25,10 @@ const ExploreEditors = () => {
   // Refs for scrollable sections
   const skillsRefs = useRef({});
   const langsRefs = useRef({});
+
+
+  const navigate = useNavigate();
+
 
   useEffect(() => {
     const fetchEditors = async () => {
@@ -167,7 +173,10 @@ const ExploreEditors = () => {
                       )}
                     </div>
 
-                    <button className="mt-2 w-full py-2 bg-green-500 text-white font-medium rounded-xl hover:bg-green-600 transition">
+                    <button
+                      onClick={() => navigate(`/editor/${editor.user?._id}`)}
+                      className="mt-2 w-full py-2 bg-green-500 text-white font-medium rounded-xl hover:bg-green-600 transition"
+                    >
                       View Profile
                     </button>
                   </div>

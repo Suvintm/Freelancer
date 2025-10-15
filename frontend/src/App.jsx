@@ -7,7 +7,7 @@ import EditorProfilePage from "./pages/EditorProfilePage.jsx";
 import EditorMyorderspage from "./pages/EditorMyorderspage.jsx";
 import EditorProfileUpdate from "./pages/EditorProfileUpdate.jsx";
 import AddPortfolio from "./pages/addportfolio.jsx";
- 
+import PublicEditorProfile from "./pages/PublicEditorProfile.jsx";
 
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
@@ -57,16 +57,27 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/add-portfolio" element={
-          <ProtectedRoute allowedRoles={["editor"]}>
-            <AddPortfolio />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/add-portfolio"
+          element={
+            <ProtectedRoute allowedRoles={["editor"]}>
+              <AddPortfolio />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/editor-profile-update"
           element={
             <ProtectedRoute allowedRoles={["editor"]}>
               <EditorProfileUpdate />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/editor/:userId"
+          element={
+            <ProtectedRoute>
+              <PublicEditorProfile />
             </ProtectedRoute>
           }
         />

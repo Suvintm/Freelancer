@@ -1,16 +1,16 @@
 import express from "express";
 import { getProfile, updateProfile } from "../controllers/profileController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
-import { upload } from "../middleware/upload.js"; // ✅ using your existing multer setup
+import { upload } from "../middleware/upload.js";
 
 const router = express.Router();
 
-// ✅ Protect all routes
+// ---------------- PUBLIC ROUTE ----------------
+// ✅ Fetch any user's profile by ID (for Explore -> View Profile)
+router.get("/:userId", getProfile);
+
+// ---------------- PROTECTED ROUTES ----------------
 router.use(authMiddleware);
-
-// ---------------- PROFILE ROUTES ----------------
-
-// Optional: Only if you want to manually create profile (you can remove if auto-created at signup)
 
 // ✅ Get logged-in user’s profile
 router.get("/", getProfile);

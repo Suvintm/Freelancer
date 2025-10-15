@@ -141,3 +141,16 @@ export const deletePortfolio = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+// ---------------- GET PORTFOLIOS BY USER ID (PUBLIC) ----------------
+export const getPortfoliosByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const portfolios = await Portfolio.find({ user: userId }).sort({ uploadedAt: -1 });
+    res.status(200).json(portfolios);
+  } catch (error) {
+    console.error("Get Portfolios By User ID Error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
