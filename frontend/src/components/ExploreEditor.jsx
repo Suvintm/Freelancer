@@ -60,10 +60,10 @@ const ExploreEditors = () => {
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className="bg-gray-800 rounded-xl p-4 flex flex-col items-center text-center overflow-hidden relative"
+            className="bg-black rounded-xl p-4 flex flex-col items-center text-center overflow-hidden relative"
           >
             {/* Shimmer gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 animate-shimmer-slow"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-gray-900 via-gray-600 to-gray-900 animate-shimmer-slow"></div>
 
             {/* Skeleton content */}
             <div className="relative flex flex-col items-center w-full space-y-3">
