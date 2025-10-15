@@ -1,8 +1,6 @@
 // models/Profile.js
 import mongoose from "mongoose";
 
- 
-
 const profileSchema = new mongoose.Schema(
   {
     user: {
@@ -13,13 +11,13 @@ const profileSchema = new mongoose.Schema(
     },
     about: { type: String, default: "" },
     portfolio: [{ type: mongoose.Schema.Types.ObjectId, ref: "Portfolio" }],
-    skills: { type: [String], default: [] },
-    languages: { type: [String], default: [] },
+    skills: { type: [String] },
+    languages: { type: [String] },
     experience: { type: String, default: "" },
     certifications: [
       {
-        title: { type: String, default: "" },
-        image: { type: String, default: "" },  
+        title: { type: String },
+        image: { type: String },
       },
     ],
     contactEmail: { type: String, default: "" },

@@ -28,13 +28,16 @@ const UpdateProfile = () => {
     skills: [],
     languageInput: "",
     languages: [],
-    certifications: [], // Local file uploads
-    existingCertifications: [], // Existing uploaded certifications from backend
+    certifications: [],
+    existingCertifications: [],
   });
 
   useEffect(() => {
     setCountries(countryList().getData());
-    fetchProfile();
+    const timer = setTimeout(() => {
+      fetchProfile();
+    }, 2000);
+    return () => clearTimeout(timer);
   }, []);
 
   const fetchProfile = async () => {
@@ -61,13 +64,11 @@ const UpdateProfile = () => {
     }
   };
 
-  const handleChange = (e) => {
+  const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
 
-  const handleCountryChange = (selected) => {
+  const handleCountryChange = (selected) =>
     setFormData({ ...formData, country: selected.label });
-  };
 
   const addSkill = () => {
     if (
@@ -151,7 +152,6 @@ const UpdateProfile = () => {
       formPayload.append("skills", formData.skills.join(","));
       formPayload.append("languages", formData.languages.join(","));
 
-      // Only append new local files
       formData.certifications.forEach((file) => {
         formPayload.append("certifications", file);
       });
@@ -166,7 +166,6 @@ const UpdateProfile = () => {
       alert("✅ Profile updated successfully!");
       setProfile(res.data.profile);
 
-      // Clear local file uploads after successful update
       setFormData({
         ...formData,
         certifications: [],
@@ -191,15 +190,31 @@ const UpdateProfile = () => {
 
   if (loading)
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-pulse text-gray-600 text-lg font-medium">
-          Loading profile...
-        </div>
+      <div className="min-h-screen bg-gray-50 flex flex-col animate-pulse">
+        <nav className="w-full bg-white shadow py-4 px-6 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gray-200 rounded-full" />
+            <div className="w-40 h-5 bg-gray-200 rounded-md" />
+          </div>
+          <div className="w-24 h-5 bg-gray-200 rounded-md" />
+        </nav>
+        <main className="flex-grow py-10 px-6 md:px-10 flex justify-center">
+          <div className="w-full max-w-2xl bg-white p-8 rounded-2xl shadow-md border space-y-6">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="space-y-3">
+                <div className="w-1/3 h-4 bg-gray-200 rounded" />
+                <div className="w-full h-10 bg-gray-200 rounded-lg" />
+              </div>
+            ))}
+            <div className="w-full h-12 bg-gray-200 rounded-lg" />
+          </div>
+        </main>
       </div>
     );
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Navbar */}
       <nav className="w-full bg-white shadow py-4 px-6 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <FaUserEdit className="text-green-600 text-xl" />
@@ -213,7 +228,8 @@ const UpdateProfile = () => {
         </button>
       </nav>
 
-      <main className="flex-grow py-10 px-4 md:px-10 flex justify-center">
+      {/* Main Form */}
+      <main className="flex-grow py-10 px-2 md:px-10 flex justify-center">
         <form
           onSubmit={handleUpdate}
           className="w-full max-w-2xl bg-white p-8 rounded-2xl shadow-md border"
@@ -285,7 +301,9 @@ const UpdateProfile = () => {
           </select>
 
           {/* Skills */}
-          <label className="block mb-2 font-medium text-gray-700">Skills *</label>
+          <label className="block mb-2 font-medium text-gray-700">
+            Skills *
+          </label>
           <div className="flex gap-2 mb-4">
             <input
               type="text"
@@ -303,13 +321,18 @@ const UpdateProfile = () => {
               <FaPlus />
             </button>
           </div>
+
           <div className="flex flex-wrap gap-2 mb-4">
             {formData.skills.map((s, i) => (
               <span
                 key={i}
                 className="bg-green-100 text-green-800 px-3 py-1 rounded-full flex items-center gap-1"
               >
-                {s} <FaTimes className="cursor-pointer" onClick={() => removeSkill(s)} />
+                {s}
+                <FaTimes
+                  className="cursor-pointer"
+                  onClick={() => removeSkill(s)}
+                />
               </span>
             ))}
           </div>
@@ -335,13 +358,18 @@ const UpdateProfile = () => {
               <FaPlus />
             </button>
           </div>
+
           <div className="flex flex-wrap gap-2 mb-4">
             {formData.languages.map((l, i) => (
               <span
                 key={i}
                 className="bg-green-100 text-green-800 px-3 py-1 rounded-full flex items-center gap-1"
               >
-                {l} <FaTimes className="cursor-pointer" onClick={() => removeLanguage(l)} />
+                {l}
+                <FaTimes
+                  className="cursor-pointer"
+                  onClick={() => removeLanguage(l)}
+                />
               </span>
             ))}
           </div>
@@ -360,36 +388,42 @@ const UpdateProfile = () => {
 
           <div className="flex flex-wrap gap-2 mb-4">
             {/* Existing certifications */}
-            {formData.existingCertifications.map((cert, i) => (
-              <div key={i} className="relative">
-                <img
-                  src={cert.image}
-                  alt={cert.title}
-                  className="w-20 h-20 object-cover rounded-lg"
-                />
-                <FaTimes
-                  className="absolute top-0 right-0 text-red-600 cursor-pointer"
-                  onClick={() => removeCert(i, "existing")}
-                />
-              </div>
-            ))}
+            {formData.existingCertifications.map((cert, i) =>
+              cert?.image ? (
+                <div key={i} className="relative">
+                  <img
+                    src={cert.image}
+                    alt={cert.title || "Certificate"}
+                    className="w-20 h-20 object-cover rounded-lg"
+                  />
+                  <FaTimes
+                    className="absolute top-0 right-0 text-red-600 cursor-pointer"
+                    onClick={() => removeCert(i, "existing")}
+                  />
+                </div>
+              ) : null
+            )}
 
-            {/* Newly uploaded local files */}
-            {formData.certifications.map((file, i) => (
-              <div key={i} className="relative">
-                <img
-                  src={URL.createObjectURL(file)}
-                  alt="cert"
-                  className="w-20 h-20 object-cover rounded-lg"
-                />
-                <FaTimes
-                  className="absolute top-0 right-0 text-red-600 cursor-pointer"
-                  onClick={() => removeCert(i, "local")}
-                />
-              </div>
-            ))}
+            {/* New uploads */}
+            {formData.certifications.map((file, i) => {
+              const preview = file ? URL.createObjectURL(file) : null;
+              return preview ? (
+                <div key={i} className="relative">
+                  <img
+                    src={preview}
+                    alt="cert"
+                    className="w-20 h-20 object-cover rounded-lg"
+                  />
+                  <FaTimes
+                    className="absolute top-0 right-0 text-red-600 cursor-pointer"
+                    onClick={() => removeCert(i, "local")}
+                  />
+                </div>
+              ) : null;
+            })}
           </div>
 
+          {/* Submit */}
           <button
             type="submit"
             disabled={!isFormValid || updating}

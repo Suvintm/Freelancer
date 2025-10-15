@@ -271,7 +271,7 @@ const EditorProfile = () => {
 
       <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-md overflow-hidden">
         {/* Profile Header */}
-        <div className="flex md:mt-20 md:flex-row items-center md:items-start gap-6 p-6 border-b border-gray-200">
+        <div className="flex md:mt-20 md:flex-row items-center m-4   rounded-2xl md:items-start gap-6 p-6 border-black/30 border  shadow-black shadow-lg">
           <div>
             <img
               src={

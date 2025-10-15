@@ -20,7 +20,7 @@ const EditorHome = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-gray-100">
+    <div className="min-h-screen flex flex-col md:flex-row bg-gray-300">
       {/* Sidebar */}
       <aside
         className={`bg-white shadow-md flex flex-col fixed md:relative z-50 h-full md:h-auto transition-transform duration-300 ${
