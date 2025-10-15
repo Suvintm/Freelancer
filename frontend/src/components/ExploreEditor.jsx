@@ -23,7 +23,7 @@ const ExploreEditors = () => {
           withCredentials: true,
         });
 
-        // Artificial delay to show shimmer effect
+        // Artificial delay for shimmer
         setTimeout(() => {
           setEditors(res.data.editors);
           setFilteredEditors(res.data.editors);
@@ -39,14 +39,12 @@ const ExploreEditors = () => {
     fetchEditors();
   }, [backendURL, user]);
 
-  // 🧠 Handle search
   useEffect(() => {
     const q = searchQuery.toLowerCase();
     const filtered = editors.filter((editor) => {
       const name = editor.user.name.toLowerCase();
       const skills = editor.skills.join(", ").toLowerCase();
       const languages = editor.languages?.join(", ").toLowerCase() || "";
-
       return name.includes(q) || skills.includes(q) || languages.includes(q);
     });
 
@@ -55,23 +53,43 @@ const ExploreEditors = () => {
 
   if (error) return <p className="text-center mt-6 text-red-500">{error}</p>;
 
-  // ✨ Skeleton shimmer loader layout
+  // ✨ Modern shimmer loader
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse mt-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className="bg-white rounded-xl shadow-md p-4 flex flex-col items-center text-center"
+            className="bg-gray-800 rounded-xl p-4 flex flex-col items-center text-center overflow-hidden relative"
           >
-            <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-300 rounded-full mb-4" />
-            <div className="h-4 w-24 bg-gray-300 rounded mb-2" />
-            <div className="h-3 w-32 bg-gray-200 rounded mb-3" />
-            <div className="h-3 w-40 bg-gray-200 rounded mb-3" />
-            <div className="h-3 w-20 bg-gray-300 rounded mb-3" />
-            <div className="w-24 h-8 bg-gray-300 rounded-xl" />
+            {/* Shimmer gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 animate-shimmer-slow"></div>
+
+            {/* Skeleton content */}
+            <div className="relative flex flex-col items-center w-full space-y-3">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-700 rounded-full mb-4" />
+              <div className="h-4 w-24 bg-gray-700 rounded mb-2" />
+              <div className="h-3 w-32 bg-gray-600 rounded mb-2" />
+              <div className="h-3 w-40 bg-gray-600 rounded mb-2" />
+              <div className="h-3 w-20 bg-gray-700 rounded mb-2" />
+              <div className="w-24 h-8 bg-gray-700 rounded-xl" />
+            </div>
           </div>
         ))}
+
+        {/* Shimmer animation keyframes */}
+        <style>
+          {`
+            @keyframes shimmer {
+              0% { transform: translateX(-100%); }
+              100% { transform: translateX(100%); }
+            }
+            .animate-shimmer-slow {
+              background-size: 200% 100%;
+              animation: shimmer 1.8s infinite;
+            }
+          `}
+        </style>
       </div>
     );
   }
@@ -79,7 +97,7 @@ const ExploreEditors = () => {
   // 🧩 Actual editor grid
   return (
     <div className="mt-6">
-      {/* 🔍 Search bar */}
+      {/* Search bar */}
       <div className="flex justify-center mb-8">
         <div className="relative w-full max-w-md">
           <input
@@ -93,7 +111,7 @@ const ExploreEditors = () => {
         </div>
       </div>
 
-      {/* 🧑‍💻 Editor cards */}
+      {/* Editor cards */}
       {filteredEditors.length === 0 ? (
         <p className="text-center text-gray-500">No editors found.</p>
       ) : (
