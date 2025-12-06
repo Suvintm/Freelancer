@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, createRef } from "react";
 import axios from "axios";
 import {
-  FaStar,
   FaCheckCircle,
   FaUserTie,
   FaSearch,
@@ -9,63 +8,74 @@ import {
   FaArrowLeft,
   FaCode,
   FaArrowRight,
+  FaUsers,
 } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
-
+import EmptyState from "./EmptyState.jsx";
 
 const ExploreEditors = () => {
   const { backendURL, user } = useAppContext();
   const [editors, setEditors] = useState([]);
-  const [filteredEditors, setFilteredEditors] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 12,
+    total: 0,
+    pages: 1,
+  });
 
   // Refs for scrollable sections
   const skillsRefs = useRef({});
   const langsRefs = useRef({});
 
-
   const navigate = useNavigate();
 
+  const fetchEditors = async (page = 1, search = "") => {
+    try {
+      setLoading(true);
+      const token = user?.token || JSON.parse(localStorage.getItem("user"))?.token;
+
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: "12",
+        ...(search && { search }),
+      });
+
+      const res = await axios.get(`${backendURL}/api/explore/editors?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+
+      setEditors(res.data.editors || []);
+      setPagination(res.data.pagination || { page: 1, limit: 12, total: 0, pages: 1 });
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.message || "Failed to fetch editors");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchEditors = async () => {
-      try {
-        setLoading(true);
-        const token =
-          user?.token || JSON.parse(localStorage.getItem("user"))?.token;
-
-        const res = await axios.get(`${backendURL}/api/explore/editors`, {
-          headers: { Authorization: `Bearer ${token}` },
-          withCredentials: true,
-        });
-
-        setTimeout(() => {
-          setEditors(res.data.editors);
-          setFilteredEditors(res.data.editors);
-          setLoading(false);
-        }, 2000);
-      } catch (err) {
-        console.error(err);
-        setError(err.response?.data?.message || "Failed to fetch editors");
-        setLoading(false);
-      }
-    };
-    fetchEditors();
+    fetchEditors(1, "");
   }, [backendURL, user]);
 
+  // Debounced search
   useEffect(() => {
-    const q = searchQuery.toLowerCase();
-    const filtered = editors.filter((editor) => {
-      const name = (editor.user?.name || "").toLowerCase();
-      const skills = (editor.skills || []).join(" ").toLowerCase();
-      const languages = (editor.languages || []).join(" ").toLowerCase();
-      return name.includes(q) || skills.includes(q) || languages.includes(q);
-    });
-    setFilteredEditors(filtered);
-  }, [searchQuery, editors]);
+    const timer = setTimeout(() => {
+      fetchEditors(1, searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.pages) {
+      fetchEditors(newPage, searchQuery);
+    }
+  };
 
   const scrollBar = (ref, direction) => {
     if (ref?.current) {
@@ -76,22 +86,34 @@ const ExploreEditors = () => {
     }
   };
 
-  if (error) return <p className="text-center mt-6 text-red-500">{error}</p>;
+  if (error) {
+    return (
+      <div className="text-center py-10">
+        <p className="text-red-500 mb-4">{error}</p>
+        <button
+          onClick={() => fetchEditors(1, "")}
+          className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className="bg-gray-100 rounded-2xl p-6 flex items-center space-x-4 animate-pulse"
+            className="bg-gray-50 rounded-2xl p-6 flex items-center space-x-4 animate-pulse"
           >
-            <div className="w-20 h-20 bg-gray-300 rounded-full" />
+            <div className="w-20 h-20 bg-gray-200 rounded-full" />
             <div className="flex-1 space-y-3">
-              <div className="h-4 w-32 bg-gray-300 rounded" />
+              <div className="h-4 w-32 bg-gray-200 rounded" />
               <div className="h-3 w-48 bg-gray-200 rounded" />
               <div className="h-3 w-40 bg-gray-200 rounded" />
-              <div className="h-8 w-24 bg-gray-300 rounded-full mt-2" />
+              <div className="h-8 w-24 bg-gray-200 rounded-full mt-2" />
             </div>
           </div>
         ))}
@@ -100,7 +122,7 @@ const ExploreEditors = () => {
   }
 
   return (
-    <div className="mt-6">
+    <div>
       {/* Search bar */}
       <div className="flex justify-center mb-8">
         <div className="relative w-full max-w-md">
@@ -109,167 +131,187 @@ const ExploreEditors = () => {
             placeholder="Search by name, skills, or languages..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full py-3 pl-12 pr-4 border border-gray-500 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition"
+            className="w-full py-3 pl-12 pr-4 border border-gray-300 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition"
           />
-          <FaSearch className="absolute left-4 top-3.5 text-gray-800" />
+          <FaSearch className="absolute left-4 top-3.5 text-gray-400" />
         </div>
       </div>
 
-      {/* Editor cards */}
-      {filteredEditors.length === 0 ? (
-        <p className="text-center text-gray-500">No editors found.</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredEditors.map((editor) => {
-            // Initialize non-hook refs (createRef is safe to call conditionally)
-            if (!skillsRefs.current[editor._id])
-              skillsRefs.current[editor._id] = createRef();
-            if (!langsRefs.current[editor._id])
-              langsRefs.current[editor._id] = createRef();
+      {/* Results count */}
+      <p className="text-gray-500 text-sm mb-4 text-center">
+        {pagination.total} editor{pagination.total !== 1 ? "s" : ""} found
+      </p>
 
-            return (
-              <div
-                key={editor._id}
-                className="bg-white rounded-2xl shadow-lg p-4 hover:shadow-2xl transition"
-              >
-                {/* Top Section */}
-                <div className="flex items-center space-x-4">
-                  <div className="flex flex-col items-center w-1/3 space-y-2">
-                    <div className="relative">
+      {/* Editor cards */}
+      {editors.length === 0 ? (
+        <EmptyState
+          icon={FaUsers}
+          title="No editors found"
+          description={
+            searchQuery
+              ? "Try adjusting your search terms"
+              : "No editors have completed their profiles yet"
+          }
+        />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {editors.map((editor) => {
+              if (!skillsRefs.current[editor._id])
+                skillsRefs.current[editor._id] = createRef();
+              if (!langsRefs.current[editor._id])
+                langsRefs.current[editor._id] = createRef();
+
+              return (
+                <div
+                  key={editor._id}
+                  className="bg-white rounded-2xl shadow-md hover:shadow-lg p-4 transition-all border border-gray-100"
+                >
+                  {/* Top Section */}
+                  <div className="flex items-start gap-4">
+                    <div className="relative flex-shrink-0">
                       <img
                         src={
                           editor.user?.profilePicture ||
-                          "https://randomuser.me/api/portraits/lego/1.jpg"
+                          "https://cdn-icons-png.flaticon.com/512/149/149071.png"
                         }
                         alt={editor.user?.name}
-                        className="w-24 h-24 rounded-full object-cover border-2 border-green-500"
+                        className="w-20 h-20 rounded-full object-cover border-2 border-green-500"
                       />
                       {editor.online && (
                         <span className="absolute bottom-1 right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white" />
                       )}
                     </div>
-                  </div>
 
-                  <div className="flex-1 flex flex-col justify-between pl-4">
-                    <div>
-                      <h3 className="font-semibold text-lg text-black items-start text-center">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-lg text-gray-800 truncate">
                         {editor.user?.name}
                       </h3>
-                      <p className="flex items-center gap-2 text-gray-600 text-sm sm:text-base mb-1">
-                        <FaUserTie /> {editor.user?.role}{" "}
-                        {editor.topRated && (
-                          <span className="text-blue-500 font-semibold ml-1">
-                            Top Rated
-                          </span>
-                        )}
+                      <p className="flex items-center gap-2 text-gray-600 text-sm">
+                        <FaUserTie className="text-green-500" />
+                        <span className="capitalize">{editor.user?.role}</span>
                         {editor.verified && (
-                          <FaCheckCircle className="text-green-500 ml-1" />
+                          <FaCheckCircle className="text-green-500" title="Verified" />
                         )}
                       </p>
-                      {editor.country && (
-                        <p className="flex items-center gap-2 text-gray-500 text-sm mb-1">
-                          <FaGlobe /> {editor.country}
+                      {editor.location?.country && (
+                        <p className="flex items-center gap-1 text-gray-500 text-sm mt-1">
+                          <FaGlobe /> {editor.location.country}
                         </p>
                       )}
                     </div>
-
-                    <button
-                      onClick={() => navigate(`/editor/${editor.user?._id}`)}
-                      className="mt-2 w-full py-2 bg-green-500 text-white font-medium rounded-xl hover:bg-green-600 transition"
-                    >
-                      View Profile
-                    </button>
                   </div>
-                </div>
 
-                {/* Bottom Section: Scrollable Bars */}
-                <div className="mt-4 space-y-2">
-                  {/* Languages */}
-                  {editor.languages && editor.languages.length > 0 && (
-                    <div>
-                      <p className="text-gray-500 flex gap-2 flex-row items-center  text-sm mb-1">
-                        {" "}
-                        <FaGlobe /> Languages:
-                      </p>
-                      <div className="relative flex items-center">
-                        <button
-                          onClick={() =>
-                            scrollBar(langsRefs.current[editor._id], "left")
-                          }
-                          className="absolute left-0 z-10 p-1 bg-white rounded-full shadow hover:bg-gray-100"
-                        >
-                          <FaArrowLeft />
-                        </button>
-                        <div
-                          ref={langsRefs.current[editor._id]}
-                          className="flex space-x-2 overflow-x-auto py-1 px-6"
-                        >
-                          {editor.languages.map((lang, idx) => (
-                            <span
-                              key={idx}
-                              className="flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full whitespace-nowrap text-sm shadow-sm"
-                            >
-                              {lang}
-                            </span>
-                          ))}
+                  {/* Skills & Languages */}
+                  <div className="mt-4 space-y-3">
+                    {/* Languages */}
+                    {editor.languages?.length > 0 && (
+                      <div>
+                        <p className="text-gray-500 flex gap-1 items-center text-xs mb-1">
+                          <FaGlobe className="text-blue-500" /> Languages
+                        </p>
+                        <div className="relative flex items-center">
+                          <button
+                            onClick={() => scrollBar(langsRefs.current[editor._id], "left")}
+                            className="absolute left-0 z-10 p-1 bg-white rounded-full shadow hover:bg-gray-100 text-xs"
+                          >
+                            <FaArrowLeft />
+                          </button>
+                          <div
+                            ref={langsRefs.current[editor._id]}
+                            className="flex gap-1 overflow-x-auto py-1 px-6 scrollbar-hide"
+                          >
+                            {editor.languages.filter(Boolean).map((lang, idx) => (
+                              <span
+                                key={idx}
+                                className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full whitespace-nowrap text-xs"
+                              >
+                                {lang}
+                              </span>
+                            ))}
+                          </div>
+                          <button
+                            onClick={() => scrollBar(langsRefs.current[editor._id], "right")}
+                            className="absolute right-0 z-10 p-1 bg-white rounded-full shadow hover:bg-gray-100 text-xs"
+                          >
+                            <FaArrowRight />
+                          </button>
                         </div>
-                        <button
-                          onClick={() =>
-                            scrollBar(langsRefs.current[editor._id], "right")
-                          }
-                          className="absolute right-0 z-10 p-1 bg-white rounded-full shadow hover:bg-gray-100"
-                        >
-                          <FaArrowRight />
-                        </button>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Skills */}
-                  {editor.skills && editor.skills.length > 0 && (
-                    <div>
-                      <p className="text-gray-500 text-sm mb-1 items-center flex flex-row gap-2">
-                        {" "}
-                        <FaCode className="text-green-500" /> Skills:
-                      </p>
-                      <div className="relative flex items-center">
-                        <button
-                          onClick={() =>
-                            scrollBar(skillsRefs.current[editor._id], "left")
-                          }
-                          className="absolute left-0 z-10 p-1 bg-white rounded-full shadow hover:bg-gray-100"
-                        >
-                          <FaArrowLeft />
-                        </button>
-                        <div
-                          ref={skillsRefs.current[editor._id]}
-                          className="flex space-x-2 overflow-x-auto py-1 px-6"
-                        >
-                          {editor.skills.map((skill, idx) => (
-                            <span
-                              key={idx}
-                              className="px-3 py-1 bg-green-100 text-green-800 rounded-full whitespace-nowrap text-sm shadow-sm"
-                            >
-                              {skill}
-                            </span>
-                          ))}
+                    {/* Skills */}
+                    {editor.skills?.length > 0 && (
+                      <div>
+                        <p className="text-gray-500 text-xs mb-1 flex items-center gap-1">
+                          <FaCode className="text-green-500" /> Skills
+                        </p>
+                        <div className="relative flex items-center">
+                          <button
+                            onClick={() => scrollBar(skillsRefs.current[editor._id], "left")}
+                            className="absolute left-0 z-10 p-1 bg-white rounded-full shadow hover:bg-gray-100 text-xs"
+                          >
+                            <FaArrowLeft />
+                          </button>
+                          <div
+                            ref={skillsRefs.current[editor._id]}
+                            className="flex gap-1 overflow-x-auto py-1 px-6 scrollbar-hide"
+                          >
+                            {editor.skills.filter(Boolean).map((skill, idx) => (
+                              <span
+                                key={idx}
+                                className="px-2 py-0.5 bg-green-50 text-green-700 rounded-full whitespace-nowrap text-xs"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                          <button
+                            onClick={() => scrollBar(skillsRefs.current[editor._id], "right")}
+                            className="absolute right-0 z-10 p-1 bg-white rounded-full shadow hover:bg-gray-100 text-xs"
+                          >
+                            <FaArrowRight />
+                          </button>
                         </div>
-                        <button
-                          onClick={() =>
-                            scrollBar(skillsRefs.current[editor._id], "right")
-                          }
-                          className="absolute right-0 z-10 p-1 bg-white rounded-full shadow hover:bg-gray-100"
-                        >
-                          <FaArrowRight />
-                        </button>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
+
+                  {/* View Profile Button */}
+                  <button
+                    onClick={() => navigate(`/editor/${editor.user?._id}`)}
+                    className="mt-4 w-full py-2 bg-green-500 text-white font-medium rounded-xl hover:bg-green-600 transition"
+                  >
+                    View Profile
+                  </button>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+
+          {/* Pagination */}
+          {pagination.pages > 1 && (
+            <div className="flex justify-center items-center gap-2 mt-8">
+              <button
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={pagination.page === 1}
+                className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                Previous
+              </button>
+              <span className="px-4 py-2 text-gray-600">
+                Page {pagination.page} of {pagination.pages}
+              </span>
+              <button
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={pagination.page === pagination.pages}
+                className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

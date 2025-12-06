@@ -1,156 +1,225 @@
 import { Portfolio } from "../models/Portfolio.js";
 import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
+import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
+import logger from "../utils/logger.js";
 
-// ---------------- CREATE PORTFOLIO ----------------
-export const createPortfolio = async (req, res) => {
-  try {
-    const { title, description } = req.body;
-    let originalClip = "";
-    let editedClip = "";
+// Max file sizes
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB for videos
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB for images
 
-    // Upload files to Cloudinary if provided
-    if (req.files?.originalClip) {
-      const result = await uploadToCloudinary(
-        req.files.originalClip[0].buffer,
-        "portfolio"
-      );
-      originalClip = result.url;
+// Allowed file types
+const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm", "video/x-msvideo"];
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+// Helper to validate file
+const validateFile = (file, type) => {
+  if (!file) return true;
+
+  if (type === "video") {
+    if (file.size > MAX_VIDEO_SIZE) {
+      throw new ApiError(400, `Video file must be less than 100MB. Got: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
     }
-
-    if (req.files?.editedClip) {
-      const result = await uploadToCloudinary(
-        req.files.editedClip[0].buffer,
-        "portfolio"
-      );
-      editedClip = result.url;
+    if (!ALLOWED_VIDEO_TYPES.includes(file.mimetype) && !ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
+      throw new ApiError(400, `Invalid file type: ${file.mimetype}. Allowed: MP4, MOV, WebM, AVI, JPEG, PNG, WebP, GIF`);
     }
-
-    // Create portfolio
-    const portfolio = await Portfolio.create({
-      user: req.user._id,
-      title,
-      description,
-      originalClip,
-      editedClip,
-    });
-
-    // Populate user details before sending response
-    const populatedPortfolio = await Portfolio.findById(portfolio._id).populate(
-      "user",
-      "name email role profilePicture profileCompleted"
-    );
-
-    res.status(201).json({
-      message: "Portfolio created successfully.",
-      portfolio: populatedPortfolio,
-    });
-  } catch (error) {
-    console.error("Create Portfolio Error:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// ---------------- GET ALL PORTFOLIOS ----------------
-export const getPortfolios = async (req, res) => {
-  try {
-    const portfolios = await Portfolio.find({ user: req.user._id }).populate(
-      "user",
-      "name email role profilePicture profileCompleted"
-    );
-
-    res.status(200).json(portfolios);
-  } catch (error) {
-    console.error("Get Portfolios Error:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// ---------------- GET SINGLE PORTFOLIO ----------------
-export const getPortfolio = async (req, res) => {
-  try {
-    const portfolio = await Portfolio.findById(req.params.id).populate(
-      "user",
-      "name email role profilePicture profileCompleted"
-    );
-
-    if (!portfolio)
-      return res.status(404).json({ message: "Portfolio not found" });
-
-    res.status(200).json(portfolio);
-  } catch (error) {
-    console.error("Get Portfolio Error:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// ---------------- UPDATE PORTFOLIO ----------------
-export const updatePortfolio = async (req, res) => {
-  try {
-    const { title, description } = req.body;
-    const portfolio = await Portfolio.findById(req.params.id);
-    if (!portfolio)
-      return res.status(404).json({ message: "Portfolio not found" });
-
-    if (title !== undefined) portfolio.title = title;
-    if (description !== undefined) portfolio.description = description;
-
-    if (req.files?.originalClip) {
-      const result = await uploadToCloudinary(
-        req.files.originalClip[0].buffer,
-        "portfolio"
-      );
-      portfolio.originalClip = result.url;
+  } else {
+    if (file.size > MAX_IMAGE_SIZE) {
+      throw new ApiError(400, `Image file must be less than 10MB`);
     }
-
-    if (req.files?.editedClip) {
-      const result = await uploadToCloudinary(
-        req.files.editedClip[0].buffer,
-        "portfolio"
-      );
-      portfolio.editedClip = result.url;
+    if (!ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
+      throw new ApiError(400, `Invalid image type: ${file.mimetype}`);
     }
-
-    await portfolio.save();
-
-    // Populate user before returning response
-    const populatedPortfolio = await Portfolio.findById(portfolio._id).populate(
-      "user",
-      "name email role profilePicture profileCompleted"
-    );
-
-    res.status(200).json({
-      message: "Portfolio updated successfully.",
-      portfolio: populatedPortfolio,
-    });
-  } catch (error) {
-    console.error("Update Portfolio Error:", error);
-    res.status(500).json({ message: error.message });
   }
+  return true;
 };
 
-// ---------------- DELETE PORTFOLIO ----------------
-export const deletePortfolio = async (req, res) => {
-  try {
-    const portfolio = await Portfolio.findByIdAndDelete(req.params.id);
-    if (!portfolio)
-      return res.status(404).json({ message: "Portfolio not found" });
+// ============ CREATE PORTFOLIO ============
+export const createPortfolio = asyncHandler(async (req, res) => {
+  const { title, description } = req.body;
+  let originalClip = "";
+  let editedClip = "";
 
-    res.status(200).json({ message: "Portfolio deleted successfully" });
-  } catch (error) {
-    console.error("Delete Portfolio Error:", error);
-    res.status(500).json({ message: error.message });
+  // Validate and upload original clip
+  if (req.files?.originalClip?.[0]) {
+    const file = req.files.originalClip[0];
+    validateFile(file, "video");
+    const result = await uploadToCloudinary(file.buffer, "portfolio");
+    originalClip = result.url;
   }
-};
 
-
-// ---------------- GET PORTFOLIOS BY USER ID (PUBLIC) ----------------
-export const getPortfoliosByUserId = async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const portfolios = await Portfolio.find({ user: userId }).sort({ uploadedAt: -1 });
-    res.status(200).json(portfolios);
-  } catch (error) {
-    console.error("Get Portfolios By User ID Error:", error);
-    res.status(500).json({ message: error.message });
+  // Validate and upload edited clip
+  if (req.files?.editedClip?.[0]) {
+    const file = req.files.editedClip[0];
+    validateFile(file, "video");
+    const result = await uploadToCloudinary(file.buffer, "portfolio");
+    editedClip = result.url;
   }
-};
+
+  // Create portfolio
+  const portfolio = await Portfolio.create({
+    user: req.user._id,
+    title: title.trim().substring(0, 100),
+    description: description.trim().substring(0, 500),
+    originalClip,
+    editedClip,
+  });
+
+  const populatedPortfolio = await Portfolio.findById(portfolio._id).populate(
+    "user",
+    "name email role profilePicture profileCompleted"
+  );
+
+  logger.info(`Portfolio created: ${portfolio._id} by user: ${req.user._id}`);
+
+  res.status(201).json({
+    success: true,
+    message: "Portfolio created successfully.",
+    portfolio: populatedPortfolio,
+  });
+});
+
+// ============ GET ALL PORTFOLIOS (for current user) ============
+export const getPortfolios = asyncHandler(async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = Math.min(parseInt(req.query.limit) || 10, 50); // Max 50 per page
+  const skip = (page - 1) * limit;
+
+  const [portfolios, total] = await Promise.all([
+    Portfolio.find({ user: req.user._id })
+      .populate("user", "name email role profilePicture profileCompleted")
+      .sort({ uploadedAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Portfolio.countDocuments({ user: req.user._id }),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    portfolios,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit),
+    },
+  });
+});
+
+// ============ GET SINGLE PORTFOLIO ============
+export const getPortfolio = asyncHandler(async (req, res) => {
+  const portfolio = await Portfolio.findById(req.params.id).populate(
+    "user",
+    "name email role profilePicture profileCompleted"
+  );
+
+  if (!portfolio) {
+    throw new ApiError(404, "Portfolio not found");
+  }
+
+  res.status(200).json({
+    success: true,
+    portfolio,
+  });
+});
+
+// ============ UPDATE PORTFOLIO ============
+export const updatePortfolio = asyncHandler(async (req, res) => {
+  const { title, description } = req.body;
+  const portfolio = await Portfolio.findById(req.params.id);
+
+  if (!portfolio) {
+    throw new ApiError(404, "Portfolio not found");
+  }
+
+  // Check ownership
+  if (portfolio.user.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "Not authorized to update this portfolio");
+  }
+
+  if (title !== undefined) {
+    portfolio.title = title.trim().substring(0, 100);
+  }
+  if (description !== undefined) {
+    portfolio.description = description.trim().substring(0, 500);
+  }
+
+  // Handle file updates
+  if (req.files?.originalClip?.[0]) {
+    const file = req.files.originalClip[0];
+    validateFile(file, "video");
+    const result = await uploadToCloudinary(file.buffer, "portfolio");
+    portfolio.originalClip = result.url;
+  }
+
+  if (req.files?.editedClip?.[0]) {
+    const file = req.files.editedClip[0];
+    validateFile(file, "video");
+    const result = await uploadToCloudinary(file.buffer, "portfolio");
+    portfolio.editedClip = result.url;
+  }
+
+  await portfolio.save();
+
+  const populatedPortfolio = await Portfolio.findById(portfolio._id).populate(
+    "user",
+    "name email role profilePicture profileCompleted"
+  );
+
+  logger.info(`Portfolio updated: ${portfolio._id}`);
+
+  res.status(200).json({
+    success: true,
+    message: "Portfolio updated successfully.",
+    portfolio: populatedPortfolio,
+  });
+});
+
+// ============ DELETE PORTFOLIO ============
+export const deletePortfolio = asyncHandler(async (req, res) => {
+  const portfolio = await Portfolio.findById(req.params.id);
+
+  if (!portfolio) {
+    throw new ApiError(404, "Portfolio not found");
+  }
+
+  // Check ownership
+  if (portfolio.user.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "Not authorized to delete this portfolio");
+  }
+
+  await Portfolio.findByIdAndDelete(req.params.id);
+
+  logger.info(`Portfolio deleted: ${req.params.id}`);
+
+  res.status(200).json({
+    success: true,
+    message: "Portfolio deleted successfully",
+  });
+});
+
+// ============ GET PORTFOLIOS BY USER ID (PUBLIC) ============
+export const getPortfoliosByUserId = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const page = parseInt(req.query.page) || 1;
+  const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+  const skip = (page - 1) * limit;
+
+  const [portfolios, total] = await Promise.all([
+    Portfolio.find({ user: userId })
+      .sort({ uploadedAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Portfolio.countDocuments({ user: userId }),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    portfolios,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit),
+    },
+  });
+});

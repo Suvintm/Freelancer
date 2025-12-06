@@ -9,37 +9,51 @@ import {
 } from "../controllers/portfolioController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import { upload } from "../middleware/upload.js";
+import { portfolioValidator, mongoIdValidator, userIdValidator } from "../middleware/validators.js";
+import { uploadLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 
+// ============ PUBLIC ROUTE ============
+// Fetch portfolios by user ID (for Public Editor Profile)
+router.get("/user/:userId", userIdValidator, getPortfoliosByUserId);
 
-// ---------------- PUBLIC ROUTE ----------------
-// ✅ Fetch portfolios by user ID (for Public Editor Profile)
-router.get("/user/:userId", getPortfoliosByUserId);
-
-// Protect all routes
+// Protect all routes below
 router.use(authMiddleware);
 
-// Portfolio CRUD
+// ============ PORTFOLIO CRUD ============
+
+// Create portfolio
 router.post(
   "/",
+  uploadLimiter,
   upload.fields([
     { name: "originalClip", maxCount: 1 },
     { name: "editedClip", maxCount: 1 },
   ]),
+  portfolioValidator,
   createPortfolio
 );
 
+// Get all portfolios (paginated)
 router.get("/", getPortfolios);
-router.get("/:id", getPortfolio);
+
+// Get single portfolio
+router.get("/:id", mongoIdValidator, getPortfolio);
+
+// Update portfolio
 router.put(
   "/:id",
+  uploadLimiter,
+  mongoIdValidator,
   upload.fields([
     { name: "originalClip", maxCount: 1 },
     { name: "editedClip", maxCount: 1 },
   ]),
   updatePortfolio
 );
-router.delete("/:id", deletePortfolio);
+
+// Delete portfolio
+router.delete("/:id", mongoIdValidator, deletePortfolio);
 
 export default router;

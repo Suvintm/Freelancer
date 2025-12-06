@@ -1,11 +1,14 @@
-import React from 'react'
+import { FaGift } from "react-icons/fa";
+import EmptyState from "./EmptyState.jsx";
 
 const ExploreGigs = () => {
   return (
-    <div>
-      <h1>Explore Gigs</h1>
-    </div>
-  )
-}
+    <EmptyState
+      icon={FaGift}
+      title="Gigs Coming Soon!"
+      description="The gigs marketplace is under development. Soon editors will be able to create and showcase their service packages here."
+    />
+  );
+};
 
-export default ExploreGigs
+export default ExploreGigs;

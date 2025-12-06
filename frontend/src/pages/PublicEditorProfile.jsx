@@ -8,7 +8,6 @@ import {
   FaBriefcase,
   FaUser,
   FaArrowAltCircleRight,
-  FaArrowRight,
 } from "react-icons/fa";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
@@ -17,27 +16,196 @@ import logo from "../assets/logo.png";
 import ReactCountryFlag from "react-country-flag";
 import PublicPortfolio from "../components/PublicPortfolio.jsx";
 
+// ✅ Full Global Country Code List
 const countryNameToCode = {
-  India: "IN",
-  USA: "US",
-  UK: "GB",
-  Canada: "CA",
+  Afghanistan: "AF",
+  Albania: "AL",
+  Algeria: "DZ",
+  Andorra: "AD",
+  Angola: "AO",
+  Argentina: "AR",
+  Armenia: "AM",
   Australia: "AU",
-  Germany: "DE",
-  France: "FR",
-  Italy: "IT",
-  Japan: "JP",
-  China: "CN",
+  Austria: "AT",
+  Azerbaijan: "AZ",
+  Bahamas: "BS",
+  Bahrain: "BH",
+  Bangladesh: "BD",
+  Barbados: "BB",
+  Belarus: "BY",
+  Belgium: "BE",
+  Belize: "BZ",
+  Benin: "BJ",
+  Bhutan: "BT",
+  Bolivia: "BO",
+  BosniaAndHerzegovina: "BA",
+  Botswana: "BW",
   Brazil: "BR",
-  Russia: "RU",
-  Spain: "ES",
+  Brunei: "BN",
+  Bulgaria: "BG",
+  BurkinaFaso: "BF",
+  Burundi: "BI",
+  Cambodia: "KH",
+  Cameroon: "CM",
+  Canada: "CA",
+  CapeVerde: "CV",
+  CentralAfricanRepublic: "CF",
+  Chad: "TD",
+  Chile: "CL",
+  China: "CN",
+  Colombia: "CO",
+  Comoros: "KM",
+  Congo: "CG",
+  CostaRica: "CR",
+  Croatia: "HR",
+  Cuba: "CU",
+  Cyprus: "CY",
+  CzechRepublic: "CZ",
+  Denmark: "DK",
+  Djibouti: "DJ",
+  Dominica: "DM",
+  DominicanRepublic: "DO",
+  Ecuador: "EC",
+  Egypt: "EG",
+  ElSalvador: "SV",
+  Estonia: "EE",
+  Eswatini: "SZ",
+  Ethiopia: "ET",
+  Fiji: "FJ",
+  Finland: "FI",
+  France: "FR",
+  Gabon: "GA",
+  Gambia: "GM",
+  Georgia: "GE",
+  Germany: "DE",
+  Ghana: "GH",
+  Greece: "GR",
+  Grenada: "GD",
+  Guatemala: "GT",
+  Guinea: "GN",
+  Guyana: "GY",
+  Haiti: "HT",
+  Honduras: "HN",
+  Hungary: "HU",
+  Iceland: "IS",
+  India: "IN",
+  Indonesia: "ID",
+  Iran: "IR",
+  Iraq: "IQ",
+  Ireland: "IE",
+  Israel: "IL",
+  Italy: "IT",
+  Jamaica: "JM",
+  Japan: "JP",
+  Jordan: "JO",
+  Kazakhstan: "KZ",
+  Kenya: "KE",
+  Kiribati: "KI",
+  Kuwait: "KW",
+  Kyrgyzstan: "KG",
+  Laos: "LA",
+  Latvia: "LV",
+  Lebanon: "LB",
+  Lesotho: "LS",
+  Liberia: "LR",
+  Libya: "LY",
+  Liechtenstein: "LI",
+  Lithuania: "LT",
+  Luxembourg: "LU",
+  Madagascar: "MG",
+  Malawi: "MW",
+  Malaysia: "MY",
+  Maldives: "MV",
+  Mali: "ML",
+  Malta: "MT",
+  MarshallIslands: "MH",
+  Mauritania: "MR",
+  Mauritius: "MU",
   Mexico: "MX",
+  Micronesia: "FM",
+  Moldova: "MD",
+  Monaco: "MC",
+  Mongolia: "MN",
+  Montenegro: "ME",
+  Morocco: "MA",
+  Mozambique: "MZ",
+  Myanmar: "MM",
+  Namibia: "NA",
+  Nauru: "NR",
+  Nepal: "NP",
   Netherlands: "NL",
-  SouthAfrica: "ZA",
-  SriLanka: "LK",
-  Singapore: "SG",
-  UAE: "AE",
+  NewZealand: "NZ",
+  Nicaragua: "NI",
+  Niger: "NE",
+  Nigeria: "NG",
+  NorthKorea: "KP",
+  NorthMacedonia: "MK",
+  Norway: "NO",
+  Oman: "OM",
+  Pakistan: "PK",
+  Palau: "PW",
+  Panama: "PA",
+  PapuaNewGuinea: "PG",
+  Paraguay: "PY",
+  Peru: "PE",
+  Philippines: "PH",
+  Poland: "PL",
+  Portugal: "PT",
   Qatar: "QA",
+  Romania: "RO",
+  Russia: "RU",
+  Rwanda: "RW",
+  SaintKittsAndNevis: "KN",
+  SaintLucia: "LC",
+  SaintVincentAndTheGrenadines: "VC",
+  Samoa: "WS",
+  SanMarino: "SM",
+  SaoTomeAndPrincipe: "ST",
+  SaudiArabia: "SA",
+  Senegal: "SN",
+  Serbia: "RS",
+  Seychelles: "SC",
+  SierraLeone: "SL",
+  Singapore: "SG",
+  Slovakia: "SK",
+  Slovenia: "SI",
+  SolomonIslands: "SB",
+  Somalia: "SO",
+  SouthAfrica: "ZA",
+  SouthKorea: "KR",
+  SouthSudan: "SS",
+  Spain: "ES",
+  SriLanka: "LK",
+  Sudan: "SD",
+  Suriname: "SR",
+  Sweden: "SE",
+  Switzerland: "CH",
+  Syria: "SY",
+  Taiwan: "TW",
+  Tajikistan: "TJ",
+  Tanzania: "TZ",
+  Thailand: "TH",
+  TimorLeste: "TL",
+  Togo: "TG",
+  Tonga: "TO",
+  TrinidadAndTobago: "TT",
+  Tunisia: "TN",
+  Turkey: "TR",
+  Turkmenistan: "TM",
+  Tuvalu: "TV",
+  Uganda: "UG",
+  Ukraine: "UA",
+  UnitedArabEmirates: "AE",
+  UnitedKingdom: "GB",
+  UnitedStates: "US",
+  Uruguay: "UY",
+  Uzbekistan: "UZ",
+  Vanuatu: "VU",
+  Venezuela: "VE",
+  Vietnam: "VN",
+  Yemen: "YE",
+  Zambia: "ZM",
+  Zimbabwe: "ZW",
 };
 
 // ✅ Green shimmer skeleton
@@ -57,6 +225,7 @@ const PublicEditorProfile = () => {
   const [activeTab, setActiveTab] = useState("about");
   const [selectedCert, setSelectedCert] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [portfolioLoading, setPortfolioLoading] = useState(true);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -67,16 +236,14 @@ const PublicEditorProfile = () => {
         console.error("Error fetching public profile:", error);
       } finally {
         setLoading(false);
+        setTimeout(() => setPortfolioLoading(false), 1500); // shimmer delay
       }
     };
     fetchProfile();
   }, [backendURL, userId]);
 
-  const isVideo = (url) => url?.match(/\.(mp4|mov|avi|mkv|webm)$/i) !== null;
-
   return (
     <div className="min-h-screen bg-gray-100 pb-10">
-      {/* Header/navbar always visible */}
       <header className="fixed top-0 left-0 right-0 bg-white shadow-md h-16 px-6 flex items-center justify-between z-40">
         <div className="flex items-center gap-3">
           <img
@@ -102,10 +269,7 @@ const PublicEditorProfile = () => {
 
       <div className="max-w-5xl mx-auto mt-20">
         {loading ? (
-          // ✅ Shimmer skeleton under navbar
-
           <div className="space-y-6 animate-fadeIn">
-            {/* Profile header shimmer */}
             <div className="flex md:flex-row flex-col items-center gap-6 p-6 shadow-black m-2 rounded-2xl shadow-lg">
               <ShimmerBlock className="w-28 h-28 rounded-full" />
               <div className="flex-1 space-y-4">
@@ -117,36 +281,13 @@ const PublicEditorProfile = () => {
                 </div>
               </div>
             </div>
-
-            {/* Tabs shimmer */}
-            <div className="flex gap-4 border-b mt-4 justify-center border-gray-200">
-              <ShimmerBlock className="w-24 h-10 rounded-md" />
-              <ShimmerBlock className="w-24 h-10 rounded-md" />
-            </div>
-
-            {/* About section shimmer */}
-            <div className="p-6 space-y-4">
-              <ShimmerBlock className="w-full h-4 rounded-md" />
-              <ShimmerBlock className="w-full h-4 rounded-md" />
-              <ShimmerBlock className="w-3/4 h-4 rounded-md" />
-              <ShimmerBlock className="w-full h-4 rounded-md" />
-              <ShimmerBlock className="w-2/3 h-4 rounded-md" />
-            </div>
-
-            {/* Portfolio shimmer */}
-            <div className="p-6 space-y-4">
-              <ShimmerBlock className="w-full h-32 rounded-md" />
-              <ShimmerBlock className="w-full h-32 rounded-md" />
-              <ShimmerBlock className="w-full h-32 rounded-md" />
-            </div>
           </div>
         ) : profile ? (
-          // ✅ Actual profile content
-
           <div className="bg-white rounded-2xl shadow-md overflow-hidden">
             <h1 className="text-3xl font-bold text-center mt-4">
               {profile?.user?.name}'s Profile
             </h1>
+
             {/* Profile Header */}
             <div className="flex md:flex-row flex-col items-center md:items-start gap-6 p-6 border-black/30 border rounded-2xl shadow-lg m-4">
               <div>
@@ -170,12 +311,14 @@ const PublicEditorProfile = () => {
                 </p>
 
                 <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-3 text-gray-600 text-sm">
-                  {profile.location?.country && (
+                  {profile?.location?.country && (
                     <div className="flex items-center gap-1">
                       <FaMapMarkerAlt className="text-green-500" />
                       <ReactCountryFlag
                         countryCode={
-                          countryNameToCode[profile.location.country] || "IN"
+                          countryNameToCode[
+                            profile.location.country.replace(/\s+/g, "")
+                          ] || "IN"
                         }
                         svg
                         style={{ width: "1.5em", height: "1.5em" }}
@@ -338,7 +481,15 @@ const PublicEditorProfile = () => {
             {/* Portfolio Section */}
             {activeTab === "portfolio" && (
               <div className="p-6">
-                <PublicPortfolio userId={userId} />
+                {portfolioLoading ? (
+                  <div className="space-y-4">
+                    <ShimmerBlock className="w-full h-32 rounded-md" />
+                    <ShimmerBlock className="w-full h-32 rounded-md" />
+                    <ShimmerBlock className="w-full h-32 rounded-md" />
+                  </div>
+                ) : (
+                  <PublicPortfolio userId={userId} />
+                )}
               </div>
             )}
           </div>

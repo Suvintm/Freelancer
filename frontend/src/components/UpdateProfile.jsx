@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
+import { toast } from "react-toastify";
 import {
   FaArrowLeft,
   FaGlobe,
@@ -8,9 +9,11 @@ import {
   FaUserEdit,
   FaPlus,
   FaTimes,
+  FaSave,
 } from "react-icons/fa";
 import countryList from "react-select-country-list";
 import Select from "react-select";
+import { PageLoader } from "./LoadingSpinner.jsx";
 
 const UpdateProfile = () => {
   const { user, backendURL } = useAppContext();
@@ -34,10 +37,7 @@ const UpdateProfile = () => {
 
   useEffect(() => {
     setCountries(countryList().getData());
-    const timer = setTimeout(() => {
-      fetchProfile();
-    }, 2000);
-    return () => clearTimeout(timer);
+    fetchProfile();
   }, []);
 
   const fetchProfile = async () => {
@@ -53,12 +53,13 @@ const UpdateProfile = () => {
         experience: p?.experience || "",
         contactEmail: p?.contactEmail || "",
         country: p?.location?.country || "",
-        skills: p?.skills || [],
-        languages: p?.languages || [],
-        existingCertifications: p?.certifications || [],
+        skills: p?.skills?.filter(Boolean) || [],
+        languages: p?.languages?.filter(Boolean) || [],
+        existingCertifications: p?.certifications?.filter(c => c?.image) || [],
       });
     } catch (err) {
       console.error("Error fetching profile:", err);
+      toast.error("Failed to load profile");
     } finally {
       setLoading(false);
     }
@@ -71,13 +72,15 @@ const UpdateProfile = () => {
     setFormData({ ...formData, country: selected.label });
 
   const addSkill = () => {
-    if (
-      formData.skillInput.trim() &&
-      !formData.skills.includes(formData.skillInput.trim())
-    ) {
+    const skill = formData.skillInput.trim();
+    if (skill && !formData.skills.includes(skill)) {
+      if (formData.skills.length >= 20) {
+        toast.warning("Maximum 20 skills allowed");
+        return;
+      }
       setFormData({
         ...formData,
-        skills: [...formData.skills, formData.skillInput.trim()],
+        skills: [...formData.skills, skill],
         skillInput: "",
       });
     }
@@ -91,13 +94,15 @@ const UpdateProfile = () => {
   };
 
   const addLanguage = () => {
-    if (
-      formData.languageInput.trim() &&
-      !formData.languages.includes(formData.languageInput.trim())
-    ) {
+    const lang = formData.languageInput.trim();
+    if (lang && !formData.languages.includes(lang)) {
+      if (formData.languages.length >= 10) {
+        toast.warning("Maximum 10 languages allowed");
+        return;
+      }
       setFormData({
         ...formData,
-        languages: [...formData.languages, formData.languageInput.trim()],
+        languages: [...formData.languages, lang],
         languageInput: "",
       });
     }
@@ -112,9 +117,25 @@ const UpdateProfile = () => {
 
   const handleCertUpload = (e) => {
     const files = Array.from(e.target.files);
+    const totalCerts = formData.existingCertifications.length + formData.certifications.length;
+
+    if (totalCerts + files.length > 10) {
+      toast.warning("Maximum 10 certifications allowed");
+      return;
+    }
+
+    // Validate file sizes
+    const validFiles = files.filter(file => {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name} is too large. Max 5MB per file.`);
+        return false;
+      }
+      return true;
+    });
+
     setFormData({
       ...formData,
-      certifications: [...formData.certifications, ...files],
+      certifications: [...formData.certifications, ...validFiles],
     });
   };
 
@@ -140,7 +161,10 @@ const UpdateProfile = () => {
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    if (!isFormValid) return alert("Please fill all required fields!");
+    if (!isFormValid) {
+      toast.error("Please fill all required fields!");
+      return;
+    }
 
     try {
       setUpdating(true);
@@ -163,19 +187,26 @@ const UpdateProfile = () => {
         },
       });
 
-      alert("✅ Profile updated successfully!");
+      toast.success("Profile updated successfully!");
       setProfile(res.data.profile);
 
       setFormData({
         ...formData,
         certifications: [],
-        existingCertifications: res.data.profile.certifications || [],
+        existingCertifications: res.data.profile.certifications?.filter(c => c?.image) || [],
       });
     } catch (err) {
       console.error("Update failed:", err);
-      alert("❌ Failed to update profile.");
+      toast.error(err.response?.data?.message || "Failed to update profile");
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleKeyPress = (e, action) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      action();
     }
   };
 
@@ -188,252 +219,279 @@ const UpdateProfile = () => {
     "5+ years",
   ];
 
-  if (loading)
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col animate-pulse">
-        <nav className="w-full bg-white shadow py-4 px-6 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gray-200 rounded-full" />
-            <div className="w-40 h-5 bg-gray-200 rounded-md" />
-          </div>
-          <div className="w-24 h-5 bg-gray-200 rounded-md" />
-        </nav>
-        <main className="flex-grow py-10 px-6 md:px-10 flex justify-center">
-          <div className="w-full max-w-2xl bg-white p-8 rounded-2xl shadow-md border space-y-6">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="space-y-3">
-                <div className="w-1/3 h-4 bg-gray-200 rounded" />
-                <div className="w-full h-10 bg-gray-200 rounded-lg" />
-              </div>
-            ))}
-            <div className="w-full h-12 bg-gray-200 rounded-lg" />
-          </div>
-        </main>
-      </div>
-    );
+  if (loading) {
+    return <PageLoader text="Loading profile..." />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Navbar */}
-      <nav className="w-full bg-white shadow py-4 px-6 flex justify-between items-center">
+      <nav className="w-full bg-white shadow py-4 px-6 flex justify-between items-center sticky top-0 z-10">
         <div className="flex items-center gap-2">
           <FaUserEdit className="text-green-600 text-xl" />
           <h1 className="font-bold text-lg">Edit Your Profile</h1>
         </div>
         <button
           onClick={() => window.history.back()}
-          className="flex items-center gap-2 text-gray-700 hover:text-green-600"
+          className="flex items-center gap-2 text-gray-700 hover:text-green-600 transition"
         >
           <FaArrowLeft /> Back
         </button>
       </nav>
 
       {/* Main Form */}
-      <main className="flex-grow py-10 px-2 md:px-10 flex justify-center">
+      <main className="flex-grow py-8 px-4 md:px-10 flex justify-center">
         <form
           onSubmit={handleUpdate}
-          className="w-full max-w-2xl bg-white p-8 rounded-2xl shadow-md border"
+          className="w-full max-w-2xl bg-white p-6 md:p-8 rounded-2xl shadow-md border space-y-6"
         >
           {/* About */}
-          <label className="block mb-2 font-medium text-gray-700">
-            About *
-          </label>
-          <textarea
-            name="about"
-            value={formData.about}
-            onChange={handleChange}
-            placeholder="Tell something about yourself..."
-            rows="4"
-            className="w-full p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-green-400"
-          />
+          <div>
+            <label className="block mb-2 font-medium text-gray-700">
+              About <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              name="about"
+              value={formData.about}
+              onChange={handleChange}
+              placeholder="Tell something about yourself..."
+              rows="4"
+              maxLength={1000}
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-green-400 outline-none transition resize-none"
+            />
+            <p className="text-xs text-gray-400 mt-1 text-right">
+              {formData.about.length}/1000
+            </p>
+          </div>
 
           {/* Contact Email */}
-          <label className="block mb-2 font-medium text-gray-700">
-            Contact Email *
-          </label>
-          <div className="relative mb-4">
-            <FaEnvelope className="absolute left-3 top-3 text-gray-400" />
-            <input
-              type="email"
-              name="contactEmail"
-              value={formData.contactEmail}
-              onChange={handleChange}
-              placeholder="Enter your contact email"
-              className="w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-green-400"
-            />
+          <div>
+            <label className="block mb-2 font-medium text-gray-700">
+              Contact Email <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <FaEnvelope className="absolute left-3 top-3.5 text-gray-400" />
+              <input
+                type="email"
+                name="contactEmail"
+                value={formData.contactEmail}
+                onChange={handleChange}
+                placeholder="Enter your contact email"
+                className="w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-green-400 outline-none transition"
+              />
+            </div>
           </div>
 
           {/* Country */}
-          <label className="block mb-2 font-medium text-gray-700">
-            Location *
-          </label>
-          <div className="flex items-center mb-4">
-            <FaGlobe className="text-gray-400 mr-2" />
-            <Select
-              options={countries}
-              value={
-                formData.country
-                  ? { label: formData.country, value: formData.country }
-                  : null
-              }
-              onChange={handleCountryChange}
-              placeholder="Select your country"
-              className="w-full"
-            />
+          <div>
+            <label className="block mb-2 font-medium text-gray-700">
+              Location <span className="text-red-500">*</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <FaGlobe className="text-gray-400" />
+              <Select
+                options={countries}
+                value={
+                  formData.country
+                    ? { label: formData.country, value: formData.country }
+                    : null
+                }
+                onChange={handleCountryChange}
+                placeholder="Select your country"
+                className="flex-1"
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    borderRadius: "0.5rem",
+                    borderColor: "#e5e7eb",
+                  }),
+                }}
+              />
+            </div>
           </div>
 
           {/* Experience */}
-          <label className="block mb-2 font-medium text-gray-700">
-            Experience *
-          </label>
-          <select
-            name="experience"
-            value={formData.experience}
-            onChange={handleChange}
-            className="w-full p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-green-400"
-          >
-            <option value="">Select experience</option>
-            {experienceOptions.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
-
-          {/* Skills */}
-          <label className="block mb-2 font-medium text-gray-700">
-            Skills *
-          </label>
-          <div className="flex gap-2 mb-4">
-            <input
-              type="text"
-              name="skillInput"
-              value={formData.skillInput}
+          <div>
+            <label className="block mb-2 font-medium text-gray-700">
+              Experience <span className="text-red-500">*</span>
+            </label>
+            <select
+              name="experience"
+              value={formData.experience}
               onChange={handleChange}
-              placeholder="Enter a skill"
-              className="flex-1 p-3 border rounded-lg focus:ring-2 focus:ring-green-400"
-            />
-            <button
-              type="button"
-              onClick={addSkill}
-              className="bg-green-500 text-white px-4 rounded-lg hover:bg-green-600"
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-green-400 outline-none transition"
             >
-              <FaPlus />
-            </button>
+              <option value="">Select experience</option>
+              {experienceOptions.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="flex flex-wrap gap-2 mb-4">
-            {formData.skills.map((s, i) => (
-              <span
-                key={i}
-                className="bg-green-100 text-green-800 px-3 py-1 rounded-full flex items-center gap-1"
-              >
-                {s}
-                <FaTimes
-                  className="cursor-pointer"
-                  onClick={() => removeSkill(s)}
-                />
+          {/* Skills */}
+          <div>
+            <label className="block mb-2 font-medium text-gray-700">
+              Skills <span className="text-red-500">*</span>
+              <span className="text-xs text-gray-400 ml-2">
+                ({formData.skills.length}/20)
               </span>
-            ))}
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                name="skillInput"
+                value={formData.skillInput}
+                onChange={handleChange}
+                onKeyPress={(e) => handleKeyPress(e, addSkill)}
+                placeholder="Type a skill and press Enter or click +"
+                className="flex-1 p-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-green-400 outline-none transition"
+              />
+              <button
+                type="button"
+                onClick={addSkill}
+                className="bg-green-500 text-white px-4 rounded-lg hover:bg-green-600 transition"
+              >
+                <FaPlus />
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {formData.skills.map((s, i) => (
+                <span
+                  key={i}
+                  className="bg-green-100 text-green-800 px-3 py-1.5 rounded-full flex items-center gap-2 text-sm"
+                >
+                  {s}
+                  <FaTimes
+                    className="cursor-pointer hover:text-red-500 transition"
+                    onClick={() => removeSkill(s)}
+                  />
+                </span>
+              ))}
+            </div>
           </div>
 
           {/* Languages */}
-          <label className="block mb-2 font-medium text-gray-700">
-            Languages *
-          </label>
-          <div className="flex gap-2 mb-4">
-            <input
-              type="text"
-              name="languageInput"
-              value={formData.languageInput}
-              onChange={handleChange}
-              placeholder="Enter a language"
-              className="flex-1 p-3 border rounded-lg focus:ring-2 focus:ring-green-400"
-            />
-            <button
-              type="button"
-              onClick={addLanguage}
-              className="bg-green-500 text-white px-4 rounded-lg hover:bg-green-600"
-            >
-              <FaPlus />
-            </button>
-          </div>
-
-          <div className="flex flex-wrap gap-2 mb-4">
-            {formData.languages.map((l, i) => (
-              <span
-                key={i}
-                className="bg-green-100 text-green-800 px-3 py-1 rounded-full flex items-center gap-1"
-              >
-                {l}
-                <FaTimes
-                  className="cursor-pointer"
-                  onClick={() => removeLanguage(l)}
-                />
+          <div>
+            <label className="block mb-2 font-medium text-gray-700">
+              Languages <span className="text-red-500">*</span>
+              <span className="text-xs text-gray-400 ml-2">
+                ({formData.languages.length}/10)
               </span>
-            ))}
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                name="languageInput"
+                value={formData.languageInput}
+                onChange={handleChange}
+                onKeyPress={(e) => handleKeyPress(e, addLanguage)}
+                placeholder="Type a language and press Enter or click +"
+                className="flex-1 p-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-green-400 outline-none transition"
+              />
+              <button
+                type="button"
+                onClick={addLanguage}
+                className="bg-green-500 text-white px-4 rounded-lg hover:bg-green-600 transition"
+              >
+                <FaPlus />
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {formData.languages.map((l, i) => (
+                <span
+                  key={i}
+                  className="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full flex items-center gap-2 text-sm"
+                >
+                  {l}
+                  <FaTimes
+                    className="cursor-pointer hover:text-red-500 transition"
+                    onClick={() => removeLanguage(l)}
+                  />
+                </span>
+              ))}
+            </div>
           </div>
 
           {/* Certifications */}
-          <label className="block mb-2 font-medium text-gray-700">
-            Certifications (Optional)
-          </label>
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleCertUpload}
-            className="mb-2"
-          />
+          <div>
+            <label className="block mb-2 font-medium text-gray-700">
+              Certifications{" "}
+              <span className="text-xs text-gray-400">
+                (Optional - {formData.existingCertifications.length + formData.certifications.length}/10)
+              </span>
+            </label>
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleCertUpload}
+              className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-green-400"
+            />
+            <p className="text-xs text-gray-400 mt-1">Max 5MB per file. JPEG, PNG, WebP accepted.</p>
 
-          <div className="flex flex-wrap gap-2 mb-4">
-            {/* Existing certifications */}
-            {formData.existingCertifications.map((cert, i) =>
-              cert?.image ? (
-                <div key={i} className="relative">
+            <div className="flex flex-wrap gap-3 mt-3">
+              {/* Existing certifications */}
+              {formData.existingCertifications.map((cert, i) => (
+                <div key={`existing-${i}`} className="relative group">
                   <img
                     src={cert.image}
                     alt={cert.title || "Certificate"}
-                    className="w-20 h-20 object-cover rounded-lg"
+                    className="w-20 h-20 object-cover rounded-lg border"
                   />
-                  <FaTimes
-                    className="absolute top-0 right-0 text-red-600 cursor-pointer"
+                  <button
+                    type="button"
+                    className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition"
                     onClick={() => removeCert(i, "existing")}
-                  />
+                  >
+                    <FaTimes />
+                  </button>
                 </div>
-              ) : null
-            )}
+              ))}
 
-            {/* New uploads */}
-            {formData.certifications.map((file, i) => {
-              const preview = file ? URL.createObjectURL(file) : null;
-              return preview ? (
-                <div key={i} className="relative">
-                  <img
-                    src={preview}
-                    alt="cert"
-                    className="w-20 h-20 object-cover rounded-lg"
-                  />
-                  <FaTimes
-                    className="absolute top-0 right-0 text-red-600 cursor-pointer"
-                    onClick={() => removeCert(i, "local")}
-                  />
-                </div>
-              ) : null;
-            })}
+              {/* New uploads */}
+              {formData.certifications.map((file, i) => {
+                const preview = URL.createObjectURL(file);
+                return (
+                  <div key={`new-${i}`} className="relative group">
+                    <img
+                      src={preview}
+                      alt="New cert"
+                      className="w-20 h-20 object-cover rounded-lg border"
+                    />
+                    <button
+                      type="button"
+                      className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition"
+                      onClick={() => removeCert(i, "local")}
+                    >
+                      <FaTimes />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* Submit */}
           <button
             type="submit"
             disabled={!isFormValid || updating}
-            className={`w-full py-3 rounded-lg text-white font-semibold ${
-              isFormValid
-                ? "bg-green-500 hover:bg-green-600"
+            className={`w-full py-3 rounded-lg text-white font-semibold flex items-center justify-center gap-2 transition-all ${isFormValid && !updating
+                ? "bg-green-500 hover:bg-green-600 shadow-md hover:shadow-lg"
                 : "bg-gray-400 cursor-not-allowed"
-            } transition-all`}
+              }`}
           >
-            {updating ? "Updating..." : "Update Profile"}
+            {updating ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Updating...
+              </>
+            ) : (
+              <>
+                <FaSave /> Update Profile
+              </>
+            )}
           </button>
         </form>
       </main>

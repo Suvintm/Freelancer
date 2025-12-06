@@ -1,159 +1,127 @@
-import { useState, useEffect } from "react";
-import logo from "../assets/logo.png";
+import { useState } from "react";
+import {
+  FaCheckCircle,
+  FaHourglassHalf,
+  FaTimesCircle,
+  FaInbox,
+} from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
-import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import Sidebar from "../components/Sidebar.jsx";
+import EditorNavbar from "../components/EditorNavbar.jsx";
+import EmptyState from "../components/EmptyState.jsx";
 
-const EditorMyOrdersPage = () => {
-  const { backendURL, user } = useAppContext();
-  const [orders, setOrders] = useState([]);
-  const [activeTab, setActiveTab] = useState("gig");
-  const navigate = useNavigate();
+// Mock orders data - Replace with actual API calls later
+const mockOrders = [];
 
-  const demoOrders = [
-    {
-      id: 1,
-      type: "gig",
-      gigTitle: "YouTube Video Editing",
-      description:
-        "Edit a 10-min vlog with transitions, color grading, and music.",
-      clientName: "John Doe",
-      clientId: "c123", // add clientId for chat
-      amount: 120,
-      requestedDate: "2025-09-20",
-      deadline: "2025-09-25",
-      status: "pending",
-    },
-    {
-      id: 2,
-      type: "requested",
-      gigTitle: "Corporate Promo Video",
-      description: "Edit a 2-min promo with animations and branding.",
-      clientName: "Sarah Johnson",
-      clientId: "c456",
-      amount: 300,
-      requestedDate: "2025-09-15",
-      deadline: "2025-09-30",
-      status: "completed",
-    },
+const statusConfig = {
+  pending: { icon: FaHourglassHalf, color: "text-yellow-500", bg: "bg-yellow-50" },
+  in_progress: { icon: FaHourglassHalf, color: "text-blue-500", bg: "bg-blue-50" },
+  completed: { icon: FaCheckCircle, color: "text-green-500", bg: "bg-green-50" },
+  cancelled: { icon: FaTimesCircle, color: "text-red-500", bg: "bg-red-50" },
+};
+
+const EditorMyorderspage = () => {
+  const { user } = useAppContext();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [orders] = useState(mockOrders);
+
+  const filteredOrders = activeFilter === "all"
+    ? orders
+    : orders.filter((o) => o.status === activeFilter);
+
+  const filters = [
+    { id: "all", label: "All Orders" },
+    { id: "pending", label: "Pending" },
+    { id: "in_progress", label: "In Progress" },
+    { id: "completed", label: "Completed" },
   ];
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const res = await axios.get(`${backendURL}/orders/my-orders`, {
-          withCredentials: true,
-        });
-        setOrders(res.data.length > 0 ? res.data : demoOrders);
-      } catch (err) {
-        console.error("Error fetching orders:", err);
-        setOrders(demoOrders);
-      }
-    };
-    fetchOrders();
-  }, [backendURL]);
-
-  const filteredOrders = orders.filter((order) => order.type === activeTab);
-
   return (
-    <div className="min-h-screen flex flex-col bg-gray-100">
+    <div className="min-h-screen flex flex-col md:flex-row bg-gray-100">
+      {/* Sidebar */}
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
       {/* Navbar */}
-      <div className="flex justify-between items-center bg-white shadow-md px-4 py-3">
-        <div className="flex items-center gap-2">
-          <img
-            onClick={() => navigate("/editor-home")}
-            src={logo}
-            alt="SuviX"
-            className="w-8 h-8 cursor-pointer"
-          />
-          <h1 className="text-lg font-bold">My Orders</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-gray-700 font-semibold">
-            {user?.name || "Profile"}
-          </span>
-          <img
-            src={
-              user?.profilePicture ||
-              user?.avatar ||
-              "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-            }
-            alt="Profile"
-            className="w-8 h-8 rounded-full border-2 border-green-500"
-          />
-        </div>
-      </div>
+      <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-      {/* Tabs */}
-      <div className="flex justify-center gap-4 mt-4 mb-6 flex-wrap">
-        <button
-          className={`px-4 py-2 rounded-full font-semibold ${
-            activeTab === "gig"
-              ? "bg-green-500 text-white"
-              : "bg-gray-200 hover:bg-gray-300"
-          }`}
-          onClick={() => setActiveTab("gig")}
-        >
-          Orders from Gigs
-        </button>
-        <button
-          className={`px-4 py-2 rounded-full font-semibold ${
-            activeTab === "requested"
-              ? "bg-green-500 text-white"
-              : "bg-gray-200 hover:bg-gray-300"
-          }`}
-          onClick={() => setActiveTab("requested")}
-        >
-          Requested Orders
-        </button>
-      </div>
-
-      {/* Orders List */}
-      <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-        {filteredOrders.length > 0 ? (
-          filteredOrders.map((order) => (
-            <div
-              key={order.id}
-              onClick={() => navigate(`/chat/${order.id}`)} // 👈 Navigate to chat
-              className="bg-white p-4 sm:p-6 rounded-xl shadow-md hover:shadow-xl transition cursor-pointer flex flex-col justify-between"
-            >
-              <h3 className="font-bold text-lg mb-2">
-                {order.gigTitle || "Custom Order"}
-              </h3>
-              <p className="text-gray-600 text-sm mb-2">{order.description}</p>
-              <p className="text-gray-500 text-xs mb-1">
-                Client: {order.clientName}
-              </p>
-              <p className="font-bold text-sm mb-1">Amount: ${order.amount}</p>
-              <p className="text-gray-500 text-xs mb-1">
-                Requested: {order.requestedDate}
-              </p>
-              <p className="text-gray-500 text-xs mb-2">
-                Deadline: {order.deadline}
-              </p>
-              <p
-                className={`text-sm font-semibold ${
-                  order.status === "accepted"
-                    ? "text-green-500"
-                    : order.status === "pending"
-                    ? "text-yellow-500"
-                    : order.status === "completed"
-                    ? "text-blue-500"
-                    : "text-gray-500"
-                }`}
-              >
-                Status: {order.status}
-              </p>
-            </div>
-          ))
-        ) : (
-          <p className="col-span-full text-center text-gray-500">
-            No orders available.
+      {/* Main Content */}
+      <main className="flex-1 px-4 md:px-6 py-6 md:ml-64 md:mt-16">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-800">My Orders</h1>
+          <p className="text-gray-600 mt-1">
+            Manage and track all your orders in one place
           </p>
-        )}
-      </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          {filters.map((filter) => (
+            <button
+              key={filter.id}
+              onClick={() => setActiveFilter(filter.id)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${activeFilter === filter.id
+                  ? "bg-green-500 text-white shadow-md"
+                  : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+                }`}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Orders List */}
+        <div className="bg-white rounded-xl shadow-sm">
+          {filteredOrders.length === 0 ? (
+            <EmptyState
+              icon={FaInbox}
+              title="No orders yet"
+              description="Once clients start placing orders, they'll appear here. Complete your profile to get noticed!"
+            />
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {filteredOrders.map((order) => {
+                const StatusIcon = statusConfig[order.status]?.icon || FaHourglassHalf;
+                const statusColor = statusConfig[order.status]?.color || "text-gray-500";
+                const statusBg = statusConfig[order.status]?.bg || "bg-gray-50";
+
+                return (
+                  <div
+                    key={order.id}
+                    className="p-4 hover:bg-gray-50 transition-all cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-800">
+                          {order.title}
+                        </h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Client: {order.client}
+                        </p>
+                        <p className="text-sm text-gray-400">
+                          {order.date}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-semibold text-green-600">
+                          ${order.amount}
+                        </span>
+                        <span className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm ${statusBg} ${statusColor}`}>
+                          <StatusIcon className="text-xs" />
+                          {order.status.replace("_", " ")}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 };
 
-export default EditorMyOrdersPage;
+export default EditorMyorderspage;
