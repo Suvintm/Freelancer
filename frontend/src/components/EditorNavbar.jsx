@@ -115,7 +115,7 @@ const EditorNavbar = ({ onMenuClick }) => {
                 {/* LOGO */}
                 <div
                     className="flex items-center gap-2 cursor-pointer"
-                    onClick={() => navigate("/")}
+                    onClick={() => navigate("/editor-home")}
                 >
                     <img src={logo} alt="SuviX" className="w-8 h-8 rounded-xl" />
                     <h2 className="text-lg font-semibold text-white tracking-wide">SuviX</h2>
