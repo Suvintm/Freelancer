@@ -6,6 +6,7 @@ import logger from "../utils/logger.js";
 // Max file sizes
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB for videos
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB for images
+const MAX_ORIGINAL_FILES = 5; // Max 5 original clips
 
 // Allowed file types
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm", "video/x-msvideo"];
@@ -15,39 +16,49 @@ const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif
 const validateFile = (file, type) => {
   if (!file) return true;
 
-  if (type === "video") {
-    if (file.size > MAX_VIDEO_SIZE) {
-      throw new ApiError(400, `Video file must be less than 100MB. Got: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
-    }
-    if (!ALLOWED_VIDEO_TYPES.includes(file.mimetype) && !ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
-      throw new ApiError(400, `Invalid file type: ${file.mimetype}. Allowed: MP4, MOV, WebM, AVI, JPEG, PNG, WebP, GIF`);
-    }
-  } else {
-    if (file.size > MAX_IMAGE_SIZE) {
-      throw new ApiError(400, `Image file must be less than 10MB`);
-    }
-    if (!ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
-      throw new ApiError(400, `Invalid image type: ${file.mimetype}`);
-    }
+  const isVideo = ALLOWED_VIDEO_TYPES.includes(file.mimetype);
+  const isImage = ALLOWED_IMAGE_TYPES.includes(file.mimetype);
+
+  if (!isVideo && !isImage) {
+    throw new ApiError(400, `Invalid file type: ${file.mimetype}. Allowed: MP4, MOV, WebM, AVI, JPEG, PNG, WebP, GIF`);
   }
+
+  if (isVideo && file.size > MAX_VIDEO_SIZE) {
+    throw new ApiError(400, `Video file must be less than 100MB. Got: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+  }
+
+  if (isImage && file.size > MAX_IMAGE_SIZE) {
+    throw new ApiError(400, `Image file must be less than 10MB`);
+  }
+
   return true;
 };
 
 // ============ CREATE PORTFOLIO ============
 export const createPortfolio = asyncHandler(async (req, res) => {
   const { title, description } = req.body;
-  let originalClip = "";
+  let originalClips = [];
   let editedClip = "";
 
-  // Validate and upload original clip
-  if (req.files?.originalClip?.[0]) {
-    const file = req.files.originalClip[0];
-    validateFile(file, "video");
-    const result = await uploadToCloudinary(file.buffer, "portfolio");
-    originalClip = result.url;
+  // Handle multiple original clips
+  if (req.files?.originalClip) {
+    const files = Array.isArray(req.files.originalClip)
+      ? req.files.originalClip
+      : [req.files.originalClip];
+
+    if (files.length > MAX_ORIGINAL_FILES) {
+      throw new ApiError(400, `Maximum ${MAX_ORIGINAL_FILES} original files allowed`);
+    }
+
+    // Upload each file
+    for (const file of files) {
+      validateFile(file, "video");
+      const result = await uploadToCloudinary(file.buffer, "portfolio");
+      originalClips.push(result.url);
+    }
   }
 
-  // Validate and upload edited clip
+  // Validate and upload edited clip (single file)
   if (req.files?.editedClip?.[0]) {
     const file = req.files.editedClip[0];
     validateFile(file, "video");
@@ -58,9 +69,10 @@ export const createPortfolio = asyncHandler(async (req, res) => {
   // Create portfolio
   const portfolio = await Portfolio.create({
     user: req.user._id,
-    title: title.trim().substring(0, 100),
-    description: description.trim().substring(0, 500),
-    originalClip,
+    title: title?.trim().substring(0, 100) || "",
+    description: description?.trim().substring(0, 500) || "",
+    originalClip: originalClips.length > 0 ? originalClips[0] : "", // First clip for backward compatibility
+    originalClips: originalClips, // All clips in array
     editedClip,
   });
 
@@ -69,7 +81,7 @@ export const createPortfolio = asyncHandler(async (req, res) => {
     "name email role profilePicture profileCompleted"
   );
 
-  logger.info(`Portfolio created: ${portfolio._id} by user: ${req.user._id}`);
+  logger.info(`Portfolio created: ${portfolio._id} by user: ${req.user._id}, originalClips: ${originalClips.length}`);
 
   res.status(201).json({
     success: true,
@@ -81,7 +93,7 @@ export const createPortfolio = asyncHandler(async (req, res) => {
 // ============ GET ALL PORTFOLIOS (for current user) ============
 export const getPortfolios = asyncHandler(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
-  const limit = Math.min(parseInt(req.query.limit) || 10, 50); // Max 50 per page
+  const limit = Math.min(parseInt(req.query.limit) || 10, 50);
   const skip = (page - 1) * limit;
 
   const [portfolios, total] = await Promise.all([
@@ -131,7 +143,6 @@ export const updatePortfolio = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Portfolio not found");
   }
 
-  // Check ownership
   if (portfolio.user.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "Not authorized to update this portfolio");
   }
@@ -143,12 +154,24 @@ export const updatePortfolio = asyncHandler(async (req, res) => {
     portfolio.description = description.trim().substring(0, 500);
   }
 
-  // Handle file updates
-  if (req.files?.originalClip?.[0]) {
-    const file = req.files.originalClip[0];
-    validateFile(file, "video");
-    const result = await uploadToCloudinary(file.buffer, "portfolio");
-    portfolio.originalClip = result.url;
+  // Handle multiple original clips update
+  if (req.files?.originalClip) {
+    const files = Array.isArray(req.files.originalClip)
+      ? req.files.originalClip
+      : [req.files.originalClip];
+
+    if (files.length > MAX_ORIGINAL_FILES) {
+      throw new ApiError(400, `Maximum ${MAX_ORIGINAL_FILES} original files allowed`);
+    }
+
+    const originalClips = [];
+    for (const file of files) {
+      validateFile(file, "video");
+      const result = await uploadToCloudinary(file.buffer, "portfolio");
+      originalClips.push(result.url);
+    }
+    portfolio.originalClips = originalClips;
+    portfolio.originalClip = originalClips[0] || "";
   }
 
   if (req.files?.editedClip?.[0]) {
@@ -182,7 +205,6 @@ export const deletePortfolio = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Portfolio not found");
   }
 
-  // Check ownership
   if (portfolio.user.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "Not authorized to delete this portfolio");
   }

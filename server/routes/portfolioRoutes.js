@@ -23,12 +23,12 @@ router.use(authMiddleware);
 
 // ============ PORTFOLIO CRUD ============
 
-// Create portfolio
+// Create portfolio - supports multiple original clips (up to 5)
 router.post(
   "/",
   uploadLimiter,
   upload.fields([
-    { name: "originalClip", maxCount: 1 },
+    { name: "originalClip", maxCount: 5 }, // Allow up to 5 original clips
     { name: "editedClip", maxCount: 1 },
   ]),
   portfolioValidator,
@@ -41,13 +41,13 @@ router.get("/", getPortfolios);
 // Get single portfolio
 router.get("/:id", mongoIdValidator, getPortfolio);
 
-// Update portfolio
+// Update portfolio - supports multiple original clips
 router.put(
   "/:id",
   uploadLimiter,
   mongoIdValidator,
   upload.fields([
-    { name: "originalClip", maxCount: 1 },
+    { name: "originalClip", maxCount: 5 },
     { name: "editedClip", maxCount: 1 },
   ]),
   updatePortfolio
