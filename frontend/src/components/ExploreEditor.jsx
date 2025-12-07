@@ -568,7 +568,7 @@ const EditorCard = ({ editor, navigate, searchQuery }) => {
               "https://cdn-icons-png.flaticon.com/512/149/149071.png"
             }
             alt={editor.user?.name}
-            className="w-20 h-20 rounded-2xl object-cover border-4 border-[#050509] shadow-[0_14px_40px_rgba(0,0,0,0.8)] group-hover:scale-105 transition-transform duration-300"
+            className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-[0_14px_40px_rgba(255,255,255,0.3)] group-hover:scale-105 transition-transform duration-300"
           />
           <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#22C55E] rounded-full border-4 border-[#050509] shadow-[0_0_12px_rgba(34,197,94,0.9)]" />
         </div>
