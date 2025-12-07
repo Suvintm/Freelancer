@@ -11,6 +11,7 @@ import {
     FaPause,
     FaUserPlus,
     FaCheck,
+    FaEye,
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import axios from "axios";
@@ -199,6 +200,16 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                     </motion.button>
                     <span className="text-white text-xs font-medium drop-shadow-md">
                         {reel.commentsCount}
+                    </span>
+                </div>
+
+                {/* Views (New) */}
+                <div className="flex flex-col items-center gap-1 mt-2">
+                    <div className="p-2">
+                        <FaEye className="text-white text-2xl drop-shadow-lg opacity-90" />
+                    </div>
+                    <span className="text-white text-xs font-medium drop-shadow-md">
+                        {reel.viewsCount}
                     </span>
                 </div>
 

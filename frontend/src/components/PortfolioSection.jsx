@@ -20,6 +20,7 @@ import {
   FaVolumeUp,
   FaVolumeMute,
   FaGlobe,
+  FaComment,
 } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 import axios from "axios";
@@ -61,7 +62,37 @@ const PortfolioSection = () => {
         withCredentials: true,
         headers: { Authorization: `Bearer ${user?.token}` },
       });
-      setPortfolios(Array.isArray(data) ? data : data.portfolios || []);
+
+      let portfoliosData = Array.isArray(data) ? data : data.portfolios || [];
+
+      // Fetch engagement metrics for each portfolio
+      const portfoliosWithMetrics = await Promise.all(portfoliosData.map(async (p) => {
+        try {
+          const { data: checkData } = await axios.get(
+            `${backendURL}/api/reels/check/${p._id}`,
+            { headers: { Authorization: `Bearer ${user?.token}` } }
+          );
+
+          if (checkData.isPublished && checkData.reelId) {
+            const { data: reelData } = await axios.get(
+              `${backendURL}/api/reels/${checkData.reelId}`
+            );
+            return {
+              ...p,
+              isPublished: true,
+              reelId: checkData.reelId,
+              likesCount: reelData.reel.likesCount || 0,
+              viewsCount: reelData.reel.viewsCount || 0,
+              commentsCount: reelData.reel.commentsCount || 0
+            };
+          }
+          return { ...p, isPublished: false };
+        } catch (e) {
+          return p;
+        }
+      }));
+
+      setPortfolios(portfoliosWithMetrics);
     } catch (err) {
       toast.error("Failed to load portfolios");
       setPortfolios([]);
@@ -436,6 +467,21 @@ const PortfolioSection = () => {
                 <Icon3D icon={FaFilm} color="text-orange-500" size="text-xs" />
                 {allClips.length - 1} Original{allClips.length > 2 ? "s" : ""}
               </motion.span>
+
+              {/* Engagement Metrics (if published) */}
+              {portfolio.isPublished && (
+                <div className="flex items-center gap-2 ml-auto">
+                  <div className="flex items-center gap-1 text-gray-500 text-xs" title="Views">
+                    <FaEye /> {portfolio.viewsCount || 0}
+                  </div>
+                  <div className="flex items-center gap-1 text-gray-500 text-xs" title="Likes">
+                    <FaHeart className="text-red-400" /> {portfolio.likesCount || 0}
+                  </div>
+                  <div className="flex items-center gap-1 text-gray-500 text-xs" title="Comments">
+                    <FaComment className="text-blue-400" /> {portfolio.commentsCount || 0}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Date */}
@@ -572,8 +618,8 @@ const PortfolioSection = () => {
               initial={{ y: -20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               className={`absolute top-6 left-6 px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-lg ${currentClip?.type === "original"
-                  ? "bg-gradient-to-r from-orange-500 to-red-500 text-white"
-                  : "bg-gradient-to-r from-green-500 to-emerald-500 text-white"
+                ? "bg-gradient-to-r from-orange-500 to-red-500 text-white"
+                : "bg-gradient-to-r from-green-500 to-emerald-500 text-white"
                 }`}
             >
               {currentClip?.type === "original" ? (
@@ -859,8 +905,8 @@ const PortfolioSection = () => {
                     disabled={loading || title.length < 3 || description.length < 10 || originalFiles.length === 0 || !editedFile}
                     whileHover={{ scale: loading ? 1 : 1.02 }}
                     className={`w-full py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-3 ${loading || title.length < 3 || description.length < 10 || originalFiles.length === 0 || !editedFile
-                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                        : "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg"
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg"
                       }`}
                   >
                     {loading ? (
