@@ -30,10 +30,15 @@ const PortfolioSection = () => {
     try {
       const { data } = await axios.get(`${backendURL}/api/portfolio`, {
         withCredentials: true,
+        headers: {
+          Authorization: `Bearer ${user?.token}`,
+        },
       });
-      setPortfolios(data);
+      // Handle both array response and object with portfolios property
+      setPortfolios(Array.isArray(data) ? data : (data.portfolios || []));
     } catch (err) {
       console.error("Error fetching portfolios:", err);
+      setPortfolios([]); // Set empty array on error
     }
   };
 
@@ -258,7 +263,7 @@ const PortfolioSection = () => {
 
       {/* Portfolio List */}
       <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {portfolios.map((p) => (
+        {Array.isArray(portfolios) && portfolios.map((p) => (
           <div
             key={p._id}
             className="border-black rounded-xl overflow-hidden shadow-md bg-white shadow-black hover:shadow-lg transition-all"
