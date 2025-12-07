@@ -27,7 +27,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
           opacity: { duration: 0.6 }
         }}
         className="
-          w-52 h-52 rounded-full border-[6px]
+          w-30 h-30 rounded-full border-[6px]
           border-t-[#1463FF] border-r-[#1463FF]/40 border-b-transparent border-l-transparent
           shadow-[0_0_40px_rgba(20,99,255,0.4)]
           flex items-center justify-center
