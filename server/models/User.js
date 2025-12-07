@@ -22,14 +22,17 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, "Password is required"],
+      required: function () {
+        // Password not required for OAuth users
+        return !this.googleId && !this.facebookId;
+      },
       minlength: [8, "Password must be at least 8 characters"],
     },
     role: {
       type: String,
       enum: {
-        values: ["editor", "client"],
-        message: "Role must be either 'editor' or 'client'",
+        values: ["editor", "client", "pending"],
+        message: "Role must be 'editor', 'client', or 'pending'",
       },
       required: [true, "Role is required"],
     },
@@ -41,6 +44,22 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
     },
+    // OAuth fields
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true, // Allows multiple null values
+    },
+    facebookId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    authProvider: {
+      type: String,
+      enum: ["local", "google", "facebook"],
+      default: "local",
+    },
   },
   {
     timestamps: true,
@@ -51,5 +70,6 @@ const userSchema = new mongoose.Schema(
 userSchema.index({ email: 1 });
 userSchema.index({ role: 1, profileCompleted: 1 });
 userSchema.index({ name: 1 });
+userSchema.index({ googleId: 1 });
 
 export default mongoose.model("User", userSchema);

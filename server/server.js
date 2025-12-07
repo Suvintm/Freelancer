@@ -3,6 +3,10 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
+import session from "express-session";
+
+// IMPORTANT: Load env variables FIRST before any other imports that use them
+dotenv.config();
 
 // Utils
 import logger from "./utils/logger.js";
@@ -11,13 +15,15 @@ import logger from "./utils/logger.js";
 import { generalLimiter } from "./middleware/rateLimiter.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 
+// Passport - must be imported AFTER dotenv.config()
+import passport from "./config/passport.js";
+
 // Routes
 import authRoutes from "./routes/authRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import portfolioRoutes from "./routes/portfolioRoutes.js";
 import exploreRoutes from "./routes/exploreRoutes.js";
-
-dotenv.config();
+import oauthRoutes from "./routes/oauthRoutes.js";
 
 // Validate required environment variables
 const requiredEnvVars = ["MONGO_URI", "JWT_SECRET", "CLOUDINARY_CLOUD_NAME"];
@@ -27,26 +33,34 @@ if (missingEnvVars.length > 0) {
   process.exit(1);
 }
 
+// Log OAuth status
+if (process.env.GOOGLE_CLIENT_ID) {
+  logger.info("Google OAuth is enabled");
+} else {
+  logger.warn("GOOGLE_CLIENT_ID not set - Google OAuth will be disabled");
+}
+
 const app = express();
 
 // ============ SECURITY MIDDLEWARE ============
 
 // Helmet - Security headers
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow Cloudinary images
+  crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 
 // CORS configuration
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
   "http://localhost:3000",
 ].filter(Boolean);
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, curl, etc.)
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
@@ -65,9 +79,27 @@ app.use(generalLimiter);
 
 // ============ BODY PARSING ============
 
-// Parse JSON and URL-encoded data with size limits
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// ============ SESSION (for OAuth) ============
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || process.env.JWT_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
+  })
+);
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
 
 // ============ REQUEST LOGGING ============
 
@@ -84,6 +116,7 @@ app.use((req, res, next) => {
 // ============ ROUTES ============
 
 app.use("/api/auth", authRoutes);
+app.use("/api/auth", oauthRoutes); // OAuth routes under /api/auth
 app.use("/api/profile", profileRoutes);
 app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/explore", exploreRoutes);
@@ -108,17 +141,13 @@ app.get("/health", (req, res) =>
 
 // ============ ERROR HANDLING ============
 
-// 404 handler - must be after all routes
 app.use(notFoundHandler);
-
-// Global error handler - must be last
 app.use(errorHandler);
 
 // ============ DATABASE & SERVER ============
 
 const PORT = process.env.PORT || 5000;
 
-// Graceful shutdown handler
 const gracefulShutdown = async (signal) => {
   logger.info(`${signal} received. Shutting down gracefully...`);
   try {
@@ -134,7 +163,6 @@ const gracefulShutdown = async (signal) => {
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
-// MongoDB connection with retry logic
 const connectDB = async (retries = 5) => {
   try {
     await mongoose.connect(process.env.MONGO_URI, {
@@ -154,7 +182,6 @@ const connectDB = async (retries = 5) => {
   }
 };
 
-// Handle MongoDB connection events
 mongoose.connection.on("disconnected", () => {
   logger.warn("MongoDB disconnected. Attempting to reconnect...");
 });
@@ -163,7 +190,6 @@ mongoose.connection.on("error", (error) => {
   logger.error("MongoDB error:", error);
 });
 
-// Start server
 const startServer = async () => {
   const dbConnected = await connectDB();
   if (!dbConnected) {

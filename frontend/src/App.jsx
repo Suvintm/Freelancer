@@ -9,6 +9,10 @@ import EditorProfileUpdate from "./pages/EditorProfileUpdate.jsx";
 import AddPortfolio from "./pages/addportfolio.jsx";
 import PublicEditorProfile from "./pages/PublicEditorProfile.jsx";
 
+// OAuth Pages
+import OAuthSuccess from "./pages/OAuthSuccess.jsx";
+import SelectRole from "./pages/SelectRole.jsx";
+
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
 import "react-toastify/dist/ReactToastify.css";
@@ -21,6 +25,10 @@ function App() {
       <Routes>
         {/* Public Route */}
         <Route path="/" element={<Homepage />} />
+
+        {/* OAuth Routes (Public) */}
+        <Route path="/oauth-success" element={<OAuthSuccess />} />
+        <Route path="/select-role" element={<SelectRole />} />
 
         {/* Client Routes */}
         <Route
