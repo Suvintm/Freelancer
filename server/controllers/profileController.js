@@ -1,5 +1,6 @@
 import { Profile } from "../models/Profile.js";
 import User from "../models/User.js";
+import { Reel } from "../models/Reel.js";
 import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
@@ -16,10 +17,21 @@ export const getProfile = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Profile not found");
   }
 
+  // Fetch Reel Stats
+  const reels = await Reel.find({ editor: userId, isPublished: true });
+  const totalReels = reels.length;
+  const totalViews = reels.reduce((acc, reel) => acc + (reel.viewsCount || 0), 0);
+  const totalLikes = reels.reduce((acc, reel) => acc + (reel.likesCount || 0), 0);
+
   res.status(200).json({
     success: true,
     message: "Profile fetched successfully.",
     profile,
+    stats: {
+      totalReels,
+      totalViews,
+      totalLikes,
+    },
   });
 });
 
