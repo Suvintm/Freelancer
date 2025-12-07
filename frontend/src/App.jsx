@@ -9,6 +9,7 @@ import EditorProfileUpdate from "./pages/EditorProfileUpdate.jsx";
 import AddPortfolio from "./pages/addportfolio.jsx";
 import PublicEditorProfile from "./pages/PublicEditorProfile.jsx";
 import ReelsPage from "./pages/ReelsPage.jsx";
+import NotificationsPage from "./pages/NotificationsPage.jsx";
 
 // OAuth Pages
 import OAuthSuccess from "./pages/OAuthSuccess.jsx";
@@ -83,7 +84,7 @@ function App() {
           }
         />
         <Route
-          path="/editor/:userId"
+          path="/public-profile/:userId"
           element={
             <ProtectedRoute>
               <PublicEditorProfile />
@@ -97,6 +98,16 @@ function App() {
           element={
             <ProtectedRoute>
               <ReelsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Notifications */}
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <NotificationsPage />
             </ProtectedRoute>
           }
         />

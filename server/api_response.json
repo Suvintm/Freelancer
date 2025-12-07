@@ -1,0 +1,48 @@
+{
+  "success": true,
+  "message": "Profile fetched successfully.",
+  "profile": {
+    "location": {
+      "country": "India"
+    },
+    "_id": "69346be8bf771102a6f36392",
+    "user": {
+      "_id": "69346be8bf771102a6f36390",
+      "name": "antigravity",
+      "email": "antigravity@gmail.com",
+      "role": "editor",
+      "profilePicture": "https://res.cloudinary.com/dhdwbwmki/image/upload/v1765043175/profiles/xrftgwzgiasmpqwrsxiy.webp"
+    },
+    "about": "I am antigravity ide",
+    "portfolio": [],
+    "skills": [
+      "Code"
+    ],
+    "languages": [
+      "Kannada",
+      "English"
+    ],
+    "experience": "0-6 months",
+    "certifications": [
+      {
+        "title": "",
+        "image": "",
+        "_id": "69346be8bf771102a6f36393"
+      },
+      {
+        "title": "7VTusR4aRFaqxYYEyNFtFS-1280-80",
+        "image": "https://res.cloudinary.com/dhdwbwmki/image/upload/v1765097806/certifications/u7jdk1vdhw15xeuw2kab.webp",
+        "_id": "6935414f434da3a4ab3067fd"
+      }
+    ],
+    "contactEmail": "antigravity@gmail.com",
+    "createdAt": "2025-12-06T17:46:16.782Z",
+    "updatedAt": "2025-12-07T08:56:47.361Z",
+    "__v": 2
+  },
+  "stats": {
+    "totalReels": 0,
+    "totalViews": 0,
+    "totalLikes": 0
+  }
+}

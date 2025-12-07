@@ -231,8 +231,8 @@ const ExploreEditors = () => {
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${showFilters || activeFilterCount > 0
-                  ? "bg-green-100 text-green-700 border border-green-200"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200"
+                ? "bg-green-100 text-green-700 border border-green-200"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200"
                 }`}
             >
               <FaFilter />
@@ -289,8 +289,8 @@ const ExploreEditors = () => {
                       key={skill}
                       onClick={() => toggleSkillFilter(skill)}
                       className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${filters.skills.includes(skill)
-                          ? "bg-green-500 text-white"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        ? "bg-green-500 text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                         }`}
                     >
                       {skill}
@@ -310,8 +310,8 @@ const ExploreEditors = () => {
                       key={lang}
                       onClick={() => toggleLanguageFilter(lang)}
                       className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${filters.languages.includes(lang)
-                          ? "bg-blue-500 text-white"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        ? "bg-blue-500 text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                         }`}
                     >
                       {lang}
@@ -507,8 +507,8 @@ const ExploreEditors = () => {
                       key={pageNum}
                       onClick={() => handlePageChange(pageNum)}
                       className={`w-10 h-10 rounded-full font-medium transition-all ${pagination.page === pageNum
-                          ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md"
-                          : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                        ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md"
+                        : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
                         }`}
                     >
                       {pageNum}
@@ -674,7 +674,7 @@ const EditorCard = ({ editor, navigate, searchQuery }) => {
         )}
 
         <button
-          onClick={() => navigate(`/editor/${editor.user?._id}`)}
+          onClick={() => navigate(`/public-profile/${editor.user?._id}`)}
           className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-sm hover:shadow-lg active:scale-[0.98]"
         >
           View Profile

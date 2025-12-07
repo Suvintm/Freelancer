@@ -26,7 +26,7 @@ import { useAppContext } from "../context/AppContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 
-const PortfolioSection = () => {
+const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) => {
   const { user, backendURL } = useAppContext();
 
   const [showForm, setShowForm] = useState(false);
@@ -102,8 +102,15 @@ const PortfolioSection = () => {
   };
 
   useEffect(() => {
-    fetchPortfolios();
-  }, [user]);
+    if (isPublic) {
+      if (initialPortfolios) {
+        setPortfolios(initialPortfolios);
+      }
+      setFetchingPortfolios(false);
+    } else {
+      fetchPortfolios();
+    }
+  }, [user, isPublic, initialPortfolios]);
 
   const handleOriginalFileChange = (e) => {
     const files = Array.from(e.target.files);
@@ -399,32 +406,35 @@ const PortfolioSection = () => {
               </motion.div>
 
               {/* Actions */}
-              <div className="flex gap-2">
-                {/* Push to Reel Button */}
-                <motion.button
-                  initial={{ x: 20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  whileHover={{ scale: 1.1, rotate: 10 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={(e) => handlePushToReel(portfolio._id, e)}
-                  className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg text-purple-500 hover:bg-purple-50"
-                  title="Push to Reels"
-                >
-                  <FaGlobe className="text-sm" />
-                </motion.button>
+              {/* Actions - Only show if NOT public */}
+              {!isPublic && (
+                <div className="flex gap-2">
+                  {/* Push to Reel Button */}
+                  <motion.button
+                    initial={{ x: 20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    whileHover={{ scale: 1.1, rotate: 10 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={(e) => handlePushToReel(portfolio._id, e)}
+                    className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg text-purple-500 hover:bg-purple-50"
+                    title="Push to Reels"
+                  >
+                    <FaGlobe className="text-sm" />
+                  </motion.button>
 
-                {/* Delete Button */}
-                <motion.button
-                  initial={{ x: 20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  whileHover={{ scale: 1.1, rotate: 10 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={(e) => confirmDelete(portfolio._id, e)}
-                  className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg text-red-500 hover:bg-red-50"
-                >
-                  <FaTrash className="text-sm" />
-                </motion.button>
-              </div>
+                  {/* Delete Button */}
+                  <motion.button
+                    initial={{ x: 20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    whileHover={{ scale: 1.1, rotate: 10 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={(e) => confirmDelete(portfolio._id, e)}
+                    className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg text-red-500 hover:bg-red-50"
+                  >
+                    <FaTrash className="text-sm" />
+                  </motion.button>
+                </div>
+              )}
             </div>
 
             {/* Bottom Info (on hover) */}
@@ -730,21 +740,24 @@ const PortfolioSection = () => {
   return (
     <div>
       {/* Add Button */}
-      <motion.button
-        whileHover={{ scale: 1.02, y: -2, boxShadow: "0 20px 40px -10px rgba(34, 197, 94, 0.4)" }}
-        whileTap={{ scale: 0.98 }}
-        onClick={() => setShowForm(true)}
-        className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl font-semibold shadow-lg"
-      >
-        <motion.div
-          animate={{ rotate: [0, 90, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center"
+      {/* Add Button - Only show if NOT public */}
+      {!isPublic && (
+        <motion.button
+          whileHover={{ scale: 1.02, y: -2, boxShadow: "0 20px 40px -10px rgba(34, 197, 94, 0.4)" }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => setShowForm(true)}
+          className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl font-semibold shadow-lg"
         >
-          <FaPlus className="text-sm" />
-        </motion.div>
-        Add New Portfolio
-      </motion.button>
+          <motion.div
+            animate={{ rotate: [0, 90, 0] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center"
+          >
+            <FaPlus className="text-sm" />
+          </motion.div>
+          Add New Portfolio
+        </motion.button>
+      )}
 
       {/* Add Portfolio Modal */}
       <AnimatePresence>
@@ -968,11 +981,17 @@ const PortfolioSection = () => {
         ) : (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20 bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl border-2 border-dashed border-green-200">
             <Icon3D icon={FaFilm} color="text-green-500" size="text-5xl" />
-            <h3 className="text-xl font-bold text-gray-700 mt-4 mb-2">No portfolios yet</h3>
-            <p className="text-gray-500 mb-6">Showcase your amazing work</p>
-            <motion.button whileHover={{ scale: 1.05 }} onClick={() => setShowForm(true)} className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg">
-              Add Your First Portfolio
-            </motion.button>
+            <h3 className="text-xl font-bold text-gray-700 mt-4 mb-2">
+              {isPublic ? "Editor has not posted any portfolio" : "No portfolios yet"}
+            </h3>
+            {!isPublic && (
+              <>
+                <p className="text-gray-500 mb-6">Showcase your amazing work</p>
+                <motion.button whileHover={{ scale: 1.05 }} onClick={() => setShowForm(true)} className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg">
+                  Add Your First Portfolio
+                </motion.button>
+              </>
+            )}
           </motion.div>
         )}
       </div>

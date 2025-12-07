@@ -1,11 +1,13 @@
 import { Portfolio } from "../models/Portfolio.js";
+import { Reel } from "../models/Reel.js";
 import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
+import { createNotification } from "./notificationController.js";
 
 // Max file sizes
-const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB for videos
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB for images
+const MAX_VIDEO_SIZE = 150 * 1024 * 1024; // 100MB for videos
+const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 10MB for images
 const MAX_ORIGINAL_FILES = 5; // Max 5 original clips
 
 // Allowed file types
@@ -82,6 +84,15 @@ export const createPortfolio = asyncHandler(async (req, res) => {
   );
 
   logger.info(`Portfolio created: ${portfolio._id} by user: ${req.user._id}, originalClips: ${originalClips.length}`);
+
+  // Trigger Notification
+  await createNotification({
+    recipient: req.user._id,
+    type: "success",
+    title: "Portfolio Added",
+    message: `Your portfolio "${portfolio.title}" has been added successfully.`,
+    link: "/editor-profile",
+  });
 
   res.status(201).json({
     success: true,
@@ -190,6 +201,15 @@ export const updatePortfolio = asyncHandler(async (req, res) => {
 
   logger.info(`Portfolio updated: ${portfolio._id}`);
 
+  // Trigger Notification
+  await createNotification({
+    recipient: req.user._id,
+    type: "info",
+    title: "Portfolio Updated",
+    message: `Your portfolio "${portfolio.title}" has been updated.`,
+    link: "/editor-profile",
+  });
+
   res.status(200).json({
     success: true,
     message: "Portfolio updated successfully.",
@@ -208,6 +228,11 @@ export const deletePortfolio = asyncHandler(async (req, res) => {
   if (portfolio.user.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "Not authorized to delete this portfolio");
   }
+
+  // Delete associated reels first
+  logger.info(`Deleting associated reels for portfolio: ${req.params.id}`);
+  const deleteResult = await Reel.deleteMany({ portfolio: req.params.id });
+  logger.info(`Deleted ${deleteResult.deletedCount} reels`);
 
   await Portfolio.findByIdAndDelete(req.params.id);
 

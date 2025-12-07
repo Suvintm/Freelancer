@@ -1,24 +1,35 @@
 import { Profile } from "../models/Profile.js";
 import User from "../models/User.js";
 import { Reel } from "../models/Reel.js";
+import { Portfolio } from "../models/Portfolio.js";
 import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
+import { createNotification } from "./notificationController.js";
+import fs from "fs";
 
 // ============ GET PROFILE ============
 export const getProfile = asyncHandler(async (req, res) => {
   const userId = req.params.userId || req.user?.id;
 
-  const profile = await Profile.findOne({ user: userId })
+  let profile = await Profile.findOne({ user: userId })
     .populate("user", "name email role profilePicture")
-    .populate("portfolio");
+    .lean();
 
   if (!profile) {
     throw new ApiError(404, "Profile not found");
   }
 
+  // Fetch Portfolios manually (since they might not be linked in profile array)
+  const portfolios = await Portfolio.find({ user: userId }).sort({ uploadedAt: -1 });
+
+  logger.info(`Fetching profile for user: ${userId}`);
+  logger.info(`Found ${portfolios.length} portfolios for user ${userId}`);
+  profile.portfolio = portfolios;
+
   // Fetch Reel Stats
   const reels = await Reel.find({ editor: userId, isPublished: true });
+  logger.info(`Found ${reels.length} published reels for user ${userId}`);
   const totalReels = reels.length;
   const totalViews = reels.reduce((acc, reel) => acc + (reel.viewsCount || 0), 0);
   const totalLikes = reels.reduce((acc, reel) => acc + (reel.likesCount || 0), 0);
@@ -27,6 +38,7 @@ export const getProfile = asyncHandler(async (req, res) => {
     success: true,
     message: "Profile fetched successfully.",
     profile,
+    reels, // Return reels array
     stats: {
       totalReels,
       totalViews,
@@ -116,6 +128,15 @@ export const updateProfile = asyncHandler(async (req, res) => {
 
   await User.findByIdAndUpdate(req.user._id, {
     profileCompleted: Boolean(isComplete)
+  });
+
+  // Trigger Notification
+  await createNotification({
+    recipient: req.user._id,
+    type: "info",
+    title: "Profile Updated",
+    message: "Your profile has been successfully updated.",
+    link: `/public-profile/${req.user._id}`,
   });
 
   // Return populated profile

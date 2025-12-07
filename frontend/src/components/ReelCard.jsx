@@ -158,7 +158,7 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
             {/* Right Sidebar Actions */}
             <div className="absolute right-4 bottom-24 flex flex-col items-center gap-6 z-20">
                 {/* Editor Profile */}
-                <Link to={`/editor/${reel.editor._id}`} className="relative group">
+                <Link to={`/public-profile/${reel.editor._id}`} className="relative group">
                     <div className="w-12 h-12 rounded-full border-2 border-white p-0.5 overflow-hidden">
                         <img
                             src={reel.editor.profilePicture || "https://via.placeholder.com/40"}
@@ -261,7 +261,7 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                 {reel.portfolio && (
                     <div className="mt-3">
                         <Link
-                            to={`/editor/${reel.editor._id}`} // Ideally deep link to portfolio
+                            to={`/public-profile/${reel.editor._id}`} // Ideally deep link to portfolio
                             className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-md px-3 py-1.5 rounded-lg transition-colors"
                         >
                             <div className="w-4 h-4 rounded bg-orange-500 flex items-center justify-center">

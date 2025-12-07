@@ -1,3 +1,4 @@
+import "./config/env.js";
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
@@ -25,6 +26,7 @@ import portfolioRoutes from "./routes/portfolioRoutes.js";
 import exploreRoutes from "./routes/exploreRoutes.js";
 import oauthRoutes from "./routes/oauthRoutes.js";
 import reelRoutes from "./routes/reelRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 
 // Validate required environment variables
 const requiredEnvVars = ["MONGO_URI", "JWT_SECRET", "CLOUDINARY_CLOUD_NAME"];
@@ -41,7 +43,7 @@ if (process.env.GOOGLE_CLIENT_ID) {
   logger.warn("GOOGLE_CLIENT_ID not set - Google OAuth will be disabled");
 }
 
-const app = express();
+import { app, server } from "./socket.js";
 
 // ============ SECURITY MIDDLEWARE ============
 
@@ -122,6 +124,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/explore", exploreRoutes);
 app.use("/api/reels", reelRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Health check endpoint
 app.get("/", (req, res) =>
@@ -199,7 +202,7 @@ const startServer = async () => {
     process.exit(1);
   }
 
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     logger.info(`Server running on port ${PORT} in ${process.env.NODE_ENV || "development"} mode`);
   });
 };

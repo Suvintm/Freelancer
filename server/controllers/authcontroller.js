@@ -1,10 +1,11 @@
-import User from "../models/User.js";
+import User from ".. /models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
 import { Profile } from "../models/Profile.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
+import { createNotification } from "./notificationController.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = "7d";
@@ -68,6 +69,15 @@ export const register = asyncHandler(async (req, res) => {
     certifications: [],
     contactEmail: "",
     location: { country: "" },
+  });
+
+  // Trigger Welcome Notification
+  await createNotification({
+    recipient: user._id,
+    type: "success",
+    title: "Welcome to SuviX! 🎉",
+    message: "We're excited to have you on board. Complete your profile to get started.",
+    link: "/editor-profile",
   });
 
   // Generate JWT

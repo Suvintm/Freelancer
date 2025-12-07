@@ -3,6 +3,8 @@ import { Comment } from "../models/Comment.js";
 import { Portfolio } from "../models/Portfolio.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
+import { createNotification } from "./notificationController.js";
+import mongoose from "mongoose";
 
 // ============ PUBLISH PORTFOLIO AS REEL ============
 export const publishToReel = asyncHandler(async (req, res) => {
@@ -43,6 +45,15 @@ export const publishToReel = asyncHandler(async (req, res) => {
         .populate("portfolio");
 
     logger.info(`Portfolio ${portfolioId} published as reel ${reel._id}`);
+
+    // Trigger Notification
+    await createNotification({
+        recipient: req.user._id,
+        type: "success",
+        title: "Reel Published! 🎬",
+        message: `Your reel "${reel.title}" is now live.`,
+        link: "/reels",
+    });
 
     res.status(201).json({
         success: true,
@@ -191,12 +202,10 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
             limit,
             total,
             hasMore: page * limit < total,
+            hasMore: page * limit < total,
         },
     });
 });
-
-// Import mongoose for ObjectId
-import mongoose from "mongoose";
 
 // ============ GET SINGLE REEL ============
 export const getReel = asyncHandler(async (req, res) => {

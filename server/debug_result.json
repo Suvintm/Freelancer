@@ -1,0 +1,24 @@
+{
+  "travelPortfolio": {
+    "_id": "6934f97d742a7e8cde13f405",
+    "user": "69346be8bf771102a6f36390",
+    "title": "Travel",
+    "description": "Travel........",
+    "originalClip": "https://res.cloudinary.com/dhdwbwmki/image/upload/v1765079419/portfolio/jhutxcdyekj41l2a863q.jpg",
+    "originalClips": [
+      "https://res.cloudinary.com/dhdwbwmki/image/upload/v1765079419/portfolio/jhutxcdyekj41l2a863q.jpg",
+      "https://res.cloudinary.com/dhdwbwmki/image/upload/v1765079419/portfolio/vme3zxj20hkmfnoeljtj.jpg"
+    ],
+    "editedClip": "https://res.cloudinary.com/dhdwbwmki/image/upload/v1765079420/portfolio/olavrj6tymbmpof0qmmt.jpg",
+    "uploadedAt": "2025-12-07T03:50:21.627Z",
+    "createdAt": "2025-12-07T03:50:21.630Z",
+    "updatedAt": "2025-12-07T03:50:21.630Z",
+    "__v": 0,
+    "allOriginalClips": [
+      "https://res.cloudinary.com/dhdwbwmki/image/upload/v1765079419/portfolio/jhutxcdyekj41l2a863q.jpg",
+      "https://res.cloudinary.com/dhdwbwmki/image/upload/v1765079419/portfolio/jhutxcdyekj41l2a863q.jpg",
+      "https://res.cloudinary.com/dhdwbwmki/image/upload/v1765079419/portfolio/vme3zxj20hkmfnoeljtj.jpg"
+    ],
+    "id": "6934f97d742a7e8cde13f405"
+  }
+}
