@@ -1,12 +1,12 @@
 import rateLimit from "express-rate-limit";
 
-// General API rate limiter - 100 requests per 15 minutes
+// General API rate limiter - 1000 requests per 15 minutes
 export const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 1000,
   message: {
     success: false,
-    message: "Too many requests, please try again after 15 minutes.",
+    message: "Too many requests, please try again after 5 minutes.",
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -40,7 +40,7 @@ export const registerLimiter = rateLimit({
 // File upload limiter - 10 uploads per hour
 export const uploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10,
+  max: 100,
   message: {
     success: false,
     message: "Too many uploads, please try again after an hour.",
@@ -48,3 +48,9 @@ export const uploadLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+// Explore limiter - 200 requests per minute
+export const exploreLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 200, // 200 requests per minute (safe)
+});
+
