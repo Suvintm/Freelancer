@@ -58,8 +58,8 @@ const EditorHome = () => {
           <button
             onClick={() => setActiveTab("editors")}
             className={`px-6 py-2.5 rounded-full font-semibold transition-all ${activeTab === "editors"
-                ? "bg-green-500 text-white shadow-md"
-                : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+              ? "bg-green-500 text-white shadow-md"
+              : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
               }`}
           >
             Explore Editors
@@ -67,11 +67,17 @@ const EditorHome = () => {
           <button
             onClick={() => setActiveTab("gigs")}
             className={`px-6 py-2.5 rounded-full font-semibold transition-all ${activeTab === "gigs"
-                ? "bg-green-500 text-white shadow-md"
-                : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+              ? "bg-green-500 text-white shadow-md"
+              : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
               }`}
           >
             Explore Gigs
+          </button>
+          <button
+            onClick={() => navigate("/reels")}
+            className="px-6 py-2.5 rounded-full font-semibold bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md hover:shadow-lg transition-all"
+          >
+            Watch Reels
           </button>
         </div>
 

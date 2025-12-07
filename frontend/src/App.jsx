@@ -8,6 +8,7 @@ import EditorMyorderspage from "./pages/EditorMyorderspage.jsx";
 import EditorProfileUpdate from "./pages/EditorProfileUpdate.jsx";
 import AddPortfolio from "./pages/addportfolio.jsx";
 import PublicEditorProfile from "./pages/PublicEditorProfile.jsx";
+import ReelsPage from "./pages/ReelsPage.jsx";
 
 // OAuth Pages
 import OAuthSuccess from "./pages/OAuthSuccess.jsx";
@@ -86,6 +87,16 @@ function App() {
           element={
             <ProtectedRoute>
               <PublicEditorProfile />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Reels (accessible by any logged-in user) */}
+        <Route
+          path="/reels"
+          element={
+            <ProtectedRoute>
+              <ReelsPage />
             </ProtectedRoute>
           }
         />

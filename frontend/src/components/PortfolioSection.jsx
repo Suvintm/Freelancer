@@ -19,6 +19,7 @@ import {
   FaShare,
   FaVolumeUp,
   FaVolumeMute,
+  FaGlobe,
 } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 import axios from "axios";
@@ -189,6 +190,21 @@ const PortfolioSection = () => {
     }
   };
 
+  const handlePushToReel = async (portfolioId, e) => {
+    e?.stopPropagation?.();
+    try {
+      await axios.post(
+        `${backendURL}/api/reels/publish/${portfolioId}`,
+        {},
+        { headers: { Authorization: `Bearer ${user?.token}` } }
+      );
+      toast.success("🎉 Published to Reels!");
+      // Optionally update local state to show "Published" status
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to publish");
+    }
+  };
+
   const isVideo = (url) =>
     url?.endsWith(".mp4") || url?.endsWith(".mov") || url?.endsWith(".webm");
 
@@ -352,16 +368,32 @@ const PortfolioSection = () => {
               </motion.div>
 
               {/* Actions */}
-              <motion.button
-                initial={{ x: 20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                whileHover={{ scale: 1.1, rotate: 10 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={(e) => confirmDelete(portfolio._id, e)}
-                className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg text-red-500 hover:bg-red-50"
-              >
-                <FaTrash className="text-sm" />
-              </motion.button>
+              <div className="flex gap-2">
+                {/* Push to Reel Button */}
+                <motion.button
+                  initial={{ x: 20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  whileHover={{ scale: 1.1, rotate: 10 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={(e) => handlePushToReel(portfolio._id, e)}
+                  className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg text-purple-500 hover:bg-purple-50"
+                  title="Push to Reels"
+                >
+                  <FaGlobe className="text-sm" />
+                </motion.button>
+
+                {/* Delete Button */}
+                <motion.button
+                  initial={{ x: 20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  whileHover={{ scale: 1.1, rotate: 10 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={(e) => confirmDelete(portfolio._id, e)}
+                  className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg text-red-500 hover:bg-red-50"
+                >
+                  <FaTrash className="text-sm" />
+                </motion.button>
+              </div>
             </div>
 
             {/* Bottom Info (on hover) */}
