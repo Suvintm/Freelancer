@@ -228,7 +228,7 @@ const EditorProfile = () => {
             className="relative rounded-3xl overflow-hidden bg-[#0B1120] border border-[#1F2937] shadow-[0_20px_60px_rgba(0,0,0,0.9)]"
           >
             {/* Top subtle gradient banner */}
-            <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-br from-emerald-500/20 via-emerald-400/10 to-transparent">
+            <div className="absolute inset-x-0 top-0 h-40  ">
               <div className="absolute inset-0 opacity-20">
                 <svg className="w-full h-full" viewBox="0 0 100 100">
                   <defs>
@@ -238,7 +238,7 @@ const EditorProfile = () => {
                       height="8"
                       patternUnits="userSpaceOnUse"
                     >
-                      <circle cx="1" cy="1" r="0.7" fill="#4B5563" />
+                      <circle cx="1" cy="1" r="0.7" fill="#ffffffff" />
                     </pattern>
                   </defs>
                   <rect
@@ -263,16 +263,16 @@ const EditorProfile = () => {
                   >
                     <div className="relative">
                       {/* Subtle ring */}
-                      <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-emerald-500 via-transparent to-emerald-700 opacity-80 blur-sm" />
+                      <div className="absolute -inset-1 rounded-full " />
                       <img
                         src={
                           profile?.user?.profilePicture ||
                           "https://cdn-icons-png.flaticon.com/512/149/149071.png"
                         }
                         alt="Profile"
-                        className="relative w-32 h-32 md:w-36 md:h-36 rounded-full object-cover border-[3px] border-[#111827] shadow-[0_15px_45px_rgba(0,0,0,0.8)]"
+                        className="relative w-32 h-32 md:w-36 md:h-36 rounded-full object-cover border-[3px] border-white "
                       />
-                      <div className="absolute -bottom-2 -right-1 w-9 h-9 bg-emerald-500 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.8)] border border-emerald-300/70">
+                      <div className="absolute -bottom-2 -right-1 w-9 h-9 bg-emerald-500 rounded-full flex items-center justify-center border border-white/20">
                         <FaCheckCircle className="text-white text-lg" />
                       </div>
                     </div>
