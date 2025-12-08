@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { FaFilm, FaImage } from "react-icons/fa";
+import { FaFilm, FaImage, FaTimes } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 import axios from "axios";
+import { motion, AnimatePresence } from "framer-motion";
 
 const PublicPortfolio = ({ userId }) => {
   const { backendURL } = useAppContext();
@@ -10,7 +11,7 @@ const PublicPortfolio = ({ userId }) => {
   const [previewFile, setPreviewFile] = useState(null);
   const [previewType, setPreviewType] = useState("");
 
-  // Fetch portfolios by userId (public route)
+  // Fetch portfolios
   const fetchPortfolios = async () => {
     if (!userId) return;
     try {
@@ -20,7 +21,7 @@ const PublicPortfolio = ({ userId }) => {
       setPortfolios(data);
     } catch (err) {
       console.error("Error fetching public portfolios:", err);
-      setPortfolios([]); // prevent undefined
+      setPortfolios([]);
     }
   };
 
@@ -28,11 +29,11 @@ const PublicPortfolio = ({ userId }) => {
     fetchPortfolios();
   }, [userId]);
 
-  // Check if file is a video
+  // Check video
   const isVideo = (url) =>
     url?.endsWith(".mp4") || url?.endsWith(".mov") || url?.endsWith(".webm");
 
-  // Open modal preview
+  // Modal preview
   const openPreview = (fileUrl, type) => {
     setPreviewFile(fileUrl);
     setPreviewType(type);
@@ -40,31 +41,48 @@ const PublicPortfolio = ({ userId }) => {
   };
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-semibold mb-6 text-gray-800">
+    <div className="p-6 min-h-screen bg-[#020617] text-white">
+      <h2 className="text-3xl font-bold mb-6 text-white tracking-wide">
         Portfolio Showcase
       </h2>
 
       {portfolios.length === 0 ? (
-        <p className="text-gray-500 text-center">
+        <p className="text-gray-400 text-center py-10">
           No portfolios available yet.
         </p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <motion.div
+          layout
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+        >
           {portfolios.map((p) => (
-            <div
+            <motion.div
               key={p._id}
-              className="border border-gray-300 rounded-xl overflow-hidden shadow-md bg-white hover:shadow-lg transition-all"
+              layout
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="bg-[#050816] rounded-3xl border border-white/10 shadow-xl 
+                         hover:shadow-[0_0_40px_rgba(20,99,255,0.3)] overflow-hidden 
+                         transition-all duration-300"
             >
-              <div className="p-4">
-                <h3 className="font-bold text-lg">{p.title}</h3>
-                <p className="text-gray-700 mt-1">{p.description}</p>
+              {/* Title + Description */}
+              <div className="p-5 border-b border-white/10">
+                <h3 className="font-bold text-xl text-white truncate">
+                  {p.title}
+                </h3>
+                <p className="text-gray-400 mt-1 text-sm line-clamp-2">
+                  {p.description}
+                </p>
               </div>
 
-              <div className="flex flex-col md:flex-row gap-2">
+              {/* Clips Section */}
+              <div className="flex flex-col md:flex-row gap-3 p-4">
+                {/* Original */}
                 {p.originalClip && (
                   <div
-                    className="relative w-full p-2 rounded-2xl md:w-1/2 cursor-pointer"
+                    className="relative group w-full md:w-1/2 rounded-2xl overflow-hidden cursor-pointer 
+                               bg-[#0B1220] border border-white/10"
                     onClick={() =>
                       openPreview(
                         p.originalClip,
@@ -75,25 +93,32 @@ const PublicPortfolio = ({ userId }) => {
                     {isVideo(p.originalClip) ? (
                       <video
                         src={p.originalClip}
-                        controls
-                        className="w-full h-40 object-cover pointer-events-none"
+                        className="w-full h-40 object-cover opacity-90 group-hover:opacity-100 transition"
+                        muted
                       />
                     ) : (
                       <img
                         src={p.originalClip}
                         alt="Original"
-                        className="w-full h-40 object-cover"
+                        className="w-full h-40 object-cover opacity-90 group-hover:opacity-100 transition"
                       />
                     )}
-                    <span className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-2xl flex items-center gap-1">
+
+                    {/* Badge */}
+                    <span
+                      className="absolute top-3 left-3 bg-black/70 backdrop-blur-md text-white text-xs 
+                                 px-3 py-1.5 rounded-xl flex items-center gap-1 shadow-lg"
+                    >
                       <FaFilm /> Original
                     </span>
                   </div>
                 )}
 
+                {/* Edited */}
                 {p.editedClip && (
                   <div
-                    className="relative w-full p-2 rounded-2xl md:w-1/2 cursor-pointer"
+                    className="relative group w-full md:w-1/2 rounded-2xl overflow-hidden cursor-pointer 
+                               bg-[#0B1220] border border-white/10"
                     onClick={() =>
                       openPreview(
                         p.editedClip,
@@ -104,58 +129,90 @@ const PublicPortfolio = ({ userId }) => {
                     {isVideo(p.editedClip) ? (
                       <video
                         src={p.editedClip}
-                        controls
-                        className="w-full h-40 object-cover pointer-events-none"
+                        className="w-full h-40 object-cover opacity-90 group-hover:opacity-100 transition"
+                        muted
                       />
                     ) : (
                       <img
                         src={p.editedClip}
                         alt="Edited"
-                        className="w-full h-40 object-cover"
+                        className="w-full h-40 object-cover opacity-90 group-hover:opacity-100 transition"
                       />
                     )}
-                    <span className="absolute top-2 left-2 bg-green-600 bg-opacity-80 text-white text-xs px-2 py-1 rounded-2xl flex items-center gap-1">
+
+                    {/* Badge */}
+                    <span
+                      className="absolute top-3 left-3 bg-green-600/80 text-white text-xs 
+                                 px-3 py-1.5 rounded-xl flex items-center gap-1 shadow-lg"
+                    >
                       <FaImage /> Edited
                     </span>
                   </div>
                 )}
               </div>
 
-              <div className="p-4 text-sm text-gray-500">
-                Uploaded: {new Date(p.uploadedAt).toLocaleString()}
+              {/* Date */}
+              <div className="p-4 text-xs text-gray-400 border-t border-white/10">
+                Uploaded:{" "}
+                {new Date(p.uploadedAt).toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
-      {/* Preview Modal */}
-      {showPreviewModal && (
-        <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-50">
-          <div className="relative w-full max-w-3xl p-4">
-            <button
-              className="absolute top-2 right-2 text-white text-2xl font-bold"
-              onClick={() => setShowPreviewModal(false)}
+      {/* ---------------- MODAL PREVIEW ---------------- */}
+      <AnimatePresence>
+        {showPreviewModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md flex justify-center items-center z-50 p-4"
+            onClick={() => setShowPreviewModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: "spring", damping: 25 }}
+              className="relative w-full max-w-4xl rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(20,99,255,0.4)] border border-white/10 bg-[#050816]"
+              onClick={(e) => e.stopPropagation()}
             >
-              &times;
-            </button>
-            {previewType === "video" ? (
-              <video
-                src={previewFile}
-                controls
-                autoPlay
-                className="w-full max-h-[80vh] object-contain"
-              />
-            ) : (
-              <img
-                src={previewFile}
-                alt="Preview"
-                className="w-full max-h-[80vh] object-contain rounded"
-              />
-            )}
-          </div>
-        </div>
-      )}
+              {/* Close Button */}
+              <button
+                className="absolute top-5 right-5 w-10 h-10 bg-white/10 rounded-xl 
+                           flex items-center justify-center text-white hover:bg-white/20 transition"
+                onClick={() => setShowPreviewModal(false)}
+              >
+                <FaTimes className="text-lg" />
+              </button>
+
+              {/* Media */}
+              <div className="p-6">
+                {previewType === "video" ? (
+                  <video
+                    src={previewFile}
+                    controls
+                    autoPlay
+                    className="w-full max-h-[80vh] object-contain rounded-2xl"
+                  />
+                ) : (
+                  <img
+                    src={previewFile}
+                    alt="Preview"
+                    className="w-full max-h-[80vh] object-contain rounded-2xl"
+                  />
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

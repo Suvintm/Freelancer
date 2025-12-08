@@ -339,11 +339,11 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
           className="absolute inset-0 rounded-3xl p-[3px] z-0"
           animate={{
             background: [
-              "linear-gradient(0deg, #22c55e, #10b981, #06b6d4)",
-              "linear-gradient(90deg, #10b981, #06b6d4, #8b5cf6)",
-              "linear-gradient(180deg, #06b6d4, #8b5cf6, #ec4899)",
-              "linear-gradient(270deg, #8b5cf6, #ec4899, #22c55e)",
-              "linear-gradient(360deg, #22c55e, #10b981, #06b6d4)",
+              "linear-gradient(0deg, #000000ff, #ffffffff, #070808ff)",
+              "linear-gradient(90deg, #002bd8ff, #ffffffff, #000000ff)",
+              "linear-gradient(180deg, #000000ff, #ffffffff, #000000ff)",
+              "linear-gradient(270deg, #000000ff, #000000ff, #0055ffff)",
+              "linear-gradient(360deg, #001febff, #ffffffff, #000000ff)",
             ],
           }}
           transition={{ duration: 4, repeat: Infinity, ease: "linear" }}

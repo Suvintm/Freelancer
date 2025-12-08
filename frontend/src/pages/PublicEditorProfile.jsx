@@ -16,6 +16,7 @@ import {
   FaChevronRight,
   FaFilm,
   FaPlay,
+  FaStarAndCrescent,
 } from "react-icons/fa";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
@@ -27,20 +28,75 @@ import PortfolioSection from "../components/PortfolioSection.jsx";
 
 // Country name to ISO Alpha-2 code mapping
 const countryNameToCode = {
-  Afghanistan: "AF", Albania: "AL", Algeria: "DZ", Andorra: "AD", Angola: "AO",
-  Argentina: "AR", Armenia: "AM", Australia: "AU", Austria: "AT", Azerbaijan: "AZ",
-  Bangladesh: "BD", Belgium: "BE", Brazil: "BR", Canada: "CA", Chile: "CL",
-  China: "CN", Colombia: "CO", Croatia: "HR", Cuba: "CU", Czechia: "CZ",
-  Denmark: "DK", Egypt: "EG", Finland: "FI", France: "FR", Germany: "DE",
-  Ghana: "GH", Greece: "GR", Hungary: "HU", Iceland: "IS", India: "IN",
-  Indonesia: "ID", Iran: "IR", Iraq: "IQ", Ireland: "IE", Israel: "IL",
-  Italy: "IT", Japan: "JP", Kenya: "KE", Malaysia: "MY", Mexico: "MX",
-  Nepal: "NP", Netherlands: "NL", "New Zealand": "NZ", Nigeria: "NG", Norway: "NO",
-  Pakistan: "PK", Peru: "PE", Poland: "PL", Portugal: "PT", Qatar: "QA",
-  Romania: "RO", Russia: "RU", SaudiArabia: "SA", Singapore: "SG", Slovakia: "SK",
-  Slovenia: "SI", SouthAfrica: "ZA", Spain: "ES", SriLanka: "LK", Sweden: "SE",
-  Switzerland: "CH", Thailand: "TH", Turkey: "TR", Ukraine: "UA", UAE: "AE",
-  UK: "GB", USA: "US", Vietnam: "VN", Zimbabwe: "ZW",
+  Afghanistan: "AF",
+  Albania: "AL",
+  Algeria: "DZ",
+  Andorra: "AD",
+  Angola: "AO",
+  Argentina: "AR",
+  Armenia: "AM",
+  Australia: "AU",
+  Austria: "AT",
+  Azerbaijan: "AZ",
+  Bangladesh: "BD",
+  Belgium: "BE",
+  Brazil: "BR",
+  Canada: "CA",
+  Chile: "CL",
+  China: "CN",
+  Colombia: "CO",
+  Croatia: "HR",
+  Cuba: "CU",
+  Czechia: "CZ",
+  Denmark: "DK",
+  Egypt: "EG",
+  Finland: "FI",
+  France: "FR",
+  Germany: "DE",
+  Ghana: "GH",
+  Greece: "GR",
+  Hungary: "HU",
+  Iceland: "IS",
+  India: "IN",
+  Indonesia: "ID",
+  Iran: "IR",
+  Iraq: "IQ",
+  Ireland: "IE",
+  Israel: "IL",
+  Italy: "IT",
+  Japan: "JP",
+  Kenya: "KE",
+  Malaysia: "MY",
+  Mexico: "MX",
+  Nepal: "NP",
+  Netherlands: "NL",
+  "New Zealand": "NZ",
+  Nigeria: "NG",
+  Norway: "NO",
+  Pakistan: "PK",
+  Peru: "PE",
+  Poland: "PL",
+  Portugal: "PT",
+  Qatar: "QA",
+  Romania: "RO",
+  Russia: "RU",
+  SaudiArabia: "SA",
+  Singapore: "SG",
+  Slovakia: "SK",
+  Slovenia: "SI",
+  SouthAfrica: "ZA",
+  Spain: "ES",
+  SriLanka: "LK",
+  Sweden: "SE",
+  Switzerland: "CH",
+  Thailand: "TH",
+  Turkey: "TR",
+  Ukraine: "UA",
+  UAE: "AE",
+  UK: "GB",
+  USA: "US",
+  Vietnam: "VN",
+  Zimbabwe: "ZW",
 };
 
 // Animation variants
@@ -78,7 +134,7 @@ const EditorProfile = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        // Use userId from params if available, otherwise fallback to logged-in user (though route should enforce params)
+        // Use userId from params if available, otherwise fallback to logged-in user
         const targetId = userId || user?._id;
         if (!targetId) return;
 
@@ -94,46 +150,51 @@ const EditorProfile = () => {
     fetchProfile();
   }, [backendURL, userId, user?._id]);
 
-  // Premium Loading State
+  // Premium Loading State (dark)
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-green-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#020617] flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="text-center"
         >
           <div className="relative w-20 h-20 mx-auto mb-6">
-            <div className="absolute inset-0 border-4 border-green-200 rounded-full" />
-            <div className="absolute inset-0 border-4 border-green-500 rounded-full border-t-transparent animate-spin" />
+            <div className="absolute inset-0 border-4 border-[#1F2937] rounded-full" />
+            <div className="absolute inset-1 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
           </div>
-          <p className="text-gray-500 font-medium">Loading profile...</p>
+          <p className="text-gray-300 font-medium text-sm">
+            Loading profile...
+          </p>
         </motion.div>
       </div>
     );
   }
 
-  // No Profile State
+  // No Profile State (dark)
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-green-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center bg-white rounded-3xl shadow-xl p-10 max-w-md"
+          className="text-center bg-[#0B1120] rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.75)] p-10 max-w-md border border-[#1F2937]"
         >
-          <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+          <div className="w-24 h-24 bg-gradient-to-br from-emerald-500 to-emerald-300 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-[0_18px_45px_rgba(16,185,129,0.7)]">
             <FaUser className="text-white text-4xl" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Profile Not Found</h2>
-          <p className="text-gray-500 mb-6">
-            The user profile you are looking for does not exist or is unavailable.
+          <h2 className="text-2xl font-bold text-white mb-2">
+            Profile Not Found
+          </h2>
+          <p className="text-gray-400 mb-6 text-sm">
+            The user profile you are looking for does not exist or is
+            unavailable.
           </p>
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => navigate("/explore")}
-            className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all"
+            className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-full font-semibold shadow-lg"
           >
             Explore Editors
           </motion.button>
@@ -151,136 +212,180 @@ const EditorProfile = () => {
   const isOwner = user?._id === profile.user._id;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#020617] text-gray-100">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
       {/* Main Content */}
-      <div className="md:ml-64 pt-16 md:pt-20 px-4 md:px-8 pb-12">
-        <div className="max-w-5xl mx-auto">
-          {/* Profile Hero Section */}
+      <div className="md:ml-64 pt-16 lg:pt-35 md:pt-35 px-4 md:px-8 pb-12">
+        <div className="max-w-5xl mx-auto space-y-6">
+          {/* Profile Hero Section - dark corporate */}
           <motion.div
             initial="hidden"
             animate="visible"
             variants={fadeInUp}
             transition={{ duration: 0.5 }}
-            className="relative bg-gradient-to-r from-blue-400 to-white rounded-3xl shadow-xl overflow-hidden mb-6"
+            className="relative rounded-3xl overflow-hidden bg-[#0B1120] border border-[#1F2937] shadow-[0_20px_60px_rgba(0,0,0,0.9)]"
           >
-            {/* Background Pattern */}
-            <div className="absolute inset-0 h-48 bg-gradient-to-br from-gray-900 via-black to-gray-800">
-              <div className="absolute inset-0 opacity-10">
-                <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+            {/* Top subtle gradient banner */}
+            <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-br from-emerald-500/20 via-emerald-400/10 to-transparent">
+              <div className="absolute inset-0 opacity-20">
+                <svg className="w-full h-full" viewBox="0 0 100 100">
                   <defs>
-                    <pattern id="dots" width="10" height="10" patternUnits="userSpaceOnUse">
-                      <circle cx="5" cy="5" r="1.5" fill="white" />
+                    <pattern
+                      id="profileDotsPublic"
+                      width="8"
+                      height="8"
+                      patternUnits="userSpaceOnUse"
+                    >
+                      <circle cx="1" cy="1" r="0.7" fill="#4B5563" />
                     </pattern>
                   </defs>
-                  <rect width="100" height="100" fill="url(#dots)" />
+                  <rect
+                    width="100"
+                    height="100"
+                    fill="url(#profileDotsPublic)"
+                  />
                 </svg>
               </div>
             </div>
 
-            {/* Profile Content */}
-            <div className="relative pt-24 pb-8 px-6 md:px-10">
-              <div className="flex flex-col md:flex-row items-center md:items-end gap-6">
-                {/* Profile Picture */}
-                <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="relative -mt-20 md:-mt-16"
-                >
-                  <div className="relative">
-                    <img
-                      src={profile?.user?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
-                      alt="Profile"
-                      className="w-32 h-32 md:w-36 md:h-36 rounded-full object-cover border-6 border-white shadow-2xl"
-                    />
-                    <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
-                      <FaCheckCircle className="text-white text-lg" />
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Profile Info */}
-                <div className="flex-1 text-center md:text-left">
+            {/* Content */}
+            <div className="relative pt-24 pb-6 px-6 md:px-10">
+              <div className="flex flex-col md:flex-row gap-6 md:gap-8">
+                {/* Left: Avatar + basic info */}
+                <div className="flex flex-col items-center md:items-start gap-4 md:w-1/3">
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
+                    initial={{ scale: 0.85, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.15 }}
+                    className="relative -mt-20"
                   >
-                    <h1 className="text-3xl md:text-4xl font-bold text-white mb-1">
-                      {profile?.user?.name}
-                    </h1>
-                    <p className="text-gray-500 text-lg mb-4">
-                      {profile?.user?.role === "editor" ? "Professional Video Editor" : "Client"}
-                    </p>
+                    <div className="relative">
+                      {/* Subtle ring */}
+                      <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-emerald-500 via-transparent to-emerald-700 opacity-80 blur-sm" />
+                      <img
+                        src={
+                          profile?.user?.profilePicture ||
+                          "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+                        }
+                        alt="Profile"
+                        className="relative w-32 h-32 md:w-36 md:h-36 rounded-full object-cover border-[3px] border-[#111827] shadow-[0_15px_45px_rgba(0,0,0,0.8)]"
+                      />
+                      <div className="absolute -bottom-2 -right-1 w-9 h-9 bg-emerald-500 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.8)] border border-emerald-300/70">
+                        <FaCheckCircle className="text-white text-lg" />
+                      </div>
+                    </div>
                   </motion.div>
 
-                  {/* Stats/Badges Row */}
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className="flex flex-wrap justify-center md:justify-start gap-3 mb-4"
+                    transition={{ delay: 0.25 }}
+                    className="text-center md:text-left"
                   >
-                    {profile.location?.country && (
-                      <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm border border-gray-100">
-                        <FaMapMarkerAlt className="text-green-500" />
-                        <ReactCountryFlag
-                          countryCode={countryNameToCode[profile.location.country] || "IN"}
-                          svg
-                          style={{ width: "1.2em", height: "1.2em" }}
-                        />
-                        <span className="text-gray-700 font-medium">{profile.location.country}</span>
-                      </div>
-                    )}
+                    <h1 className="text-2xl md:text-3xl font-semibold text-white tracking-tight">
+                      {profile?.user?.name}
+                    </h1>
+                    <p className="text-sm text-gray-400 mt-1">
+                      {profile?.user?.role === "editor"
+                        ? "Professional Video Editor"
+                        : "Client"}
+                    </p>
                     {profile.experience && (
-                      <div className="flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-full border border-gray-200">
-                        <FaBriefcase className="text-gray-600" />
-                        <span className="text-gray-700 font-medium">{profile.experience}</span>
-                      </div>
-                    )}
-                    {profile.contactEmail && (
-                      <div className="flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-full border border-gray-200">
-                        <FaEnvelope className="text-gray-600" />
-                        <span className="text-gray-700 font-medium text-sm">{profile.contactEmail}</span>
-                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Experience:{" "}
+                        <span className="text-gray-300">
+                          {profile.experience}
+                        </span>
+                      </p>
                     )}
                   </motion.div>
                 </div>
 
-                {/* Edit Button Removed as per request */}
+                {/* Right: Stats & contact */}
+                <div className="flex-1 flex flex-col justify-between">
+                  <div className="flex flex-wrap gap-3 justify-center md:justify-end">
+                    {/* Country */}
+                    {profile.location?.country && (
+                      <div className="flex items-center gap-2 bg-[#020617] border border-[#1F2937] rounded-full px-4 py-2 text-xs shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
+                        <FaMapMarkerAlt className="text-emerald-400" />
+                        <ReactCountryFlag
+                          countryCode={
+                            countryNameToCode[profile.location.country] || "IN"
+                          }
+                          svg
+                          style={{ width: "1.2em", height: "1.2em" }}
+                        />
+                        <span className="text-gray-200 font-medium">
+                          {profile.location.country}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Email */}
+                    {profile.contactEmail && (
+                      <div className="flex items-center gap-2 bg-[#020617] border border-[#1F2937] rounded-full px-4 py-2 text-xs">
+                        <FaEnvelope className="text-gray-400" />
+                        <span className="text-gray-300 font-medium truncate max-w-[180px] md:max-w-[240px]">
+                          {profile.contactEmail}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Summary (about short slice) */}
+                  <motion.p
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="mt-4 flex gap-2 items-center text-sm text-gray-300 leading-relaxed line-clamp-3 bg-[#020617]/60 border border-[#111827] rounded-2xl px-4 py-3"
+                    >
+                      <FaStar className="text-yellow-500"/> RATINGS WILL COME HERE
+                    </motion.p>
+                   
+                </div>
               </div>
             </div>
           </motion.div>
 
-          {/* Tabs Section */}
+          {/* Tabs Section - dark cards */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl shadow-lg overflow-hidden"
+            transition={{ delay: 0.25 }}
+            className="bg-black border border-[#111827] rounded-2xl shadow-[0_18px_50px_rgba(0,0,0,0.9)] overflow-hidden"
           >
             {/* Tab Headers */}
-            <div className="flex border-b border-gray-100">
+            <div className="flex border-b border-[#111827]">
               {tabs.map((tab) => (
                 <motion.button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-4 font-semibold transition-all relative ${activeTab === tab.id
-                    ? "text-green-600 bg-green-50/50"
-                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                    }`}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 md:py-4 text-xs md:text-sm font-semibold transition-all relative ${
+                    activeTab === tab.id
+                      ? "text-blue-500 border border-white/20 rounded-full"
+                      : "text-gray-400 hover:text-gray-100 hover:bg-[#020617]/60"
+                  }`}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.97 }}
                 >
-                  <tab.icon className={activeTab === tab.id ? "text-green-500" : "text-gray-400"} />
-                  {tab.label}
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center border text-base ${
+                      activeTab === tab.id
+                        ? "border-blue-500/70 bg-blue-500/5 text-blue-400"
+                        : "border-blue-500 bg-[#020617] text-gray-500"
+                    }`}
+                  >
+                    <tab.icon />
+                  </div>
+
+                  <span>{tab.label}</span>
+
                   {activeTab === tab.id && (
                     <motion.div
-                      layoutId="activeTab"
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-green-400 to-emerald-500"
+                      layoutId="editorProfilePublicActiveTab"
+                      className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r max-w-[120px] mx-auto from-blue-400 via-blue-500 to-blue-400"
                     />
                   )}
                 </motion.button>
@@ -296,18 +401,20 @@ const EditorProfile = () => {
                   animate="visible"
                   exit="hidden"
                   variants={staggerContainer}
-                  className="p-6 md:p-8"
+                  className="p-6 md:p-8 bg-black"
                 >
                   {/* About Me */}
                   {profile.about && (
                     <motion.div variants={fadeInUp} className="mb-8">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl flex items-center justify-center">
+                        <div className="w-11 h-11 bg-black border border-black rounded-xl flex items-center justify-center">
                           <FaUser className="text-white" />
                         </div>
-                        <h3 className="text-xl font-bold text-gray-800">About Me</h3>
+                        <h3 className="text-lg md:text-xl font-semibold text-gray-50">
+                          About
+                        </h3>
                       </div>
-                      <p className="text-gray-600 leading-relaxed text-lg bg-gray-50 p-5 rounded-2xl">
+                      <p className="text-sm md:text-base text-black font-bold  leading-relaxed bg-gray-100 border border-[#111827] p-5 rounded-2xl">
                         {profile.about}
                       </p>
                     </motion.div>
@@ -317,20 +424,22 @@ const EditorProfile = () => {
                   {profile.skills?.length > 0 && (
                     <motion.div variants={fadeInUp} className="mb-8">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center">
+                        <div className="w-11 h-11 bg-black border border-black rounded-xl flex items-center justify-center">
                           <FaCode className="text-white" />
                         </div>
-                        <h3 className="text-xl font-bold text-gray-800">Skills</h3>
+                        <h3 className="text-lg md:text-xl font-semibold text-gray-50">
+                          Skills
+                        </h3>
                       </div>
                       <div className="flex flex-wrap gap-3">
                         {profile.skills.map((skill, index) => (
                           <motion.span
                             key={index}
-                            initial={{ opacity: 0, scale: 0.8 }}
+                            initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: index * 0.05 }}
-                            whileHover={{ scale: 1.05, y: -2 }}
-                            className="px-5 py-2.5 bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 rounded-xl font-medium border border-green-100 shadow-sm hover:shadow-md transition-all cursor-default"
+                            transition={{ delay: index * 0.03 }}
+                            whileHover={{ scale: 1.04, y: -2 }}
+                            className="px-4 py-2 rounded-full text-xs md:text-sm font-medium bg-[#0B1120] border border-[#1F2937] text-gray-100 hover:border-emerald-500/60 hover:bg-emerald-500/5 transition-all"
                           >
                             {skill}
                           </motion.span>
@@ -343,20 +452,22 @@ const EditorProfile = () => {
                   {profile.languages?.length > 0 && (
                     <motion.div variants={fadeInUp} className="mb-8">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center">
+                        <div className="w-11 h-11 bg-black border border-black rounded-xl flex items-center justify-center">
                           <FaLanguage className="text-white" />
                         </div>
-                        <h3 className="text-xl font-bold text-gray-800">Languages</h3>
+                        <h3 className="text-lg md:text-xl font-semibold text-gray-50">
+                          Languages
+                        </h3>
                       </div>
                       <div className="flex flex-wrap gap-3">
                         {profile.languages.map((language, index) => (
                           <motion.span
                             key={index}
-                            initial={{ opacity: 0, scale: 0.8 }}
+                            initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: index * 0.05 }}
-                            whileHover={{ scale: 1.05, y: -2 }}
-                            className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-medium border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-default"
+                            transition={{ delay: index * 0.03 }}
+                            whileHover={{ scale: 1.04, y: -2 }}
+                            className="px-4 py-2 rounded-full text-xs md:text-sm font-medium bg-[#0B1120] border border-[#1F2937] text-gray-100 hover:border-indigo-400/70 hover:bg-indigo-500/5 transition-all"
                           >
                             {language}
                           </motion.span>
@@ -369,95 +480,110 @@ const EditorProfile = () => {
                   {profile.certifications?.length > 0 && (
                     <motion.div variants={fadeInUp}>
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center">
-                          <FaAward className="text-white" />
+                        <div className="w-11 h-11 bg-black border border-black rounded-xl flex items-center justify-center">
+                          <FaAward className="text-yellow-400" />
                         </div>
-                        <h3 className="text-xl font-bold text-gray-800">Certifications</h3>
+                        <h3 className="text-lg md:text-xl font-semibold text-gray-50">
+                          Certifications
+                        </h3>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {profile.certifications.map((cert, index) =>
-                          cert.image && (
-                            <motion.div
-                              key={index}
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: index * 0.1 }}
-                              whileHover={{ y: -5, scale: 1.02 }}
-                              onClick={() => {
-                                setSelectedCert(cert);
-                                setModalOpen(true);
-                              }}
-                              className="group relative rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all cursor-pointer bg-white border border-gray-100"
-                            >
-                              <div className="relative h-40 overflow-hidden">
-                                <img
-                                  src={cert.image}
-                                  alt={cert.title}
-                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <div className="bg-white/90 backdrop-blur-sm p-2 rounded-lg">
-                                    <FaChevronRight className="text-gray-700" />
+                        {profile.certifications.map(
+                          (cert, index) =>
+                            cert.image && (
+                              <motion.div
+                                key={index}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.08 }}
+                                whileHover={{ y: -4, scale: 1.01 }}
+                                onClick={() => {
+                                  setSelectedCert(cert);
+                                  setModalOpen(true);
+                                }}
+                                className="group relative rounded-2xl overflow-hidden bg-[#020617] border border-blue-500/20 shadow-[0_12px_35px_rgba(0,0,0,0.9)] cursor-pointer"
+                              >
+                                <div className="relative h-40 overflow-hidden">
+                                  <img
+                                    src={cert.image}
+                                    alt={cert.title}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                  <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="bg-black/60 backdrop-blur-sm p-2 rounded-lg border border-white/10">
+                                      <FaChevronRight className="text-gray-100 text-sm" />
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                              <div className="p-4">
-                                <p className="font-semibold text-gray-800 truncate">
-                                  {cert.title || "Certificate"}
-                                </p>
-                              </div>
-                            </motion.div>
-                          )
+                                <div className="p-3">
+                                  <p className="font-semibold text-gray-100 text-sm truncate">
+                                    {cert.title || "Certificate"}
+                                  </p>
+                                </div>
+                              </motion.div>
+                            )
                         )}
                       </div>
                     </motion.div>
                   )}
 
                   {/* Empty State */}
-                  {!profile.about && !profile.skills?.length && !profile.languages?.length && !profile.certifications?.length && (
-                    <motion.div variants={fadeInUp} className="text-center py-12">
-                      <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <FaUser className="text-gray-400 text-3xl" />
-                      </div>
-                      <h3 className="text-lg font-semibold text-gray-700 mb-2">No information yet</h3>
-                      <p className="text-gray-500 mb-4">Complete your profile to showcase your skills</p>
-
-                    </motion.div>
-                  )}
+                  {!profile.about &&
+                    !profile.skills?.length &&
+                    !profile.languages?.length &&
+                    !profile.certifications?.length && (
+                      <motion.div
+                        variants={fadeInUp}
+                        className="text-center py-12"
+                      >
+                        <div className="w-20 h-20 bg-[#0B1120] rounded-full flex items-center justify-center mx-auto mb-4 border border-[#1F2937]">
+                          <FaUser className="text-gray-500 text-3xl" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-100 mb-2">
+                          No information yet
+                        </h3>
+                        <p className="text-gray-500 text-sm">
+                          This editor has not added profile details yet.
+                        </p>
+                      </motion.div>
+                    )}
                 </motion.div>
               )}
 
               {activeTab === "portfolio" && (
                 <motion.div
                   key="portfolio"
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="p-6 md:p-8"
+                  exit={{ opacity: 0, y: -16 }}
+                  className="p-6 md:p-8 bg-black"
                 >
-                  <PortfolioSection portfolios={profile.portfolio} isPublic={true} />
+                  <PortfolioSection
+                    portfolios={profile.portfolio}
+                    isPublic={true}
+                  />
                 </motion.div>
               )}
 
               {activeTab === "reels" && (
                 <motion.div
                   key="reels"
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="p-6 md:p-8"
+                  exit={{ opacity: 0, y: -16 }}
+                  className="p-6 md:p-8 bg-black"
                 >
                   {reels.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                       {reels.map((reel, index) => (
                         <motion.div
                           key={reel._id}
-                          initial={{ opacity: 0, scale: 0.9 }}
+                          initial={{ opacity: 0, scale: 0.95 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: index * 0.1 }}
-                          whileHover={{ y: -5 }}
-                          className="group relative aspect-[9/16] rounded-2xl overflow-hidden shadow-lg cursor-pointer bg-black"
+                          transition={{ delay: index * 0.08 }}
+                          whileHover={{ y: -4 }}
+                          className="group relative aspect-[9/16] rounded-2xl overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.9)] cursor-pointer bg-black border border-[#111827]"
                           onClick={() => navigate(`/reels`)} // Navigate to reels feed for now
                         >
                           {reel.mediaType === "video" ? (
@@ -480,13 +606,20 @@ const EditorProfile = () => {
                             />
                           )}
 
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
 
                           <div className="absolute bottom-4 left-4 right-4 text-white">
-                            <h3 className="font-bold truncate">{reel.title}</h3>
-                            <div className="flex items-center gap-3 mt-2 text-sm text-white/80">
-                              <span className="flex items-center gap-1"><FaPlay className="text-xs" /> {reel.viewsCount || 0}</span>
-                              <span className="flex items-center gap-1">Like {reel.likesCount || 0}</span>
+                            <h3 className="font-semibold truncate">
+                              {reel.title}
+                            </h3>
+                            <div className="flex items-center gap-3 mt-2 text-xs text-white/80">
+                              <span className="flex items-center gap-1">
+                                <FaPlay className="text-[10px]" />{" "}
+                                {reel.viewsCount || 0}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                Like {reel.likesCount || 0}
+                              </span>
                             </div>
                           </div>
                         </motion.div>
@@ -494,11 +627,15 @@ const EditorProfile = () => {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <FaFilm className="text-gray-400 text-3xl" />
+                      <div className="w-20 h-20 bg-[#0B1120] rounded-full flex items-center justify-center mx-auto mb-4 border border-[#111827]">
+                        <FaFilm className="text-gray-500 text-3xl" />
                       </div>
-                      <h3 className="text-lg font-semibold text-gray-700 mb-2">No reels yet</h3>
-                      <p className="text-gray-500">This editor hasn't published any reels.</p>
+                      <h3 className="text-lg font-semibold text-gray-100 mb-2">
+                        No reels yet
+                      </h3>
+                      <p className="text-gray-500 text-sm">
+                        This editor hasn&apos;t published any reels.
+                      </p>
                     </div>
                   )}
                 </motion.div>
@@ -519,27 +656,27 @@ const EditorProfile = () => {
             onClick={() => setModalOpen(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl p-6 max-w-3xl w-full relative shadow-2xl"
+              initial={{ scale: 0.9, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 10 }}
+              className="bg-[#020617] rounded-3xl p-6 max-w-3xl w-full relative shadow-[0_25px_60px_rgba(0,0,0,0.95)] border border-[#111827]"
               onClick={(e) => e.stopPropagation()}
             >
               <motion.button
-                whileHover={{ scale: 1.1, rotate: 90 }}
-                whileTap={{ scale: 0.9 }}
-                className="absolute top-4 right-4 w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
+                whileHover={{ scale: 1.05, rotate: 90 }}
+                whileTap={{ scale: 0.95 }}
+                className="absolute top-4 right-4 w-10 h-10 bg-white/5 rounded-full flex items-center justify-center text-gray-300 hover:bg-white/10 transition-colors border border-white/10"
                 onClick={() => setModalOpen(false)}
               >
                 <FaTimes />
               </motion.button>
-              <h3 className="text-xl font-bold text-gray-800 mb-4 pr-12">
+              <h3 className="text-lg md:text-xl font-semibold text-gray-50 mb-4 pr-12">
                 {selectedCert.title || "Certificate"}
               </h3>
               <img
                 src={selectedCert.image}
                 alt={selectedCert.title}
-                className="w-full h-auto object-contain rounded-2xl"
+                className="w-full h-auto object-contain rounded-2xl border border-[#111827]"
               />
             </motion.div>
           </motion.div>

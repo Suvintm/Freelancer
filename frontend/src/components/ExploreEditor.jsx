@@ -526,6 +526,7 @@ const EditorCard = ({ editor, navigate, searchQuery }) => {
 
   return (
     <div
+    onClick={() => navigate(`/public-profile/${editor.user?._id}`)}
       className="group relative bg-[#111319] rounded-3xl overflow-hidden shadow-[0_18px_40px_rgba(0,0,0,0.8)] transition-all duration-300 border border-[#262A3B] hover:-translate-y-1"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}

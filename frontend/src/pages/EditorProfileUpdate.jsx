@@ -5,6 +5,7 @@ import { useAppContext } from "../context/AppContext";
 import axios from "axios";
 import logo from "../assets/logo.png";
 import UpdateProfile from "../components/UpdateProfile"; // ✅ imported
+import { useNavigate } from "react-router-dom";
 
 // Optional language options (for UpdateProfile to use)
 const LANGUAGE_OPTIONS = [
@@ -37,6 +38,9 @@ const EditorProfileUpdate = () => {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true); // ✅ shimmer loading
+
+const navigate = useNavigate();
+
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 2000);
@@ -102,34 +106,43 @@ const EditorProfileUpdate = () => {
     <div className="min-h-screen bg-[#020617] text-white flex flex-col">
       {/* ✅ Top Navbar - Dark Glass */}
       <nav className="w-full bg-[#050816]/80 border-b border-white/10 backdrop-blur-md py-3.5 px-4 md:px-8 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-2xl overflow-hidden bg-[#0B1220] border border-white/10 flex items-center justify-center">
-            <img
-              src={logo}
-              alt="Logo"
-              className="w-8 h-8 rounded-xl object-cover"
-            />
-          </div>
-          <div className="flex flex-col leading-tight">
-            <span className="text-lg font-semibold tracking-tight">SuviX</span>
-            <span className="text-[11px] text-gray-400 hidden sm:block">
-              Editor Profile · Update
-            </span>
-          </div>
-        </div>
 
-        <motion.button
-          onClick={handleBack}
-          whileHover={{ x: 2, scale: 1.02 }}
-          whileTap={{ scale: 0.97 }}
-          className="flex items-center gap-2 text-xs md:text-sm 
-                     text-gray-200 hover:text-white px-3 py-1.5 rounded-full
-                     bg-white/5 border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.7)]"
-        >
-          <span>Back</span>
-          <FaArrowAltCircleRight className="text-base md:text-lg text-[#22C55E]" />
-        </motion.button>
-      </nav>
+  {/* LEFT — LOGO + TEXT */}
+  <div
+    className="flex items-center gap-2 cursor-pointer"
+    onClick={() => navigate("/editor-home")}
+  >
+    <div className="w-9 h-9 rounded-2xl overflow-hidden bg-[#0B1220] border border-white/10 flex items-center justify-center">
+      <img
+        src={logo}
+        alt="Logo"
+        className="w-8 h-8 rounded-xl object-cover"
+      />
+    </div>
+
+    <div className="flex flex-col leading-tight">
+      <span className="text-lg font-semibold tracking-tight">SuviX</span>
+      <span className="text-[11px] text-gray-400 hidden sm:block">
+        Editor Profile · Update
+      </span>
+    </div>
+  </div>
+
+  {/* RIGHT — BACK BUTTON */}
+  <motion.button
+    onClick={handleBack}
+    whileHover={{ x: 2, scale: 1.02 }}
+    whileTap={{ scale: 0.97 }}
+    className="flex items-center gap-2 text-xs md:text-sm 
+               text-gray-200 hover:text-white px-3 py-1.5 rounded-full
+               bg-white/5 border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.7)]"
+  >
+    <span>Back</span>
+    <FaArrowAltCircleRight className="text-base md:text-lg text-[#22C55E]" />
+  </motion.button>
+
+</nav>
+
 
       {/* ✅ Main Section */}
       <main className="flex flex-col items-center flex-grow py-8 md:py-10 px-4 md:px-8">

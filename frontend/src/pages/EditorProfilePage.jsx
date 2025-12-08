@@ -239,7 +239,7 @@ const EditorProfile = () => {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-      <main className="md:ml-64 pt-16 md:pt-20 px-4 md:px-8 pb-10">
+      <main className="md:ml-64 pt-16 lg:pt-35 md:pt-20 px-4 md:px-8 pb-10">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
