@@ -6,6 +6,7 @@ import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import ReelCard from "../components/ReelCard";
 import CommentSection from "../components/CommentSection";
+import logo from "../assets/logo.png"; // ← make sure your logo exists
 
 const ReelsPage = () => {
     const { user, backendURL } = useAppContext();
@@ -21,10 +22,11 @@ const ReelsPage = () => {
     const containerRef = useRef(null);
     const observerRef = useRef(null);
 
-    // Fetch Reels
+    // -------------------------
+    // FETCH REELS (UNCHANGED)
+    // -------------------------
     const fetchReels = async (pageNum = 1) => {
         try {
-            // Exclude current IDs to avoid duplicates in random feed
             const excludeIds = reels.map(r => r._id).join(",");
             const { data } = await axios.get(
                 `${backendURL}/api/reels/feed?page=${pageNum}&limit=5&exclude=${excludeIds}`
@@ -33,7 +35,7 @@ const ReelsPage = () => {
             if (pageNum === 1) {
                 setReels(data.reels);
             } else {
-                setReels((prev) => [...prev, ...data.reels]);
+                setReels(prev => [...prev, ...data.reels]);
             }
 
             setHasMore(data.pagination.hasMore);
@@ -48,7 +50,9 @@ const ReelsPage = () => {
         fetchReels();
     }, []);
 
-    // Intersection Observer for Infinite Scroll & Active Reel
+    // --------------------------------------------
+    // OBSERVER (UNCHANGED — only UI modified later)
+    // --------------------------------------------
     const lastReelRef = useCallback(
         (node) => {
             if (loading) return;
@@ -57,7 +61,7 @@ const ReelsPage = () => {
             observerRef.current = new IntersectionObserver(
                 (entries) => {
                     if (entries[0].isIntersecting && hasMore) {
-                        setPage((prev) => prev + 1);
+                        setPage(prev => prev + 1);
                         fetchReels(page + 1);
                     }
                 },
@@ -69,15 +73,19 @@ const ReelsPage = () => {
         [loading, hasMore, page]
     );
 
-    // Handle Scroll to update active index
+    // --------------------------------------------
+    // ACTIVE REEL SCROLL DETECTION (UNCHANGED)
+    // --------------------------------------------
     const handleScroll = () => {
         if (!containerRef.current) return;
+
         const index = Math.round(
             containerRef.current.scrollTop / containerRef.current.clientHeight
         );
+
         if (index !== activeReelIndex) {
             setActiveReelIndex(index);
-            // Increment view count for new active reel
+
             if (reels[index]) {
                 axios.post(`${backendURL}/api/reels/${reels[index]._id}/view`).catch(() => { });
             }
@@ -90,9 +98,8 @@ const ReelsPage = () => {
     };
 
     const handleCommentAdded = (newCount) => {
-        // Update local state to reflect new comment count
-        setReels((prev) =>
-            prev.map((r) =>
+        setReels(prev =>
+            prev.map(r =>
                 r._id === activeReelId ? { ...r, commentsCount: newCount } : r
             )
         );
@@ -100,47 +107,87 @@ const ReelsPage = () => {
 
     return (
         <div className="fixed inset-0 bg-black z-50 flex flex-col">
-            {/* Header */}
-            <div className="absolute top-0 left-0 right-0 p-4 z-40 flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
+
+            {/* ------------------------- */}
+            {/* HEADER BAR - Modern Glass */}
+            {/* ------------------------- */}
+            <div className="absolute top-0 left-0 right-0 px-4 py-4 z-40 flex items-center justify-between 
+                            bg-gradient-to-b from-black/50 to-transparent backdrop-blur-md">
                 <button
                     onClick={() => navigate(-1)}
-                    className="pointer-events-auto w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+                    className="w-10 h-10 bg-white/15 backdrop-blur-xl rounded-full flex items-center justify-center
+                               text-white hover:bg-white/25 transition pointer-events-auto shadow-lg"
                 >
-                    <FaArrowLeft />
+                    <FaArrowLeft className="text-lg" />
                 </button>
-                <h1 className="text-white font-bold text-lg drop-shadow-md">Reels</h1>
-                <div className="w-10" /> {/* Spacer */}
+
+                {/* Branding */}
+                <div className="flex items-center gap-2 pointer-events-none">
+                    <img src={logo} className="w-8 h-8 rounded-xl opacity-90" />
+                    <span className="text-white font-semibold text-lg tracking-wide drop-shadow-lg">
+                        SuviX Reels
+                    </span>
+                </div>
+
+                <div className="w-10" />
             </div>
 
-            {/* Reels Container */}
+            {/* ------------------------- */}
+            {/* REELS FEED VIEWPORT      */}
+            {/* ------------------------- */}
             <div
                 ref={containerRef}
                 onScroll={handleScroll}
-                className="flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
-                style={{ scrollBehavior: "smooth" }}
+                className="
+                    flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide
+                    scroll-smooth will-change-transform
+                    touch-pan-y
+                "
+                style={{
+                    scrollBehavior: "smooth",
+                    overscrollBehaviorY: "contain",
+                }}
             >
                 {reels.map((reel, index) => (
                     <div
                         key={reel._id}
                         ref={index === reels.length - 1 ? lastReelRef : null}
-                        className="w-full h-full snap-start relative"
+                        className="w-full h-screen snap-start relative"
                     >
+                        {/* ======================= */}
+                        {/* Reel Card (UI untouched) */}
+                        {/* ======================= */}
                         <ReelCard
                             reel={reel}
                             isActive={index === activeReelIndex}
                             onCommentClick={handleCommentClick}
                         />
+
+                        {/* ------------------------------ */}
+                        {/* BRAND WATERMARK (Elegant)      */}
+                        {/* ------------------------------ */}
+                        <div className="absolute bottom-6 left-6 flex items-center gap-2 opacity-80 select-none">
+                            <img
+                                src={logo}
+                                className="w-7 h-7 rounded-lg shadow-md opacity-90"
+                            />
+                            <span className="text-white/90 font-semibold tracking-wide text-sm">
+                                SuviX
+                            </span>
+                        </div>
                     </div>
                 ))}
 
+                {/* LOADER */}
                 {loading && (
-                    <div className="w-full h-full flex items-center justify-center bg-black">
+                    <div className="w-full h-screen flex items-center justify-center bg-black">
                         <FaSpinner className="text-white text-4xl animate-spin" />
                     </div>
                 )}
 
+                {/* EMPTY */}
                 {!loading && reels.length === 0 && (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-white">
+                    <div className="w-full h-screen flex flex-col items-center justify-center text-white">
                         <p className="text-lg font-medium">No reels found</p>
                         <button
                             onClick={() => navigate(-1)}
@@ -152,17 +199,21 @@ const ReelsPage = () => {
                 )}
             </div>
 
-            {/* Comment Drawer */}
+            {/* ------------------------- */}
+            {/* COMMENT DRAWER – Glass    */}
+            {/* ------------------------- */}
             <AnimatePresence>
                 {showComments && (
                     <>
+                        {/* Backdrop */}
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 bg-black/50 z-[55]"
+                            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55]"
                             onClick={() => setShowComments(false)}
                         />
+
                         <CommentSection
                             reelId={activeReelId}
                             onClose={() => setShowComments(false)}
