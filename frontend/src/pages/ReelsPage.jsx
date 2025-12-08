@@ -112,7 +112,7 @@ const ReelsPage = () => {
             {/* HEADER BAR - Modern Glass */}
             {/* ------------------------- */}
             <div className="absolute top-0 left-0 right-0 px-4 py-4 z-40 flex items-center justify-between 
-                            bg-gradient-to-b from-black/50 to-transparent backdrop-blur-md">
+                            bg-gradient-to-b from-black/50 to-transparent ">
                 <button
                     onClick={() => navigate(-1)}
                     className="w-10 h-10 bg-white/15 backdrop-blur-xl rounded-full flex items-center justify-center
