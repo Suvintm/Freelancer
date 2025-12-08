@@ -24,34 +24,48 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
     const [isPlaying, setIsPlaying] = useState(isActive);
     const [isMuted, setIsMuted] = useState(false);
     const [showHeartAnimation, setShowHeartAnimation] = useState(false);
-    const videoRef = useRef(null);
+    const [progress, setProgress] = useState(0);
 
-    // --------------------------------
-    // Initialize Like State (UNCHANGED)
-    // --------------------------------
+    const videoRef = useRef(null);
+    const scrubRef = useRef(null);
+
+    // Like state init
     useEffect(() => {
         if (user && reel.likes.includes(user._id)) {
             setIsLiked(true);
         }
     }, [user, reel.likes]);
 
-    // -------------------------------------------------
-    // Play / Pause behavior controlled by isActive (same)
-    // -------------------------------------------------
+    // Video play/pause
     useEffect(() => {
+        if (!videoRef.current) return;
+
         if (isActive) {
             setIsPlaying(true);
-            videoRef.current?.play().catch(() => setIsPlaying(false));
+            videoRef.current.play().catch(() => setIsPlaying(false));
         } else {
             setIsPlaying(false);
-            videoRef.current?.pause();
-            if (videoRef.current) videoRef.current.currentTime = 0;
+            videoRef.current.pause();
+            videoRef.current.currentTime = 0;
+            setProgress(0);
         }
     }, [isActive]);
 
-    // --------------------------------------
-    // Tap to Play / Pause (UNCHANGED)
-    // --------------------------------------
+    // Track progress bar
+    useEffect(() => {
+        if (!videoRef.current) return;
+
+        const interval = setInterval(() => {
+            if (videoRef.current && videoRef.current.duration) {
+                const value = (videoRef.current.currentTime / videoRef.current.duration) * 100;
+                setProgress(value);
+            }
+        }, 120);
+
+        return () => clearInterval(interval);
+    }, []);
+
+    // Tap to play/pause
     const togglePlay = () => {
         if (!videoRef.current) return;
         if (isPlaying) videoRef.current.pause();
@@ -59,9 +73,7 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
         setIsPlaying(!isPlaying);
     };
 
-    // --------------------------------------
-    // Like Handler (UNCHANGED LOGIC)
-    // --------------------------------------
+    // Like logic
     const handleLike = async () => {
         if (!user) return toast.error("Please login to like");
 
@@ -77,16 +89,13 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                 {},
                 { headers: { Authorization: `Bearer ${user.token}` } }
             );
-        } catch (err) {
+        } catch {
             setIsLiked(!newIsLiked);
             setLikesCount(prev => !newIsLiked ? prev + 1 : prev - 1);
-            toast.error("Failed to update like");
         }
     };
 
-    // --------------------------------
-    // Double Tap (UNCHANGED)
-    // --------------------------------
+    // Double Tap ❤️
     const handleDoubleTap = (e) => {
         e.stopPropagation();
         if (!isLiked) handleLike();
@@ -94,9 +103,7 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
         setTimeout(() => setShowHeartAnimation(false), 900);
     };
 
-    // --------------------------------
-    // Share (UNCHANGED)
-    // --------------------------------
+    // Share
     const handleShare = async () => {
         try {
             await navigator.share({
@@ -110,12 +117,22 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
         }
     };
 
+    // Scrub (seek)
+    const handleScrub = (e) => {
+        if (!videoRef.current) return;
+        const rect = scrubRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const percent = Math.min(Math.max(x / rect.width, 0), 1);
+        const newTime = percent * videoRef.current.duration;
+
+        videoRef.current.currentTime = newTime;
+        setProgress(percent * 100);
+    };
+
     return (
         <div className="relative w-full h-full bg-black snap-start overflow-hidden">
 
-            {/* ================================
-                MEDIA (VIDEO / IMAGE)
-            ================================= */}
+            {/* MEDIA */}
             <div
                 className="absolute inset-0 cursor-pointer select-none"
                 onClick={togglePlay}
@@ -147,7 +164,7 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                     </div>
                 )}
 
-                {/* Double Tap Heart */}
+                {/* Double Tap ❤️ */}
                 <AnimatePresence>
                     {showHeartAnimation && (
                         <motion.div
@@ -162,22 +179,17 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                 </AnimatePresence>
             </div>
 
-            {/* Top gradient */}
-            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
-
-            {/* Bottom gradient */}
-            <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/90 to-transparent pointer-events-none" />
+            {/* GRADIENTS */}
+            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/60 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/90 to-transparent" />
 
             {/* ================================
-                RIGHT ACTION BAR (IG STYLE)
+                RIGHT ACTION BAR
             ================================= */}
-            <div className="absolute right-4 bottom-36 flex flex-col items-center gap-6 z-20">
+            <div className="absolute right-4 bottom-44 flex flex-col items-center gap-6 z-20">
 
                 {/* Profile */}
-                <Link
-                    to={`/public-profile/${reel.editor._id}`}
-                    className="relative"
-                >
+                <Link to={`/public-profile/${reel.editor._id}`} className="relative">
                     <div className="w-12 h-12 rounded-full border-2 border-white overflow-hidden">
                         <img
                             src={reel.editor.profilePicture}
@@ -185,14 +197,12 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                             className="w-full h-full object-cover"
                         />
                     </div>
-
-                    {/* Follow Icon */}
                     <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-red-500 w-5 h-5 rounded-full flex items-center justify-center">
                         <FaUserPlus className="text-white text-[10px]" />
                     </div>
                 </Link>
 
-                {/* Like */}
+                {/* Likes */}
                 <motion.button
                     whileTap={{ scale: 0.8 }}
                     onClick={handleLike}
@@ -257,49 +267,47 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
             </div>
 
             {/* ================================
-                CAPTION / INFO (BOTTOM LEFT)
+                BOTTOM INFO TEXT
             ================================= */}
-            <div className="absolute bottom-5 left-5 right-24 z-20 text-white">
-
-                {/* Editor Name */}
+            <div className="absolute bottom-16 left-5 right-24 z-20 text-white">
                 <div className="flex items-center gap-2 mb-2">
                     <h3 className="font-bold text-lg">{reel.editor.name}</h3>
-                    <span className="px-2 py-0.5 bg-white/20 backdrop-blur-md text-[10px] rounded border border-white/30">
+                    <span className="px-2 py-0.5 bg-white/20 text-[10px] rounded border border-white/30">
                         Editor
                     </span>
                 </div>
 
-                {/* Title */}
                 <p className="text-sm font-medium">{reel.title}</p>
-
-                {/* Description */}
                 <p className="text-sm text-white/80 mt-1 line-clamp-2 max-w-[85%]">
                     {reel.description}
                 </p>
-
-                {/* Portfolio CTA */}
-                {reel.portfolio && (
-                    <Link
-                        to={`/public-profile/${reel.editor._id}`}
-                        className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg mt-3 text-[12px] font-medium hover:bg-white/30"
-                    >
-                        <div className="w-4 h-4 rounded bg-orange-500 flex items-center justify-center">
-                            <FaPlay className="text-white text-[8px]" />
-                        </div>
-                        View Portfolio
-                    </Link>
-                )}
             </div>
 
             {/* ================================
-                SUVI X WATERMARK
+                SUVI X BRAND WATERMARK
             ================================= */}
-            <div className="absolute bottom-4 right-4 flex items-center gap-1 opacity-90 pointer-events-none">
+            <div className="absolute bottom-4 right-4 flex items-center gap-1 opacity-90 pointer-events-none z-20">
                 <img src={logo} className="w-6 h-6 rounded-md" />
                 <span className="text-white font-semibold text-xs tracking-wider opacity-90">
                     SuviX
                 </span>
             </div>
+
+            {/* ================================
+                TIMELINE SCRUB BAR (NEW)
+            ================================= */}
+            {reel.mediaType === "video" && (
+                <div
+                    ref={scrubRef}
+                    onClick={handleScrub}
+                    className="absolute bottom-8 left-5 right-5 h-3 bg-white/20 rounded-full cursor-pointer z-30"
+                >
+                    <motion.div
+                        style={{ width: `${progress}%` }}
+                        className="h-full bg-white rounded-full"
+                    />
+                </div>
+            )}
         </div>
     );
 };
