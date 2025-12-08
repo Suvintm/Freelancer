@@ -212,7 +212,7 @@ const EditorProfile = () => {
   const isOwner = user?._id === profile.user._id;
 
   return (
-    <div className="min-h-screen bg-[#020617] text-gray-100">
+    <div className="min-h-screen bg-zinc-900 text-gray-100">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
@@ -225,7 +225,7 @@ const EditorProfile = () => {
             animate="visible"
             variants={fadeInUp}
             transition={{ duration: 0.5 }}
-            className="relative rounded-3xl overflow-hidden bg-[#0B1120] border border-[#1F2937] shadow-[0_20px_60px_rgba(0,0,0,0.9)]"
+            className="relative rounded-3xl overflow-hidden bg-black border border-white shadow-[0_20px_60px_rgba(0,0,0,0.9)]"
           >
             {/* Top subtle gradient banner */}
             <div className="absolute inset-x-0 top-0 h-40  ">
@@ -357,7 +357,7 @@ const EditorProfile = () => {
             className="bg-black border border-[#111827] rounded-2xl shadow-[0_18px_50px_rgba(0,0,0,0.9)] overflow-hidden"
           >
             {/* Tab Headers */}
-            <div className="flex border-b border-[#111827]">
+            <div className="flex border-b m-4 border-[#111827]">
               {tabs.map((tab) => (
                 <motion.button
                   key={tab.id}
