@@ -25,6 +25,7 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
     const [isMuted, setIsMuted] = useState(false);
     const [showHeartAnimation, setShowHeartAnimation] = useState(false);
     const [progress, setProgress] = useState(0);
+    const [showSwipeHint, setShowSwipeHint] = useState(false);
 
     const videoRef = useRef(null);
     const scrubRef = useRef(null);
@@ -64,6 +65,22 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
 
         return () => clearInterval(interval);
     }, []);
+
+    useEffect(() => {
+    // Show ONLY on first time opening reels
+    const alreadyShown = sessionStorage.getItem("swipeHintShown");
+
+    if (!alreadyShown && isActive) {
+        // Show only on FIRST reel
+        setShowSwipeHint(true);
+        sessionStorage.setItem("swipeHintShown", "true");
+
+        setTimeout(() => {
+            setShowSwipeHint(false);
+        }, 1500); // auto-hide
+    }
+}, [isActive]);
+
 
     // Tap to play/pause
     const togglePlay = () => {
@@ -299,7 +316,8 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
             {reel.mediaType === "video" && (
                 <div
                     ref={scrubRef}
-                    onClick={handleScrub}
+                    onMouseDown={handleScrub}
+onTouchStart={handleScrub}
                     className="absolute bottom-8 left-5 right-5 h-3 bg-white/20 rounded-full cursor-pointer z-30"
                 >
                     <motion.div
@@ -308,6 +326,35 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                     />
                 </div>
             )}
+            {/* ================================
+    SWIPE RIGHT HINT (ONLY FIRST TIME)
+================================ */}
+<AnimatePresence>
+    {showSwipeHint && (
+        <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.35 }}
+            className="absolute bottom-24 left-5 z-30 pointer-events-none"
+        >
+            <div className="flex items-center gap-2 bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
+                <span className="text-white text-xs font-semibold">Swipe right to exit</span>
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-3.5 w-3.5 text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+            </div>
+        </motion.div>
+    )}
+</AnimatePresence>
+
         </div>
     );
 };
