@@ -8,15 +8,14 @@ import {
     FaVolumeUp,
     FaVolumeMute,
     FaPlay,
-    FaPause,
-    FaUserPlus,
-    FaCheck,
     FaEye,
+    FaUserPlus
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { toast } from "react-toastify";
+import logo from "../assets/logo.png";
 
 const ReelCard = ({ reel, isActive, onCommentClick }) => {
     const { user, backendURL } = useAppContext();
@@ -27,14 +26,18 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
     const [showHeartAnimation, setShowHeartAnimation] = useState(false);
     const videoRef = useRef(null);
 
-    // Initialize like state
+    // --------------------------------
+    // Initialize Like State (UNCHANGED)
+    // --------------------------------
     useEffect(() => {
         if (user && reel.likes.includes(user._id)) {
             setIsLiked(true);
         }
     }, [user, reel.likes]);
 
-    // Handle play/pause based on active state
+    // -------------------------------------------------
+    // Play / Pause behavior controlled by isActive (same)
+    // -------------------------------------------------
     useEffect(() => {
         if (isActive) {
             setIsPlaying(true);
@@ -46,27 +49,26 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
         }
     }, [isActive]);
 
+    // --------------------------------------
+    // Tap to Play / Pause (UNCHANGED)
+    // --------------------------------------
     const togglePlay = () => {
-        if (videoRef.current) {
-            if (isPlaying) {
-                videoRef.current.pause();
-            } else {
-                videoRef.current.play();
-            }
-            setIsPlaying(!isPlaying);
-        }
+        if (!videoRef.current) return;
+        if (isPlaying) videoRef.current.pause();
+        else videoRef.current.play();
+        setIsPlaying(!isPlaying);
     };
 
+    // --------------------------------------
+    // Like Handler (UNCHANGED LOGIC)
+    // --------------------------------------
     const handleLike = async () => {
-        if (!user) {
-            toast.error("Please login to like");
-            return;
-        }
+        if (!user) return toast.error("Please login to like");
 
-        // Optimistic update
         const newIsLiked = !isLiked;
         setIsLiked(newIsLiked);
-        setLikesCount((prev) => (newIsLiked ? prev + 1 : prev - 1));
+        setLikesCount(prev => newIsLiked ? prev + 1 : prev - 1);
+
         if (newIsLiked) setShowHeartAnimation(true);
 
         try {
@@ -76,20 +78,25 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                 { headers: { Authorization: `Bearer ${user.token}` } }
             );
         } catch (err) {
-            // Revert on error
             setIsLiked(!newIsLiked);
-            setLikesCount((prev) => (!newIsLiked ? prev + 1 : prev - 1));
+            setLikesCount(prev => !newIsLiked ? prev + 1 : prev - 1);
             toast.error("Failed to update like");
         }
     };
 
+    // --------------------------------
+    // Double Tap (UNCHANGED)
+    // --------------------------------
     const handleDoubleTap = (e) => {
         e.stopPropagation();
         if (!isLiked) handleLike();
         setShowHeartAnimation(true);
-        setTimeout(() => setShowHeartAnimation(false), 1000);
+        setTimeout(() => setShowHeartAnimation(false), 900);
     };
 
+    // --------------------------------
+    // Share (UNCHANGED)
+    // --------------------------------
     const handleShare = async () => {
         try {
             await navigator.share({
@@ -97,17 +104,20 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                 text: reel.description,
                 url: window.location.href,
             });
-        } catch (err) {
+        } catch {
             navigator.clipboard.writeText(window.location.href);
-            toast.success("Link copied to clipboard!");
+            toast.success("Link copied!");
         }
     };
 
     return (
-        <div className="relative w-full h-full bg-black snap-start shrink-0">
-            {/* Media Layer */}
+        <div className="relative w-full h-full bg-black snap-start overflow-hidden">
+
+            {/* ================================
+                MEDIA (VIDEO / IMAGE)
+            ================================= */}
             <div
-                className="absolute inset-0 cursor-pointer"
+                className="absolute inset-0 cursor-pointer select-none"
                 onClick={togglePlay}
                 onDoubleClick={handleDoubleTap}
             >
@@ -128,21 +138,21 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                     />
                 )}
 
-                {/* Video Controls Overlay */}
+                {/* Play Overlay */}
                 {!isPlaying && isActive && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                        <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center">
-                            <FaPlay className="text-white text-2xl ml-1" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                        <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center">
+                            <FaPlay className="text-white text-4xl ml-1" />
                         </div>
                     </div>
                 )}
 
-                {/* Double Tap Heart Animation */}
+                {/* Double Tap Heart */}
                 <AnimatePresence>
                     {showHeartAnimation && (
                         <motion.div
                             initial={{ scale: 0, opacity: 0 }}
-                            animate={{ scale: 1.5, opacity: 1 }}
+                            animate={{ scale: 1.4, opacity: 1 }}
                             exit={{ scale: 0, opacity: 0 }}
                             className="absolute inset-0 flex items-center justify-center pointer-events-none"
                         >
@@ -152,82 +162,90 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                 </AnimatePresence>
             </div>
 
-            {/* Gradient Overlays */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60 pointer-events-none" />
+            {/* Top gradient */}
+            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
 
-            {/* Right Sidebar Actions */}
-            <div className="absolute right-4 bottom-24 flex flex-col items-center gap-6 z-20">
-                {/* Editor Profile */}
-                <Link to={`/public-profile/${reel.editor._id}`} className="relative group">
-                    <div className="w-12 h-12 rounded-full border-2 border-white p-0.5 overflow-hidden">
+            {/* Bottom gradient */}
+            <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/90 to-transparent pointer-events-none" />
+
+            {/* ================================
+                RIGHT ACTION BAR (IG STYLE)
+            ================================= */}
+            <div className="absolute right-4 bottom-36 flex flex-col items-center gap-6 z-20">
+
+                {/* Profile */}
+                <Link
+                    to={`/public-profile/${reel.editor._id}`}
+                    className="relative"
+                >
+                    <div className="w-12 h-12 rounded-full border-2 border-white overflow-hidden">
                         <img
-                            src={reel.editor.profilePicture || "https://via.placeholder.com/40"}
+                            src={reel.editor.profilePicture}
                             alt={reel.editor.name}
-                            className="w-full h-full rounded-full object-cover"
+                            className="w-full h-full object-cover"
                         />
                     </div>
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-red-500 rounded-full p-0.5">
+
+                    {/* Follow Icon */}
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-red-500 w-5 h-5 rounded-full flex items-center justify-center">
                         <FaUserPlus className="text-white text-[10px]" />
                     </div>
                 </Link>
 
                 {/* Like */}
-                <div className="flex flex-col items-center gap-1">
-                    <motion.button
-                        whileTap={{ scale: 0.8 }}
-                        onClick={handleLike}
-                        className="p-2"
+                <motion.button
+                    whileTap={{ scale: 0.8 }}
+                    onClick={handleLike}
+                    className="flex flex-col items-center text-white"
+                >
+                    <motion.div
+                        animate={isLiked ? { scale: [1, 1.4, 1] } : {}}
+                        className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center"
                     >
                         {isLiked ? (
-                            <FaHeart className="text-red-500 text-3xl drop-shadow-lg" />
+                            <FaHeart className="text-red-500 text-2xl" />
                         ) : (
-                            <FaRegHeart className="text-white text-3xl drop-shadow-lg" />
+                            <FaRegHeart className="text-white text-2xl" />
                         )}
-                    </motion.button>
-                    <span className="text-white text-xs font-medium drop-shadow-md">
-                        {likesCount}
-                    </span>
-                </div>
+                    </motion.div>
+                    <span className="text-xs mt-1">{likesCount}</span>
+                </motion.button>
 
-                {/* Comment */}
-                <div className="flex flex-col items-center gap-1">
-                    <motion.button
-                        whileTap={{ scale: 0.8 }}
-                        onClick={() => onCommentClick(reel._id)}
-                        className="p-2"
-                    >
-                        <FaComment className="text-white text-3xl drop-shadow-lg" />
-                    </motion.button>
-                    <span className="text-white text-xs font-medium drop-shadow-md">
-                        {reel.commentsCount}
-                    </span>
-                </div>
-
-                {/* Views (New) */}
-                <div className="flex flex-col items-center gap-1 mt-2">
-                    <div className="p-2">
-                        <FaEye className="text-white text-2xl drop-shadow-lg opacity-90" />
+                {/* Comments */}
+                <motion.button
+                    whileTap={{ scale: 0.8 }}
+                    onClick={() => onCommentClick(reel._id)}
+                    className="flex flex-col items-center text-white"
+                >
+                    <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center">
+                        <FaComment className="text-white text-xl" />
                     </div>
-                    <span className="text-white text-xs font-medium drop-shadow-md">
-                        {reel.viewsCount}
-                    </span>
+                    <span className="text-xs mt-1">{reel.commentsCount}</span>
+                </motion.button>
+
+                {/* Views */}
+                <div className="flex flex-col items-center text-white">
+                    <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center">
+                        <FaEye className="text-white text-xl opacity-90" />
+                    </div>
+                    <span className="text-xs mt-1">{reel.viewsCount}</span>
                 </div>
 
                 {/* Share */}
                 <motion.button
-                    whileTap={{ scale: 0.8 }}
+                    whileTap={{ scale: 0.85 }}
                     onClick={handleShare}
-                    className="p-2"
+                    className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center"
                 >
-                    <FaShare className="text-white text-3xl drop-shadow-lg" />
+                    <FaShare className="text-white text-xl" />
                 </motion.button>
 
-                {/* Mute Toggle (Video Only) */}
+                {/* Mute */}
                 {reel.mediaType === "video" && (
                     <motion.button
-                        whileTap={{ scale: 0.8 }}
+                        whileTap={{ scale: 0.85 }}
                         onClick={() => setIsMuted(!isMuted)}
-                        className="p-2 bg-black/20 backdrop-blur-sm rounded-full mt-4"
+                        className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center mt-3"
                     >
                         {isMuted ? (
                             <FaVolumeMute className="text-white text-xl" />
@@ -238,39 +256,49 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                 )}
             </div>
 
-            {/* Bottom Info */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 pb-20 md:pb-4 z-10 bg-gradient-to-t from-black/80 to-transparent">
+            {/* ================================
+                CAPTION / INFO (BOTTOM LEFT)
+            ================================= */}
+            <div className="absolute bottom-5 left-5 right-24 z-20 text-white">
+
+                {/* Editor Name */}
                 <div className="flex items-center gap-2 mb-2">
-                    <h3 className="text-white font-bold text-lg drop-shadow-md">
-                        {reel.editor.name}
-                    </h3>
-                    <span className="bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] text-white font-medium border border-white/30">
+                    <h3 className="font-bold text-lg">{reel.editor.name}</h3>
+                    <span className="px-2 py-0.5 bg-white/20 backdrop-blur-md text-[10px] rounded border border-white/30">
                         Editor
                     </span>
                 </div>
 
-                <h4 className="text-white text-sm font-medium mb-1 line-clamp-1">
-                    {reel.title}
-                </h4>
+                {/* Title */}
+                <p className="text-sm font-medium">{reel.title}</p>
 
-                <p className="text-white/80 text-sm line-clamp-2 max-w-[85%]">
+                {/* Description */}
+                <p className="text-sm text-white/80 mt-1 line-clamp-2 max-w-[85%]">
                     {reel.description}
                 </p>
 
-                {/* Portfolio Link */}
+                {/* Portfolio CTA */}
                 {reel.portfolio && (
-                    <div className="mt-3">
-                        <Link
-                            to={`/public-profile/${reel.editor._id}`} // Ideally deep link to portfolio
-                            className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-md px-3 py-1.5 rounded-lg transition-colors"
-                        >
-                            <div className="w-4 h-4 rounded bg-orange-500 flex items-center justify-center">
-                                <FaPlay className="text-white text-[8px]" />
-                            </div>
-                            <span className="text-white text-xs font-medium">View Portfolio</span>
-                        </Link>
-                    </div>
+                    <Link
+                        to={`/public-profile/${reel.editor._id}`}
+                        className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg mt-3 text-[12px] font-medium hover:bg-white/30"
+                    >
+                        <div className="w-4 h-4 rounded bg-orange-500 flex items-center justify-center">
+                            <FaPlay className="text-white text-[8px]" />
+                        </div>
+                        View Portfolio
+                    </Link>
                 )}
+            </div>
+
+            {/* ================================
+                SUVI X WATERMARK
+            ================================= */}
+            <div className="absolute bottom-4 right-4 flex items-center gap-1 opacity-90 pointer-events-none">
+                <img src={logo} className="w-6 h-6 rounded-md" />
+                <span className="text-white font-semibold text-xs tracking-wider opacity-90">
+                    SuviX
+                </span>
             </div>
         </div>
     );
