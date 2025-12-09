@@ -30,14 +30,14 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
     const videoRef = useRef(null);
     const scrubRef = useRef(null);
 
-    // Like state init
+    // INIT LIKE
     useEffect(() => {
         if (user && reel.likes.includes(user._id)) {
             setIsLiked(true);
         }
     }, [user, reel.likes]);
 
-    // Video play/pause
+    // PLAY/PAUSE LOGIC
     useEffect(() => {
         if (!videoRef.current) return;
 
@@ -52,13 +52,14 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
         }
     }, [isActive]);
 
-    // Track progress bar
+    // PROGRESS TRACKER
     useEffect(() => {
         if (!videoRef.current) return;
 
         const interval = setInterval(() => {
-            if (videoRef.current && videoRef.current.duration) {
-                const value = (videoRef.current.currentTime / videoRef.current.duration) * 100;
+            if (videoRef.current?.duration) {
+                const value =
+                    (videoRef.current.currentTime / videoRef.current.duration) * 100;
                 setProgress(value);
             }
         }, 120);
@@ -66,23 +67,19 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
         return () => clearInterval(interval);
     }, []);
 
+    // SWIPE HINT ONCE
     useEffect(() => {
-    // Show ONLY on first time opening reels
-    const alreadyShown = sessionStorage.getItem("swipeHintShown");
+        const alreadyShown = sessionStorage.getItem("swipeHintShown");
 
-    if (!alreadyShown && isActive) {
-        // Show only on FIRST reel
-        setShowSwipeHint(true);
-        sessionStorage.setItem("swipeHintShown", "true");
+        if (!alreadyShown && isActive) {
+            setShowSwipeHint(true);
+            sessionStorage.setItem("swipeHintShown", "true");
 
-        setTimeout(() => {
-            setShowSwipeHint(false);
-        }, 1500); // auto-hide
-    }
-}, [isActive]);
+            setTimeout(() => setShowSwipeHint(false), 1500);
+        }
+    }, [isActive]);
 
-
-    // Tap to play/pause
+    // TAP TO PAUSE
     const togglePlay = () => {
         if (!videoRef.current) return;
         if (isPlaying) videoRef.current.pause();
@@ -90,15 +87,15 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
         setIsPlaying(!isPlaying);
     };
 
-    // Like logic
+    // LIKE LOGIC
     const handleLike = async () => {
         if (!user) return toast.error("Please login to like");
 
         const newIsLiked = !isLiked;
         setIsLiked(newIsLiked);
-        setLikesCount(prev => newIsLiked ? prev + 1 : prev - 1);
+        setLikesCount(prev => (newIsLiked ? prev + 1 : prev - 1));
 
-        if (newIsLiked) setShowHeartAnimation(true);
+        if (newIsLiked) triggerHeartAnimation();
 
         try {
             await axios.post(
@@ -108,33 +105,24 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
             );
         } catch {
             setIsLiked(!newIsLiked);
-            setLikesCount(prev => !newIsLiked ? prev + 1 : prev - 1);
+            setLikesCount(prev => (!newIsLiked ? prev + 1 : prev - 1));
         }
     };
 
-    // Double Tap ❤️
+    // ❤️ DOUBLE TAP ANIMATION FIX
     const handleDoubleTap = (e) => {
         e.stopPropagation();
         if (!isLiked) handleLike();
+        triggerHeartAnimation();
+    };
+
+    // ❤️ Better Floating Animation
+    const triggerHeartAnimation = () => {
         setShowHeartAnimation(true);
-        setTimeout(() => setShowHeartAnimation(false), 900);
+        setTimeout(() => setShowHeartAnimation(false), 1400); // smoother timing
     };
 
-    // Share
-    const handleShare = async () => {
-        try {
-            await navigator.share({
-                title: reel.title,
-                text: reel.description,
-                url: window.location.href,
-            });
-        } catch {
-            navigator.clipboard.writeText(window.location.href);
-            toast.success("Link copied!");
-        }
-    };
-
-    // Scrub (seek)
+    // SCRUB BAR
     const handleScrub = (e) => {
         if (!videoRef.current) return;
         const rect = scrubRef.current.getBoundingClientRect();
@@ -153,9 +141,10 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
             <div
                 className="absolute inset-0 cursor-pointer select-none"
                 onClick={togglePlay}
-                onDoubleClick={handleDoubleTap}
             >
-                {reel.mediaType === "video" ? (
+
+                {/* VIDEO */}
+                {reel.mediaType === "video" && (
                     <video
                         ref={videoRef}
                         src={reel.mediaUrl}
@@ -163,34 +152,40 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                         loop
                         playsInline
                         muted={isMuted}
+                        onDoubleClick={handleDoubleTap} // FIXED
                     />
-                ) : (
+                )}
+
+                {/* IMAGE */}
+                {reel.mediaType === "image" && (
                     <img
                         src={reel.mediaUrl}
                         alt={reel.title}
                         className="w-full h-full object-cover"
+                        onDoubleClick={handleDoubleTap} // FIXED
                     />
                 )}
 
-                {/* Play Overlay */}
-                {!isPlaying && isActive && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                        <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center">
+                {/* PLAY OVERLAY (only videos) */}
+                {!isPlaying && isActive && reel.mediaType === "video" && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+                        <div className="w-20 h-20 bg-white/15 backdrop-blur-md rounded-full flex items-center justify-center">
                             <FaPlay className="text-white text-4xl ml-1" />
                         </div>
                     </div>
                 )}
 
-                {/* Double Tap ❤️ */}
+                {/* ❤️ DOUBLE TAP ANIMATION */}
                 <AnimatePresence>
                     {showHeartAnimation && (
                         <motion.div
-                            initial={{ scale: 0, opacity: 0 }}
-                            animate={{ scale: 1.4, opacity: 1 }}
-                            exit={{ scale: 0, opacity: 0 }}
+                            initial={{ scale: 0.6, opacity: 0, y: 30 }}
+                            animate={{ scale: 1.2, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.6, opacity: 0, y: -40 }}
+                            transition={{ duration: 0.9, ease: "easeOut" }}
                             className="absolute inset-0 flex items-center justify-center pointer-events-none"
                         >
-                            <FaHeart className="text-red-500 text-8xl drop-shadow-2xl" />
+                            <FaHeart className="text-red-500 text-6xl drop-shadow-xl" />
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -200,9 +195,7 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
             <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/60 to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/90 to-transparent" />
 
-            {/* ================================
-                RIGHT ACTION BAR
-            ================================= */}
+            {/* RIGHT ACTION BAR */}
             <div className="absolute right-4 bottom-44 flex flex-col items-center gap-6 z-20">
 
                 {/* Profile */}
@@ -210,7 +203,6 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                     <div className="w-12 h-12 rounded-full border-2 border-white overflow-hidden">
                         <img
                             src={reel.editor.profilePicture}
-                            alt={reel.editor.name}
                             className="w-full h-full object-cover"
                         />
                     </div>
@@ -226,7 +218,7 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                     className="flex flex-col items-center text-white"
                 >
                     <motion.div
-                        animate={isLiked ? { scale: [1, 1.4, 1] } : {}}
+                        animate={isLiked ? { scale: [1, 1.3, 1] } : {}}
                         className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center"
                     >
                         {isLiked ? (
@@ -261,7 +253,7 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                 {/* Share */}
                 <motion.button
                     whileTap={{ scale: 0.85 }}
-                    onClick={handleShare}
+                    onClick={() => navigator.share?.({ url: window.location.href })}
                     className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center"
                 >
                     <FaShare className="text-white text-xl" />
@@ -283,9 +275,7 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                 )}
             </div>
 
-            {/* ================================
-                BOTTOM INFO TEXT
-            ================================= */}
+            {/* BOTTOM TEXT */}
             <div className="absolute bottom-16 left-5 right-24 z-20 text-white">
                 <div className="flex items-center gap-2 mb-2">
                     <h3 className="font-bold text-lg">{reel.editor.name}</h3>
@@ -300,9 +290,7 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                 </p>
             </div>
 
-            {/* ================================
-                SUVI X BRAND WATERMARK
-            ================================= */}
+            {/* WATERMARK */}
             <div className="absolute bottom-4 right-4 flex items-center gap-1 opacity-90 pointer-events-none z-20">
                 <img src={logo} className="w-6 h-6 rounded-md" />
                 <span className="text-white font-semibold text-xs tracking-wider opacity-90">
@@ -310,14 +298,11 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                 </span>
             </div>
 
-            {/* ================================
-                TIMELINE SCRUB BAR (NEW)
-            ================================= */}
+            {/* SCRUB BAR */}
             {reel.mediaType === "video" && (
                 <div
                     ref={scrubRef}
-                    onMouseDown={handleScrub}
-onTouchStart={handleScrub}
+                    onClick={handleScrub}
                     className="absolute bottom-8 left-5 right-5 h-3 bg-white/20 rounded-full cursor-pointer z-30"
                 >
                     <motion.div
@@ -326,35 +311,33 @@ onTouchStart={handleScrub}
                     />
                 </div>
             )}
-            {/* ================================
-    SWIPE RIGHT HINT (ONLY FIRST TIME)
-================================ */}
-<AnimatePresence>
-    {showSwipeHint && (
-        <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.35 }}
-            className="absolute bottom-24 left-5 z-30 pointer-events-none"
-        >
-            <div className="flex items-center gap-2 bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
-                <span className="text-white text-xs font-semibold">Swipe right to exit</span>
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-3.5 w-3.5 text-white"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-            </div>
-        </motion.div>
-    )}
-</AnimatePresence>
 
+            {/* SWIPE RIGHT HINT */}
+            <AnimatePresence>
+                {showSwipeHint && (
+                    <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.35 }}
+                        className="absolute bottom-24 left-5 z-30 pointer-events-none"
+                    >
+                        <div className="flex items-center gap-2 bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
+                            <span className="text-white text-xs font-semibold">Swipe right to exit</span>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-3.5 w-3.5 text-white"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth="3"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
