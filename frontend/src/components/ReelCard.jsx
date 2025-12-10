@@ -168,7 +168,7 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
 
                 {/* PLAY OVERLAY (only videos) */}
                 {!isPlaying && isActive && reel.mediaType === "video" && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+                    <div className="absolute inset-0 flex items-center justify-center bg-zinc/25">
                         <div className="w-20 h-20 bg-white/15 backdrop-blur-md rounded-full flex items-center justify-center">
                             <FaPlay className="text-white text-4xl ml-1" />
                         </div>
