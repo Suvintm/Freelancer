@@ -338,7 +338,7 @@ const ChatBoxPage = () => {
         backgroundImage: "url('/src/assets/chattexture.png')",
         backgroundSize: "200px 200px",
         backgroundRepeat: "repeat",
-        backgroundColor: "black/50",
+        
       }}
     >
       {/* ---------------- HEADER ---------------- */}
