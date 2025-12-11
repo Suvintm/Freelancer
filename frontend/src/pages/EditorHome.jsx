@@ -3,6 +3,7 @@ import {
   FaExclamationCircle,
   FaArrowAltCircleRight,
   FaFacebookMessenger,
+  FaVideo,
 } from "react-icons/fa";
 import { FaUsers, FaBriefcase, FaPlayCircle } from "react-icons/fa";
 
@@ -14,12 +15,21 @@ import ExploreEditor from "../components/ExploreEditor.jsx";
 import ExploreGigs from "../components/ExploreGigs.jsx";
 import AllChatsPage from "../pages/AllChatsPage.jsx";
 import { motion } from "framer-motion";
+import { BiCameraMovie } from "react-icons/bi";
+
+import reelIcon from "../assets/reelicon.png";
+
+
 
 const EditorHome = () => {
   const { user } = useAppContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("editors");
   const navigate = useNavigate();
+
+  
+
+
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] text-white">
@@ -64,7 +74,7 @@ const EditorHome = () => {
   <motion.div
     layout
     className="
-      bg-[#111319] border border-[#262A3B]
+      bg-[#111319] border border-white/40
       rounded-2xl p-2 flex gap-1 md:gap-4 lg:gap-6
       relative transition-all
       max-w-full overflow-x-auto scrollbar-hide
@@ -75,7 +85,7 @@ const EditorHome = () => {
       onClick={() => setActiveTab('editors')}
       className={`
         relative 
-        px-3 py-2 
+        px-3 py-4 
         md:px-6 md:py-2.5 
         lg:px-7 lg:py-3
         rounded-2xl 
@@ -113,7 +123,7 @@ const EditorHome = () => {
       onClick={() => setActiveTab('gigs')}
       className={`
         relative 
-        px-3 py-2 
+        px-3 py-4 
         md:px-6 md:py-2.5 
         lg:px-7 lg:py-3
         rounded-2xl 
@@ -151,7 +161,7 @@ const EditorHome = () => {
       onClick={() => setActiveTab('chats')}
       className={`
         relative 
-        px-3 py-2 
+        px-3 py-4 
         md:px-6 md:py-2.5 
         lg:px-7 lg:py-3
         rounded-2xl 
@@ -188,7 +198,7 @@ const EditorHome = () => {
     <button
       onClick={() => navigate('/reels')}
       className="
-        px-3 py-2 
+        px-3 py-4
         md:px-6 md:py-2.5 
         lg:px-7 lg:py-3
         rounded-2xl 
@@ -215,6 +225,36 @@ const EditorHome = () => {
           {activeTab === "gigs" && <ExploreGigs />}
           {activeTab === "chats" && navigate("/chats")}
         </div>
+
+       {/* Floating Instagram Reels Button */}
+{/* Floating Instagram Reels Button */}
+{/* Floating Reels Button */}
+<motion.button
+  onClick={() => navigate("/reels")}
+  initial={{ scale: 0 }}
+  animate={{ scale: 1 }}
+  transition={{ type: "spring", stiffness: 260, damping: 20 }}
+  className="
+    fixed bottom-6 right-6 
+    z-[200]
+    w-13 h-13 
+    rounded-full 
+    bg-black 
+    border border-blue-500
+    animate-spin
+    flex items-center justify-center
+    active:scale-90
+  "
+>
+  <img
+    src={reelIcon}
+    alt="reels"
+    className="w-6 h-6 object-contain"
+  />
+</motion.button>
+
+
+
       </main>
     </div>
   );
