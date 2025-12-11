@@ -11,9 +11,13 @@ import {
   FaMicrophone,
   FaStop,
   FaSmile,
+  FaMoneyBill,
+  FaPercentage,
+  FaWallet,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
+import chattexture from "../assets/chattexture.png";
 
 const ChatBoxPage = () => {
   const navigate = useNavigate();
@@ -44,7 +48,7 @@ const ChatBoxPage = () => {
     editor: "Aadhya Editing Studio",
   };
 
-  // Vertical payment progress (0–3)
+  // Payment stages
   const paymentStage = 2;
   const paymentStages = [
     "Client paid – money in escrow",
@@ -52,7 +56,7 @@ const ChatBoxPage = () => {
     "Editor payment released",
   ];
 
-  // Project workflow progress (0–3)
+  // Work stages
   const workStage = 1;
   const workStages = [
     "Order Accepted",
@@ -61,7 +65,7 @@ const ChatBoxPage = () => {
     "Completed",
   ];
 
-  // Dummy Messages (kept original messages + small additions for demo)
+  // Dummy messages
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -99,12 +103,10 @@ const ChatBoxPage = () => {
 
   const [newMessage, setNewMessage] = useState("");
 
-  // Scroll to bottom whenever messages change
+  // Auto scroll
   useEffect(() => {
     scrollToBottom({ behavior: "smooth" });
-    // auto-mark incoming editor messages as seen by client after short delay (simulation)
-    // preserve original "seen" logic: only set seen if not already true and message.sender !== 'editor'?
-    // We'll simulate that messages from editor will be 'seen' by client when client views (component mounted)
+
     const unseenEditorIds = messages
       .filter((m) => m.sender === "editor" && !m.seen)
       .map((m) => m.id);
@@ -116,17 +118,15 @@ const ChatBoxPage = () => {
             unseenEditorIds.includes(m.id) ? { ...m, seen: true } : m
           )
         );
-      }, 900); // small simulated delay
+      }, 900);
       return () => clearTimeout(t);
     }
   }, [messages]);
 
-  // helper: scroll bottom
   const scrollToBottom = ({ behavior = "auto" } = {}) => {
     messagesEndRef.current?.scrollIntoView({ behavior, block: "end" });
   };
 
-  // send message (keeps original logic, extended)
   const sendMessage = () => {
     if (!newMessage.trim()) return;
 
@@ -146,7 +146,6 @@ const ChatBoxPage = () => {
     setNewMessage("");
     setTyping(false);
 
-    // simulated "delivered" -> "seen" by receiver after short interval
     setTimeout(() => {
       setMessages((prev) =>
         prev.map((m, i) =>
@@ -156,13 +155,16 @@ const ChatBoxPage = () => {
     }, 200);
   };
 
-  // file upload (keeps original logic)
   const handleFileUpload = (e) => {
     const file = e.target.files ? e.target.files[0] : null;
     if (!file) return;
 
     const fileObj = {
-      type: file.type.includes("video") ? "video" : file.type.includes("audio") ? "audio" : "file",
+      type: file.type.includes("video")
+        ? "video"
+        : file.type.includes("audio")
+        ? "audio"
+        : "file",
       name: file.name,
       size: `${Math.round(file.size / 1024 / 1024)}MB`,
       url: URL.createObjectURL(file),
@@ -181,56 +183,38 @@ const ChatBoxPage = () => {
       },
     ]);
 
-    // reset input to allow same file re-upload
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Double-tap reaction handler
   const handleReaction = (messageId, emoji = "❤️") => {
     setMessages((prev) =>
       prev.map((m) => {
         if (m.id !== messageId) return m;
         const reactions = { ...(m.reactions || {}) };
-        // toggle the emoji count
-        if (reactions[emoji]) {
-          reactions[emoji] = reactions[emoji] + 1;
-        } else {
-          reactions[emoji] = 1;
-        }
+        reactions[emoji] = (reactions[emoji] || 0) + 1;
         return { ...m, reactions };
       })
     );
   };
 
-  // Message bubble double-click behavior (double tap to react)
-  // We'll use onDoubleClick for desktop and detect quick two taps for mobile as well
   const lastTapRef = useRef(0);
   const handleBubbleTap = (msg) => {
     const now = Date.now();
     if (now - lastTapRef.current < 300) {
-      // double tap detected
       handleReaction(msg.id, "❤️");
     }
     lastTapRef.current = now;
   };
 
-  // Voice recording (press & hold)
   useEffect(() => {
-    // cleanup on unmount
     return () => {
       if (mediaRecorder && mediaRecorder.state !== "inactive") {
         mediaRecorder.stop();
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const startRecording = async () => {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert("Recording not supported in this browser");
-      return;
-    }
-
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mr = new MediaRecorder(stream);
@@ -238,13 +222,12 @@ const ChatBoxPage = () => {
       setAudioChunks([]);
 
       mr.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) {
+        if (e.data.size > 0) {
           setAudioChunks((prev) => [...prev, e.data]);
         }
       };
 
       mr.onstop = () => {
-        // assemble blob and add message
         const blob = new Blob(audioChunks, { type: "audio/webm" });
         const url = URL.createObjectURL(blob);
 
@@ -268,29 +251,26 @@ const ChatBoxPage = () => {
             reactions: {},
           },
         ]);
+
         setRecording(false);
       };
 
       mr.start();
       setRecording(true);
     } catch (err) {
-      console.error("Microphone access denied", err);
+      console.error("Mic denied", err);
     }
   };
 
   const stopRecording = () => {
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
       mediaRecorder.stop();
-    } else {
-      setRecording(false);
     }
   };
 
-  // Seen-by-both: simulated when component mounted / user opens chat, mark client-sent messages as seen by editor
   useEffect(() => {
-    // Mark messages from client as seen=true (simulate viewer viewed them)
-    const clientUnseen = messages.some((m) => m.sender === "client" && !m.seen);
-    if (clientUnseen) {
+    const unseen = messages.some((m) => m.sender === "client" && !m.seen);
+    if (unseen) {
       const t = setTimeout(() => {
         setMessages((prev) =>
           prev.map((m) => (m.sender === "client" ? { ...m, seen: true } : m))
@@ -298,10 +278,8 @@ const ChatBoxPage = () => {
       }, 900);
       return () => clearTimeout(t);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Typing indicator simulation (someone else typing)
   useEffect(() => {
     const t = setTimeout(() => {
       setTyping(false);
@@ -309,7 +287,6 @@ const ChatBoxPage = () => {
     return () => clearTimeout(t);
   }, [typing]);
 
-  // small helper to format reaction display (show up to first 2 emojis)
   const renderReactions = (reactions) => {
     if (!reactions || Object.keys(reactions).length === 0) return null;
     return (
@@ -320,7 +297,6 @@ const ChatBoxPage = () => {
             <div
               key={emoji}
               className="px-2 py-0.5 bg-white/10 text-xs rounded-xl flex items-center gap-1"
-              title={`${emoji} x ${count}`}
             >
               <span>{emoji}</span>
               <span className="text-[11px] text-gray-300">{count}</span>
@@ -334,11 +310,9 @@ const ChatBoxPage = () => {
     <div
       className="fixed inset-0 text-white flex flex-col"
       style={{
-        // using exact path you provided:
-        backgroundImage: "url('/src/assets/chattexture.png')",
+        backgroundImage: `url(${chattexture})`,
         backgroundSize: "200px 200px",
         backgroundRepeat: "repeat",
-        
       }}
     >
       {/* ---------------- HEADER ---------------- */}
@@ -352,12 +326,10 @@ const ChatBoxPage = () => {
 
         <div className="relative">
           <img src={chatUser.avatar} className="w-12 h-12 rounded-xl object-cover" />
-          {/* online pulse */}
           <span
             className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[#0e0f11] ${
               chatUser.online ? "bg-green-400 animate-pulse" : "bg-gray-600"
             }`}
-            title={chatUser.online ? "Online" : "Offline"}
           />
         </div>
 
@@ -366,7 +338,6 @@ const ChatBoxPage = () => {
           <span className="text-xs text-gray-400">{chatUser.role}</span>
         </div>
 
-        {/* Dropdown toggle */}
         <button
           onClick={() => setDropdownOpen(!dropdownOpen)}
           className="ml-auto flex items-center gap-1 text-gray-300 hover:text-white"
@@ -376,14 +347,14 @@ const ChatBoxPage = () => {
         </button>
       </div>
 
-      {/* ---------------- DROPDOWN MENU ---------------- */}
+      {/* ---------------- DROPDOWN ---------------- */}
       <AnimatePresence>
         {dropdownOpen && (
           <motion.div
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
-            className="bg-[#111315]/95 backdrop-blur-xl border-b border-white/10 px-5 py-4 space-y-5"
+            className="bg-[#111315]/95 backdrop-blur-xl border-b border-white/10 px-5 py-4 space-y-6"
           >
             {/* Project Info */}
             <div>
@@ -396,60 +367,129 @@ const ChatBoxPage = () => {
               </div>
             </div>
 
-            {/* Payment Progress */}
-            <div>
-              <p className="text-sm font-semibold mb-2">Payment Status</p>
-              <div className="flex gap-4">
-                {/* Vertical Line */}
-                <div className="flex flex-col items-center">
-                  {paymentStages.map((_, i) => (
-                    <div key={i} className="flex flex-col items-center">
-                      <div className={`w-3 h-3 rounded-full ${i <= paymentStage ? "bg-emerald-400" : "bg-gray-700"}`}></div>
-                      {i < paymentStages.length - 1 && (
-                        <div className={`w-1 h-6 ${i < paymentStage ? "bg-emerald-400" : "bg-gray-700"}`}></div>
-                      )}
+            {/* Status Sections Left + Payment Receipt Right */}
+            <div className="flex gap-6">
+
+              {/* LEFT SIDE — PAYMENT + WORK STATUS */}
+              <div className="flex-1 space-y-6">
+                {/* Payment Status */}
+                <div>
+                  <p className="text-sm font-semibold mb-2">Payment Status</p>
+                  <div className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      {paymentStages.map((_, i) => (
+                        <div key={i} className="flex flex-col items-center">
+                          <div
+                            className={`w-3 h-3 rounded-full ${
+                              i <= paymentStage ? "bg-emerald-400" : "bg-gray-700"
+                            }`}
+                          ></div>
+                          {i < paymentStages.length - 1 && (
+                            <div
+                              className={`w-1 h-6 ${
+                                i < paymentStage ? "bg-emerald-400" : "bg-gray-700"
+                              }`}
+                            ></div>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
+
+                    <div className="flex flex-col text-xs text-gray-300 gap-4">
+                      {paymentStages.map((t, i) => (
+                        <p
+                          key={i}
+                          className={`${
+                            i <= paymentStage ? "text-emerald-400" : "text-gray-500"
+                          }`}
+                        >
+                          {t}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
-                {/* Text */}
-                <div className="flex flex-col text-xs text-gray-300 gap-4">
-                  {paymentStages.map((t, i) => (
-                    <p key={i} className={`${i <= paymentStage ? "text-emerald-400" : "text-gray-500"}`}>{t}</p>
-                  ))}
+                {/* Work Status */}
+                <div>
+                  <p className="text-sm font-semibold mb-2">Project Workflow</p>
+                  <div className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      {workStages.map((_, i) => (
+                        <div key={i} className="flex flex-col items-center">
+                          <div
+                            className={`w-3 h-3 rounded-full ${
+                              i <= workStage ? "bg-blue-400" : "bg-gray-700"
+                            }`}
+                          ></div>
+                          {i < workStages.length - 1 && (
+                            <div
+                              className={`w-1 h-6 ${
+                                i < workStage ? "bg-blue-400" : "bg-gray-700"
+                              }`}
+                            ></div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-col text-xs text-gray-300 gap-4">
+                      {workStages.map((t, i) => (
+                        <p
+                          key={i}
+                          className={`${
+                            i <= workStage ? "text-blue-400" : "text-gray-500"
+                          }`}
+                        >
+                          {t}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Work Progress */}
-            <div>
-              <p className="text-sm font-semibold mb-2">Project Workflow</p>
-              <div className="flex gap-4">
-                {/* Vertical Line */}
-                <div className="flex flex-col items-center">
-                  {workStages.map((_, i) => (
-                    <div key={i} className="flex flex-col items-center">
-                      <div className={`w-3 h-3 rounded-full ${i <= workStage ? "bg-blue-400" : "bg-gray-700"}`}></div>
-                      {i < workStages.length - 1 && (
-                        <div className={`w-1 h-6 ${i < workStage ? "bg-blue-400" : "bg-gray-700"}`}></div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+              {/* RIGHT SIDE — PAYMENT RECEIPT */}
+              <div className="flex-1 bg-[#141618] p-5 rounded-xl border border-white/10 shadow-lg">
+                <p className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                  <FaWallet className="text-green-400" /> Payment Breakdown
+                </p>
 
-                {/* Text */}
-                <div className="flex flex-col text-xs text-gray-300 gap-4">
-                  {workStages.map((t, i) => (
-                    <p key={i} className={`${i <= workStage ? "text-blue-400" : "text-gray-500"}`}>{t}</p>
-                  ))}
+                <div className="space-y-3">
+                  {/* Amount Paid */}
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-white text-sm flex items-center gap-2">
+                      <FaMoneyBill className="text-green-400" /> Amount Paid
+                    </span>
+                    <span className="text-green-400 font-bold text-lg">₹600</span>
+                  </div>
+
+                  {/* Platform Fee */}
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-orange-300 text-sm flex items-center gap-2">
+                      <FaPercentage className="text-orange-400" /> Platform Fee (10%)
+                    </span>
+                    <span className="text-orange-400 font-bold text-md">-₹60</span>
+                  </div>
+
+                  <div className="border-t border-white/10 my-2"></div>
+
+                  {/* Final Received */}
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-green-300 text-sm flex items-center gap-2">
+                      <FaWallet className="text-green-500" /> Amount to Editor
+                    </span>
+                    <span className="text-green-500 font-extrabold text-2xl">₹540</span>
+                  </div>
                 </div>
               </div>
+
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ---------------- CHAT MESSAGES ---------------- */}
+      {/* ---------------- CHAT AREA ---------------- */}
       <div ref={containerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg) => {
           const isSender = msg.sender === "editor";
@@ -461,19 +501,17 @@ const ChatBoxPage = () => {
                 onClick={() => handleBubbleTap(msg)}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                whileHover={{ scale: 1.01 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
                 className={`max-w-[70%] p-3 rounded-2xl text-sm shadow-lg break-words ${
-                  isSender ? "bg-[#1D4ED8] text-white rounded-br-none" : "bg-[#111315] text-gray-200 rounded-bl-none border border-white/10"
+                  isSender
+                    ? "bg-[#1D4ED8] text-white rounded-br-none"
+                    : "bg-[#111315] text-gray-200 rounded-bl-none border border-white/10"
                 }`}
               >
                 {msg.file ? (
                   <>
-                    {/* Video/File thumb */}
                     {msg.file.type === "video" && (
                       <div className="flex items-center gap-3">
                         <div className="w-28 h-16 rounded-lg overflow-hidden bg-black/40 flex items-center justify-center">
-                          {/* show video thumbnail if url exists */}
                           {msg.file.url ? (
                             <video src={msg.file.url} className="w-full h-full object-cover" muted />
                           ) : (
@@ -497,7 +535,7 @@ const ChatBoxPage = () => {
                       </div>
                     )}
 
-                    {msg.file.type === "file" && msg.file.type !== "video" && msg.file.type !== "audio" && (
+                    {msg.file.type === "file" && (
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center text-gray-300">
                           📎
@@ -513,7 +551,6 @@ const ChatBoxPage = () => {
                   <p>{msg.text}</p>
                 )}
 
-                {/* reactions */}
                 {renderReactions(msg.reactions)}
 
                 <div className="flex items-center justify-end gap-1 mt-1 text-[10px] opacity-70">
@@ -524,19 +561,23 @@ const ChatBoxPage = () => {
                     ) : (
                       <FaCheck className="text-gray-300" />
                     )
-                  ) : (
-                    msg.delivered ? <FaCheck className="text-gray-300" /> : null
-                  )}
+                  ) : msg.delivered ? (
+                    <FaCheck className="text-gray-300" />
+                  ) : null}
                 </div>
               </motion.div>
             </div>
           );
         })}
 
-        {/* typing indicator */}
         <AnimatePresence>
           {typing && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.95 }} exit={{ opacity: 0 }} className="flex items-start gap-3">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.95 }}
+              exit={{ opacity: 0 }}
+              className="flex items-start gap-3"
+            >
               <div className="w-10 h-10 bg-white/5 rounded-xl" />
               <div className="bg-[#111315] px-3 py-2 rounded-2xl text-sm text-gray-300">
                 <div className="flex gap-1 items-center">
@@ -552,12 +593,11 @@ const ChatBoxPage = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ---------------- INPUT AREA ---------------- */}
+      {/* ---------------- INPUT BAR ---------------- */}
       <div className="p-4 bg-[#0E0F11]/95 border-t border-white/10 flex items-center gap-3">
         <button
           onClick={() => fileInputRef.current.click()}
           className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition"
-          title="Attach file"
         >
           <FaPaperclip />
         </button>
@@ -580,13 +620,12 @@ const ChatBoxPage = () => {
           }}
         />
 
-        {/* Voice record: press & hold */}
+        {/* Voice Message */}
         <div className="relative">
           {!recording ? (
             <button
               onMouseDown={startRecording}
               onTouchStart={startRecording}
-              title="Hold to record voice"
               className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition"
             >
               <FaMicrophone />
@@ -595,8 +634,7 @@ const ChatBoxPage = () => {
             <button
               onMouseUp={stopRecording}
               onTouchEnd={stopRecording}
-              title="Release to send"
-              className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center hover:scale-105 transition"
+              className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center hover:scale-110 transition"
             >
               <FaStop />
             </button>
@@ -606,7 +644,6 @@ const ChatBoxPage = () => {
         <button
           onClick={sendMessage}
           className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition"
-          title="Send"
         >
           <FaPaperPlane className="text-white text-sm" />
         </button>
