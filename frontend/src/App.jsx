@@ -10,6 +10,7 @@ import AddPortfolio from "./pages/addportfolio.jsx";
 import PublicEditorProfile from "./pages/PublicEditorProfile.jsx";
 import ReelsPage from "./pages/ReelsPage.jsx";
 import NotificationsPage from "./pages/NotificationsPage.jsx";
+import ChatsPage from "./pages/AllChatsPage.jsx";
 
 // OAuth Pages
 import OAuthSuccess from "./pages/OAuthSuccess.jsx";
@@ -113,6 +114,17 @@ function App() {
         />
 
         {/* Chat (accessible by any logged-in user) */}
+
+
+         <Route
+          path="/chats"
+          element={
+            <ProtectedRoute>
+              <ChatsPage/>
+            </ProtectedRoute>
+          }
+        />
+       
         <Route
           path="/chat/:orderId"
           element={

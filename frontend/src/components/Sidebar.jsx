@@ -15,7 +15,7 @@ const navItems = [
   { path: "/editor-home", icon: FaBriefcase, label: "Dashboard" },
   { path: "/editor-my-orders", icon: FaCheckCircle, label: "My Orders" },
   { path: "/editor-profile", icon: FaUserTie, label: "Profile" },
-  { path: "/editor-messages", icon: FaEnvelope, label: "Messages" },
+  { path: "/chats", icon: FaEnvelope, label: "Messages" },
 ];
 
 const Sidebar = ({ isOpen, onClose }) => {
