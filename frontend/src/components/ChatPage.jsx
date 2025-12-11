@@ -1,14 +1,14 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import {
   FaArrowLeft,
   FaPaperPlane,
-  FaSmile,
   FaPaperclip,
   FaFileVideo,
+  FaChevronDown,
   FaCheck,
   FaCheckDouble,
 } from "react-icons/fa";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
 
 const ChatBoxPage = () => {
@@ -16,18 +16,39 @@ const ChatBoxPage = () => {
   const { chatId } = useParams();
   const fileInputRef = useRef(null);
 
-  // Dummy Chat Info (replace with API later)
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // Dummy Chat User
   const chatUser = {
     name: "John Smith",
     role: "Client",
     avatar: "https://randomuser.me/api/portraits/men/75.jpg",
   };
 
-  // Dummy Project Status
-  const projectStatus = {
-    work: "In Progress", // Pending | In Progress | Completed
-    payment: "Escrow Success", // Escrow Failed
+  // Dummy Project Details
+  const projectDetails = {
+    orderName: "Wedding Teaser – Order #1023",
+    chatId: chatId,
+    client: "John Smith",
+    editor: "Aadhya Editing Studio",
   };
+
+  // Vertical payment progress (0–3)
+  const paymentStage = 2; 
+  const paymentStages = [
+    "Client paid – money in escrow",
+    "Escrow verified",
+    "Editor payment released",
+  ];
+
+  // Project workflow progress (0–3)
+  const workStage = 1;
+  const workStages = [
+    "Order Accepted",
+    "In Progress",
+    "Draft Submitted",
+    "Completed",
+  ];
 
   // Dummy Messages
   const [messages, setMessages] = useState([
@@ -57,18 +78,10 @@ const ChatBoxPage = () => {
       time: "2:47 PM",
       delivered: true,
     },
-    {
-      id: 4,
-      sender: "editor",
-      text: "Got it! Will share draft by tonight.",
-      time: "2:48 PM",
-      delivered: true,
-    },
   ]);
 
   const [newMessage, setNewMessage] = useState("");
 
-  // Handle sending message
   const sendMessage = () => {
     if (!newMessage.trim()) return;
 
@@ -86,7 +99,6 @@ const ChatBoxPage = () => {
     setNewMessage("");
   };
 
-  // Handle file upload
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -108,10 +120,17 @@ const ChatBoxPage = () => {
   };
 
   return (
-    <div className="fixed inset-0 bg-[#0B0B0D] text-white flex flex-col">
-
-      {/* HEADER */}
-      <div className="flex items-center gap-4 px-5 py-4 bg-[#0e0f11]/80 backdrop-blur-xl border-b border-white/10">
+    <div
+      className="fixed inset-0 text-white flex flex-col"
+      style={{
+        backgroundImage: "url('/assets/chattexture.png')", // your doodle texture
+        backgroundSize: "cover",
+        backgroundRepeat: "repeat",
+        backgroundColor: "#0B0B0D",
+      }}
+    >
+      {/* ---------------- HEADER ---------------- */}
+      <div className="flex items-center gap-4 px-5 py-4 bg-[#0e0f11]/90 backdrop-blur-xl border-b border-white/10">
         <button
           onClick={() => navigate(-1)}
           className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition"
@@ -128,34 +147,119 @@ const ChatBoxPage = () => {
           <span className="font-semibold text-lg">{chatUser.name}</span>
           <span className="text-xs text-gray-400">{chatUser.role}</span>
         </div>
+
+        {/* Dropdown toggle */}
+        <button
+          onClick={() => setDropdownOpen(!dropdownOpen)}
+          className="ml-auto flex items-center gap-1 text-gray-300 hover:text-white"
+        >
+          <span className="text-sm">Status</span>
+          <FaChevronDown
+            className={`transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
+          />
+        </button>
       </div>
 
-      {/* PROJECT STATUS */}
-      <div className="px-5 py-3 border-b border-white/10 bg-[#111315] flex justify-between text-sm">
-        <span
-          className={`px-3 py-1 rounded-full font-semibold ${
-            projectStatus.work === "Completed"
-              ? "bg-green-600/20 text-green-400 border border-green-600/30"
-              : projectStatus.work === "In Progress"
-              ? "bg-blue-600/20 text-blue-300 border border-blue-600/30"
-              : "bg-yellow-600/20 text-yellow-300 border border-yellow-600/30"
-          }`}
-        >
-          {projectStatus.work}
-        </span>
+      {/* ---------------- DROPDOWN MENU ---------------- */}
+      <AnimatePresence>
+        {dropdownOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            className="bg-[#111315]/95 backdrop-blur-xl border-b border-white/10 px-5 py-4 space-y-5"
+          >
+            {/* Project Info */}
+            <div>
+              <p className="text-sm font-semibold text-white">Project Details</p>
+              <div className="text-xs text-gray-300 space-y-1 mt-2">
+                <p>Order Name: {projectDetails.orderName}</p>
+                <p>Client: {projectDetails.client}</p>
+                <p>Editor: {projectDetails.editor}</p>
+                <p>Chat ID: {projectDetails.chatId}</p>
+              </div>
+            </div>
 
-        <span
-          className={`px-3 py-1 rounded-full font-semibold ${
-            projectStatus.payment === "Escrow Success"
-              ? "bg-emerald-600/20 text-emerald-300 border border-emerald-600/30"
-              : "bg-red-600/20 text-red-300 border border-red-600/30"
-          }`}
-        >
-          {projectStatus.payment}
-        </span>
-      </div>
+            {/* Payment Progress */}
+            <div>
+              <p className="text-sm font-semibold mb-2">Payment Status</p>
+              <div className="flex gap-4">
+                {/* Vertical Line */}
+                <div className="flex flex-col items-center">
+                  {paymentStages.map((_, i) => (
+                    <div key={i} className="flex flex-col items-center">
+                      <div
+                        className={`w-3 h-3 rounded-full ${
+                          i <= paymentStage ? "bg-emerald-400" : "bg-gray-700"
+                        }`}
+                      ></div>
+                      {i < paymentStages.length - 1 && (
+                        <div
+                          className={`w-1 h-6 ${
+                            i < paymentStage ? "bg-emerald-400" : "bg-gray-700"
+                          }`}
+                        ></div>
+                      )}
+                    </div>
+                  ))}
+                </div>
 
-      {/* CHAT MESSAGES */}
+                {/* Text */}
+                <div className="flex flex-col text-xs text-gray-300 gap-4">
+                  {paymentStages.map((t, i) => (
+                    <p
+                      key={i}
+                      className={`${i <= paymentStage ? "text-emerald-400" : "text-gray-500"}`}
+                    >
+                      {t}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Work Progress */}
+            <div>
+              <p className="text-sm font-semibold mb-2">Project Workflow</p>
+              <div className="flex gap-4">
+                {/* Vertical Line */}
+                <div className="flex flex-col items-center">
+                  {workStages.map((_, i) => (
+                    <div key={i} className="flex flex-col items-center">
+                      <div
+                        className={`w-3 h-3 rounded-full ${
+                          i <= workStage ? "bg-blue-400" : "bg-gray-700"
+                        }`}
+                      ></div>
+                      {i < workStages.length - 1 && (
+                        <div
+                          className={`w-1 h-6 ${
+                            i < workStage ? "bg-blue-400" : "bg-gray-700"
+                          }`}
+                        ></div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Text */}
+                <div className="flex flex-col text-xs text-gray-300 gap-4">
+                  {workStages.map((t, i) => (
+                    <p
+                      key={i}
+                      className={`${i <= workStage ? "text-blue-400" : "text-gray-500"}`}
+                    >
+                      {t}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ---------------- CHAT MESSAGES ---------------- */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg) => {
           const isSender = msg.sender === "editor";
@@ -163,9 +267,7 @@ const ChatBoxPage = () => {
           return (
             <div
               key={msg.id}
-              className={`flex ${
-                isSender ? "justify-end" : "justify-start"
-              }`}
+              className={`flex ${isSender ? "justify-end" : "justify-start"}`}
             >
               <div
                 className={`max-w-[70%] p-3 rounded-2xl text-sm shadow-lg ${
@@ -174,7 +276,6 @@ const ChatBoxPage = () => {
                     : "bg-[#111315] text-gray-200 rounded-bl-none border border-white/10"
                 }`}
               >
-                {/* FILE MESSAGE */}
                 {msg.file ? (
                   <div className="flex items-center gap-3">
                     <FaFileVideo className="text-xl text-blue-300" />
@@ -202,8 +303,8 @@ const ChatBoxPage = () => {
         })}
       </div>
 
-      {/* INPUT BAR */}
-      <div className="p-4 bg-[#0E0F11] border-t border-white/10 flex items-center gap-3">
+      {/* ---------------- INPUT AREA ---------------- */}
+      <div className="p-4 bg-[#0E0F11]/95 border-t border-white/10 flex items-center gap-3">
         <button
           onClick={() => fileInputRef.current.click()}
           className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition"
