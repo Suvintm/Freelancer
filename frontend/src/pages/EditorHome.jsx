@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   FaExclamationCircle,
   FaArrowAltCircleRight,
+  FaFacebookMessenger,
 } from "react-icons/fa";
 import { FaUsers, FaBriefcase, FaPlayCircle } from "react-icons/fa";
 
@@ -11,6 +12,7 @@ import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
 import ExploreEditor from "../components/ExploreEditor.jsx";
 import ExploreGigs from "../components/ExploreGigs.jsx";
+import AllChatsPage from "../pages/AllChatsPage.jsx";
 import { motion } from "framer-motion";
 
 const EditorHome = () => {
@@ -62,11 +64,10 @@ const EditorHome = () => {
   <motion.div
     layout
     className="
-      bg-[#111319] border border-[#262A3B] 
-      rounded-3xl p-2 flex gap-2 md:gap-4 lg:gap-6
-      relative
-      md:scale-105 lg:scale-110
-      transition-all
+      bg-[#111319] border border-[#262A3B]
+      rounded-2xl p-2 flex gap-1 md:gap-4 lg:gap-6
+      relative transition-all
+      max-w-full overflow-x-auto scrollbar-hide
     "
   >
     {/* Explore Editors */}
@@ -74,13 +75,14 @@ const EditorHome = () => {
       onClick={() => setActiveTab('editors')}
       className={`
         relative 
-        px-5 py-2.5 
-        md:px-7 md:py-3 
-        lg:px-8 lg:py-3.5 
+        px-3 py-2 
+        md:px-6 md:py-2.5 
+        lg:px-7 lg:py-3
         rounded-2xl 
-        text-sm md:text-base lg:text-lg 
+        text-xs md:text-sm lg:text-base 
         font-semibold 
         flex items-center gap-2 
+        whitespace-nowrap
         transition-all
         ${activeTab === 'editors'
           ? 'text-white'
@@ -101,7 +103,7 @@ const EditorHome = () => {
         />
       )}
       <span className="relative z-10 flex items-center gap-2">
-        <FaUsers className="text-base md:text-lg lg:text-xl" />
+        <FaUsers className="text-sm md:text-base lg:text-lg" />
         <span>Explore Editors</span>
       </span>
     </button>
@@ -111,13 +113,14 @@ const EditorHome = () => {
       onClick={() => setActiveTab('gigs')}
       className={`
         relative 
-        px-5 py-2.5 
-        md:px-7 md:py-3 
-        lg:px-8 lg:py-3.5 
+        px-3 py-2 
+        md:px-6 md:py-2.5 
+        lg:px-7 lg:py-3
         rounded-2xl 
-        text-sm md:text-base lg:text-lg 
+        text-xs md:text-sm lg:text-base 
         font-semibold 
         flex items-center gap-2 
+        whitespace-nowrap
         transition-all
         ${activeTab === 'gigs'
           ? 'text-white'
@@ -138,8 +141,46 @@ const EditorHome = () => {
         />
       )}
       <span className="relative z-10 flex items-center gap-2">
-        <FaBriefcase className="text-base md:text-lg lg:text-xl" />
+        <FaBriefcase className="text-sm md:text-base lg:text-lg" />
         <span>Explore Gigs</span>
+      </span>
+    </button>
+
+    {/* All Chats */}
+    <button
+      onClick={() => setActiveTab('chats')}
+      className={`
+        relative 
+        px-3 py-2 
+        md:px-6 md:py-2.5 
+        lg:px-7 lg:py-3
+        rounded-2xl 
+        text-xs md:text-sm lg:text-base 
+        font-semibold 
+        flex items-center gap-2 
+        whitespace-nowrap
+        transition-all
+        ${activeTab === 'chats'
+          ? 'text-white'
+          : 'text-[#9CA3AF] hover:bg-[#151823]'
+        }
+      `}
+    >
+      {activeTab === 'chats' && (
+        <motion.div
+          layoutId="tabBubble"
+          className="absolute inset-0 rounded-2xl bg-[#1463FF]/20"
+          transition={{
+            type: 'spring',
+            stiffness: 320,
+            damping: 26,
+            mass: 0.4,
+          }}
+        />
+      )}
+      <span className="relative z-10 flex items-center gap-2">
+        <FaFacebookMessenger className="text-sm md:text-base lg:text-lg" />
+        <span>All Chats</span>
       </span>
     </button>
 
@@ -147,18 +188,19 @@ const EditorHome = () => {
     <button
       onClick={() => navigate('/reels')}
       className="
-        px-5 py-2.5 
-        md:px-7 md:py-3 
-        lg:px-8 lg:py-3.5 
+        px-3 py-2 
+        md:px-6 md:py-2.5 
+        lg:px-7 lg:py-3
         rounded-2xl 
-        text-sm md:text-base lg:text-lg
+        text-xs md:text-sm lg:text-base 
         font-semibold 
+        whitespace-nowrap
         flex items-center gap-2
         bg-gradient-to-r from-[#1E3A8A] to-[#1D4ED8]
         text-white transition-all
       "
     >
-      <FaPlayCircle className="text-lg md:text-xl lg:text-2xl" />
+      <FaPlayCircle className="text-sm md:text-lg lg:text-xl" />
       Watch Reels
     </button>
   </motion.div>
@@ -166,10 +208,12 @@ const EditorHome = () => {
 
 
 
+
         {/* Content */}
         <div className="bg-[#111319] border border-[#262A3B] rounded-3xl shadow-[0_18px_50px_rgba(0,0,0,0.7)] p-2 md:p-6">
           {activeTab === "editors" && <ExploreEditor />}
           {activeTab === "gigs" && <ExploreGigs />}
+          {activeTab === "chats" && navigate("/chats")}
         </div>
       </main>
     </div>
