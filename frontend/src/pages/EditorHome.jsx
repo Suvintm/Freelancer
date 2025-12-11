@@ -167,7 +167,7 @@ const EditorHome = () => {
 
 
         {/* Content */}
-        <div className="bg-[#111319] border border-[#262A3B] rounded-3xl shadow-[0_18px_50px_rgba(0,0,0,0.7)] p-4 md:p-6">
+        <div className="bg-[#111319] border border-[#262A3B] rounded-3xl shadow-[0_18px_50px_rgba(0,0,0,0.7)] p-2 md:p-6">
           {activeTab === "editors" && <ExploreEditor />}
           {activeTab === "gigs" && <ExploreGigs />}
         </div>

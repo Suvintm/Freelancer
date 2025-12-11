@@ -21,8 +21,16 @@ import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
 import EmptyState from "./EmptyState.jsx";
 import { motion, AnimatePresence } from "framer-motion";
- 
 
+/**
+ * ExploreEditors — UI upgraded to "Apple-like Elegant Black"
+ * - Soft black background (#0B0B0D)
+ * - Clean cards with subtle borders, rounded corners, shadow
+ * - Typography tuned for T1 (bold headings, medium labels)
+ * - Smooth animations (A3)
+ *
+ * NOTE: Logic (API calls, filters, pagination) is preserved exactly.
+ */
 
 const ExploreEditors = () => {
   const { backendURL, user } = useAppContext();
@@ -35,7 +43,7 @@ const ExploreEditors = () => {
   const [recentSearches, setRecentSearches] = useState([]);
   const searchInputRef = useRef(null);
 
-  // Pagination state
+  // Pagination state (unchanged)
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 12,
@@ -43,7 +51,7 @@ const ExploreEditors = () => {
     pages: 1,
   });
 
-  // Filter options from API
+  // Filter options from API (unchanged)
   const [filterOptions, setFilterOptions] = useState({
     skills: [],
     languages: [],
@@ -51,7 +59,7 @@ const ExploreEditors = () => {
     experience: [],
   });
 
-  // Active filters
+  // Active filters (unchanged)
   const [filters, setFilters] = useState({
     skills: [],
     languages: [],
@@ -66,14 +74,21 @@ const ExploreEditors = () => {
   useEffect(() => {
     const saved = localStorage.getItem("recentEditorSearches");
     if (saved) {
-      setRecentSearches(JSON.parse(saved).slice(0, 5));
+      try {
+        setRecentSearches(JSON.parse(saved).slice(0, 5));
+      } catch {
+        setRecentSearches([]);
+      }
     }
   }, []);
 
   // Save search to recent
   const saveToRecentSearches = (query) => {
     if (!query.trim()) return;
-    const updated = [query, ...recentSearches.filter((s) => s !== query)].slice(0, 5);
+    const updated = [query, ...recentSearches.filter((s) => s !== query)].slice(
+      0,
+      5
+    );
     setRecentSearches(updated);
     localStorage.setItem("recentEditorSearches", JSON.stringify(updated));
   };
@@ -120,9 +135,10 @@ const ExploreEditors = () => {
 
   useEffect(() => {
     fetchEditors(1, "", filters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backendURL, user]);
 
-  // Debounced search
+  // Debounced search (unchanged behavior)
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchQuery) {
@@ -131,11 +147,13 @@ const ExploreEditors = () => {
       fetchEditors(1, searchQuery, filters);
     }, 500);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
   // Re-fetch when filters change
   useEffect(() => {
     fetchEditors(1, searchQuery, filters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const handlePageChange = (newPage) => {
@@ -181,29 +199,31 @@ const ExploreEditors = () => {
 
   if (error) {
     return (
-      <div className="text-center py-16">
-        <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span className="text-3xl">⚠️</span>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center max-w-md p-6 bg-[#0f1112] rounded-2xl border border-[#1b1d1f] shadow-[0_10px_40px_rgba(0,0,0,0.7)]">
+          <div className="w-20 h-20 bg-[#131315] rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl">⚠️</span>
+          </div>
+          <h3 className="text-xl font-semibold text-white mb-2">
+            Oops! Something went wrong
+          </h3>
+          <p className="text-[#9CA3AF] mb-6">{error}</p>
+          <button
+            onClick={() => fetchEditors(1, "", filters)}
+            className="inline-flex items-center gap-2 bg-white/8 text-white px-6 py-2.5 rounded-full font-medium shadow hover:brightness-110 transition"
+          >
+            Try Again
+          </button>
         </div>
-        <h3 className="text-xl font-semibold text-white mb-2">
-          Oops! Something went wrong
-        </h3>
-        <p className="text-[#9CA3AF] mb-6">{error}</p>
-        <button
-          onClick={() => fetchEditors(1, "", filters)}
-          className="bg-[#1463FF] hover:bg-[#275DFF] text-white px-6 py-2.5 rounded-full font-medium shadow-[0_10px_30px_rgba(20,99,255,0.6)] transition-all"
-        >
-          Try Again
-        </button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[60vh]">
+    <div className="min-h-[60vh] px-4 rounded-2xl py-6 bg-[#0B0B0D] text-white">
       {/* Header */}
-      <div className="text-center mb-6">
-        <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+      <div className="text-center mb-6 max-w-4xl mx-auto">
+        <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white mb-2">
           Find Your Perfect Editor
         </h2>
         <p className="text-[#9CA3AF]">
@@ -211,253 +231,226 @@ const ExploreEditors = () => {
         </p>
       </div>
 
-      {/* Search and Filter Bar */}
       {/* Search + Filters Container */}
-{/* MOBILE SEARCH + FILTERS */}
-<div className="flex flex-col gap-3 md:hidden relative">
-
-  {/* Search Bar */}
-  <div className="relative">
-    <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-[#6B7280]" />
-
-    <input
-      ref={searchInputRef}
-      type="text"
-      placeholder="Search by name, skills, languages..."
-      value={searchQuery}
-      onChange={(e) => setSearchQuery(e.target.value)}
-      onFocus={() => setShowSuggestions(true)}
-      onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-      className="w-full py-3 pl-12 pr-10 bg-[#151823] border border-[#262A3B] rounded-2xl text-white placeholder:text-[#6B7280] focus:outline-none focus:ring-2 focus:ring-[#1463FF]"
-    />
-
-    {searchQuery && (
-      <button
-        onClick={() => setSearchQuery("")}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-[#D1D5DB]"
-      >
-        <FaTimes />
-      </button>
-    )}
-
-    {/* Recent Searches Dropdown */}
-    <AnimatePresence>
-      {showSuggestions &&
-        recentSearches.length > 0 &&
-        !searchQuery && (
-          <motion.div
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
-            transition={{ duration: 0.2 }}
-            className="absolute top-full left-0 right-0 mt-2 bg-[#111319] rounded-2xl shadow-xl border border-[#262A3B] py-2 z-20 overflow-hidden"
-          >
-            <div className="px-4 py-2 text-xs text-[#6B7280] uppercase tracking-wider flex items-center gap-2">
-              <FaHistory /> Recent Searches
-            </div>
-
-            {recentSearches.map((search, idx) => (
+      <div className="max-w-6xl mx-auto">
+        {/* MOBILE SEARCH + FILTERS (responsive) */}
+        <div className="flex flex-col gap-3 md:hidden relative mb-4">
+          <div className="relative">
+            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-[#6B7280]" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search by name, skills, languages..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              className="w-full py-3 pl-12 pr-10 bg-[#0f1112] border border-[#2b2f31] rounded-2xl text-white placeholder:text-[#6B7280] focus:outline-none focus:ring-1 focus:ring-[#2b2f31]"
+            />
+            {searchQuery && (
               <button
-                key={idx}
-                onClick={() => setSearchQuery(search)}
-                className="w-full px-4 py-2 text-left text-[#E5E7EB] hover:bg-[#151823] flex items-center gap-3 text-sm"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-[#D1D5DB]"
               >
-                <FaSearch className="text-[#6B7280] text-xs" />
-                {search}
+                <FaTimes />
               </button>
-            ))}
-          </motion.div>
-        )}
-    </AnimatePresence>
-  </div>
+            )}
 
-  {/* Buttons Row (Filters + Sort) */}
-  <div className="flex items-center gap-3">
-
-    {/* Filter Button */}
-    <button
-      onClick={() => setShowFilters(!showFilters)}
-      className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-medium border transition-all ${
-        showFilters || activeFilterCount > 0
-          ? "bg-[#111827] text-[#BFDBFE] border-[#1D4ED8]"
-          : "bg-[#151823] text-[#9CA3AF] border-[#262A3B] hover:bg-[#181A29]"
-      }`}
-    >
-      <FaFilter className="text-xs" />
-      Filters
-      {activeFilterCount > 0 && (
-        <span className="bg-[#1463FF] text-white text-xs px-2 py-0.5 rounded-full">
-          {activeFilterCount}
-        </span>
-      )}
-    </button>
-
-    {/* Sort Dropdown */}
-    <div className="relative w-32">
-      <FaSortAmountDown className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280] text-xs" />
-      <select
-        value={filters.sortBy}
-        onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}
-        className="w-full pl-9 pr-4 py-3 bg-[#151823] border border-[#262A3B] rounded-2xl text-sm text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#1463FF]"
-      >
-        <option value="relevance">Relevance</option>
-        <option value="experience">Experience</option>
-        <option value="newest">Newest</option>
-      </select>
-    </div>
-
-  </div>
-
-  {/* Animated Filters Section */}
-  <AnimatePresence>
-    {showFilters && (
-      <motion.div
-        initial={{ height: 0, opacity: 0 }}
-        animate={{ height: "auto", opacity: 1 }}
-        exit={{ height: 0, opacity: 0 }}
-        transition={{ duration: 0.25 }}
-        className="overflow-hidden"
-      >
-        <div className="pt-4 border-t border-[#262A3B] space-y-4">
-
-          {/* Skills Filter */}
-          {filterOptions.skills.length > 0 && (
-            <div>
-              <label className="text-xs font-medium text-[#9CA3AF] mb-2 block">
-                Skills
-              </label>
-              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto scrollbar-hide">
-                {filterOptions.skills.slice(0, 20).map((skill) => (
-                  <button
-                    key={skill}
-                    onClick={() => toggleSkillFilter(skill)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                      filters.skills.includes(skill)
-                        ? "bg-[#1463FF] text-white"
-                        : "bg-[#151823] text-[#9CA3AF] hover:bg-[#181A29]"
-                    }`}
-                  >
-                    {skill}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Languages Filter */}
-          {filterOptions.languages.length > 0 && (
-            <div>
-              <label className="text-xs font-medium text-[#9CA3AF] mb-2 block">
-                Languages
-              </label>
-              <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto scrollbar-hide">
-                {filterOptions.languages.slice(0, 15).map((lang) => (
-                  <button
-                    key={lang}
-                    onClick={() => toggleLanguageFilter(lang)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                      filters.languages.includes(lang)
-                        ? "bg-[#1D4ED8] text-white"
-                        : "bg-[#151823] text-[#9CA3AF] hover:bg-[#181A29]"
-                    }`}
-                  >
-                    {lang}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-        </div>
-      </motion.div>
-    )}
-  </AnimatePresence>
-
-</div>
-
-
-      {/* Results Info */}
-      <div className="flex items-center justify-between mb-6 px-1">
-        <p className="text-[#9CA3AF] text-sm">
-          <span className="font-semibold text-white">
-            {pagination.total}
-          </span>{" "}
-          editor{pagination.total !== 1 ? "s" : ""} found
-          {searchQuery && (
-            <span className="text-[#6B7280]"> for "{searchQuery}"</span>
-          )}
-        </p>
-        {pagination.pages > 1 && (
-          <p className="text-[#6B7280] text-xs sm:text-sm">
-            Page {pagination.page} of {pagination.pages}
-          </p>
-        )}
-      </div>
-
-      {/* Loading State */}
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              className="bg-[#111319] rounded-2xl p-5 animate-pulse shadow-[0_16px_35px_rgba(0,0,0,0.7)] border border-[#262A3B]"
-            >
-              <div className="h-20 bg-[#1F2933] rounded-t-xl -mx-5 -mt-5 mb-4" />
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-16 h-16 bg-[#1F2933] rounded-xl -mt-12" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 w-28 bg-[#1F2933] rounded" />
-                  <div className="h-3 w-20 bg-[#1F2933] rounded" />
-                </div>
-              </div>
-              <div className="space-y-3">
-                <div className="h-3 w-full bg-[#1F2933] rounded" />
-                <div className="h-3 w-3/4 bg-[#1F2933] rounded" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : editors.length === 0 ? (
-        <EmptyState
-          icon={FaUsers}
-          title="No editors found"
-          description={
-            searchQuery || activeFilterCount > 0
-              ? "Try adjusting your search or filters"
-              : "No editors have completed their profiles yet"
-          }
-          actionLabel={activeFilterCount > 0 ? "Clear Filters" : undefined}
-          onAction={activeFilterCount > 0 ? clearAllFilters : undefined}
-        />
-      ) : (
-        <>
-          {/* Editor Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {editors.map((editor) => (
-              <EditorCard
-                key={editor._id}
-                editor={editor}
-                navigate={navigate}
-                searchQuery={searchQuery}
-              />
-            ))}
+            <AnimatePresence>
+              {showSuggestions && recentSearches.length > 0 && !searchQuery && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.16 }}
+                  className="absolute top-full left-0 right-0 mt-2 bg-[#0f1112] rounded-2xl shadow-xl border border-[#151718] py-2 z-20 overflow-hidden"
+                >
+                  <div className="px-4 py-2 text-xs text-[#6B7280] uppercase tracking-wider flex items-center gap-2">
+                    <FaHistory /> Recent Searches
+                  </div>
+                  {recentSearches.map((search, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setSearchQuery(search)}
+                      className="w-full px-4 py-2 text-left text-[#E5E7EB] hover:bg-[#0b0c0d] flex items-center gap-3 text-sm"
+                    >
+                      <FaSearch className="text-[#6B7280] text-xs" />
+                      {search}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          {/* Pagination */}
-          {pagination.pages > 1 && (
-            <div className="flex justify-center items-center gap-2 mt-10">
-              <button
-                onClick={() => handlePageChange(pagination.page - 1)}
-                disabled={pagination.page === 1}
-                className="w-10 h-10 rounded-full bg-[#111319] border border-[#262A3B] flex items-center justify-center text-[#9CA3AF] hover:bg-[#151823] disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-[0_10px_25px_rgba(0,0,0,0.7)]"
-              >
-                <FaChevronLeft className="text-sm" />
-              </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-medium border transition-all ${
+                showFilters || activeFilterCount > 0
+                  ? "bg-[#111315] text-white border-green-600"
+                  : "bg-[#0f1112] text-[#9CA3AF] border-[#2b2f31] hover:bg-[#0b0c0d]"
+              }`}
+            >
+              <FaFilter className="text-xs" />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="bg-[#111315] text-white text-xs px-2 py-0.5 rounded-full">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
 
-              <div className="flex gap-1">
-                {Array.from(
-                  { length: Math.min(5, pagination.pages) },
-                  (_, i) => {
+            <div className="relative w-32">
+              <FaSortAmountDown className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280] text-xs" />
+              <select
+                value={filters.sortBy}
+                onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}
+                className="w-full pl-9 pr-4 py-3 bg-[#0f1112] border border-[#2b2f31] rounded-2xl text-sm text-[#9CA3AF] focus:outline-none"
+              >
+                <option value="relevance">Relevance</option>
+                <option value="experience">Experience</option>
+                <option value="newest">Newest</option>
+              </select>
+            </div>
+          </div>
+
+          <AnimatePresence>
+            {showFilters && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22 }}
+                className="overflow-hidden"
+              >
+                <div className="pt-4 border-t border-[#151718] space-y-4">
+                  {filterOptions.skills.length > 0 && (
+                    <div>
+                      <label className="text-xs font-medium text-[#9CA3AF] mb-2 block">
+                        Skills
+                      </label>
+                      <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto scrollbar-hide">
+                        {filterOptions.skills.slice(0, 20).map((skill) => (
+                          <button
+                            key={skill}
+                            onClick={() => toggleSkillFilter(skill)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                              filters.skills.includes(skill)
+                                ? "bg-white text-black"
+                                : "bg-[#0b0c0d] text-[#9CA3AF] hover:bg-[#0b0c0d]"
+                            }`}
+                          >
+                            {skill}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {filterOptions.languages.length > 0 && (
+                    <div>
+                      <label className="text-xs font-medium text-[#9CA3AF] mb-2 block">
+                        Languages
+                      </label>
+                      <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto scrollbar-hide">
+                        {filterOptions.languages.slice(0, 15).map((lang) => (
+                          <button
+                            key={lang}
+                            onClick={() => toggleLanguageFilter(lang)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                              filters.languages.includes(lang)
+                                ? "bg-white text-black"
+                                : "bg-[#0b0c0d] text-[#9CA3AF] hover:bg-[#0b0c0d]"
+                            }`}
+                          >
+                            {lang}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Results Info */}
+        <div className="flex items-center justify-between mb-6 px-1 max-w-6xl mx-auto">
+          <p className="text-[#9CA3AF] text-sm">
+            <span className="font-semibold text-white">{pagination.total}</span>{" "}
+            editor{pagination.total !== 1 ? "s" : ""} found
+            {searchQuery && <span className="text-[#6B7280]"> for "{searchQuery}"</span>}
+          </p>
+          {pagination.pages > 1 && (
+            <p className="text-[#6B7280] text-xs sm:text-sm">
+              Page {pagination.page} of {pagination.pages}
+            </p>
+          )}
+        </div>
+
+        {/* Results Grid / Loading / Empty */}
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="bg-[#0f1112] rounded-2xl p-5 animate-pulse shadow-[0_16px_50px_rgba(0,0,0,0.8)] border border-[#151718]"
+              >
+                <div className="h-20 bg-[#0b0c0d] rounded-t-xl -mx-5 -mt-5 mb-4" />
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-16 h-16 bg-[#0b0c0d] rounded-xl -mt-12" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-28 bg-[#0b0c0d] rounded" />
+                    <div className="h-3 w-20 bg-[#0b0c0d] rounded" />
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="h-3 w-full bg-[#0b0c0d] rounded" />
+                  <div className="h-3 w-3/4 bg-[#0b0c0d] rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : editors.length === 0 ? (
+          <EmptyState
+            icon={FaUsers}
+            title="No editors found"
+            description={
+              searchQuery || activeFilterCount > 0
+                ? "Try adjusting your search or filters"
+                : "No editors have completed their profiles yet"
+            }
+            actionLabel={activeFilterCount > 0 ? "Clear Filters" : undefined}
+            onAction={activeFilterCount > 0 ? clearAllFilters : undefined}
+          />
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {editors.map((editor) => (
+                <EditorCard
+                  key={editor._id}
+                  editor={editor}
+                  navigate={navigate}
+                  searchQuery={searchQuery}
+                />
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {pagination.pages > 1 && (
+              <div className="flex justify-center items-center gap-2 mt-10">
+                <button
+                  onClick={() => handlePageChange(pagination.page - 1)}
+                  disabled={pagination.page === 1}
+                  className="w-10 h-10 rounded-full bg-[#0f1112] border border-[#151718] flex items-center justify-center text-[#9CA3AF] hover:bg-[#0b0c0d] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                  <FaChevronLeft className="text-sm" />
+                </button>
+
+                <div className="flex gap-1">
+                  {Array.from({ length: Math.min(5, pagination.pages) }, (_, i) => {
                     let pageNum;
                     if (pagination.pages <= 5) {
                       pageNum = i + 1;
@@ -475,47 +468,49 @@ const ExploreEditors = () => {
                         onClick={() => handlePageChange(pageNum)}
                         className={`w-10 h-10 rounded-full text-sm font-medium transition-all ${
                           pagination.page === pageNum
-                            ? "bg-[#1463FF] text-white shadow-[0_12px_30px_rgba(20,99,255,0.7)]"
-                            : "bg-[#111319] border border-[#262A3B] text-[#9CA3AF] hover:bg-[#151823]"
+                            ? "bg-white text-black shadow-[0_12px_30px_rgba(255,255,255,0.06)]"
+                            : "bg-[#0f1112] border border-[#151718] text-[#9CA3AF] hover:bg-[#0b0c0d]"
                         }`}
                       >
                         {pageNum}
                       </button>
                     );
-                  }
-                )}
-              </div>
+                  })}
+                </div>
 
-              <button
-                onClick={() => handlePageChange(pagination.page + 1)}
-                disabled={pagination.page === pagination.pages}
-                className="w-10 h-10 rounded-full bg-[#111319] border border-[#262A3B] flex items-center justify-center text-[#9CA3AF] hover:bg-[#151823] disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-[0_10px_25px_rgba(0,0,0,0.7)]"
-              >
-                <FaChevronRight className="text-sm" />
-              </button>
-            </div>
-          )}
-        </>
-      )}
+                <button
+                  onClick={() => handlePageChange(pagination.page + 1)}
+                  disabled={pagination.page === pagination.pages}
+                  className="w-10 h-10 rounded-full bg-[#0f1112] border border-[#151718] flex items-center justify-center text-[#9CA3AF] hover:bg-[#0b0c0d] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                  <FaChevronRight className="text-sm" />
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 };
 
-// Premium Editor Card Component
+/* =========================
+   EditorCard — redesigned
+   Apple-like minimal black
+   Preserve click navigation and content
+   ========================= */
 const EditorCard = ({ editor, navigate, searchQuery }) => {
   const [isHovered, setIsHovered] = useState(false);
 
-  // Generate consistent rating based on editor id
   const rating = (4 + (editor._id?.charCodeAt(0) % 10) / 10).toFixed(1);
   const reviewCount = 5 + (editor._id?.charCodeAt(1) % 50);
 
-  // Highlight matching text
   const highlightMatch = (text, query) => {
     if (!query || !text) return text;
     const parts = text.split(new RegExp(`(${query})`, "gi"));
     return parts.map((part, i) =>
       part.toLowerCase() === query.toLowerCase() ? (
-        <mark key={i} className="bg-[#FACC15]/30 rounded px-0.5">
+        <mark key={i} className="bg-[#f2f3f4]/5 rounded px-0.5 text-white">
           {part}
         </mark>
       ) : (
@@ -525,42 +520,36 @@ const EditorCard = ({ editor, navigate, searchQuery }) => {
   };
 
   return (
-    <div
-    onClick={() => navigate(`/public-profile/${editor.user?._id}`)}
-      className="group relative bg-[#111319] rounded-3xl overflow-hidden shadow-[0_18px_40px_rgba(0,0,0,0.8)] transition-all duration-300 border border-[#262A3B] hover:-translate-y-1"
+    <motion.div
+      onClick={() => navigate(`/public-profile/${editor.user?._id}`)}
+      className="group relative bg-[#0f1112] rounded-2xl overflow-hidden shadow-[0_18px_40px_rgba(0,0,0,0.8)] transition-all duration-300 border border-white/20 cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -6 }}
     >
-      {/* Top Gradient Banner */}
-      <div className="h-20 bg-gradient-to-br from-[#1463FF] via-[#2739FF] to-[#020617] relative">
-        <div className="absolute inset-0 opacity-30">
-          <svg
-            className="w-full h-full"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-          >
+      {/* Top subtle banner */}
+      <div className="h-16 bg-gradient-to-r from-[#0b0c0d] to-[#0b0c0d] relative">
+        <div className="absolute inset-0 opacity-7">
+          <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="none">
             <defs>
-              <pattern
-                id={`grid-${editor._id}`}
-                width="10"
-                height="10"
-                patternUnits="userSpaceOnUse"
-              >
-                <circle cx="5" cy="5" r="1" fill="white" />
+              <pattern id={`p-${editor._id}`} width="10" height="10" patternUnits="userSpaceOnUse">
+                <circle cx="5" cy="5" r="0.8" fill="#ffffff" />
               </pattern>
             </defs>
-            <rect width="100" height="100" fill={`url(#grid-${editor._id})`} />
+            <rect width="100" height="100" fill={`url(#p-${editor._id})`} />
           </svg>
         </div>
-
         {editor.verified && (
-          <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-md px-2 py-1 rounded-full flex items-center gap-1 text-[10px] font-medium text-[#BFDBFE] border border-white/10">
-            <FaCheckCircle className="text-[#22C55E]" /> Verified
+          <div className="absolute top-3 right-3 bg-[#0b0c0d] px-2 py-1 rounded-full flex items-center gap-1 text-[11px] font-medium text-[#D1FAE5] border border-[#0f1712]">
+            <FaCheckCircle className="text-[#22C55E]" />
+            Verified
           </div>
         )}
       </div>
 
-      {/* Profile Picture */}
+      {/* Avatar */}
       <div className="relative px-5 -mt-10">
         <div className="relative inline-block">
           <img
@@ -569,20 +558,20 @@ const EditorCard = ({ editor, navigate, searchQuery }) => {
               "https://cdn-icons-png.flaticon.com/512/149/149071.png"
             }
             alt={editor.user?.name}
-            className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-[0_14px_40px_rgba(255,255,255,0.3)] group-hover:scale-105 transition-transform duration-300"
+            className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-[0_14px_40px_rgba(0,0,0,0.6)] group-hover:scale-105 transition-transform duration-300"
           />
-          <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#22C55E] rounded-full border-4 border-[#050509] shadow-[0_0_12px_rgba(34,197,94,0.9)]" />
+          <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#22C55E] rounded-full border-2 border-[#0b0c0d]" />
         </div>
       </div>
 
       {/* Content */}
-      <div className="px-5 pt-3 pb-5 text-sm">
-        <div className="mb-3">
-          <h3 className="font-semibold text-base text-white group-hover:text-[#BFDBFE] transition-colors line-clamp-1">
+      <div className="px-5 pb-6 pt-3 text-sm">
+        <div className="mb-2">
+          <h3 className="font-semibold text-base text-white group-hover:text-[#eaf2ff] transition-colors line-clamp-1">
             {highlightMatch(editor.user?.name, searchQuery)}
           </h3>
-          <p className="text-[#9CA3AF] text-xs flex items-center gap-1.5 mt-0.5">
-            <FaBriefcase className="text-[#60A5FA] text-[11px]" />
+          <p className="text-[#9CA3AF] text-xs flex items-center gap-1.5 mt-1">
+            <FaBriefcase className="text-[#6b7280] text-[11px]" />
             <span className="capitalize">
               {editor.user?.role || "Video Editor"}
             </span>
@@ -590,20 +579,16 @@ const EditorCard = ({ editor, navigate, searchQuery }) => {
         </div>
 
         <div className="flex items-center gap-2 mb-3">
-          <div className="flex items-center gap-1 bg-[#1F2933] px-2 py-1 rounded-lg">
+          <div className="flex items-center gap-1 bg-[#0b0c0d] px-2 py-1 rounded-lg">
             <FaStar className="text-[#FACC15] text-xs" />
-            <span className="font-semibold text-xs text-[#E5E7EB]">
-              {rating}
-            </span>
+            <span className="font-semibold text-xs text-white">{rating}</span>
           </div>
-          <span className="text-[#6B7280] text-[11px]">
-            ({reviewCount} reviews)
-          </span>
+          <span className="text-[#6B7280] text-[11px]">({reviewCount} reviews)</span>
         </div>
 
         {editor.location?.country && (
           <div className="flex items-center gap-1.5 text-[#9CA3AF] text-xs mb-3">
-            <FaMapMarkerAlt className="text-[#60A5FA] text-[11px]" />
+            <FaMapMarkerAlt className="text-[#6b7280] text-[11px]" />
             <span>{highlightMatch(editor.location.country, searchQuery)}</span>
           </div>
         )}
@@ -611,22 +596,19 @@ const EditorCard = ({ editor, navigate, searchQuery }) => {
         {editor.skills?.length > 0 && (
           <div className="mb-3">
             <p className="text-[11px] text-[#6B7280] mb-1.5 flex items-center gap-1">
-              <FaCode className="text-[#60A5FA] text-[11px]" /> Skills
+              <FaCode className="text-[#6b7280] text-[11px]" /> Skills
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {editor.skills
-                .filter(Boolean)
-                .slice(0, 4)
-                .map((skill, idx) => (
-                  <span
-                    key={idx}
-                    className="px-2.5 py-1 bg-[#111827] text-[#BFDBFE] rounded-xl text-[11px] font-medium border border-[#1D4ED8]/40"
-                  >
-                    {skill}
-                  </span>
-                ))}
+              {editor.skills.filter(Boolean).slice(0, 4).map((skill, idx) => (
+                <span
+                  key={idx}
+                  className="px-2 py-1 bg-[#0b0c0d] text-[#E5E7EB] rounded-lg text-[11px] font-medium border border-[#151718]"
+                >
+                  {skill}
+                </span>
+              ))}
               {editor.skills.filter(Boolean).length > 4 && (
-                <span className="px-2.5 py-1 bg-[#111319] text-[#9CA3AF] rounded-xl text-[11px] font-medium border border-[#262A3B]">
+                <span className="px-2 py-1 bg-[#0b0c0d] text-[#9CA3AF] rounded-lg text-[11px] font-medium border border-[#151718]">
                   +{editor.skills.filter(Boolean).length - 4}
                 </span>
               )}
@@ -637,22 +619,19 @@ const EditorCard = ({ editor, navigate, searchQuery }) => {
         {editor.languages?.length > 0 && (
           <div className="mb-4">
             <p className="text-[11px] text-[#6B7280] mb-1.5 flex items-center gap-1">
-              <FaGlobe className="text-[#38BDF8] text-[11px]" /> Languages
+              <FaGlobe className="text-[#6b7280] text-[11px]" /> Languages
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {editor.languages
-                .filter(Boolean)
-                .slice(0, 3)
-                .map((lang, idx) => (
-                  <span
-                    key={idx}
-                    className="px-2.5 py-1 bg-[#020617] text-[#7DD3FC] rounded-xl text-[11px] font-medium border border-[#0EA5E9]/40"
-                  >
-                    {lang}
-                  </span>
-                ))}
+              {editor.languages.filter(Boolean).slice(0, 3).map((lang, idx) => (
+                <span
+                  key={idx}
+                  className="px-2 py-1 bg-[#0b0c0d] text-[#9CA3AF] rounded-lg text-[11px] font-medium border border-[#151718]"
+                >
+                  {lang}
+                </span>
+              ))}
               {editor.languages.filter(Boolean).length > 3 && (
-                <span className="px-2.5 py-1 bg-[#111319] text-[#9CA3AF] rounded-xl text-[11px] font-medium border border-[#262A3B]">
+                <span className="px-2 py-1 bg-[#0b0c0d] text-[#9CA3AF] rounded-lg text-[11px] font-medium border border-[#151718]">
                   +{editor.languages.filter(Boolean).length - 3}
                 </span>
               )}
@@ -661,29 +640,31 @@ const EditorCard = ({ editor, navigate, searchQuery }) => {
         )}
 
         {editor.experience && (
-          <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-gradient-to-r from-[#1E1B4B] via-[#312E81] to-[#111827] rounded-2xl border border-[#4C1D95]/60">
+          <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-gradient-to-r from-black to-blue-800 via-zinc-900 rounded-xl border border-[#151718]">
             <FaAward className="text-[#A855F7] text-sm" />
-            <span className="text-[#E9D5FF] text-xs font-medium">
-              {editor.experience}
-            </span>
+            <span className="text-[#E5E7EB] text-xs font-medium">{editor.experience}</span>
           </div>
         )}
 
         <button
           onClick={() => navigate(`/public-profile/${editor.user?._id}`)}
-          className="w-full py-3 bg-[#1463FF] text-white text-sm font-semibold rounded-2xl hover:bg-[#275DFF] transition-all duration-300 shadow-[0_14px_40px_rgba(20,99,255,0.8)] hover:shadow-[0_18px_45px_rgba(20,99,255,0.95)] active:scale-[0.98]"
+          className="w-full py-3 bg-white text-black text-sm font-semibold rounded-2xl hover:brightness-95 transition-all duration-200 shadow-[0_8px_30px_rgba(255,255,255,0.04)]"
         >
           View Profile
         </button>
       </div>
 
+      {/* Focus ring on hover */}
       <div
-        className={`absolute inset-0 rounded-3xl pointer-events-none transition-opacity duration-300 ${
-          isHovered ? "opacity-100" : "opacity-0"
-        }`}
-        style={{ boxShadow: "inset 0 0 0 1px rgba(37, 99, 235, 0.35)" }}
+        className={`absolute inset-0 rounded-2xl pointer-events-none transition-opacity duration-300`}
+        style={{
+          boxShadow: isHovered
+            ? "inset 0 0 0 1px rgba(255,255,255,0.03), 0 8px 30px rgba(2,6,23,0.6)"
+            : "inset 0 0 0 1px rgba(255,255,255,0.01)",
+          opacity: isHovered ? 1 : 0.6,
+        }}
       />
-    </div>
+    </motion.div>
   );
 };
 

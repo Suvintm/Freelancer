@@ -196,7 +196,7 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
             <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/90 to-transparent" />
 
             {/* RIGHT ACTION BAR */}
-            <div className="absolute right-4 bottom-44 flex flex-col items-center gap-6 z-20">
+            <div className="absolute z-100 right-4 bottom-44 flex flex-col items-center gap-6">
 
                 {/* Profile */}
                 <Link to={`/public-profile/${reel.editor._id}`} className="relative">
