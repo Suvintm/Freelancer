@@ -1,4 +1,5 @@
-import React, { useState, useRef } from "react";
+// ChatBoxPage.jsx
+import React, { useState, useRef, useEffect } from "react";
 import {
   FaArrowLeft,
   FaPaperPlane,
@@ -7,6 +8,9 @@ import {
   FaChevronDown,
   FaCheck,
   FaCheckDouble,
+  FaMicrophone,
+  FaStop,
+  FaSmile,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
@@ -15,14 +19,21 @@ const ChatBoxPage = () => {
   const navigate = useNavigate();
   const { chatId } = useParams();
   const fileInputRef = useRef(null);
+  const messagesEndRef = useRef(null);
+  const containerRef = useRef(null);
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [audioChunks, setAudioChunks] = useState([]);
+  const [typing, setTyping] = useState(false);
 
   // Dummy Chat User
   const chatUser = {
     name: "John Smith",
     role: "Client",
     avatar: "https://randomuser.me/api/portraits/men/75.jpg",
+    online: true,
   };
 
   // Dummy Project Details
@@ -34,7 +45,7 @@ const ChatBoxPage = () => {
   };
 
   // Vertical payment progress (0–3)
-  const paymentStage = 2; 
+  const paymentStage = 2;
   const paymentStages = [
     "Client paid – money in escrow",
     "Escrow verified",
@@ -50,7 +61,7 @@ const ChatBoxPage = () => {
     "Completed",
   ];
 
-  // Dummy Messages
+  // Dummy Messages (kept original messages + small additions for demo)
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -58,6 +69,8 @@ const ChatBoxPage = () => {
       text: "Hello! I uploaded the raw footage. Please check.",
       time: "2:44 PM",
       delivered: true,
+      seen: false,
+      reactions: {},
     },
     {
       id: 2,
@@ -66,6 +79,7 @@ const ChatBoxPage = () => {
       time: "2:45 PM",
       delivered: true,
       seen: true,
+      reactions: {},
     },
     {
       id: 3,
@@ -74,14 +88,45 @@ const ChatBoxPage = () => {
         type: "video",
         name: "raw_footage.mp4",
         size: "120MB",
+        url: null,
       },
       time: "2:47 PM",
       delivered: true,
+      seen: false,
+      reactions: {},
     },
   ]);
 
   const [newMessage, setNewMessage] = useState("");
 
+  // Scroll to bottom whenever messages change
+  useEffect(() => {
+    scrollToBottom({ behavior: "smooth" });
+    // auto-mark incoming editor messages as seen by client after short delay (simulation)
+    // preserve original "seen" logic: only set seen if not already true and message.sender !== 'editor'?
+    // We'll simulate that messages from editor will be 'seen' by client when client views (component mounted)
+    const unseenEditorIds = messages
+      .filter((m) => m.sender === "editor" && !m.seen)
+      .map((m) => m.id);
+
+    if (unseenEditorIds.length > 0) {
+      const t = setTimeout(() => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            unseenEditorIds.includes(m.id) ? { ...m, seen: true } : m
+          )
+        );
+      }, 900); // small simulated delay
+      return () => clearTimeout(t);
+    }
+  }, [messages]);
+
+  // helper: scroll bottom
+  const scrollToBottom = ({ behavior = "auto" } = {}) => {
+    messagesEndRef.current?.scrollIntoView({ behavior, block: "end" });
+  };
+
+  // send message (keeps original logic, extended)
   const sendMessage = () => {
     if (!newMessage.trim()) return;
 
@@ -93,40 +138,207 @@ const ChatBoxPage = () => {
         text: newMessage,
         time: "Now",
         delivered: true,
+        seen: false,
+        reactions: {},
       },
     ]);
 
     setNewMessage("");
+    setTyping(false);
+
+    // simulated "delivered" -> "seen" by receiver after short interval
+    setTimeout(() => {
+      setMessages((prev) =>
+        prev.map((m, i) =>
+          i === prev.length - 1 ? { ...m, delivered: true, seen: false } : m
+        )
+      );
+    }, 200);
   };
 
+  // file upload (keeps original logic)
   const handleFileUpload = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files ? e.target.files[0] : null;
     if (!file) return;
+
+    const fileObj = {
+      type: file.type.includes("video") ? "video" : file.type.includes("audio") ? "audio" : "file",
+      name: file.name,
+      size: `${Math.round(file.size / 1024 / 1024)}MB`,
+      url: URL.createObjectURL(file),
+    };
 
     setMessages((prev) => [
       ...prev,
       {
         id: Date.now(),
         sender: "editor",
-        file: {
-          type: file.type.includes("video") ? "video" : "file",
-          name: file.name,
-          size: `${Math.round(file.size / 1024 / 1024)}MB`,
-        },
+        file: fileObj,
         time: "Now",
         delivered: true,
+        seen: false,
+        reactions: {},
       },
     ]);
+
+    // reset input to allow same file re-upload
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  // Double-tap reaction handler
+  const handleReaction = (messageId, emoji = "❤️") => {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== messageId) return m;
+        const reactions = { ...(m.reactions || {}) };
+        // toggle the emoji count
+        if (reactions[emoji]) {
+          reactions[emoji] = reactions[emoji] + 1;
+        } else {
+          reactions[emoji] = 1;
+        }
+        return { ...m, reactions };
+      })
+    );
+  };
+
+  // Message bubble double-click behavior (double tap to react)
+  // We'll use onDoubleClick for desktop and detect quick two taps for mobile as well
+  const lastTapRef = useRef(0);
+  const handleBubbleTap = (msg) => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 300) {
+      // double tap detected
+      handleReaction(msg.id, "❤️");
+    }
+    lastTapRef.current = now;
+  };
+
+  // Voice recording (press & hold)
+  useEffect(() => {
+    // cleanup on unmount
+    return () => {
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const startRecording = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("Recording not supported in this browser");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      setMediaRecorder(mr);
+      setAudioChunks([]);
+
+      mr.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          setAudioChunks((prev) => [...prev, e.data]);
+        }
+      };
+
+      mr.onstop = () => {
+        // assemble blob and add message
+        const blob = new Blob(audioChunks, { type: "audio/webm" });
+        const url = URL.createObjectURL(blob);
+
+        const fileObj = {
+          type: "audio",
+          name: `voice_${Date.now()}.webm`,
+          size: `${Math.round(blob.size / 1024 / 1024)}MB`,
+          url,
+          blob,
+        };
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            sender: "editor",
+            file: fileObj,
+            time: "Now",
+            delivered: true,
+            seen: false,
+            reactions: {},
+          },
+        ]);
+        setRecording(false);
+      };
+
+      mr.start();
+      setRecording(true);
+    } catch (err) {
+      console.error("Microphone access denied", err);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      mediaRecorder.stop();
+    } else {
+      setRecording(false);
+    }
+  };
+
+  // Seen-by-both: simulated when component mounted / user opens chat, mark client-sent messages as seen by editor
+  useEffect(() => {
+    // Mark messages from client as seen=true (simulate viewer viewed them)
+    const clientUnseen = messages.some((m) => m.sender === "client" && !m.seen);
+    if (clientUnseen) {
+      const t = setTimeout(() => {
+        setMessages((prev) =>
+          prev.map((m) => (m.sender === "client" ? { ...m, seen: true } : m))
+        );
+      }, 900);
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Typing indicator simulation (someone else typing)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setTyping(false);
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [typing]);
+
+  // small helper to format reaction display (show up to first 2 emojis)
+  const renderReactions = (reactions) => {
+    if (!reactions || Object.keys(reactions).length === 0) return null;
+    return (
+      <div className="flex gap-1 items-center mt-2">
+        {Object.entries(reactions)
+          .slice(0, 3)
+          .map(([emoji, count]) => (
+            <div
+              key={emoji}
+              className="px-2 py-0.5 bg-white/10 text-xs rounded-xl flex items-center gap-1"
+              title={`${emoji} x ${count}`}
+            >
+              <span>{emoji}</span>
+              <span className="text-[11px] text-gray-300">{count}</span>
+            </div>
+          ))}
+      </div>
+    );
   };
 
   return (
     <div
       className="fixed inset-0 text-white flex flex-col"
       style={{
-        backgroundImage: "url('/assets/chattexture.png')", // your doodle texture
-        backgroundSize: "cover",
+        // using exact path you provided:
+        backgroundImage: "url('/src/assets/chattexture.png')",
+        backgroundSize: "200px 200px",
         backgroundRepeat: "repeat",
-        backgroundColor: "#0B0B0D",
+        backgroundColor: "black/50",
       }}
     >
       {/* ---------------- HEADER ---------------- */}
@@ -138,10 +350,16 @@ const ChatBoxPage = () => {
           <FaArrowLeft />
         </button>
 
-        <img
-          src={chatUser.avatar}
-          className="w-12 h-12 rounded-xl object-cover"
-        />
+        <div className="relative">
+          <img src={chatUser.avatar} className="w-12 h-12 rounded-xl object-cover" />
+          {/* online pulse */}
+          <span
+            className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[#0e0f11] ${
+              chatUser.online ? "bg-green-400 animate-pulse" : "bg-gray-600"
+            }`}
+            title={chatUser.online ? "Online" : "Offline"}
+          />
+        </div>
 
         <div className="flex flex-col">
           <span className="font-semibold text-lg">{chatUser.name}</span>
@@ -154,9 +372,7 @@ const ChatBoxPage = () => {
           className="ml-auto flex items-center gap-1 text-gray-300 hover:text-white"
         >
           <span className="text-sm">Status</span>
-          <FaChevronDown
-            className={`transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
-          />
+          <FaChevronDown className={`transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
         </button>
       </div>
 
@@ -164,9 +380,9 @@ const ChatBoxPage = () => {
       <AnimatePresence>
         {dropdownOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -5 }}
+            initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
+            exit={{ opacity: 0, y: -6 }}
             className="bg-[#111315]/95 backdrop-blur-xl border-b border-white/10 px-5 py-4 space-y-5"
           >
             {/* Project Info */}
@@ -188,17 +404,9 @@ const ChatBoxPage = () => {
                 <div className="flex flex-col items-center">
                   {paymentStages.map((_, i) => (
                     <div key={i} className="flex flex-col items-center">
-                      <div
-                        className={`w-3 h-3 rounded-full ${
-                          i <= paymentStage ? "bg-emerald-400" : "bg-gray-700"
-                        }`}
-                      ></div>
+                      <div className={`w-3 h-3 rounded-full ${i <= paymentStage ? "bg-emerald-400" : "bg-gray-700"}`}></div>
                       {i < paymentStages.length - 1 && (
-                        <div
-                          className={`w-1 h-6 ${
-                            i < paymentStage ? "bg-emerald-400" : "bg-gray-700"
-                          }`}
-                        ></div>
+                        <div className={`w-1 h-6 ${i < paymentStage ? "bg-emerald-400" : "bg-gray-700"}`}></div>
                       )}
                     </div>
                   ))}
@@ -207,12 +415,7 @@ const ChatBoxPage = () => {
                 {/* Text */}
                 <div className="flex flex-col text-xs text-gray-300 gap-4">
                   {paymentStages.map((t, i) => (
-                    <p
-                      key={i}
-                      className={`${i <= paymentStage ? "text-emerald-400" : "text-gray-500"}`}
-                    >
-                      {t}
-                    </p>
+                    <p key={i} className={`${i <= paymentStage ? "text-emerald-400" : "text-gray-500"}`}>{t}</p>
                   ))}
                 </div>
               </div>
@@ -226,17 +429,9 @@ const ChatBoxPage = () => {
                 <div className="flex flex-col items-center">
                   {workStages.map((_, i) => (
                     <div key={i} className="flex flex-col items-center">
-                      <div
-                        className={`w-3 h-3 rounded-full ${
-                          i <= workStage ? "bg-blue-400" : "bg-gray-700"
-                        }`}
-                      ></div>
+                      <div className={`w-3 h-3 rounded-full ${i <= workStage ? "bg-blue-400" : "bg-gray-700"}`}></div>
                       {i < workStages.length - 1 && (
-                        <div
-                          className={`w-1 h-6 ${
-                            i < workStage ? "bg-blue-400" : "bg-gray-700"
-                          }`}
-                        ></div>
+                        <div className={`w-1 h-6 ${i < workStage ? "bg-blue-400" : "bg-gray-700"}`}></div>
                       )}
                     </div>
                   ))}
@@ -245,12 +440,7 @@ const ChatBoxPage = () => {
                 {/* Text */}
                 <div className="flex flex-col text-xs text-gray-300 gap-4">
                   {workStages.map((t, i) => (
-                    <p
-                      key={i}
-                      className={`${i <= workStage ? "text-blue-400" : "text-gray-500"}`}
-                    >
-                      {t}
-                    </p>
+                    <p key={i} className={`${i <= workStage ? "text-blue-400" : "text-gray-500"}`}>{t}</p>
                   ))}
                 </div>
               </div>
@@ -260,47 +450,106 @@ const ChatBoxPage = () => {
       </AnimatePresence>
 
       {/* ---------------- CHAT MESSAGES ---------------- */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div ref={containerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg) => {
           const isSender = msg.sender === "editor";
 
           return (
-            <div
-              key={msg.id}
-              className={`flex ${isSender ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[70%] p-3 rounded-2xl text-sm shadow-lg ${
-                  isSender
-                    ? "bg-[#1D4ED8] text-white rounded-br-none"
-                    : "bg-[#111315] text-gray-200 rounded-bl-none border border-white/10"
+            <div key={msg.id} className={`flex ${isSender ? "justify-end" : "justify-start"}`}>
+              <motion.div
+                onDoubleClick={() => handleReaction(msg.id, "❤️")}
+                onClick={() => handleBubbleTap(msg)}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                whileHover={{ scale: 1.01 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                className={`max-w-[70%] p-3 rounded-2xl text-sm shadow-lg break-words ${
+                  isSender ? "bg-[#1D4ED8] text-white rounded-br-none" : "bg-[#111315] text-gray-200 rounded-bl-none border border-white/10"
                 }`}
               >
                 {msg.file ? (
-                  <div className="flex items-center gap-3">
-                    <FaFileVideo className="text-xl text-blue-300" />
-                    <div>
-                      <p className="font-medium">{msg.file.name}</p>
-                      <p className="text-xs text-gray-400">{msg.file.size}</p>
-                    </div>
-                  </div>
+                  <>
+                    {/* Video/File thumb */}
+                    {msg.file.type === "video" && (
+                      <div className="flex items-center gap-3">
+                        <div className="w-28 h-16 rounded-lg overflow-hidden bg-black/40 flex items-center justify-center">
+                          {/* show video thumbnail if url exists */}
+                          {msg.file.url ? (
+                            <video src={msg.file.url} className="w-full h-full object-cover" muted />
+                          ) : (
+                            <FaFileVideo className="text-2xl text-blue-300" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium">{msg.file.name}</p>
+                          <p className="text-xs text-gray-400">{msg.file.size}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {msg.file.type === "audio" && (
+                      <div className="flex items-center gap-3">
+                        <audio controls src={msg.file.url} />
+                        <div>
+                          <p className="font-medium">{msg.file.name}</p>
+                          <p className="text-xs text-gray-400">{msg.file.size}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {msg.file.type === "file" && msg.file.type !== "video" && msg.file.type !== "audio" && (
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center text-gray-300">
+                          📎
+                        </div>
+                        <div>
+                          <p className="font-medium">{msg.file.name}</p>
+                          <p className="text-xs text-gray-400">{msg.file.size}</p>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <p>{msg.text}</p>
                 )}
 
+                {/* reactions */}
+                {renderReactions(msg.reactions)}
+
                 <div className="flex items-center justify-end gap-1 mt-1 text-[10px] opacity-70">
                   <span>{msg.time}</span>
-                  {isSender &&
-                    (msg.seen ? (
+                  {isSender ? (
+                    msg.seen ? (
                       <FaCheckDouble className="text-blue-300" />
                     ) : (
                       <FaCheck className="text-gray-300" />
-                    ))}
+                    )
+                  ) : (
+                    msg.delivered ? <FaCheck className="text-gray-300" /> : null
+                  )}
                 </div>
-              </div>
+              </motion.div>
             </div>
           );
         })}
+
+        {/* typing indicator */}
+        <AnimatePresence>
+          {typing && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.95 }} exit={{ opacity: 0 }} className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-white/5 rounded-xl" />
+              <div className="bg-[#111315] px-3 py-2 rounded-2xl text-sm text-gray-300">
+                <div className="flex gap-1 items-center">
+                  <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse" />
+                  <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse delay-150" />
+                  <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse delay-300" />
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div ref={messagesEndRef} />
       </div>
 
       {/* ---------------- INPUT AREA ---------------- */}
@@ -308,27 +557,56 @@ const ChatBoxPage = () => {
         <button
           onClick={() => fileInputRef.current.click()}
           className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition"
+          title="Attach file"
         >
           <FaPaperclip />
         </button>
 
-        <input
-          type="file"
-          hidden
-          ref={fileInputRef}
-          onChange={handleFileUpload}
-        />
+        <input type="file" hidden ref={fileInputRef} onChange={handleFileUpload} />
 
         <input
           className="flex-1 bg-[#111315] border border-white/10 rounded-2xl px-4 py-2 text-sm focus:ring-2 focus:ring-white/10 outline-none"
           placeholder="Type a message..."
           value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
+          onChange={(e) => {
+            setNewMessage(e.target.value);
+            setTyping(true);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              sendMessage();
+            }
+          }}
         />
+
+        {/* Voice record: press & hold */}
+        <div className="relative">
+          {!recording ? (
+            <button
+              onMouseDown={startRecording}
+              onTouchStart={startRecording}
+              title="Hold to record voice"
+              className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition"
+            >
+              <FaMicrophone />
+            </button>
+          ) : (
+            <button
+              onMouseUp={stopRecording}
+              onTouchEnd={stopRecording}
+              title="Release to send"
+              className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center hover:scale-105 transition"
+            >
+              <FaStop />
+            </button>
+          )}
+        </div>
 
         <button
           onClick={sendMessage}
           className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition"
+          title="Send"
         >
           <FaPaperPlane className="text-white text-sm" />
         </button>
