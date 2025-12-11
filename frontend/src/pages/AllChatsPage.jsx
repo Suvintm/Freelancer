@@ -1,9 +1,12 @@
+// ChatsPage.jsx
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaArrowLeft,
   FaSearch,
   FaComments,
+  FaCheck,
+  FaTimes,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
@@ -12,8 +15,31 @@ const ChatsPage = () => {
   const navigate = useNavigate();
   const { user, backendURL } = useAppContext();
 
-  // -------- Dummy chat list --------
-  const [chats, setChats] = useState([
+  // ---------------------- STATE ----------------------
+  const [activeTab, setActiveTab] = useState("ongoing");
+
+  // -------- Dummy Data for New Requests --------
+  const [newRequests, setNewRequests] = useState([
+    {
+      _id: "req001",
+      orderName: "Engagement Trailer – Order #1101",
+      name: "Client Raj",
+      avatar: "https://randomuser.me/api/portraits/men/31.jpg",
+      requestText: "Hi, I want you to edit my engagement teaser.",
+      timestamp: "1h ago",
+    },
+    {
+      _id: "req002",
+      orderName: "Birthday Highlight – Order #1170",
+      name: "Client Sneha",
+      avatar: "https://randomuser.me/api/portraits/women/22.jpg",
+      requestText: "Please accept my project request.",
+      timestamp: "3h ago",
+    },
+  ]);
+
+  // -------- Dummy Ongoing Chats --------
+  const [ongoing, setOngoing] = useState([
     {
       _id: "chat001",
       orderName: "Wedding Teaser – Order #1023",
@@ -27,157 +53,266 @@ const ChatsPage = () => {
     },
     {
       _id: "chat002",
-      orderName: "Birthday Cinematic Edit – Order #1040",
+      orderName: "Birthday Cinematic – Order #1040",
       name: "Aadhya Editing Studio",
       role: "editor",
       avatar: "https://randomuser.me/api/portraits/women/12.jpg",
-      lastMessage: "Thank you! Project delivered successfully 👌",
+      lastMessage: "",
       timestamp: "12:30 PM",
-      unread: 1,
+      unread: 0,
       online: false,
-    },
-    {
-      _id: "chat003",
-      orderName: "Travel Vlog – Order #1010",
-      name: "Freelancer Rahul",
-      role: "editor",
-      avatar: "https://randomuser.me/api/portraits/men/20.jpg",
-      lastMessage: "Can you share sample videos?",
-      timestamp: "Yesterday",
-      unread: 3,
-      online: true,
     },
   ]);
 
+  // -------- Dummy Rejected Requests --------
+  const [rejected, setRejected] = useState([
+    {
+      _id: "rej001",
+      orderName: "Travel Vlog – Order #1010",
+      name: "Freelancer Rahul",
+      avatar: "https://randomuser.me/api/portraits/men/20.jpg",
+      timestamp: "Yesterday",
+    },
+  ]);
+
+  // -------- SEARCH --------
   const [search, setSearch] = useState("");
 
-  const filteredChats = chats.filter((chat) =>
-    chat.name.toLowerCase().includes(search.toLowerCase())
-  );
+  // Filter logic based on active tab
+  const filterList = (list) =>
+    list.filter((c) =>
+      c.name.toLowerCase().includes(search.toLowerCase())
+    );
 
+  const filteredNewRequests = filterList(newRequests);
+  const filteredOngoing = filterList(ongoing);
+  const filteredRejected = filterList(rejected);
+
+  // ---------------------- ACCEPT REQUEST ----------------------
+  const acceptRequest = (req) => {
+    setOngoing((prev) => [
+      ...prev,
+      {
+        _id: req._id,
+        orderName: req.orderName,
+        name: req.name,
+        avatar: req.avatar,
+        lastMessage: "",
+        timestamp: "Now",
+        unread: 0,
+        online: false,
+        role: "client",
+      },
+    ]);
+
+    setNewRequests((prev) => prev.filter((r) => r._id !== req._id));
+    setActiveTab("ongoing");
+  };
+
+  // ---------------------- REJECT REQUEST ----------------------
+  const rejectRequest = (req) => {
+    setRejected((prev) => [
+      ...prev,
+      {
+        _id: req._id,
+        orderName: req.orderName,
+        name: req.name,
+        avatar: req.avatar,
+        timestamp: "Now",
+      },
+    ]);
+
+    setNewRequests((prev) => prev.filter((r) => r._id !== req._id));
+    setActiveTab("rejected");
+  };
+
+  // ---------------------- RENDER LIST ITEM ----------------------
+  const renderChatItem = (chat, type) => {
+    const clickable = type === "ongoing";
+
+    return (
+      <motion.div
+        key={chat._id}
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        whileHover={{ scale: clickable ? 1.01 : 1 }}
+        onClick={() => clickable && navigate(`/chat/${chat._id}`)}
+        className={`flex items-center gap-4 ${
+          type === "rejected" ? "bg-[#3b0f0f]/40" : "bg-[#0f1112]"
+        } border border-white/5 hover:border-white/15 cursor-pointer rounded-2xl p-4`}
+      >
+        {/* Avatar */}
+        <div className="relative">
+          <img
+            src={chat.avatar}
+            className="w-14 h-14 rounded-2xl object-cover shadow-md"
+          />
+          {chat.online && type === "ongoing" && (
+            <span className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-[#0f1112]" />
+          )}
+        </div>
+
+        {/* TEXT AREA */}
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-white text-sm">{chat.name}</p>
+
+          <p className="text-[11px] text-gray-400 truncate">
+            {chat.orderName}
+          </p>
+
+          <p className="text-[10px] text-gray-500">ID: {chat._id}</p>
+
+          {/* ONGOING MESSAGE */}
+          {type === "ongoing" && (
+            <p className="text-gray-300 text-sm truncate mt-1">
+              {chat.lastMessage
+                ? chat.lastMessage
+                : <span className="text-green-400 font-semibold">Accepted — start conversation</span>}
+            </p>
+          )}
+
+          {/* REJECTED LABEL */}
+          {type === "rejected" && (
+            <p className="text-red-400 text-sm mt-1 font-semibold">
+              Unable to continue
+            </p>
+          )}
+        </div>
+
+        {/* RIGHT SIDE */}
+        <div className="flex flex-col items-end gap-2">
+          <span className="text-[11px] text-gray-500">{chat.timestamp}</span>
+
+          {/* UNREAD */}
+          {type === "ongoing" && chat.unread > 0 && (
+            <span className="px-2 py-0.5 bg-white text-black rounded-full text-[10px] font-bold">
+              {chat.unread}
+            </span>
+          )}
+
+          {/* NEW REQUEST ACTION BUTTONS */}
+          {type === "new" && (
+            <div className="flex gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  acceptRequest(chat);
+                }}
+                className="p-2 bg-green-600 rounded-full hover:bg-green-700"
+              >
+                <FaCheck />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  rejectRequest(chat);
+                }}
+                className="p-2 bg-red-600 rounded-full hover:bg-red-700"
+              >
+                <FaTimes />
+              </button>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    );
+  };
+
+  // ---------------------- MAIN UI ----------------------
   return (
     <div className="fixed inset-0 bg-[#0B0B0D] text-white flex flex-col">
 
-      {/* -------- HEADER -------- */}
+      {/* HEADER */}
       <div className="px-5 py-5 flex items-center gap-4 border-b border-white/10 bg-[#0e0f11]/80 backdrop-blur-xl">
         <button
           onClick={() => navigate(-1)}
-          className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"
+          className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20"
         >
-          <FaArrowLeft className="text-lg" />
+          <FaArrowLeft />
         </button>
-
-        <h1 className="text-xl font-semibold tracking-wide">Messages</h1>
+        <h1 className="text-xl font-semibold">Messages</h1>
       </div>
 
-      {/* -------- SEARCH BOX -------- */}
+      {/* ----------------- TABS ----------------- */}
+      <div className="px-5 py-4 flex items-center justify-between border-b border-white/10 bg-[#0d0f10] text-sm font-semibold">
+        {["new", "ongoing", "rejected"].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 py-2 rounded-xl transition ${
+              activeTab === tab
+                ? "bg-blue-600 text-white"
+                : "text-gray-400 hover:bg-white/10"
+            }`}
+          >
+            {tab === "new" && "New Requests"}
+            {tab === "ongoing" && "Ongoing Chats"}
+            {tab === "rejected" && "Rejected"}
+          </button>
+        ))}
+      </div>
+
+      {/* SEARCH BAR */}
       <div className="px-5 py-4 border-b border-white/10 bg-[#0B0B0D]">
         <div className="relative">
           <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            className="w-full bg-[#111315] border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm placeholder:text-gray-500 focus:ring-2 focus:ring-white/10 outline-none transition"
-            placeholder="Search chats"
+            className="w-full bg-[#111315] border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm placeholder:text-gray-500 focus:ring-2 focus:ring-white/10"
+            placeholder="Search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
       </div>
 
-      {/* -------- CHAT LIST -------- */}
-      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-2">
+      {/* ----------------- LIST SECTION ----------------- */}
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-2">
 
-        <AnimatePresence>
-          {filteredChats.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 0.8, y: 0 }}
-              className="flex flex-col items-center justify-center mt-20 text-gray-400 gap-3"
-            >
-              <FaComments className="text-4xl opacity-40" />
-              <p>No chats found</p>
-            </motion.div>
+        {/* NEW REQUESTS */}
+        {activeTab === "new" &&
+          (filteredNewRequests.length > 0 ? (
+            filteredNewRequests.map((req) =>
+              renderChatItem(req, "new")
+            )
           ) : (
-            filteredChats.map((chat) => (
-              <motion.div
-                key={chat._id}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                whileHover={{ scale: 1.01 }}
-                transition={{ duration: 0.2 }}
-                onClick={() => navigate(`/chat/${chat._id}`)}
-                className="flex items-center gap-4 bg-[#0f1112] border border-white/5 hover:border-white/15 cursor-pointer rounded-2xl p-4 shadow-[0_8px_20px_rgba(0,0,0,0.6)]"
-              >
-                {/* ------- Avatar + Online Badge ------- */}
-                <div className="relative">
-                  <img
-                    src={chat.avatar}
-                    className="w-14 h-14 rounded-2xl object-cover shadow-md"
-                  />
-                  {chat.online && (
-                    <span className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-[#0f1112]"></span>
-                  )}
-                </div>
+            <EmptyState />
+          ))}
 
-                {/* ------- MIDDLE TEXT AREA ------- */}
-                <div className="flex-1 min-w-0">
+        {/* ONGOING */}
+        {activeTab === "ongoing" &&
+          (filteredOngoing.length > 0 ? (
+            filteredOngoing.map((chat) =>
+              renderChatItem(chat, "ongoing")
+            )
+          ) : (
+            <EmptyState />
+          ))}
 
-                  {/* NAME + ROLE */}
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold text-white text-sm tracking-wide">
-                      {chat.name}
-                    </p>
-
-                    <span
-                      className={`
-                        text-[10px] px-2 py-0.5 rounded-full font-semibold tracking-wide
-                        ${
-                          chat.role === "editor"
-                            ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
-                            : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                        }
-                      `}
-                    >
-                      {chat.role === "editor" ? "Editor" : "Client"}
-                    </span>
-                  </div>
-
-                  {/* ORDER NAME */}
-                  <p className="text-[11px] text-gray-400 truncate max-w-[240px] leading-tight">
-                    {chat.orderName}
-                  </p>
-
-                  {/* CHAT ID */}
-                  <p className="text-[10px] text-gray-500 mt-0.5">
-                    Chat ID: {chat._id}
-                  </p>
-
-                  {/* LAST MESSAGE */}
-                  <p className="text-gray-400 text-sm truncate max-w-[200px] mt-1">
-                    {chat.lastMessage.length > 35
-                      ? chat.lastMessage.slice(0, 35) + "..."
-                      : chat.lastMessage}
-                  </p>
-                </div>
-
-                {/* ------- RIGHT SIDE: TIME + UNREAD ------- */}
-                <div className="flex flex-col items-end justify-between h-full gap-2">
-                  <span className="text-[11px] text-gray-500">{chat.timestamp}</span>
-
-                  {chat.unread > 0 && (
-                    <span className="px-2 py-0.5 bg-white text-black rounded-full text-[10px] font-bold shadow">
-                      {chat.unread}
-                    </span>
-                  )}
-                </div>
-
-              </motion.div>
-            ))
-          )}
-        </AnimatePresence>
+        {/* REJECTED */}
+        {activeTab === "rejected" &&
+          (filteredRejected.length > 0 ? (
+            filteredRejected.map((rej) =>
+              renderChatItem(rej, "rejected")
+            )
+          ) : (
+            <EmptyState />
+          ))}
       </div>
     </div>
   );
 };
+
+// ---------------- EMPTY STATE ----------------
+const EmptyState = () => (
+  <motion.div
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="flex flex-col items-center justify-center mt-20 text-gray-400 gap-3"
+  >
+    <FaComments className="text-4xl opacity-40" />
+    <p>No items found</p>
+  </motion.div>
+);
 
 export default ChatsPage;
