@@ -11,6 +11,7 @@ import PublicEditorProfile from "./pages/PublicEditorProfile.jsx";
 import ReelsPage from "./pages/ReelsPage.jsx";
 import NotificationsPage from "./pages/NotificationsPage.jsx";
 import ChatsPage from "./pages/AllChatsPage.jsx";
+import Chatbox from "./components/ChatPage.jsx";
 
 // OAuth Pages
 import OAuthSuccess from "./pages/OAuthSuccess.jsx";
@@ -124,15 +125,16 @@ function App() {
             </ProtectedRoute>
           }
         />
-       
+
         <Route
           path="/chat/:orderId"
           element={
             <ProtectedRoute>
-              <ChatPage />
+              <Chatbox/>
             </ProtectedRoute>
           }
         />
+        
       </Routes>
     </>
   );
