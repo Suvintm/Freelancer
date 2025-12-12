@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   FaExclamationCircle,
   FaArrowAltCircleRight,
@@ -13,7 +13,6 @@ import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
 import ExploreEditor from "../components/ExploreEditor.jsx";
 import ExploreGigs from "../components/ExploreGigs.jsx";
-import AllChatsPage from "../pages/AllChatsPage.jsx";
 import { motion } from "framer-motion";
 import { BiCameraMovie } from "react-icons/bi";
 
@@ -27,7 +26,12 @@ const EditorHome = () => {
   const [activeTab, setActiveTab] = useState("editors");
   const navigate = useNavigate();
 
-  
+  // Navigate to chats page when chats tab is selected
+  useEffect(() => {
+    if (activeTab === "chats") {
+      navigate("/chats");
+    }
+  }, [activeTab, navigate]);
 
 
 
@@ -223,7 +227,7 @@ const EditorHome = () => {
         <div className="bg-[#111319] border border-[#262A3B] rounded-3xl shadow-[0_18px_50px_rgba(0,0,0,0.7)] p-2 md:p-6">
           {activeTab === "editors" && <ExploreEditor />}
           {activeTab === "gigs" && <ExploreGigs />}
-          {activeTab === "chats" && navigate("/chats")}
+          {/* Chats tab triggers navigation via useEffect */}
         </div>
 
        {/* Floating Instagram Reels Button */}

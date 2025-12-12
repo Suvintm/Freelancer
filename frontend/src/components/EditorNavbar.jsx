@@ -1,19 +1,26 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
+import { useSocket } from "../context/SocketContext";
 import logo from "../assets/logo.png";
 import { HiBell, HiBars3 } from "react-icons/hi2";
+import { FaEnvelope } from "react-icons/fa";
 
 const navItems = [
     { path: "/editor-home", label: "Dashboard" },
     { path: "/editor-my-orders", label: "Orders" },
     { path: "/editor-profile", label: "Profile" },
-    { path: "/editor-messages", label: "Messages" },
+    { path: "/chats", label: "Messages" },
 ];
 
 const EditorNavbar = ({ onMenuClick }) => {
     const { user, unreadCount } = useAppContext();
+    const { totalUnread, unreadNotifications } = useSocket() || {};
     const navigate = useNavigate();
     const location = useLocation();
+
+    // Combine notification counts
+    const notificationBadge = (unreadCount || 0) + (unreadNotifications || 0);
+    const messageBadge = totalUnread || 0;
 
     return (
         <>
@@ -53,7 +60,7 @@ const EditorNavbar = ({ onMenuClick }) => {
                             transition
                         " />
 
-                        {unreadCount > 0 && (
+                        {notificationBadge > 0 && (
                             <span className="
                                 absolute top-1 right-1 
                                 w-6 h-6 lg:w-7 lg:h-7
@@ -63,7 +70,7 @@ const EditorNavbar = ({ onMenuClick }) => {
                                 rounded-full border-2 border-[#0D0D0D]
                                 shadow-md
                             ">
-                                {unreadCount > 9 ? "9+" : unreadCount}
+                                {notificationBadge > 9 ? "9+" : notificationBadge}
                             </span>
                         )}
                     </div>
