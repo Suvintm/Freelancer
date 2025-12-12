@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
-import { io } from "socket.io-client";
 
 export const AppContext = createContext();
 
@@ -63,32 +62,6 @@ export const AppProvider = ({ children }) => {
     }
   }, [backendURL]);
 
-  const [socket, setSocket] = useState(null);
-
-  // Socket.io Connection
-  useEffect(() => {
-    if (user) {
-      const socketInstance = io(backendURL, {
-        query: { userId: user._id },
-      });
-
-      setSocket(socketInstance);
-
-      socketInstance.on("newNotification", (notification) => {
-        setNotifications((prev) => [notification, ...prev]);
-        setUnreadCount((prev) => prev + 1);
-        // Optional: Play a sound or show a toast
-      });
-
-      return () => socketInstance.close();
-    } else {
-      if (socket) {
-        socket.close();
-        setSocket(null);
-      }
-    }
-  }, [user, backendURL]);
-
   // Initial fetch on load
   useEffect(() => {
     if (user?.token) {
@@ -109,6 +82,13 @@ export const AppProvider = ({ children }) => {
     }
   }, [user]);
 
+  // Logout function
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem("user");
+    delete axios.defaults.headers.common["Authorization"];
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -121,6 +101,7 @@ export const AppProvider = ({ children }) => {
         notifications,
         unreadCount,
         fetchNotifications,
+        logout,
       }}
     >
       {children}

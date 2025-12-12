@@ -3,8 +3,8 @@ import http from "http";
 import express from "express";
 import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
-import Message from "./models/Message.js";
-import Order from "./models/Order.js";
+import {Message } from "./models/Message.js";
+import { Order } from "./models/Order.js";
 
 dotenv.config();
 

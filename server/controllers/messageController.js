@@ -100,7 +100,14 @@ export const sendMessage = asyncHandler(async (req, res) => {
   // Emit real-time message via Socket.io
   const io = getIO();
   if (io) {
-    io.to(`order_${orderId}`).emit("new_message", populatedMessage);
+    console.log(`📤 Socket emit: message:new to room order_${orderId}`);
+    io.to(`order_${orderId}`).emit("message:new", {
+      ...populatedMessage.toObject(),
+      orderId,
+      senderName: req.user.name,
+    });
+  } else {
+    console.log("❌ Socket IO not available");
   }
 
   // Notify recipient
@@ -244,5 +251,104 @@ export const getUnreadCount = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     unreadCount,
+  });
+});
+
+// ============ UPLOAD FILE ============
+export const uploadFile = asyncHandler(async (req, res) => {
+  const { orderId } = req.params;
+
+  if (!req.file) {
+    throw new ApiError(400, "No file provided");
+  }
+
+  // Verify order access
+  const order = await Order.findById(orderId)
+    .populate("client", "name")
+    .populate("editor", "name");
+
+  if (!order) {
+    throw new ApiError(404, "Order not found");
+  }
+
+  const isClient = order.client._id.toString() === req.user._id.toString();
+  const isEditor = order.editor._id.toString() === req.user._id.toString();
+
+  if (!isClient && !isEditor) {
+    throw new ApiError(403, "Not authorized to upload files");
+  }
+
+  // Only allow uploads in appropriate order states
+  if (!["accepted", "in_progress", "submitted"].includes(order.status)) {
+    throw new ApiError(400, "Cannot upload files in current order state");
+  }
+
+  // Upload to Cloudinary
+  const cloudinary = (await import("cloudinary")).v2;
+  
+  // Determine resource type
+  const mimeType = req.file.mimetype;
+  let resourceType = "auto";
+  if (mimeType.startsWith("video/")) resourceType = "video";
+  else if (mimeType.startsWith("image/")) resourceType = "image";
+  else resourceType = "raw";
+
+  // Convert buffer to base64
+  const b64 = Buffer.from(req.file.buffer).toString("base64");
+  const dataURI = `data:${mimeType};base64,${b64}`;
+
+  const result = await cloudinary.uploader.upload(dataURI, {
+    resource_type: resourceType,
+    folder: `suvix/chats/${orderId}`,
+    use_filename: true,
+    unique_filename: true,
+  });
+
+  // Create message with file
+  const message = await Message.create({
+    order: orderId,
+    sender: req.user._id,
+    type: "file",
+    content: `Sent a file: ${req.file.originalname}`,
+    mediaUrl: result.secure_url,
+    mediaName: req.file.originalname,
+    mediaSize: req.file.size,
+    allowDownload: true,
+    delivered: true,
+    deliveredAt: new Date(),
+  });
+
+  const populatedMessage = await Message.findById(message._id).populate(
+    "sender",
+    "name profilePicture"
+  );
+
+  // Emit real-time message via Socket.io
+  const io = getIO();
+  if (io) {
+    console.log(`📤 Socket emit: message:new (file) to room order_${orderId}`);
+    io.to(`order_${orderId}`).emit("message:new", {
+      ...populatedMessage.toObject(),
+      orderId,
+      senderName: req.user.name,
+    });
+  }
+
+  // Notify recipient
+  const recipientId = isClient ? order.editor._id : order.client._id;
+
+  await createNotification({
+    recipient: recipientId,
+    type: "info",
+    title: "New File",
+    message: `${req.user.name} sent a file: ${req.file.originalname}`,
+    link: `/chat/${orderId}`,
+  });
+
+  logger.info(`File uploaded in order: ${order.orderNumber}`);
+
+  res.status(201).json({
+    success: true,
+    message: populatedMessage,
   });
 });
