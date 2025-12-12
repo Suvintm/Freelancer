@@ -27,6 +27,9 @@ import exploreRoutes from "./routes/exploreRoutes.js";
 import oauthRoutes from "./routes/oauthRoutes.js";
 import reelRoutes from "./routes/reelRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import gigRoutes from "./routes/gigRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
+import messageRoutes from "./routes/messageRoutes.js";
 
 // Validate required environment variables
 const requiredEnvVars = ["MONGO_URI", "JWT_SECRET", "CLOUDINARY_CLOUD_NAME"];
@@ -125,6 +128,9 @@ app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/explore", exploreRoutes);
 app.use("/api/reels", reelRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/gigs", gigRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/messages", messageRoutes);
 
 // Health check endpoint
 app.get("/", (req, res) =>

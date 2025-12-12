@@ -13,6 +13,7 @@ import {
   FaCheckCircle,
   FaImages,
   FaChevronRight,
+  FaShoppingCart,
 } from "react-icons/fa";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
@@ -23,6 +24,7 @@ import { FaStar } from "react-icons/fa";
 import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
 import PortfolioSection from "../components/PortfolioSection.jsx";
+import GigsSection from "../components/GigsSection.jsx";
 
 // ----------------------------------------------
 // Country Code Mapping
@@ -229,6 +231,7 @@ const EditorProfile = () => {
   const tabs = [
     { id: "about", label: "About", icon: FaUser },
     { id: "portfolio", label: "Portfolio", icon: FaImages },
+    { id: "gigs", label: "Gigs", icon: FaShoppingCart },
   ];
 
   // ----------------------------------------------
@@ -686,6 +689,39 @@ const EditorProfile = () => {
                                shadow-[0_0_25px_rgba(0,0,0,0.6)]"
                   >
                     <PortfolioSection />
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ---------------- GIGS TAB ---------------- */}
+              {activeTab === "gigs" && (
+                <motion.div
+                  key="gigs"
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -16 }}
+                  transition={{ duration: 0.25 }}
+                  className="p-6 md:p-8 bg-[#050816] rounded-b-3xl
+                             border-t border-white/5 shadow-[0_0_30px_rgba(0,0,0,0.6)]
+                             overflow-y-auto"
+                >
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-11 h-11 md:w-12 md:h-12 rounded-xl 
+                                           bg-black border border-white/10
+                                          flex items-center justify-center">
+                      <FaShoppingCart className="text-white text-base md:text-lg" />
+                    </div>
+                    <h3 className="text-xl md:text-2xl font-bold text-white tracking-wide">
+                      My Gigs
+                    </h3>
+                  </div>
+
+                  <div
+                    className="bg-[#020617] rounded-2xl p-4 md:p-5 
+                               border border-white/10 
+                               shadow-[0_0_25px_rgba(0,0,0,0.6)]"
+                  >
+                    <GigsSection />
                   </div>
                 </motion.div>
               )}

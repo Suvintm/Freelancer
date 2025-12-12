@@ -13,6 +13,11 @@ import NotificationsPage from "./pages/NotificationsPage.jsx";
 import ChatsPage from "./pages/AllChatsPage.jsx";
 import Chatbox from "./components/ChatPage.jsx";
 
+// Gig & Order Pages
+import CreateGig from "./pages/CreateGig.jsx";
+import MyGigs from "./pages/MyGigs.jsx";
+import MyOrders from "./pages/MyOrders.jsx";
+
 // OAuth Pages
 import OAuthSuccess from "./pages/OAuthSuccess.jsx";
 import SelectRole from "./pages/SelectRole.jsx";
@@ -85,6 +90,36 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* Gig Routes (Editor) */}
+        <Route
+          path="/create-gig"
+          element={
+            <ProtectedRoute allowedRoles={["editor"]}>
+              <CreateGig />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-gigs"
+          element={
+            <ProtectedRoute allowedRoles={["editor"]}>
+              <MyGigs />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* My Orders (Both roles) */}
+        <Route
+          path="/my-orders"
+          element={
+            <ProtectedRoute>
+              <MyOrders />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Public Profile */}
         <Route
           path="/public-profile/:userId"
           element={
@@ -115,13 +150,11 @@ function App() {
         />
 
         {/* Chat (accessible by any logged-in user) */}
-
-
-         <Route
+        <Route
           path="/chats"
           element={
             <ProtectedRoute>
-              <ChatsPage/>
+              <ChatsPage />
             </ProtectedRoute>
           }
         />
@@ -130,11 +163,10 @@ function App() {
           path="/chat/:orderId"
           element={
             <ProtectedRoute>
-              <Chatbox/>
+              <Chatbox />
             </ProtectedRoute>
           }
         />
-        
       </Routes>
     </>
   );

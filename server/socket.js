@@ -21,6 +21,9 @@ export const getReceiverSocketId = (receiverId) => {
     return userSocketMap[receiverId];
 };
 
+// Export IO instance for use in controllers
+export const getIO = () => io;
+
 io.on("connection", (socket) => {
     console.log("a user connected", socket.id);
 
@@ -29,6 +32,23 @@ io.on("connection", (socket) => {
 
     // io.emit() is used to send events to all connected clients
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
+
+    // Join order chat room
+    socket.on("joinOrderChat", (orderId) => {
+        socket.join(`order_${orderId}`);
+        console.log(`User ${userId} joined order chat: ${orderId}`);
+    });
+
+    // Leave order chat room
+    socket.on("leaveOrderChat", (orderId) => {
+        socket.leave(`order_${orderId}`);
+        console.log(`User ${userId} left order chat: ${orderId}`);
+    });
+
+    // Typing indicator
+    socket.on("typing", ({ orderId, isTyping }) => {
+        socket.to(`order_${orderId}`).emit("userTyping", { userId, isTyping });
+    });
 
     socket.on("disconnect", () => {
         console.log("user disconnected", socket.id);

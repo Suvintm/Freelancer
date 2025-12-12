@@ -5,6 +5,8 @@ import {
   FaUserTie,
   FaEnvelope,
   FaTimes,
+  FaShoppingCart,
+  FaClipboardList,
 } from "react-icons/fa";
 import { motion } from "framer-motion";
 import logo from "../assets/logo.png";
@@ -13,7 +15,8 @@ import { FaCircle } from "react-icons/fa";
 
 const navItems = [
   { path: "/editor-home", icon: FaBriefcase, label: "Dashboard" },
-  { path: "/editor-my-orders", icon: FaCheckCircle, label: "My Orders" },
+  { path: "/my-gigs", icon: FaShoppingCart, label: "My Gigs" },
+  { path: "/my-orders", icon: FaClipboardList, label: "My Orders" },
   { path: "/editor-profile", icon: FaUserTie, label: "Profile" },
   { path: "/chats", icon: FaEnvelope, label: "Messages" },
 ];
