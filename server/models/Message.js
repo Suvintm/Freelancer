@@ -31,6 +31,17 @@ const messageSchema = new mongoose.Schema(
       maxlength: [5000, "Message cannot exceed 5000 characters"],
     },
 
+    // Reply to another message
+    replyTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Message",
+    },
+    replyPreview: {
+      senderName: String,
+      content: String,
+      type: { type: String, enum: ["text", "file", "image", "video"] },
+    },
+
     // Media attachment
     mediaUrl: {
       type: String,

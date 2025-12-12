@@ -13,6 +13,7 @@ import {
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
+import { useSocket } from "../context/SocketContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import Sidebar from "../components/Sidebar.jsx";
@@ -28,6 +29,8 @@ const STATUS_CONFIG = {
 const ChatsPage = () => {
   const navigate = useNavigate();
   const { user, backendURL } = useAppContext();
+  const socketContext = useSocket();
+  const { typingUsers = {}, onlineUsers = [] } = socketContext || {};
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chats, setChats] = useState([]);
@@ -161,6 +164,8 @@ const ChatsPage = () => {
               {filteredChats.map((chat, index) => {
                 const otherParty = getOtherParty(chat);
                 const statusConfig = STATUS_CONFIG[chat.status] || STATUS_CONFIG.in_progress;
+                const isTyping = typingUsers[chat._id]?.length > 0;
+                const isOnline = onlineUsers.includes(otherParty?._id);
 
                 return (
                   <motion.div
@@ -180,8 +185,10 @@ const ChatsPage = () => {
                           alt={otherParty?.name}
                           className="w-12 h-12 rounded-xl object-cover"
                         />
-                        {/* Online indicator */}
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-[#111319]" />
+                        {/* Online indicator - only green when actually online */}
+                        <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-[#111319] ${
+                          isOnline ? "bg-green-500" : "bg-gray-500"
+                        }`} />
                       </div>
 
                       {/* Content */}
@@ -203,7 +210,33 @@ const ChatsPage = () => {
                             )}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-400 truncate">{chat.title}</p>
+                        
+                        {/* Typing Indicator or Last Message */}
+                        {isTyping ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-green-400 font-medium italic">typing</span>
+                            <div className="flex items-center gap-0.5">
+                              <motion.span
+                                animate={{ opacity: [0.4, 1, 0.4] }}
+                                transition={{ duration: 1, repeat: Infinity, delay: 0 }}
+                                className="w-1 h-1 bg-green-400 rounded-full"
+                              />
+                              <motion.span
+                                animate={{ opacity: [0.4, 1, 0.4] }}
+                                transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
+                                className="w-1 h-1 bg-green-400 rounded-full"
+                              />
+                              <motion.span
+                                animate={{ opacity: [0.4, 1, 0.4] }}
+                                transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
+                                className="w-1 h-1 bg-green-400 rounded-full"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-400 truncate">{chat.title}</p>
+                        )}
+                        
                         <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-500">
                           <span className="flex items-center gap-1 text-green-400">
                             <FaRupeeSign className="text-[8px]" /> {chat.amount}

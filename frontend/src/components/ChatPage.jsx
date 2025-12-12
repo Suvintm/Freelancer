@@ -12,11 +12,18 @@ import {
   FaImage,
   FaTimes,
   FaCircle,
+  FaCamera,
+  FaVideo,
+  FaFileAlt,
+  FaPlay,
+  FaReply,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 import { useSocket } from "../context/SocketContext";
+import MediaPreviewModal from "./MediaPreviewModal";
+import ProjectDetailsDropdown from "./ProjectDetailsDropdown";
 import axios from "axios";
 import { toast } from "react-toastify";
 import chattexture from "../assets/chattexture.png";
@@ -41,6 +48,9 @@ const ChatPage = () => {
   } = socketContext || {};
 
   const fileInputRef = useRef(null);
+  const imageInputRef = useRef(null);
+  const videoInputRef = useRef(null);
+  const docInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -51,6 +61,13 @@ const ChatPage = () => {
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [typingUsers, setTypingUsers] = useState([]);
+  
+  // Media states
+  const [showMediaMenu, setShowMediaMenu] = useState(false);
+  const [previewMedia, setPreviewMedia] = useState(null);
+  
+  // Reply state
+  const [replyingTo, setReplyingTo] = useState(null);
 
   // Get the other party in the chat
   const otherParty = user?.role === "editor" ? order?.client : order?.editor;
@@ -197,13 +214,29 @@ const ChatPage = () => {
       stopTyping(orderId);
 
       const token = user?.token;
+      const messageData = { 
+        content: newMessage.trim(), 
+        type: "text",
+      };
+
+      // Add reply data if replying to a message
+      if (replyingTo) {
+        messageData.replyTo = replyingTo._id;
+        messageData.replyPreview = {
+          senderName: replyingTo.sender?.name || "Unknown",
+          content: replyingTo.content?.substring(0, 100) || (replyingTo.type === "image" ? "📷 Photo" : replyingTo.type === "video" ? "🎥 Video" : "📎 File"),
+          type: replyingTo.type,
+        };
+      }
+
       await axios.post(
         `${backendURL}/api/messages/${orderId}`,
-        { content: newMessage.trim(), type: "text" },
+        messageData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setNewMessage("");
+      setReplyingTo(null); // Clear reply state
     } catch (err) {
       toast.error("Failed to send message");
     } finally {
@@ -325,6 +358,9 @@ const ChatPage = () => {
         </div>
       </header>
 
+      {/* Project Details Dropdown */}
+      <ProjectDetailsDropdown order={{ ...order, currentUserId: user?._id }} />
+
       {/* Messages Area */}
       <div
         ref={containerRef}
@@ -333,6 +369,7 @@ const ChatPage = () => {
           backgroundImage: `url(${chattexture})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
+          backgroundAttachment: "fixed", // Background stays fixed while messages scroll
         }}
       >
         {messages.length === 0 ? (
@@ -349,36 +386,111 @@ const ChatPage = () => {
                 key={msg._id || index}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                className={`flex ${isMe ? "justify-end" : "justify-start"} group`}
               >
+                {/* Reply Button (appears on left for my messages) */}
+                {isMe && (
+                  <button
+                    onClick={() => setReplyingTo(msg)}
+                    className="opacity-0 group-hover:opacity-100 p-2 mr-2 self-center text-gray-400 hover:text-white transition-all"
+                    title="Reply"
+                  >
+                    <FaReply className="text-sm" />
+                  </button>
+                )}
+
                 <div
-                  className={`max-w-[75%] md:max-w-[60%] rounded-2xl px-4 py-3 ${
+                  className={`max-w-[75%] md:max-w-[60%] rounded-2xl px-3 py-2 ${
                     isMe
-                      ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-br-none"
-                      : "bg-[#1a1d25] text-white rounded-bl-none border border-[#262A3B]"
+                      ? "bg-[#005C4B] text-white rounded-br-none"
+                      : "bg-[#202C33] text-white rounded-bl-none"
                   }`}
                 >
-                  {/* File Message */}
-                  {msg.type === "file" && msg.fileUrl && (
-                    <a
-                      href={msg.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm hover:underline"
+                  {/* Reply Preview (if this message is a reply) */}
+                  {msg.replyPreview && (
+                    <div className="mb-2 pl-2 border-l-2 border-blue-400 bg-black/20 rounded-r-lg py-1 pr-2">
+                      <p className="text-xs text-blue-400 font-medium">{msg.replyPreview.senderName}</p>
+                      <p className="text-xs text-gray-300 truncate">
+                        {msg.replyPreview.type === "image" ? "📷 Photo" : 
+                         msg.replyPreview.type === "video" ? "🎥 Video" :
+                         msg.replyPreview.type === "file" ? "📎 File" :
+                         msg.replyPreview.content}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Image Message */}
+                  {(msg.type === "file" || msg.type === "image") && 
+                   msg.mediaUrl?.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
+                    <div
+                      className="cursor-pointer rounded-lg overflow-hidden mb-1"
+                      onClick={() => setPreviewMedia({ 
+                        url: msg.mediaUrl, 
+                        name: msg.mediaName || msg.fileName,
+                        type: "image"
+                      })}
                     >
-                      {msg.fileName?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                        <FaImage className="text-lg" />
-                      ) : msg.fileName?.match(/\.(mp4|mov|avi|webm)$/i) ? (
-                        <FaFileVideo className="text-lg" />
-                      ) : (
-                        <FaFile className="text-lg" />
-                      )}
-                      <span className="truncate">{msg.fileName || "File"}</span>
-                    </a>
+                      <img
+                        src={msg.mediaUrl}
+                        alt={msg.mediaName || "Image"}
+                        className="max-w-[280px] max-h-[300px] object-cover rounded-lg"
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
+
+                  {/* Video Message */}
+                  {(msg.type === "file" || msg.type === "video") && 
+                   msg.mediaUrl?.match(/\.(mp4|mov|webm|avi)$/i) && (
+                    <div
+                      className="relative cursor-pointer rounded-lg overflow-hidden mb-1"
+                      onClick={() => setPreviewMedia({ 
+                        url: msg.mediaUrl, 
+                        name: msg.mediaName || msg.fileName,
+                        type: "video"
+                      })}
+                    >
+                      <video
+                        src={msg.mediaUrl}
+                        className="max-w-[280px] max-h-[200px] object-cover rounded-lg"
+                        muted
+                        preload="metadata"
+                      />
+                      {/* Play Button Overlay */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-14 h-14 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                          <FaPlay className="text-white text-xl ml-1" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Document/File Message */}
+                  {msg.type === "file" && 
+                   !msg.mediaUrl?.match(/\.(jpg|jpeg|png|gif|webp|mp4|mov|webm|avi)$/i) && 
+                   msg.mediaUrl && (
+                    <div
+                      className="flex items-center gap-3 p-3 bg-black/20 rounded-lg cursor-pointer mb-1"
+                      onClick={() => setPreviewMedia({ 
+                        url: msg.mediaUrl, 
+                        name: msg.mediaName || msg.fileName,
+                        type: "document"
+                      })}
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-blue-500/30 flex items-center justify-center">
+                        <FaFile className="text-blue-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{msg.mediaName || msg.fileName || "Document"}</p>
+                        <p className="text-xs opacity-60">{msg.mediaSize ? `${(msg.mediaSize / 1024 / 1024).toFixed(2)} MB` : "File"}</p>
+                      </div>
+                    </div>
                   )}
 
                   {/* Text Message */}
-                  {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
+                  {msg.content && !msg.content.startsWith("Sent a file:") && (
+                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  )}
 
                   {/* Time & Status */}
                   <div className={`flex items-center gap-1 mt-1 ${isMe ? "justify-end" : "justify-start"}`}>
@@ -391,14 +503,30 @@ const ChatPage = () => {
                     {isMe && (
                       <span className="text-[10px]">
                         {msg.seen ? (
-                          <FaCheckDouble className="text-blue-300" />
+                          // Double blue tick for seen
+                          <FaCheckDouble className="text-[#53BDEB]" />
+                        ) : msg.delivered ? (
+                          // Double gray tick for delivered
+                          <FaCheckDouble className="text-gray-400" />
                         ) : (
-                          <FaCheck className="opacity-60" />
+                          // Single gray tick for sent
+                          <FaCheck className="text-gray-400" />
                         )}
                       </span>
                     )}
                   </div>
                 </div>
+
+                {/* Reply Button (appears on right for their messages) */}
+                {!isMe && (
+                  <button
+                    onClick={() => setReplyingTo(msg)}
+                    className="opacity-0 group-hover:opacity-100 p-2 ml-2 self-center text-gray-400 hover:text-white transition-all"
+                    title="Reply"
+                  >
+                    <FaReply className="text-sm" />
+                  </button>
+                )}
               </motion.div>
             );
           })
@@ -439,32 +567,137 @@ const ChatPage = () => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Reply Preview Bar */}
+      <AnimatePresence>
+        {replyingTo && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-[#0D1117] border-t border-[#262A3B] px-4 py-2 overflow-hidden"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-10 bg-blue-500 rounded-full" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-blue-400 font-medium">
+                  Replying to {replyingTo.sender?.name || "Unknown"}
+                </p>
+                <p className="text-sm text-gray-400 truncate">
+                  {replyingTo.type === "image" ? "📷 Photo" : 
+                   replyingTo.type === "video" ? "🎥 Video" :
+                   replyingTo.type === "file" ? "📎 File" :
+                   replyingTo.content}
+                </p>
+              </div>
+              <button
+                onClick={() => setReplyingTo(null)}
+                className="p-2 text-gray-400 hover:text-white transition-all"
+              >
+                <FaTimes />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Input Area */}
       <div className="bg-[#111319] border-t border-[#262A3B] px-4 py-3 sticky bottom-0">
         <div className="flex items-center gap-3">
-          {/* File Upload */}
+          {/* Hidden File Inputs */}
           <input
             type="file"
-            ref={fileInputRef}
+            ref={imageInputRef}
             onChange={handleFileUpload}
             className="hidden"
-            accept="image/*,video/*,.pdf,.doc,.docx,.zip"
+            accept="image/*"
           />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="p-3 rounded-xl bg-[#1a1d25] hover:bg-[#262A3B] transition-all disabled:opacity-50"
-          >
-            {uploading ? (
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full"
-              />
-            ) : (
-              <FaPaperclip className="text-gray-400" />
-            )}
-          </button>
+          <input
+            type="file"
+            ref={videoInputRef}
+            onChange={handleFileUpload}
+            className="hidden"
+            accept="video/*"
+          />
+          <input
+            type="file"
+            ref={docInputRef}
+            onChange={handleFileUpload}
+            className="hidden"
+            accept=".pdf,.doc,.docx,.txt,.zip,.rar"
+          />
+
+          {/* Media Menu Button */}
+          <div className="relative">
+            <button
+              onClick={() => setShowMediaMenu(!showMediaMenu)}
+              disabled={uploading}
+              className="p-3 rounded-xl bg-[#1a1d25] hover:bg-[#262A3B] transition-all disabled:opacity-50"
+            >
+              {uploading ? (
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full"
+                />
+              ) : (
+                <FaPaperclip className="text-gray-400" />
+              )}
+            </button>
+
+            {/* Media Options Menu */}
+            <AnimatePresence>
+              {showMediaMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute bottom-14 left-0 bg-[#1a1d25] border border-[#262A3B] rounded-xl shadow-xl overflow-hidden z-50"
+                >
+                  {/* Photo Option */}
+                  <button
+                    onClick={() => {
+                      imageInputRef.current?.click();
+                      setShowMediaMenu(false);
+                    }}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-[#262A3B] transition-all w-full"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-pink-500/20 flex items-center justify-center">
+                      <FaCamera className="text-pink-400" />
+                    </div>
+                    <span className="text-white text-sm font-medium">Photo</span>
+                  </button>
+
+                  {/* Video Option */}
+                  <button
+                    onClick={() => {
+                      videoInputRef.current?.click();
+                      setShowMediaMenu(false);
+                    }}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-[#262A3B] transition-all w-full"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                      <FaVideo className="text-purple-400" />
+                    </div>
+                    <span className="text-white text-sm font-medium">Video</span>
+                  </button>
+
+                  {/* Document Option */}
+                  <button
+                    onClick={() => {
+                      docInputRef.current?.click();
+                      setShowMediaMenu(false);
+                    }}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-[#262A3B] transition-all w-full"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                      <FaFileAlt className="text-blue-400" />
+                    </div>
+                    <span className="text-white text-sm font-medium">Document</span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Message Input */}
           <div className="flex-1 relative">
@@ -497,6 +730,13 @@ const ChatPage = () => {
           </button>
         </div>
       </div>
+
+      {/* Media Preview Modal */}
+      <MediaPreviewModal
+        isOpen={!!previewMedia}
+        onClose={() => setPreviewMedia(null)}
+        media={previewMedia}
+      />
     </div>
   );
 };
