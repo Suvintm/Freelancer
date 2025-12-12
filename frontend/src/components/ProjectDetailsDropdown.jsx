@@ -57,11 +57,11 @@ const ProjectDetailsDropdown = ({ order }) => {
   const editorEarning = order.editorEarning || orderAmount - platformFee;
 
   return (
-    <div className="border-b border-[#262A3B]">
+    <div className="border-b border-white/5">
       {/* Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 bg-[#0D1117] hover:bg-[#111319] transition-all"
+        className="w-full flex items-center justify-between p-3 bg-transparent hover:bg-white/5 transition-all"
       >
         <div className="flex items-center gap-3">
           <FaClipboardList className="text-blue-400" />
@@ -85,7 +85,7 @@ const ProjectDetailsDropdown = ({ order }) => {
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="p-4 bg-[#0A0D12] grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-4 bg-black/40 backdrop-blur-md grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-white/5">
               {/* LEFT: Progress Bars */}
               <div className="space-y-6">
                 {/* Payment Progress */}
