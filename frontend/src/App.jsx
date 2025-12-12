@@ -1,6 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import Homepage from "./pages/Homepage.jsx";
-import ClientHome from "./pages/clientHome.jsx";
+import ClientHome from "./pages/ClientHome.jsx";
 import EditorHome from "./pages/EditorHome.jsx";
 import ChatPage from "./pages/chatpage.jsx";
 import EditorProfilePage from "./pages/EditorProfilePage.jsx";
@@ -17,6 +17,12 @@ import Chatbox from "./components/ChatPage.jsx";
 import CreateGig from "./pages/CreateGig.jsx";
 import MyGigs from "./pages/MyGigs.jsx";
 import MyOrders from "./pages/MyOrders.jsx";
+
+// Client Pages
+import ClientOrders from "./pages/ClientOrders.jsx";
+import ClientMessages from "./pages/ClientMessages.jsx";
+import ClientProfile from "./pages/ClientProfile.jsx";
+import SavedEditors from "./pages/SavedEditors.jsx";
 
 // OAuth Pages
 import OAuthSuccess from "./pages/OAuthSuccess.jsx";
@@ -39,7 +45,7 @@ function App() {
         <Route path="/oauth-success" element={<OAuthSuccess />} />
         <Route path="/select-role" element={<SelectRole />} />
 
-        {/* Client Routes */}
+        {/* ============ CLIENT ROUTES ============ */}
         <Route
           path="/client-home"
           element={
@@ -48,8 +54,40 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/client-orders"
+          element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <ClientOrders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/client-messages"
+          element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <ClientMessages />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/client-profile"
+          element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <ClientProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/saved-editors"
+          element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <SavedEditors />
+            </ProtectedRoute>
+          }
+        />
 
-        {/* Editor Routes */}
+        {/* ============ EDITOR ROUTES ============ */}
         <Route
           path="/editor-home"
           element={
@@ -109,19 +147,28 @@ function App() {
           }
         />
 
-        {/* My Orders (Both roles) */}
+        {/* My Orders (Editor) */}
         <Route
           path="/my-orders"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["editor"]}>
               <MyOrders />
             </ProtectedRoute>
           }
         />
 
+        {/* ============ SHARED ROUTES ============ */}
         {/* Public Profile */}
         <Route
           path="/public-profile/:userId"
+          element={
+            <ProtectedRoute>
+              <PublicEditorProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/editor/:userId"
           element={
             <ProtectedRoute>
               <PublicEditorProfile />
@@ -173,3 +220,4 @@ function App() {
 }
 
 export default App;
+
