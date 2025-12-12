@@ -39,15 +39,29 @@ export const getIO = () => io;
 io.use((socket, next) => {
   try {
     const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+    console.log("🔐 Socket auth attempt, token exists:", !!token);
+    
     if (!token) {
+      console.log("❌ No token provided for socket auth");
       return next(new Error("Authentication required"));
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    socket.userId = decoded.id || decoded._id;
+    console.log("🔐 JWT decoded:", JSON.stringify(decoded));
+    
+    // Handle different JWT payload structures
+    socket.userId = decoded._id || decoded.id || decoded.userId;
     socket.userName = decoded.name || "Unknown";
+    
+    if (!socket.userId) {
+      console.log("❌ No userId in JWT payload");
+      return next(new Error("Invalid token - no userId"));
+    }
+    
+    console.log(`✅ Socket authenticated: userId=${socket.userId}, name=${socket.userName}`);
     next();
   } catch (error) {
+    console.error("❌ Socket auth error:", error.message);
     next(new Error("Invalid token"));
   }
 });
@@ -57,10 +71,14 @@ io.on("connection", (socket) => {
   console.log(`🔌 User connected: ${userId} (${socket.id})`);
 
   // Store user socket
-  userSocketMap[userId] = socket.id;
+  if (userId) {
+    userSocketMap[userId] = socket.id;
+    console.log(`👥 UserSocketMap updated:`, Object.keys(userSocketMap));
+  }
 
   // Broadcast online users
   io.emit("users:online", Object.keys(userSocketMap));
+  io.emit("getOnlineUsers", Object.keys(userSocketMap)); // Legacy event
   io.emit("user:joined", userId);
 
   // ============ ROOM HANDLERS ============

@@ -25,16 +25,20 @@ const ChatPage = () => {
   const navigate = useNavigate();
   const { orderId } = useParams();
   const { user, backendURL } = useAppContext();
+  const socketContext = useSocket();
+  
+  // Destructure with defaults to handle null context
   const {
-    socket,
-    joinRoom,
-    leaveRoom,
-    startTyping,
-    stopTyping,
-    markAsRead,
-    isUserOnline,
-    getTypingUsers,
-  } = useSocket();
+    socket = null,
+    joinRoom = () => {},
+    leaveRoom = () => {},
+    startTyping = () => {},
+    stopTyping = () => {},
+    markAsRead = () => {},
+    isUserOnline = () => false,
+    getTypingUsers = () => [],
+    onlineUsers = [],
+  } = socketContext || {};
 
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -50,7 +54,22 @@ const ChatPage = () => {
 
   // Get the other party in the chat
   const otherParty = user?.role === "editor" ? order?.client : order?.editor;
-  const isOnline = otherParty ? isUserOnline(otherParty._id) : false;
+  const otherPartyId = otherParty?._id;
+  
+  // Check online status
+  const isOnline = otherPartyId ? onlineUsers.includes(otherPartyId) : false;
+  
+  // Debug logging
+  useEffect(() => {
+    console.log("🔍 ChatPage Debug:", {
+      orderId,
+      socket: !!socket,
+      socketConnected: socket?.connected,
+      otherPartyId,
+      onlineUsers,
+      isOnline,
+    });
+  }, [orderId, socket, otherPartyId, onlineUsers, isOnline]);
 
   // Fetch order and messages
   useEffect(() => {
@@ -96,10 +115,18 @@ const ChatPage = () => {
 
   // Listen for new messages
   useEffect(() => {
-    if (!socket) return;
+    if (!socket) {
+      console.log("⚠️ ChatPage: No socket available for listeners");
+      return;
+    }
+
+    console.log("🔊 ChatPage: Setting up socket listeners for order:", orderId);
 
     const handleNewMessage = (message) => {
-      if (message.orderId === orderId || message.order === orderId) {
+      console.log("💬 ChatPage received message:", message);
+      const msgOrderId = message.orderId || message.order;
+      if (msgOrderId === orderId || String(msgOrderId) === String(orderId)) {
+        console.log("✅ Message matches this chat, adding to UI");
         setMessages((prev) => [...prev, message]);
         scrollToBottom();
         
@@ -107,10 +134,13 @@ const ChatPage = () => {
         if (document.hasFocus()) {
           markAsRead(orderId);
         }
+      } else {
+        console.log("❌ Message for different order:", msgOrderId, "vs", orderId);
       }
     };
 
     const handleTypingStart = ({ orderId: typingOrderId, userId, userName }) => {
+      console.log("⌨️ ChatPage: Typing start from:", userName);
       if (typingOrderId === orderId && userId !== user?._id) {
         setTypingUsers((prev) => {
           if (!prev.find((u) => u.id === userId)) {
@@ -122,6 +152,7 @@ const ChatPage = () => {
     };
 
     const handleTypingStop = ({ orderId: typingOrderId, userId }) => {
+      console.log("⌨️ ChatPage: Typing stop from:", userId);
       if (typingOrderId === orderId) {
         setTypingUsers((prev) => prev.filter((u) => u.id !== userId));
       }
@@ -132,6 +163,7 @@ const ChatPage = () => {
     socket.on("typing:stop", handleTypingStop);
 
     return () => {
+      console.log("🔇 ChatPage: Removing socket listeners");
       socket.off("message:new", handleNewMessage);
       socket.off("typing:start", handleTypingStart);
       socket.off("typing:stop", handleTypingStop);
