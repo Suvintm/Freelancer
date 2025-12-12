@@ -1,6 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import Homepage from "./pages/Homepage.jsx";
-import ClientHome from "./pages/ClientHome.jsx";
+import ClientHome from "./pages/clientHome.jsx";
 import EditorHome from "./pages/EditorHome.jsx";
 import ChatPage from "./pages/chatpage.jsx";
 import EditorProfilePage from "./pages/EditorProfilePage.jsx";
