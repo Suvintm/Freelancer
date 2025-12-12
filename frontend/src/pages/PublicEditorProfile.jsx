@@ -17,6 +17,9 @@ import {
   FaFilm,
   FaPlay,
   FaStarAndCrescent,
+  FaRupeeSign,
+  FaCalendarAlt,
+  FaPaperPlane,
 } from "react-icons/fa";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
@@ -25,6 +28,7 @@ import ReactCountryFlag from "react-country-flag";
 import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
 import PortfolioSection from "../components/PortfolioSection.jsx";
+import { toast } from "react-toastify";
 
 // Country name to ISO Alpha-2 code mapping
 const countryNameToCode = {
@@ -128,8 +132,56 @@ const EditorProfile = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCert, setSelectedCert] = useState(null);
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [requestData, setRequestData] = useState({
+    description: "",
+    amount: "",
+    deadline: "",
+  });
+  const [submittingRequest, setSubmittingRequest] = useState(false);
 
   const navigate = useNavigate();
+
+  // Handle request submission
+  const handleSubmitRequest = async () => {
+    if (!requestData.amount || requestData.amount < 100) {
+      toast.error("Please enter an amount (min ₹100)");
+      return;
+    }
+    if (!requestData.deadline) {
+      toast.error("Please select a deadline");
+      return;
+    }
+    if (!requestData.description.trim()) {
+      toast.error("Please describe your project");
+      return;
+    }
+
+    try {
+      setSubmittingRequest(true);
+      const token = user?.token;
+
+      await axios.post(
+        `${backendURL}/api/orders/request`,
+        {
+          editorId: profile.user._id,
+          title: `Project request from ${user?.name}`,
+          description: requestData.description.trim(),
+          amount: Number(requestData.amount),
+          deadline: requestData.deadline,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      toast.success("Request sent! Editor will review your request.");
+      setRequestModalOpen(false);
+      setRequestData({ description: "", amount: "", deadline: "" });
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to send request");
+    } finally {
+      setSubmittingRequest(false);
+    }
+  };
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -343,6 +395,22 @@ const EditorProfile = () => {
                     >
                       <FaStar className="text-yellow-500"/> RATINGS WILL COME HERE
                     </motion.p>
+
+                  {/* Contact Request Button - Only show if not owner and is client */}
+                  {!isOwner && user?.role === "client" && (
+                    <motion.button
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.35 }}
+                      whileHover={{ scale: 1.02, y: -2 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setRequestModalOpen(true)}
+                      className="mt-4 w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/30 transition-all"
+                    >
+                      <FaPaperPlane />
+                      Request / Contact Personally
+                    </motion.button>
+                  )}
                    
                 </div>
               </div>
@@ -678,6 +746,115 @@ const EditorProfile = () => {
                 alt={selectedCert.title}
                 className="w-full h-auto object-contain rounded-2xl border border-[#111827]"
               />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Request/Contact Modal */}
+      <AnimatePresence>
+        {requestModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4"
+            onClick={() => setRequestModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg bg-[#0B1120] border border-[#1F2937] rounded-3xl p-6 shadow-[0_20px_60px_rgba(0,0,0,0.8)]"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-white">Request Project</h2>
+                  <p className="text-gray-400 text-sm">Send a request to {profile?.user?.name}</p>
+                </div>
+                <button
+                  onClick={() => setRequestModalOpen(false)}
+                  className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+
+              {/* Form */}
+              <div className="space-y-4">
+                {/* Amount */}
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    <FaRupeeSign className="inline mr-2 text-green-400" />
+                    Budget Amount (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    value={requestData.amount}
+                    onChange={(e) => setRequestData({ ...requestData, amount: e.target.value })}
+                    placeholder="Enter amount (min ₹100)"
+                    min={100}
+                    className="w-full bg-[#020617] border border-[#1F2937] rounded-xl px-4 py-3 text-white placeholder:text-gray-500 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/30 transition-all"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Platform fee: 10%</p>
+                </div>
+
+                {/* Deadline */}
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    <FaCalendarAlt className="inline mr-2 text-orange-400" />
+                    Deadline *
+                  </label>
+                  <input
+                    type="date"
+                    value={requestData.deadline}
+                    onChange={(e) => setRequestData({ ...requestData, deadline: e.target.value })}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full bg-[#020617] border border-[#1F2937] rounded-xl px-4 py-3 text-white placeholder:text-gray-500 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/30 transition-all"
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Project Description *
+                  </label>
+                  <textarea
+                    value={requestData.description}
+                    onChange={(e) => setRequestData({ ...requestData, description: e.target.value })}
+                    placeholder="Describe your project requirements, video type, duration, etc..."
+                    rows={4}
+                    maxLength={1000}
+                    className="w-full bg-[#020617] border border-[#1F2937] rounded-xl px-4 py-3 text-white placeholder:text-gray-500 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/30 resize-none transition-all"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">{requestData.description.length}/1000</p>
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  onClick={handleSubmitRequest}
+                  disabled={submittingRequest}
+                  className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50"
+                >
+                  {submittingRequest ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                      />
+                      Sending Request...
+                    </>
+                  ) : (
+                    <>
+                      <FaPaperPlane />
+                      Send Request
+                    </>
+                  )}
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

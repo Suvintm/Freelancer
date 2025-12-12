@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import {
   FaArrowLeft,
-  FaFilter,
   FaCheck,
   FaClock,
   FaTimes,
@@ -10,6 +9,10 @@ import {
   FaRupeeSign,
   FaComments,
   FaChevronRight,
+  FaChevronDown,
+  FaShoppingCart,
+  FaEnvelope,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
@@ -29,6 +32,200 @@ const STATUS_CONFIG = {
   disputed: { label: "Disputed", color: "text-orange-400", bg: "bg-orange-500/20", icon: FaExclamationTriangle },
 };
 
+// Order Card Component with expandable details for new orders
+const OrderCard = ({ order, user, onAccept, onReject, onNavigate, accepting, rejecting }) => {
+  const [expanded, setExpanded] = useState(false);
+  const isNewOrder = order.status === "new";
+  const isEditor = user?.role === "editor";
+  const canAcceptReject = isNewOrder && isEditor;
+
+  const statusConfig = STATUS_CONFIG[order.status] || STATUS_CONFIG.new;
+  const StatusIcon = statusConfig.icon;
+
+  const otherParty = isEditor ? order.client : order.editor;
+
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  // Calculate payment breakdown
+  const platformFee = order.platformFee || Math.round(order.amount * 0.1);
+  const editorEarning = order.editorEarning || order.amount - platformFee;
+
+  const handleCardClick = () => {
+    if (canAcceptReject) {
+      setExpanded(!expanded);
+    } else if (order.status !== "rejected" && order.status !== "new") {
+      onNavigate(order._id);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className={`bg-[#111319] border ${
+        isNewOrder ? "border-blue-500/30" : "border-[#262A3B]"
+      } rounded-2xl overflow-hidden transition-all ${
+        canAcceptReject ? "cursor-pointer hover:border-blue-500/50" : 
+        order.status !== "rejected" && order.status !== "new" ? "cursor-pointer hover:border-blue-500/30" : ""
+      }`}
+    >
+      {/* Main Card Content */}
+      <div className="p-5" onClick={handleCardClick}>
+        <div className="flex items-start gap-4">
+          {/* Avatar */}
+          <img
+            src={otherParty?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
+            alt={otherParty?.name}
+            className="w-14 h-14 rounded-xl object-cover"
+          />
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-white">{order.title}</h3>
+                  {/* Order Type Tag */}
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                    order.type === "gig" 
+                      ? "bg-purple-500/20 text-purple-400"
+                      : "bg-cyan-500/20 text-cyan-400"
+                  }`}>
+                    {order.type === "gig" ? (
+                      <><FaShoppingCart className="inline mr-1 text-[8px]" />From Gig</>
+                    ) : (
+                      <><FaEnvelope className="inline mr-1 text-[8px]" />Request</>
+                    )}
+                  </span>
+                </div>
+                <p className="text-gray-400 text-sm mt-0.5">
+                  {isEditor ? "Client: " : "Editor: "}
+                  {otherParty?.name}
+                </p>
+              </div>
+
+              {/* Status Badge */}
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${statusConfig.bg} ${statusConfig.color} text-xs font-medium`}>
+                <StatusIcon className="text-xs" />
+                {statusConfig.label}
+              </div>
+            </div>
+
+            {/* Order Details */}
+            <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
+              <span className="text-gray-500">#{order.orderNumber}</span>
+              <span className="flex items-center gap-1 text-green-400 font-medium">
+                <FaRupeeSign /> {order.amount}
+              </span>
+              <span className="flex items-center gap-1">
+                <FaCalendarAlt className="text-orange-400" />
+                {formatDate(order.deadline)}
+              </span>
+            </div>
+
+            {/* Show expand hint for new orders */}
+            {canAcceptReject && (
+              <div className="flex items-center gap-2 mt-2 text-xs text-blue-400">
+                <FaChevronDown className={`transition-transform ${expanded ? "rotate-180" : ""}`} />
+                <span>Click to {expanded ? "hide" : "view"} details</span>
+              </div>
+            )}
+          </div>
+
+          {/* Arrow for non-new orders */}
+          {!canAcceptReject && order.status !== "rejected" && order.status !== "new" && (
+            <FaChevronRight className="text-gray-500" />
+          )}
+        </div>
+      </div>
+
+      {/* Expanded Details for New Orders */}
+      <AnimatePresence>
+        {expanded && canAcceptReject && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="border-t border-[#262A3B]"
+          >
+            <div className="p-5 bg-[#0a0c0f] space-y-4">
+              {/* Description */}
+              <div>
+                <p className="text-xs text-gray-400 mb-1">Project Description</p>
+                <p className="text-sm text-gray-200">
+                  {order.description || "No description provided"}
+                </p>
+              </div>
+
+              {/* Deadline Box */}
+              <div className="bg-[#1a1410] border border-orange-400/30 rounded-xl p-3 flex items-center gap-3">
+                <FaCalendarAlt className="text-orange-400 text-lg" />
+                <div>
+                  <span className="text-xs text-orange-300">Submission Deadline</span>
+                  <p className="text-orange-400 font-bold">{formatDate(order.deadline)}</p>
+                </div>
+              </div>
+
+              {/* Payment Breakdown */}
+              <div className="bg-[#101214] border border-white/10 rounded-xl p-4 space-y-3">
+                <p className="text-sm font-semibold text-white">Payment Breakdown</p>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-300 text-sm">Client Pays</span>
+                  <span className="text-green-400 font-bold text-lg">₹{order.amount}</span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-orange-300 text-sm">Platform Fee (10%)</span>
+                  <span className="text-orange-400 font-bold">-₹{platformFee}</span>
+                </div>
+                
+                <div className="border-t border-white/10 pt-3 flex justify-between items-center">
+                  <span className="text-white font-semibold">You Receive</span>
+                  <span className="text-green-400 font-bold text-xl">₹{editorEarning}</span>
+                </div>
+              </div>
+
+              {/* Accept/Reject Buttons */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onReject(order._id);
+                  }}
+                  disabled={rejecting}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 font-medium transition-all disabled:opacity-50"
+                >
+                  <FaTimes />
+                  {rejecting ? "Rejecting..." : "Reject"}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAccept(order._id);
+                  }}
+                  disabled={accepting}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-green-500/20 text-green-400 hover:bg-green-500/30 font-medium transition-all disabled:opacity-50"
+                >
+                  <FaCheck />
+                  {accepting ? "Accepting..." : "Accept Order"}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
+
 const MyOrders = () => {
   const { backendURL, user } = useAppContext();
   const navigate = useNavigate();
@@ -38,6 +235,11 @@ const MyOrders = () => {
   const [loading, setLoading] = useState(true);
   const [loadingText, setLoadingText] = useState("Loading your orders...");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [acceptingId, setAcceptingId] = useState(null);
+  const [rejectingId, setRejectingId] = useState(null);
+
+  // Count new orders for badge
+  const newOrdersCount = orders.filter(o => o.status === "new").length;
 
   useEffect(() => {
     fetchOrders();
@@ -64,19 +266,44 @@ const MyOrders = () => {
     }
   };
 
-  const getOtherParty = (order) => {
-    if (user?.role === "editor") {
-      return order.client;
+  const handleAccept = async (orderId) => {
+    try {
+      setAcceptingId(orderId);
+      const token = user?.token;
+
+      await axios.patch(
+        `${backendURL}/api/orders/${orderId}/accept`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      toast.success("Order accepted! Chat is now available.");
+      fetchOrders();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to accept order");
+    } finally {
+      setAcceptingId(null);
     }
-    return order.editor;
   };
 
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
+  const handleReject = async (orderId) => {
+    try {
+      setRejectingId(orderId);
+      const token = user?.token;
+
+      await axios.patch(
+        `${backendURL}/api/orders/${orderId}/reject`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      toast.info("Order rejected");
+      fetchOrders();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to reject order");
+    } finally {
+      setRejectingId(null);
+    }
   };
 
   if (loading) {
@@ -113,7 +340,14 @@ const MyOrders = () => {
             <FaArrowLeft />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-white">My Orders</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-white">My Orders</h1>
+              {newOrdersCount > 0 && (
+                <span className="px-2 py-1 bg-blue-500 text-white text-xs font-bold rounded-full">
+                  {newOrdersCount} New
+                </span>
+              )}
+            </div>
             <p className="text-gray-400 text-sm">{orders.length} orders total</p>
           </div>
         </div>
@@ -130,19 +364,29 @@ const MyOrders = () => {
           >
             All
           </button>
-          {Object.entries(STATUS_CONFIG).map(([key, config]) => (
-            <button
-              key={key}
-              onClick={() => setStatusFilter(key)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                statusFilter === key
-                  ? `${config.bg} ${config.color} border border-current`
-                  : "bg-[#111319] text-gray-400 hover:bg-[#1a1d25]"
-              }`}
-            >
-              {config.label}
-            </button>
-          ))}
+          {Object.entries(STATUS_CONFIG).map(([key, config]) => {
+            const count = orders.filter(o => o.status === key).length;
+            return (
+              <button
+                key={key}
+                onClick={() => setStatusFilter(key)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2 ${
+                  statusFilter === key
+                    ? `${config.bg} ${config.color} border border-current`
+                    : "bg-[#111319] text-gray-400 hover:bg-[#1a1d25]"
+                }`}
+              >
+                {config.label}
+                {count > 0 && (
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    statusFilter === key ? "bg-white/20" : "bg-gray-700"
+                  }`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Orders List */}
@@ -155,78 +399,18 @@ const MyOrders = () => {
         ) : (
           <div className="space-y-4">
             <AnimatePresence>
-              {orders.map((order, index) => {
-                const statusConfig = STATUS_CONFIG[order.status] || STATUS_CONFIG.new;
-                const StatusIcon = statusConfig.icon;
-                const otherParty = getOtherParty(order);
-
-                return (
-                  <motion.div
-                    key={order._id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ delay: index * 0.05 }}
-                    onClick={() => navigate(`/chat/${order._id}`)}
-                    className="bg-[#111319] border border-[#262A3B] rounded-2xl p-5 cursor-pointer hover:border-blue-500/30 transition-all group"
-                  >
-                    <div className="flex items-start gap-4">
-                      {/* Avatar */}
-                      <img
-                        src={otherParty?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
-                        alt={otherParty?.name}
-                        className="w-14 h-14 rounded-xl object-cover"
-                      />
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <h3 className="font-semibold text-white group-hover:text-blue-400 transition-colors">
-                              {order.title}
-                            </h3>
-                            <p className="text-gray-400 text-sm mt-0.5">
-                              {user?.role === "editor" ? "Client: " : "Editor: "}
-                              {otherParty?.name}
-                            </p>
-                          </div>
-
-                          {/* Status Badge */}
-                          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${statusConfig.bg} ${statusConfig.color} text-xs font-medium`}>
-                            <StatusIcon className="text-xs" />
-                            {statusConfig.label}
-                          </div>
-                        </div>
-
-                        {/* Order Details */}
-                        <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
-                          <span className="text-gray-500">#{order.orderNumber}</span>
-                          <span className="flex items-center gap-1 text-green-400 font-medium">
-                            <FaRupeeSign /> {order.amount}
-                          </span>
-                          <span>Deadline: {formatDate(order.deadline)}</span>
-                        </div>
-
-                        {/* Payment Status */}
-                        <div className="mt-2">
-                          <span className={`text-xs px-2 py-1 rounded-lg ${
-                            order.paymentStatus === "escrow" 
-                              ? "bg-yellow-500/20 text-yellow-400"
-                              : order.paymentStatus === "released"
-                              ? "bg-green-500/20 text-green-400"
-                              : "bg-gray-500/20 text-gray-400"
-                          }`}>
-                            Payment: {order.paymentStatus}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Arrow */}
-                      <FaChevronRight className="text-gray-500 group-hover:text-blue-400 transition-colors" />
-                    </div>
-                  </motion.div>
-                );
-              })}
+              {orders.map((order, index) => (
+                <OrderCard
+                  key={order._id}
+                  order={order}
+                  user={user}
+                  onAccept={handleAccept}
+                  onReject={handleReject}
+                  onNavigate={(id) => navigate(`/chat/${id}`)}
+                  accepting={acceptingId === order._id}
+                  rejecting={rejectingId === order._id}
+                />
+              ))}
             </AnimatePresence>
           </div>
         )}
