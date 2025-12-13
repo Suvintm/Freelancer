@@ -3,7 +3,7 @@ import http from "http";
 import express from "express";
 import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
-import {Message } from "./models/Message.js";
+import { Message } from "./models/Message.js";
 import { Order } from "./models/Order.js";
 
 dotenv.config();
@@ -23,9 +23,14 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
     credentials: true,
   },
+  // Production-ready heartbeat settings
+  pingTimeout: 60000,    // 60 seconds before considering connection dead
+  pingInterval: 25000,   // Ping every 25 seconds
+  upgradeTimeout: 30000, // Timeout for upgrade
+  maxHttpBufferSize: 1e8, // 100MB max for file transfers
 });
 
-// Store online users: { oderId: socketId }
+// Store online users: { userId: socketId }
 const userSocketMap = {};
 
 export const getReceiverSocketId = (receiverId) => {
@@ -49,7 +54,6 @@ io.use((socket, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log("🔐 JWT decoded:", JSON.stringify(decoded));
     
-    // Handle different JWT payload structures
     socket.userId = decoded._id || decoded.id || decoded.userId;
     socket.userName = decoded.name || "Unknown";
     
@@ -78,30 +82,51 @@ io.on("connection", (socket) => {
 
   // Broadcast online users
   io.emit("users:online", Object.keys(userSocketMap));
-  io.emit("getOnlineUsers", Object.keys(userSocketMap)); // Legacy event
+  io.emit("getOnlineUsers", Object.keys(userSocketMap));
   io.emit("user:joined", userId);
 
   // ============ ROOM HANDLERS ============
 
-  // Join a chat room (order)
   socket.on("room:join", ({ orderId }) => {
     socket.join(`order_${orderId}`);
     console.log(`📥 User ${userId} joined room: order_${orderId}`);
+    
+    // Send current message statuses when joining room
+    Message.find({ order: orderId })
+      .select("_id seen seenAt delivered deliveredAt")
+      .then(messages => {
+        socket.emit("messages:status_update", {
+          orderId,
+          messages: messages.map(m => ({
+            _id: m._id,
+            seen: m.seen,
+            seenAt: m.seenAt,
+            delivered: m.delivered || true,
+            deliveredAt: m.deliveredAt,
+          })),
+        });
+      })
+      .catch(err => console.error("Error fetching message statuses:", err));
   });
 
-  // Leave a chat room
   socket.on("room:leave", ({ orderId }) => {
     socket.leave(`order_${orderId}`);
     console.log(`📤 User ${userId} left room: order_${orderId}`);
   });
 
-  // Legacy handlers for compatibility
+  // Legacy handlers
   socket.on("joinOrderChat", (orderId) => {
     socket.join(`order_${orderId}`);
   });
 
   socket.on("leaveOrderChat", (orderId) => {
     socket.leave(`order_${orderId}`);
+  });
+
+  // ============ ONLINE USERS REQUEST ============
+  
+  socket.on("request:online_users", () => {
+    socket.emit("users:online", Object.keys(userSocketMap));
   });
 
   // ============ TYPING HANDLERS ============
@@ -121,16 +146,14 @@ io.on("connection", (socket) => {
     });
   });
 
-  // Legacy typing handler
   socket.on("typing", ({ orderId, isTyping }) => {
     socket.to(`order_${orderId}`).emit("userTyping", { userId, isTyping });
   });
 
   // ============ MESSAGE HANDLERS ============
 
-  socket.on("message:send", async ({ orderId, message, senderId, senderName }) => {
+  socket.on("message:send", async ({ orderId, message, senderId, senderName, tempId }) => {
     try {
-      // Save message to database
       const newMessage = new Message({
         order: orderId,
         sender: senderId,
@@ -138,36 +161,79 @@ io.on("connection", (socket) => {
         type: message.type || "text",
         fileUrl: message.fileUrl,
         fileName: message.fileName,
+        delivered: true,
+        deliveredAt: new Date(),
       });
       await newMessage.save();
 
-      // Populate sender info
       await newMessage.populate("sender", "name profilePicture");
 
-      // Emit to room
+      // Get the other party in the order to send delivered notification
+      const order = await Order.findById(orderId);
+      const receiverId = order.client.toString() === senderId ? order.editor.toString() : order.client.toString();
+
+      // Emit to room with full message data including status
       io.to(`order_${orderId}`).emit("message:new", {
         ...newMessage.toObject(),
         orderId,
         senderName: newMessage.sender?.name || senderName,
+        tempId, // Include tempId for optimistic update matching
+        status: "delivered",
+      });
+
+      // Emit delivered status specifically
+      io.to(`order_${orderId}`).emit("message:delivered", {
+        messageId: newMessage._id,
+        orderId,
+        deliveredAt: newMessage.deliveredAt,
       });
 
       console.log(`💬 Message sent in order ${orderId} by ${senderName}`);
     } catch (error) {
       console.error("Message save error:", error);
-      socket.emit("message:error", { error: "Failed to send message" });
+      socket.emit("message:error", { error: "Failed to send message", tempId });
     }
   });
 
+  // Real-time read receipts with immediate broadcast
   socket.on("message:read", async ({ orderId, readBy }) => {
     try {
-      // Mark messages as read in database
-      await Message.updateMany(
+      const now = new Date();
+      
+      // Mark all unread messages as read
+      const result = await Message.updateMany(
         { order: orderId, sender: { $ne: readBy }, seen: false },
-        { seen: true, seenAt: new Date() }
+        { seen: true, seenAt: now }
       );
 
-      // Notify other users
-      socket.to(`order_${orderId}`).emit("message:read", { orderId, readBy });
+      console.log(`✓✓ Marked ${result.modifiedCount} messages as read in order ${orderId}`);
+
+      // Get the updated messages to broadcast their IDs
+      const updatedMessages = await Message.find({
+        order: orderId,
+        sender: { $ne: readBy },
+        seen: true,
+        seenAt: now,
+      }).select("_id");
+
+      // Broadcast seen status to all users in the room
+      io.to(`order_${orderId}`).emit("message:read", { 
+        orderId, 
+        readBy,
+        seenAt: now,
+        messageIds: updatedMessages.map(m => m._id),
+      });
+
+      // Also emit individual seen events for each message
+      updatedMessages.forEach(msg => {
+        io.to(`order_${orderId}`).emit("message:seen", {
+          messageId: msg._id,
+          orderId,
+          seenBy: readBy,
+          seenAt: now,
+        });
+      });
+
     } catch (error) {
       console.error("Mark read error:", error);
     }
@@ -176,7 +242,6 @@ io.on("connection", (socket) => {
   // ============ NOTIFICATION HANDLERS ============
 
   socket.on("notifications:read", ({ userId }) => {
-    // Just acknowledge - actual marking done via API
     console.log(`🔔 Notifications marked read for ${userId}`);
   });
 
@@ -185,6 +250,7 @@ io.on("connection", (socket) => {
   socket.on("user:online", ({ userId }) => {
     userSocketMap[userId] = socket.id;
     io.emit("users:online", Object.keys(userSocketMap));
+    io.emit("user:joined", userId);
   });
 
   socket.on("user:offline", ({ userId }) => {
@@ -195,11 +261,16 @@ io.on("connection", (socket) => {
 
   // ============ DISCONNECT ============
 
-  socket.on("disconnect", () => {
-    console.log(`❌ User disconnected: ${userId} (${socket.id})`);
+  socket.on("disconnect", (reason) => {
+    console.log(`❌ User disconnected: ${userId} (${socket.id}) - Reason: ${reason}`);
     delete userSocketMap[userId];
     io.emit("user:left", userId);
     io.emit("users:online", Object.keys(userSocketMap));
+  });
+
+  // Error handling
+  socket.on("error", (error) => {
+    console.error(`❌ Socket error for user ${userId}:`, error);
   });
 });
 
@@ -208,12 +279,23 @@ export const emitToUser = (userId, event, data) => {
   const socketId = userSocketMap[userId];
   if (socketId) {
     io.to(socketId).emit(event, data);
+    return true;
   }
+  return false;
 };
 
 // Helper to emit to order room
 export const emitToOrder = (orderId, event, data) => {
   io.to(`order_${orderId}`).emit(event, data);
+};
+
+// Helper to emit message status update
+export const emitMessageStatus = (orderId, messageId, status, data = {}) => {
+  io.to(`order_${orderId}`).emit(`message:${status}`, {
+    messageId,
+    orderId,
+    ...data,
+  });
 };
 
 export { app, io, server };

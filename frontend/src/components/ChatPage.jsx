@@ -118,7 +118,6 @@ const ChatPage = () => {
         if (msgOrderId === orderId || String(msgOrderId) === String(orderId)) {
           setMessages((prev) => [...prev, message]);
           if (document.hasFocus()) markAsRead(orderId);
-          // Optional: sound on receive? User asked for "when message is sent", but receiving usually has sound too.
         }
       };
 
@@ -134,15 +133,62 @@ const ChatPage = () => {
         }
       };
 
+      // Real-time message status updates
+      const handleMessageDelivered = ({ messageId, orderId: msgOrderId }) => {
+        if (msgOrderId === orderId || String(msgOrderId) === String(orderId)) {
+          setMessages((prev) => prev.map(msg => 
+            msg._id === messageId ? { ...msg, delivered: true } : msg
+          ));
+        }
+      };
+
+      const handleMessageSeen = ({ messageId, orderId: msgOrderId, seenAt }) => {
+        if (msgOrderId === orderId || String(msgOrderId) === String(orderId)) {
+          setMessages((prev) => prev.map(msg => 
+            msg._id === messageId ? { ...msg, seen: true, seenAt } : msg
+          ));
+        }
+      };
+
+      // Bulk status update when joining room
+      const handleStatusUpdate = ({ orderId: msgOrderId, messages: statusMessages }) => {
+        if (msgOrderId === orderId || String(msgOrderId) === String(orderId)) {
+          setMessages((prev) => prev.map(msg => {
+            const status = statusMessages.find(s => s._id === msg._id);
+            if (status) {
+              return { ...msg, seen: status.seen, seenAt: status.seenAt, delivered: status.delivered };
+            }
+            return msg;
+          }));
+        }
+      };
+
+      // Batch read update
+      const handleMessageRead = ({ orderId: msgOrderId, messageIds, seenAt }) => {
+        if (msgOrderId === orderId || String(msgOrderId) === String(orderId)) {
+          setMessages((prev) => prev.map(msg => 
+            messageIds?.includes(msg._id) ? { ...msg, seen: true, seenAt } : msg
+          ));
+        }
+      };
+
       socket.on("message:new", handleNewMessage);
       socket.on("typing:start", handleTypingStart);
       socket.on("typing:stop", handleTypingStop);
+      socket.on("message:delivered", handleMessageDelivered);
+      socket.on("message:seen", handleMessageSeen);
+      socket.on("messages:status_update", handleStatusUpdate);
+      socket.on("message:read", handleMessageRead);
 
       return () => {
         leaveRoom(orderId);
         socket.off("message:new", handleNewMessage);
         socket.off("typing:start", handleTypingStart);
         socket.off("typing:stop", handleTypingStop);
+        socket.off("message:delivered", handleMessageDelivered);
+        socket.off("message:seen", handleMessageSeen);
+        socket.off("messages:status_update", handleStatusUpdate);
+        socket.off("message:read", handleMessageRead);
       };
     }
   }, [orderId, socket, joinRoom, leaveRoom, markAsRead, user?._id]);
@@ -329,13 +375,28 @@ const ChatPage = () => {
                         {msg.content && <p className="text-[15px] leading-relaxed whitespace-pre-wrap emoji-font">{msg.content}</p>}
                         
                         {/* Timestamp & Status (Inside Bubble) */}
-                        <div className={`flex items-center gap-1 mt-1 ${isMe ? "justify-end text-white/70" : "justify-start text-gray-400"}`}>
+                        <div className={`flex items-center gap-1.5 mt-1 ${isMe ? "justify-end text-white/70" : "justify-start text-gray-400"}`}>
                             <span className="text-[10px]">
                                 {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                             {isMe && (
-                                <span className="ml-1">
-                                    {msg.seen ? <FaCheckDouble className="text-blue-200 text-[10px]" /> : <FaCheck className="text-[10px]" />}
+                                <span className="flex items-center gap-0.5 text-[10px]">
+                                    {msg.seen ? (
+                                        <>
+                                            <FaCheckDouble className="text-blue-300" />
+                                            <span className="text-blue-300 text-[9px]">Seen</span>
+                                        </>
+                                    ) : msg.delivered ? (
+                                        <>
+                                            <FaCheckDouble className="text-white/60" />
+                                            <span className="text-white/60 text-[9px]">Delivered</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <FaCheck className="text-white/50" />
+                                            <span className="text-white/50 text-[9px]">Sent</span>
+                                        </>
+                                    )}
                                 </span>
                             )}
                         </div>

@@ -1,4 +1,4 @@
-// SocketContext.jsx - Real-time WebSocket context for messaging, notifications, and online status
+// SocketContext.jsx - Production-ready WebSocket context with improved reliability
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { io } from "socket.io-client";
 import { useAppContext } from "./AppContext";
@@ -11,76 +11,117 @@ export const useSocket = () => useContext(SocketContext);
 export const SocketProvider = ({ children }) => {
   const { user, backendURL } = useAppContext();
   const [socket, setSocket] = useState(null);
+  const [connectionState, setConnectionState] = useState("disconnected"); // "connecting" | "connected" | "disconnected" | "reconnecting"
   const [onlineUsers, setOnlineUsers] = useState([]);
-  const [typingUsers, setTypingUsers] = useState({}); // { orderId: [userId, ...] }
-  const [unreadCounts, setUnreadCounts] = useState({}); // { orderId: count }
+  const [typingUsers, setTypingUsers] = useState({});
+  const [unreadCounts, setUnreadCounts] = useState({});
   const [totalUnread, setTotalUnread] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  
   const typingTimeoutRef = useRef({});
+  const messageQueueRef = useRef([]);
+  const syncIntervalRef = useRef(null);
+  const socketRef = useRef(null);
 
-  // Initialize socket connection
+  // Initialize socket connection with production-ready settings
   useEffect(() => {
     if (!user?.token || !user?._id) {
       console.log("⚠️ Socket: No user token or ID, skipping connection");
       return;
     }
 
-    // Get base URL without /api
     const baseUrl = backendURL.replace("/api", "");
     console.log("🔌 Socket: Connecting to", baseUrl);
+    setConnectionState("connecting");
 
     const newSocket = io(baseUrl, {
       auth: { token: user.token },
       query: { userId: user._id },
       transports: ["websocket", "polling"],
+      // Production-ready reconnection settings
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: Infinity, // Never give up
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 30000, // Max 30 seconds between attempts
+      randomizationFactor: 0.5,
+      timeout: 20000,
     });
 
+    // Connection events
     newSocket.on("connect", () => {
       console.log("✅ Socket connected! ID:", newSocket.id);
-      // Emit user online
+      setConnectionState("connected");
       newSocket.emit("user:online", { userId: user._id });
+      
+      // Flush any queued messages
+      if (messageQueueRef.current.length > 0) {
+        console.log("📤 Flushing", messageQueueRef.current.length, "queued messages");
+        messageQueueRef.current.forEach(msg => {
+          newSocket.emit("message:send", msg);
+        });
+        messageQueueRef.current = [];
+      }
+      
+      // Request fresh online users list
+      newSocket.emit("request:online_users");
     });
 
     newSocket.on("connect_error", (error) => {
       console.error("❌ Socket connection error:", error.message);
+      setConnectionState("disconnected");
+    });
+
+    newSocket.on("reconnecting", (attemptNumber) => {
+      console.log("🔄 Socket reconnecting, attempt:", attemptNumber);
+      setConnectionState("reconnecting");
+    });
+
+    newSocket.on("reconnect", (attemptNumber) => {
+      console.log("✅ Socket reconnected after", attemptNumber, "attempts");
+      setConnectionState("connected");
+      newSocket.emit("user:online", { userId: user._id });
+      newSocket.emit("request:online_users");
+    });
+
+    newSocket.on("reconnect_failed", () => {
+      console.error("❌ Socket reconnection failed after all attempts");
+      setConnectionState("disconnected");
+      toast.error("Connection lost. Please refresh the page.", { autoClose: false });
     });
 
     newSocket.on("disconnect", (reason) => {
       console.log("❌ Socket disconnected:", reason);
+      setConnectionState("disconnected");
+      if (reason === "io server disconnect") {
+        // Server forced disconnect, try to reconnect
+        newSocket.connect();
+      }
     });
 
-    // Listen for online users
+    // Online users events
     newSocket.on("users:online", (users) => {
       console.log("👥 Online users:", users);
       setOnlineUsers(users);
     });
 
-    // Also listen for legacy event name
     newSocket.on("getOnlineUsers", (users) => {
-      console.log("👥 Online users (legacy):", users);
       setOnlineUsers(users);
     });
 
-    // Listen for user coming online
     newSocket.on("user:joined", (userId) => {
       console.log("🟢 User joined:", userId);
       setOnlineUsers((prev) => [...new Set([...prev, userId])]);
     });
 
-    // Listen for user going offline
     newSocket.on("user:left", (userId) => {
       console.log("🔴 User left:", userId);
       setOnlineUsers((prev) => prev.filter((id) => id !== userId));
     });
 
-    // Listen for new messages
+    // Message events - now includes real-time status updates
     newSocket.on("message:new", (message) => {
       console.log("💬 New message received:", message);
-      // Update unread count for this order
       const senderId = message.sender?._id || message.sender;
       if (senderId !== user._id) {
         setUnreadCounts((prev) => ({
@@ -88,8 +129,6 @@ export const SocketProvider = ({ children }) => {
           [message.orderId || message.order]: (prev[message.orderId || message.order] || 0) + 1,
         }));
         setTotalUnread((prev) => prev + 1);
-
-        // Show toast notification
         toast.info(`New message from ${message.senderName || message.sender?.name || "Someone"}`, {
           position: "top-right",
           autoClose: 3000,
@@ -97,9 +136,24 @@ export const SocketProvider = ({ children }) => {
       }
     });
 
-    // Listen for typing indicators
+    // Real-time message status updates
+    newSocket.on("message:delivered", ({ messageId, orderId }) => {
+      console.log("📨 Message delivered:", messageId);
+      // This will trigger UI update in ChatPage
+    });
+
+    newSocket.on("message:seen", ({ messageId, orderId, seenBy, seenAt }) => {
+      console.log("👁️ Message seen:", messageId, "by", seenBy);
+      // This will trigger UI update in ChatPage
+    });
+
+    newSocket.on("messages:status_update", ({ orderId, messages }) => {
+      console.log("📊 Message status update for order:", orderId);
+      // Bulk status update for all messages in a chat
+    });
+
+    // Typing events
     newSocket.on("typing:start", ({ orderId, userId, userName }) => {
-      console.log("⌨️ Typing start:", userName, "in order", orderId);
       if (userId !== user._id) {
         setTypingUsers((prev) => ({
           ...prev,
@@ -109,32 +163,21 @@ export const SocketProvider = ({ children }) => {
     });
 
     newSocket.on("typing:stop", ({ orderId, userId }) => {
-      console.log("⌨️ Typing stop:", userId, "in order", orderId);
       setTypingUsers((prev) => ({
         ...prev,
         [orderId]: (prev[orderId] || []).filter((u) => u.id !== userId),
       }));
     });
 
-    // Legacy typing event
-    newSocket.on("userTyping", ({ userId, isTyping }) => {
-      console.log("⌨️ Typing (legacy):", userId, isTyping);
-    });
-
-    // Listen for real-time notifications
+    // Notification events
     newSocket.on("notification:new", (notification) => {
       console.log("🔔 New notification:", notification);
       setNotifications((prev) => [notification, ...prev]);
       setUnreadNotifications((prev) => prev + 1);
-      
-      // Show toast
-      toast.info(notification.message, {
-        position: "top-right",
-        autoClose: 4000,
-      });
+      toast.info(notification.message, { position: "top-right", autoClose: 4000 });
     });
 
-    // Listen for message read receipts
+    // Read receipts
     newSocket.on("message:read", ({ orderId, readBy }) => {
       console.log("✓✓ Message read:", orderId, "by", readBy);
       if (readBy === user._id) {
@@ -148,96 +191,125 @@ export const SocketProvider = ({ children }) => {
       }
     });
 
+    socketRef.current = newSocket;
     setSocket(newSocket);
+
+    // Periodic sync - request online users every 30 seconds
+    syncIntervalRef.current = setInterval(() => {
+      if (newSocket.connected) {
+        newSocket.emit("request:online_users");
+      }
+    }, 30000);
+
+    // Visibility change handler - refresh state when tab becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && newSocket.connected) {
+        console.log("👁️ Tab visible, refreshing state");
+        newSocket.emit("user:online", { userId: user._id });
+        newSocket.emit("request:online_users");
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Online/offline handler
+    const handleOnline = () => {
+      console.log("🌐 Browser online, reconnecting...");
+      if (!newSocket.connected) {
+        newSocket.connect();
+      }
+    };
+    const handleOffline = () => {
+      console.log("📴 Browser offline");
+      setConnectionState("disconnected");
+    };
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
 
     return () => {
       console.log("🔌 Socket: Cleaning up connection");
+      clearInterval(syncIntervalRef.current);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
       newSocket.emit("user:offline", { userId: user._id });
       newSocket.disconnect();
     };
   }, [user?.token, user?._id, backendURL]);
 
-  // Join a chat room (order)
+  // Join a chat room
   const joinRoom = useCallback((orderId) => {
-    if (socket) {
+    if (socketRef.current?.connected) {
       console.log("📥 Joining room: order_" + orderId);
-      socket.emit("room:join", { orderId });
-      // Also emit legacy event
-      socket.emit("joinOrderChat", orderId);
+      socketRef.current.emit("room:join", { orderId });
+      socketRef.current.emit("joinOrderChat", orderId);
     }
-  }, [socket]);
+  }, []);
 
   // Leave a chat room
   const leaveRoom = useCallback((orderId) => {
-    if (socket) {
+    if (socketRef.current?.connected) {
       console.log("📤 Leaving room: order_" + orderId);
-      socket.emit("room:leave", { orderId });
-      socket.emit("leaveOrderChat", orderId);
+      socketRef.current.emit("room:leave", { orderId });
+      socketRef.current.emit("leaveOrderChat", orderId);
     }
-  }, [socket]);
+  }, []);
 
-  // Send a message
+  // Send a message with queue support
   const sendMessage = useCallback((orderId, message) => {
-    if (socket) {
-      console.log("📤 Sending message via socket:", message);
-      socket.emit("message:send", {
-        orderId,
-        message,
-        senderId: user?._id,
-        senderName: user?.name,
-      });
-    }
-  }, [socket, user]);
+    const msgData = {
+      orderId,
+      message,
+      senderId: user?._id,
+      senderName: user?.name,
+      tempId: `temp_${Date.now()}`, // Temporary ID for optimistic updates
+    };
 
-  // Start typing indicator
+    if (socketRef.current?.connected) {
+      console.log("📤 Sending message via socket:", message);
+      socketRef.current.emit("message:send", msgData);
+    } else {
+      console.log("📤 Queuing message for later:", message);
+      messageQueueRef.current.push(msgData);
+      toast.warning("Message queued - will send when connected");
+    }
+  }, [user]);
+
+  // Start typing
   const startTyping = useCallback((orderId) => {
-    if (socket) {
-      socket.emit("typing:start", {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit("typing:start", {
         orderId,
         userId: user?._id,
         userName: user?.name,
       });
-      // Also emit legacy event
-      socket.emit("typing", { orderId, isTyping: true });
+      socketRef.current.emit("typing", { orderId, isTyping: true });
 
-      // Clear existing timeout
       if (typingTimeoutRef.current[orderId]) {
         clearTimeout(typingTimeoutRef.current[orderId]);
       }
-
-      // Auto-stop typing after 3 seconds
       typingTimeoutRef.current[orderId] = setTimeout(() => {
         stopTyping(orderId);
       }, 3000);
     }
-  }, [socket, user]);
+  }, [user]);
 
-  // Stop typing indicator
+  // Stop typing
   const stopTyping = useCallback((orderId) => {
-    if (socket) {
-      socket.emit("typing:stop", {
-        orderId,
-        userId: user?._id,
-      });
-      socket.emit("typing", { orderId, isTyping: false });
-
-      if (typingTimeoutRef.current[orderId]) {
-        clearTimeout(typingTimeoutRef.current[orderId]);
-        delete typingTimeoutRef.current[orderId];
-      }
+    if (socketRef.current?.connected) {
+      socketRef.current.emit("typing:stop", { orderId, userId: user?._id });
+      socketRef.current.emit("typing", { orderId, isTyping: false });
     }
-  }, [socket, user]);
+    if (typingTimeoutRef.current[orderId]) {
+      clearTimeout(typingTimeoutRef.current[orderId]);
+      delete typingTimeoutRef.current[orderId];
+    }
+  }, [user]);
 
-  // Mark messages as read
+  // Mark messages as read - triggers real-time seen status
   const markAsRead = useCallback((orderId) => {
-    if (socket) {
+    if (socketRef.current?.connected) {
       console.log("✓ Marking messages as read for order:", orderId);
-      socket.emit("message:read", {
-        orderId,
-        readBy: user?._id,
-      });
-
-      // Also update local state
+      socketRef.current.emit("message:read", { orderId, readBy: user?._id });
       setUnreadCounts((prev) => {
         const newCounts = { ...prev };
         const diff = newCounts[orderId] || 0;
@@ -246,35 +318,34 @@ export const SocketProvider = ({ children }) => {
         return newCounts;
       });
     }
-  }, [socket, user]);
+  }, [user]);
 
   // Mark notifications as read
   const markNotificationsRead = useCallback(() => {
     setUnreadNotifications(0);
-    if (socket) {
-      socket.emit("notifications:read", { userId: user?._id });
+    if (socketRef.current?.connected) {
+      socketRef.current.emit("notifications:read", { userId: user?._id });
     }
-  }, [socket, user]);
+  }, [user]);
 
   // Check if user is online
   const isUserOnline = useCallback((userId) => {
-    const isOnline = onlineUsers.includes(userId);
-    console.log(`🟢 Is ${userId} online?`, isOnline, "| Online users:", onlineUsers);
-    return isOnline;
+    return onlineUsers.includes(userId);
   }, [onlineUsers]);
 
-  // Get typing users for an order
+  // Get typing users
   const getTypingUsers = useCallback((orderId) => {
     return typingUsers[orderId] || [];
   }, [typingUsers]);
 
-  // Get unread count for an order
+  // Get unread count
   const getUnreadCount = useCallback((orderId) => {
     return unreadCounts[orderId] || 0;
   }, [unreadCounts]);
 
   const value = {
-    socket,
+    socket: socketRef.current,
+    connectionState,
     onlineUsers,
     typingUsers,
     unreadCounts,
