@@ -19,7 +19,7 @@ import { toast } from "react-toastify";
 
 /**
  * GigsSection - Displays editor's gigs in a 2-column grid
- * Used in EditorProfilePage
+ * Used in EditorProfilePages
  */
 const GigsSection = () => {
   const { backendURL, user } = useAppContext();
