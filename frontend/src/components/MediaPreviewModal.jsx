@@ -78,13 +78,15 @@ const MediaPreviewModal = ({ isOpen, onClose, media }) => {
           >
             {/* Header Controls */}
             <div className="absolute top-4 right-4 z-20 flex items-center gap-3">
-              {/* Download Button */}
-              <button
-                onClick={handleDownload}
-                className="p-3 rounded-full bg-white/10 hover:bg-white/20 transition-all"
-              >
-                <FaDownload className="text-white text-lg" />
-              </button>
+              {/* Download Button - Only show if allowed */}
+              {media.allowDownload !== false && (
+                <button
+                  onClick={handleDownload}
+                  className="p-3 rounded-full bg-white/10 hover:bg-white/20 transition-all"
+                >
+                  <FaDownload className="text-white text-lg" />
+                </button>
+              )}
 
               {/* Close Button */}
               <button
@@ -127,6 +129,9 @@ const MediaPreviewModal = ({ isOpen, onClose, media }) => {
                   onClick={handleVideoToggle}
                   onPlay={() => setIsPlaying(true)}
                   onPause={() => setIsPlaying(false)}
+                  controlsList={media.allowDownload === false ? "nodownload noplaybackrate" : undefined}
+                  disablePictureInPicture={media.allowDownload === false}
+                  onContextMenu={(e) => media.allowDownload === false && e.preventDefault()}
                 />
 
                 {/* Video Controls Overlay */}

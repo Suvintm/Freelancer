@@ -37,9 +37,12 @@ const messageSchema = new mongoose.Schema(
       ref: "Message",
     },
     replyPreview: {
+      messageId: String,
       senderName: String,
       content: String,
-      type: { type: String, enum: ["text", "file", "image", "video"] },
+      type: { type: String, enum: ["text", "file", "image", "video", "audio"] },
+      mediaUrl: String,
+      mediaThumbnail: String,
     },
 
     // Media attachment
@@ -105,6 +108,19 @@ const messageSchema = new mongoose.Schema(
         "dispute_raised",
         "deadline_reminder",
       ],
+    },
+
+    // Soft delete fields
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
   },
   { timestamps: true }

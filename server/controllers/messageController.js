@@ -48,7 +48,7 @@ export const getMessages = asyncHandler(async (req, res) => {
 // ============ SEND MESSAGE ============
 export const sendMessage = asyncHandler(async (req, res) => {
   const { orderId } = req.params;
-  const { content, type, mediaUrl, mediaName, mediaSize, allowDownload } = req.body;
+  const { content, type, mediaUrl, mediaName, mediaSize, allowDownload, replyTo } = req.body;
 
   // Verify order access
   const order = await Order.findById(orderId)
@@ -78,6 +78,22 @@ export const sendMessage = asyncHandler(async (req, res) => {
     await order.save();
   }
 
+  // Build replyPreview if replying to a message
+  let replyPreview = null;
+  if (replyTo) {
+    const originalMessage = await Message.findById(replyTo).populate("sender", "name");
+    if (originalMessage) {
+      replyPreview = {
+        messageId: originalMessage._id.toString(),
+        senderName: originalMessage.sender?.name || "User",
+        content: originalMessage.content || (originalMessage.type !== "text" ? `Sent a ${originalMessage.type}` : ""),
+        type: originalMessage.type,
+        mediaUrl: originalMessage.mediaUrl || null,
+        mediaThumbnail: originalMessage.mediaThumbnail || originalMessage.mediaUrl || null,
+      };
+    }
+  }
+
   // Create message
   const message = await Message.create({
     order: orderId,
@@ -88,6 +104,8 @@ export const sendMessage = asyncHandler(async (req, res) => {
     mediaName,
     mediaSize,
     allowDownload: allowDownload || false,
+    replyTo: replyTo || null,
+    replyPreview,
     delivered: true,
     deliveredAt: new Date(),
   });
@@ -304,16 +322,22 @@ export const uploadFile = asyncHandler(async (req, res) => {
     unique_filename: true,
   });
 
-  // Create message with file
+  // Create message with file - determine correct type
+  let messageType = "file";
+  if (mimeType.startsWith("image/")) messageType = "image";
+  else if (mimeType.startsWith("video/")) messageType = "video";
+  else if (mimeType.startsWith("audio/")) messageType = "audio";
+
   const message = await Message.create({
     order: orderId,
     sender: req.user._id,
-    type: "file",
-    content: `Sent a file: ${req.file.originalname}`,
+    type: messageType,
+    content: messageType === "file" ? `Sent a file: ${req.file.originalname}` : "",
     mediaUrl: result.secure_url,
     mediaName: req.file.originalname,
     mediaSize: req.file.size,
-    allowDownload: true,
+    mediaThumbnail: result.secure_url, // For videos, Cloudinary auto-generates thumbnail
+    allowDownload: req.body.allowDownload === "true" || req.body.allowDownload === true,
     delivered: true,
     deliveredAt: new Date(),
   });
@@ -350,5 +374,42 @@ export const uploadFile = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     message: populatedMessage,
+  });
+});
+
+// ============ DELETE MESSAGE (SOFT) ============
+export const deleteMessage = asyncHandler(async (req, res) => {
+  const { messageId } = req.params;
+
+  const message = await Message.findById(messageId).populate("order");
+
+  if (!message) {
+    throw new ApiError(404, "Message not found");
+  }
+
+  // Check if user is the sender
+  if (message.sender.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "You can only delete your own messages");
+  }
+
+  // Soft delete
+  message.isDeleted = true;
+  message.deletedAt = new Date();
+  message.deletedBy = req.user._id;
+  await message.save();
+
+  // Emit real-time delete event
+  const io = getIO();
+  if (io) {
+    io.to(`order_${message.order._id}`).emit("message:deleted", {
+      messageId: message._id,
+      orderId: message.order._id,
+      deletedBy: req.user._id,
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Message deleted",
   });
 });

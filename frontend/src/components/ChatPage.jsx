@@ -12,6 +12,10 @@ import {
   FaReply,
   FaCheck,
   FaCheckDouble,
+  FaTrash,
+  FaLock,
+  FaDownload,
+  FaBan,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
@@ -25,6 +29,124 @@ import chattexture from "../assets/chattexture.png";
 
 // Simple "Pop" sound base64 (short, pleasant notification sound)
 const POP_SOUND = "data:audio/mpeg;base64,SUQzBAAAAAABAFRYWFgAAAASAAADbWFqb3JfYnJhbmQAZGFzaABUWFhYAAAAEQAAA21pbm9yX3ZlcnNpb24AMABUWFhYAAAAHAAAA2NvbXBhdGlibGVfYnJhbmRzAGlzbzZtcDQxAFRTU0UAAAAPAAADTGF2ZjU5LjI3LjEwMAAAAAAAAAAAAAAA//uQZAAAAAAAALAAAA4AAALAAAAOBAAA/wAA//uQZACAAAB8AAAAwAAAfAAAAOA";
+
+// WhatsApp-style Media Card with loading animation
+const MediaCard = ({ msg, isMe, onClick }) => {
+  const [loaded, setLoaded] = useState(false);
+  const [progress, setProgress] = useState(0);
+  
+  useEffect(() => {
+    // Simulate loading progress for receiver
+    if (!isMe && !loaded) {
+      const interval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            return 100;
+          }
+          return prev + Math.random() * 30;
+        });
+      }, 200);
+      return () => clearInterval(interval);
+    }
+  }, [isMe, loaded]);
+
+  return (
+    <div 
+      className="mb-2 rounded-2xl overflow-hidden cursor-pointer relative group/media"
+      onClick={onClick}
+      style={{ maxWidth: "280px" }}
+    >   
+      {/* Loading overlay for receiver */}
+      {!isMe && !loaded && (
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-md z-10 flex items-center justify-center rounded-2xl">
+          <div className="relative">
+            {/* Circular progress */}
+            <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
+              <circle cx="18" cy="18" r="16" fill="none" stroke="#333" strokeWidth="2" />
+              <circle 
+                cx="18" cy="18" r="16" fill="none" 
+                stroke="url(#gradient)" strokeWidth="2"
+                strokeDasharray={`${Math.min(progress, 100)} 100`}
+                strokeLinecap="round"
+              />
+              <defs>
+                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#8b5cf6" />
+                  <stop offset="100%" stopColor="#3b82f6" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-white text-xs font-bold">{Math.round(Math.min(progress, 100))}%</span>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {msg.type === "image" ? (
+        <img 
+          src={msg.mediaUrl} 
+          alt="media" 
+          className={`w-full h-auto max-h-[350px] object-cover rounded-2xl transition-all duration-500 ${!loaded && !isMe ? "blur-md scale-105" : ""}`}
+          onLoad={() => setLoaded(true)}
+          draggable={msg.allowDownload}
+          onContextMenu={(e) => !msg.allowDownload && e.preventDefault()}
+        />
+      ) : (
+        <div className="relative w-full">
+          <video 
+            src={msg.mediaUrl} 
+            className={`w-full h-auto max-h-[350px] object-cover rounded-2xl transition-all duration-500 ${!loaded && !isMe ? "blur-md scale-105" : ""}`}
+            onLoadedData={() => setLoaded(true)}
+            controlsList={!msg.allowDownload ? "nodownload noplaybackrate" : undefined}
+            disablePictureInPicture={!msg.allowDownload}
+            onContextMenu={(e) => !msg.allowDownload && e.preventDefault()}
+          />
+          {/* Play button overlay */}
+          {(loaded || isMe) && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-2xl">
+              <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30">
+                <FaPlay className="text-white text-xl ml-1" />
+              </div>
+            </div>
+          )}
+          {/* Video badge */}
+          <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-sm rounded-full flex items-center gap-1">
+            <FaVideo className="text-white text-xs" />
+            <span className="text-white text-[10px]">Video</span>
+          </div>
+        </div>
+      )}
+      
+      {/* Download button - only for receiver when allowed & loaded */}
+      {!isMe && msg.allowDownload && loaded && (
+        <div className="absolute bottom-2 right-2 opacity-0 group-hover/media:opacity-100 transition-opacity">
+          <a 
+            href={msg.mediaUrl} 
+            download={msg.mediaName || "file"}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="p-2 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/80 transition"
+          >
+            <FaDownload className="text-white text-sm" />
+          </a>
+        </div>
+      )}
+      
+      {/* Lock indicator if download not allowed */}
+      {!isMe && !msg.allowDownload && loaded && (
+        <div className="absolute top-2 left-2">
+          <div className="p-1.5 bg-red-500/80 backdrop-blur-sm rounded-full">
+            <FaLock className="text-white text-xs" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 
 const ChatPage = () => {
   const navigate = useNavigate();
@@ -62,6 +184,9 @@ const ChatPage = () => {
   const [showMediaMenu, setShowMediaMenu] = useState(false);
   const [previewMedia, setPreviewMedia] = useState(null);
   const [replyingTo, setReplyingTo] = useState(null);
+  const [pendingFile, setPendingFile] = useState(null);
+  const [allowDownload, setAllowDownload] = useState(false);
+  const [deleteMenuMsg, setDeleteMenuMsg] = useState(null);
 
   // --- Derived State ---
   const otherParty = user?.role === "editor" ? order?.client : order?.editor;
@@ -179,6 +304,12 @@ const ChatPage = () => {
       socket.on("message:seen", handleMessageSeen);
       socket.on("messages:status_update", handleStatusUpdate);
       socket.on("message:read", handleMessageRead);
+      
+      // Listen for message deletion
+      const handleMessageDeleted = ({ messageId }) => {
+        setMessages(prev => prev.map(m => m._id === messageId ? { ...m, isDeleted: true } : m));
+      };
+      socket.on("message:deleted", handleMessageDeleted);
 
       return () => {
         leaveRoom(orderId);
@@ -230,30 +361,57 @@ const ChatPage = () => {
     }
   };
 
-  const handleFileUpload = async (e) => {
+  // Handle file selection - show preview instead of auto-send
+  const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 50 * 1024 * 1024) return toast.error("File max 50MB");
+    
+    // Create preview
+    const preview = URL.createObjectURL(file);
+    const type = file.type.startsWith("image") ? "image" : file.type.startsWith("video") ? "video" : "file";
+    setPendingFile({ file, preview, type, name: file.name });
+    setShowMediaMenu(false);
+    setAllowDownload(false); // Default: download not allowed
+  };
 
+  // Send pending file
+  const handleSendFile = async () => {
+    if (!pendingFile) return;
     setUploading(true);
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", pendingFile.file);
+      formData.append("allowDownload", allowDownload.toString());
       await axios.post(`${backendURL}/api/messages/${orderId}/file`, formData, {
         headers: { Authorization: `Bearer ${user?.token}`, "Content-Type": "multipart/form-data" }
       });
       playPopSound();
       toast.success("Sent!");
+      URL.revokeObjectURL(pendingFile.preview);
+      setPendingFile(null);
     } catch (err) {
       toast.error("Upload failed.");
     } finally {
       setUploading(false);
-      setShowMediaMenu(false);
-      // Reset inputs
       if (fileInputRef.current) fileInputRef.current.value = "";
       if (imageInputRef.current) imageInputRef.current.value = "";
       if (videoInputRef.current) videoInputRef.current.value = "";
       if (docInputRef.current) docInputRef.current.value = "";
+    }
+  };
+
+  // Delete message
+  const handleDeleteMessage = async (msgId) => {
+    try {
+      await axios.patch(`${backendURL}/api/messages/${msgId}/delete`, {}, {
+        headers: { Authorization: `Bearer ${user?.token}` }
+      });
+      setMessages(prev => prev.map(m => m._id === msgId ? { ...m, isDeleted: true } : m));
+      setDeleteMenuMsg(null);
+      toast.success("Message deleted");
+    } catch (err) {
+      toast.error("Failed to delete");
     }
   };
 
@@ -318,56 +476,148 @@ const ChatPage = () => {
             return (
               <motion.div
                 key={msg._id || i}
+                id={`msg-${msg._id}`}
                 initial={{ opacity: 0, y: 10, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 0.2 }}
-                className={`flex w-full ${isMe ? "justify-end" : "justify-start"} group mb-1`}
+                className={`flex w-full ${isMe ? "justify-end" : "justify-start"} group mb-1 transition-all duration-300`}
               >
-                 {/* Tooltip / Timestamp group */}
-                <div className={`relative max-w-[75%] md:max-w-[60%] flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                {/* Swipeable Message Container */}
+                <motion.div 
+                  drag={!msg.isDeleted ? "x" : false}
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.3}
+                  dragSnapToOrigin
+                  onDragEnd={(e, info) => {
+                    if (info.offset.x > 60 && !msg.isDeleted) {
+                      setReplyingTo(msg);
+                    }
+                  }}
+                  className={`relative max-w-[75%] md:max-w-[60%] flex items-center gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}
+                >
+                  {/* Reply indicator (shows on drag) */}
+                  <motion.div 
+                    className="absolute left-[-40px] opacity-0 pointer-events-none"
+                    style={{ opacity: 0 }}
+                  >
+                    <div className="p-2 bg-purple-500/30 rounded-full">
+                      <FaReply className="text-purple-400 text-sm" />
+                    </div>
+                  </motion.div>
                   
-                  {/* Reply Preview Bubble */}
-                  {msg.replyPreview && (
-                      <div className={`mb-1 px-3 py-2 rounded-xl text-xs bg-white/10 border-l-2 border-purple-500 w-full opacity-80 backdrop-blur-sm`}>
-                         <p className="font-bold text-purple-400">{msg.replyPreview.senderName}</p>
-                         <p className="truncate text-gray-300">{msg.replyPreview.content}</p>
-                      </div>
-                  )}
+                  <div className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                    {/* Reply Preview Bubble - Instagram style with media thumbnail */}
+                    {msg.replyPreview && (
+                        <div 
+                          className={`mb-1 rounded-xl text-xs bg-white/10 border-l-2 border-purple-500 w-full opacity-90 backdrop-blur-sm cursor-pointer hover:bg-white/20 transition overflow-hidden flex`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Scroll to the original message
+                            const originalMsgElement = document.getElementById(`msg-${msg.replyPreview.messageId || msg.replyTo}`);
+                            if (originalMsgElement) {
+                              originalMsgElement.scrollIntoView({ behavior: "smooth", block: "center" });
+                              // Add highlight animation
+                              originalMsgElement.classList.add("ring-2", "ring-purple-500");
+                              setTimeout(() => {
+                                originalMsgElement.classList.remove("ring-2", "ring-purple-500");
+                              }, 2000);
+                            }
+                          }}
+                        >
+                          {/* Text content */}
+                          <div className="flex-1 p-2 min-w-0">
+                            <p className="font-bold text-purple-400">{msg.replyPreview.senderName}</p>
+                            <p className="truncate text-gray-300">
+                              {msg.replyPreview.type === "image" && "📷 Photo"}
+                              {msg.replyPreview.type === "video" && "🎬 Video"}
+                              {msg.replyPreview.type === "file" && "📄 File"}
+                              {msg.replyPreview.type === "text" && msg.replyPreview.content}
+                              {!msg.replyPreview.type && msg.replyPreview.content}
+                            </p>
+                          </div>
+                          {/* Media thumbnail - Instagram style on the right */}
+                          {(msg.replyPreview.type === "image" || msg.replyPreview.type === "video") && msg.replyPreview.mediaUrl && (
+                            <div className="w-12 h-12 flex-shrink-0 relative">
+                              {msg.replyPreview.type === "image" ? (
+                                <img 
+                                  src={msg.replyPreview.mediaThumbnail || msg.replyPreview.mediaUrl} 
+                                  alt="" 
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full relative">
+                                  <video 
+                                    src={msg.replyPreview.mediaUrl} 
+                                    className="w-full h-full object-cover"
+                                  />
+                                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                    <FaPlay className="text-white text-xs" />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                    )}
 
                   {/* Message Bubble - Gradient for ME, Dark Grey for THEM */}
                   <div 
                     className={`relative px-4 py-2 ${
-                        isMe 
+                        msg.isDeleted 
+                            ? "bg-[#1a1a1a] text-gray-500 rounded-[20px] border border-white/5 italic" 
+                            : isMe 
                             ? "bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-[20px] rounded-br-sm" 
                             : "bg-[#262626] text-white rounded-[20px] rounded-bl-sm border border-white/5"
                     } shadow-sm backdrop-blur-sm`}
-                    onDoubleClick={() => setReplyingTo(msg)}
+                    onDoubleClick={() => !msg.isDeleted && setReplyingTo(msg)}
                   >
-                        {/* Media Content */}
+                        {/* Deleted Message */}
+                        {msg.isDeleted ? (
+                          <div className="flex items-center gap-2">
+                            <FaBan className="text-gray-500" />
+                            <span className="text-sm">This message was deleted</span>
+                          </div>
+                        ) : (
+                          <>
+                        {/* Media Content - Instagram/WhatsApp Style with Loading Animation */}
                         {(msg.type === "image" || msg.type === "video") && msg.mediaUrl && (
-                            <div 
-                                className="mb-2 rounded-lg overflow-hidden cursor-pointer"
-                                onClick={() => setPreviewMedia({ url: msg.mediaUrl, type: msg.type })}
-                            >   
-                                {msg.type === "image" ? (
-                                    <img src={msg.mediaUrl} alt="media" className="max-w-full h-auto max-h-[300px] object-cover" />
-                                ) : (
-                                    <div className="relative">
-                                        <video src={msg.mediaUrl} className="max-w-full h-auto max-h-[300px]" />
-                                        <div className="absolute inset-0 flex items-center justify-center bg-black/40"><FaPlay className="text-white" /></div>
-                                    </div>
-                                )}
-                            </div>
+                            <MediaCard 
+                              msg={msg} 
+                              isMe={isMe} 
+                              onClick={() => setPreviewMedia({ url: msg.mediaUrl, type: msg.type, allowDownload: msg.allowDownload })} 
+                            />
                         )}
                         
-                        {/* File Content */}
+                        {/* File Content - Enhanced with download option */}
                         {msg.type === "file" && (
-                            <div className="flex items-center gap-3 p-2 bg-black/20 rounded-lg mb-1 cursor-pointer">
-                                <FaFileAlt className="text-white/80" />
-                                <div className="overflow-hidden">
-                                     <p className="text-xs truncate">{msg.mediaName || "File"}</p>
-                                     <p className="text-[10px] opacity-60">Download</p>
+                            <div className="bg-black/20 rounded-xl p-3 mb-1">
+                              <div className="flex items-center gap-3">
+                                <div className="p-3 bg-purple-500/20 rounded-xl">
+                                  <FaFileAlt className="text-purple-400 text-lg" />
                                 </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">{msg.mediaName || "File"}</p>
+                                  <p className="text-[11px] text-gray-400">{msg.mediaSize ? `${(msg.mediaSize / 1024).toFixed(1)} KB` : "Document"}</p>
+                                </div>
+                                {/* Download button for receiver if allowed */}
+                                {!isMe && msg.allowDownload && (
+                                  <a 
+                                    href={msg.mediaUrl} 
+                                    download={msg.mediaName || "file"}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-2 bg-emerald-500/20 rounded-xl hover:bg-emerald-500/30 transition"
+                                  >
+                                    <FaDownload className="text-emerald-400" />
+                                  </a>
+                                )}
+                                {/* Lock for receiver if not allowed */}
+                                {!isMe && !msg.allowDownload && (
+                                  <div className="p-2 bg-red-500/20 rounded-xl">
+                                    <FaLock className="text-red-400" />
+                                  </div>
+                                )}
+                              </div>
                             </div>
                         )}
 
@@ -400,16 +650,26 @@ const ChatPage = () => {
                                 </span>
                             )}
                         </div>
+                          </>  
+                        )}
                   </div>
 
-                  {/* Reply Action Button (Hover) */}
-                  <div className={`absolute top-1/2 -translate-y-1/2 ${isMe ? "-left-8" : "-right-8"} opacity-0 group-hover:opacity-100 transition-opacity`}>
-                      <button onClick={() => setReplyingTo(msg)} className="p-1.5 bg-white/10 rounded-full hover:bg-white/20 text-gray-300">
-                          <FaReply className="text-xs" />
-                      </button>
-                  </div>
+                  {/* Action Buttons (Hover) */}
+                  {!msg.isDeleted && (
+                    <div className={`absolute top-1/2 -translate-y-1/2 ${isMe ? "-left-16" : "-right-16"} opacity-0 group-hover:opacity-100 transition-opacity flex gap-1`}>
+                        <button onClick={() => setReplyingTo(msg)} className="p-1.5 bg-white/10 rounded-full hover:bg-white/20 text-gray-300">
+                            <FaReply className="text-xs" />
+                        </button>
+                        {isMe && (
+                          <button onClick={() => handleDeleteMessage(msg._id)} className="p-1.5 bg-red-500/20 rounded-full hover:bg-red-500/40 text-red-400">
+                              <FaTrash className="text-xs" />
+                          </button>
+                        )}
+                    </div>
+                  )}
 
-                </div>
+                  </div>
+                </motion.div>
               </motion.div>
             );
           })}
@@ -515,10 +775,81 @@ const ChatPage = () => {
          </div>
 
          {/* Hidden Inputs */}
-         <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
-         <input type="file" ref={videoInputRef} className="hidden" accept="video/*" onChange={handleFileUpload} />
-         <input type="file" ref={docInputRef} className="hidden" accept="*" onChange={handleFileUpload} />
+         <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} />
+         <input type="file" ref={videoInputRef} className="hidden" accept="video/*" onChange={handleFileSelect} />
+         <input type="file" ref={docInputRef} className="hidden" accept="*" onChange={handleFileSelect} />
       </footer>
+
+      {/* Pending File Preview Modal */}
+      <AnimatePresence>
+        {pendingFile && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 z-[100] flex flex-col items-center justify-center p-4"
+          >
+            <div className="w-full max-w-lg">
+              {/* Preview */}
+              <div className="bg-[#1a1a1a] rounded-2xl p-4 mb-4">
+                {pendingFile.type === "image" && (
+                  <img src={pendingFile.preview} alt="Preview" className="max-w-full max-h-[50vh] mx-auto rounded-lg object-contain" />
+                )}
+                {pendingFile.type === "video" && (
+                  <video src={pendingFile.preview} controls className="max-w-full max-h-[50vh] mx-auto rounded-lg" />
+                )}
+                {pendingFile.type === "file" && (
+                  <div className="flex items-center gap-4 p-6">
+                    <FaFileAlt className="text-4xl text-purple-400" />
+                    <div>
+                      <p className="text-white font-medium">{pendingFile.name}</p>
+                      <p className="text-gray-400 text-sm">Document</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Download Toggle */}
+              <div className="bg-[#1a1a1a] rounded-2xl p-4 mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {allowDownload ? <FaDownload className="text-emerald-400" /> : <FaLock className="text-red-400" />}
+                  <div>
+                    <p className="text-white text-sm font-medium">Allow Download</p>
+                    <p className="text-gray-500 text-xs">Recipient can download this file</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setAllowDownload(!allowDownload)}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${allowDownload ? "bg-emerald-500" : "bg-gray-600"}`}
+                >
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${allowDownload ? "left-7" : "left-1"}`} />
+                </button>
+              </div>
+              
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { URL.revokeObjectURL(pendingFile.preview); setPendingFile(null); }}
+                  className="flex-1 py-3 bg-[#262626] text-white rounded-xl font-medium hover:bg-[#333] transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSendFile}
+                  disabled={uploading}
+                  className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-purple-500/30 transition flex items-center justify-center gap-2"
+                >
+                  {uploading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <><FaPaperPlane /> Send</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modals */}
       <MediaPreviewModal isOpen={!!previewMedia} onClose={() => setPreviewMedia(null)} media={previewMedia} />

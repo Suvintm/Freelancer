@@ -32,6 +32,7 @@ import SelectRole from "./pages/SelectRole.jsx";
 import BannedPage from "./pages/BannedPage.jsx";
 import MaintenancePage from "./pages/MaintenancePage.jsx";
 import EditorAnalytics from "./pages/EditorAnalytics.jsx";
+import ClientAnalytics from "./pages/ClientAnalytics.jsx";
 
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
@@ -60,6 +61,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["client"]}>
               <ClientHome />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/client-analytics"
+          element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <ClientAnalytics />
             </ProtectedRoute>
           }
         />

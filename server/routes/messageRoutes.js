@@ -7,6 +7,7 @@ import {
   markAsDownloaded,
   getUnreadCount,
   uploadFile,
+  deleteMessage,
 } from "../controllers/messageController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 
@@ -37,5 +38,7 @@ router.post("/:orderId/file", upload.single("file"), uploadFile);
 // Message actions
 router.patch("/:messageId/seen", markAsSeen);
 router.patch("/:messageId/downloaded", markAsDownloaded);
+router.patch("/:messageId/delete", deleteMessage);
 
 export default router;
+
