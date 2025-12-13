@@ -31,6 +31,7 @@ import SelectRole from "./pages/SelectRole.jsx";
 // Special Pages
 import BannedPage from "./pages/BannedPage.jsx";
 import MaintenancePage from "./pages/MaintenancePage.jsx";
+import EditorAnalytics from "./pages/EditorAnalytics.jsx";
 
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
@@ -101,6 +102,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["editor"]}>
               <EditorHome />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/editor-analytics"
+          element={
+            <ProtectedRoute allowedRoles={["editor"]}>
+              <EditorAnalytics />
             </ProtectedRoute>
           }
         />

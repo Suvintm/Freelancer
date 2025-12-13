@@ -32,6 +32,7 @@ import orderRoutes from "./routes/orderRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import adminAuthRoutes from "./routes/adminAuthRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import editorAnalyticsRoutes from "./routes/editorAnalyticsRoutes.js";
 
 // Validate required environment variables
 const requiredEnvVars = ["MONGO_URI", "JWT_SECRET", "CLOUDINARY_CLOUD_NAME"];
@@ -145,6 +146,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/gigs", gigRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/api/editor/analytics", editorAnalyticsRoutes);
 
 // Public maintenance status check (no auth required)
 import { SiteSettings } from "./models/SiteSettings.js";
