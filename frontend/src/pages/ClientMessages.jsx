@@ -1,4 +1,4 @@
-// ClientMessages.jsx - Client's chat list page
+// ClientMessages.jsx - Client's chat list page with unread counts & deadline indicator
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -10,9 +10,11 @@ import {
   FaChevronRight,
   FaRupeeSign,
   FaClock,
+  FaCircle,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
+import { useSocket } from "../context/SocketContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import ClientSidebar from "../components/ClientSidebar.jsx";
@@ -25,9 +27,46 @@ const STATUS_CONFIG = {
   completed: { label: "Completed", color: "text-emerald-400", bg: "bg-emerald-500/20" },
 };
 
+// Calculate deadline status
+const getDeadlineStatus = (deadline, createdAt) => {
+  if (!deadline) return null;
+  
+  const now = new Date();
+  const end = new Date(deadline);
+  const start = new Date(createdAt);
+  
+  const totalDuration = end - start;
+  const elapsed = now - start;
+  const remaining = end - now;
+  const percentUsed = (elapsed / totalDuration) * 100;
+  
+  const daysLeft = Math.ceil(remaining / (1000 * 60 * 60 * 24));
+  
+  let color = "text-green-400 bg-green-500/20";
+  if (percentUsed >= 90 || daysLeft <= 1) {
+    color = "text-red-400 bg-red-500/20";
+  } else if (percentUsed >= 70 || daysLeft <= 2) {
+    color = "text-orange-400 bg-orange-500/20";
+  } else if (percentUsed >= 50 || daysLeft <= 3) {
+    color = "text-yellow-400 bg-yellow-500/20";
+  }
+  
+  if (daysLeft < 0) {
+    return { text: "Overdue", color: "text-red-500 bg-red-500/30", daysLeft: 0 };
+  }
+  
+  return { 
+    text: daysLeft === 0 ? "Today" : daysLeft === 1 ? "1 day left" : `${daysLeft} days left`,
+    color,
+    daysLeft
+  };
+};
+
 const ClientMessages = () => {
   const navigate = useNavigate();
   const { user, backendURL } = useAppContext();
+  const socketContext = useSocket();
+  const { onlineUsers = [] } = socketContext || {};
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chats, setChats] = useState([]);
@@ -53,7 +92,41 @@ const ClientMessages = () => {
         ["accepted", "in_progress", "submitted", "completed"].includes(order.status)
       );
 
-      setChats(activeChats);
+      // Fetch latest message AND unread count for each chat
+      const chatsWithMessages = await Promise.all(
+        activeChats.map(async (chat) => {
+          try {
+            const msgRes = await axios.get(`${backendURL}/api/messages/${chat._id}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const messages = msgRes.data.messages || [];
+            
+            // Count unread messages (not from me and not seen)
+            const unreadCount = messages.filter(m => 
+              m.sender?._id !== user?._id && 
+              m.sender !== user?._id && 
+              !m.seen
+            ).length;
+            
+            return {
+              ...chat,
+              lastMessage: messages.length > 0 ? messages[messages.length - 1] : null,
+              unreadCount,
+            };
+          } catch {
+            return { ...chat, lastMessage: null, unreadCount: 0 };
+          }
+        })
+      );
+
+      // Sort by latest message time
+      chatsWithMessages.sort((a, b) => {
+        const aTime = a.lastMessage?.createdAt || a.updatedAt;
+        const bTime = b.lastMessage?.createdAt || b.updatedAt;
+        return new Date(bTime) - new Date(aTime);
+      });
+
+      setChats(chatsWithMessages);
     } catch (err) {
       toast.error("Failed to load chats");
     } finally {
@@ -159,6 +232,9 @@ const ClientMessages = () => {
             <AnimatePresence>
               {filteredChats.map((chat, index) => {
                 const statusConfig = STATUS_CONFIG[chat.status] || STATUS_CONFIG.in_progress;
+                const deadlineStatus = getDeadlineStatus(chat.deadline, chat.createdAt);
+                const isOnline = chat.editor?._id && onlineUsers.includes(chat.editor._id);
+                const lastMsgContent = chat.lastMessage?.content || chat.lastMessage?.type || "No messages yet";
 
                 return (
                   <motion.div
@@ -179,13 +255,20 @@ const ClientMessages = () => {
                           className="w-12 h-12 rounded-xl object-cover"
                         />
                         {/* Online indicator */}
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-[#111319]" />
+                        <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-[#111319] ${isOnline ? 'bg-emerald-500' : 'bg-gray-500'}`} />
+                        
+                        {/* Unread Badge */}
+                        {chat.unreadCount > 0 && (
+                          <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                            {chat.unreadCount > 9 ? "9+" : chat.unreadCount}
+                          </div>
+                        )}
                       </div>
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-white text-sm truncate group-hover:text-emerald-400 transition-colors">
+                          <h3 className={`font-semibold text-sm truncate group-hover:text-emerald-400 transition-colors ${chat.unreadCount > 0 ? 'text-white' : 'text-gray-300'}`}>
                             {chat.editor?.name}
                           </h3>
                           {/* Type Tag */}
@@ -201,20 +284,33 @@ const ClientMessages = () => {
                             )}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-400 truncate">{chat.title}</p>
-                        <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-500">
+                        
+                        {/* Last Message Preview */}
+                        <p className={`text-xs truncate mb-1 ${chat.unreadCount > 0 ? 'text-white font-medium' : 'text-gray-400'}`}>
+                          {lastMsgContent.length > 50 ? lastMsgContent.substring(0, 50) + "..." : lastMsgContent}
+                        </p>
+                        
+                        <div className="flex items-center gap-3 text-[10px] text-gray-500">
                           <span className="flex items-center gap-1 text-green-400">
                             <FaRupeeSign className="text-[8px]" /> {chat.amount}
                           </span>
                           <span className="flex items-center gap-1">
                             <FaClock className="text-[8px]" />
-                            {formatDate(chat.createdAt)}
+                            {formatDate(chat.lastMessage?.createdAt || chat.createdAt)}
                           </span>
+                          
+                          {/* Deadline Indicator */}
+                          {deadlineStatus && chat.status !== "completed" && (
+                            <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium ${deadlineStatus.color}`}>
+                              <FaCircle className="text-[4px]" />
+                              {deadlineStatus.text}
+                            </span>
+                          )}
                         </div>
                       </div>
 
                       {/* Status + Arrow */}
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-col items-end gap-2">
                         <span className={`text-xs px-2 py-1 rounded-lg ${statusConfig.bg} ${statusConfig.color}`}>
                           {statusConfig.label}
                         </span>
@@ -233,3 +329,4 @@ const ClientMessages = () => {
 };
 
 export default ClientMessages;
+

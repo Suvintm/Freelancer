@@ -20,7 +20,7 @@ const messageSchema = new mongoose.Schema(
     // Message type
     type: {
       type: String,
-      enum: ["text", "file", "video", "audio", "image", "system"],
+      enum: ["text", "file", "video", "audio", "image", "system", "drive_link"],
       default: "text",
     },
 
@@ -40,7 +40,7 @@ const messageSchema = new mongoose.Schema(
       messageId: String,
       senderName: String,
       content: String,
-      type: { type: String, enum: ["text", "file", "image", "video", "audio"] },
+      type: { type: String, enum: ["text", "file", "image", "video", "audio", "drive_link"] },
       mediaUrl: String,
       mediaThumbnail: String,
     },
@@ -57,6 +57,19 @@ const messageSchema = new mongoose.Schema(
     },
     mediaThumbnail: {
       type: String,
+    },
+
+    // External link (Google Drive, Dropbox, etc.)
+    externalLink: {
+      provider: {
+        type: String,
+        enum: ["google_drive", "dropbox", "onedrive", "wetransfer", "mega", "other"],
+      },
+      url: String,
+      title: String,
+      description: String,
+      fileCount: Number,
+      totalSize: String,
     },
 
     // ⭐ Download Protection - KEY FEATURE
@@ -122,6 +135,33 @@ const messageSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+
+    // ✏️ Edit message fields
+    isEdited: {
+      type: Boolean,
+      default: false,
+    },
+    editedAt: {
+      type: Date,
+    },
+    originalContent: {
+      type: String,
+    },
+
+    // ⭐ Star message fields
+    isStarred: {
+      type: Boolean,
+      default: false,
+    },
+    starredBy: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    }],
+
+    // 🎙️ Voice message fields
+    audioDuration: {
+      type: Number, // in seconds
+    },
   },
   { timestamps: true }
 );
@@ -130,5 +170,6 @@ const messageSchema = new mongoose.Schema(
 messageSchema.index({ order: 1, createdAt: 1 });
 messageSchema.index({ sender: 1 });
 messageSchema.index({ order: 1, seen: 1 });
+messageSchema.index({ content: "text" }); // Text search index
 
 export const Message = mongoose.model("Message", messageSchema);

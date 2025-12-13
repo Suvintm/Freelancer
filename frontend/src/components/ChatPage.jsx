@@ -1,5 +1,5 @@
-// ChatPage.jsx - Premium Instagram-Style UI
-import React, { useState, useRef, useEffect } from "react";
+// ChatPage.jsx - Premium Instagram-Style UI with Advanced Features
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   FaArrowLeft,
   FaPaperPlane,
@@ -16,6 +16,18 @@ import {
   FaLock,
   FaDownload,
   FaBan,
+  FaMicrophone,
+  FaStop,
+  FaPause,
+  FaEdit,
+  FaStar,
+  FaSearch,
+  FaList,
+  FaRegStar,
+  FaBolt,
+  FaLink,
+  FaExternalLinkAlt,
+  FaFolder,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
@@ -23,6 +35,7 @@ import { useAppContext } from "../context/AppContext";
 import { useSocket } from "../context/SocketContext";
 import MediaPreviewModal from "./MediaPreviewModal";
 import ProjectDetailsDropdown from "./ProjectDetailsDropdown";
+import FootageLinksDropdown from "./FootageLinksDropdown";
 import axios from "axios";
 import { toast } from "react-toastify";
 import chattexture from "../assets/chattexture.png";
@@ -147,6 +160,386 @@ const MediaCard = ({ msg, isMe, onClick }) => {
   );
 };
 
+// 🎙️ Voice Recorder Component
+const VoiceRecorder = ({ onSend, onCancel }) => {
+  const [isRecording, setIsRecording] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [audioBlob, setAudioBlob] = useState(null);
+  const mediaRecorderRef = useRef(null);
+  const chunksRef = useRef([]);
+  const timerRef = useRef(null);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      chunksRef.current = [];
+      
+      mediaRecorderRef.current.ondataavailable = (e) => {
+        chunksRef.current.push(e.data);
+      };
+      
+      mediaRecorderRef.current.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        setAudioBlob(blob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+      setDuration(0);
+      timerRef.current = setInterval(() => {
+        setDuration(d => d + 1);
+      }, 1000);
+    } catch (err) {
+      toast.error("Microphone access denied");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      clearInterval(timerRef.current);
+    }
+  };
+
+  const handleSend = () => {
+    if (audioBlob) {
+      onSend(audioBlob, duration);
+    }
+  };
+
+  const formatTime = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex items-center gap-3 bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-md rounded-2xl px-4 py-3 border border-purple-500/30"
+    >
+      {/* Waveform Animation */}
+      <div className="flex items-center gap-1">
+        {[...Array(5)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="w-1 bg-purple-500 rounded-full"
+            animate={isRecording ? { height: [8, 24, 8] } : { height: 8 }}
+            transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.1 }}
+          />
+        ))}
+      </div>
+      
+      {/* Timer */}
+      <span className="text-white font-mono text-lg min-w-[60px]">{formatTime(duration)}</span>
+      
+      {/* Controls */}
+      <div className="flex items-center gap-2 ml-auto">
+        {!isRecording && !audioBlob && (
+          <button onClick={startRecording} className="p-3 bg-red-500 rounded-full hover:bg-red-600 transition">
+            <FaMicrophone className="text-white" />
+          </button>
+        )}
+        
+        {isRecording && (
+          <button onClick={stopRecording} className="p-3 bg-red-500 rounded-full hover:bg-red-600 transition animate-pulse">
+            <FaStop className="text-white" />
+          </button>
+        )}
+        
+        {audioBlob && !isRecording && (
+          <>
+            <button onClick={handleSend} className="p-3 bg-green-500 rounded-full hover:bg-green-600 transition">
+              <FaPaperPlane className="text-white" />
+            </button>
+          </>
+        )}
+        
+        <button onClick={onCancel} className="p-3 bg-gray-600 rounded-full hover:bg-gray-700 transition">
+          <FaTimes className="text-white" />
+        </button>
+      </div>
+    </motion.div>
+  );
+};
+
+// 🔊 Voice Player Component
+const VoicePlayer = ({ audioUrl, duration }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const audioRef = useRef(null);
+
+  const togglePlay = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const formatTime = (s) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, "0")}`;
+
+  return (
+    <div className="flex items-center gap-3 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-2xl px-4 py-3 min-w-[200px]">
+      <audio 
+        ref={audioRef} 
+        src={audioUrl}
+        onTimeUpdate={(e) => setProgress((e.target.currentTime / e.target.duration) * 100)}
+        onEnded={() => { setIsPlaying(false); setProgress(0); }}
+      />
+      
+      <button onClick={togglePlay} className="p-2 bg-purple-500 rounded-full hover:bg-purple-600 transition">
+        {isPlaying ? <FaPause className="text-white text-xs" /> : <FaPlay className="text-white text-xs ml-0.5" />}
+      </button>
+      
+      {/* Progress bar */}
+      <div className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
+        <div className="h-full bg-purple-500 transition-all" style={{ width: `${progress}%` }} />
+      </div>
+      
+      <span className="text-xs text-gray-300 font-mono">{formatTime(duration || 0)}</span>
+    </div>
+  );
+};
+
+// ⚡ Quick Replies Menu
+const QuickRepliesMenu = ({ replies, onSelect, onClose }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 10 }}
+      className="absolute bottom-full left-0 right-0 mb-2 bg-[#1a1a1a] border border-white/10 rounded-2xl p-2 max-h-60 overflow-y-auto"
+    >
+      <div className="flex items-center justify-between px-2 pb-2 border-b border-white/10 mb-2">
+        <span className="text-sm font-bold text-purple-400">⚡ Quick Replies</span>
+        <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-full">
+          <FaTimes className="text-gray-400 text-xs" />
+        </button>
+      </div>
+      
+      {replies.length === 0 ? (
+        <p className="text-gray-500 text-sm text-center py-4">No quick replies saved</p>
+      ) : (
+        replies.map((reply) => (
+          <button
+            key={reply._id}
+            onClick={() => onSelect(reply)}
+            className="w-full text-left px-3 py-2 hover:bg-white/10 rounded-xl transition group"
+          >
+            <p className="text-white text-sm font-medium">{reply.title}</p>
+            <p className="text-gray-400 text-xs truncate">{reply.content}</p>
+          </button>
+        ))
+      )}
+    </motion.div>
+  );
+};
+
+// ✏️ Edit Message Modal
+const EditMessageModal = ({ message, onSave, onClose }) => {
+  const [content, setContent] = useState(message?.content || "");
+
+  if (!message) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9 }}
+        animate={{ scale: 1 }}
+        className="bg-[#1a1a1a] rounded-2xl p-6 w-full max-w-md border border-white/10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <FaEdit className="text-purple-400" /> Edit Message
+        </h3>
+        
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white resize-none focus:outline-none focus:border-purple-500"
+          rows={4}
+          autoFocus
+        />
+        
+        <div className="flex gap-3 mt-4">
+          <button onClick={onClose} className="flex-1 py-2 bg-gray-700 text-white rounded-xl hover:bg-gray-600 transition">
+            Cancel
+          </button>
+          <button 
+            onClick={() => onSave(content)}
+            disabled={!content.trim()}
+            className="flex-1 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:opacity-90 transition disabled:opacity-50"
+          >
+            Save
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// 📁 Drive Link Card - Display shared external links
+const DriveLinkCard = ({ link }) => {
+  const getProviderInfo = (provider) => {
+    switch (provider) {
+      case "google_drive":
+        return { name: "Google Drive", color: "from-yellow-500 to-green-500", icon: "📁" };
+      case "dropbox":
+        return { name: "Dropbox", color: "from-blue-400 to-blue-600", icon: "📦" };
+      case "onedrive":
+        return { name: "OneDrive", color: "from-blue-500 to-cyan-500", icon: "☁️" };
+      case "wetransfer":
+        return { name: "WeTransfer", color: "from-purple-500 to-pink-500", icon: "📤" };
+      case "mega":
+        return { name: "MEGA", color: "from-red-500 to-orange-500", icon: "📂" };
+      default:
+        return { name: "External Link", color: "from-gray-500 to-gray-700", icon: "🔗" };
+    }
+  };
+
+  const providerInfo = getProviderInfo(link.provider);
+
+  return (
+    <div className={`bg-gradient-to-r ${providerInfo.color} p-[1px] rounded-2xl`}>
+      <div className="bg-[#1a1a1a] rounded-2xl p-4">
+        <div className="flex items-start gap-3">
+          <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-2xl">
+            {providerInfo.icon}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="font-bold text-white text-sm truncate">{link.title || "Raw Footage Package"}</h4>
+            <p className="text-gray-400 text-xs">{providerInfo.name}</p>
+            {link.description && (
+              <p className="text-gray-300 text-xs mt-1 line-clamp-2">{link.description}</p>
+            )}
+            <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-500">
+              {link.fileCount && <span>📎 {link.fileCount} files</span>}
+              {link.totalSize && <span>💾 {link.totalSize}</span>}
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={() => window.open(link.url, "_blank")}
+          className={`w-full mt-3 py-2.5 bg-gradient-to-r ${providerInfo.color} text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition`}
+        >
+          <FaExternalLinkAlt className="text-xs" />
+          Open in {providerInfo.name}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// 📤 Add Drive Link Modal (Client Only)
+const AddDriveLinkModal = ({ onSubmit, onClose }) => {
+  const [url, setUrl] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!url.trim()) return;
+    setLoading(true);
+    await onSubmit({ url, title, description });
+    setLoading(false);
+    onClose();
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9 }}
+        animate={{ scale: 1 }}
+        exit={{ scale: 0.9 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-[#1a1a1a] rounded-2xl p-6 max-w-md w-full border border-white/10"
+      >
+        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <FaFolder className="text-yellow-500" />
+          Share Raw Footage
+        </h3>
+        
+        <p className="text-gray-400 text-sm mb-4">
+          Paste a Google Drive, Dropbox, or any cloud storage link for your editor to download the files.
+        </p>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="text-gray-400 text-xs mb-1 block">Link URL *</label>
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://drive.google.com/..."
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500"
+            />
+          </div>
+          
+          <div>
+            <label className="text-gray-400 text-xs mb-1 block">Title (Optional)</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g., Wedding Raw Clips"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500"
+            />
+          </div>
+          
+          <div>
+            <label className="text-gray-400 text-xs mb-1 block">Description (Optional)</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Any notes for the editor..."
+              rows={2}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white resize-none focus:outline-none focus:border-purple-500"
+            />
+          </div>
+        </div>
+        
+        <div className="flex gap-3 mt-6">
+          <button 
+            onClick={onClose} 
+            className="flex-1 py-3 bg-gray-700 text-white rounded-xl hover:bg-gray-600 transition"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={handleSubmit}
+            disabled={!url.trim() || loading}
+            className="flex-1 py-3 bg-gradient-to-r from-yellow-500 to-green-500 text-white font-bold rounded-xl hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <>
+                <FaLink className="text-sm" />
+                Share Link
+              </>
+            )}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
 
 const ChatPage = () => {
   const navigate = useNavigate();
@@ -187,6 +580,19 @@ const ChatPage = () => {
   const [pendingFile, setPendingFile] = useState(null);
   const [allowDownload, setAllowDownload] = useState(false);
   const [deleteMenuMsg, setDeleteMenuMsg] = useState(null);
+
+  // --- New Feature States ---
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [editingMessage, setEditingMessage] = useState(null);
+  const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [quickReplies, setQuickReplies] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showChecklist, setShowChecklist] = useState(false);
+  const [checklist, setChecklist] = useState([]);
+  const [newChecklistItem, setNewChecklistItem] = useState("");
+  const [showDriveLinkModal, setShowDriveLinkModal] = useState(false);
 
   // --- Derived State ---
   const otherParty = user?.role === "editor" ? order?.client : order?.editor;
@@ -415,13 +821,233 @@ const ChatPage = () => {
     }
   };
 
+  // 🎙️ Send Voice Message
+  const handleSendVoice = async (audioBlob, duration) => {
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "voice_message.webm");
+      formData.append("duration", duration.toString());
+      
+      await axios.post(`${backendURL}/api/messages/${orderId}/voice`, formData, {
+        headers: { 
+          Authorization: `Bearer ${user?.token}`,
+          "Content-Type": "multipart/form-data"
+        }
+      });
+      
+      playPopSound();
+      toast.success("Voice message sent!");
+      setIsRecordingVoice(false);
+    } catch (err) {
+      toast.error("Failed to send voice message");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // 📁 Send Drive Link (Client Only)
+  const handleSendDriveLink = async ({ url, title, description }) => {
+    try {
+      await axios.post(`${backendURL}/api/messages/${orderId}/drive-link`, {
+        url,
+        title,
+        description
+      }, {
+        headers: { Authorization: `Bearer ${user?.token}` }
+      });
+      
+      playPopSound();
+      toast.success("Raw footage link shared!");
+      setShowDriveLinkModal(false);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to share link");
+    }
+  };
+
+  // ✏️ Edit Message
+  const handleEditMessage = async (content) => {
+    if (!editingMessage) return;
+    try {
+      await axios.patch(`${backendURL}/api/messages/${editingMessage._id}/edit`, { content }, {
+        headers: { Authorization: `Bearer ${user?.token}` }
+      });
+      setMessages(prev => prev.map(m => 
+        m._id === editingMessage._id ? { ...m, content, isEdited: true } : m
+      ));
+      toast.success("Message edited");
+      setEditingMessage(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to edit");
+    }
+  };
+
+  // ⭐ Toggle Star
+  const handleToggleStar = async (msgId) => {
+    try {
+      const res = await axios.patch(`${backendURL}/api/messages/${msgId}/star`, {}, {
+        headers: { Authorization: `Bearer ${user?.token}` }
+      });
+      setMessages(prev => prev.map(m => 
+        m._id === msgId ? { ...m, isStarred: res.data.starred, starredBy: res.data.starred ? [...(m.starredBy || []), user._id] : (m.starredBy || []).filter(id => id !== user._id) } : m
+      ));
+    } catch (err) {
+      toast.error("Failed to star message");
+    }
+  };
+
+  // 🔍 Search Messages
+  const handleSearch = async (query) => {
+    if (!query || query.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    try {
+      const res = await axios.get(`${backendURL}/api/messages/${orderId}/search?q=${encodeURIComponent(query)}`, {
+        headers: { Authorization: `Bearer ${user?.token}` }
+      });
+      setSearchResults(res.data.messages || []);
+    } catch (err) {
+      console.error("Search error:", err);
+    }
+  };
+
+  // ⚡ Load Quick Replies
+  const loadQuickReplies = useCallback(async () => {
+    try {
+      const res = await axios.get(`${backendURL}/api/quick-replies`, {
+        headers: { Authorization: `Bearer ${user?.token}` }
+      });
+      setQuickReplies(res.data.replies || []);
+    } catch (err) {
+      console.error("Failed to load quick replies");
+    }
+  }, [backendURL, user?.token]);
+
+  // 📋 Load Checklist
+  const loadChecklist = useCallback(async () => {
+    try {
+      const res = await axios.get(`${backendURL}/api/checklists/${orderId}`, {
+        headers: { Authorization: `Bearer ${user?.token}` }
+      });
+      setChecklist(res.data.checklist?.items || []);
+    } catch (err) {
+      console.error("Failed to load checklist");
+    }
+  }, [backendURL, orderId, user?.token]);
+
+  // Add Checklist Item
+  const handleAddChecklistItem = async () => {
+    if (!newChecklistItem.trim()) return;
+    try {
+      const res = await axios.post(`${backendURL}/api/checklists/${orderId}/item`, 
+        { text: newChecklistItem.trim() },
+        { headers: { Authorization: `Bearer ${user?.token}` } }
+      );
+      setChecklist(res.data.checklist?.items || []);
+      setNewChecklistItem("");
+    } catch (err) {
+      toast.error("Failed to add item");
+    }
+  };
+
+  // Toggle Checklist Item
+  const handleToggleChecklistItem = async (itemId) => {
+    try {
+      const res = await axios.patch(`${backendURL}/api/checklists/${orderId}/item/${itemId}`, {}, {
+        headers: { Authorization: `Bearer ${user?.token}` }
+      });
+      setChecklist(res.data.checklist?.items || []);
+    } catch (err) {
+      toast.error("Failed to update item");
+    }
+  };
+
+  // Delete Checklist Item
+  const handleDeleteChecklistItem = async (itemId) => {
+    try {
+      const res = await axios.delete(`${backendURL}/api/checklists/${orderId}/item/${itemId}`, {
+        headers: { Authorization: `Bearer ${user?.token}` }
+      });
+      setChecklist(res.data.checklist?.items || []);
+    } catch (err) {
+      toast.error("Failed to delete item");
+    }
+  };
+
+  // Load quick replies and checklist on mount
+  useEffect(() => {
+    loadQuickReplies();
+    loadChecklist();
+  }, [loadQuickReplies, loadChecklist]);
+
+  // Listen for socket events for edit/checklist
+  useEffect(() => {
+    if (!socket) return;
+    
+    const handleMessageEdited = ({ messageId, content, isEdited }) => {
+      setMessages(prev => prev.map(m => 
+        m._id === messageId ? { ...m, content, isEdited } : m
+      ));
+    };
+    
+    const handleChecklistUpdated = ({ checklist: items }) => {
+      setChecklist(items || []);
+    };
+    
+    socket.on("message:edited", handleMessageEdited);
+    socket.on("checklist:updated", handleChecklistUpdated);
+    
+    return () => {
+      socket.off("message:edited", handleMessageEdited);
+      socket.off("checklist:updated", handleChecklistUpdated);
+    };
+  }, [socket]);
+
   if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Loading...</div>;
+
+  // Calculate deadline status for header
+  const getDeadlineStatus = () => {
+    if (!order?.deadline) return null;
+    
+    const now = new Date();
+    const end = new Date(order.deadline);
+    const start = new Date(order.createdAt);
+    
+    const totalDuration = end - start;
+    const elapsed = now - start;
+    const remaining = end - now;
+    const percentUsed = (elapsed / totalDuration) * 100;
+    
+    const daysLeft = Math.ceil(remaining / (1000 * 60 * 60 * 24));
+    
+    let color = "bg-green-500/20 text-green-400 border-green-500/30";
+    if (percentUsed >= 90 || daysLeft <= 1) {
+      color = "bg-red-500/20 text-red-400 border-red-500/30";
+    } else if (percentUsed >= 70 || daysLeft <= 2) {
+      color = "bg-orange-500/20 text-orange-400 border-orange-500/30";
+    } else if (percentUsed >= 50 || daysLeft <= 3) {
+      color = "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
+    }
+    
+    if (daysLeft < 0) {
+      return { text: "Overdue!", color: "bg-red-500/30 text-red-500 border-red-500/50", urgent: true };
+    }
+    
+    return { 
+      text: daysLeft === 0 ? "Due Today" : daysLeft === 1 ? "1 day left" : `${daysLeft} days left`,
+      color,
+      urgent: daysLeft <= 1
+    };
+  };
+
+  const deadlineStatus = getDeadlineStatus();
 
   return (
     <div className="flex flex-col h-screen bg-black text-white font-sans overflow-hidden">
       
-      {/* 1. Fixed Header (Glassmorphism) */}
-      <header className="flex-none z-50 bg-black/80 backdrop-blur-md border-b border-white/10">
+      {/* 1. Fixed Header (Glassmorphism) - STICKY */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-md border-b border-white/10">
         <div className="flex items-center gap-4 px-4 py-3">
           <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition">
             <FaArrowLeft className="text-white text-lg" />
@@ -441,23 +1067,108 @@ const ChatPage = () => {
             </div>
             <div className="flex flex-col justify-center">
               <span className="font-semibold text-sm truncate leading-tight">{otherParty?.name || "Unknown User"}</span>
-              <span className="text-[11px] text-gray-400 leading-tight">
-                {isOnline ? "Active now" : "Offline"}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-gray-400 leading-tight">
+                  {isOnline ? "Active now" : "Offline"}
+                </span>
+                {/* Deadline Badge */}
+                {deadlineStatus && order?.status !== "completed" && (
+                  <span className={`text-[9px] px-2 py-0.5 rounded border ${deadlineStatus.color} ${deadlineStatus.urgent ? 'animate-pulse' : ''}`}>
+                    {deadlineStatus.text}
+                  </span>
+                )}
+              </div>
             </div>
+          </div>
+
+          {/* Feature Buttons */}
+          <div className="flex items-center gap-1">
+            {/* Search Toggle */}
+            <button 
+              onClick={() => setShowSearch(!showSearch)}
+              className={`p-2 rounded-full transition ${showSearch ? 'bg-purple-500/30 text-purple-400' : 'hover:bg-white/10 text-gray-400'}`}
+            >
+              <FaSearch className="text-sm" />
+            </button>
+            
+            {/* Checklist Toggle */}
+            <button 
+              onClick={() => setShowChecklist(!showChecklist)}
+              className={`p-2 rounded-full transition ${showChecklist ? 'bg-purple-500/30 text-purple-400' : 'hover:bg-white/10 text-gray-400'}`}
+            >
+              <FaList className="text-sm" />
+            </button>
           </div>
         </div>
 
+        {/* Search Bar (Expandable) */}
+        <AnimatePresence>
+          {showSearch && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="px-4 pb-3 overflow-hidden"
+            >
+              <div className="flex items-center gap-2 bg-white/5 rounded-xl px-3 py-2">
+                <FaSearch className="text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Search messages..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    handleSearch(e.target.value);
+                  }}
+                  className="flex-1 bg-transparent text-white text-sm focus:outline-none placeholder-gray-500"
+                />
+                {searchQuery && (
+                  <button onClick={() => { setSearchQuery(""); setSearchResults([]); }}>
+                    <FaTimes className="text-gray-500 text-xs" />
+                  </button>
+                )}
+              </div>
+              
+              {/* Search Results */}
+              {searchResults.length > 0 && (
+                <div className="mt-2 max-h-40 overflow-y-auto space-y-1">
+                  {searchResults.map((msg) => (
+                    <button
+                      key={msg._id}
+                      onClick={() => {
+                        const el = document.getElementById(`msg-${msg._id}`);
+                        if (el) {
+                          el.scrollIntoView({ behavior: "smooth", block: "center" });
+                          el.classList.add("ring-2", "ring-purple-500");
+                          setTimeout(() => el.classList.remove("ring-2", "ring-purple-500"), 2000);
+                        }
+                        setShowSearch(false);
+                        setSearchQuery("");
+                        setSearchResults([]);
+                      }}
+                      className="w-full text-left px-3 py-2 bg-white/5 rounded-lg hover:bg-white/10 transition"
+                    >
+                      <p className="text-xs text-gray-400">{msg.sender?.name}</p>
+                      <p className="text-sm text-white truncate">{msg.content}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Integrated Project Details (Collapsible) */}
-        <div className="bg-white/5 border-t border-white/5">
+        <div className="bg-white/5 border-t border-white/5 flex max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
             <ProjectDetailsDropdown order={{ ...order, currentUserId: user?._id }} />
+            <FootageLinksDropdown messages={messages} userRole={user?.role} orderId={orderId} />
         </div>
       </header>
 
 
-      {/* 2. Messages Area (Textured Background) */}
+      {/* 2. Messages Area (Textured Background) - with padding for fixed header/footer */}
       <div 
-        className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 relative scroll-smooth"
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 pt-40 pb-32 space-y-2 relative scroll-smooth"
         style={{
           backgroundImage: `url(${chattexture})`,
           backgroundSize: "cover", // Or "300px" based on texture type
@@ -621,8 +1332,32 @@ const ChatPage = () => {
                             </div>
                         )}
 
+                        {/* 🎙️ Voice Message Player */}
+                        {msg.type === "audio" && msg.mediaUrl && (
+                          <VoicePlayer audioUrl={msg.mediaUrl} duration={msg.audioDuration} />
+                        )}
+
+                        {/* 📁 Drive Link Card */}
+                        {msg.type === "drive_link" && msg.externalLink && (
+                          <DriveLinkCard link={msg.externalLink} />
+                        )}
+
                         {/* Text Content */}
-                        {msg.content && <p className="text-[15px] leading-relaxed whitespace-pre-wrap emoji-font">{msg.content}</p>}
+                        {msg.content && msg.type === "text" && (
+                          <p className="text-[15px] leading-relaxed whitespace-pre-wrap emoji-font">{msg.content}</p>
+                        )}
+                        
+                        {/* Edited Indicator */}
+                        {msg.isEdited && (
+                          <span className="text-[10px] text-gray-400 italic">edited</span>
+                        )}
+                        
+                        {/* Star Indicator */}
+                        {msg.starredBy?.includes(user?._id) && (
+                          <div className="absolute top-1 right-1">
+                            <FaStar className="text-yellow-400 text-xs" />
+                          </div>
+                        )}
                         
                         {/* Timestamp & Status (Inside Bubble) */}
                         <div className={`flex items-center gap-1.5 mt-1 ${isMe ? "justify-end text-white/70" : "justify-start text-gray-400"}`}>
@@ -656,10 +1391,28 @@ const ChatPage = () => {
 
                   {/* Action Buttons (Hover) */}
                   {!msg.isDeleted && (
-                    <div className={`absolute top-1/2 -translate-y-1/2 ${isMe ? "-left-16" : "-right-16"} opacity-0 group-hover:opacity-100 transition-opacity flex gap-1`}>
+                    <div className={`absolute top-1/2 -translate-y-1/2 ${isMe ? "-left-24" : "-right-24"} opacity-0 group-hover:opacity-100 transition-opacity flex gap-1`}>
+                        {/* Star */}
+                        <button 
+                          onClick={() => handleToggleStar(msg._id)} 
+                          className={`p-1.5 rounded-full transition ${msg.starredBy?.includes(user?._id) ? 'bg-yellow-500/30 text-yellow-400' : 'bg-white/10 hover:bg-white/20 text-gray-300'}`}
+                        >
+                          {msg.starredBy?.includes(user?._id) ? <FaStar className="text-xs" /> : <FaRegStar className="text-xs" />}
+                        </button>
+                        
+                        {/* Reply */}
                         <button onClick={() => setReplyingTo(msg)} className="p-1.5 bg-white/10 rounded-full hover:bg-white/20 text-gray-300">
                             <FaReply className="text-xs" />
                         </button>
+                        
+                        {/* Edit (only for own text messages within 5 mins) */}
+                        {isMe && msg.type === "text" && (Date.now() - new Date(msg.createdAt).getTime() < 5 * 60 * 1000) && (
+                          <button onClick={() => setEditingMessage(msg)} className="p-1.5 bg-blue-500/20 rounded-full hover:bg-blue-500/40 text-blue-400">
+                              <FaEdit className="text-xs" />
+                          </button>
+                        )}
+                        
+                        {/* Delete */}
                         {isMe && (
                           <button onClick={() => handleDeleteMessage(msg._id)} className="p-1.5 bg-red-500/20 rounded-full hover:bg-red-500/40 text-red-400">
                               <FaTrash className="text-xs" />
@@ -704,7 +1457,7 @@ const ChatPage = () => {
 
 
       {/* 3. Input Area (Fixed Bottom) */}
-      <footer className="flex-none bg-black px-4 py-3 pb-6 sticky bottom-0 z-50" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
+      <footer className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md px-4 py-3 pb-6 z-50 border-t border-white/10" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
          {/* Reply Preview Context */}
          <AnimatePresence>
             {replyingTo && (
@@ -744,30 +1497,79 @@ const ChatPage = () => {
                              <button onClick={() => imageInputRef.current.click()} className="flex items-center gap-3 p-2 hover:bg-white/10 rounded-lg text-sm"><FaCamera className="text-pink-500" /> Photo</button>
                              <button onClick={() => videoInputRef.current.click()} className="flex items-center gap-3 p-2 hover:bg-white/10 rounded-lg text-sm"><FaVideo className="text-blue-500" /> Video</button>
                              <button onClick={() => docInputRef.current.click()} className="flex items-center gap-3 p-2 hover:bg-white/10 rounded-lg text-sm"><FaFileAlt className="text-yellow-500" /> Document</button>
+                             
+                             {/* Share Raw Footage - Client Only */}
+                             {user?.role === "client" && (
+                               <button 
+                                 onClick={() => { setShowDriveLinkModal(true); setShowMediaMenu(false); }} 
+                                 className="flex items-center gap-3 p-2 hover:bg-white/10 rounded-lg text-sm border-t border-white/10 mt-1 pt-2"
+                               >
+                                 <FaFolder className="text-green-500" /> Share Footage
+                               </button>
+                             )}
                          </motion.div>
                      )}
                  </AnimatePresence>
              </div>
+
+             {/* Quick Replies Button */}
+             <button 
+               onClick={() => { setShowQuickReplies(!showQuickReplies); loadQuickReplies(); }}
+               className={`p-3 rounded-full transition ${showQuickReplies ? 'bg-purple-500/30 text-purple-400' : 'hover:bg-white/10 text-gray-400'}`}
+             >
+               <FaBolt className="text-lg" />
+             </button>
              
-             {/* Text Input - Pill Shape */}
-             <div className="flex-1 bg-[#262626] rounded-[24px] px-4 py-2 border border-white/5 focus-within:border-purple-500/50 transition">
-                 <textarea
-                    value={newMessage}
-                    onChange={(e) => { setNewMessage(e.target.value); startTyping(orderId); }}
-                    onBlur={() => stopTyping(orderId)}
-                    onKeyDown={(e) => { if(e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-                    placeholder="Message..."
-                    rows={1}
-                    className="w-full bg-transparent text-white outline-none placeholder:text-gray-500 resize-none max-h-32 py-1 scrollbar-hide text-[15px]" 
+             {/* Voice Message Button */}
+             <button 
+               onClick={() => setIsRecordingVoice(true)}
+               className="p-3 rounded-full hover:bg-white/10 text-gray-400 transition"
+             >
+               <FaMicrophone className="text-lg" />
+             </button>
+             
+             {/* Quick Replies Popup */}
+             <AnimatePresence>
+               {showQuickReplies && (
+                 <QuickRepliesMenu 
+                   replies={quickReplies}
+                   onSelect={(reply) => {
+                     setNewMessage(reply.content);
+                     setShowQuickReplies(false);
+                   }}
+                   onClose={() => setShowQuickReplies(false)}
                  />
-             </div>
+               )}
+             </AnimatePresence>
+             
+             {/* Text Input or Voice Recorder */}
+             {isRecordingVoice ? (
+               <div className="flex-1">
+                 <VoiceRecorder 
+                   onSend={handleSendVoice} 
+                   onCancel={() => setIsRecordingVoice(false)} 
+                 />
+               </div>
+             ) : (
+               <div className="flex-1 bg-[#262626] rounded-[24px] px-4 py-2 border border-white/5 focus-within:border-purple-500/50 transition">
+                   <textarea
+                      value={newMessage}
+                      onChange={(e) => { setNewMessage(e.target.value); startTyping(orderId); }}
+                      onBlur={() => stopTyping(orderId)}
+                      onKeyDown={(e) => { if(e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
+                      placeholder="Message..."
+                      rows={1}
+                      className="w-full bg-transparent text-white outline-none placeholder:text-gray-500 resize-none max-h-32 py-1 scrollbar-hide text-[15px]" 
+                   />
+               </div>
+             )}
 
              {/* Send Button */}
              <button 
                 onClick={handleSendMessage}
-                disabled={!newMessage.trim() && !uploading}
+                disabled={(!newMessage.trim() && !uploading) || isRecordingVoice}
                 className={`p-3 rounded-full transition-all duration-200 transform hover:scale-105 ${
-                    newMessage.trim() ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-lg shadow-purple-500/30" : "bg-[#262626] text-gray-500"
+                    newMessage.trim() && !isRecordingVoice ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-lg shadow-purple-500/30" : "bg-[#262626] text-gray-500"
                 }`}
              >
                 {sending ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <FaPaperPlane />}
@@ -853,6 +1655,126 @@ const ChatPage = () => {
 
       {/* Modals */}
       <MediaPreviewModal isOpen={!!previewMedia} onClose={() => setPreviewMedia(null)} media={previewMedia} />
+      
+      {/* Edit Message Modal */}
+      <AnimatePresence>
+        {editingMessage && (
+          <EditMessageModal 
+            message={editingMessage}
+            onSave={handleEditMessage}
+            onClose={() => setEditingMessage(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* � Add Drive Link Modal (Client Only) */}
+      <AnimatePresence>
+        {showDriveLinkModal && (
+          <AddDriveLinkModal 
+            onSubmit={handleSendDriveLink}
+            onClose={() => setShowDriveLinkModal(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* �📋 Checklist Panel (Sliding) */}
+      <AnimatePresence>
+        {showChecklist && (
+          <motion.div
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "spring", damping: 25 }}
+            className="fixed top-0 right-0 w-full max-w-sm h-full bg-[#0d0d0d] border-l border-white/10 z-[90] flex flex-col"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-white/10">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <FaList className="text-purple-400" /> Project Checklist
+              </h3>
+              <button onClick={() => setShowChecklist(false)} className="p-2 hover:bg-white/10 rounded-full">
+                <FaTimes className="text-gray-400" />
+              </button>
+            </div>
+            
+            {/* Add Item */}
+            <div className="p-4 border-b border-white/10">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newChecklistItem}
+                  onChange={(e) => setNewChecklistItem(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddChecklistItem()}
+                  placeholder="Add a task..."
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500"
+                />
+                <button 
+                  onClick={handleAddChecklistItem}
+                  className="px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+            
+            {/* Checklist Items */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {checklist.length === 0 ? (
+                <div className="text-center py-8">
+                  <FaList className="text-gray-600 text-4xl mx-auto mb-3" />
+                  <p className="text-gray-500">No tasks yet</p>
+                  <p className="text-gray-600 text-sm">Add tasks to track project progress</p>
+                </div>
+              ) : (
+                checklist.map((item) => (
+                  <div 
+                    key={item._id}
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition ${
+                      item.completed ? 'bg-green-500/10 border-green-500/30' : 'bg-white/5 border-white/10'
+                    }`}
+                  >
+                    <button 
+                      onClick={() => handleToggleChecklistItem(item._id)}
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition ${
+                        item.completed ? 'bg-green-500 border-green-500' : 'border-gray-500'
+                      }`}
+                    >
+                      {item.completed && <FaCheck className="text-white text-xs" />}
+                    </button>
+                    <span className={`flex-1 text-sm ${item.completed ? 'text-gray-400 line-through' : 'text-white'}`}>
+                      {item.text}
+                    </span>
+                    <button 
+                      onClick={() => handleDeleteChecklistItem(item._id)}
+                      className="p-1 hover:bg-red-500/20 rounded text-red-400"
+                    >
+                      <FaTimes className="text-xs" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            {/* Progress */}
+            {checklist.length > 0 && (
+              <div className="p-4 border-t border-white/10">
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-gray-400">Progress</span>
+                  <span className="text-white font-bold">
+                    {checklist.filter(i => i.completed).length}/{checklist.length}
+                  </span>
+                </div>
+                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-purple-500 to-green-500 transition-all"
+                    style={{ width: `${(checklist.filter(i => i.completed).length / checklist.length) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

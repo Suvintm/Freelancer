@@ -413,3 +413,310 @@ export const deleteMessage = asyncHandler(async (req, res) => {
     message: "Message deleted",
   });
 });
+
+// ============ EDIT MESSAGE ============
+export const editMessage = asyncHandler(async (req, res) => {
+  const { messageId } = req.params;
+  const { content } = req.body;
+
+  const message = await Message.findById(messageId).populate("order");
+
+  if (!message) {
+    throw new ApiError(404, "Message not found");
+  }
+
+  // Check if user is the sender
+  if (message.sender.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "You can only edit your own messages");
+  }
+
+  // Check if within 15 minutes
+  const fifteenMinutes = 5 * 60 * 1000;
+  if (Date.now() - message.createdAt > fifteenMinutes) {
+    throw new ApiError(400, "Cannot edit message after 5 minutes");
+  }
+
+  // Only text messages can be edited
+  if (message.type !== "text") {
+    throw new ApiError(400, "Only text messages can be edited");
+  }
+
+  // Store original if first edit
+  if (!message.originalContent) {
+    message.originalContent = message.content;
+  }
+
+  message.content = content.trim();
+  message.isEdited = true;
+  message.editedAt = new Date();
+  await message.save();
+
+  // Emit real-time edit event
+  const io = getIO();
+  if (io) {
+    io.to(`order_${message.order._id}`).emit("message:edited", {
+      messageId: message._id,
+      orderId: message.order._id,
+      content: message.content,
+      isEdited: true,
+      editedAt: message.editedAt,
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Message edited",
+    data: { content: message.content, isEdited: true },
+  });
+});
+
+// ============ TOGGLE STAR MESSAGE ============
+export const toggleStarMessage = asyncHandler(async (req, res) => {
+  const { messageId } = req.params;
+
+  const message = await Message.findById(messageId);
+
+  if (!message) {
+    throw new ApiError(404, "Message not found");
+  }
+
+  const userId = req.user._id;
+  const isStarred = message.starredBy.includes(userId);
+
+  if (isStarred) {
+    // Unstar
+    message.starredBy = message.starredBy.filter(
+      (id) => id.toString() !== userId.toString()
+    );
+  } else {
+    // Star
+    message.starredBy.push(userId);
+  }
+
+  message.isStarred = message.starredBy.length > 0;
+  await message.save();
+
+  res.status(200).json({
+    success: true,
+    starred: !isStarred,
+    message: isStarred ? "Message unstarred" : "Message starred",
+  });
+});
+
+// ============ GET STARRED MESSAGES ============
+export const getStarredMessages = asyncHandler(async (req, res) => {
+  const { orderId } = req.params;
+
+  const starredMessages = await Message.find({
+    order: orderId,
+    starredBy: req.user._id,
+    isDeleted: false,
+  })
+    .populate("sender", "name profilePicture")
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    messages: starredMessages,
+  });
+});
+
+// ============ SEARCH MESSAGES ============
+export const searchMessages = asyncHandler(async (req, res) => {
+  const { orderId } = req.params;
+  const { q } = req.query;
+
+  if (!q || q.trim().length < 2) {
+    throw new ApiError(400, "Search query must be at least 2 characters");
+  }
+
+  const messages = await Message.find({
+    order: orderId,
+    isDeleted: false,
+    $or: [
+      { content: { $regex: q, $options: "i" } },
+      { mediaName: { $regex: q, $options: "i" } },
+    ],
+  })
+    .populate("sender", "name profilePicture")
+    .sort({ createdAt: -1 })
+    .limit(50);
+
+  res.status(200).json({
+    success: true,
+    messages,
+    count: messages.length,
+  });
+});
+
+// ============ UPLOAD VOICE MESSAGE ============
+export const uploadVoice = asyncHandler(async (req, res) => {
+  const { orderId } = req.params;
+
+  if (!req.file) {
+    throw new ApiError(400, "No audio file provided");
+  }
+
+  // Verify order access
+  const order = await Order.findById(orderId)
+    .populate("client", "name")
+    .populate("editor", "name");
+
+  if (!order) {
+    throw new ApiError(404, "Order not found");
+  }
+
+  const isClient = order.client._id.toString() === req.user._id.toString();
+  const isEditor = order.editor._id.toString() === req.user._id.toString();
+
+  if (!isClient && !isEditor) {
+    throw new ApiError(403, "Not authorized to send messages");
+  }
+
+  // Upload to Cloudinary
+  const cloudinary = (await import("cloudinary")).v2;
+  
+  const mimeType = req.file.mimetype;
+  const b64 = Buffer.from(req.file.buffer).toString("base64");
+  const dataURI = `data:${mimeType};base64,${b64}`;
+
+  const result = await cloudinary.uploader.upload(dataURI, {
+    resource_type: "video", // audio uses video resource type
+    folder: `suvix/chats/${orderId}/voice`,
+    use_filename: true,
+    unique_filename: true,
+  });
+
+  // Get duration from request body or default
+  const duration = parseFloat(req.body.duration) || 0;
+
+  // Create message
+  const message = await Message.create({
+    order: orderId,
+    sender: req.user._id,
+    type: "audio",
+    content: "Voice message",
+    mediaUrl: result.secure_url,
+    mediaName: req.file.originalname || "voice_message.webm",
+    audioDuration: duration,
+    delivered: true,
+    deliveredAt: new Date(),
+  });
+
+  const populatedMessage = await Message.findById(message._id).populate(
+    "sender",
+    "name profilePicture"
+  );
+
+  // Emit real-time message
+  const io = getIO();
+  if (io) {
+    io.to(`order_${orderId}`).emit("message:new", {
+      ...populatedMessage.toObject(),
+      orderId,
+      senderName: req.user.name,
+    });
+  }
+
+  // Notify recipient
+  const recipientId = isClient ? order.editor._id : order.client._id;
+
+  await createNotification({
+    recipient: recipientId,
+    type: "info",
+    title: "Voice Message",
+    message: `${req.user.name} sent a voice message`,
+    link: `/chat/${orderId}`,
+  });
+
+  res.status(201).json({
+    success: true,
+    message: populatedMessage,
+  });
+});
+
+// Send Drive Link (Client Only)
+export const sendDriveLink = asyncHandler(async (req, res) => {
+  const { orderId } = req.params;
+  const { url, title, description, provider, fileCount, totalSize } = req.body;
+
+  if (!url) {
+    throw new ApiError(400, "URL is required");
+  }
+
+  // Validate URL format
+  const urlPattern = /^https?:\/\/.+/i;
+  if (!urlPattern.test(url)) {
+    throw new ApiError(400, "Invalid URL format");
+  }
+
+  const order = await Order.findById(orderId)
+    .populate("client", "name profilePicture")
+    .populate("editor", "name profilePicture");
+
+  if (!order) {
+    throw new ApiError(404, "Order not found");
+  }
+
+  // Only clients can share drive links
+  const isClient = order.client._id.toString() === req.user._id.toString();
+  if (!isClient) {
+    throw new ApiError(403, "Only clients can share raw footage links");
+  }
+
+  // Detect provider from URL
+  let detectedProvider = provider || "other";
+  if (!provider) {
+    if (url.includes("drive.google.com")) detectedProvider = "google_drive";
+    else if (url.includes("dropbox.com")) detectedProvider = "dropbox";
+    else if (url.includes("onedrive")) detectedProvider = "onedrive";
+    else if (url.includes("wetransfer.com")) detectedProvider = "wetransfer";
+    else if (url.includes("mega.nz")) detectedProvider = "mega";
+  }
+
+  const message = await Message.create({
+    order: orderId,
+    sender: req.user._id,
+    type: "drive_link",
+    content: description || "Shared raw footage files",
+    externalLink: {
+      provider: detectedProvider,
+      url,
+      title: title || "Raw Footage Package",
+      description: description || "",
+      fileCount: fileCount || null,
+      totalSize: totalSize || null,
+    },
+    delivered: true,
+    deliveredAt: new Date(),
+  });
+
+  const populatedMessage = await Message.findById(message._id).populate(
+    "sender",
+    "name profilePicture"
+  );
+
+  // Emit real-time message
+  const io = getIO();
+  if (io) {
+    io.to(`order_${orderId}`).emit("message:new", {
+      ...populatedMessage.toObject(),
+      orderId,
+      senderName: req.user.name,
+    });
+  }
+
+  // Notify editor
+  await createNotification({
+    recipient: order.editor._id,
+    type: "info",
+    title: "📁 Raw Footage Shared",
+    message: `${req.user.name} shared raw footage files`,
+    link: `/chat/${orderId}`,
+  });
+
+  res.status(201).json({
+    success: true,
+    message: populatedMessage,
+  });
+});
