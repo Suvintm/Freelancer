@@ -12,6 +12,7 @@ import {
   FaTimes,
   FaShieldAlt,
   FaChartLine,
+  FaComments,
 } from "react-icons/fa";
 import { useAdmin } from "../context/AdminContext";
 
@@ -26,6 +27,8 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const navItems = [
     { to: "/dashboard", icon: FaTachometerAlt, label: "Dashboard" },
+    { to: "/analytics", icon: FaChartLine, label: "Analytics" },
+    { to: "/conversations", icon: FaComments, label: "Conversations" },
     { to: "/users", icon: FaUsers, label: "Users" },
     { to: "/orders", icon: FaShoppingCart, label: "Orders" },
     { to: "/gigs", icon: FaBriefcase, label: "Gigs" },

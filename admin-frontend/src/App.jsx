@@ -11,6 +11,8 @@ import Orders from "./pages/Orders";
 import Gigs from "./pages/Gigs";
 import Activity from "./pages/Activity";
 import Settings from "./pages/Settings";
+import Analytics from "./pages/Analytics";
+import Conversations from "./pages/Conversations";
 
 // Components
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -45,6 +47,8 @@ function App() {
           }
         >
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/conversations" element={<Conversations />} />
           <Route path="/users" element={<Users />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/gigs" element={<Gigs />} />

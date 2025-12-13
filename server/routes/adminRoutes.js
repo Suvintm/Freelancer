@@ -589,4 +589,438 @@ router.get("/maintenance-status", async (req, res) => {
   }
 });
 
+// ============ CONVERSATIONS / CHAT VIEWER ============
+
+// Get all order conversations
+router.get("/conversations", requirePermission("orders"), async (req, res) => {
+  try {
+    const { page = 1, limit = 20, search, status, startDate, endDate } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    let query = {};
+
+    // Filter by order status
+    if (status && status !== "all") {
+      query.status = status;
+    }
+
+    // Date range filter
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) query.createdAt.$lte = new Date(endDate);
+    }
+
+    // Get orders with message counts
+    let orders = await Order.find(query)
+      .populate("client", "name email profilePicture")
+      .populate("editor", "name email profilePicture")
+      .populate("gig", "title")
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    // Add message counts to each order
+    for (let order of orders) {
+      const messageCount = await Message.countDocuments({ order: order._id });
+      const lastMessage = await Message.findOne({ order: order._id })
+        .sort({ createdAt: -1 })
+        .select("content type createdAt sender")
+        .populate("sender", "name")
+        .lean();
+      
+      order.messageCount = messageCount;
+      order.lastMessage = lastMessage;
+    }
+
+    // Search filter (after getting data)
+    if (search) {
+      const searchLower = search.toLowerCase();
+      orders = orders.filter(order => 
+        order.client?.name?.toLowerCase().includes(searchLower) ||
+        order.editor?.name?.toLowerCase().includes(searchLower) ||
+        order.gig?.title?.toLowerCase().includes(searchLower) ||
+        order._id.toString().includes(searchLower)
+      );
+    }
+
+    const total = await Order.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      conversations: orders,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit)),
+      },
+    });
+
+  } catch (error) {
+    console.error("Get conversations error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch conversations" });
+  }
+});
+
+// Get full chat history for an order
+router.get("/conversations/:orderId", requirePermission("orders"), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    // Get order details
+    const order = await Order.findById(orderId)
+      .populate("client", "name email profilePicture role")
+      .populate("editor", "name email profilePicture role")
+      .populate("gig", "title price")
+      .lean();
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    // Get all messages for this order
+    const messages = await Message.find({ order: orderId })
+      .populate("sender", "name email profilePicture role")
+      .sort({ createdAt: 1 })
+      .lean();
+
+    // Message statistics
+    const stats = {
+      totalMessages: messages.length,
+      clientMessages: messages.filter(m => m.sender?._id?.toString() === order.client?._id?.toString()).length,
+      editorMessages: messages.filter(m => m.sender?._id?.toString() === order.editor?._id?.toString()).length,
+      systemMessages: messages.filter(m => m.type === "system").length,
+      mediaMessages: messages.filter(m => ["file", "image", "video", "audio"].includes(m.type)).length,
+      firstMessageAt: messages[0]?.createdAt,
+      lastMessageAt: messages[messages.length - 1]?.createdAt,
+    };
+
+    res.status(200).json({
+      success: true,
+      order,
+      messages,
+      stats,
+    });
+
+  } catch (error) {
+    console.error("Get conversation details error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch conversation" });
+  }
+});
+
+// ============ ADVANCED ANALYTICS ============
+
+// Revenue Analytics
+router.get("/analytics/revenue", requirePermission("analytics"), async (req, res) => {
+  try {
+    const { period = "30" } = req.query;
+    const days = parseInt(period);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    // Daily revenue for period
+    const dailyRevenue = await Order.aggregate([
+      { $match: { status: "completed", completedAt: { $gte: startDate } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$completedAt" } },
+          revenue: { $sum: "$amount" },
+          platformFees: { $sum: "$platformFee" },
+          orders: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    // Total stats for period
+    const periodStats = await Order.aggregate([
+      { $match: { status: "completed", completedAt: { $gte: startDate } } },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$amount" },
+          totalPlatformFees: { $sum: "$platformFee" },
+          totalOrders: { $sum: 1 },
+          avgOrderValue: { $avg: "$amount" },
+        },
+      },
+    ]);
+
+    // Compare with previous period
+    const prevStartDate = new Date(startDate);
+    prevStartDate.setDate(prevStartDate.getDate() - days);
+    
+    const prevPeriodStats = await Order.aggregate([
+      { $match: { status: "completed", completedAt: { $gte: prevStartDate, $lt: startDate } } },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$amount" },
+          totalOrders: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const currentRevenue = periodStats[0]?.totalRevenue || 0;
+    const previousRevenue = prevPeriodStats[0]?.totalRevenue || 0;
+    const revenueGrowth = previousRevenue > 0 
+      ? ((currentRevenue - previousRevenue) / previousRevenue * 100).toFixed(1)
+      : 0;
+
+    res.status(200).json({
+      success: true,
+      analytics: {
+        dailyRevenue,
+        summary: {
+          totalRevenue: periodStats[0]?.totalRevenue || 0,
+          totalPlatformFees: periodStats[0]?.totalPlatformFees || 0,
+          totalOrders: periodStats[0]?.totalOrders || 0,
+          avgOrderValue: Math.round(periodStats[0]?.avgOrderValue || 0),
+          revenueGrowth: parseFloat(revenueGrowth),
+        },
+        period: days,
+      },
+    });
+
+  } catch (error) {
+    console.error("Revenue analytics error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch revenue analytics" });
+  }
+});
+
+// User Analytics
+router.get("/analytics/users", requirePermission("analytics"), async (req, res) => {
+  try {
+    const { period = "30" } = req.query;
+    const days = parseInt(period);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    // Daily signups
+    const dailySignups = await User.aggregate([
+      { $match: { createdAt: { $gte: startDate } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          count: { $sum: 1 },
+          editors: { $sum: { $cond: [{ $eq: ["$role", "editor"] }, 1, 0] } },
+          clients: { $sum: { $cond: [{ $eq: ["$role", "client"] }, 1, 0] } },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    // User distribution
+    const userDistribution = await User.aggregate([
+      {
+        $group: {
+          _id: "$role",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Active users (users with orders in period)
+    const activeUsers = await Order.distinct("client", { createdAt: { $gte: startDate } });
+    const activeEditors = await Order.distinct("editor", { createdAt: { $gte: startDate } });
+
+    // Banned users
+    const bannedUsers = await User.countDocuments({ isBanned: true });
+
+    // Total counts
+    const totalUsers = await User.countDocuments();
+    const newUsers = await User.countDocuments({ createdAt: { $gte: startDate } });
+
+    res.status(200).json({
+      success: true,
+      analytics: {
+        dailySignups,
+        userDistribution,
+        summary: {
+          totalUsers,
+          newUsers,
+          activeClients: activeUsers.length,
+          activeEditors: activeEditors.length,
+          bannedUsers,
+        },
+        period: days,
+      },
+    });
+
+  } catch (error) {
+    console.error("User analytics error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch user analytics" });
+  }
+});
+
+// Order Performance Analytics
+router.get("/analytics/orders", requirePermission("analytics"), async (req, res) => {
+  try {
+    const { period = "30" } = req.query;
+    const days = parseInt(period);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    // Order funnel
+    const orderFunnel = await Order.aggregate([
+      { $match: { createdAt: { $gte: startDate } } },
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Daily orders
+    const dailyOrders = await Order.aggregate([
+      { $match: { createdAt: { $gte: startDate } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          total: { $sum: 1 },
+          completed: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } },
+          cancelled: { $sum: { $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0] } },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    // Average completion time (for completed orders)
+    const completionTime = await Order.aggregate([
+      { $match: { status: "completed", completedAt: { $gte: startDate } } },
+      {
+        $project: {
+          duration: { $subtract: ["$completedAt", "$createdAt"] },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          avgDuration: { $avg: "$duration" },
+        },
+      },
+    ]);
+
+    const avgCompletionHours = completionTime[0]?.avgDuration 
+      ? Math.round(completionTime[0].avgDuration / (1000 * 60 * 60)) 
+      : 0;
+
+    // Completion rate
+    const totalOrders = await Order.countDocuments({ createdAt: { $gte: startDate } });
+    const completedOrders = await Order.countDocuments({ status: "completed", createdAt: { $gte: startDate } });
+    const completionRate = totalOrders > 0 ? ((completedOrders / totalOrders) * 100).toFixed(1) : 0;
+
+    res.status(200).json({
+      success: true,
+      analytics: {
+        orderFunnel,
+        dailyOrders,
+        summary: {
+          totalOrders,
+          completedOrders,
+          completionRate: parseFloat(completionRate),
+          avgCompletionHours,
+        },
+        period: days,
+      },
+    });
+
+  } catch (error) {
+    console.error("Order analytics error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch order analytics" });
+  }
+});
+
+// Category/Gig Analytics
+router.get("/analytics/categories", requirePermission("analytics"), async (req, res) => {
+  try {
+    // Top gigs by revenue
+    const topGigsByRevenue = await Order.aggregate([
+      { $match: { status: "completed" } },
+      {
+        $group: {
+          _id: "$gig",
+          revenue: { $sum: "$amount" },
+          orders: { $sum: 1 },
+        },
+      },
+      { $sort: { revenue: -1 } },
+      { $limit: 10 },
+      {
+        $lookup: {
+          from: "gigs",
+          localField: "_id",
+          foreignField: "_id",
+          as: "gigDetails",
+        },
+      },
+      { $unwind: "$gigDetails" },
+      {
+        $project: {
+          title: "$gigDetails.title",
+          revenue: 1,
+          orders: 1,
+          price: "$gigDetails.price",
+        },
+      },
+    ]);
+
+    // Top gigs by orders
+    const topGigsByOrders = await Order.aggregate([
+      { $match: { status: "completed" } },
+      {
+        $group: {
+          _id: "$gig",
+          orders: { $sum: 1 },
+          revenue: { $sum: "$amount" },
+        },
+      },
+      { $sort: { orders: -1 } },
+      { $limit: 10 },
+      {
+        $lookup: {
+          from: "gigs",
+          localField: "_id",
+          foreignField: "_id",
+          as: "gigDetails",
+        },
+      },
+      { $unwind: "$gigDetails" },
+      {
+        $project: {
+          title: "$gigDetails.title",
+          orders: 1,
+          revenue: 1,
+        },
+      },
+    ]);
+
+    // Gig statistics
+    const totalGigs = await Gig.countDocuments();
+    const activeGigs = await Gig.countDocuments({ isActive: true });
+    const pausedGigs = await Gig.countDocuments({ isActive: false });
+
+    res.status(200).json({
+      success: true,
+      analytics: {
+        topGigsByRevenue,
+        topGigsByOrders,
+        summary: {
+          totalGigs,
+          activeGigs,
+          pausedGigs,
+        },
+      },
+    });
+
+  } catch (error) {
+    console.error("Category analytics error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch category analytics" });
+  }
+});
+
 export default router;
+
