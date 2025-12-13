@@ -275,7 +275,14 @@ const ReelCard = ({ reel, isActive, onCommentClick }) => {
                     {/* Share */}
                     <motion.button
                         whileTap={{ scale: 0.85 }}
-                        onClick={() => navigator.share?.({ url: window.location.href })}
+                        onClick={() => {
+                            if (typeof window === "undefined") return;
+                            if (navigator.share) {
+                                navigator.share({ url: window.location.href });
+                            } else if (navigator.clipboard) {
+                                navigator.clipboard.writeText(window.location.href);
+                            }
+                        }}
                         className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center"
                     >
                         <FaShare className="text-white text-xl" />

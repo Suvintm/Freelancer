@@ -74,19 +74,22 @@ const ReelsPage = () => {
     const lastReelRef = useCallback(
         (node) => {
             if (loading) return;
+            if (typeof window === "undefined") return;
 
             if (observerRef.current) observerRef.current.disconnect();
 
-            observerRef.current = new IntersectionObserver(
-                (entries) => {
-                    if (entries[0].isIntersecting) {
-                        loadMoreReels();
-                    }
-                },
-                { threshold: 0.5 }
-            );
+            if ("IntersectionObserver" in window) {
+                observerRef.current = new IntersectionObserver(
+                    (entries) => {
+                        if (entries[0].isIntersecting) {
+                            loadMoreReels();
+                        }
+                    },
+                    { threshold: 0.5 }
+                );
 
-            if (node) observerRef.current.observe(node);
+                if (node) observerRef.current.observe(node);
+            }
         },
         [loading, hasMore, page, reels]
     );
