@@ -13,6 +13,7 @@ import Activity from "./pages/Activity";
 import Settings from "./pages/Settings";
 import Analytics from "./pages/Analytics";
 import Conversations from "./pages/Conversations";
+import Payments from "./pages/Payments";
 
 // Components
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -48,6 +49,7 @@ function App() {
         >
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/analytics" element={<Analytics />} />
+          <Route path="/payments" element={<Payments />} />
           <Route path="/conversations" element={<Conversations />} />
           <Route path="/users" element={<Users />} />
           <Route path="/orders" element={<Orders />} />

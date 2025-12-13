@@ -58,6 +58,7 @@ const ClientSidebar = ({ isOpen, onClose }) => {
   const navItems = [
     { path: "/client-home", icon: FaHome, label: "Dashboard" },
     { path: "/client-orders", icon: FaClipboardList, label: "My Orders", badge: newOrdersCount },
+    { path: "/payments", icon: FaCreditCard, label: "Payments" },
     { path: "/client-messages", icon: FaEnvelope, label: "Messages", badge: unreadMessages },
     { path: "/saved-editors", icon: FaHeart, label: "Saved Editors" },
     { path: "/client-profile", icon: FaUserTie, label: "Profile" },

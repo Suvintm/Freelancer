@@ -4,6 +4,7 @@ import { v2 as cloudinary } from "cloudinary";
 import crypto from "crypto";
 import { Order } from "../models/Order.js";
 import {Message} from "../models/Message.js";
+import { Payment } from "../models/Payment.js";
 import { ApiError } from "../middleware/errorHandler.js";
 import { getIO } from "../socket.js";
 import { createNotification } from "./notificationController.js";
@@ -447,6 +448,28 @@ export const confirmDownload = asyncHandler(async (req, res) => {
   order.paymentStatus = "released"; // Release payment from escrow
   await order.save();
 
+  // 💰 Create Payment record for tracking
+  const payment = await Payment.create({
+    order: orderId,
+    client: order.client._id,
+    editor: order.editor._id,
+    gig: order.gig,
+    amount: order.amount,
+    platformFee: order.platformFee,
+    editorEarning: order.editorEarning,
+    type: "escrow_release",
+    status: "completed",
+    completedAt: new Date(),
+    orderSnapshot: {
+      orderNumber: order.orderNumber,
+      title: order.title,
+      description: order.requirements,
+      createdAt: order.createdAt,
+      completedAt: order.completedAt,
+      deadline: order.deadline,
+    },
+  });
+
   // Emit real-time updates
   const io = getIO();
   if (io) {
@@ -459,6 +482,14 @@ export const confirmDownload = asyncHandler(async (req, res) => {
       orderId,
       paymentReleased: true,
     });
+
+    // Emit payment completed event for analytics refresh
+    io.to(`order_${orderId}`).emit("payment:completed", {
+      paymentId: payment._id,
+      orderId,
+      amount: payment.amount,
+      editorEarning: payment.editorEarning,
+    });
   }
 
   // Notify editor about payment release
@@ -467,7 +498,7 @@ export const confirmDownload = asyncHandler(async (req, res) => {
     type: "success",
     title: "💰 Payment Released!",
     message: `₹${order.editorEarning} has been released for "${order.title}"`,
-    link: `/chat/${orderId}`,
+    link: `/payments`,
   });
 
   // Create system message for completion

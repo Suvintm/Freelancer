@@ -8,6 +8,7 @@ import { FaEnvelope } from "react-icons/fa";
 const navItems = [
     { path: "/editor-home", label: "Dashboard" },
     { path: "/editor-my-orders", label: "Orders" },
+    { path: "/payments", label: "Payments" },
     { path: "/editor-profile", label: "Profile" },
     { path: "/chats", label: "Messages" },
 ];

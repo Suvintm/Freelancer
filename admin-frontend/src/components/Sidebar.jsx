@@ -13,6 +13,7 @@ import {
   FaShieldAlt,
   FaChartLine,
   FaComments,
+  FaWallet,
 } from "react-icons/fa";
 import { useAdmin } from "../context/AdminContext";
 
@@ -28,6 +29,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const navItems = [
     { to: "/dashboard", icon: FaTachometerAlt, label: "Dashboard" },
     { to: "/analytics", icon: FaChartLine, label: "Analytics" },
+    { to: "/payments", icon: FaWallet, label: "Payments" },
     { to: "/conversations", icon: FaComments, label: "Conversations" },
     { to: "/users", icon: FaUsers, label: "Users" },
     { to: "/orders", icon: FaShoppingCart, label: "Orders" },

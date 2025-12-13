@@ -33,6 +33,7 @@ import BannedPage from "./pages/BannedPage.jsx";
 import MaintenancePage from "./pages/MaintenancePage.jsx";
 import EditorAnalytics from "./pages/EditorAnalytics.jsx";
 import ClientAnalytics from "./pages/ClientAnalytics.jsx";
+import PaymentsPage from "./pages/PaymentsPage.jsx";
 
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
@@ -237,6 +238,16 @@ function App() {
           element={
             <ProtectedRoute>
               <Chatbox />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Payments (accessible by any logged-in user) */}
+        <Route
+          path="/payments"
+          element={
+            <ProtectedRoute>
+              <PaymentsPage />
             </ProtectedRoute>
           }
         />

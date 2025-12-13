@@ -37,6 +37,7 @@ import clientAnalyticsRoutes from "./routes/clientAnalyticsRoutes.js";
 import quickReplyRoutes from "./routes/quickReplyRoutes.js";
 import checklistRoutes from "./routes/checklistRoutes.js";
 import finalDeliveryRoutes from "./routes/finalDeliveryRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 
 // Validate required environment variables
 const requiredEnvVars = ["MONGO_URI", "JWT_SECRET", "CLOUDINARY_CLOUD_NAME"];
@@ -153,6 +154,7 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/quick-replies", quickReplyRoutes);
 app.use("/api/checklists", checklistRoutes);
 app.use("/api/delivery", finalDeliveryRoutes);
+app.use("/api/payments", paymentRoutes);
 app.use("/api/editor/analytics", editorAnalyticsRoutes);
 app.use("/api/client/analytics", clientAnalyticsRoutes);
 
