@@ -44,7 +44,7 @@ const EditorHome = () => {
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
       {/* Main Content */}
-      <main className="flex-1 px-4 md:px-8 py-6 md:ml-64 md:mt-20">
+      <main className="flex-1 px-4 md:px-8 py-6 pt-20 md:pt-6 md:ml-64 md:mt-20">
         {/* Profile Incomplete Notice */}
         {!user?.profileCompleted && (
           <div className="bg-gradient-to-r from-[#151823] to-[#111319] border border-[#262A3B] rounded-2xl p-5 md:p-6 mb-6 ">

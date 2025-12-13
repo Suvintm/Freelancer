@@ -105,7 +105,7 @@ const ClientHome = () => {
       <ClientNavbar onMenuClick={() => setSidebarOpen(true)} />
 
       {/* Main Content */}
-      <main className="flex-1 px-4 md:px-8 py-6 md:ml-64 md:mt-20">
+      <main className="flex-1 px-4 md:px-8 py-6 pt-20 md:pt-6 md:ml-64 md:mt-20">
         {/* Quick Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           {quickStats.map((stat, index) => (

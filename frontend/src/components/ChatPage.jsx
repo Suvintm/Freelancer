@@ -383,7 +383,7 @@ const ChatPage = () => {
 
 
       {/* 3. Input Area (Fixed Bottom) */}
-      <footer className="flex-none bg-black px-4 py-3 sticky bottom-0 z-50">
+      <footer className="flex-none bg-black px-4 py-3 pb-6 sticky bottom-0 z-50" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
          {/* Reply Preview Context */}
          <AnimatePresence>
             {replyingTo && (

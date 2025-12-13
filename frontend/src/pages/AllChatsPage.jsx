@@ -57,7 +57,32 @@ const ChatsPage = () => {
         ["accepted", "in_progress", "submitted", "completed"].includes(order.status)
       );
 
-      setChats(activeChats);
+      // Fetch latest message for each chat
+      const chatsWithMessages = await Promise.all(
+        activeChats.map(async (chat) => {
+          try {
+            const msgRes = await axios.get(`${backendURL}/api/messages/${chat._id}?limit=1`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const messages = msgRes.data.messages || [];
+            return {
+              ...chat,
+              lastMessage: messages.length > 0 ? messages[messages.length - 1] : null,
+            };
+          } catch {
+            return { ...chat, lastMessage: null };
+          }
+        })
+      );
+
+      // Sort by latest message time
+      chatsWithMessages.sort((a, b) => {
+        const aTime = a.lastMessage?.createdAt || a.updatedAt;
+        const bTime = b.lastMessage?.createdAt || b.updatedAt;
+        return new Date(bTime) - new Date(aTime);
+      });
+
+      setChats(chatsWithMessages);
     } catch (err) {
       toast.error("Failed to load chats");
     } finally {
@@ -120,7 +145,7 @@ const ChatsPage = () => {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-      <main className="flex-1 px-4 md:px-8 py-6 md:ml-64 md:mt-20">
+      <main className="flex-1 px-4 md:px-8 py-6 pt-20 md:pt-6 md:ml-64 md:mt-20">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <button
@@ -233,8 +258,17 @@ const ChatsPage = () => {
                               />
                             </div>
                           </div>
+                        ) : chat.lastMessage ? (
+                          <p className="text-xs text-gray-400">
+                            {chat.lastMessage.type === "image" ? "📷 Photo" :
+                             chat.lastMessage.type === "video" ? "🎥 Video" :
+                             chat.lastMessage.type === "file" ? "📎 File" :
+                             chat.lastMessage.content?.length > 35 
+                               ? `${chat.lastMessage.content.substring(0, 35)}...more` 
+                               : chat.lastMessage.content || "New message"}
+                          </p>
                         ) : (
-                          <p className="text-xs text-gray-400 truncate">{chat.title}</p>
+                          <p className="text-xs text-gray-500 italic">No messages yet</p>
                         )}
                         
                         <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-500">
