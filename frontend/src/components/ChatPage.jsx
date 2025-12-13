@@ -28,6 +28,7 @@ import {
   FaLink,
   FaExternalLinkAlt,
   FaFolder,
+  FaFilm,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
@@ -36,6 +37,11 @@ import { useSocket } from "../context/SocketContext";
 import MediaPreviewModal from "./MediaPreviewModal";
 import ProjectDetailsDropdown from "./ProjectDetailsDropdown";
 import FootageLinksDropdown from "./FootageLinksDropdown";
+import FinalDeliveryCard from "./FinalDeliveryCard";
+import WatermarkPreviewModal from "./WatermarkPreviewModal";
+import DownloadConfirmPopup from "./DownloadConfirmPopup";
+import ChangesRequestModal from "./ChangesRequestModal";
+import CompletedOrderReceipt from "./CompletedOrderReceipt";
 import axios from "axios";
 import { toast } from "react-toastify";
 import chattexture from "../assets/chattexture.png";
@@ -593,6 +599,14 @@ const ChatPage = () => {
   const [checklist, setChecklist] = useState([]);
   const [newChecklistItem, setNewChecklistItem] = useState("");
   const [showDriveLinkModal, setShowDriveLinkModal] = useState(false);
+  
+  // --- Final Delivery States ---
+  const [showWatermarkPreview, setShowWatermarkPreview] = useState(false);
+  const [showDownloadConfirm, setShowDownloadConfirm] = useState(false);
+  const [showChangesRequest, setShowChangesRequest] = useState(false);
+  const [currentDelivery, setCurrentDelivery] = useState(null);
+  const [deliveryLoading, setDeliveryLoading] = useState(false);
+  const [deliveryPreviewData, setDeliveryPreviewData] = useState(null);
 
   // --- Derived State ---
   const otherParty = user?.role === "editor" ? order?.client : order?.editor;
@@ -864,6 +878,110 @@ const ChatPage = () => {
       toast.error(err.response?.data?.message || "Failed to share link");
     }
   };
+
+  // 🎬 Final Delivery Handlers
+  
+  // Preview watermarked delivery (Client)
+  const handlePreviewDelivery = async (delivery) => {
+    setCurrentDelivery(delivery);
+    setDeliveryLoading(true);
+    try {
+      const { data } = await axios.get(`${backendURL}/api/delivery/${orderId}/preview`, {
+        headers: { Authorization: `Bearer ${user?.token}` }
+      });
+      setDeliveryPreviewData(data.preview);
+      setShowWatermarkPreview(true);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to load preview");
+    } finally {
+      setDeliveryLoading(false);
+    }
+  };
+
+  // Request changes (Client)
+  const handleRequestChanges = async (changesMessage) => {
+    setDeliveryLoading(true);
+    try {
+      await axios.post(`${backendURL}/api/delivery/${orderId}/changes`, 
+        { message: changesMessage }, 
+        { headers: { Authorization: `Bearer ${user?.token}` } }
+      );
+      toast.success("Changes requested successfully");
+      setShowChangesRequest(false);
+      setShowWatermarkPreview(false);
+      // Refresh messages to show the auto-sent message
+      fetchMessages();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to request changes");
+    } finally {
+      setDeliveryLoading(false);
+    }
+  };
+
+  // Confirm and download (Client)
+  const handleConfirmDownload = async (confirmText) => {
+    if (!currentDelivery) return;
+    setDeliveryLoading(true);
+    try {
+      const { data } = await axios.post(`${backendURL}/api/delivery/${orderId}/confirm`, 
+        { 
+          confirmText, 
+          token: currentDelivery.downloadToken 
+        }, 
+        { headers: { Authorization: `Bearer ${user?.token}` } }
+      );
+      
+      // Download the clean file
+      if (data.downloadUrl) {
+        const link = document.createElement("a");
+        link.href = data.downloadUrl;
+        link.download = currentDelivery.fileName || "final_delivery";
+        link.target = "_blank";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      
+      toast.success("🎉 Order completed! Payment released to editor.");
+      setShowDownloadConfirm(false);
+      setShowWatermarkPreview(false);
+      // Refresh to show completed state
+      fetchMessages();
+      // Refresh order to update status
+      fetchOrder();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to download");
+    } finally {
+      setDeliveryLoading(false);
+    }
+  };
+
+  // Upload final delivery (Editor)
+  const handleUploadFinalDelivery = async (file) => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      await axios.post(`${backendURL}/api/delivery/${orderId}/upload`, formData, {
+        headers: { 
+          Authorization: `Bearer ${user?.token}`,
+          "Content-Type": "multipart/form-data"
+        }
+      });
+      
+      playPopSound();
+      toast.success("🎬 Final delivery sent! Waiting for client review.");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to upload final delivery");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Ref for final delivery file input
+  const finalDeliveryInputRef = useRef(null);
 
   // ✏️ Edit Message
   const handleEditMessage = async (content) => {
@@ -1342,6 +1460,23 @@ const ChatPage = () => {
                           <DriveLinkCard link={msg.externalLink} />
                         )}
 
+                        {/* 🎬 Final Delivery Card */}
+                        {msg.type === "final_delivery" && msg.finalDelivery && (
+                          <FinalDeliveryCard
+                            delivery={msg.finalDelivery}
+                            isClient={user?.role === "client"}
+                            onPreview={() => handlePreviewDelivery(msg.finalDelivery)}
+                            onAccept={() => {
+                              setCurrentDelivery(msg.finalDelivery);
+                              setShowDownloadConfirm(true);
+                            }}
+                            onRequestChanges={() => {
+                              setCurrentDelivery(msg.finalDelivery);
+                              setShowChangesRequest(true);
+                            }}
+                          />
+                        )}
+
                         {/* Text Content */}
                         {msg.content && msg.type === "text" && (
                           <p className="text-[15px] leading-relaxed whitespace-pre-wrap emoji-font">{msg.content}</p>
@@ -1451,13 +1586,34 @@ const ChatPage = () => {
             )}
           </AnimatePresence>
 
+          {/* 🧾 Completed Order Receipt */}
+          {order?.status === "completed" && (
+            <CompletedOrderReceipt order={order} />
+          )}
+
           <div ref={messagesEndRef} className="h-1" />
         </div>
       </div>
 
 
-      {/* 3. Input Area (Fixed Bottom) */}
-      <footer className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md px-4 py-3 pb-6 z-50 border-t border-white/10" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
+
+      {/* 3. Input Area (Fixed Bottom) - OR Disabled state for completed orders */}
+      {order?.status === "completed" ? (
+        /* Completed Order - Disabled Chat Footer */
+        <footer className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md px-4 py-4 pb-6 z-50 border-t border-white/10" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="bg-gradient-to-r from-emerald-500/10 to-green-500/10 border border-emerald-500/20 rounded-2xl p-4">
+              <div className="flex items-center justify-center gap-2 text-emerald-400 mb-1">
+                <FaCheckDouble className="text-sm" />
+                <span className="font-semibold">Order Completed</span>
+              </div>
+              <p className="text-gray-400 text-sm">This chat is now closed. No further messages can be sent.</p>
+            </div>
+          </div>
+        </footer>
+      ) : (
+        /* Normal Chat Footer */
+        <footer className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md px-4 py-3 pb-6 z-50 border-t border-white/10" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
          {/* Reply Preview Context */}
          <AnimatePresence>
             {replyingTo && (
@@ -1505,6 +1661,16 @@ const ChatPage = () => {
                                  className="flex items-center gap-3 p-2 hover:bg-white/10 rounded-lg text-sm border-t border-white/10 mt-1 pt-2"
                                >
                                  <FaFolder className="text-green-500" /> Share Footage
+                               </button>
+                             )}
+                             
+                             {/* Send Final Output - Editor Only */}
+                             {user?.role === "editor" && (
+                               <button 
+                                 onClick={() => { finalDeliveryInputRef.current?.click(); setShowMediaMenu(false); }} 
+                                 className="flex items-center gap-3 p-2 hover:bg-white/10 rounded-lg text-sm border-t border-white/10 mt-1 pt-2 text-yellow-400"
+                               >
+                                 <FaFilm className="text-yellow-500" /> Send Final Output
                                </button>
                              )}
                          </motion.div>
@@ -1580,7 +1746,8 @@ const ChatPage = () => {
          <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} />
          <input type="file" ref={videoInputRef} className="hidden" accept="video/*" onChange={handleFileSelect} />
          <input type="file" ref={docInputRef} className="hidden" accept="*" onChange={handleFileSelect} />
-      </footer>
+        </footer>
+      )}
 
       {/* Pending File Preview Modal */}
       <AnimatePresence>
@@ -1676,6 +1843,50 @@ const ChatPage = () => {
           />
         )}
       </AnimatePresence>
+
+      {/* 🎬 Final Delivery Modals */}
+      <WatermarkPreviewModal
+        isOpen={showWatermarkPreview}
+        onClose={() => setShowWatermarkPreview(false)}
+        preview={deliveryPreviewData}
+        onAccept={() => {
+          setShowWatermarkPreview(false);
+          setShowDownloadConfirm(true);
+        }}
+        onRequestChanges={() => {
+          setShowWatermarkPreview(false);
+          setShowChangesRequest(true);
+        }}
+      />
+
+      <DownloadConfirmPopup
+        isOpen={showDownloadConfirm}
+        onClose={() => setShowDownloadConfirm(false)}
+        onConfirm={handleConfirmDownload}
+        editorEarning={order?.editorEarning}
+        loading={deliveryLoading}
+      />
+
+      <ChangesRequestModal
+        isOpen={showChangesRequest}
+        onClose={() => setShowChangesRequest(false)}
+        onSubmit={handleRequestChanges}
+        loading={deliveryLoading}
+      />
+
+      {/* Hidden file input for final delivery upload (Editor) */}
+      <input
+        type="file"
+        ref={finalDeliveryInputRef}
+        onChange={(e) => {
+          if (e.target.files?.[0]) {
+            handleUploadFinalDelivery(e.target.files[0]);
+            e.target.value = "";
+          }
+        }}
+        accept="video/*,image/*"
+        className="hidden"
+      />
 
       {/* �📋 Checklist Panel (Sliding) */}
       <AnimatePresence>

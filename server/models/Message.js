@@ -20,7 +20,7 @@ const messageSchema = new mongoose.Schema(
     // Message type
     type: {
       type: String,
-      enum: ["text", "file", "video", "audio", "image", "system", "drive_link"],
+      enum: ["text", "file", "video", "audio", "image", "system", "drive_link", "final_delivery"],
       default: "text",
     },
 
@@ -40,7 +40,7 @@ const messageSchema = new mongoose.Schema(
       messageId: String,
       senderName: String,
       content: String,
-      type: { type: String, enum: ["text", "file", "image", "video", "audio", "drive_link"] },
+      type: { type: String, enum: ["text", "file", "image", "video", "audio", "drive_link", "final_delivery"] },
       mediaUrl: String,
       mediaThumbnail: String,
     },
@@ -70,6 +70,45 @@ const messageSchema = new mongoose.Schema(
       description: String,
       fileCount: Number,
       totalSize: String,
+    },
+
+    // 🎬 Final Delivery (Editor's completed work)
+    finalDelivery: {
+      // File URLs
+      originalUrl: String,        // Clean file without watermark (for download after acceptance)
+      watermarkedUrl: String,     // Watermarked preview version
+      thumbnailUrl: String,       // Preview thumbnail
+      
+      // File info
+      fileName: String,
+      fileSize: Number,           // In bytes
+      mimeType: String,
+      duration: Number,           // Video duration in seconds
+      
+      // Security
+      downloadToken: String,      // One-time download token
+      tokenExpiry: Date,
+      
+      // Preview tracking
+      previewCount: { type: Number, default: 0 },
+      maxPreviews: { type: Number, default: 20 },
+      
+      // Status
+      status: {
+        type: String,
+        enum: ["pending", "previewed", "accepted", "changes_requested", "downloaded"],
+        default: "pending",
+      },
+      
+      // Activity log
+      previewHistory: [{
+        viewedAt: Date,
+        ipAddress: String,
+      }],
+      changesRequestedAt: Date,
+      changesMessage: String,
+      acceptedAt: Date,
+      downloadedAt: Date,
     },
 
     // ⭐ Download Protection - KEY FEATURE

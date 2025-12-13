@@ -132,6 +132,17 @@ const orderSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    // 🎬 Final Delivery Status
+    deliveryStatus: {
+      type: String,
+      enum: ["none", "pending_review", "changes_requested", "accepted", "completed"],
+      default: "none",
+    },
+    finalDeliveryMessageId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Message",
+    },
   },
   { timestamps: true }
 );
