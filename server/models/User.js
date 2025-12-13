@@ -60,6 +60,24 @@ const userSchema = new mongoose.Schema(
       enum: ["local", "google", "facebook"],
       default: "local",
     },
+    // Ban fields (controlled by admin)
+    isBanned: {
+      type: Boolean,
+      default: false,
+    },
+    banReason: {
+      type: String,
+      default: null,
+    },
+    bannedAt: {
+      type: Date,
+      default: null,
+    },
+    bannedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+      default: null,
+    },
   },
   {
     timestamps: true,

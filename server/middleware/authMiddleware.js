@@ -42,6 +42,16 @@ const protect = async (req, res, next) => {
       throw new ApiError(401, "User not found");
     }
 
+    // Check if user is banned
+    if (user.isBanned) {
+      return res.status(403).json({
+        success: false,
+        isBanned: true,
+        message: "Your account has been suspended. Please contact support.",
+        banReason: user.banReason || "Violation of terms of service",
+      });
+    }
+
     // Attach user to request
     req.user = user;
     next();

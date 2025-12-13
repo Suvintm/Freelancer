@@ -30,6 +30,8 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import gigRoutes from "./routes/gigRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
+import adminAuthRoutes from "./routes/adminAuthRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 // Validate required environment variables
 const requiredEnvVars = ["MONGO_URI", "JWT_SECRET", "CLOUDINARY_CLOUD_NAME"];
@@ -121,6 +123,17 @@ app.use((req, res, next) => {
 
 // ============ ROUTES ============
 
+// Health check endpoint - for keep-alive pings (UptimeRobot, etc.)
+// This prevents Render free tier from sleeping
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    message: "Server is running",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/auth", oauthRoutes); // OAuth routes under /api/auth
 app.use("/api/profile", profileRoutes);
@@ -131,6 +144,27 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/gigs", gigRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/messages", messageRoutes);
+
+// Public maintenance status check (no auth required)
+import { SiteSettings } from "./models/SiteSettings.js";
+app.get("/api/maintenance-status", async (req, res) => {
+  try {
+    const settings = await SiteSettings.getSettings();
+    res.status(200).json({
+      success: true,
+      maintenance: {
+        isActive: settings.maintenanceMode,
+        message: settings.maintenanceMessage,
+        endTime: settings.maintenanceEndTime,
+      },
+    });
+  } catch (error) {
+    res.status(200).json({ success: true, maintenance: { isActive: false } });
+  }
+});
+
+app.use("/api/admin/auth", adminAuthRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Health check endpoint
 app.get("/", (req, res) =>

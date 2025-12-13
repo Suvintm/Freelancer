@@ -49,7 +49,18 @@ export const AppProvider = ({ children }) => {
             localStorage.setItem("user", JSON.stringify(updatedUser));
             fetchNotifications(); // Fetch notifications on load
           })
-          .catch(() => {
+          .catch((err) => {
+            // Check if user is banned
+            if (err.response?.data?.isBanned) {
+              localStorage.setItem("banInfo", JSON.stringify({
+                banReason: err.response.data.banReason,
+                message: err.response.data.message,
+              }));
+              setUser(null);
+              localStorage.removeItem("user");
+              window.location.href = "/banned";
+              return;
+            }
             setUser(null);
             localStorage.removeItem("user");
           })

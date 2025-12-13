@@ -28,6 +28,10 @@ import SavedEditors from "./pages/SavedEditors.jsx";
 import OAuthSuccess from "./pages/OAuthSuccess.jsx";
 import SelectRole from "./pages/SelectRole.jsx";
 
+// Special Pages
+import BannedPage from "./pages/BannedPage.jsx";
+import MaintenancePage from "./pages/MaintenancePage.jsx";
+
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
 import "react-toastify/dist/ReactToastify.css";
@@ -44,6 +48,10 @@ function App() {
         {/* OAuth Routes (Public) */}
         <Route path="/oauth-success" element={<OAuthSuccess />} />
         <Route path="/select-role" element={<SelectRole />} />
+
+        {/* Banned & Maintenance Pages (Public) */}
+        <Route path="/banned" element={<BannedPage />} />
+        <Route path="/maintenance" element={<MaintenancePage />} />
 
         {/* ============ CLIENT ROUTES ============ */}
         <Route

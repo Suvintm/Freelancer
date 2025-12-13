@@ -75,7 +75,13 @@ const AuthForm = () => {
       setShowAuth(false);
     } catch (error) {
       console.error(error);
-      setMessage(error.response?.data?.message || "Something went wrong.");
+      // Check if user is banned
+      if (error.response?.data?.isBanned) {
+        const banReason = error.response.data.banReason || "Your account has been suspended.";
+        setMessage(`🚫 Account Banned: ${banReason}`);
+      } else {
+        setMessage(error.response?.data?.message || "Something went wrong.");
+      }
     } finally {
       setLoading(false);
     }

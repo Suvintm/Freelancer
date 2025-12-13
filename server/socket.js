@@ -15,19 +15,27 @@ const io = new Server(server, {
   cors: {
     origin: [
       process.env.FRONTEND_URL,
+      "https://suvix.vercel.app",      // Vercel deployment
+      "https://suvix.netlify.app",     // Netlify if used
+      "https://suvix-frontend.onrender.com", // Render frontend if separate
       "http://localhost:5173",
       "http://localhost:5174",
       "http://localhost:5175",
       "http://localhost:3000",
-    ],
+    ].filter(Boolean), // Remove undefined values
     methods: ["GET", "POST"],
     credentials: true,
   },
-  // Production-ready heartbeat settings
-  pingTimeout: 60000,    // 60 seconds before considering connection dead
+  // Production-ready settings for Render
+  pingTimeout: 120000,   // 2 minutes - for slow connections
   pingInterval: 25000,   // Ping every 25 seconds
-  upgradeTimeout: 30000, // Timeout for upgrade
-  maxHttpBufferSize: 1e8, // 100MB max for file transfers
+  upgradeTimeout: 60000, // 60s timeout for upgrade
+  maxHttpBufferSize: 1e8,
+  // Allow both transports
+  transports: ["polling", "websocket"],
+  allowUpgrades: true,
+  // Handle proxy/load balancer
+  allowEIO3: true,
 });
 
 // Store online users: { userId: socketId }
@@ -39,6 +47,24 @@ export const getReceiverSocketId = (receiverId) => {
 
 // Export IO instance for use in controllers
 export const getIO = () => io;
+
+// Emit event to a specific user (for ban, etc.)
+export const emitToUser = (userId, event, data) => {
+  const socketId = userSocketMap[userId];
+  if (socketId) {
+    io.to(socketId).emit(event, data);
+    console.log(`🔔 Emitted ${event} to user ${userId}`);
+    return true;
+  }
+  console.log(`⚠️ User ${userId} not online, cannot emit ${event}`);
+  return false;
+};
+
+// Broadcast maintenance mode to all users
+export const emitMaintenance = (isActive, message) => {
+  io.emit("admin:maintenance", { isActive, message });
+  console.log(`🔧 Broadcast maintenance mode: ${isActive}`);
+};
 
 // Authenticate socket connection
 io.use((socket, next) => {
@@ -273,16 +299,6 @@ io.on("connection", (socket) => {
     console.error(`❌ Socket error for user ${userId}:`, error);
   });
 });
-
-// Helper to emit notification to specific user
-export const emitToUser = (userId, event, data) => {
-  const socketId = userSocketMap[userId];
-  if (socketId) {
-    io.to(socketId).emit(event, data);
-    return true;
-  }
-  return false;
-};
 
 // Helper to emit to order room
 export const emitToOrder = (orderId, event, data) => {

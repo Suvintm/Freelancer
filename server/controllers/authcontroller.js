@@ -113,6 +113,17 @@ export const login = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Invalid email or password.");
   }
 
+  // Check if user is banned
+  if (user.isBanned) {
+    return res.status(403).json({
+      success: false,
+      isBanned: true,
+      message: "Your account has been suspended.",
+      banReason: user.banReason || "Violation of terms of service",
+      bannedAt: user.bannedAt,
+    });
+  }
+
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
     throw new ApiError(401, "Invalid email or password.");

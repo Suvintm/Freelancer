@@ -38,14 +38,17 @@ export const SocketProvider = ({ children }) => {
     const newSocket = io(baseUrl, {
       auth: { token: user.token },
       query: { userId: user._id },
-      transports: ["websocket", "polling"],
+      // IMPORTANT: Use polling first for Render/cloud platforms (they handle upgrade better)
+      transports: ["polling", "websocket"],
+      upgrade: true, // Allow upgrade from polling to websocket
       // Production-ready reconnection settings
       reconnection: true,
-      reconnectionAttempts: Infinity, // Never give up
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 30000, // Max 30 seconds between attempts
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 2000, // Start with 2s
+      reconnectionDelayMax: 30000,
       randomizationFactor: 0.5,
-      timeout: 20000,
+      timeout: 60000, // 60 seconds - enough for cold server wake-up on Render
+      forceNew: false, // Reuse connections
     });
 
     // Connection events
@@ -150,6 +153,35 @@ export const SocketProvider = ({ children }) => {
     newSocket.on("messages:status_update", ({ orderId, messages }) => {
       console.log("📊 Message status update for order:", orderId);
       // Bulk status update for all messages in a chat
+    });
+
+    // ============ ADMIN REAL-TIME EVENTS ============
+    // Listen for ban event - kicks user out immediately
+    newSocket.on("admin:banned", ({ reason, message }) => {
+      console.log("🚫 You have been banned:", reason);
+      toast.error("Your account has been suspended!", { autoClose: false });
+      
+      // Store ban info and redirect immediately
+      localStorage.setItem("banInfo", JSON.stringify({ banReason: reason, message }));
+      localStorage.removeItem("user");
+      
+      // Small delay to show toast, then redirect
+      setTimeout(() => {
+        window.location.href = "/banned";
+      }, 1000);
+    });
+
+    // Listen for maintenance mode - redirect to maintenance page
+    newSocket.on("admin:maintenance", ({ isActive, message }) => {
+      console.log("🔧 Maintenance mode:", isActive);
+      if (isActive) {
+        toast.warning("Site is going into maintenance mode!", { autoClose: false });
+        localStorage.setItem("maintenanceMessage", message || "Under maintenance");
+        
+        setTimeout(() => {
+          window.location.href = "/maintenance";
+        }, 2000);
+      }
     });
 
     // Typing events
