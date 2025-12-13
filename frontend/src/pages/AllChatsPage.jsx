@@ -121,19 +121,49 @@ const ChatsPage = () => {
     );
   });
 
+  // Shimmer skeleton component
+  const ShimmerCard = () => (
+    <div className="bg-[#111319] border border-[#262A3B] rounded-2xl p-4 animate-pulse">
+      <div className="flex items-center gap-4">
+        {/* Avatar skeleton */}
+        <div className="w-12 h-12 rounded-xl bg-[#1a1d25]" />
+        {/* Content skeleton */}
+        <div className="flex-1 space-y-2">
+          <div className="h-4 w-32 bg-[#1a1d25] rounded" />
+          <div className="h-3 w-48 bg-[#1a1d25] rounded" />
+          <div className="flex gap-3 mt-2">
+            <div className="h-3 w-16 bg-[#1a1d25] rounded" />
+            <div className="h-3 w-20 bg-[#1a1d25] rounded" />
+          </div>
+        </div>
+        {/* Status skeleton */}
+        <div className="h-6 w-20 bg-[#1a1d25] rounded-lg" />
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] text-white">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 flex items-center justify-center md:ml-64 md:mt-20">
-          <div className="flex flex-col items-center">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full"
-            />
-            <p className="mt-4 text-gray-400 text-sm">Loading your chats...</p>
+        <main className="flex-1 px-4 md:px-8 py-6 pt-20 md:pt-6 md:ml-64 md:mt-20">
+          {/* Header skeleton */}
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-[#1a1d25] animate-pulse" />
+            <div className="space-y-2">
+              <div className="h-6 w-32 bg-[#1a1d25] rounded animate-pulse" />
+              <div className="h-3 w-24 bg-[#1a1d25] rounded animate-pulse" />
+            </div>
+          </div>
+          {/* Search skeleton */}
+          <div className="h-12 w-full bg-[#111319] rounded-xl mb-6 animate-pulse" />
+          {/* Chat cards skeleton */}
+          <div className="space-y-3">
+            <ShimmerCard />
+            <ShimmerCard />
+            <ShimmerCard />
+            <ShimmerCard />
           </div>
         </main>
       </div>
@@ -275,9 +305,15 @@ const ChatsPage = () => {
                           <span className="flex items-center gap-1 text-green-400">
                             <FaRupeeSign className="text-[8px]" /> {chat.amount}
                           </span>
-                          <span className="flex items-center gap-1">
+                          {chat.lastMessage && (
+                            <span className="flex items-center gap-1 text-blue-400">
+                              <FaClock className="text-[8px]" />
+                              {formatDate(chat.lastMessage.createdAt)}
+                            </span>
+                          )}
+                          <span className="flex items-center gap-1 text-gray-500">
                             <FaClock className="text-[8px]" />
-                            {formatDate(chat.createdAt)}
+                            Order: {formatDate(chat.createdAt)}
                           </span>
                         </div>
                       </div>

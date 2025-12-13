@@ -383,8 +383,8 @@ const ChatPage = () => {
                                 <span className="flex items-center gap-0.5 text-[10px]">
                                     {msg.seen ? (
                                         <>
-                                            <FaCheckDouble className="text-blue-300" />
-                                            <span className="text-blue-300 text-[9px]">Seen</span>
+                                            <FaCheckDouble className="text-green-400" />
+                                            <span className="text-green-400 text-[9px]">Seen</span>
                                         </>
                                     ) : msg.delivered ? (
                                         <>
