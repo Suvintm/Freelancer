@@ -49,7 +49,18 @@ export const getProfile = asyncHandler(async (req, res) => {
 
 // ============ UPDATE PROFILE ============
 export const updateProfile = asyncHandler(async (req, res) => {
-  const { about, experience, contactEmail, country, skills, languages } = req.body;
+  const { 
+    about, 
+    experience, 
+    contactEmail, 
+    country, 
+    skills, 
+    languages,
+    socialLinks,
+    hourlyRate,
+    availability,
+    responseTime
+  } = req.body;
 
   const profile = await Profile.findOne({ user: req.user._id });
   if (!profile) {
@@ -83,6 +94,38 @@ export const updateProfile = asyncHandler(async (req, res) => {
       ? languages.split(",").map((l) => l.trim()).filter(Boolean)
       : languages;
     profile.languages = langsArray.slice(0, 10); // Max 10 languages
+  }
+
+  // Update social links
+  if (socialLinks !== undefined) {
+    profile.socialLinks = {
+      instagram: socialLinks.instagram?.trim() || '',
+      youtube: socialLinks.youtube?.trim() || '',
+      twitter: socialLinks.twitter?.trim() || '',
+      linkedin: socialLinks.linkedin?.trim() || '',
+      website: socialLinks.website?.trim() || '',
+      behance: socialLinks.behance?.trim() || '',
+      dribbble: socialLinks.dribbble?.trim() || '',
+    };
+  }
+
+  // Update hourly rate
+  if (hourlyRate !== undefined) {
+    profile.hourlyRate = {
+      min: Number(hourlyRate.min) || 0,
+      max: Number(hourlyRate.max) || 0,
+      currency: hourlyRate.currency || 'INR',
+    };
+  }
+
+  // Update availability
+  if (availability !== undefined) {
+    profile.availability = availability;
+  }
+
+  // Update response time
+  if (responseTime !== undefined) {
+    profile.responseTime = responseTime;
   }
 
   // Handle certifications upload
@@ -152,3 +195,105 @@ export const updateProfile = asyncHandler(async (req, res) => {
     profile: populatedProfile,
   });
 });
+
+// ============ GET PROFILE COMPLETION STATUS ============
+export const getProfileCompletionStatus = asyncHandler(async (req, res) => {
+  const userId = req.user?._id || req.user?.id;
+  
+  // Fetch user and profile data
+  const [user, profile] = await Promise.all([
+    User.findById(userId).lean(),
+    Profile.findOne({ user: userId }).lean(),
+  ]);
+  
+  // Get portfolio count
+  const portfolioCount = await Portfolio.countDocuments({ user: userId });
+  
+  // Define completion items with weights
+  const items = [
+    {
+      id: "profilePicture",
+      label: "Profile Photo",
+      weight: 10,
+      complete: user?.profilePicture && !user.profilePicture.includes("flaticon"),
+    },
+    {
+      id: "about",
+      label: "Bio (50+ chars)",
+      weight: 15,
+      complete: profile?.about && profile.about.length >= 50,
+    },
+    {
+      id: "skills",
+      label: "Skills (3+)",
+      weight: 15,
+      complete: profile?.skills && profile.skills.length >= 3,
+    },
+    {
+      id: "portfolio",
+      label: "Portfolio (2+)",
+      weight: 15,
+      complete: portfolioCount >= 2,
+    },
+    {
+      id: "experience",
+      label: "Experience",
+      weight: 10,
+      complete: profile?.experience && profile.experience.length > 0,
+    },
+    {
+      id: "languages",
+      label: "Languages (1+)",
+      weight: 5,
+      complete: profile?.languages && profile.languages.length >= 1,
+    },
+    {
+      id: "socialLinks",
+      label: "Social Links (2+)",
+      weight: 10,
+      complete: (() => {
+        if (!profile?.socialLinks) return false;
+        const links = Object.values(profile.socialLinks).filter(v => v && v.trim().length > 0);
+        return links.length >= 2;
+      })(),
+    },
+    {
+      id: "kycVerified",
+      label: "Bank Account (KYC)",
+      weight: 15,
+      complete: user?.kycStatus === "verified",
+    },
+    {
+      id: "hourlyRate",
+      label: "Hourly Rate",
+      weight: 5,
+      complete: profile?.hourlyRate && profile.hourlyRate.min > 0,
+    },
+  ];
+  
+  // Calculate percentage
+  const percent = items.reduce((acc, item) => acc + (item.complete ? item.weight : 0), 0);
+  
+  // Update user's profileCompletionPercent in database
+  await User.findByIdAndUpdate(userId, { 
+    profileCompletionPercent: percent,
+    profileCompleted: percent >= 80,
+  });
+  
+  res.status(200).json({
+    success: true,
+    percent,
+    breakdown: items.map(item => ({
+      id: item.id,
+      label: item.label,
+      weight: item.weight,
+      complete: item.complete,
+    })),
+    message: percent >= 100 
+      ? "Profile complete! Maximum engagement unlocked."
+      : percent >= 80 
+        ? "Great progress! Complete 100% for maximum engagement."
+        : "Complete at least 80% to get noticed by clients.",
+  });
+});
+

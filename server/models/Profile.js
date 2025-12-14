@@ -63,6 +63,38 @@ const profileSchema = new mongoose.Schema(
         maxlength: [100, "Country name cannot exceed 100 characters"],
       },
     },
+    
+    // Social Links
+    socialLinks: {
+      instagram: { type: String, default: "" },
+      youtube: { type: String, default: "" },
+      twitter: { type: String, default: "" },
+      linkedin: { type: String, default: "" },
+      website: { type: String, default: "" },
+      behance: { type: String, default: "" },
+      dribbble: { type: String, default: "" },
+    },
+    
+    // Hourly Rate
+    hourlyRate: {
+      min: { type: Number, default: 0 },
+      max: { type: Number, default: 0 },
+      currency: { type: String, default: "INR" },
+    },
+    
+    // Availability Status
+    availability: {
+      type: String,
+      enum: ["", "full-time", "part-time", "weekends", "not-available"],
+      default: "",
+    },
+    
+    // Response Time
+    responseTime: {
+      type: String,
+      enum: ["", "within-hour", "within-day", "1-2-days", "3-5-days"],
+      default: "",
+    },
   },
   { timestamps: true }
 );

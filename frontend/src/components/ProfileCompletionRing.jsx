@@ -1,6 +1,7 @@
 /**
  * ProfileCompletionRing Component
  * Circular SVG progress ring around profile avatar + dropdown with completion breakdown
+ * Fetches real data from /api/profile/completion-status endpoint
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -15,10 +16,28 @@ import {
   FaImages, 
   FaLink, 
   FaUniversity,
-  FaExclamationCircle
+  FaExclamationCircle,
+  FaBriefcase,
+  FaGlobe,
+  FaDollarSign
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import { useAppContext } from '../context/AppContext';
+import axios from 'axios';
 import './ProfileCompletionRing.css';
+
+// Icon mapping for breakdown items
+const iconMap = {
+  profilePicture: FaCamera,
+  about: FaFileAlt,
+  skills: FaTags,
+  portfolio: FaImages,
+  experience: FaBriefcase,
+  languages: FaGlobe,
+  socialLinks: FaLink,
+  kycVerified: FaUniversity,
+  hourlyRate: FaDollarSign,
+};
 
 const ProfileCompletionRing = ({ 
   user, 
@@ -29,86 +48,43 @@ const ProfileCompletionRing = ({
   children 
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [completionData, setCompletionData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
+  const { backendURL } = useAppContext();
 
-  // Calculate completion status for each field
-  const getCompletionStatus = () => {
-    if (!user) return { items: [], percent: 0 };
+  // Fetch completion status from API
+  useEffect(() => {
+    const fetchCompletionStatus = async () => {
+      if (!user?.token) {
+        setLoading(false);
+        return;
+      }
 
-    const items = [
-      {
-        id: 'name',
-        label: 'Name',
-        icon: FaUser,
-        weight: 5,
-        complete: !!user.name && user.name.length > 1,
-        link: '/editor-profile',
-      },
-      {
-        id: 'profilePicture',
-        label: 'Profile Photo',
-        icon: FaCamera,
-        weight: 15,
-        complete: !!user.profilePicture && !user.profilePicture.includes('flaticon'),
-        link: '/editor-profile',
-      },
-      {
-        id: 'bio',
-        label: 'Bio (50+ chars)',
-        icon: FaFileAlt,
-        weight: 15,
-        complete: !!user.bio && user.bio.length >= 50,
-        link: '/editor-profile',
-      },
-      {
-        id: 'skills',
-        label: 'Skills (3+)',
-        icon: FaTags,
-        weight: 15,
-        complete: Array.isArray(user.skills) && user.skills.length >= 3,
-        link: '/editor-profile',
-      },
-      {
-        id: 'portfolio',
-        label: 'Portfolio (2+)',
-        icon: FaImages,
-        weight: 20,
-        complete: (user.portfolioCount || 0) >= 2,
-        link: '/editor-profile',
-      },
-      {
-        id: 'socialLinks',
-        label: 'Social Links (2+)',
-        icon: FaLink,
-        weight: 10,
-        complete: user.socialLinksCount >= 2 || (
-          (user.instagramUrl || user.youtubeUrl || user.twitterUrl || user.linkedinUrl ? 1 : 0) >= 2
-        ),
-        link: '/editor-profile',
-      },
-      {
-        id: 'kyc',
-        label: 'Bank Account (KYC)',
-        icon: FaUniversity,
-        weight: 15,
-        complete: user.kycStatus === 'verified',
-        link: '/editor-profile', // Will show KYC modal
-      },
-    ];
+      try {
+        const res = await axios.get(`${backendURL}/api/profile/completion-status`, {
+          headers: { Authorization: `Bearer ${user.token}` }
+        });
+        setCompletionData(res.data);
+      } catch (error) {
+        console.error('Failed to fetch completion status:', error);
+        // Fall back to user data if API fails
+        setCompletionData({ 
+          percent: user?.profileCompletionPercent || 0, 
+          breakdown: [],
+          message: 'Complete your profile to get noticed.'
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    // Calculate percentage
-    let percent = items.reduce((acc, item) => acc + (item.complete ? item.weight : 0), 0);
-    
-    // Use server-provided value if available
-    if (user.profileCompletionPercent !== undefined) {
-      percent = user.profileCompletionPercent;
-    }
+    fetchCompletionStatus();
+  }, [user?.token, backendURL]);
 
-    return { items, percent };
-  };
-
-  const { items, percent } = getCompletionStatus();
+  const percent = completionData?.percent || 0;
+  const items = completionData?.breakdown || [];
 
   // Color based on percentage
   const getColor = (pct) => {
@@ -191,7 +167,7 @@ const ProfileCompletionRing = ({
       {/* Percentage Text (optional) */}
       {showPercentText && (
         <div className="pcr-percent-text" style={{ color }}>
-          {percent}%
+          {loading ? '...' : `${percent}%`}
         </div>
       )}
 
@@ -241,33 +217,36 @@ const ProfileCompletionRing = ({
 
             {/* Checklist */}
             <div className="pcr-checklist">
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  className={`pcr-item ${item.complete ? 'pcr-item-done' : 'pcr-item-pending'}`}
-                  onClick={() => {
-                    navigate(item.link);
-                    setIsOpen(false);
-                  }}
-                >
-                  <div className="pcr-item-left">
-                    <item.icon className="pcr-item-icon" />
-                    <span className="pcr-item-label">{item.label}</span>
+              {items.map((item) => {
+                const IconComponent = iconMap[item.id] || FaUser;
+                return (
+                  <div
+                    key={item.id}
+                    className={`pcr-item ${item.complete ? 'pcr-item-done' : 'pcr-item-pending'}`}
+                    onClick={() => {
+                      navigate('/editor-profile-update');
+                      setIsOpen(false);
+                    }}
+                  >
+                    <div className="pcr-item-left">
+                      <IconComponent className="pcr-item-icon" />
+                      <span className="pcr-item-label">{item.label}</span>
+                    </div>
+                    <div className="pcr-item-right">
+                      <span className="pcr-item-weight">+{item.weight}%</span>
+                      {item.complete ? (
+                        <div className="pcr-tick">
+                          <FaCheck />
+                        </div>
+                      ) : (
+                        <div className="pcr-pending">
+                          <FaChevronDown style={{ transform: 'rotate(-90deg)' }} />
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="pcr-item-right">
-                    <span className="pcr-item-weight">+{item.weight}%</span>
-                    {item.complete ? (
-                      <div className="pcr-tick">
-                        <FaCheck />
-                      </div>
-                    ) : (
-                      <div className="pcr-pending">
-                        <FaChevronDown style={{ transform: 'rotate(-90deg)' }} />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Footer */}
@@ -275,7 +254,7 @@ const ProfileCompletionRing = ({
               <button
                 className="pcr-footer-btn"
                 onClick={() => {
-                  navigate('/editor-profile');
+                  navigate('/editor-profile-update');
                   setIsOpen(false);
                 }}
               >

@@ -1,5 +1,5 @@
 import express from "express";
-import { getProfile, updateProfile } from "../controllers/profileController.js";
+import { getProfile, updateProfile, getProfileCompletionStatus } from "../controllers/profileController.js";
 import { getKYCStatus, submitKYC } from "../controllers/kycController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import { upload } from "../middleware/upload.js";
@@ -14,6 +14,9 @@ router.get("/:userId", userIdValidator, getProfile);
 
 // ============ PROTECTED ROUTES ============
 router.use(authMiddleware);
+
+// Get profile completion status (calculated from DB)
+router.get("/completion-status", getProfileCompletionStatus);
 
 // Get logged-in user's profile
 router.get("/", getProfile);

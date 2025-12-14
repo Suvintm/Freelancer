@@ -1,48 +1,58 @@
 /**
  * ProfileCompletionBanner Component
- * Dismissible banner prompting profile completion on all editor pages
+ * Banner prompting profile completion - NO DISMISS until 80% reached
+ * Fetches data from API for accurate percentage
  */
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaTimes, FaExclamationTriangle, FaArrowRight, FaCheckCircle } from 'react-icons/fa';
+import { FaExclamationTriangle, FaArrowRight, FaCheckCircle } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
+import axios from 'axios';
 import './ProfileCompletionBanner.css';
 
 const ProfileCompletionBanner = ({ minPercent = 80 }) => {
-  const { user } = useAppContext();
+  const { user, backendURL } = useAppContext();
   const navigate = useNavigate();
-  const [dismissed, setDismissed] = useState(false);
-  const [showKYC, setShowKYC] = useState(false);
+  const [completionData, setCompletionData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Check localStorage for dismissed state
+  // Fetch completion status from API
   useEffect(() => {
-    const dismissedUntil = localStorage.getItem('profileBannerDismissed');
-    if (dismissedUntil && new Date(dismissedUntil) > new Date()) {
-      setDismissed(true);
-    }
-  }, []);
+    const fetchCompletionStatus = async () => {
+      if (!user?.token || user?.role !== 'editor') {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const res = await axios.get(`${backendURL}/api/profile/completion-status`, {
+          headers: { Authorization: `Bearer ${user.token}` }
+        });
+        setCompletionData(res.data);
+      } catch (error) {
+        console.error('Failed to fetch completion status:', error);
+        setCompletionData({ percent: 0 });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCompletionStatus();
+  }, [user?.token, user?.role, backendURL]);
 
   // Don't show for clients
   if (user?.role !== 'editor') return null;
 
-  // Don't show if dismissed
-  if (dismissed) return null;
+  // Don't show while loading
+  if (loading) return null;
 
-  const percent = user?.profileCompletionPercent || 0;
+  const percent = completionData?.percent || 0;
   const kycVerified = user?.kycStatus === 'verified';
 
   // Don't show if 100% complete and KYC verified
   if (percent >= 100 && kycVerified) return null;
-
-  // Handle dismiss (hide for 24 hours)
-  const handleDismiss = () => {
-    const tomorrow = new Date();
-    tomorrow.setHours(tomorrow.getHours() + 24);
-    localStorage.setItem('profileBannerDismissed', tomorrow.toISOString());
-    setDismissed(true);
-  };
 
   // Determine which message to show
   const showProfileBanner = percent < minPercent;
@@ -98,20 +108,13 @@ const ProfileCompletionBanner = ({ minPercent = 80 }) => {
           {/* Action */}
           <button
             className="pcb-action"
-            onClick={() => navigate('/editor-profile')}
+            onClick={() => navigate('/editor-profile-update')}
           >
             {showKYCBanner ? 'Complete KYC' : 'Complete Profile'}
             <FaArrowRight />
           </button>
 
-          {/* Dismiss */}
-          <button
-            className="pcb-dismiss"
-            onClick={handleDismiss}
-            title="Dismiss for 24 hours"
-          >
-            <FaTimes />
-          </button>
+          {/* NO DISMISS BUTTON - Banner stays until 80% is reached */}
         </div>
 
         {/* Progress indicator */}
