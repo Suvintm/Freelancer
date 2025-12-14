@@ -1,133 +1,58 @@
+/**
+ * PublicEditorProfile - View-only profile page
+ * Same design as EditorProfilePage but without edit/add functionality
+ */
+
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FaEdit,
   FaEnvelope,
   FaMapMarkerAlt,
   FaAward,
   FaCode,
-  FaLanguage,
-  FaBriefcase,
   FaUser,
   FaTimes,
-  FaStar,
   FaCheckCircle,
   FaImages,
-  FaChevronRight,
-  FaFilm,
-  FaPlay,
-  FaStarAndCrescent,
-  FaRupeeSign,
+  FaShoppingCart,
+  FaStar,
+  FaGlobe,
+  FaEye,
   FaCalendarAlt,
   FaPaperPlane,
+  FaRupeeSign,
+  FaBriefcase,
+  FaFilm,
+  FaPlay,
+  FaClock,
 } from "react-icons/fa";
+import { HiCheckBadge } from "react-icons/hi2";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate, useParams } from "react-router-dom";
 import ReactCountryFlag from "react-country-flag";
+import { toast } from "react-toastify";
+
 import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
 import PortfolioSection from "../components/PortfolioSection.jsx";
-import { toast } from "react-toastify";
 
-// Country name to ISO Alpha-2 code mapping
+// Country Code Mapping
 const countryNameToCode = {
-  Afghanistan: "AF",
-  Albania: "AL",
-  Algeria: "DZ",
-  Andorra: "AD",
-  Angola: "AO",
-  Argentina: "AR",
-  Armenia: "AM",
-  Australia: "AU",
-  Austria: "AT",
-  Azerbaijan: "AZ",
-  Bangladesh: "BD",
-  Belgium: "BE",
-  Brazil: "BR",
-  Canada: "CA",
-  Chile: "CL",
-  China: "CN",
-  Colombia: "CO",
-  Croatia: "HR",
-  Cuba: "CU",
-  Czechia: "CZ",
-  Denmark: "DK",
-  Egypt: "EG",
-  Finland: "FI",
-  France: "FR",
-  Germany: "DE",
-  Ghana: "GH",
-  Greece: "GR",
-  Hungary: "HU",
-  Iceland: "IS",
-  India: "IN",
-  Indonesia: "ID",
-  Iran: "IR",
-  Iraq: "IQ",
-  Ireland: "IE",
-  Israel: "IL",
-  Italy: "IT",
-  Japan: "JP",
-  Kenya: "KE",
-  Malaysia: "MY",
-  Mexico: "MX",
-  Nepal: "NP",
-  Netherlands: "NL",
-  "New Zealand": "NZ",
-  Nigeria: "NG",
-  Norway: "NO",
-  Pakistan: "PK",
-  Peru: "PE",
-  Poland: "PL",
-  Portugal: "PT",
-  Qatar: "QA",
-  Romania: "RO",
-  Russia: "RU",
-  SaudiArabia: "SA",
-  Singapore: "SG",
-  Slovakia: "SK",
-  Slovenia: "SI",
-  SouthAfrica: "ZA",
-  Spain: "ES",
-  SriLanka: "LK",
-  Sweden: "SE",
-  Switzerland: "CH",
-  Thailand: "TH",
-  Turkey: "TR",
-  Ukraine: "UA",
-  UAE: "AE",
-  UK: "GB",
-  USA: "US",
-  Vietnam: "VN",
-  Zimbabwe: "ZW",
+  Afghanistan: "AF", Albania: "AL", Algeria: "DZ", India: "IN", USA: "US",
+  UK: "GB", Canada: "CA", Australia: "AU", Germany: "DE", France: "FR",
+  Japan: "JP", China: "CN", Brazil: "BR", Mexico: "MX", Spain: "ES",
+  Italy: "IT", Netherlands: "NL", Singapore: "SG", UAE: "AE", SaudiArabia: "SA",
+  Pakistan: "PK", Bangladesh: "BD", Indonesia: "ID", Malaysia: "MY", Philippines: "PH",
+  Thailand: "TH", Vietnam: "VN", SouthKorea: "KR", Russia: "RU", Ukraine: "UA",
+  Poland: "PL", Turkey: "TR", Egypt: "EG", Nigeria: "NG", SouthAfrica: "ZA",
 };
 
-// Animation variants
-const fadeInUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
-};
-
-const staggerContainer = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 },
-  },
-};
-
-const scaleIn = {
-  hidden: { opacity: 0, scale: 0.9 },
-  visible: { opacity: 1, scale: 1 },
-};
-
-const EditorProfile = () => {
+const PublicEditorProfile = () => {
   const { user, backendURL } = useAppContext();
-  const { userId } = useParams(); // Get userId from URL params
+  const { userId } = useParams();
   const [profile, setProfile] = useState(null);
-  const [reels, setReels] = useState([]);
-  const [activeTab, setActiveTab] = useState("about");
+  const [activeTab, setActiveTab] = useState("portfolio");
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -141,6 +66,24 @@ const EditorProfile = () => {
   const [submittingRequest, setSubmittingRequest] = useState(false);
 
   const navigate = useNavigate();
+
+  // Fetch profile
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const targetId = userId || user?._id;
+        if (!targetId) return;
+
+        const res = await axios.get(`${backendURL}/api/profile/${targetId}`);
+        setProfile(res.data.profile);
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, [backendURL, userId, user?._id]);
 
   // Handle request submission
   const handleSubmitRequest = async () => {
@@ -159,8 +102,6 @@ const EditorProfile = () => {
 
     try {
       setSubmittingRequest(true);
-      const token = user?.token;
-
       await axios.post(
         `${backendURL}/api/orders/request`,
         {
@@ -170,7 +111,7 @@ const EditorProfile = () => {
           amount: Number(requestData.amount),
           deadline: requestData.deadline,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${user?.token}` } }
       );
 
       toast.success("Request sent! Editor will review your request.");
@@ -183,569 +124,503 @@ const EditorProfile = () => {
     }
   };
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        // Use userId from params if available, otherwise fallback to logged-in user
-        const targetId = userId || user?._id;
-        if (!targetId) return;
-
-        const res = await axios.get(`${backendURL}/api/profile/${targetId}`);
-        setProfile(res.data.profile);
-        setReels(res.data.reels || []);
-      } catch (error) {
-        console.error("Error fetching profile:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProfile();
-  }, [backendURL, userId, user?._id]);
-
-  // Premium Loading State (dark)
+  // Loading
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#020617] flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
-        >
-          <div className="relative w-20 h-20 mx-auto mb-6">
-            <div className="absolute inset-0 border-4 border-[#1F2937] rounded-full" />
-            <div className="absolute inset-1 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
+          <div className="relative w-16 h-16 mx-auto mb-4">
+            <div className="absolute inset-0 rounded-full border-2 border-zinc-800" />
+            <div className="absolute inset-1 rounded-full border-2 border-white/20 border-t-transparent animate-spin" />
           </div>
-          <p className="text-gray-300 font-medium text-sm">
-            Loading profile...
-          </p>
+          <p className="text-zinc-500 text-sm">Loading profile...</p>
         </motion.div>
       </div>
     );
   }
 
-  // No Profile State (dark)
+  // Not Found
   if (!profile) {
     return (
-      <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center bg-[#0B1120] rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.75)] p-10 max-w-md border border-[#1F2937]"
+          className="text-center bg-zinc-950 rounded-xl p-8 max-w-md border border-zinc-800"
         >
-          <div className="w-24 h-24 bg-gradient-to-br from-emerald-500 to-emerald-300 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-[0_18px_45px_rgba(16,185,129,0.7)]">
-            <FaUser className="text-white text-4xl" />
+          <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-4">
+            <FaUser className="text-zinc-500 text-xl" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">
-            Profile Not Found
-          </h2>
-          <p className="text-gray-400 mb-6 text-sm">
-            The user profile you are looking for does not exist or is
-            unavailable.
-          </p>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+          <h2 className="text-lg font-semibold text-white mb-2">Profile Not Found</h2>
+          <p className="text-zinc-500 text-sm mb-4">This profile doesn't exist or is unavailable.</p>
+          <button
             onClick={() => navigate("/explore")}
-            className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-full font-semibold shadow-lg"
+            className="px-4 py-2 bg-white text-black text-sm font-semibold rounded-lg hover:bg-zinc-200 transition-colors"
           >
             Explore Editors
-          </motion.button>
+          </button>
         </motion.div>
       </div>
     );
   }
 
+  const userData = profile?.user || {};
+  const isVerified = userData?.kycStatus === 'verified' || profile?.kycVerified;
+  const isOwner = user?._id === userData._id;
+
   const tabs = [
-    { id: "about", label: "About", icon: FaUser },
     { id: "portfolio", label: "Portfolio", icon: FaImages },
-    { id: "reels", label: "Reels", icon: FaFilm },
+    { id: "about", label: "About", icon: FaUser },
+    { id: "gigs", label: "Gigs", icon: FaShoppingCart },
   ];
 
-  const isOwner = user?._id === profile.user._id;
+  const statsData = [
+    { label: "Rating", value: profile?.rating || "5.0", icon: FaStar, color: "#F59E0B" },
+    { label: "Projects", value: profile?.projectsCompleted || "24", icon: FaBriefcase, color: "#6B7280" },
+    { label: "Views", value: "1.2K", icon: FaEye, color: "#6B7280" },
+  ];
 
   return (
-    <div className="min-h-screen bg-zinc-900 text-gray-100">
+    <div className="min-h-screen bg-black text-white">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-      {/* Main Content */}
-      <div className="md:ml-64 pt-16 lg:pt-35 md:pt-35 px-4 md:px-8 pb-12">
-        <div className="max-w-5xl mx-auto space-y-6">
-          {/* Profile Hero Section - dark corporate */}
+      <main className="md:ml-64 pt-16 md:pt-20 lg:pt-24 px-3 md:px-6 pb-10">
+        <div className="max-w-5xl mx-auto">
+          
+          {/* ==================== PROFILE HEADER ==================== */}
           <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={fadeInUp}
-            transition={{ duration: 0.5 }}
-            className="relative rounded-3xl overflow-hidden bg-black border border-white shadow-[0_20px_60px_rgba(0,0,0,0.9)]"
-          >
-            {/* Top subtle gradient banner */}
-            <div className="absolute inset-x-0 top-0 h-40  ">
-              <div className="absolute inset-0 opacity-20">
-                <svg className="w-full h-full" viewBox="0 0 100 100">
-                  <defs>
-                    <pattern
-                      id="profileDotsPublic"
-                      width="8"
-                      height="8"
-                      patternUnits="userSpaceOnUse"
-                    >
-                      <circle cx="1" cy="1" r="0.7" fill="#ffffffff" />
-                    </pattern>
-                  </defs>
-                  <rect
-                    width="100"
-                    height="100"
-                    fill="url(#profileDotsPublic)"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="relative pt-24 pb-6 px-6 md:px-10">
-              <div className="flex flex-col md:flex-row gap-6 md:gap-8">
-                {/* Left: Avatar + basic info */}
-                <div className="flex flex-col items-center md:items-start gap-4 md:w-1/3">
-                  <motion.div
-                    initial={{ scale: 0.85, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.15 }}
-                    className="relative -mt-20"
-                  >
-                    <div className="relative">
-                      {/* Subtle ring */}
-                      <div className="absolute -inset-1 rounded-full " />
-                      <img
-                        src={
-                          profile?.user?.profilePicture ||
-                          "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-                        }
-                        alt="Profile"
-                        className="relative w-32 h-32 md:w-36 md:h-36 rounded-full object-cover border-[3px] border-white "
-                      />
-                      <div className="absolute -bottom-2 -right-1 w-9 h-9 bg-emerald-500 rounded-full flex items-center justify-center border border-white/20">
-                        <FaCheckCircle className="text-white text-lg" />
-                      </div>
-                    </div>
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.25 }}
-                    className="text-center md:text-left"
-                  >
-                    <h1 className="text-2xl md:text-3xl font-semibold text-white tracking-tight">
-                      {profile?.user?.name}
-                    </h1>
-                    <p className="text-sm text-gray-400 mt-1">
-                      {profile?.user?.role === "editor"
-                        ? "Professional Video Editor"
-                        : "Client"}
-                    </p>
-                    {profile.experience && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Experience:{" "}
-                        <span className="text-gray-300">
-                          {profile.experience}
-                        </span>
-                      </p>
-                    )}
-                  </motion.div>
-                </div>
-
-                {/* Right: Stats & contact */}
-                <div className="flex-1 flex flex-col justify-between">
-                  <div className="flex flex-wrap gap-3 justify-center md:justify-end">
-                    {/* Country */}
-                    {profile.location?.country && (
-                      <div className="flex items-center gap-2 bg-[#020617] border border-[#1F2937] rounded-full px-4 py-2 text-xs shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
-                        <FaMapMarkerAlt className="text-emerald-400" />
-                        <ReactCountryFlag
-                          countryCode={
-                            countryNameToCode[profile.location.country] || "IN"
-                          }
-                          svg
-                          style={{ width: "1.2em", height: "1.2em" }}
-                        />
-                        <span className="text-gray-200 font-medium">
-                          {profile.location.country}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Email */}
-                    {profile.contactEmail && (
-                      <div className="flex items-center gap-2 bg-[#020617] border border-[#1F2937] rounded-full px-4 py-2 text-xs">
-                        <FaEnvelope className="text-gray-400" />
-                        <span className="text-gray-300 font-medium truncate max-w-[180px] md:max-w-[240px]">
-                          {profile.contactEmail}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Summary (about short slice) */}
-                  <motion.p
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                      className="mt-4 flex gap-2 items-center text-sm text-gray-300 leading-relaxed line-clamp-3 bg-[#020617]/60 border border-[#111827] rounded-2xl px-4 py-3"
-                    >
-                      <FaStar className="text-yellow-500"/> RATINGS WILL COME HERE
-                    </motion.p>
-
-                  {/* Contact Request Button - Only show if not owner and is client */}
-                  {!isOwner && user?.role === "client" && (
-                    <motion.button
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.35 }}
-                      whileHover={{ scale: 1.02, y: -2 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setRequestModalOpen(true)}
-                      className="mt-4 w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/30 transition-all"
-                    >
-                      <FaPaperPlane />
-                      Request / Contact Personally
-                    </motion.button>
-                  )}
-                   
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Tabs Section - dark cards */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-            className="bg-black border border-[#111827] rounded-2xl shadow-[0_18px_50px_rgba(0,0,0,0.9)] overflow-hidden"
+            className="relative overflow-hidden rounded-xl mb-5"
           >
-            {/* Tab Headers */}
-            <div className="flex border-b m-4 border-[#111827]">
-              {tabs.map((tab) => (
-                <motion.button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 md:py-4 text-xs md:text-sm font-semibold transition-all relative ${
-                    activeTab === tab.id
-                      ? "text-blue-500 border border-white/20 rounded-full"
-                      : "text-gray-400 hover:text-gray-100 hover:bg-[#020617]/60"
-                  }`}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  <div
-                    className={`w-8 h-8 rounded-xl flex items-center justify-center border text-base ${
-                      activeTab === tab.id
-                        ? "border-blue-500/70 bg-blue-500/5 text-blue-400"
-                        : "border-blue-500 bg-[#020617] text-gray-500"
-                    }`}
-                  >
-                    <tab.icon />
+            {/* Glass Background */}
+            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] via-white/[0.03] to-transparent" />
+            <div className="absolute inset-0 bg-zinc-950/90" />
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+            
+            <div className="relative border border-zinc-800/50 rounded-xl">
+              <div className="p-5 md:p-7">
+                <div className="flex flex-col md:flex-row gap-5 items-center md:items-start">
+                  
+                  {/* Avatar */}
+                  <div className="relative flex-shrink-0">
+                    <div 
+                      className="relative rounded-full p-[3px] bg-white"
+                      style={{ width: 120, height: 120 }}
+                    >
+                      <div className="w-full h-full rounded-full overflow-hidden bg-zinc-900">
+                        <img
+                          src={userData?.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    </div>
+
+                    {isVerified && (
+                      <div className="absolute bottom-1 right-1 w-7 h-7 bg-emerald-600 rounded-full flex items-center justify-center border-2 border-black z-10">
+                        <FaCheckCircle className="text-white text-xs" />
+                      </div>
+                    )}
                   </div>
 
-                  <span>{tab.label}</span>
+                  {/* Info */}
+                  <div className="flex-1 text-center md:text-left min-w-0">
+                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-1">
+                      <h1 className="text-xl md:text-2xl font-semibold text-white">
+                        {userData?.name || "Editor Name"}
+                      </h1>
+                      {isVerified && (
+                        <>
+                          <HiCheckBadge className="text-emerald-500 text-xl" />
+                          <span className="px-2 py-0.5 bg-emerald-900/50 text-emerald-400 text-[10px] font-medium rounded">
+                            VERIFIED
+                          </span>
+                        </>
+                      )}
+                    </div>
 
-                  {activeTab === tab.id && (
-                    <motion.div
-                      layoutId="editorProfilePublicActiveTab"
-                      className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r max-w-[120px] mx-auto from-blue-400 via-blue-500 to-blue-400"
-                    />
+                    <p className="text-zinc-500 text-sm mb-3">
+                      {userData?.role === "editor" ? "Professional Video Editor" : "Client"} 
+                      {profile?.experience && ` • ${profile.experience}`}
+                    </p>
+
+                    {/* Info Tags */}
+                    <div className="flex flex-wrap justify-center md:justify-start gap-2">
+                      {profile.location?.country && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900/80 border border-zinc-800 rounded text-zinc-400 text-xs">
+                          <FaMapMarkerAlt className="text-[10px]" />
+                          <ReactCountryFlag
+                            countryCode={countryNameToCode[profile.location.country] || "IN"}
+                            svg
+                            style={{ width: "12px", height: "12px" }}
+                          />
+                          <span>{profile.location.country}</span>
+                        </div>
+                      )}
+                      {profile.contactEmail && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900/80 border border-zinc-800 rounded text-zinc-400 text-xs">
+                          <FaEnvelope className="text-[10px]" />
+                          <span className="truncate max-w-[120px] md:max-w-[160px]">{profile.contactEmail}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900/80 border border-zinc-800 rounded text-zinc-400 text-xs">
+                        <FaCalendarAlt className="text-[10px]" />
+                        <span>Member since 2024</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Contact Button (for clients only) */}
+                  {!isOwner && user?.role === "client" && (
+                    <button
+                      onClick={() => setRequestModalOpen(true)}
+                      className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-500 transition-colors"
+                    >
+                      <FaPaperPlane className="text-xs" />
+                      Contact
+                    </button>
                   )}
-                </motion.button>
-              ))}
+                </div>
+
+                {/* Stats Row */}
+                <div className="grid grid-cols-3 gap-2 md:gap-4 mt-5 pt-5 border-t border-zinc-800/50">
+                  {statsData.map((stat) => (
+                    <div key={stat.label} className="text-center">
+                      <div className="flex items-center justify-center gap-1 md:gap-1.5 mb-0.5">
+                        <stat.icon className="text-[10px] md:text-xs" style={{ color: stat.color }} />
+                        <span className="text-base md:text-lg font-semibold text-white">{stat.value}</span>
+                      </div>
+                      <p className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-wide">{stat.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Mobile Contact Button */}
+                {!isOwner && user?.role === "client" && (
+                  <button
+                    onClick={() => setRequestModalOpen(true)}
+                    className="md:hidden w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg"
+                  >
+                    <FaPaperPlane className="text-xs" />
+                    Contact Editor
+                  </button>
+                )}
+              </div>
             </div>
-
-            {/* Tab Content */}
-            <AnimatePresence mode="wait">
-              {activeTab === "about" && (
-                <motion.div
-                  key="about"
-                  initial="hidden"
-                  animate="visible"
-                  exit="hidden"
-                  variants={staggerContainer}
-                  className="p-6 md:p-8 bg-black"
-                >
-                  {/* About Me */}
-                  {profile.about && (
-                    <motion.div variants={fadeInUp} className="mb-8">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-11 h-11 bg-black border border-black rounded-xl flex items-center justify-center">
-                          <FaUser className="text-white" />
-                        </div>
-                        <h3 className="text-lg md:text-xl font-semibold text-gray-50">
-                          About
-                        </h3>
-                      </div>
-                      <p className="text-sm md:text-base text-black font-bold  leading-relaxed bg-gray-100 border border-[#111827] p-5 rounded-2xl">
-                        {profile.about}
-                      </p>
-                    </motion.div>
-                  )}
-
-                  {/* Skills */}
-                  {profile.skills?.length > 0 && (
-                    <motion.div variants={fadeInUp} className="mb-8">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-11 h-11 bg-black border border-black rounded-xl flex items-center justify-center">
-                          <FaCode className="text-white" />
-                        </div>
-                        <h3 className="text-lg md:text-xl font-semibold text-gray-50">
-                          Skills
-                        </h3>
-                      </div>
-                      <div className="flex flex-wrap gap-3">
-                        {profile.skills.map((skill, index) => (
-                          <motion.span
-                            key={index}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: index * 0.03 }}
-                            whileHover={{ scale: 1.04, y: -2 }}
-                            className="px-4 py-2 rounded-full text-xs md:text-sm font-medium bg-[#0B1120] border border-[#1F2937] text-gray-100 hover:border-emerald-500/60 hover:bg-emerald-500/5 transition-all"
-                          >
-                            {skill}
-                          </motion.span>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Languages */}
-                  {profile.languages?.length > 0 && (
-                    <motion.div variants={fadeInUp} className="mb-8">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-11 h-11 bg-black border border-black rounded-xl flex items-center justify-center">
-                          <FaLanguage className="text-white" />
-                        </div>
-                        <h3 className="text-lg md:text-xl font-semibold text-gray-50">
-                          Languages
-                        </h3>
-                      </div>
-                      <div className="flex flex-wrap gap-3">
-                        {profile.languages.map((language, index) => (
-                          <motion.span
-                            key={index}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: index * 0.03 }}
-                            whileHover={{ scale: 1.04, y: -2 }}
-                            className="px-4 py-2 rounded-full text-xs md:text-sm font-medium bg-[#0B1120] border border-[#1F2937] text-gray-100 hover:border-indigo-400/70 hover:bg-indigo-500/5 transition-all"
-                          >
-                            {language}
-                          </motion.span>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Certifications */}
-                  {profile.certifications?.length > 0 && (
-                    <motion.div variants={fadeInUp}>
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-11 h-11 bg-black border border-black rounded-xl flex items-center justify-center">
-                          <FaAward className="text-yellow-400" />
-                        </div>
-                        <h3 className="text-lg md:text-xl font-semibold text-gray-50">
-                          Certifications
-                        </h3>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {profile.certifications.map(
-                          (cert, index) =>
-                            cert.image && (
-                              <motion.div
-                                key={index}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.08 }}
-                                whileHover={{ y: -4, scale: 1.01 }}
-                                onClick={() => {
-                                  setSelectedCert(cert);
-                                  setModalOpen(true);
-                                }}
-                                className="group relative rounded-2xl overflow-hidden bg-[#020617] border border-blue-500/20 shadow-[0_12px_35px_rgba(0,0,0,0.9)] cursor-pointer"
-                              >
-                                <div className="relative h-40 overflow-hidden">
-                                  <img
-                                    src={cert.image}
-                                    alt={cert.title}
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                  />
-                                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                  <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <div className="bg-black/60 backdrop-blur-sm p-2 rounded-lg border border-white/10">
-                                      <FaChevronRight className="text-gray-100 text-sm" />
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="p-3">
-                                  <p className="font-semibold text-gray-100 text-sm truncate">
-                                    {cert.title || "Certificate"}
-                                  </p>
-                                </div>
-                              </motion.div>
-                            )
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Empty State */}
-                  {!profile.about &&
-                    !profile.skills?.length &&
-                    !profile.languages?.length &&
-                    !profile.certifications?.length && (
-                      <motion.div
-                        variants={fadeInUp}
-                        className="text-center py-12"
-                      >
-                        <div className="w-20 h-20 bg-[#0B1120] rounded-full flex items-center justify-center mx-auto mb-4 border border-[#1F2937]">
-                          <FaUser className="text-gray-500 text-3xl" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-gray-100 mb-2">
-                          No information yet
-                        </h3>
-                        <p className="text-gray-500 text-sm">
-                          This editor has not added profile details yet.
-                        </p>
-                      </motion.div>
-                    )}
-                </motion.div>
-              )}
-
-              {activeTab === "portfolio" && (
-                <motion.div
-                  key="portfolio"
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -16 }}
-                  className="p-6 md:p-8 bg-black"
-                >
-                  <PortfolioSection
-                    portfolios={profile.portfolio}
-                    isPublic={true}
-                  />
-                </motion.div>
-              )}
-
-              {activeTab === "reels" && (
-                <motion.div
-                  key="reels"
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -16 }}
-                  className="p-6 md:p-8 bg-black"
-                >
-                  {reels.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {reels.map((reel, index) => (
-                        <motion.div
-                          key={reel._id}
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: index * 0.08 }}
-                          whileHover={{ y: -4 }}
-                          className="group relative aspect-[9/16] rounded-2xl overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.9)] cursor-pointer bg-black border border-[#111827]"
-                          onClick={() => navigate(`/reels`)} // Navigate to reels feed for now
-                        >
-                          {reel.mediaType === "video" ? (
-                            <video
-                              src={reel.mediaUrl}
-                              className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                              muted
-                              loop
-                              onMouseEnter={(e) => e.target.play()}
-                              onMouseLeave={(e) => {
-                                e.target.pause();
-                                e.target.currentTime = 0;
-                              }}
-                            />
-                          ) : (
-                            <img
-                              src={reel.mediaUrl}
-                              alt={reel.title}
-                              className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                            />
-                          )}
-
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
-
-                          <div className="absolute bottom-4 left-4 right-4 text-white">
-                            <h3 className="font-semibold truncate">
-                              {reel.title}
-                            </h3>
-                            <div className="flex items-center gap-3 mt-2 text-xs text-white/80">
-                              <span className="flex items-center gap-1">
-                                <FaPlay className="text-[10px]" />{" "}
-                                {reel.viewsCount || 0}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                Like {reel.likesCount || 0}
-                              </span>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12">
-                      <div className="w-20 h-20 bg-[#0B1120] rounded-full flex items-center justify-center mx-auto mb-4 border border-[#111827]">
-                        <FaFilm className="text-gray-500 text-3xl" />
-                      </div>
-                      <h3 className="text-lg font-semibold text-gray-100 mb-2">
-                        No reels yet
-                      </h3>
-                      <p className="text-gray-500 text-sm">
-                        This editor hasn&apos;t published any reels.
-                      </p>
-                    </div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
           </motion.div>
-        </div>
-      </div>
 
-      {/* Certification Modal */}
+          {/* ==================== TABS ==================== */}
+          <div className="flex justify-center mb-5">
+            <div className="inline-flex bg-zinc-950 border border-zinc-800/50 rounded-lg p-1">
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`
+                      px-3 md:px-4 py-2 rounded-md text-xs md:text-sm font-medium transition-all flex items-center gap-1.5
+                      ${isActive 
+                        ? "bg-white text-black" 
+                        : "text-zinc-500 hover:text-zinc-300"
+                      }
+                    `}
+                  >
+                    <tab.icon className="text-[10px] md:text-xs" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ==================== TAB CONTENT ==================== */}
+          <AnimatePresence mode="wait">
+            {/* PORTFOLIO TAB */}
+            {activeTab === "portfolio" && (
+              <motion.div
+                key="portfolio"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.15 }}
+                className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5"
+              >
+                <PortfolioSection portfolios={profile.portfolio} isPublic={true} />
+              </motion.div>
+            )}
+
+            {/* ABOUT TAB */}
+            {activeTab === "about" && (
+              <motion.div
+                key="about"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.15 }}
+              >
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  
+                  {/* Main Content */}
+                  <div className="lg:col-span-2 space-y-4">
+                    
+                    {/* About Me */}
+                    {profile.about && (
+                      <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5">
+                        <div className="flex items-center gap-2.5 mb-3">
+                          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                            <FaUser className="text-zinc-400 text-xs" />
+                          </div>
+                          <h3 className="text-sm font-semibold text-white">About</h3>
+                        </div>
+                        <p className="text-zinc-400 text-sm leading-relaxed">
+                          {profile.about}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Skills */}
+                    {profile.skills?.length > 0 && (
+                      <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5">
+                        <div className="flex items-center gap-2.5 mb-3">
+                          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                            <FaCode className="text-zinc-400 text-xs" />
+                          </div>
+                          <h3 className="text-sm font-semibold text-white">Skills</h3>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {profile.skills.map((skill, i) => (
+                            <span
+                              key={i}
+                              className="px-2.5 py-1 bg-zinc-900 border border-zinc-800 rounded text-xs text-zinc-300"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Languages */}
+                    {profile.languages?.length > 0 && (
+                      <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5">
+                        <div className="flex items-center gap-2.5 mb-3">
+                          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                            <FaGlobe className="text-zinc-400 text-xs" />
+                          </div>
+                          <h3 className="text-sm font-semibold text-white">Languages</h3>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {profile.languages.map((lang, i) => (
+                            <span
+                              key={i}
+                              className="px-2.5 py-1 bg-zinc-900 border border-zinc-800 rounded text-xs text-zinc-300"
+                            >
+                              {lang}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Certifications */}
+                    {profile.certifications?.length > 0 && (
+                      <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5">
+                        <div className="flex items-center gap-2.5 mb-3">
+                          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                            <FaAward className="text-zinc-400 text-xs" />
+                          </div>
+                          <h3 className="text-sm font-semibold text-white">Certifications</h3>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {profile.certifications.map((cert, i) => (
+                            cert.image && (
+                              <div
+                                key={i}
+                                onClick={() => { setSelectedCert(cert); setModalOpen(true); }}
+                                className="relative overflow-hidden rounded-lg border border-zinc-800 cursor-pointer hover:border-zinc-600 transition-colors"
+                              >
+                                <img
+                                  src={cert.image}
+                                  alt={cert.name || "Certificate"}
+                                  className="w-full h-20 object-cover"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-2">
+                                  <span className="text-[10px] text-white font-medium truncate">
+                                    {cert.name || "Certificate"}
+                                  </span>
+                                </div>
+                              </div>
+                            )
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Empty State */}
+                    {!profile.about && !profile.skills?.length && !profile.languages?.length && !profile.certifications?.length && (
+                      <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-8 text-center">
+                        <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-zinc-900 flex items-center justify-center">
+                          <FaUser className="text-zinc-600" />
+                        </div>
+                        <p className="text-zinc-500 text-sm">No information added yet</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Sidebar */}
+                  <div className="space-y-4">
+                    {/* Badges */}
+                    <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4">
+                      <h4 className="text-sm font-semibold text-white mb-3">Badges</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { icon: FaStar, label: 'Top Rated', active: true },
+                          { icon: FaCheckCircle, label: 'Verified', active: isVerified },
+                        ].map((badge) => (
+                          <div
+                            key={badge.label}
+                            className={`flex items-center gap-1.5 px-2 py-1 rounded border text-[10px] ${
+                              badge.active 
+                                ? 'bg-zinc-900 border-zinc-700 text-zinc-300'
+                                : 'bg-zinc-950 border-zinc-800 text-zinc-600'
+                            }`}
+                          >
+                            <badge.icon className="text-[9px]" />
+                            <span>{badge.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Performance */}
+                    <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4">
+                      <h4 className="text-sm font-semibold text-white mb-3">Performance</h4>
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-[10px] text-zinc-500">Response Rate</span>
+                            <span className="text-[10px] text-white font-medium">98%</span>
+                          </div>
+                          <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-600 rounded-full" style={{ width: '98%' }} />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-[10px] text-zinc-500">On-time Delivery</span>
+                            <span className="text-[10px] text-white font-medium">95%</span>
+                          </div>
+                          <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-600 rounded-full" style={{ width: '95%' }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* GIGS TAB */}
+            {activeTab === "gigs" && (
+              <motion.div
+                key="gigs"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.15 }}
+                className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5"
+              >
+                {/* Public Gigs Grid - View Only */}
+                {profile.gigs?.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {profile.gigs.map((gig, i) => (
+                      <motion.div
+                        key={gig._id || i}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: i * 0.03 }}
+                        className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden hover:border-zinc-600 transition-all cursor-pointer"
+                        onClick={() => navigate(`/gig/${gig._id}`)}
+                      >
+                        <div className="aspect-video bg-zinc-950">
+                          {gig.thumbnail ? (
+                            <img src={gig.thumbnail} alt={gig.title} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <FaPlay className="text-zinc-700" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-2.5">
+                          <h4 className="text-xs font-medium text-white line-clamp-1 mb-1">{gig.title}</h4>
+                          <div className="flex items-center gap-2 text-[10px] text-zinc-500">
+                            <span className="flex items-center gap-0.5 text-emerald-400">
+                              <FaRupeeSign className="text-[8px]" /> {gig.price}
+                            </span>
+                            <span className="flex items-center gap-0.5">
+                              <FaClock className="text-[8px]" /> {gig.deliveryDays}d
+                            </span>
+                            {gig.rating > 0 && (
+                              <span className="flex items-center gap-0.5 text-amber-500">
+                                <FaStar className="text-[8px]" /> {gig.rating?.toFixed(1)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-zinc-900 flex items-center justify-center">
+                      <FaShoppingCart className="text-zinc-600 text-lg" />
+                    </div>
+                    <p className="text-xs text-zinc-500">No gigs available</p>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </main>
+
+      {/* Certificate Modal */}
       <AnimatePresence>
         {modalOpen && selectedCert && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
             onClick={() => setModalOpen(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 10 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 10 }}
-              className="bg-[#020617] rounded-3xl p-6 max-w-3xl w-full relative shadow-[0_25px_60px_rgba(0,0,0,0.95)] border border-[#111827]"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative max-w-3xl w-full bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <motion.button
-                whileHover={{ scale: 1.05, rotate: 90 }}
-                whileTap={{ scale: 0.95 }}
-                className="absolute top-4 right-4 w-10 h-10 bg-white/5 rounded-full flex items-center justify-center text-gray-300 hover:bg-white/10 transition-colors border border-white/10"
+              <button
                 onClick={() => setModalOpen(false)}
+                className="absolute top-3 right-3 w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-white transition-colors z-10"
               >
-                <FaTimes />
-              </motion.button>
-              <h3 className="text-lg md:text-xl font-semibold text-gray-50 mb-4 pr-12">
-                {selectedCert.title || "Certificate"}
-              </h3>
+                <FaTimes className="text-sm" />
+              </button>
               <img
                 src={selectedCert.image}
-                alt={selectedCert.title}
-                className="w-full h-auto object-contain rounded-2xl border border-[#111827]"
+                alt={selectedCert.name}
+                className="w-full max-h-[70vh] object-contain bg-black"
               />
+              {selectedCert.name && (
+                <div className="p-4 border-t border-zinc-800">
+                  <h3 className="text-sm font-medium text-white">{selectedCert.name}</h3>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
@@ -758,101 +633,76 @@ const EditorProfile = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
             onClick={() => setRequestModalOpen(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg bg-[#0B1120] border border-[#1F2937] rounded-3xl p-6 shadow-[0_20px_60px_rgba(0,0,0,0.8)]"
+              className="w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-xl p-5"
             >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-5">
                 <div>
-                  <h2 className="text-xl font-bold text-white">Request Project</h2>
-                  <p className="text-gray-400 text-sm">Send a request to {profile?.user?.name}</p>
+                  <h2 className="text-lg font-semibold text-white">Contact Editor</h2>
+                  <p className="text-xs text-zinc-500">Send a project request to {userData?.name}</p>
                 </div>
                 <button
                   onClick={() => setRequestModalOpen(false)}
-                  className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all"
+                  className="w-8 h-8 rounded-lg bg-zinc-900 flex items-center justify-center text-zinc-400 hover:text-white"
                 >
-                  <FaTimes />
+                  <FaTimes className="text-sm" />
                 </button>
               </div>
 
-              {/* Form */}
               <div className="space-y-4">
-                {/* Amount */}
                 <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    <FaRupeeSign className="inline mr-2 text-green-400" />
-                    Budget Amount (₹) *
+                  <label className="block text-xs font-medium text-zinc-400 mb-1.5">
+                    Budget (₹) *
                   </label>
                   <input
                     type="number"
                     value={requestData.amount}
                     onChange={(e) => setRequestData({ ...requestData, amount: e.target.value })}
-                    placeholder="Enter amount (min ₹100)"
+                    placeholder="Min ₹100"
                     min={100}
-                    className="w-full bg-[#020617] border border-[#1F2937] rounded-xl px-4 py-3 text-white placeholder:text-gray-500 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/30 transition-all"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-white text-sm placeholder:text-zinc-600 focus:border-zinc-600 outline-none transition-colors"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Platform fee: 10%</p>
                 </div>
 
-                {/* Deadline */}
                 <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    <FaCalendarAlt className="inline mr-2 text-orange-400" />
+                  <label className="block text-xs font-medium text-zinc-400 mb-1.5">
                     Deadline *
                   </label>
                   <input
                     type="date"
                     value={requestData.deadline}
                     onChange={(e) => setRequestData({ ...requestData, deadline: e.target.value })}
-                    min={new Date().toISOString().split('T')[0]}
-                    className="w-full bg-[#020617] border border-[#1F2937] rounded-xl px-4 py-3 text-white placeholder:text-gray-500 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/30 transition-all"
+                    min={new Date().toISOString().split("T")[0]}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-white text-sm focus:border-zinc-600 outline-none transition-colors"
                   />
                 </div>
 
-                {/* Description */}
                 <div>
-                  <label className="block text-sm font-medium text-white mb-2">
+                  <label className="block text-xs font-medium text-zinc-400 mb-1.5">
                     Project Description *
                   </label>
                   <textarea
                     value={requestData.description}
                     onChange={(e) => setRequestData({ ...requestData, description: e.target.value })}
-                    placeholder="Describe your project requirements, video type, duration, etc..."
+                    placeholder="Describe your project..."
                     rows={4}
-                    maxLength={1000}
-                    className="w-full bg-[#020617] border border-[#1F2937] rounded-xl px-4 py-3 text-white placeholder:text-gray-500 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/30 resize-none transition-all"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-white text-sm placeholder:text-zinc-600 focus:border-zinc-600 outline-none transition-colors resize-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">{requestData.description.length}/1000</p>
                 </div>
 
-                {/* Submit Button */}
                 <button
                   onClick={handleSubmitRequest}
                   disabled={submittingRequest}
-                  className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50"
+                  className="w-full py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  {submittingRequest ? (
-                    <>
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-                      />
-                      Sending Request...
-                    </>
-                  ) : (
-                    <>
-                      <FaPaperPlane />
-                      Send Request
-                    </>
-                  )}
+                  {submittingRequest ? "Sending..." : "Send Request"}
                 </button>
               </div>
             </motion.div>
@@ -863,4 +713,4 @@ const EditorProfile = () => {
   );
 };
 
-export default EditorProfile;
+export default PublicEditorProfile;
