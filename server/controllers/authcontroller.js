@@ -12,7 +12,7 @@ const JWT_EXPIRES_IN = "7d";
 
 // ============ REGISTER ============
 export const register = asyncHandler(async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, password, role, country = "IN" } = req.body;
   let profilePicture;
 
   // Check for existing user
@@ -49,12 +49,20 @@ export const register = asyncHandler(async (req, res) => {
     profilePicture = uploadResult.url;
   }
 
+  // Determine currency and payment gateway based on country
+  const currencyMap = { IN: "INR", US: "USD", GB: "GBP", CA: "CAD", AU: "AUD" };
+  const currency = currencyMap[country] || "INR";
+  const paymentGateway = country === "IN" ? "razorpay" : "none";
+
   // Create User
   const user = await User.create({
     name: name.trim(),
     email: email.toLowerCase().trim(),
     password: hashedPassword,
     role,
+    country: country.toUpperCase(),
+    currency,
+    paymentGateway,
     profilePicture,
   });
 

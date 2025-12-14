@@ -1,0 +1,350 @@
+/**
+ * Editor KYC Form Styles
+ * Premium bank account linking form
+ */
+
+.kyc-form-container {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+  animation: kyc-fadeIn 0.3s ease;
+}
+
+@keyframes kyc-fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.kyc-form-modal {
+  background: #ffffff;
+  border-radius: 1.5rem;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: kyc-slideUp 0.4s ease;
+}
+
+@keyframes kyc-slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Header */
+.kyc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border-radius: 1.5rem 1.5rem 0 0;
+}
+
+.kyc-header-content h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.kyc-header-content p {
+  font-size: 0.875rem;
+  opacity: 0.9;
+}
+
+.kyc-close-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.kyc-close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+/* Form */
+.kyc-form {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.kyc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.kyc-field label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.kyc-field input {
+  padding: 0.875rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  transition: all 0.2s;
+  background: #f9fafb;
+}
+
+.kyc-field input:focus {
+  outline: none;
+  border-color: #10b981;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.kyc-field input.kyc-error {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.kyc-error-text {
+  font-size: 0.75rem;
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* IFSC Wrapper */
+.kyc-ifsc-wrapper {
+  position: relative;
+}
+
+.kyc-ifsc-spinner {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #10b981;
+}
+
+.kyc-bank-info {
+  font-size: 0.8rem;
+  color: #10b981;
+  padding: 0.5rem 0.75rem;
+  background: #ecfdf5;
+  border-radius: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+/* Spinner */
+.kyc-spin {
+  animation: kyc-spin 1s linear infinite;
+}
+
+@keyframes kyc-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Submit Error */
+.kyc-submit-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 0.75rem;
+  color: #dc2626;
+  font-size: 0.875rem;
+}
+
+/* Submit Button */
+.kyc-submit-btn {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  transition: all 0.3s;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+  margin-top: 0.5rem;
+}
+
+.kyc-submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.kyc-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Security Note */
+.kyc-security-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-align: center;
+  padding-top: 0.5rem;
+}
+
+/* Success State */
+.kyc-success-state,
+.kyc-pending-state {
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.kyc-success-icon,
+.kyc-pending-icon {
+  width: 5rem;
+  height: 5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  font-size: 2.5rem;
+}
+
+.kyc-success-icon {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.kyc-pending-icon {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+}
+
+.kyc-success-state h2,
+.kyc-pending-state h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.kyc-success-state p,
+.kyc-pending-state p {
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+}
+
+/* Bank Card */
+.kyc-bank-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: #f3f4f6;
+  border-radius: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.kyc-bank-card > svg {
+  font-size: 1.5rem;
+  color: #6b7280;
+}
+
+.kyc-bank-card div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.kyc-bank-name {
+  font-weight: 600;
+  color: #374151;
+}
+
+.kyc-acc-masked {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  font-family: monospace;
+}
+
+/* Buttons */
+.kyc-btn-primary {
+  padding: 0.875rem 2rem;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.kyc-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.kyc-btn-secondary {
+  padding: 0.875rem 2rem;
+  background: #f3f4f6;
+  color: #374151;
+  border: none;
+  border-radius: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.kyc-btn-secondary:hover {
+  background: #e5e7eb;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .kyc-form-modal {
+    border-radius: 1rem 1rem 0 0;
+    max-height: 95vh;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+  
+  .kyc-header {
+    border-radius: 1rem 1rem 0 0;
+  }
+}

@@ -1,8 +1,10 @@
 import { Order } from "../models/Order.js";
 import { Gig } from "../models/Gig.js";
 import { Message } from "../models/Message.js";
+import User from "../models/User.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import { createNotification } from "./notificationController.js";
+import { releasePayment } from "./paymentGatewayController.js";
 import logger from "../utils/logger.js";
 
 // ============ CREATE ORDER FROM GIG ============
@@ -25,7 +27,8 @@ export const createOrderFromGig = asyncHandler(async (req, res) => {
     throw new ApiError(400, "You cannot order your own gig");
   }
 
-  // Create order
+  // Create order with pending_payment status
+  // Order will only be visible to editor after successful payment
   const order = await Order.create({
     type: "gig",
     gig: gig._id,
@@ -35,38 +38,19 @@ export const createOrderFromGig = asyncHandler(async (req, res) => {
     description: description || gig.description,
     deadline: new Date(deadline),
     amount: gig.price,
-    status: "new",
+    status: "pending_payment", // Hidden from editor until payment
     paymentStatus: "pending",
   });
 
-  // Create system message
-  await Message.create({
-    order: order._id,
-    sender: req.user._id,
-    type: "system",
-    content: `Order created for "${gig.title}"`,
-    systemAction: "order_created",
-  });
-
-  // Notify editor
-  await createNotification({
-    recipient: gig.editor._id,
-    type: "info",
-    title: "New Order Request",
-    message: `${req.user.name} placed an order for "${gig.title}" - ₹${gig.price}`,
-    link: "/chats",
-  });
-
-  // Increment gig orders count
-  gig.totalOrders += 1;
-  await gig.save();
+  // Note: System message and editor notification will be sent after payment confirmation
+  // This happens in paymentGatewayController.verifyPayment()
 
   const populatedOrder = await Order.findById(order._id)
     .populate("client", "name profilePicture")
     .populate("editor", "name profilePicture")
     .populate("gig", "title price");
 
-  logger.info(`Order created: ${order.orderNumber} from gig: ${gig._id}`);
+  logger.info(`Order created (pending payment): ${order.orderNumber} from gig: ${gig._id}`);
 
   res.status(201).json({
     success: true,
@@ -141,6 +125,8 @@ export const getMyOrders = asyncHandler(async (req, res) => {
   let query = {};
   if (role === "editor") {
     query.editor = userId;
+    // Editors should not see orders that haven't been paid yet
+    query.status = { $ne: "pending_payment" };
   } else {
     query.client = userId;
   }
@@ -335,7 +321,7 @@ export const submitWork = asyncHandler(async (req, res) => {
 
 // ============ COMPLETE ORDER (Auto or Client Confirm) ============
 export const completeOrder = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.params.id);
+  const order = await Order.findById(req.params.id).populate("editor");
 
   if (!order) {
     throw new ApiError(404, "Order not found");
@@ -350,9 +336,32 @@ export const completeOrder = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Order is not submitted yet");
   }
 
+  // Update order status
   order.status = "completed";
   order.completedAt = new Date();
-  order.paymentStatus = "released";
+  
+  // Try to release payment via Razorpay
+  let payoutResult = { status: "pending" };
+  try {
+    if (order.escrowStatus === "held" && order.razorpayPaymentId) {
+      payoutResult = await releasePayment(order._id);
+      logger.info(`Payout initiated: ${order.orderNumber}, status: ${payoutResult.status}`);
+    } else {
+      // Mark as released even if no payment was held (for testing)
+      order.paymentStatus = "released";
+      order.escrowStatus = "released";
+      order.escrowReleasedAt = new Date();
+      
+      // Update editor earnings
+      await User.findByIdAndUpdate(order.editor._id, {
+        $inc: { totalEarnings: order.editorEarning },
+      });
+    }
+  } catch (payoutError) {
+    logger.error(`Payout failed for ${order.orderNumber}: ${payoutError.message}`);
+    // Continue with order completion, payout can be retried
+  }
+  
   await order.save();
 
   // Create system message
@@ -366,10 +375,10 @@ export const completeOrder = asyncHandler(async (req, res) => {
 
   // Notify editor
   await createNotification({
-    recipient: order.editor,
+    recipient: order.editor._id,
     type: "success",
-    title: "Payment Released",
-    message: `₹${order.editorEarning} released for "${order.title}"`,
+    title: "🎉 Payment Released!",
+    message: `₹${order.editorEarning} has been released for "${order.title}"`,
     link: `/chat/${order._id}`,
   });
 
@@ -379,6 +388,7 @@ export const completeOrder = asyncHandler(async (req, res) => {
     success: true,
     message: "Order completed, payment released",
     order,
+    payoutStatus: payoutResult.status,
   });
 });
 

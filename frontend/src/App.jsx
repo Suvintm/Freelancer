@@ -34,6 +34,7 @@ import MaintenancePage from "./pages/MaintenancePage.jsx";
 import EditorAnalytics from "./pages/EditorAnalytics.jsx";
 import ClientAnalytics from "./pages/ClientAnalytics.jsx";
 import PaymentsPage from "./pages/PaymentsPage.jsx";
+import PaymentSuccess from "./pages/PaymentSuccess.jsx";
 
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
@@ -238,6 +239,16 @@ function App() {
           element={
             <ProtectedRoute>
               <Chatbox />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Payment Success Page */}
+        <Route
+          path="/payment-success"
+          element={
+            <ProtectedRoute>
+              <PaymentSuccess />
             </ProtectedRoute>
           }
         />

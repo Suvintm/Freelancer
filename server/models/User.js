@@ -78,6 +78,122 @@ const userSchema = new mongoose.Schema(
       ref: "Admin",
       default: null,
     },
+
+    // ==================== PAYMENT & LOCATION FIELDS ====================
+    
+    // Country & Currency
+    country: {
+      type: String,
+      required: true,
+      default: "IN",
+      uppercase: true,
+      minlength: 2,
+      maxlength: 2,
+    },
+    currency: {
+      type: String,
+      default: "INR",
+      uppercase: true,
+    },
+    
+    // Profile Completion (0-100)
+    profileCompletionPercent: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    
+    // Payment Gateway Assignment
+    paymentGateway: {
+      type: String,
+      enum: ["razorpay", "stripe", "none"],
+      default: "none",
+    },
+    
+    // KYC Status (for editors)
+    kycStatus: {
+      type: String,
+      enum: ["not_started", "pending", "submitted", "verified", "rejected"],
+      default: "not_started",
+    },
+    kycSubmittedAt: {
+      type: Date,
+      default: null,
+    },
+    kycVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+    kycRejectionReason: {
+      type: String,
+      default: null,
+    },
+    
+    // Razorpay Fields (for India)
+    razorpayContactId: {
+      type: String,
+      default: null,
+    },
+    razorpayFundAccountId: {
+      type: String,
+      default: null,
+    },
+    
+    // Stripe Connect Fields (for International - Future)
+    stripeAccountId: {
+      type: String,
+      default: null,
+    },
+    stripeAccountStatus: {
+      type: String,
+      enum: ["none", "pending", "onboarding", "active", "restricted"],
+      default: "none",
+    },
+    
+    // Bank Details (for editor payouts)
+    bankDetails: {
+      accountHolderName: {
+        type: String,
+        default: null,
+      },
+      accountNumber: {
+        type: String,
+        default: null,
+        select: false, // Don't include in queries by default
+      },
+      ifscCode: {
+        type: String,
+        default: null,
+      },
+      bankName: {
+        type: String,
+        default: null,
+      },
+      panNumber: {
+        type: String,
+        default: null,
+        select: false, // Sensitive - don't include by default
+      },
+    },
+    
+    // Payout Settings
+    minPayoutAmount: {
+      type: Number,
+      default: 100, // ₹100 minimum
+    },
+    totalEarnings: {
+      type: Number,
+      default: 0,
+    },
+    pendingPayout: {
+      type: Number,
+      default: 0,
+    },
+    totalWithdrawn: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
@@ -89,5 +205,9 @@ userSchema.index({ email: 1 });
 userSchema.index({ role: 1, profileCompleted: 1 });
 userSchema.index({ name: 1 });
 userSchema.index({ googleId: 1 });
+userSchema.index({ country: 1 });
+userSchema.index({ kycStatus: 1 });
+userSchema.index({ paymentGateway: 1 });
+userSchema.index({ "bankDetails.accountNumber": 1 });
 
 export default mongoose.model("User", userSchema);

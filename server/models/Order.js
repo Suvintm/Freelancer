@@ -68,6 +68,10 @@ const orderSchema = new mongoose.Schema(
       required: [true, "Amount is required"],
       min: [100, "Minimum amount is ₹100"],
     },
+    currency: {
+      type: String,
+      default: "INR",
+    },
     platformFee: {
       type: Number,
       default: 0,
@@ -78,13 +82,79 @@ const orderSchema = new mongoose.Schema(
     },
     paymentStatus: {
       type: String,
-      enum: ["pending", "escrow", "released", "refunded"],
+      enum: ["pending", "processing", "escrow", "released", "refunded", "failed"],
       default: "pending",
     },
+    
+    // Payment Gateway Info
+    paymentGateway: {
+      type: String,
+      enum: ["razorpay", "stripe", "none"],
+      default: "none",
+    },
+    
+    // Razorpay Fields
+    razorpayOrderId: {
+      type: String,
+      index: true,
+    },
+    razorpayPaymentId: {
+      type: String,
+    },
+    razorpaySignature: {
+      type: String,
+    },
+    razorpayPayoutId: {
+      type: String,
+    },
+    
+    // Stripe Fields (for future international)
     stripePaymentIntentId: {
       type: String,
     },
     stripeTransferId: {
+      type: String,
+    },
+    
+    // Escrow Tracking
+    escrowStatus: {
+      type: String,
+      enum: ["none", "held", "released", "refunded", "disputed"],
+      default: "none",
+    },
+    escrowHeldAt: {
+      type: Date,
+    },
+    escrowReleasedAt: {
+      type: Date,
+    },
+    
+    // Payout Tracking
+    payoutStatus: {
+      type: String,
+      enum: ["pending", "processing", "completed", "failed"],
+      default: "pending",
+    },
+    payoutAmount: {
+      type: Number,
+      default: 0,
+    },
+    payoutCompletedAt: {
+      type: Date,
+    },
+    
+    // Refund Tracking
+    refundId: {
+      type: String,
+    },
+    refundAmount: {
+      type: Number,
+      default: 0,
+    },
+    refundedAt: {
+      type: Date,
+    },
+    refundReason: {
       type: String,
     },
 
@@ -92,7 +162,8 @@ const orderSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
-        "new",           // Just created, awaiting editor response
+        "pending_payment", // Created but awaiting payment
+        "new",           // Paid, awaiting editor response
         "accepted",      // Editor accepted
         "in_progress",   // Work started
         "submitted",     // Editor submitted final work

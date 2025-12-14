@@ -9,6 +9,7 @@ import {
   FaClipboardList,
   FaChartLine,
   FaArrowRight,
+  FaUniversity,
 } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
@@ -16,6 +17,7 @@ import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
 import ExploreEditor from "../components/ExploreEditor.jsx";
 import ExploreGigs from "../components/ExploreGigs.jsx";
+import EditorKYCForm from "../components/EditorKYCForm.jsx";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import reelIcon from "../assets/reelicon.png";
@@ -25,6 +27,7 @@ const EditorHome = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("editors");
   const [stats, setStats] = useState({ totalOrders: 0, activeGigs: 0 });
+  const [showKYC, setShowKYC] = useState(false);
   const navigate = useNavigate();
 
   // Fetch basic stats
@@ -90,6 +93,31 @@ const EditorHome = () => {
                 className="bg-[#1463FF] hover:bg-[#275DFF] flex items-center justify-center gap-2 text-white font-medium px-5 py-2.5 rounded-2xl transition-all shadow-[0_12px_30px_rgba(20,99,255,0.55)]"
               >
                 Complete Profile <FaArrowAltCircleRight />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* KYC Banner - Show when not verified */}
+        {user?.kycStatus !== "verified" && (
+          <div className="bg-gradient-to-r from-[#0f1a14] to-[#0d1911] border border-emerald-500/30 rounded-2xl p-5 md:p-6 mb-6">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+              <div className="bg-emerald-500/20 p-3 rounded-full">
+                <FaUniversity className="text-emerald-400 text-2xl" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-white font-semibold text-lg md:text-xl">
+                  Link Bank Account to Receive Payouts
+                </h3>
+                <p className="text-gray-400 text-sm mt-1">
+                  Complete your KYC verification to receive payments directly to your bank account when orders are completed.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowKYC(true)}
+                className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 flex items-center justify-center gap-2 text-white font-medium px-5 py-2.5 rounded-2xl transition-all shadow-[0_12px_30px_rgba(16,185,129,0.3)]"
+              >
+                Complete KYC <FaArrowAltCircleRight />
               </button>
             </div>
           </div>
@@ -248,8 +276,19 @@ const EditorHome = () => {
           <img src={reelIcon} alt="reels" className="w-6 h-6 object-contain" />
         </motion.button>
       </main>
+
+      {/* KYC Form Modal */}
+      {showKYC && (
+        <EditorKYCForm
+          onSuccess={() => {
+            setShowKYC(false);
+          }}
+          onClose={() => setShowKYC(false)}
+        />
+      )}
     </div>
   );
 };
 
 export default EditorHome;
+

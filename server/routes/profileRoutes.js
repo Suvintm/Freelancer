@@ -1,5 +1,6 @@
 import express from "express";
 import { getProfile, updateProfile } from "../controllers/profileController.js";
+import { getKYCStatus, submitKYC } from "../controllers/kycController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import { upload } from "../middleware/upload.js";
 import { updateProfileValidator, userIdValidator } from "../middleware/validators.js";
@@ -26,4 +27,12 @@ router.put(
   updateProfile
 );
 
+// ============ KYC ROUTES ============
+// Get KYC status
+router.get("/kyc-status", getKYCStatus);
+
+// Submit KYC details
+router.post("/submit-kyc", submitKYC);
+
 export default router;
+

@@ -12,11 +12,13 @@ import {
   FaChevronRight,
   FaShoppingCart,
   FaPlay,
+  FaLock,
 } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
+import RazorpayCheckout from "./RazorpayCheckout";
 
 /**
  * ExploreGigs — Browse gigs created by editors
@@ -67,6 +69,10 @@ const ExploreGigs = () => {
     deadline: "",
   });
   const [ordering, setOrdering] = useState(false);
+  
+  // Payment state
+  const [showPayment, setShowPayment] = useState(false);
+  const [createdOrder, setCreatedOrder] = useState(null);
 
   // Loading text animation
   useEffect(() => {
@@ -136,7 +142,7 @@ const ExploreGigs = () => {
       setOrdering(true);
       const token = user?.token;
 
-      await axios.post(
+      const res = await axios.post(
         `${backendURL}/api/orders/gig`,
         {
           gigId: selectedGig._id,
@@ -146,15 +152,43 @@ const ExploreGigs = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      toast.success("Order sent! The editor will review your request.");
+      // Order created, now show payment
+      setCreatedOrder(res.data.order);
       setShowOrderModal(false);
-      setSelectedGig(null);
-      setOrderForm({ description: "", deadline: "" });
+      setShowPayment(true);
+      toast.info("Order created! Complete payment to confirm.");
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to create order");
     } finally {
       setOrdering(false);
     }
+  };
+
+  // Payment success handler
+  const handlePaymentSuccess = (data) => {
+    setShowPayment(false);
+    const orderData = {
+      orderNumber: data?.order?.orderNumber || createdOrder?.orderNumber,
+      amount: data?.order?.amount || createdOrder?.amount || selectedGig?.price,
+      title: data?.order?.title || createdOrder?.title || selectedGig?.title,
+      transactionId: data?.order?.razorpayPaymentId || '',
+    };
+    setCreatedOrder(null);
+    setSelectedGig(null);
+    setOrderForm({ description: "", deadline: "" });
+    // Navigate to success page with order data
+    navigate("/payment-success", { state: orderData });
+  };
+
+  // Payment failure handler
+  const handlePaymentFailure = (error) => {
+    toast.error(error?.description || "Payment failed. Please try again.");
+  };
+
+  // Close payment modal
+  const handlePaymentClose = () => {
+    setShowPayment(false);
+    toast.info("Payment cancelled. Your order is saved - pay anytime from My Orders.");
   };
 
   const openOrderModal = (gig) => {
@@ -516,17 +550,41 @@ const ExploreGigs = () => {
                 <button
                   onClick={handleCreateOrder}
                   disabled={ordering}
-                  className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium transition-all disabled:opacity-50"
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {ordering ? "Sending..." : "Send Order Request"}
+                  {ordering ? (
+                    "Processing..."
+                  ) : (
+                    <>
+                      <FaLock className="text-sm" />
+                      Pay ₹{selectedGig.price}
+                    </>
+                  )}
                 </button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ============ RAZORPAY PAYMENT MODAL ============ */}
+      {showPayment && createdOrder && (
+        <RazorpayCheckout
+          orderId={createdOrder._id}
+          amount={createdOrder.amount || selectedGig?.price}
+          currency="INR"
+          orderDetails={{
+            title: selectedGig?.title || createdOrder.title,
+            orderNumber: createdOrder.orderNumber,
+          }}
+          onSuccess={handlePaymentSuccess}
+          onFailure={handlePaymentFailure}
+          onClose={handlePaymentClose}
+        />
+      )}
     </div>
   );
 };
 
 export default ExploreGigs;
+

@@ -1,0 +1,259 @@
+/**
+ * Payment Success Page Styles
+ * Elegant, professional design with subtle animations
+ */
+
+.payment-success-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #050509 0%, #0a0f18 50%, #050509 100%);
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Background decoration */
+.ps-background {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ps-bg-circle {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.3;
+}
+
+.ps-bg-1 {
+  width: 400px;
+  height: 400px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  top: -100px;
+  right: -100px;
+}
+
+.ps-bg-2 {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  bottom: -80px;
+  left: -80px;
+}
+
+/* Container */
+.ps-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  z-index: 1;
+  max-width: 440px;
+  width: 100%;
+}
+
+/* Icon wrapper */
+.ps-icon-wrapper {
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.ps-icon-bg {
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 
+    0 10px 40px rgba(16, 185, 129, 0.3),
+    0 0 0 8px rgba(16, 185, 129, 0.1);
+}
+
+.ps-check-icon {
+  font-size: 3rem;
+  color: white;
+}
+
+.ps-ripple {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(16, 185, 129, 0.4);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Content */
+.ps-content {
+  width: 100%;
+}
+
+.ps-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.ps-subtitle {
+  font-size: 0.95rem;
+  color: #9ca3af;
+  margin-bottom: 1.5rem;
+}
+
+/* Amount */
+.ps-amount {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #10b981;
+  margin-bottom: 2rem;
+  font-family: 'Inter', system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* Details card */
+.ps-details-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  backdrop-filter: blur(10px);
+}
+
+.ps-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+}
+
+.ps-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.ps-value {
+  font-size: 0.9rem;
+  color: #e5e7eb;
+  font-weight: 500;
+  text-align: right;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ps-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.8rem;
+}
+
+.ps-small {
+  font-size: 0.75rem;
+}
+
+.ps-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Security badge */
+.ps-security {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 2rem;
+}
+
+.ps-security svg {
+  color: #10b981;
+}
+
+/* Actions */
+.ps-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.ps-btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  border: none;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.25);
+}
+
+.ps-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 30px rgba(16, 185, 129, 0.35);
+}
+
+.ps-btn-secondary {
+  padding: 1rem 1.5rem;
+  background: transparent;
+  color: #9ca3af;
+  font-weight: 500;
+  font-size: 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ps-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e5e7eb;
+}
+
+/* Footer */
+.ps-footer {
+  margin-top: 2rem;
+  font-size: 0.8rem;
+  color: #4b5563;
+  max-width: 280px;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .payment-success-page {
+    padding: 1.5rem;
+  }
+  
+  .ps-title {
+    font-size: 1.5rem;
+  }
+  
+  .ps-amount {
+    font-size: 2rem;
+  }
+  
+  .ps-icon-bg {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .ps-check-icon {
+    font-size: 2.5rem;
+  }
+}

@@ -1,10 +1,24 @@
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { FaPlus, FaTimes, FaGoogle } from "react-icons/fa";
+import { FaPlus, FaTimes, FaGlobe } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 
 const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+
+// Country list with codes
+const COUNTRIES = [
+  { code: "IN", name: "India", flag: "🇮🇳", supported: true },
+  { code: "US", name: "United States", flag: "🇺🇸", supported: false },
+  { code: "GB", name: "United Kingdom", flag: "🇬🇧", supported: false },
+  { code: "CA", name: "Canada", flag: "🇨🇦", supported: false },
+  { code: "AU", name: "Australia", flag: "🇦🇺", supported: false },
+  { code: "DE", name: "Germany", flag: "🇩🇪", supported: false },
+  { code: "FR", name: "France", flag: "🇫🇷", supported: false },
+  { code: "AE", name: "UAE", flag: "🇦🇪", supported: false },
+  { code: "SG", name: "Singapore", flag: "🇸🇬", supported: false },
+  { code: "JP", name: "Japan", flag: "🇯🇵", supported: false },
+];
 
 const AuthForm = () => {
   const { showAuth, setShowAuth, backendURL, setUser } = useAppContext();
@@ -14,6 +28,7 @@ const AuthForm = () => {
     email: "",
     password: "",
     role: "editor",
+    country: "IN",
     profilePicture: null,
   });
   const [loading, setLoading] = useState(false);
@@ -56,6 +71,7 @@ const AuthForm = () => {
         data.append("email", formData.email);
         data.append("password", formData.password);
         data.append("role", formData.role);
+        data.append("country", formData.country);
         if (formData.profilePicture)
           data.append("profilePicture", formData.profilePicture);
 
@@ -207,6 +223,35 @@ const AuthForm = () => {
                 <option value="editor">I'm an Editor</option>
                 <option value="client">I'm a Client</option>
               </select>
+              
+              {/* Country Selector */}
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <FaGlobe />
+                </div>
+                <select
+                  name="country"
+                  value={formData.country}
+                  onChange={handleChange}
+                  className="w-full p-3 pl-10 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition appearance-none"
+                >
+                  {COUNTRIES.map((country) => (
+                    <option key={country.code} value={country.code}>
+                      {country.flag} {country.name} {!country.supported && "(Coming Soon)"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* International notice */}
+              {formData.country !== "IN" && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <p className="text-amber-700 text-sm flex items-center gap-2">
+                    <span className="text-lg">🌍</span>
+                    Payments for your region coming soon! You can still browse and explore.
+                  </p>
+                </div>
+              )}
             </>
           )}
           <input

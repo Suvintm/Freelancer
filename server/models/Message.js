@@ -157,6 +157,7 @@ const messageSchema = new mongoose.Schema(
         "work_submitted",
         "work_completed",
         "payment_released",
+        "payment_confirmed",  // New: when payment is verified
         "dispute_raised",
         "deadline_reminder",
       ],
