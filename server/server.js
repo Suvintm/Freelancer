@@ -41,6 +41,9 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import paymentGatewayRoutes from "./routes/paymentGatewayRoutes.js";
 import adminPaymentRoutes from "./routes/adminPaymentRoutes.js";
 
+// Scheduled Jobs
+import { startScheduledJobs } from "./jobs/scheduledJobs.js";
+
 // Validate required environment variables
 const requiredEnvVars = ["MONGO_URI", "JWT_SECRET", "CLOUDINARY_CLOUD_NAME"];
 const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
@@ -258,6 +261,9 @@ const startServer = async () => {
     logger.error("Failed to connect to MongoDB. Exiting...");
     process.exit(1);
   }
+
+  // Start scheduled jobs (auto-cancel expired orders, etc.)
+  startScheduledJobs();
 
   server.listen(PORT, () => {
     logger.info(`Server running on port ${PORT} in ${process.env.NODE_ENV || "development"} mode`);

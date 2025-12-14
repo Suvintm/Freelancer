@@ -173,36 +173,58 @@ export const verifyPayment = async (req, res) => {
     order.paymentStatus = "escrow";
     order.escrowStatus = "held";
     order.escrowHeldAt = new Date();
-    order.status = "new"; // Now visible to editor
     order.paidAt = new Date();
+    
+    // For awaiting_payment orders (request orders), set to accepted
+    // For pending_payment orders (gig orders), set to new
+    if (order.status === "awaiting_payment") {
+      order.status = "accepted"; // Request order - already accepted by editor, now proceed
+    } else {
+      order.status = "new"; // Gig order - now visible to editor
+    }
     await order.save();
 
     // Get order details for notification
     const populatedOrder = await Order.findById(order._id)
       .populate("client", "name")
+      .populate("editor", "name")
       .populate("gig", "title");
 
     // Create system message now that payment is confirmed
     const { Message } = await import("../models/Message.js");
-    await Message.create({
-      order: order._id,
-      sender: order.client,
-      type: "system",
-      content: `Payment of ₹${order.amount} confirmed. Order created for "${order.title}"`,
-      systemAction: "payment_confirmed",
-    });
+    
+    // Different message based on order type
+    if (order.type === "request") {
+      // Request order - payment after editor acceptance
+      await Message.create({
+        order: order._id,
+        sender: order.client,
+        type: "system",
+        content: `✅ Payment of ₹${order.amount} confirmed! Chat is now enabled. ${populatedOrder.editor?.name || "Editor"}, you can start working on the project. Deadline: ${new Date(order.deadline).toLocaleDateString()}.`,
+        systemAction: "payment_confirmed",
+      });
+    } else {
+      // Gig order - standard flow
+      await Message.create({
+        order: order._id,
+        sender: order.client,
+        type: "system",
+        content: `Payment of ₹${order.amount} confirmed. Order created for "${order.title}"`,
+        systemAction: "payment_confirmed",
+      });
+    }
 
     // Notify editor now that payment is confirmed
     const { createNotification } = await import("./notificationController.js");
     await createNotification({
       recipient: order.editor,
       type: "success",
-      title: "💰 New Paid Order!",
-      message: `${populatedOrder.client?.name || "A client"} paid ₹${order.amount} for "${order.title}"`,
-      link: "/chats",
+      title: "💰 Payment Received!",
+      message: `${populatedOrder.client?.name || "A client"} paid ₹${order.amount} for "${order.title}". Start working!`,
+      link: `/chat/${order._id}`,
     });
 
-    // Increment gig orders count now that it's paid
+    // Increment gig orders count now that it's paid (only for gig orders)
     if (order.gig) {
       const { Gig } = await import("../models/Gig.js");
       await Gig.findByIdAndUpdate(order.gig, { $inc: { totalOrders: 1 } });

@@ -189,6 +189,43 @@ export const acceptOrder = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Order cannot be accepted in current state");
   }
 
+  // For REQUEST orders that haven't been paid yet, set to awaiting_payment
+  if (order.type === "request" && order.paymentStatus === "pending") {
+    order.status = "awaiting_payment";
+    order.acceptedAt = new Date();
+    // Set payment expiry to 1 day from now
+    order.paymentExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await order.save();
+
+    // Create payment request message
+    await Message.create({
+      order: order._id,
+      sender: req.user._id,
+      type: "payment_request",
+      content: `I've accepted your project request! Please pay ₹${order.amount} to start working on "${order.title}". Payment must be made within 24 hours to confirm the order.`,
+      systemAction: "payment_required",
+    });
+
+    // Notify client to pay
+    await createNotification({
+      recipient: order.client,
+      type: "info",
+      title: "💳 Payment Required",
+      message: `${req.user.name} accepted your request! Pay ₹${order.amount} to start the project.`,
+      link: `/chat/${order._id}`,
+    });
+
+    logger.info(`Request accepted, awaiting payment: ${order.orderNumber}`);
+
+    return res.status(200).json({
+      success: true,
+      message: "Request accepted. Awaiting payment from client.",
+      order,
+      requiresPayment: true,
+    });
+  }
+
+  // For GIG orders (already paid), proceed normally
   order.status = "accepted";
   order.acceptedAt = new Date();
   await order.save();
@@ -198,7 +235,7 @@ export const acceptOrder = asyncHandler(async (req, res) => {
     order: order._id,
     sender: req.user._id,
     type: "system",
-    content: "Order accepted by editor",
+    content: "Order accepted by editor. You can now start chatting!",
     systemAction: "order_accepted",
   });
 

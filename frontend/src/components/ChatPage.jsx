@@ -42,6 +42,7 @@ import WatermarkPreviewModal from "./WatermarkPreviewModal";
 import DownloadConfirmPopup from "./DownloadConfirmPopup";
 import ChangesRequestModal from "./ChangesRequestModal";
 import CompletedOrderReceipt from "./CompletedOrderReceipt";
+import PaymentRequestCard from "./PaymentRequestCard";
 import axios from "axios";
 import { toast } from "react-toastify";
 import chattexture from "../assets/chattexture.png";
@@ -1309,21 +1310,31 @@ const ChatPage = () => {
                 initial={{ opacity: 0, y: 10, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 0.2 }}
-                className={`flex w-full ${isMe ? "justify-end" : "justify-start"} group mb-1 transition-all duration-300`}
+                className={`flex w-full ${msg.type === "payment_request" ? "justify-center" : isMe ? "justify-end" : "justify-start"} group mb-1 transition-all duration-300`}
               >
-                {/* Swipeable Message Container */}
-                <motion.div 
-                  drag={!msg.isDeleted ? "x" : false}
-                  dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={0.3}
-                  dragSnapToOrigin
-                  onDragEnd={(e, info) => {
-                    if (info.offset.x > 60 && !msg.isDeleted) {
-                      setReplyingTo(msg);
-                    }
-                  }}
-                  className={`relative max-w-[75%] md:max-w-[60%] flex items-center gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}
-                >
+                {/* Special: Payment Request Card - Full Width Centered */}
+                {msg.type === "payment_request" ? (
+                  <PaymentRequestCard 
+                    message={msg} 
+                    order={order} 
+                    onPaymentSuccess={() => {
+                      // Refresh order data after successful payment
+                      window.location.reload();
+                    }}
+                  />
+                ) : (
+                  <motion.div 
+                    drag={!msg.isDeleted ? "x" : false}
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={0.3}
+                    dragSnapToOrigin
+                    onDragEnd={(e, info) => {
+                      if (info.offset.x > 60 && !msg.isDeleted) {
+                        setReplyingTo(msg);
+                      }
+                    }}
+                    className={`relative max-w-[75%] md:max-w-[60%] flex items-center gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}
+                  >
                   {/* Reply indicator (shows on drag) */}
                   <motion.div 
                     className="absolute left-[-40px] opacity-0 pointer-events-none"
@@ -1558,6 +1569,7 @@ const ChatPage = () => {
 
                   </div>
                 </motion.div>
+                )}
               </motion.div>
             );
           })}
@@ -1597,7 +1609,7 @@ const ChatPage = () => {
 
 
 
-      {/* 3. Input Area (Fixed Bottom) - OR Disabled state for completed orders */}
+      {/* 3. Input Area (Fixed Bottom) - OR Disabled state for completed/awaiting_payment orders */}
       {order?.status === "completed" ? (
         /* Completed Order - Disabled Chat Footer */
         <footer className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md px-4 py-4 pb-6 z-50 border-t border-white/10" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
@@ -1608,6 +1620,40 @@ const ChatPage = () => {
                 <span className="font-semibold">Order Completed</span>
               </div>
               <p className="text-gray-400 text-sm">This chat is now closed. No further messages can be sent.</p>
+            </div>
+          </div>
+        </footer>
+      ) : order?.status === "awaiting_payment" ? (
+        /* Awaiting Payment - Locked Chat Footer */
+        <footer className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md px-4 py-4 pb-6 z-50 border-t border-orange-500/30" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/30 rounded-2xl p-4">
+              <div className="flex items-center justify-center gap-2 text-orange-400 mb-1">
+                <FaLock className="text-sm" />
+                <span className="font-semibold">Chat Locked</span>
+              </div>
+              <p className="text-zinc-400 text-sm">
+                {user?.role === "client" 
+                  ? "Complete payment above to unlock chat and start the project." 
+                  : "Waiting for client to complete payment. Chat will unlock after payment."}
+              </p>
+            </div>
+          </div>
+        </footer>
+      ) : order?.status === "new" && order?.type === "request" ? (
+        /* New Request Order - Waiting for Editor Response */
+        <footer className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md px-4 py-4 pb-6 z-50 border-t border-amber-500/30" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/30 rounded-2xl p-4">
+              <div className="flex items-center justify-center gap-2 text-amber-400 mb-1">
+                <FaLock className="text-sm" />
+                <span className="font-semibold">Awaiting Response</span>
+              </div>
+              <p className="text-zinc-400 text-sm">
+                {user?.role === "client" 
+                  ? "Waiting for editor to accept your request. Chat will unlock once they accept." 
+                  : "Accept or reject this request to proceed."}
+              </p>
             </div>
           </div>
         </footer>

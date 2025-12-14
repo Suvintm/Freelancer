@@ -157,13 +157,19 @@ const orderSchema = new mongoose.Schema(
     refundReason: {
       type: String,
     },
+    
+    // Payment expiry for request orders (auto-cancel if not paid)
+    paymentExpiresAt: {
+      type: Date,
+    },
 
     // Order Status
     status: {
       type: String,
       enum: [
         "pending_payment", // Created but awaiting payment
-        "new",           // Paid, awaiting editor response
+        "new",           // Paid, awaiting editor response (for gig orders)
+        "awaiting_payment", // Editor accepted request, awaiting client payment
         "accepted",      // Editor accepted
         "in_progress",   // Work started
         "submitted",     // Editor submitted final work
@@ -173,6 +179,11 @@ const orderSchema = new mongoose.Schema(
         "disputed",      // Under dispute
       ],
       default: "new",
+    },
+
+    // Cancellation reason
+    cancellationReason: {
+      type: String,
     },
 
     // Dispute info
