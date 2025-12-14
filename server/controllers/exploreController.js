@@ -48,11 +48,17 @@ export const getAllEditors = asyncHandler(async (req, res) => {
   }
 
   // Get all matching profiles with populated user
+  // Only show editors who are verified AND have completed KYC
   let allProfiles = await Profile.find(profileQuery)
     .populate({
       path: "user",
-      match: { role: "editor", profileCompleted: true },
-      select: "name email profilePicture role profileCompleted createdAt",
+      match: { 
+        role: "editor", 
+        profileCompleted: true,
+        isVerified: true,
+        kycStatus: "verified"
+      },
+      select: "name email profilePicture role profileCompleted isVerified kycStatus createdAt",
     })
     .lean();
 

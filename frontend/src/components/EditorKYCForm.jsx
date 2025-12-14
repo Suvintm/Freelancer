@@ -164,10 +164,11 @@ const EditorKYCForm = ({ onSuccess, onClose }) => {
       );
 
       if (res.data.success) {
-        // Update user context
+        // Update user context with actual kycStatus from backend
         setUser((prev) => ({
           ...prev,
-          kycStatus: 'submitted',
+          kycStatus: res.data.kycStatus || 'submitted',
+          profileCompletionPercent: res.data.profileCompletion,
         }));
         onSuccess?.(res.data);
       }
