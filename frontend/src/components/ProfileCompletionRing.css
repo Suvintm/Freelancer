@@ -1,0 +1,301 @@
+/**
+ * ProfileCompletionRing Styles
+ * Premium dark theme with gradients and animations
+ */
+
+.pcr-container {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Ring Wrapper */
+.pcr-ring-wrapper {
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* SVG Ring */
+.pcr-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: rotate(-90deg);
+}
+
+.pcr-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+.pcr-progress {
+  fill: none;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+/* Avatar Container */
+.pcr-avatar {
+  position: relative;
+  z-index: 1;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+/* Dropdown Arrow */
+.pcr-arrow {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  border: 2px solid #0D0D0D;
+}
+
+.pcr-arrow-icon {
+  font-size: 8px;
+  color: white;
+  transition: transform 0.2s ease;
+}
+
+.pcr-arrow-open {
+  transform: rotate(180deg);
+}
+
+/* Percentage Text */
+.pcr-percent-text {
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-top: 0.25rem;
+}
+
+/* Dropdown Panel */
+.pcr-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 320px;
+  background: linear-gradient(145deg, #1a1a1a 0%, #0f0f0f 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 0 1px rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  z-index: 1000;
+}
+
+/* Dropdown Header */
+.pcr-dropdown-header {
+  padding: 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.pcr-dropdown-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.pcr-dropdown-title span:first-child {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.pcr-dropdown-percent {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+/* Progress Bar */
+.pcr-progressbar-bg {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.pcr-progressbar-fill {
+  height: 100%;
+  border-radius: 3px;
+  box-shadow: 0 0 10px currentColor;
+}
+
+/* Status Message */
+.pcr-status-msg {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.pcr-msg-success {
+  color: #10b981;
+}
+
+.pcr-msg-good {
+  color: #10b981;
+}
+
+.pcr-msg-warning {
+  color: #f59e0b;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Checklist */
+.pcr-checklist {
+  padding: 0.5rem;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.pcr-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pcr-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.pcr-item-done {
+  opacity: 0.7;
+}
+
+.pcr-item-pending {
+  opacity: 1;
+}
+
+.pcr-item-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pcr-item-icon {
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.pcr-item-done .pcr-item-icon {
+  color: #10b981;
+}
+
+.pcr-item-label {
+  font-size: 0.85rem;
+  color: #d1d5db;
+}
+
+.pcr-item-done .pcr-item-label {
+  text-decoration: line-through;
+  color: #6b7280;
+}
+
+.pcr-item-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pcr-item-weight {
+  font-size: 0.7rem;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+/* Green Tick */
+.pcr-tick {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+}
+
+.pcr-tick svg {
+  font-size: 10px;
+  color: white;
+}
+
+/* Pending Arrow */
+.pcr-pending {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pcr-pending svg {
+  font-size: 8px;
+  color: #6b7280;
+}
+
+/* Footer */
+.pcr-footer {
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pcr-footer-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, #1463FF 0%, #0d4fcf 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pcr-footer-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(20, 99, 255, 0.4);
+}
+
+/* Scrollbar */
+.pcr-checklist::-webkit-scrollbar {
+  width: 4px;
+}
+
+.pcr-checklist::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pcr-checklist::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .pcr-dropdown {
+    width: 280px;
+    right: -50px;
+  }
+}

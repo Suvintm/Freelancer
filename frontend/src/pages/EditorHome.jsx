@@ -18,6 +18,7 @@ import EditorNavbar from "../components/EditorNavbar.jsx";
 import ExploreEditor from "../components/ExploreEditor.jsx";
 import ExploreGigs from "../components/ExploreGigs.jsx";
 import EditorKYCForm from "../components/EditorKYCForm.jsx";
+import ProfileCompletionBanner from "../components/ProfileCompletionBanner.jsx";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import reelIcon from "../assets/reelicon.png";
@@ -71,32 +72,8 @@ const EditorHome = () => {
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
       <main className="flex-1 px-4 md:px-8 py-6 pt-20 md:pt-6 md:ml-64 md:mt-20">
-        {/* Profile Incomplete Notice */}
-        {!user?.profileCompleted && (
-          <div className="bg-gradient-to-r from-[#151823] to-[#111319] border border-[#262A3B] rounded-2xl p-5 md:p-6 mb-6">
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-              <div className="bg-[#1F2430] p-3 rounded-full">
-                <FaExclamationCircle className="text-[#F97316] text-2xl" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-white font-semibold text-lg md:text-xl">
-                  Complete Your Profile
-                </h3>
-                <p className="text-[#9CA3AF] text-sm mt-1">
-                  Your profile is incomplete. Complete it to appear in{" "}
-                  <span className="font-semibold text-white">Explore Editors</span>{" "}
-                  and get noticed by clients.
-                </p>
-              </div>
-              <button
-                onClick={() => navigate("/editor-profile")}
-                className="bg-[#1463FF] hover:bg-[#275DFF] flex items-center justify-center gap-2 text-white font-medium px-5 py-2.5 rounded-2xl transition-all shadow-[0_12px_30px_rgba(20,99,255,0.55)]"
-              >
-                Complete Profile <FaArrowAltCircleRight />
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Profile Completion Banner */}
+        <ProfileCompletionBanner minPercent={80} />
 
         {/* KYC Banner - Show when not verified */}
         {user?.kycStatus !== "verified" && (

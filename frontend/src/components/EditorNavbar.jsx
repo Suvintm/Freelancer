@@ -4,6 +4,7 @@ import { useSocket } from "../context/SocketContext";
 import logo from "../assets/logo.png";
 import { HiBell, HiBars3 } from "react-icons/hi2";
 import { FaEnvelope } from "react-icons/fa";
+import ProfileCompletionRing from "./ProfileCompletionRing";
 
 const navItems = [
     { path: "/editor-home", label: "Dashboard" },
@@ -85,19 +86,27 @@ const EditorNavbar = ({ onMenuClick }) => {
                             hover:border-[#2A2A2A] hover:bg-[#1A1A1A]
                             transition-all
                         "
-                        onClick={() => navigate("/editor-profile")}
                     >
-                        <img
-                            src={user?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
-                            alt="Profile"
-                            className="
-                                w-12 h-12 lg:w-14 lg:h-14
-                                rounded-full object-cover
-                                border-2 lg:border-[3px] border-[#1463FF]
-                                shadow-[0_0_12px_rgba(20,99,255,0.4)]
-                            "
-                        />
-                        <span className="text-base lg:text-lg font-semibold text-gray-300">
+                        {/* Profile Completion Ring with Dropdown */}
+                        <ProfileCompletionRing 
+                            user={user} 
+                            size={56} 
+                            strokeWidth={3}
+                            showDropdown={true}
+                        >
+                            <img
+                                src={user?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
+                                alt="Profile"
+                                className="
+                                    w-12 h-12 lg:w-12 lg:h-12
+                                    rounded-full object-cover
+                                "
+                            />
+                        </ProfileCompletionRing>
+                        <span 
+                            className="text-base lg:text-lg font-semibold text-gray-300"
+                            onClick={() => navigate("/editor-profile")}
+                        >
                             {user?.name || "User"}
                         </span>
                     </div>

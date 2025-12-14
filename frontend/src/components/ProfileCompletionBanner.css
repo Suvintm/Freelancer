@@ -1,0 +1,146 @@
+/**
+ * ProfileCompletionBanner Styles
+ */
+
+.pcb-banner {
+  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  margin: 1rem;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.pcb-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+}
+
+/* Icon */
+.pcb-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pcb-icon-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.pcb-icon-info {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+/* Text */
+.pcb-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.pcb-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.pcb-desc {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  line-height: 1.4;
+}
+
+.pcb-desc strong {
+  color: #10b981;
+}
+
+/* Action Button */
+.pcb-action {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: linear-gradient(135deg, #1463FF 0%, #0d4fcf 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 0.8rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.pcb-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(20, 99, 255, 0.4);
+}
+
+/* Dismiss Button */
+.pcb-dismiss {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.pcb-dismiss:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ef4444;
+}
+
+/* Progress Bar */
+.pcb-progress-bg {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.pcb-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .pcb-content {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .pcb-text {
+    flex: 1 1 100%;
+    order: 2;
+  }
+
+  .pcb-icon {
+    order: 1;
+  }
+
+  .pcb-action {
+    order: 3;
+    flex: 1;
+  }
+
+  .pcb-dismiss {
+    order: 1;
+    margin-left: auto;
+  }
+}
