@@ -25,6 +25,8 @@ import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
 import PortfolioSection from "../components/PortfolioSection.jsx";
 import GigsSection from "../components/GigsSection.jsx";
+import ProfileCompletionRing from "../components/ProfileCompletionRing.jsx";
+import ProfileCompletionBanner from "../components/ProfileCompletionBanner.jsx";
 
 // ----------------------------------------------
 // Country Code Mapping
@@ -243,6 +245,9 @@ const EditorProfile = () => {
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
       <main className="md:ml-64 pt-16 lg:pt-35 md:pt-20 px-4 md:px-8 pb-10">
+        {/* Profile Completion Banner */}
+        <ProfileCompletionBanner minPercent={80} />
+        
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
@@ -269,29 +274,32 @@ const EditorProfile = () => {
               {/* Avatar + Name */}
               <div className="flex flex-col items-center gap-4">
                 <div className="relative">
-                  {/* Glow outline */}
-                  <div className="absolute -inset-1 rounded-full
-                                  bg-gradient-to-br from-[#1463FF] via-transparent to-[#22C55E]
-                                  opacity-90 blur-md" />
-
-                  <img
-                    src={
-                      profile?.user?.profilePicture ??
-                      "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-                    }
-                    alt="Profile"
-                    className="relative w-28 h-28 md:w-32 md:h-32 rounded-full object-cover
-                               border-[3px] border-white/80
-                               shadow-[0_18px_45px_rgba(0,0,0,0.9)]"
-                  />
+                  {/* Profile Completion Ring around Avatar */}
+                  <ProfileCompletionRing 
+                    user={profile?.user || user} 
+                    size={140} 
+                    strokeWidth={4}
+                    showDropdown={false}
+                    showPercentText={true}
+                  >
+                    <img
+                      src={
+                        profile?.user?.profilePicture ??
+                        "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+                      }
+                      alt="Profile"
+                      className="w-28 h-28 md:w-32 md:h-32 rounded-full object-cover
+                                 border-[3px] border-white/80
+                                 shadow-[0_18px_45px_rgba(0,0,0,0.9)]"
+                    />
+                  </ProfileCompletionRing>
 
                   {/* Verified Badge */}
-                  <div className="absolute -bottom-1 -right-2 w-5 h-5
+                  <div className="absolute bottom-2 right-2 w-8 h-8
                                   bg-gradient-to-br from-[#22C55E] to-[#4ADE80]
-                                  rounded-4xl flex items-center justify-center
-                                  
-                                  border border-emerald-300/70">
-                    <FaCheckCircle className="text-white text-lg" />
+                                  rounded-full flex items-center justify-center
+                                  border-2 border-[#050816] shadow-lg">
+                    <FaCheckCircle className="text-white text-sm" />
                   </div>
                 </div>
 
