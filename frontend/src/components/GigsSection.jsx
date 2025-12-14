@@ -11,6 +11,7 @@ import {
   FaStar,
   FaShoppingCart,
   FaPlay,
+  FaEye,
 } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
@@ -18,7 +19,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 
 /**
- * GigsSection - Displays editor's gigs in a 2-column grid
+ * GigsSection - Displays editor's gigs in a clean grid
  * Used in EditorProfilePages
  */
 const GigsSection = () => {
@@ -90,12 +91,8 @@ const GigsSection = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full"
-        />
-        <span className="ml-3 text-gray-400 text-sm">Loading gigs...</span>
+        <div className="w-6 h-6 border-2 border-zinc-700 border-t-white rounded-full animate-spin" />
+        <span className="ml-3 text-zinc-500 text-sm">Loading gigs...</span>
       </div>
     );
   }
@@ -103,53 +100,51 @@ const GigsSection = () => {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-5">
         <div>
-          <h3 className="text-lg font-semibold text-white">Your Gigs</h3>
-          <p className="text-gray-400 text-sm">{gigs.length} gigs created</p>
+          <h3 className="text-sm font-semibold text-white">Your Gigs</h3>
+          <p className="text-xs text-zinc-500">{gigs.length} gigs created</p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+        <button
           onClick={() => navigate("/create-gig")}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl font-medium text-sm transition-all shadow-lg shadow-blue-500/20"
+          className="flex items-center gap-2 px-4 py-2 bg-white text-black rounded-lg text-xs font-semibold hover:bg-zinc-200 transition-colors"
         >
-          <FaPlus className="text-xs" /> Create Gig
-        </motion.button>
+          <FaPlus className="text-[10px]" /> Create Gig
+        </button>
       </div>
 
       {/* Gigs Grid */}
       {gigs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 bg-[#0B1220] rounded-2xl border border-white/5">
-          <div className="w-16 h-16 rounded-full bg-[#111827] border border-white/10 flex items-center justify-center mb-4">
-            <FaShoppingCart className="text-2xl text-gray-500" />
+        <div className="text-center py-12">
+          <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-zinc-900 flex items-center justify-center">
+            <FaShoppingCart className="text-zinc-600 text-lg" />
           </div>
-          <h4 className="text-white font-medium mb-1">No gigs yet</h4>
-          <p className="text-gray-400 text-sm mb-4">Create your first gig to start getting orders</p>
+          <h4 className="text-sm font-medium text-zinc-400 mb-1">No gigs yet</h4>
+          <p className="text-xs text-zinc-600 mb-3">Create your first gig to start earning</p>
           <button
             onClick={() => navigate("/create-gig")}
-            className="text-blue-400 font-medium hover:underline text-sm"
+            className="text-xs text-blue-400 font-medium hover:underline"
           >
             Create your first gig →
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <AnimatePresence>
             {gigs.map((gig, index) => (
               <motion.div
                 key={gig._id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ delay: index * 0.05 }}
-                className={`bg-[#0B1220] border ${
-                  gig.isActive ? "border-white/10" : "border-red-500/20"
-                } rounded-2xl overflow-hidden hover:border-blue-500/30 transition-all group cursor-pointer`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ delay: index * 0.03 }}
+                className={`relative bg-zinc-900 border ${
+                  gig.isActive ? "border-zinc-800" : "border-red-900/50"
+                } rounded-lg overflow-hidden hover:border-zinc-600 transition-all group cursor-pointer`}
                 onClick={() => navigate("/my-gigs")}
               >
                 {/* Thumbnail */}
-                <div className="relative h-32 bg-[#111827] overflow-hidden">
+                <div className="relative aspect-video bg-zinc-950 overflow-hidden">
                   {gig.thumbnail ? (
                     <img
                       src={gig.thumbnail}
@@ -158,76 +153,76 @@ const GigsSection = () => {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <FaPlay className="text-2xl text-gray-600" />
+                      <FaPlay className="text-lg text-zinc-700" />
                     </div>
                   )}
-                  
-                  {/* Status Badge */}
-                  {!gig.isActive && (
-                    <div className="absolute top-2 right-2 px-2 py-1 bg-red-500/80 text-white text-xs font-medium rounded-lg">
-                      Paused
-                    </div>
-                  )}
-                  
-                  {/* Category */}
-                  <div className="absolute top-2 left-2 px-2 py-1 bg-black/70 text-white text-xs rounded-lg">
-                    {gig.category}
-                  </div>
-                </div>
 
-                {/* Content */}
-                <div className="p-4">
-                  <h4 className="font-semibold text-white text-sm mb-2 line-clamp-1 group-hover:text-blue-400 transition-colors">
-                    {gig.title}
-                  </h4>
-
-                  {/* Stats */}
-                  <div className="flex items-center gap-3 text-xs text-gray-400 mb-3">
-                    <span className="flex items-center gap-1 text-green-400 font-medium">
-                      <FaRupeeSign className="text-[10px]" /> {gig.price}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <FaClock className="text-[10px]" /> {gig.deliveryDays}d
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <FaShoppingCart className="text-[10px]" /> {gig.totalOrders}
-                    </span>
-                    {gig.rating > 0 && (
-                      <span className="flex items-center gap-1 text-yellow-500">
-                        <FaStar className="text-[10px]" /> {gig.rating.toFixed(1)}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 pt-3 border-t border-white/5">
-                    <button
-                      onClick={(e) => handleToggleStatus(gig._id, gig.isActive, e)}
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-all ${
-                        gig.isActive
-                          ? "bg-green-500/20 text-green-400 hover:bg-green-500/30"
-                          : "bg-gray-500/20 text-gray-400 hover:bg-gray-500/30"
-                      }`}
-                    >
-                      {gig.isActive ? <FaToggleOn /> : <FaToggleOff />}
-                      {gig.isActive ? "Active" : "Paused"}
-                    </button>
+                  {/* Overlay on hover */}
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         navigate(`/edit-gig/${gig._id}`);
                       }}
-                      className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all"
+                      className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/30"
                     >
                       <FaEdit className="text-xs" />
                     </button>
                     <button
                       onClick={(e) => handleDelete(gig._id, e)}
-                      className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all"
+                      className="w-8 h-8 bg-red-500/50 rounded-full flex items-center justify-center text-white hover:bg-red-500/70"
                     >
                       <FaTrash className="text-xs" />
                     </button>
                   </div>
+
+                  {/* Status Badge */}
+                  {!gig.isActive && (
+                    <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 bg-red-500 text-white text-[9px] font-medium rounded">
+                      Paused
+                    </div>
+                  )}
+
+                  {/* Price */}
+                  <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-black/70 text-white text-[10px] font-medium rounded flex items-center gap-0.5">
+                    <FaRupeeSign className="text-[8px]" />
+                    {gig.price}
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-2.5">
+                  <h4 className="font-medium text-white text-xs mb-1.5 line-clamp-1 group-hover:text-blue-400 transition-colors">
+                    {gig.title}
+                  </h4>
+
+                  {/* Stats Row */}
+                  <div className="flex items-center gap-2 text-[10px] text-zinc-500">
+                    <span className="flex items-center gap-0.5">
+                      <FaClock className="text-[8px]" /> {gig.deliveryDays}d
+                    </span>
+                    <span className="flex items-center gap-0.5">
+                      <FaShoppingCart className="text-[8px]" /> {gig.totalOrders || 0}
+                    </span>
+                    {gig.rating > 0 && (
+                      <span className="flex items-center gap-0.5 text-amber-500">
+                        <FaStar className="text-[8px]" /> {gig.rating.toFixed(1)}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Toggle Button */}
+                  <button
+                    onClick={(e) => handleToggleStatus(gig._id, gig.isActive, e)}
+                    className={`mt-2 w-full flex items-center justify-center gap-1 py-1.5 rounded text-[10px] font-medium transition-all ${
+                      gig.isActive
+                        ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                        : "bg-zinc-800 text-zinc-500 hover:bg-zinc-700"
+                    }`}
+                  >
+                    {gig.isActive ? <FaToggleOn /> : <FaToggleOff />}
+                    {gig.isActive ? "Active" : "Paused"}
+                  </button>
                 </div>
               </motion.div>
             ))}

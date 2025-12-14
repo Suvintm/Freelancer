@@ -1,6 +1,6 @@
 /**
- * EditorProfilePage - Advanced Professional Redesign
- * Features: Bento grid, glassmorphism, charts, premium styling
+ * EditorProfilePage - Professional Clean Dark Theme
+ * Glass effect header, progress ring, completion banner
  */
 
 import { useEffect, useState } from "react";
@@ -11,7 +11,6 @@ import {
   FaMapMarkerAlt,
   FaAward,
   FaCode,
-  FaLanguage,
   FaBriefcase,
   FaUser,
   FaTimes,
@@ -21,28 +20,19 @@ import {
   FaShoppingCart,
   FaStar,
   FaGlobe,
-  FaLink,
-  FaClock,
-  FaHeart,
   FaEye,
   FaMoneyBillWave,
   FaCalendarAlt,
   FaRocket,
   FaShieldAlt,
+  FaExclamationCircle,
+  FaArrowRight,
 } from "react-icons/fa";
-import { HiCheckBadge, HiSparkles } from "react-icons/hi2";
+import { HiCheckBadge } from "react-icons/hi2";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ReactCountryFlag from "react-country-flag";
-import { 
-  AreaChart, 
-  Area, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts';
 
 import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
@@ -58,51 +48,29 @@ const countryNameToCode = {
   Pakistan: "PK", Bangladesh: "BD", Indonesia: "ID", Malaysia: "MY", Philippines: "PH",
   Thailand: "TH", Vietnam: "VN", SouthKorea: "KR", Russia: "RU", Ukraine: "UA",
   Poland: "PL", Turkey: "TR", Egypt: "EG", Nigeria: "NG", SouthAfrica: "ZA",
-  Kenya: "KE", Ghana: "GH", Argentina: "AR", Chile: "CL", Colombia: "CO",
 };
 
-// Sample chart data
-const performanceData = [
-  { name: 'W1', value: 65 },
-  { name: 'W2', value: 78 },
-  { name: 'W3', value: 85 },
-  { name: 'W4', value: 92 },
-];
-
-const skillDistribution = [
-  { name: 'Video Editing', value: 40, color: '#22C55E' },
-  { name: 'Color Grading', value: 25, color: '#3B82F6' },
-  { name: 'Motion Graphics', value: 20, color: '#A855F7' },
-  { name: 'Sound Design', value: 15, color: '#F59E0B' },
-];
-
-// Animation Variants
-const fadeInUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
-};
-
-const staggerContainer = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.05 },
-  },
+// Progress ring color based on percentage
+const getProgressColor = (percent) => {
+  if (percent >= 80) return '#00c348ff'; // Green
+  if (percent >= 60) return '#61e609ff'; // Blue
+  if (percent >= 40) return '#ffa200ff'; // Amber
+  return '#EF4444'; // Red
 };
 
 const EditorProfile = () => {
   const { user, backendURL } = useAppContext();
   const [profile, setProfile] = useState(null);
-  const [activeTab, setActiveTab] = useState("about");
+  const [activeTab, setActiveTab] = useState("portfolio");
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCert, setSelectedCert] = useState(null);
+  const [completionData, setCompletionData] = useState(null);
   const [searchParams] = useSearchParams();
 
   const navigate = useNavigate();
 
-  // Check URL for tab parameter
   useEffect(() => {
     const tabParam = searchParams.get('tab');
     if (tabParam && ['about', 'portfolio', 'gigs'].includes(tabParam)) {
@@ -110,14 +78,19 @@ const EditorProfile = () => {
     }
   }, [searchParams]);
 
-  // Fetch Profile
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchData = async () => {
       try {
-        const res = await axios.get(`${backendURL}/api/profile`, {
-          headers: { Authorization: `Bearer ${user?.token}` },
-        });
-        setProfile(res.data.profile);
+        const [profileRes, completionRes] = await Promise.all([
+          axios.get(`${backendURL}/api/profile`, {
+            headers: { Authorization: `Bearer ${user?.token}` },
+          }),
+          axios.get(`${backendURL}/api/profile/completion-status`, {
+            headers: { Authorization: `Bearer ${user?.token}` },
+          }),
+        ]);
+        setProfile(profileRes.data.profile);
+        setCompletionData(completionRes.data);
       } catch (error) {
         console.error("Error fetching profile:", error);
       } finally {
@@ -125,24 +98,18 @@ const EditorProfile = () => {
       }
     };
 
-    fetchProfile();
+    fetchData();
   }, [backendURL, user?.token]);
 
-  // Loading Screen
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#030712] flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
-        >
-          <div className="relative w-20 h-20 mx-auto mb-4">
-            <div className="absolute inset-0 rounded-full border-4 border-white/5" />
-            <div className="absolute inset-1 rounded-full border-[3px] border-emerald-500 border-t-transparent animate-spin" />
-            <div className="absolute inset-3 rounded-full border-2 border-blue-500/50 border-b-transparent animate-spin [animation-direction:reverse]" />
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
+          <div className="relative w-16 h-16 mx-auto mb-4">
+            <div className="absolute inset-0 rounded-full border-2 border-zinc-800" />
+            <div className="absolute inset-1 rounded-full border-2 border-white/20 border-t-transparent animate-spin" />
           </div>
-          <p className="text-gray-400 text-sm">Loading profile...</p>
+          <p className="text-zinc-500 text-sm">Loading profile...</p>
         </motion.div>
       </div>
     );
@@ -151,212 +118,248 @@ const EditorProfile = () => {
   const profileData = profile || {};
   const userData = profileData?.user || user || {};
   const isVerified = user?.kycStatus === 'verified' || profileData?.kycVerified;
+  const completionPercent = completionData?.percent || 0;
+  const progressColor = getProgressColor(completionPercent);
 
-  // Tabs config
+  // SVG circle calculations
+  const size = 120;
+  const strokeWidth = 4;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const strokeDashoffset = circumference - (completionPercent / 100) * circumference;
+
   const tabs = [
-    { id: "about", label: "About", icon: FaUser },
     { id: "portfolio", label: "Portfolio", icon: FaImages },
+    { id: "about", label: "About", icon: FaUser },
     { id: "gigs", label: "My Gigs", icon: FaShoppingCart },
   ];
 
-  // Stats data
   const statsData = [
     { label: "Rating", value: profileData?.rating || "5.0", icon: FaStar, color: "#F59E0B" },
-    { label: "Projects", value: profileData?.projectsCompleted || "24", icon: FaBriefcase, color: "#3B82F6" },
-    { label: "Views", value: "1.2K", icon: FaEye, color: "#A855F7" },
+    { label: "Projects", value: profileData?.projectsCompleted || "24", icon: FaBriefcase, color: "#6B7280" },
+    { label: "Views", value: "1.2K", icon: FaEye, color: "#6B7280" },
     { label: "Earnings", value: "₹25K", icon: FaMoneyBillWave, color: "#22C55E" },
   ];
 
   return (
-    <div className="min-h-screen bg-[#030712] text-white">
+    <div className="min-h-screen bg-black text-white">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-      <main className="md:ml-64 pt-20 lg:pt-24 px-3 md:px-6 pb-10">
-        <div className="max-w-7xl mx-auto">
+      <main className="md:ml-64 pt-16 md:pt-20 lg:pt-24 px-3 md:px-6 pb-10">
+        <div className="max-w-5xl mx-auto">
           
-          {/* ==================== HERO SECTION ==================== */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0a0a0c] via-[#0f0f12] to-[#0a0a0c] border border-white/5 mb-6"
-          >
-            {/* Background gradient effects */}
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-blue-500/5" />
-            <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full blur-3xl" />
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-emerald-500/10 to-transparent rounded-full blur-3xl" />
-
-            <div className="relative p-4 md:p-8">
-              <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
-                
-                {/* Profile Image Section */}
-                <div className="flex flex-col items-center lg:items-start gap-4">
-                  <div className="relative group">
-                    {/* Glow ring */}
-                    <div className="absolute -inset-2 bg-gradient-to-r from-emerald-500/30 via-blue-500/30 to-purple-500/30 rounded-full blur-lg opacity-60 group-hover:opacity-100 transition-opacity" />
-                    
-                    {/* Avatar container */}
-                    <div className="relative w-28 h-28 md:w-36 md:h-36 rounded-full p-[3px] bg-gradient-to-r from-emerald-400 via-blue-500 to-purple-500">
-                      <img
-                        src={userData?.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"}
-                        alt="Profile"
-                        className="w-full h-full rounded-full object-cover bg-[#1a1a1a]"
-                      />
-                    </div>
-                    
-                    {/* Verified badge */}
-                    {isVerified && (
-                      <div className="absolute -bottom-1 -right-1 w-9 h-9 bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full flex items-center justify-center border-4 border-[#0a0a0c] shadow-lg shadow-emerald-500/30">
-                        <FaCheckCircle className="text-white text-sm" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Edit button (mobile) */}
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => navigate("/editor-profile-update")}
-                    className="lg:hidden flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-gray-300 hover:bg-white/10 transition-all"
-                  >
-                    <FaEdit className="text-xs" />
-                    Edit Profile
-                  </motion.button>
+          {/* ==================== PROFILE COMPLETION BANNER ==================== */}
+          {completionPercent < 80 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4"
+            >
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                  <FaExclamationCircle className="text-amber-500 text-sm" />
                 </div>
-
-                {/* Profile Info Section */}
-                <div className="flex-1 min-w-0">
-                  {/* Name & Title */}
-                  <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <h1 className="text-2xl md:text-3xl font-bold text-white">
-                      {userData?.name || "Your Name"}
-                    </h1>
-                    <HiCheckBadge className="text-emerald-400 text-2xl" />
-                    {isVerified && (
-                      <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-full border border-emerald-500/30">
-                        VERIFIED
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="text-gray-400 text-sm mb-4">
-                    {userData?.role === "editor" ? "Professional Video Editor" : "Client"} 
-                    {profileData?.experience && ` • ${profileData.experience}`}
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-white">Complete your profile</p>
+                  <p className="text-xs text-zinc-500">
+                    Your profile is {completionPercent}% complete. Reach 80% to get noticed by clients.
                   </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/editor-profile-update')}
+                className="flex items-center gap-2 px-4 py-2 bg-white text-black text-xs font-semibold rounded-lg hover:bg-zinc-200 transition-colors whitespace-nowrap"
+              >
+                Complete Profile <FaArrowRight className="text-[10px]" />
+              </button>
+            </motion.div>
+          )}
 
-                  {/* Quick Info Pills */}
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {profileData.location?.country && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full">
-                        <FaMapMarkerAlt className="text-amber-400 text-xs" />
-                        <ReactCountryFlag
-                          countryCode={countryNameToCode[profileData.location.country] || "IN"}
-                          svg
-                          style={{ width: "1em", height: "1em" }}
+          {/* ==================== PROFILE HEADER WITH GLASS EFFECT ==================== */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative overflow-hidden rounded-4xl mb-5 bg-gradient-to-b from-white via-zinc-950/80 to-white"
+          >
+            {/* Glass Background */}
+            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] via-white/[0.03] to-transparent" />
+            <div className="absolute inset-0 bg-zinc-950/90 backdrop-blur-sm" />
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+            
+            <div className="relative border border-zinc-800/50 rounded-xl">
+              <div className="p-5 md:p-7">
+                <div className="flex flex-col md:flex-row gap-5 items-center md:items-start">
+                  
+                  {/* Avatar with Progress Ring */}
+                  <div className="relative flex-shrink-0">
+                    {/* SVG Progress Ring */}
+                    <svg
+                      className="absolute -top-1 -left-1"
+                      width={size + 8}
+                      height={size + 8}
+                      style={{ transform: 'rotate(-90deg)' }}
+                    >
+                      {/* Background circle */}
+                      <circle
+                        cx={(size + 8) / 2}
+                        cy={(size + 8) / 2}
+                        r={radius + 4}
+                        fill="none"
+                        stroke="rgba(255,255,255,0.08)"
+                        strokeWidth={strokeWidth}
+                      />
+                      {/* Progress circle */}
+                      <circle
+                        cx={(size + 8) / 2}
+                        cy={(size + 8) / 2}
+                        r={radius + 4}
+                        fill="none"
+                        stroke={progressColor}
+                        strokeWidth={strokeWidth}
+                        strokeLinecap="round"
+                        strokeDasharray={circumference + 25}
+                        strokeDashoffset={strokeDashoffset + 12}
+                        className="transition-all duration-700"
+                      />
+                    </svg>
+
+                    {/* Profile Image with White Border */}
+                    <div 
+                      className="relative rounded-full p-[3px] bg-white"
+                      style={{ width: size, height: size }}
+                    >
+                      <div className="w-full h-full rounded-full overflow-hidden bg-zinc-900">
+                        <img
+                          src={userData?.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
                         />
-                        <span className="text-xs text-gray-300">{profileData.location.country}</span>
+                      </div>
+                    </div>
+
+                    {/* Verified Badge */}
+                    {isVerified && (
+                      <div className="absolute bottom-1 right-1 w-7 h-7 bg-emerald-600 rounded-full flex items-center justify-center border-2 border-black z-10">
+                        <FaCheckCircle className="text-white text-xs" />
                       </div>
                     )}
-                    {profileData.contactEmail && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full">
-                        <FaEnvelope className="text-blue-400 text-xs" />
-                        <span className="text-xs text-gray-300 truncate max-w-[150px]">{profileData.contactEmail}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full">
-                      <FaCalendarAlt className="text-purple-400 text-xs" />
-                      <span className="text-xs text-gray-300">Member since 2024</span>
+
+                    {/* Percentage Label */}
+                    <div 
+                      className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded text-[10px] font-bold text-white"
+                      style={{ backgroundColor: progressColor }}
+                    >
+                      {completionPercent}%
                     </div>
                   </div>
 
-                  {/* Stats Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-                    {statsData.map((stat, i) => (
-                      <motion.div
-                        key={stat.label}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="bg-white/[0.03] border border-white/5 rounded-xl p-3 hover:bg-white/[0.05] transition-all"
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <stat.icon className="text-xs" style={{ color: stat.color }} />
-                          <span className="text-[10px] text-gray-500 uppercase tracking-wider">{stat.label}</span>
-                        </div>
-                        <p className="text-lg font-bold text-white">{stat.value}</p>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
+                  {/* Info */}
+                  <div className="flex-1 text-center md:text-left min-w-0">
+                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-1">
+                      <h1 className="text-xl md:text-2xl font-semibold text-white">
+                        {userData?.name || "Your Name"}
+                      </h1>
+                      {isVerified && (
+                        <>
+                          <HiCheckBadge className="text-emerald-500 text-xl" />
+                          <span className="px-2 py-0.5 bg-emerald-900/50 text-emerald-400 text-[10px] font-medium rounded">
+                            VERIFIED
+                          </span>
+                        </>
+                      )}
+                    </div>
 
-                {/* Right Section - Edit & Performance */}
-                <div className="hidden lg:flex flex-col gap-3 w-48">
+                    <p className="text-zinc-500 text-sm mb-3">
+                      {userData?.role === "editor" ? "Professional Video Editor" : "Client"} 
+                      {profileData?.experience && ` • ${profileData.experience}`}
+                    </p>
+
+                    {/* Info Tags */}
+                    <div className="flex flex-wrap justify-center md:justify-start gap-2">
+                      {profileData.location?.country && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900/80 border border-zinc-800 rounded text-zinc-400 text-xs">
+                          <FaMapMarkerAlt className="text-[10px]" />
+                          <ReactCountryFlag
+                            countryCode={countryNameToCode[profileData.location.country] || "IN"}
+                            svg
+                            style={{ width: "12px", height: "12px" }}
+                          />
+                          <span>{profileData.location.country}</span>
+                        </div>
+                      )}
+                      {profileData.contactEmail && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900/80 border border-zinc-800 rounded text-zinc-400 text-xs">
+                          <FaEnvelope className="text-[10px]" />
+                          <span className="truncate max-w-[120px] md:max-w-[160px]">{profileData.contactEmail}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900/80 border border-zinc-800 rounded text-zinc-400 text-xs">
+                        <FaCalendarAlt className="text-[10px]" />
+                        <span>Member since 2024</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Edit Button */}
                   <motion.button
-                    whileHover={{ scale: 1.02, y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => navigate("/editor-profile-update")}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all"
+                    className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-white text-black text-sm font-semibold rounded-lg hover:bg-zinc-200 transition-colors"
                   >
                     <FaEdit className="text-xs" />
                     Edit Profile
                   </motion.button>
-
-                  {/* Mini Performance Chart */}
-                  <div className="bg-white/[0.03] border border-white/5 rounded-xl p-3">
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Performance</p>
-                    <div className="h-14">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={performanceData}>
-                          <defs>
-                            <linearGradient id="perfGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#22C55E" stopOpacity={0.3}/>
-                              <stop offset="95%" stopColor="#22C55E" stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
-                          <Area type="monotone" dataKey="value" stroke="#22C55E" strokeWidth={2} fill="url(#perfGrad)" />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <p className="text-xs text-emerald-400 font-semibold">+28% this month</p>
-                  </div>
                 </div>
+
+                {/* Stats Row */}
+                <div className="grid grid-cols-4 gap-2 md:gap-4 mt-5 pt-5 border-t border-zinc-800/50">
+                  {statsData.map((stat) => (
+                    <div key={stat.label} className="text-center">
+                      <div className="flex items-center justify-center gap-1 md:gap-1.5 mb-0.5">
+                        <stat.icon className="text-[10px] md:text-xs" style={{ color: stat.color }} />
+                        <span className="text-base md:text-lg font-semibold text-white">{stat.value}</span>
+                      </div>
+                      <p className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-wide">{stat.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Mobile Edit Button */}
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => navigate("/editor-profile-update")}
+                  className="md:hidden w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-black text-sm font-semibold rounded-lg"
+                >
+                  <FaEdit className="text-xs" />
+                  Edit Profile
+                </motion.button>
               </div>
             </div>
           </motion.div>
 
-          {/* ==================== TABS SECTION ==================== */}
-          <div className="mb-6">
-            <div className="flex items-center justify-center">
-              <div className="inline-flex p-1 bg-[#0a0a0c] border border-white/5 rounded-2xl">
-                {tabs.map((tab) => {
-                  const isActive = activeTab === tab.id;
-                  return (
-                    <motion.button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className={`
-                        relative px-5 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center gap-2
-                        ${isActive 
-                          ? "text-white bg-white/[0.08]" 
-                          : "text-gray-500 hover:text-gray-300"
-                        }
-                      `}
-                    >
-                      <tab.icon className={`text-sm ${isActive ? 'text-blue-400' : ''}`} />
-                      {tab.label}
-                      {isActive && (
-                        <motion.div
-                          layoutId="profileActiveTab"
-                          className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-blue-500 rounded-full"
-                          transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
-                        />
-                      )}
-                    </motion.button>
-                  );
-                })}
-              </div>
+          {/* ==================== TABS ==================== */}
+          <div className="flex justify-center mb-5">
+            <div className="inline-flex bg-zinc-950 border border-zinc-800/50 rounded-lg p-1">
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`
+                      px-3 md:px-4 py-2 rounded-md text-xs md:text-sm font-medium transition-all flex items-center gap-1.5
+                      ${isActive 
+                        ? "bg-white text-black" 
+                        : "text-zinc-500 hover:text-zinc-300"
+                      }
+                    `}
+                  >
+                    <tab.icon className="text-[10px] md:text-xs" />
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -366,242 +369,194 @@ const EditorProfile = () => {
             {activeTab === "about" && (
               <motion.div
                 key="about"
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.2 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.15 }}
               >
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   
-                  {/* Left Column - Main Content */}
-                  <div className="lg:col-span-2 space-y-4 md:space-y-6">
+                  {/* Main Content */}
+                  <div className="lg:col-span-2 space-y-4">
                     
                     {/* About Me */}
                     {profileData.about && (
-                      <motion.div
-                        variants={fadeInUp}
-                        initial="hidden"
-                        animate="visible"
-                        className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-5 md:p-6"
-                      >
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                            <FaUser className="text-blue-400 text-sm" />
+                      <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5">
+                        <div className="flex items-center gap-2.5 mb-3">
+                          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                            <FaUser className="text-zinc-400 text-xs" />
                           </div>
-                          <h3 className="text-lg font-semibold text-white">About Me</h3>
+                          <h3 className="text-sm font-semibold text-white">About</h3>
                         </div>
-                        <p className="text-gray-400 text-sm leading-relaxed">
+                        <p className="text-zinc-400 text-sm leading-relaxed">
                           {profileData.about}
                         </p>
-                      </motion.div>
+                      </div>
                     )}
 
                     {/* Skills */}
                     {profileData.skills?.length > 0 && (
-                      <motion.div
-                        variants={fadeInUp}
-                        initial="hidden"
-                        animate="visible"
-                        transition={{ delay: 0.1 }}
-                        className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-5 md:p-6"
-                      >
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                            <FaCode className="text-emerald-400 text-sm" />
+                      <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5">
+                        <div className="flex items-center gap-2.5 mb-3">
+                          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                            <FaCode className="text-zinc-400 text-xs" />
                           </div>
-                          <h3 className="text-lg font-semibold text-white">Skills & Expertise</h3>
+                          <h3 className="text-sm font-semibold text-white">Skills</h3>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {profileData.skills.map((skill, i) => (
-                            <motion.span
+                            <span
                               key={i}
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ delay: i * 0.03 }}
-                              className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-gray-300 hover:bg-white/10 hover:border-emerald-500/30 transition-all cursor-default"
+                              className="px-2.5 py-1 bg-zinc-900 border border-zinc-800 rounded text-xs text-zinc-300"
                             >
                               {skill}
-                            </motion.span>
+                            </span>
                           ))}
                         </div>
-                      </motion.div>
+                      </div>
                     )}
 
                     {/* Languages */}
                     {profileData.languages?.length > 0 && (
-                      <motion.div
-                        variants={fadeInUp}
-                        initial="hidden"
-                        animate="visible"
-                        transition={{ delay: 0.15 }}
-                        className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-5 md:p-6"
-                      >
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                            <FaGlobe className="text-purple-400 text-sm" />
+                      <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5">
+                        <div className="flex items-center gap-2.5 mb-3">
+                          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                            <FaGlobe className="text-zinc-400 text-xs" />
                           </div>
-                          <h3 className="text-lg font-semibold text-white">Languages</h3>
+                          <h3 className="text-sm font-semibold text-white">Languages</h3>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {profileData.languages.map((lang, i) => (
                             <span
                               key={i}
-                              className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-gray-300"
+                              className="px-2.5 py-1 bg-zinc-900 border border-zinc-800 rounded text-xs text-zinc-300"
                             >
                               {lang}
                             </span>
                           ))}
                         </div>
-                      </motion.div>
+                      </div>
                     )}
 
                     {/* Certifications */}
                     {profileData.certifications?.length > 0 && (
-                      <motion.div
-                        variants={fadeInUp}
-                        initial="hidden"
-                        animate="visible"
-                        transition={{ delay: 0.2 }}
-                        className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-5 md:p-6"
-                      >
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                            <FaAward className="text-amber-400 text-sm" />
+                      <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5">
+                        <div className="flex items-center gap-2.5 mb-3">
+                          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                            <FaAward className="text-zinc-400 text-xs" />
                           </div>
-                          <h3 className="text-lg font-semibold text-white">Certifications</h3>
+                          <h3 className="text-sm font-semibold text-white">Certifications</h3>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                           {profileData.certifications.map((cert, i) => (
                             cert.image && (
-                              <motion.div
+                              <div
                                 key={i}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: i * 0.05 }}
                                 onClick={() => { setSelectedCert(cert); setModalOpen(true); }}
-                                className="relative overflow-hidden rounded-xl border border-white/10 cursor-pointer group hover:border-amber-500/30 transition-all"
+                                className="relative overflow-hidden rounded-lg border border-zinc-800 cursor-pointer hover:border-zinc-600 transition-colors"
                               >
                                 <img
                                   src={cert.image}
                                   alt={cert.name || "Certificate"}
-                                  className="w-full h-32 object-cover"
+                                  className="w-full h-20 object-cover"
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-3">
-                                  <span className="text-xs text-white font-medium truncate">
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-2">
+                                  <span className="text-[10px] text-white font-medium truncate">
                                     {cert.name || "Certificate"}
                                   </span>
                                 </div>
-                                <div className="absolute inset-0 bg-amber-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                              </motion.div>
+                              </div>
                             )
                           ))}
                         </div>
-                      </motion.div>
+                      </div>
                     )}
                   </div>
 
-                  {/* Right Column - Sidebar */}
+                  {/* Sidebar */}
                   <div className="space-y-4">
                     
-                    {/* Skill Distribution */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 }}
-                      className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-5"
-                    >
-                      <h4 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-                        <HiSparkles className="text-amber-400" />
-                        Skill Distribution
-                      </h4>
-                      <div className="h-32">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={skillDistribution}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={30}
-                              outerRadius={50}
-                              paddingAngle={3}
-                              dataKey="value"
-                            >
-                              {skillDistribution.map((entry, index) => (
-                                <Cell key={index} fill={entry.color} />
-                              ))}
-                            </Pie>
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                      <div className="space-y-2 mt-3">
-                        {skillDistribution.map((item) => (
-                          <div key={item.name} className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                              <span className="text-gray-400">{item.name}</span>
-                            </div>
-                            <span className="text-gray-300 font-medium">{item.value}%</span>
-                          </div>
-                        ))}
-                      </div>
-                    </motion.div>
-
                     {/* Quick Links */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.15 }}
-                      className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-5"
-                    >
+                    <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4">
                       <h4 className="text-sm font-semibold text-white mb-3">Quick Links</h4>
                       <div className="space-y-2">
                         {[
-                          { label: 'View Analytics', icon: FaRocket, path: '/editor-analytics', color: '#3B82F6' },
-                          { label: 'KYC Details', icon: FaShieldAlt, path: '/kyc-details', color: '#22C55E' },
-                          { label: 'Payments', icon: FaMoneyBillWave, path: '/payments', color: '#F59E0B' },
+                          { label: 'Analytics', icon: FaRocket, path: '/editor-analytics' },
+                          { label: 'KYC Details', icon: FaShieldAlt, path: '/kyc-details' },
+                          { label: 'Payments', icon: FaMoneyBillWave, path: '/payments' },
                         ].map((link) => (
                           <button
                             key={link.label}
                             onClick={() => navigate(link.path)}
-                            className="w-full flex items-center justify-between p-3 bg-white/[0.02] border border-white/5 rounded-xl hover:bg-white/[0.05] transition-all group"
+                            className="w-full flex items-center justify-between p-2.5 bg-zinc-900 border border-zinc-800 rounded-lg hover:bg-zinc-800 transition-colors group"
                           >
-                            <div className="flex items-center gap-3">
-                              <link.icon className="text-sm" style={{ color: link.color }} />
-                              <span className="text-xs text-gray-300">{link.label}</span>
+                            <div className="flex items-center gap-2.5">
+                              <link.icon className="text-xs text-zinc-500" />
+                              <span className="text-xs text-zinc-300">{link.label}</span>
                             </div>
-                            <FaChevronRight className="text-[10px] text-gray-600 group-hover:text-gray-400 transition-colors" />
+                            <FaChevronRight className="text-[10px] text-zinc-600 group-hover:text-zinc-400" />
                           </button>
                         ))}
                       </div>
-                    </motion.div>
+                    </div>
 
-                    {/* Achievements */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                      className="bg-gradient-to-br from-amber-500/5 to-orange-500/5 border border-amber-500/10 rounded-2xl p-5"
-                    >
-                      <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                        <FaAward className="text-amber-400" />
-                        Achievements
-                      </h4>
+                    {/* Badges */}
+                    <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4">
+                      <h4 className="text-sm font-semibold text-white mb-3">Badges</h4>
                       <div className="flex flex-wrap gap-2">
                         {[
-                          { icon: FaStar, label: 'Top Rated', color: '#F59E0B' },
-                          { icon: FaRocket, label: 'Fast Delivery', color: '#3B82F6' },
-                          { icon: FaHeart, label: '100% Positive', color: '#EF4444' },
+                          { icon: FaStar, label: 'Top Rated', active: true },
+                          { icon: FaRocket, label: 'Fast Delivery', active: true },
+                          { icon: FaCheckCircle, label: 'Verified', active: isVerified },
                         ].map((badge) => (
                           <div
                             key={badge.label}
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-black/30 rounded-full border border-white/5"
+                            className={`flex items-center gap-1.5 px-2 py-1 rounded border text-[10px] ${
+                              badge.active 
+                                ? 'bg-zinc-900 border-zinc-700 text-zinc-300'
+                                : 'bg-zinc-950 border-zinc-800 text-zinc-600'
+                            }`}
                           >
-                            <badge.icon className="text-[10px]" style={{ color: badge.color }} />
-                            <span className="text-[10px] text-gray-300">{badge.label}</span>
+                            <badge.icon className="text-[9px]" />
+                            <span>{badge.label}</span>
                           </div>
                         ))}
                       </div>
-                    </motion.div>
+                    </div>
+
+                    {/* Performance */}
+                    <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4">
+                      <h4 className="text-sm font-semibold text-white mb-3">Performance</h4>
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-[10px] text-zinc-500">Response Rate</span>
+                            <span className="text-[10px] text-white font-medium">98%</span>
+                          </div>
+                          <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-600 rounded-full" style={{ width: '98%' }} />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-[10px] text-zinc-500">On-time Delivery</span>
+                            <span className="text-[10px] text-white font-medium">95%</span>
+                          </div>
+                          <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-600 rounded-full" style={{ width: '95%' }} />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-[10px] text-zinc-500">Completion Rate</span>
+                            <span className="text-[10px] text-white font-medium">100%</span>
+                          </div>
+                          <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-600 rounded-full" style={{ width: '100%' }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -611,11 +566,11 @@ const EditorProfile = () => {
             {activeTab === "portfolio" && (
               <motion.div
                 key="portfolio"
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.2 }}
-                className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-4 md:p-6"
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.15 }}
+                className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5"
               >
                 <PortfolioSection editorId={userData?._id} isOwnProfile={true} />
               </motion.div>
@@ -625,11 +580,11 @@ const EditorProfile = () => {
             {activeTab === "gigs" && (
               <motion.div
                 key="gigs"
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.2 }}
-                className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-4 md:p-6"
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.15 }}
+                className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5"
               >
                 <GigsSection />
               </motion.div>
@@ -645,30 +600,30 @@ const EditorProfile = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
             onClick={() => setModalOpen(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative max-w-3xl w-full bg-[#0a0a0c] border border-white/10 rounded-2xl overflow-hidden"
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative max-w-3xl w-full bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <button
                 onClick={() => setModalOpen(false)}
-                className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 transition-all z-10"
+                className="absolute top-3 right-3 w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-white transition-colors z-10"
               >
-                <FaTimes />
+                <FaTimes className="text-sm" />
               </button>
               <img
                 src={selectedCert.image}
                 alt={selectedCert.name}
-                className="w-full max-h-[70vh] object-contain"
+                className="w-full max-h-[70vh] object-contain bg-black"
               />
               {selectedCert.name && (
-                <div className="p-4 border-t border-white/10">
-                  <h3 className="text-lg font-semibold text-white">{selectedCert.name}</h3>
+                <div className="p-4 border-t border-zinc-800">
+                  <h3 className="text-sm font-medium text-white">{selectedCert.name}</h3>
                 </div>
               )}
             </motion.div>

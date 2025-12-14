@@ -658,7 +658,7 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
 
             {/* Right Side Actions */}
             <div className="absolute right-4 bottom-32 flex flex-col gap-4">
-              {/* Mute Button */}
+              {/* Mute Button (always show for videos) */}
               {currentIsVideo && (
                 <motion.button
                   whileHover={{ scale: 1.1 }}
@@ -670,23 +670,51 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
                 </motion.button>
               )}
 
-              {/* Like Button */}
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white"
-              >
-                <FaHeart />
-              </motion.button>
+              {/* Social Icons - Only show if published to reels */}
+              {portfolio.isPublished && (
+                <>
+                  {/* Views */}
+                  <div className="flex flex-col items-center text-white">
+                    <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center">
+                      <FaEye />
+                    </div>
+                    <span className="text-xs mt-1">{portfolio.viewsCount || 0}</span>
+                  </div>
 
-              {/* Share Button */}
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white"
-              >
-                <FaShare />
-              </motion.button>
+                  {/* Like Button */}
+                  <div className="flex flex-col items-center text-white">
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center"
+                    >
+                      <FaHeart />
+                    </motion.button>
+                    <span className="text-xs mt-1">{portfolio.likesCount || 0}</span>
+                  </div>
+
+                  {/* Comment Button */}
+                  <div className="flex flex-col items-center text-white">
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center"
+                    >
+                      <FaComment />
+                    </motion.button>
+                    <span className="text-xs mt-1">{portfolio.commentsCount || 0}</span>
+                  </div>
+
+                  {/* Share Button */}
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white"
+                  >
+                    <FaShare />
+                  </motion.button>
+                </>
+              )}
             </div>
 
             {/* Bottom Info */}
@@ -739,23 +767,16 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
 
   return (
     <div>
-      {/* Add Button */}
       {/* Add Button - Only show if NOT public */}
       {!isPublic && (
         <motion.button
-          whileHover={{ scale: 1.02, y: -2, boxShadow: "0 20px 40px -10px rgba(34, 197, 94, 0.4)" }}
+          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl font-semibold shadow-lg"
+          className="flex items-center gap-3 px-5 py-2.5 bg-white text-black rounded-lg text-sm font-semibold hover:bg-zinc-200 transition-colors"
         >
-          <motion.div
-            animate={{ rotate: [0, 90, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center"
-          >
-            <FaPlus className="text-sm" />
-          </motion.div>
-          Add New Portfolio
+          <FaPlus className="text-xs" />
+          Add Portfolio
         </motion.button>
       )}
 
@@ -962,37 +983,107 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
         )}
       </AnimatePresence>
 
-      {/* Portfolio Grid */}
-      <div className="mt-8">
+      {/* Instagram-Style Portfolio Grid */}
+      <div className="mt-6">
         {fetchingPortfolios ? (
-          <div className="flex justify-center py-20">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-              className="w-12 h-12 border-4 border-green-200 border-t-green-500 rounded-full"
-            />
+          <div className="flex justify-center py-16">
+            <div className="w-8 h-8 border-2 border-zinc-700 border-t-white rounded-full animate-spin" />
           </div>
         ) : portfolios.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-            {portfolios.map((p, i) => (
-              <PremiumCard key={p._id} portfolio={p} index={i} />
-            ))}
+          <div className="grid grid-cols-3 gap-1">
+            {portfolios.map((p, i) => {
+              const coverClip = p.editedClip || p.originalClips?.[0] || p.originalClip;
+              const coverIsVideo = isVideo(coverClip);
+              const isReel = p.isPublished;
+              
+              return (
+                <motion.div
+                  key={p._id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: i * 0.03 }}
+                  onClick={() => openReelsPopup(p)}
+                  className="relative aspect-square bg-zinc-900 cursor-pointer group overflow-hidden"
+                >
+                  {/* Thumbnail */}
+                  {coverIsVideo ? (
+                    <video
+                      src={coverClip}
+                      className="w-full h-full object-cover"
+                      muted
+                    />
+                  ) : (
+                    <img
+                      src={coverClip}
+                      alt={p.title}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                  
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                    {isReel && (
+                      <>
+                        <div className="flex items-center gap-1 text-white text-sm font-semibold">
+                          <FaHeart />
+                          <span>{p.likesCount || 0}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-white text-sm font-semibold">
+                          <FaComment />
+                          <span>{p.commentsCount || 0}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  
+                  {/* Reel Icon & Views (if published) */}
+                  {isReel && (
+                    <div className="absolute top-2 right-2 flex items-center gap-1 text-white text-xs">
+                      <FaPlay className="text-[10px]" />
+                      <span>{p.viewsCount || 0}</span>
+                    </div>
+                  )}
+                  
+                  {/* Multiple clips indicator */}
+                  {(p.originalClips?.length > 1 || (p.originalClip && p.editedClip)) && (
+                    <div className="absolute top-2 left-2">
+                      <FaFilm className="text-white text-sm drop-shadow-lg" />
+                    </div>
+                  )}
+                  
+                  {/* Delete button on hover (if owner) */}
+                  {!isPublic && (
+                    <button
+                      onClick={(e) => confirmDelete(p._id, e)}
+                      className="absolute bottom-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                    >
+                      <FaTrash className="text-[10px]" />
+                    </button>
+                  )}
+                </motion.div>
+              );
+            })}
           </div>
         ) : (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20 bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl border-2 border-dashed border-green-200">
-            <Icon3D icon={FaFilm} color="text-green-500" size="text-5xl" />
-            <h3 className="text-xl font-bold text-gray-700 mt-4 mb-2">
-              {isPublic ? "Editor has not posted any portfolio" : "No portfolios yet"}
+          <div className="text-center py-16">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-zinc-900 flex items-center justify-center">
+              <FaFilm className="text-zinc-600 text-xl" />
+            </div>
+            <h3 className="text-sm font-medium text-zinc-400 mb-1">
+              {isPublic ? "No portfolio yet" : "No portfolios yet"}
             </h3>
             {!isPublic && (
               <>
-                <p className="text-gray-500 mb-6">Showcase your amazing work</p>
-                <motion.button whileHover={{ scale: 1.05 }} onClick={() => setShowForm(true)} className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg">
-                  Add Your First Portfolio
-                </motion.button>
+                <p className="text-xs text-zinc-600 mb-4">Showcase your work</p>
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="px-4 py-2 bg-white text-black text-xs font-semibold rounded-lg hover:bg-zinc-200 transition-colors"
+                >
+                  Add Portfolio
+                </button>
               </>
             )}
-          </motion.div>
+          </div>
         )}
       </div>
 
