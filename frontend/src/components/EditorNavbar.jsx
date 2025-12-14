@@ -31,7 +31,7 @@ const EditorNavbar = ({ onMenuClick }) => {
                 hidden md:flex fixed top-0 left-64 right-0 
                 h-20 lg:h-20 px-10 lg:px-14 
                 items-center justify-between z-40
-                bg-[#0D0D0D]/80 backdrop-blur-xl
+                bg-black backdrop-blur-xl
                 border-b border-[#1F1F1F]
                 shadow-[0_10px_30px_rgba(0,0,0,0.7)]
             ">
@@ -117,7 +117,7 @@ const EditorNavbar = ({ onMenuClick }) => {
             <div className="
                 md:hidden flex justify-between items-center sticky top-0 z-40
                 px-4 py-3
-                bg-[#0D0D0D]/90 backdrop-blur-xl
+                bg-black backdrop-blur-xl
                 border-b border-[#1F1F1F]
                 shadow-[0_8px_25px_rgba(0,0,0,0.8)]
             ">

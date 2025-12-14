@@ -8,6 +8,7 @@ import {
   FaShoppingCart,
   FaClipboardList,
   FaWallet,
+  FaUniversity,
 } from "react-icons/fa";
 import { motion } from "framer-motion";
 import logo from "../assets/logo.png";
@@ -19,6 +20,7 @@ const navItems = [
   { path: "/my-gigs", icon: FaShoppingCart, label: "My Gigs" },
   { path: "/my-orders", icon: FaClipboardList, label: "My Orders" },
   { path: "/payments", icon: FaWallet, label: "Payments" },
+  { path: "/kyc-details", icon: FaUniversity, label: "KYC Details" },
   { path: "/editor-profile", icon: FaUserTie, label: "Profile" },
   { path: "/chats", icon: FaEnvelope, label: "Messages" },
 ];

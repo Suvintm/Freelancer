@@ -8,34 +8,35 @@ import { uploadLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 
-// ============ PUBLIC ROUTE ============
-// Fetch any user's profile by ID (for Explore -> View Profile)
-router.get("/:userId", userIdValidator, getProfile);
-
 // ============ PROTECTED ROUTES ============
-router.use(authMiddleware);
+// These routes require authentication
 
 // Get profile completion status (calculated from DB)
-router.get("/completion-status", getProfileCompletionStatus);
+router.get("/completion-status", authMiddleware, getProfileCompletionStatus);
 
-// Get logged-in user's profile
-router.get("/", getProfile);
+// Get KYC status
+router.get("/kyc-status", authMiddleware, getKYCStatus);
+
+// Submit KYC details
+router.post("/submit-kyc", authMiddleware, submitKYC);
+
+// Get logged-in user's own profile (this is what frontend calls)
+router.get("/", authMiddleware, getProfile);
+router.get("/me", authMiddleware, getProfile);
 
 // Update profile (supports uploading certification images)
 router.put(
   "/",
+  authMiddleware,
   uploadLimiter,
   upload.fields([{ name: "certifications", maxCount: 5 }]),
   updateProfileValidator,
   updateProfile
 );
 
-// ============ KYC ROUTES ============
-// Get KYC status
-router.get("/kyc-status", getKYCStatus);
-
-// Submit KYC details
-router.post("/submit-kyc", submitKYC);
+// ============ PUBLIC ROUTE ============
+// Fetch any user's profile by ID (for Explore -> View Profile)
+// This must be LAST to avoid matching other routes as userId
+router.get("/:userId", userIdValidator, getProfile);
 
 export default router;
-

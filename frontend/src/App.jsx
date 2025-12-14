@@ -35,6 +35,7 @@ import EditorAnalytics from "./pages/EditorAnalytics.jsx";
 import ClientAnalytics from "./pages/ClientAnalytics.jsx";
 import PaymentsPage from "./pages/PaymentsPage.jsx";
 import PaymentSuccess from "./pages/PaymentSuccess.jsx";
+import KYCDetailsPage from "./pages/KYCDetailsPage.jsx";
 
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
@@ -153,6 +154,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["editor"]}>
               <EditorProfileUpdate />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/kyc-details"
+          element={
+            <ProtectedRoute allowedRoles={["editor"]}>
+              <KYCDetailsPage />
             </ProtectedRoute>
           }
         />

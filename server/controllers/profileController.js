@@ -210,47 +210,63 @@ export const getProfileCompletionStatus = asyncHandler(async (req, res) => {
   const portfolioCount = await Portfolio.countDocuments({ user: userId });
   
   // Define completion items with weights
+  // REQUIRED fields contribute to the 80% minimum
+  // OPTIONAL fields are nice-to-have for 100%
   const items = [
     {
       id: "profilePicture",
       label: "Profile Photo",
       weight: 10,
+      required: true,
+      section: "basic",
       complete: user?.profilePicture && !user.profilePicture.includes("flaticon"),
     },
     {
       id: "about",
-      label: "Bio (50+ chars)",
+      label: "Professional Bio",
       weight: 15,
+      required: true,
+      section: "about",
       complete: profile?.about && profile.about.length >= 50,
     },
     {
       id: "skills",
       label: "Skills (3+)",
       weight: 15,
+      required: true,
+      section: "skills",
       complete: profile?.skills && profile.skills.length >= 3,
     },
     {
       id: "portfolio",
       label: "Portfolio (2+)",
       weight: 15,
+      required: true,
+      section: "portfolio",
       complete: portfolioCount >= 2,
     },
     {
       id: "experience",
       label: "Experience",
       weight: 10,
+      required: false,
+      section: "experience",
       complete: profile?.experience && profile.experience.length > 0,
     },
     {
       id: "languages",
-      label: "Languages (1+)",
+      label: "Languages",
       weight: 5,
+      required: false,
+      section: "languages",
       complete: profile?.languages && profile.languages.length >= 1,
     },
     {
       id: "socialLinks",
-      label: "Social Links (2+)",
+      label: "Social Links",
       weight: 10,
+      required: false,
+      section: "social",
       complete: (() => {
         if (!profile?.socialLinks) return false;
         const links = Object.values(profile.socialLinks).filter(v => v && v.trim().length > 0);
@@ -259,41 +275,52 @@ export const getProfileCompletionStatus = asyncHandler(async (req, res) => {
     },
     {
       id: "kycVerified",
-      label: "Bank Account (KYC)",
+      label: "Bank Account",
       weight: 15,
+      required: true,
+      section: "kyc",
       complete: user?.kycStatus === "verified",
     },
     {
       id: "hourlyRate",
       label: "Hourly Rate",
       weight: 5,
+      required: false,
+      section: "rate",
       complete: profile?.hourlyRate && profile.hourlyRate.min > 0,
     },
   ];
   
-  // Calculate percentage
-  const percent = items.reduce((acc, item) => acc + (item.complete ? item.weight : 0), 0);
+  // Calculate percentage from REQUIRED items only (5 items @ 20% each = 100%)
+  const requiredItems = items.filter(i => i.required);
+  const optionalItems = items.filter(i => !i.required);
+  const percent = requiredItems.reduce((acc, item) => acc + (item.complete ? 20 : 0), 0);
+  const optionalComplete = optionalItems.filter(i => i.complete).length;
   
   // Update user's profileCompletionPercent in database
   await User.findByIdAndUpdate(userId, { 
     profileCompletionPercent: percent,
-    profileCompleted: percent >= 80,
+    profileCompleted: percent >= 100,
   });
   
   res.status(200).json({
     success: true,
     percent,
+    requiredCount: requiredItems.length,
+    requiredComplete: requiredItems.filter(i => i.complete).length,
+    optionalCount: optionalItems.length,
+    optionalComplete,
     breakdown: items.map(item => ({
       id: item.id,
       label: item.label,
-      weight: item.weight,
+      weight: item.required ? 20 : 0,
+      required: item.required,
+      section: item.section,
       complete: item.complete,
     })),
     message: percent >= 100 
-      ? "Profile complete! Maximum engagement unlocked."
-      : percent >= 80 
-        ? "Great progress! Complete 100% for maximum engagement."
-        : "Complete at least 80% to get noticed by clients.",
+      ? "Profile complete! You're all set to receive orders."
+      : `Complete ${requiredItems.length - requiredItems.filter(i => i.complete).length} more required field(s)`,
   });
 });
 

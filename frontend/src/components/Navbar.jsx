@@ -19,7 +19,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="w-full bg-white shadow-md px-4 md:px-12 py-4 flex justify-between items-center">
+    <nav className="w-full bg-black shadow-md px-4 md:px-12 py-4 flex justify-between items-center">
       <div className="flex gap-2 items-center justify-center">
         <img src={logo} className="w-10 h-10" alt="" />
         <h1

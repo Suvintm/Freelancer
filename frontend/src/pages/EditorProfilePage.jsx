@@ -1,3 +1,8 @@
+/**
+ * EditorProfilePage - Advanced Professional Redesign
+ * Features: Bento grid, glassmorphism, charts, premium styling
+ */
+
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -14,100 +19,66 @@ import {
   FaImages,
   FaChevronRight,
   FaShoppingCart,
+  FaStar,
+  FaGlobe,
+  FaLink,
+  FaClock,
+  FaHeart,
+  FaEye,
+  FaMoneyBillWave,
+  FaCalendarAlt,
+  FaRocket,
+  FaShieldAlt,
 } from "react-icons/fa";
+import { HiCheckBadge, HiSparkles } from "react-icons/hi2";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import ReactCountryFlag from "react-country-flag";
-import { FaStar } from "react-icons/fa";
+import { 
+  AreaChart, 
+  Area, 
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell
+} from 'recharts';
 
 import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
 import PortfolioSection from "../components/PortfolioSection.jsx";
 import GigsSection from "../components/GigsSection.jsx";
-import ProfileCompletionRing from "../components/ProfileCompletionRing.jsx";
-import ProfileCompletionBanner from "../components/ProfileCompletionBanner.jsx";
 
-// ----------------------------------------------
 // Country Code Mapping
-// ----------------------------------------------
 const countryNameToCode = {
-  Afghanistan: "AF",
-  Albania: "AL",
-  Algeria: "DZ",
-  Andorra: "AD",
-  Angola: "AO",
-  Argentina: "AR",
-  Armenia: "AM",
-  Australia: "AU",
-  Austria: "AT",
-  Azerbaijan: "AZ",
-  Bangladesh: "BD",
-  Belgium: "BE",
-  Brazil: "BR",
-  Canada: "CA",
-  Chile: "CL",
-  China: "CN",
-  Colombia: "CO",
-  Croatia: "HR",
-  Cuba: "CU",
-  Czechia: "CZ",
-  Denmark: "DK",
-  Egypt: "EG",
-  Finland: "FI",
-  France: "FR",
-  Germany: "DE",
-  Ghana: "GH",
-  Greece: "GR",
-  Hungary: "HU",
-  Iceland: "IS",
-  India: "IN",
-  Indonesia: "ID",
-  Iran: "IR",
-  Iraq: "IQ",
-  Ireland: "IE",
-  Israel: "IL",
-  Italy: "IT",
-  Japan: "JP",
-  Kenya: "KE",
-  Malaysia: "MY",
-  Mexico: "MX",
-  Nepal: "NP",
-  Netherlands: "NL",
-  "New Zealand": "NZ",
-  Nigeria: "NG",
-  Norway: "NO",
-  Pakistan: "PK",
-  Peru: "PE",
-  Poland: "PL",
-  Portugal: "PT",
-  Qatar: "QA",
-  Romania: "RO",
-  Russia: "RU",
-  SaudiArabia: "SA",
-  Singapore: "SG",
-  Slovakia: "SK",
-  Slovenia: "SI",
-  SouthAfrica: "ZA",
-  Spain: "ES",
-  SriLanka: "LK",
-  Sweden: "SE",
-  Switzerland: "CH",
-  Thailand: "TH",
-  Turkey: "TR",
-  Ukraine: "UA",
-  UAE: "AE",
-  UK: "GB",
-  USA: "US",
-  Vietnam: "VN",
-  Zimbabwe: "ZW",
+  Afghanistan: "AF", Albania: "AL", Algeria: "DZ", India: "IN", USA: "US",
+  UK: "GB", Canada: "CA", Australia: "AU", Germany: "DE", France: "FR",
+  Japan: "JP", China: "CN", Brazil: "BR", Mexico: "MX", Spain: "ES",
+  Italy: "IT", Netherlands: "NL", Singapore: "SG", UAE: "AE", SaudiArabia: "SA",
+  Pakistan: "PK", Bangladesh: "BD", Indonesia: "ID", Malaysia: "MY", Philippines: "PH",
+  Thailand: "TH", Vietnam: "VN", SouthKorea: "KR", Russia: "RU", Ukraine: "UA",
+  Poland: "PL", Turkey: "TR", Egypt: "EG", Nigeria: "NG", SouthAfrica: "ZA",
+  Kenya: "KE", Ghana: "GH", Argentina: "AR", Chile: "CL", Colombia: "CO",
 };
 
-// ----------------------------------------------
+// Sample chart data
+const performanceData = [
+  { name: 'W1', value: 65 },
+  { name: 'W2', value: 78 },
+  { name: 'W3', value: 85 },
+  { name: 'W4', value: 92 },
+];
+
+const skillDistribution = [
+  { name: 'Video Editing', value: 40, color: '#22C55E' },
+  { name: 'Color Grading', value: 25, color: '#3B82F6' },
+  { name: 'Motion Graphics', value: 20, color: '#A855F7' },
+  { name: 'Sound Design', value: 15, color: '#F59E0B' },
+];
+
 // Animation Variants
-// ----------------------------------------------
 const fadeInUp = {
-  hidden: { opacity: 0, y: 24 },
+  hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
 };
 
@@ -115,13 +86,10 @@ const staggerContainer = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.08 },
+    transition: { staggerChildren: 0.05 },
   },
 };
 
-// ----------------------------------------------
-// Main Component
-// ----------------------------------------------
 const EditorProfile = () => {
   const { user, backendURL } = useAppContext();
   const [profile, setProfile] = useState(null);
@@ -130,12 +98,19 @@ const EditorProfile = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCert, setSelectedCert] = useState(null);
+  const [searchParams] = useSearchParams();
 
   const navigate = useNavigate();
 
-  // ----------------------------------------------
-  // Fetch Profile (logic unchanged)
-  // ----------------------------------------------
+  // Check URL for tab parameter
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['about', 'portfolio', 'gigs'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  // Fetch Profile
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -153,378 +128,297 @@ const EditorProfile = () => {
     fetchProfile();
   }, [backendURL, user?.token]);
 
-  // ----------------------------------------------
-  // LOADING SCREEN — Dark Neon
-  // ----------------------------------------------
+  // Loading Screen
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#020617] flex items-center justify-center">
+      <div className="min-h-screen bg-[#030712] flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="text-center"
         >
-          <div className="relative w-24 h-24 mx-auto mb-6">
-            {/* Outer dim ring */}
-            <div className="absolute inset-0 rounded-full border-4 border-[#111827]" />
-
-            {/* Blue neon ring */}
-            <div className="absolute inset-1 rounded-full border-[3px] border-[#1463FF] border-t-transparent animate-spin shadow-[0_0_28px_rgba(20,99,255,0.7)]" />
-
-            {/* Green reverse ring */}
-            <div className="absolute inset-3 rounded-full border-[2px] border-[#22C55E]/70 border-b-transparent animate-spin [animation-direction:reverse] shadow-[0_0_20px_rgba(34,197,94,0.7)]" />
+          <div className="relative w-20 h-20 mx-auto mb-4">
+            <div className="absolute inset-0 rounded-full border-4 border-white/5" />
+            <div className="absolute inset-1 rounded-full border-[3px] border-emerald-500 border-t-transparent animate-spin" />
+            <div className="absolute inset-3 rounded-full border-2 border-blue-500/50 border-b-transparent animate-spin [animation-direction:reverse]" />
           </div>
-
-          <p className="text-gray-300 text-sm tracking-wide">
-            Loading your editor profile...
-          </p>
+          <p className="text-gray-400 text-sm">Loading profile...</p>
         </motion.div>
       </div>
     );
   }
 
-  // ----------------------------------------------
-  // NO PROFILE — Dark Glass Card
-  // ----------------------------------------------
-  if (!profile) {
-    return (
-      <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center bg-[#050816] rounded-3xl
-                     shadow-[0_18px_60px_rgba(0,0,0,0.9)]
-                     border border-white/5 p-10 max-w-md w-full"
-        >
-          <div className="w-24 h-24 bg-gradient-to-br from-[#1463FF] via-[#1E3A8A] to-[#22C55E]
-                          rounded-2xl flex items-center justify-center mx-auto mb-6
-                          shadow-[0_20px_60px_rgba(20,99,255,0.7)]">
-            <FaUser className="text-white text-4xl" />
-          </div>
+  const profileData = profile || {};
+  const userData = profileData?.user || user || {};
+  const isVerified = user?.kycStatus === 'verified' || profileData?.kycVerified;
 
-          <h2 className="text-2xl font-bold text-white mb-2">
-            Complete Your Editor Profile
-          </h2>
-
-          <p className="text-gray-400 text-sm mb-6">
-            Set up your professional presence so clients can discover and hire you.
-          </p>
-
-          <motion.button
-            whileHover={{ scale: 1.03, y: -1 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => navigate("/editor-profile-update")}
-            className="bg-gradient-to-r from-[#1463FF] via-[#2563EB] to-[#22C55E]
-                       text-white px-8 py-3 rounded-2xl font-semibold
-                       shadow-[0_18px_45px_rgba(20,99,255,0.85)]
-                       hover:shadow-[0_22px_60px_rgba(20,99,255,1)]
-                       transition-all"
-          >
-            Create Profile
-          </motion.button>
-        </motion.div>
-      </div>
-    );
-  }
-
-  // ----------------------------------------------
-  // Tabs (logic unchanged)
-  // ----------------------------------------------
+  // Tabs config
   const tabs = [
     { id: "about", label: "About", icon: FaUser },
     { id: "portfolio", label: "Portfolio", icon: FaImages },
-    { id: "gigs", label: "Gigs", icon: FaShoppingCart },
+    { id: "gigs", label: "My Gigs", icon: FaShoppingCart },
   ];
 
-  // ----------------------------------------------
-  // MAIN PAGE LAYOUT — 2 Column (Profile + Content)
-  // ----------------------------------------------
+  // Stats data
+  const statsData = [
+    { label: "Rating", value: profileData?.rating || "5.0", icon: FaStar, color: "#F59E0B" },
+    { label: "Projects", value: profileData?.projectsCompleted || "24", icon: FaBriefcase, color: "#3B82F6" },
+    { label: "Views", value: "1.2K", icon: FaEye, color: "#A855F7" },
+    { label: "Earnings", value: "₹25K", icon: FaMoneyBillWave, color: "#22C55E" },
+  ];
+
   return (
-    <div className="min-h-screen bg-[#020617] text-white">
+    <div className="min-h-screen bg-[#030712] text-white">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-      <main className="md:ml-64 pt-16 lg:pt-35 md:pt-20 px-4 md:px-8 pb-10">
-        {/* Profile Completion Banner */}
-        <ProfileCompletionBanner minPercent={80} />
-        
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="max-w-6xl mx-auto grid gap-6 lg:gap-8
-                     md:grid-cols-[320px,minmax(0,1fr)]"
-        >
-          {/* ------------------------------------------------ */}
-          {/* LEFT COLUMN — PROFILE CARD                       */}
-          {/* ------------------------------------------------ */}
-          <motion.section
-            variants={fadeInUp}
-            initial="hidden"
-            animate="visible"
-            transition={{ duration: 0.45 }}
-            className="bg-[#050816] border border-white/5 rounded-tr-4xl rounded-bl-4xl
-                       shadow-[0_18px_45px_rgba(0,0,0,0.9)]
-                       relative overflow-hidden flex flex-col"
+      <main className="md:ml-64 pt-20 lg:pt-24 px-3 md:px-6 pb-10">
+        <div className="max-w-7xl mx-auto">
+          
+          {/* ==================== HERO SECTION ==================== */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0a0a0c] via-[#0f0f12] to-[#0a0a0c] border border-white/5 mb-6"
           >
-            {/* Subtle background gradient */}
-            <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
+            {/* Background gradient effects */}
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-blue-500/5" />
+            <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-emerald-500/10 to-transparent rounded-full blur-3xl" />
 
-            <div className="relative p-6 md:p-7 lg:p-8 flex flex-col gap-6">
-              {/* Avatar + Name */}
-              <div className="flex flex-col items-center gap-4">
-                <div className="relative">
-                  {/* Profile Completion Ring around Avatar */}
-                  <ProfileCompletionRing 
-                    user={profile?.user || user} 
-                    size={140} 
-                    strokeWidth={4}
-                    showDropdown={false}
-                    showPercentText={true}
-                  >
-                    <img
-                      src={
-                        profile?.user?.profilePicture ??
-                        "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-                      }
-                      alt="Profile"
-                      className="w-28 h-28 md:w-32 md:h-32 rounded-full object-cover
-                                 border-[3px] border-white/80
-                                 shadow-[0_18px_45px_rgba(0,0,0,0.9)]"
-                    />
-                  </ProfileCompletionRing>
-
-                  {/* Verified Badge */}
-                  <div className="absolute bottom-2 right-2 w-8 h-8
-                                  bg-gradient-to-br from-[#22C55E] to-[#4ADE80]
-                                  rounded-full flex items-center justify-center
-                                  border-2 border-[#050816] shadow-lg">
-                    <FaCheckCircle className="text-white text-sm" />
-                  </div>
-                </div>
-
-                <div className="text-center space-y-1">
-                  <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-                    {profile?.user?.name}
-                  </h1>
-                  <p className="text-xs md:text-sm text-gray-400">
-                    {profile?.user?.role === "editor"
-                      ? "Professional Video Editor"
-                      : "Client"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Location / Experience / Email Chips */}
-              <div className="flex flex-wrap justify-center gap-2.5">
-                {/* Country */}
-                {profile.location?.country && (
-                  <div className="flex items-center gap-2 bg-[#020617]
-                                  border border-white/10 rounded-full px-3.5 py-1.5
-                                  shadow-[0_10px_30px_rgba(0,0,0,0.9)]">
-                    <FaMapMarkerAlt className="text-yellow-200 text-xs" />
-                    <ReactCountryFlag
-                      countryCode={
-                        countryNameToCode[profile.location.country] || "IN"
-                      }
-                      svg
-                      style={{ width: "1.1em", height: "1.1em" }}
-                    />
-                    <span className="text-[11px] md:text-xs text-gray-200 font-medium">
-                      {profile.location.country}
-                    </span>
-                  </div>
-                )}
-
-                {/* Experience */}
-                {profile.experience && (
-                  <div className="flex items-center gap-2 bg-[#020617]
-                                  border border-purple-500/30 rounded-full px-3.5 py-1.5">
-                    <FaBriefcase className="text-green-400 text-xs" />
-                    <span className="text-[11px] md:text-xs text-purple-100 font-medium">
-                      {profile.experience}
-                    </span>
-                  </div>
-                )}
-
-                {/* Email */}
-                {profile.contactEmail && (
-                  <div className="flex items-center gap-2 bg-[#020617]
-                                  border border-blue-500/30 rounded-full px-3.5 py-1.5 
-                                  max-w-full">
-                    <FaEnvelope className="text-white text-xs" />
-                    <span className="text-[11px] md:text-xs text-blue-100 font-medium truncate max-w-[150px] md:max-w-[190px]">
-                      {profile.contactEmail}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Divider */}
-              <div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-
-              {/* Quick Stats (optional upgrades later) */}
-              <div className="grid grid-cols-3 gap-3 text-center text-[11px] md:text-xs text-gray-300">
-                <div className="bg-white/5 border flex items-center justify-center gap-2 border-white/10 rounded-2xl py-2.5">
-                <FaStar className="text-yellow-400 text-xs flex items-center justify-center" />
-                <div>
-                   <p className="font-semibold text-white/90 text-sm">4.9</p>
-                  <p className="text-[10px] text-gray-400">Rating</p>
-                </div>
-                  
-                   
+            <div className="relative p-4 md:p-8">
+              <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
                 
-                </div>
-                <div className="bg-white/5 border border-white/10 rounded-2xl py-2.5">
-                  <p className="font-semibold text-white/90 text-sm">24+</p>
-                  <p className="text-[10px] text-gray-400">Projects</p>
-                </div>
-                <div className="bg-white/5 border border-white/10 rounded-2xl py-2.5">
-                  <p className="font-semibold text-white/90 text-sm">2 yrs</p>
-                  <p className="text-[10px] text-gray-400">Experience</p>
-                </div>
-              </div>
-
-              {/* Edit Button */}
-              <motion.button
-                whileHover={{ scale: 1.03, y: -1 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => navigate("/editor-profile-update")}
-                className="w-full mt-1 bg-gradient-to-r from-[#1463FF]  to-black
-                           text-white py-2.5 rounded-2xl text-sm md:text-base
-                           font-semibold  
-                           transition-all flex items-center justify-center gap-2"
-              >
-                <FaEdit className="text-sm md:text-base" />
-                <span>Edit Profile</span>
-              </motion.button>
-            </div>
-          </motion.section>
-
-          {/* ------------------------------------------------ */}
-          {/* RIGHT COLUMN — TABS + CONTENT                    */}
-          {/* ------------------------------------------------ */}
-          <motion.section
-            variants={fadeInUp}
-            initial="hidden"
-            animate="visible"
-            transition={{ duration: 0.45, delay: 0.05 }}
-            className="bg-[#050816] border border-white/5 rounded-3xl
-                       shadow-[0_18px_50px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col"
-          >
-            {/* Tab Headers */}
-            <div className="flex border-b border-white/5">
-              {tabs.map((tab) => (
-                <motion.button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 md:py-4
-                              text-xs md:text-sm lg:text-base font-semibold transition-all relative
-                              ${
-                                activeTab === tab.id
-                                  ? "text-white"
-                                  : "text-gray-400 hover:text-gray-100 hover:bg-white/5"
-                              }`}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  <div
-                    className={`w-8 h-8 rounded-xl flex items-center justify-center border
-                      ${
-                        activeTab === tab.id
-                          ? "border-[#1463FF]/60 bg-[#0B1220]"
-                          : "border-white/10 bg-[#020617]"
-                      }`}
-                  >
-                    <tab.icon
-                      className={
-                        activeTab === tab.id ? "text-[#60A5FA]" : "text-gray-500"
-                      }
-                    />
+                {/* Profile Image Section */}
+                <div className="flex flex-col items-center lg:items-start gap-4">
+                  <div className="relative group">
+                    {/* Glow ring */}
+                    <div className="absolute -inset-2 bg-gradient-to-r from-emerald-500/30 via-blue-500/30 to-purple-500/30 rounded-full blur-lg opacity-60 group-hover:opacity-100 transition-opacity" />
+                    
+                    {/* Avatar container */}
+                    <div className="relative w-28 h-28 md:w-36 md:h-36 rounded-full p-[3px] bg-gradient-to-r from-emerald-400 via-blue-500 to-purple-500">
+                      <img
+                        src={userData?.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"}
+                        alt="Profile"
+                        className="w-full h-full rounded-full object-cover bg-[#1a1a1a]"
+                      />
+                    </div>
+                    
+                    {/* Verified badge */}
+                    {isVerified && (
+                      <div className="absolute -bottom-1 -right-1 w-9 h-9 bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full flex items-center justify-center border-4 border-[#0a0a0c] shadow-lg shadow-emerald-500/30">
+                        <FaCheckCircle className="text-white text-sm" />
+                      </div>
+                    )}
                   </div>
 
-                  <span>{tab.label}</span>
-
-                  {activeTab === tab.id && (
-                    <motion.div
-                      layoutId="editorProfileActiveTab"
-                      className="absolute bottom-0 left-0 right-0 h-[3px]
-                                 bg-blue-500 max-w-[150px] mx-auto rounded-full
-                                  "
-                    />
-                  )}
-                </motion.button>
-              ))}
-            </div>
-
-            {/* Tab Content */}
-            <AnimatePresence mode="wait">
-              {/* ---------------- ABOUT TAB ---------------- */}
-              {activeTab === "about" && (
-                <motion.div
-                  key="about"
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -16 }}
-                  transition={{ duration: 0.25 }}
-                  className="p-6 md:p-8 text-gray-200 space-y-8 overflow-y-auto"
-                >
-                  <motion.div
-                    variants={staggerContainer}
-                    initial="hidden"
-                    animate="visible"
-                    className="space-y-10"
+                  {/* Edit button (mobile) */}
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => navigate("/editor-profile-update")}
+                    className="lg:hidden flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-gray-300 hover:bg-white/10 transition-all"
                   >
-                    {/* About Me */}
-                    {profile.about && (
-                      <motion.div variants={fadeInUp} className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-11 h-11 md:w-12 md:h-12 rounded-xl 
-                                           bg-black border border-white/10
-                                          flex items-center justify-center
-                                           ">
-                            <FaUser className="text-white text-base md:text-lg" />
-                          </div>
-                          <h3 className="text-lg md:text-xl font-bold text-white tracking-wide">
-                            About Me
-                          </h3>
-                        </div>
+                    <FaEdit className="text-xs" />
+                    Edit Profile
+                  </motion.button>
+                </div>
 
-                        <p className="leading-relaxed text-gray-300 
-                                      bg-[#0A0F1E] p-4 md:p-5 rounded-2xl
-                                      border border-white/10 
-                                      text-sm md:text-base 
-                                      shadow-[0_0_25px_rgba(0,0,0,0.4)]">
-                          {profile.about}
+                {/* Profile Info Section */}
+                <div className="flex-1 min-w-0">
+                  {/* Name & Title */}
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <h1 className="text-2xl md:text-3xl font-bold text-white">
+                      {userData?.name || "Your Name"}
+                    </h1>
+                    <HiCheckBadge className="text-emerald-400 text-2xl" />
+                    {isVerified && (
+                      <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-full border border-emerald-500/30">
+                        VERIFIED
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-gray-400 text-sm mb-4">
+                    {userData?.role === "editor" ? "Professional Video Editor" : "Client"} 
+                    {profileData?.experience && ` • ${profileData.experience}`}
+                  </p>
+
+                  {/* Quick Info Pills */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {profileData.location?.country && (
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full">
+                        <FaMapMarkerAlt className="text-amber-400 text-xs" />
+                        <ReactCountryFlag
+                          countryCode={countryNameToCode[profileData.location.country] || "IN"}
+                          svg
+                          style={{ width: "1em", height: "1em" }}
+                        />
+                        <span className="text-xs text-gray-300">{profileData.location.country}</span>
+                      </div>
+                    )}
+                    {profileData.contactEmail && (
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full">
+                        <FaEnvelope className="text-blue-400 text-xs" />
+                        <span className="text-xs text-gray-300 truncate max-w-[150px]">{profileData.contactEmail}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full">
+                      <FaCalendarAlt className="text-purple-400 text-xs" />
+                      <span className="text-xs text-gray-300">Member since 2024</span>
+                    </div>
+                  </div>
+
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+                    {statsData.map((stat, i) => (
+                      <motion.div
+                        key={stat.label}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        className="bg-white/[0.03] border border-white/5 rounded-xl p-3 hover:bg-white/[0.05] transition-all"
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <stat.icon className="text-xs" style={{ color: stat.color }} />
+                          <span className="text-[10px] text-gray-500 uppercase tracking-wider">{stat.label}</span>
+                        </div>
+                        <p className="text-lg font-bold text-white">{stat.value}</p>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right Section - Edit & Performance */}
+                <div className="hidden lg:flex flex-col gap-3 w-48">
+                  <motion.button
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => navigate("/editor-profile-update")}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all"
+                  >
+                    <FaEdit className="text-xs" />
+                    Edit Profile
+                  </motion.button>
+
+                  {/* Mini Performance Chart */}
+                  <div className="bg-white/[0.03] border border-white/5 rounded-xl p-3">
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Performance</p>
+                    <div className="h-14">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={performanceData}>
+                          <defs>
+                            <linearGradient id="perfGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#22C55E" stopOpacity={0.3}/>
+                              <stop offset="95%" stopColor="#22C55E" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <Area type="monotone" dataKey="value" stroke="#22C55E" strokeWidth={2} fill="url(#perfGrad)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <p className="text-xs text-emerald-400 font-semibold">+28% this month</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* ==================== TABS SECTION ==================== */}
+          <div className="mb-6">
+            <div className="flex items-center justify-center">
+              <div className="inline-flex p-1 bg-[#0a0a0c] border border-white/5 rounded-2xl">
+                {tabs.map((tab) => {
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <motion.button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className={`
+                        relative px-5 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center gap-2
+                        ${isActive 
+                          ? "text-white bg-white/[0.08]" 
+                          : "text-gray-500 hover:text-gray-300"
+                        }
+                      `}
+                    >
+                      <tab.icon className={`text-sm ${isActive ? 'text-blue-400' : ''}`} />
+                      {tab.label}
+                      {isActive && (
+                        <motion.div
+                          layoutId="profileActiveTab"
+                          className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-blue-500 rounded-full"
+                          transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
+                        />
+                      )}
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* ==================== TAB CONTENT ==================== */}
+          <AnimatePresence mode="wait">
+            {/* ABOUT TAB */}
+            {activeTab === "about" && (
+              <motion.div
+                key="about"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+                  
+                  {/* Left Column - Main Content */}
+                  <div className="lg:col-span-2 space-y-4 md:space-y-6">
+                    
+                    {/* About Me */}
+                    {profileData.about && (
+                      <motion.div
+                        variants={fadeInUp}
+                        initial="hidden"
+                        animate="visible"
+                        className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-5 md:p-6"
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                            <FaUser className="text-blue-400 text-sm" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-white">About Me</h3>
+                        </div>
+                        <p className="text-gray-400 text-sm leading-relaxed">
+                          {profileData.about}
                         </p>
                       </motion.div>
                     )}
 
                     {/* Skills */}
-                    {profile.skills?.length > 0 && (
-                      <motion.div variants={fadeInUp} className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-11 h-11 md:w-12 md:h-12 rounded-xl 
-                                           bg-black border border-white/10
-                                          flex items-center justify-center">
-                            <FaCode className="text-white text-base md:text-lg" />
+                    {profileData.skills?.length > 0 && (
+                      <motion.div
+                        variants={fadeInUp}
+                        initial="hidden"
+                        animate="visible"
+                        transition={{ delay: 0.1 }}
+                        className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-5 md:p-6"
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                            <FaCode className="text-emerald-400 text-sm" />
                           </div>
-                          <h3 className="text-lg md:text-xl font-bold text-white tracking-wide">
-                            Skills
-                          </h3>
+                          <h3 className="text-lg font-semibold text-white">Skills & Expertise</h3>
                         </div>
-
-                        <div className="flex flex-wrap gap-2.5">
-                          {profile.skills.map((skill, index) => (
+                        <div className="flex flex-wrap gap-2">
+                          {profileData.skills.map((skill, i) => (
                             <motion.span
-                              key={index}
+                              key={i}
                               initial={{ opacity: 0, scale: 0.9 }}
                               animate={{ opacity: 1, scale: 1 }}
-                              transition={{ delay: index * 0.04 }}
-                              whileHover={{ scale: 1.06, y: -2 }}
-                              className="px-4 py-2 rounded-xl text-xs md:text-sm font-medium
-                                         bg-[#0B1220] border border-white/10 text-gray-200
-                                         hover:border-[#1463FF]/50 transition-all"
+                              transition={{ delay: i * 0.03 }}
+                              className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-gray-300 hover:bg-white/10 hover:border-emerald-500/30 transition-all cursor-default"
                             >
                               {skill}
                             </motion.span>
@@ -534,265 +428,249 @@ const EditorProfile = () => {
                     )}
 
                     {/* Languages */}
-                    {profile.languages?.length > 0 && (
-                      <motion.div variants={fadeInUp} className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-11 h-11 md:w-12 md:h-12 rounded-xl 
-                                           bg-black border border-white/10
-                                          flex items-center justify-center">
-                            <FaLanguage className="text-white text-base md:text-lg" />
+                    {profileData.languages?.length > 0 && (
+                      <motion.div
+                        variants={fadeInUp}
+                        initial="hidden"
+                        animate="visible"
+                        transition={{ delay: 0.15 }}
+                        className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-5 md:p-6"
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                            <FaGlobe className="text-purple-400 text-sm" />
                           </div>
-                          <h3 className="text-lg md:text-xl font-bold text-white tracking-wide">
-                            Languages
-                          </h3>
+                          <h3 className="text-lg font-semibold text-white">Languages</h3>
                         </div>
-
-                        <div className="flex flex-wrap gap-2.5">
-                          {profile.languages.map((language, index) => (
-                            <motion.span
-                              key={index}
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ delay: index * 0.04 }}
-                              whileHover={{ scale: 1.06, y: -2 }}
-                              className="px-4 py-2 rounded-xl text-xs md:text-sm font-medium
-                                         bg-[#0B1220] border border-white/10 text-gray-200
-                                         hover:border-[#EC4899]/40 transition-all"
+                        <div className="flex flex-wrap gap-2">
+                          {profileData.languages.map((lang, i) => (
+                            <span
+                              key={i}
+                              className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-gray-300"
                             >
-                              {language}
-                            </motion.span>
+                              {lang}
+                            </span>
                           ))}
                         </div>
                       </motion.div>
                     )}
 
                     {/* Certifications */}
-                    {profile.certifications?.length > 0 && (
-                      <motion.div variants={fadeInUp} className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-11 h-11 md:w-12 md:h-12 rounded-xl 
-                                           bg-black border border-white/10
-                                          flex items-center justify-center">
-                            <FaAward className="text-white text-base md:text-lg" />
+                    {profileData.certifications?.length > 0 && (
+                      <motion.div
+                        variants={fadeInUp}
+                        initial="hidden"
+                        animate="visible"
+                        transition={{ delay: 0.2 }}
+                        className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-5 md:p-6"
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                            <FaAward className="text-amber-400 text-sm" />
                           </div>
-                          <h3 className="text-lg md:text-xl font-bold text-white tracking-wide">
-                            Certifications
-                          </h3>
+                          <h3 className="text-lg font-semibold text-white">Certifications</h3>
                         </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-                          {profile.certifications.map(
-                            (cert, index) =>
-                              cert.image && (
-                                <motion.div
-                                  key={index}
-                                  initial={{ opacity: 0, y: 18 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: index * 0.08 }}
-                                  whileHover={{ y: -6, scale: 1.02 }}
-                                  onClick={() => {
-                                    setSelectedCert(cert);
-                                    setModalOpen(true);
-                                  }}
-                                  className="group relative rounded-2xl overflow-hidden cursor-pointer
-                                             bg-[#050816] border border-white/10
-                                             shadow-[0_0_25px_rgba(0,0,0,0.6)]
-                                             hover:border-[#1463FF]/40 transition-all"
-                                >
-                                  <div className="relative h-36 md:h-40 overflow-hidden">
-                                    <img
-                                      src={cert.image}
-                                      alt={cert.title}
-                                      className="w-full h-full object-cover group-hover:scale-110 
-                                                 transition-transform duration-500"
-                                    />
-
-                                    <div className="absolute inset-0
-                                                    bg-gradient-to-t from-black/60 to-transparent
-                                                    opacity-0 group-hover:opacity-100 
-                                                    transition-opacity" />
-
-                                    <div className="absolute bottom-3 right-3 opacity-0 
-                                                    group-hover:opacity-100 transition">
-                                      <div className="bg-white/20 backdrop-blur-md px-2 py-2 
-                                                      rounded-lg border border-white/20">
-                                        <FaChevronRight className="text-white text-sm" />
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div className="p-3.5 md:p-4">
-                                    <p className="font-semibold text-gray-200 truncate text-sm">
-                                      {cert.title || "Certificate"}
-                                    </p>
-                                  </div>
-                                </motion.div>
-                              )
-                          )}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {profileData.certifications.map((cert, i) => (
+                            cert.image && (
+                              <motion.div
+                                key={i}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.05 }}
+                                onClick={() => { setSelectedCert(cert); setModalOpen(true); }}
+                                className="relative overflow-hidden rounded-xl border border-white/10 cursor-pointer group hover:border-amber-500/30 transition-all"
+                              >
+                                <img
+                                  src={cert.image}
+                                  alt={cert.name || "Certificate"}
+                                  className="w-full h-32 object-cover"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-3">
+                                  <span className="text-xs text-white font-medium truncate">
+                                    {cert.name || "Certificate"}
+                                  </span>
+                                </div>
+                                <div className="absolute inset-0 bg-amber-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </motion.div>
+                            )
+                          ))}
                         </div>
                       </motion.div>
                     )}
+                  </div>
 
-                    {/* Empty About State */}
-                    {!profile.about &&
-                      !profile.skills?.length &&
-                      !profile.languages?.length &&
-                      !profile.certifications?.length && (
-                        <motion.div
-                          variants={fadeInUp}
-                          className="text-center py-12 md:py-14"
-                        >
-                          <div className="w-20 h-20 rounded-full bg-[#0B1220] border border-white/10 
-                                          flex items-center justify-center mx-auto mb-4
-                                          shadow-[0_0_30px_rgba(0,0,0,0.6)]">
-                            <FaUser className="text-gray-500 text-3xl" />
+                  {/* Right Column - Sidebar */}
+                  <div className="space-y-4">
+                    
+                    {/* Skill Distribution */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 }}
+                      className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-5"
+                    >
+                      <h4 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                        <HiSparkles className="text-amber-400" />
+                        Skill Distribution
+                      </h4>
+                      <div className="h-32">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={skillDistribution}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={30}
+                              outerRadius={50}
+                              paddingAngle={3}
+                              dataKey="value"
+                            >
+                              {skillDistribution.map((entry, index) => (
+                                <Cell key={index} fill={entry.color} />
+                              ))}
+                            </Pie>
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="space-y-2 mt-3">
+                        {skillDistribution.map((item) => (
+                          <div key={item.name} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                              <span className="text-gray-400">{item.name}</span>
+                            </div>
+                            <span className="text-gray-300 font-medium">{item.value}%</span>
                           </div>
+                        ))}
+                      </div>
+                    </motion.div>
 
-                          <h3 className="text-lg font-semibold text-white mb-1">
-                            No profile details yet
-                          </h3>
-
-                          <p className="text-gray-400 mb-4 text-sm">
-                            Add information to make your profile stand out.
-                          </p>
-
+                    {/* Quick Links */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.15 }}
+                      className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-5"
+                    >
+                      <h4 className="text-sm font-semibold text-white mb-3">Quick Links</h4>
+                      <div className="space-y-2">
+                        {[
+                          { label: 'View Analytics', icon: FaRocket, path: '/editor-analytics', color: '#3B82F6' },
+                          { label: 'KYC Details', icon: FaShieldAlt, path: '/kyc-details', color: '#22C55E' },
+                          { label: 'Payments', icon: FaMoneyBillWave, path: '/payments', color: '#F59E0B' },
+                        ].map((link) => (
                           <button
-                            onClick={() => navigate("/editor-profile-update")}
-                            className="text-[#1463FF] font-medium hover:underline text-sm"
+                            key={link.label}
+                            onClick={() => navigate(link.path)}
+                            className="w-full flex items-center justify-between p-3 bg-white/[0.02] border border-white/5 rounded-xl hover:bg-white/[0.05] transition-all group"
                           >
-                            Update Profile →
+                            <div className="flex items-center gap-3">
+                              <link.icon className="text-sm" style={{ color: link.color }} />
+                              <span className="text-xs text-gray-300">{link.label}</span>
+                            </div>
+                            <FaChevronRight className="text-[10px] text-gray-600 group-hover:text-gray-400 transition-colors" />
                           </button>
-                        </motion.div>
-                      )}
-                  </motion.div>
-                </motion.div>
-              )}
+                        ))}
+                      </div>
+                    </motion.div>
 
-              {/* ---------------- PORTFOLIO TAB ---------------- */}
-              {activeTab === "portfolio" && (
-                <motion.div
-                  key="portfolio"
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -16 }}
-                  transition={{ duration: 0.25 }}
-                  className="p-6 md:p-8 bg-[#050816] rounded-b-3xl
-                             border-t border-white/5 shadow-[0_0_30px_rgba(0,0,0,0.6)]
-                             overflow-y-auto"
-                >
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-11 h-11 md:w-12 md:h-12 rounded-xl 
-                                           bg-black border border-white/10
-                                          flex items-center justify-center">
-                      <FaImages className="text-white text-base md:text-lg" />
-                    </div>
-                    <h3 className="text-xl md:text-2xl font-bold text-white tracking-wide">
-                      Portfolio Gallery
-                    </h3>
+                    {/* Achievements */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                      className="bg-gradient-to-br from-amber-500/5 to-orange-500/5 border border-amber-500/10 rounded-2xl p-5"
+                    >
+                      <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                        <FaAward className="text-amber-400" />
+                        Achievements
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { icon: FaStar, label: 'Top Rated', color: '#F59E0B' },
+                          { icon: FaRocket, label: 'Fast Delivery', color: '#3B82F6' },
+                          { icon: FaHeart, label: '100% Positive', color: '#EF4444' },
+                        ].map((badge) => (
+                          <div
+                            key={badge.label}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-black/30 rounded-full border border-white/5"
+                          >
+                            <badge.icon className="text-[10px]" style={{ color: badge.color }} />
+                            <span className="text-[10px] text-gray-300">{badge.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
                   </div>
+                </div>
+              </motion.div>
+            )}
 
-                  <div
-                    className="bg-[#020617] rounded-2xl p-4 md:p-5 
-                               border border-white/10 
-                               shadow-[0_0_25px_rgba(0,0,0,0.6)]"
-                  >
-                    <PortfolioSection />
-                  </div>
-                </motion.div>
-              )}
+            {/* PORTFOLIO TAB */}
+            {activeTab === "portfolio" && (
+              <motion.div
+                key="portfolio"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.2 }}
+                className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-4 md:p-6"
+              >
+                <PortfolioSection editorId={userData?._id} isOwnProfile={true} />
+              </motion.div>
+            )}
 
-              {/* ---------------- GIGS TAB ---------------- */}
-              {activeTab === "gigs" && (
-                <motion.div
-                  key="gigs"
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -16 }}
-                  transition={{ duration: 0.25 }}
-                  className="p-6 md:p-8 bg-[#050816] rounded-b-3xl
-                             border-t border-white/5 shadow-[0_0_30px_rgba(0,0,0,0.6)]
-                             overflow-y-auto"
-                >
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-11 h-11 md:w-12 md:h-12 rounded-xl 
-                                           bg-black border border-white/10
-                                          flex items-center justify-center">
-                      <FaShoppingCart className="text-white text-base md:text-lg" />
-                    </div>
-                    <h3 className="text-xl md:text-2xl font-bold text-white tracking-wide">
-                      My Gigs
-                    </h3>
-                  </div>
-
-                  <div
-                    className="bg-[#020617] rounded-2xl p-4 md:p-5 
-                               border border-white/10 
-                               shadow-[0_0_25px_rgba(0,0,0,0.6)]"
-                  >
-                    <GigsSection />
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.section>
-        </motion.div>
+            {/* GIGS TAB */}
+            {activeTab === "gigs" && (
+              <motion.div
+                key="gigs"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.2 }}
+                className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-4 md:p-6"
+              >
+                <GigsSection />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </main>
 
-      {/* ---------------- CERTIFICATION MODAL ---------------- */}
+      {/* Certificate Modal */}
       <AnimatePresence>
         {modalOpen && selectedCert && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md
-                       flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
             onClick={() => setModalOpen(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              transition={{ type: "spring", damping: 24, stiffness: 260 }}
-              className="relative w-full max-w-3xl rounded-3xl overflow-hidden
-                         shadow-[0_0_40px_rgba(20,99,255,0.4)]
-                         border border-white/10 bg-[#050816]"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative max-w-3xl w-full bg-[#0a0a0c] border border-white/10 rounded-2xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Close Button */}
-              <motion.button
-                whileHover={{ scale: 1.1, rotate: 90 }}
-                whileTap={{ scale: 0.9 }}
+              <button
                 onClick={() => setModalOpen(false)}
-                className="absolute top-5 right-5 w-11 h-11 md:w-12 md:h-12
-                           rounded-2xl bg-white/5 hover:bg-white/10
-                           flex items-center justify-center text-white
-                           shadow-[0_0_15px_rgba(20,99,255,0.6)]
-                           backdrop-blur-lg border border-white/10"
+                className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 transition-all z-10"
               >
-                <FaTimes className="text-lg md:text-xl" />
-              </motion.button>
-
-              {/* Title */}
-              <div className="p-5 md:p-6 pb-2">
-                <h3 className="text-lg md:text-2xl font-bold text-white tracking-wide pr-14">
-                  {selectedCert.title || "Certificate"}
-                </h3>
-              </div>
-
-              {/* Image */}
-              <div className="p-5 md:p-6 pt-0">
-                <motion.img
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.25 }}
-                  src={selectedCert.image}
-                  alt={selectedCert.title}
-                  className="w-full max-h-[70vh] object-contain rounded-2xl
-                             border border-white/10 
-                             shadow-[0_0_35px_rgba(0,0,0,0.6)]"
-                />
-              </div>
+                <FaTimes />
+              </button>
+              <img
+                src={selectedCert.image}
+                alt={selectedCert.name}
+                className="w-full max-h-[70vh] object-contain"
+              />
+              {selectedCert.name && (
+                <div className="p-4 border-t border-white/10">
+                  <h3 className="text-lg font-semibold text-white">{selectedCert.name}</h3>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
