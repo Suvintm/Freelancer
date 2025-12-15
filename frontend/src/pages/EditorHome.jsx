@@ -16,6 +16,7 @@ import {
   FaClock,
   FaMoneyBillWave,
   FaSpinner,
+  FaSyncAlt,
 } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
@@ -32,7 +33,7 @@ import axios from "axios";
 import reelIcon from "../assets/reelicon.png";
 
 const EditorHome = () => {
-  const { user, backendURL } = useAppContext();
+  const { user, backendURL, refreshUser } = useAppContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mainTab, setMainTab] = useState("home");
   const [exploreTab, setExploreTab] = useState("editors");
@@ -40,6 +41,7 @@ const EditorHome = () => {
   const [showKYC, setShowKYC] = useState(false);
   const [profileData, setProfileData] = useState(null);
   const [completionPercent, setCompletionPercent] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
 
   // Fetch basic stats
@@ -91,6 +93,14 @@ const EditorHome = () => {
     fetchStats();
     fetchProfileData();
   }, [backendURL, user?.token]);
+
+  // Refresh page
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => {
+      window.location.reload();
+    }, 300); // Small delay for animation
+  };
 
   // Main tabs with colors
   const mainTabs = [
@@ -155,6 +165,25 @@ const EditorHome = () => {
     <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] text-white">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
+
+      {/* Professional Refresh Button */}
+      <motion.button
+        onClick={handleRefresh}
+        disabled={isRefreshing}
+        whileHover={{ scale: 1.02, backgroundColor: "rgba(59, 131, 246, 0)" }}
+        whileTap={{ scale: 0.98 }}
+        className="fixed top-17 bg-gradient-to-r from-green-500/20 to-green-500/10 md:top- right-2 md:right-8 z-50 px-2 py-2 rounded-full hover:border-green-500/40 flex items-center gap-2.5 text-white transition-all disabled:opacity-70 shadow-lg"
+        title="Refresh page"
+      >
+        <motion.div
+          animate={isRefreshing ? { rotate: 360 } : { rotate: 0 }}
+          transition={isRefreshing ? { repeat: Infinity, duration: 0.8, ease: "linear" } : { duration: 0.3 }}
+          className="text-green-400"
+        >
+          <FaSyncAlt className="text-sm" />
+        </motion.div>
+        {/* <span className="text-sm font-medium text-gray-300">Refresh</span> */}
+      </motion.button>
 
       <main className="flex-1 px-4 md:px-8 py-6 lg:pt-20 md:pt-6 md:ml-64 md:mt-20">
         

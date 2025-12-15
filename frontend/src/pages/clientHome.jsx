@@ -10,6 +10,7 @@ import {
   FaHeart,
   FaArrowRight,
   FaChartLine,
+  FaSyncAlt,
 } from "react-icons/fa";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
@@ -26,6 +27,15 @@ const ClientHome = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("editors");
   const [stats, setStats] = useState({ totalOrders: 0 });
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Refresh page
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => {
+      window.location.reload();
+    }, 300);
+  };
 
   // Fetch basic stats
   useEffect(() => {
@@ -197,11 +207,30 @@ const ClientHome = () => {
           </AnimatePresence>
         </div>
 
-        {/* Floating Reels Button */}
+        {/* Professional Refresh Button - Top Right */}
+        <motion.button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          whileHover={{ scale: 1.02, backgroundColor: "rgba(59, 130, 246, 0.15)" }}
+          whileTap={{ scale: 0.98 }}
+          className="fixed top-24 md:top-8 right-4 md:right-8 z-50 px-4 py-2.5 rounded-xl bg-[#111319] border border-[#262A3B] hover:border-blue-500/40 flex items-center gap-2.5 text-white transition-all disabled:opacity-70 shadow-lg"
+          title="Refresh page"
+        >
+          <motion.div
+            animate={isRefreshing ? { rotate: 360 } : { rotate: 0 }}
+            transition={isRefreshing ? { repeat: Infinity, duration: 0.8, ease: "linear" } : { duration: 0.3 }}
+            className="text-blue-400"
+          >
+            <FaSyncAlt className="text-sm" />
+          </motion.div>
+          <span className="text-sm font-medium text-gray-300">Refresh</span>
+        </motion.button>
+
+        {/* Floating Reels Button - Bottom Right */}
         <motion.button
           onClick={() => navigate("/reels")}
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
           className="fixed bottom-6 right-6 z-[200] w-14 h-14 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/30"
         >
           <img src={reelIcon} alt="reels" className="w-6 h-6 object-contain" />
