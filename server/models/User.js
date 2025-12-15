@@ -200,6 +200,33 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    
+    // ==================== STORAGE MANAGEMENT ====================
+    
+    // Total storage limit in bytes (default: 500MB free tier)
+    storageLimit: {
+      type: Number,
+      default: 500 * 1024 * 1024, // 500 MB
+    },
+    
+    // Current storage used in bytes
+    storageUsed: {
+      type: Number,
+      default: 0,
+    },
+    
+    // Current storage plan
+    storagePlan: {
+      type: String,
+      enum: ["free", "starter", "pro", "business", "unlimited"],
+      default: "free",
+    },
+    
+    // Last storage calculation timestamp
+    storageLastCalculated: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

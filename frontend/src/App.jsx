@@ -36,6 +36,7 @@ import ClientAnalytics from "./pages/ClientAnalytics.jsx";
 import PaymentsPage from "./pages/PaymentsPage.jsx";
 import PaymentSuccess from "./pages/PaymentSuccess.jsx";
 import KYCDetailsPage from "./pages/KYCDetailsPage.jsx";
+import StoragePlans from "./pages/StoragePlans.jsx";
 
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
@@ -122,6 +123,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["editor"]}>
               <EditorAnalytics />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/storage-plans"
+          element={
+            <ProtectedRoute allowedRoles={["editor"]}>
+              <StoragePlans />
             </ProtectedRoute>
           }
         />

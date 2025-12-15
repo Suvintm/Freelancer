@@ -17,6 +17,8 @@ import {
   FaMoneyBillWave,
   FaSpinner,
   FaSyncAlt,
+  FaDatabase,
+  FaCloudUploadAlt,
 } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
@@ -42,6 +44,7 @@ const EditorHome = () => {
   const [profileData, setProfileData] = useState(null);
   const [completionPercent, setCompletionPercent] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [storageData, setStorageData] = useState(null);
   const navigate = useNavigate();
 
   // Fetch basic stats
@@ -93,6 +96,25 @@ const EditorHome = () => {
     fetchStats();
     fetchProfileData();
   }, [backendURL, user?.token]);
+
+  // Fetch storage status
+  useEffect(() => {
+    const fetchStorage = async () => {
+      try {
+        const token = user?.token;
+        if (!token || user?.role !== "editor") return;
+
+        const res = await axios.get(`${backendURL}/api/storage/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setStorageData(res.data?.storage || null);
+      } catch (err) {
+        console.error("Failed to fetch storage:", err);
+      }
+    };
+
+    fetchStorage();
+  }, [backendURL, user?.token, user?.role]);
 
   // Refresh page
   const handleRefresh = () => {
@@ -249,6 +271,89 @@ const EditorHome = () => {
                 />
               ) : (
                 <ProfileCompletionBanner minPercent={80} />
+              )}
+
+              {/* 💾 Storage Card - Shows editor's storage usage */}
+              {storageData && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`border rounded-2xl p-5 mb-6 ${
+                    storageData.isFull 
+                      ? 'bg-gradient-to-r from-red-500/10 to-rose-500/5 border-red-500/20' 
+                      : storageData.isLowStorage 
+                        ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/5 border-amber-500/20'
+                        : 'bg-gradient-to-r from-blue-500/10 to-purple-500/5 border-blue-500/20'
+                  }`}
+                >
+                  <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                    <div className={`p-3 rounded-xl ${
+                      storageData.isFull ? 'bg-red-500/15' : storageData.isLowStorage ? 'bg-amber-500/15' : 'bg-blue-500/15'
+                    }`}>
+                      <FaDatabase className={`text-xl ${
+                        storageData.isFull ? 'text-red-400' : storageData.isLowStorage ? 'text-amber-400' : 'text-blue-400'
+                      }`} />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="text-white font-semibold text-sm">Storage</h3>
+                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ${
+                          storageData.plan === 'free' ? 'bg-gray-500/20 text-gray-400' :
+                          storageData.plan === 'pro' ? 'bg-purple-500/20 text-purple-400' :
+                          'bg-blue-500/20 text-blue-400'
+                        }`}>
+                          {storageData.plan}
+                        </span>
+                      </div>
+                      
+                      {/* Progress Bar */}
+                      <div className="h-2 bg-black/30 rounded-full overflow-hidden mb-2">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.min(storageData.usedPercent, 100)}%` }}
+                          transition={{ duration: 0.8, ease: "easeOut" }}
+                          className={`h-full rounded-full ${
+                            storageData.isFull ? 'bg-gradient-to-r from-red-500 to-red-400' :
+                            storageData.isLowStorage ? 'bg-gradient-to-r from-amber-500 to-orange-400' :
+                            'bg-gradient-to-r from-blue-500 to-purple-500'
+                          }`}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-400">
+                          {storageData.usedFormatted} / {storageData.limitFormatted}
+                        </span>
+                        <span className={`font-medium ${
+                          storageData.isFull ? 'text-red-400' : 
+                          storageData.isLowStorage ? 'text-amber-400' : 'text-emerald-400'
+                        }`}>
+                          {storageData.remainingFormatted} free
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => navigate('/storage-plans')}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
+                        storageData.isFull || storageData.isLowStorage
+                          ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:opacity-90'
+                          : 'bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10'
+                      }`}
+                    >
+                      <FaCloudUploadAlt className="text-sm" />
+                      {storageData.isFull ? 'Upgrade Now' : 'Upgrade'}
+                    </button>
+                  </div>
+                  
+                  {storageData.isFull && (
+                    <p className="text-red-400 text-xs mt-3 flex items-center gap-1">
+                      <FaExclamationCircle className="text-xs" />
+                      Storage full! Upgrade or delete files to continue uploading.
+                    </p>
+                  )}
+                </motion.div>
               )}
 
               {/* KYC Banner - Show based on status */}
