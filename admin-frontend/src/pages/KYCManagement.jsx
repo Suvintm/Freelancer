@@ -37,7 +37,7 @@ const KYCManagement = () => {
   // Fetch KYC stats
   const fetchStats = useCallback(async () => {
     try {
-      const res = await adminAxios.get("/kyc/stats/summary");
+      const res = await adminAxios.get("/admin/kyc/stats/summary");
       if (res.data.success) {
         setStats(res.data.stats);
       }
@@ -50,7 +50,7 @@ const KYCManagement = () => {
   const fetchKYC = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await adminAxios.get("/kyc/pending", {
+      const res = await adminAxios.get("/admin/kyc/pending", {
         params: { status: statusFilter, page: pagination.page, limit: 20 }
       });
       if (res.data.success) {
@@ -73,7 +73,7 @@ const KYCManagement = () => {
   const viewDetails = async (userId) => {
     setDetailsLoading(true);
     try {
-      const res = await adminAxios.get(`/kyc/${userId}`);
+      const res = await adminAxios.get(`/admin/kyc/${userId}`);
       if (res.data.success) {
         setSelectedUser(res.data);
       }
@@ -88,7 +88,7 @@ const KYCManagement = () => {
   const approveKYC = async (userId) => {
     setActionLoading(true);
     try {
-      const res = await adminAxios.post(`/kyc/${userId}/verify`, { action: "approve" });
+      const res = await adminAxios.post(`/admin/kyc/${userId}/verify`, { action: "approve" });
       if (res.data.success) {
         toast.success("KYC approved successfully!");
         setSelectedUser(null);
@@ -110,7 +110,7 @@ const KYCManagement = () => {
     }
     setActionLoading(true);
     try {
-      const res = await adminAxios.post(`/kyc/${selectedUser.user._id}/verify`, {
+      const res = await adminAxios.post(`/admin/kyc/${selectedUser.user._id}/verify`, {
         action: "reject",
         rejectionReason: rejectReason,
       });
