@@ -43,6 +43,7 @@ import DownloadConfirmPopup from "./DownloadConfirmPopup";
 import ChangesRequestModal from "./ChangesRequestModal";
 import CompletedOrderReceipt from "./CompletedOrderReceipt";
 import PaymentRequestCard from "./PaymentRequestCard";
+import ChatMediaGallery from "./ChatMediaGallery";
 import axios from "axios";
 import { toast } from "react-toastify";
 import chattexture from "../assets/chattexture.png";
@@ -608,6 +609,9 @@ const ChatPage = () => {
   const [currentDelivery, setCurrentDelivery] = useState(null);
   const [deliveryLoading, setDeliveryLoading] = useState(false);
   const [deliveryPreviewData, setDeliveryPreviewData] = useState(null);
+  
+  // --- Media Gallery State ---
+  const [showMediaGallery, setShowMediaGallery] = useState(false);
 
   // --- Derived State ---
   const otherParty = user?.role === "editor" ? order?.client : order?.editor;
@@ -1202,6 +1206,15 @@ const ChatPage = () => {
 
           {/* Feature Buttons */}
           <div className="flex items-center gap-1">
+            {/* Media Gallery Toggle */}
+            <button 
+              onClick={() => setShowMediaGallery(true)}
+              className="p-2 rounded-full transition hover:bg-white/10 text-gray-400"
+              title="View all media"
+            >
+              <FaImage className="text-sm" />
+            </button>
+            
             {/* Search Toggle */}
             <button 
               onClick={() => setShowSearch(!showSearch)}
@@ -2030,6 +2043,23 @@ const ChatPage = () => {
               </div>
             )}
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Media Gallery Modal */}
+      <AnimatePresence>
+        {showMediaGallery && (
+          <ChatMediaGallery
+            orderId={orderId}
+            orderStatus={order?.status}
+            onClose={() => setShowMediaGallery(false)}
+            onMediaDeleted={(msgId) => {
+              // Update local messages to show as deleted
+              setMessages(prev => prev.map(m => 
+                m._id === msgId ? { ...m, isDeleted: true, content: "This message was deleted" } : m
+              ));
+            }}
+          />
         )}
       </AnimatePresence>
     </div>

@@ -11,6 +11,7 @@ import authMiddleware from "../middleware/authMiddleware.js";
 import { upload } from "../middleware/upload.js";
 import { portfolioValidator, mongoIdValidator, userIdValidator } from "../middleware/validators.js";
 import { uploadLimiter } from "../middleware/rateLimiter.js";
+import { checkStorage } from "../middleware/storageMiddleware.js";
 
 const router = express.Router();
 
@@ -27,6 +28,7 @@ router.use(authMiddleware);
 router.post(
   "/",
   uploadLimiter,
+  checkStorage, // Check storage before upload
   upload.fields([
     { name: "originalClip", maxCount: 5 }, // Allow up to 5 original clips
     { name: "editedClip", maxCount: 1 },
@@ -46,6 +48,7 @@ router.put(
   "/:id",
   uploadLimiter,
   mongoIdValidator,
+  checkStorage, // Check storage before upload
   upload.fields([
     { name: "originalClip", maxCount: 5 },
     { name: "editedClip", maxCount: 1 },

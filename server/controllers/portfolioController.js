@@ -236,6 +236,20 @@ export const deletePortfolio = asyncHandler(async (req, res) => {
 
   await Portfolio.findByIdAndDelete(req.params.id);
 
+  // Recalculate storage after delete
+  try {
+    const { calculateStorageUsed } = await import("./storageController.js");
+    const User = (await import("../models/User.js")).default;
+    const storageUsed = await calculateStorageUsed(req.user._id);
+    await User.findByIdAndUpdate(req.user._id, { 
+      storageUsed,
+      storageLastCalculated: new Date()
+    });
+    logger.info(`Storage recalculated after delete: ${storageUsed} bytes`);
+  } catch (err) {
+    logger.warn("Failed to recalculate storage after delete:", err.message);
+  }
+
   logger.info(`Portfolio deleted: ${req.params.id}`);
 
   res.status(200).json({

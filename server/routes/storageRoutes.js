@@ -4,7 +4,7 @@
  */
 
 import express from "express";
-import { protect } from "../middleware/authMiddleware.js";
+import authMiddleware from "../middleware/authMiddleware.js";
 import {
   getStorageStatus,
   getStoragePlans,
@@ -16,7 +16,7 @@ import {
 const router = express.Router();
 
 // All routes require authentication
-router.use(protect);
+router.use(authMiddleware);
 
 // Get current storage status
 router.get("/status", getStorageStatus);
