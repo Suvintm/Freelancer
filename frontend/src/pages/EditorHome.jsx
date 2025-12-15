@@ -172,7 +172,7 @@ const EditorHome = () => {
         disabled={isRefreshing}
         whileHover={{ scale: 1.02, backgroundColor: "rgba(59, 131, 246, 0)" }}
         whileTap={{ scale: 0.98 }}
-        className="fixed top-17 bg-gradient-to-r from-green-500/20 to-green-500/10 md:top- right-2 md:right-8 z-50 px-2 py-2 rounded-full hover:border-green-500/40 flex items-center gap-2.5 text-white transition-all disabled:opacity-70 shadow-lg"
+        className="fixed top-17 animate-spin bg-gradient-to-r from-green-500/20 to-green-500/10 md:top- right-2 md:right-8 z-50 px-2 py-2 rounded-full hover:border-green-500/40 flex items-center gap-2.5 text-white transition-all disabled:opacity-70 shadow-lg"
         title="Refresh page"
       >
         <motion.div
