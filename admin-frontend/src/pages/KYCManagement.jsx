@@ -245,9 +245,10 @@ const KYCManagement = () => {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table - Horizontal scroll on mobile */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-        <table className="w-full">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[700px]">
           <thead>
             <tr className="border-b border-zinc-800">
               <th className="text-left text-xs font-medium text-zinc-400 uppercase px-4 py-3">Editor</th>
@@ -338,6 +339,7 @@ const KYCManagement = () => {
             )}
           </tbody>
         </table>
+        </div>
 
         {/* Pagination */}
         {pagination.pages > 1 && (

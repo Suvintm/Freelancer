@@ -1024,7 +1024,31 @@ router.get("/analytics/categories", requirePermission("analytics"), async (req, 
 
 // ============ KYC MANAGEMENT ============
 
-// Get all pending KYC submissions
+// Get KYC statistics (MUST be before :userId route)
+router.get("/kyc/stats/summary", requirePermission("users"), async (req, res) => {
+  try {
+    const pending = await User.countDocuments({ role: "editor", kycStatus: "submitted" });
+    const verified = await User.countDocuments({ role: "editor", kycStatus: "verified" });
+    const rejected = await User.countDocuments({ role: "editor", kycStatus: "rejected" });
+    const notSubmitted = await User.countDocuments({ role: "editor", kycStatus: { $in: ["not_submitted", null] } });
+    
+    res.status(200).json({
+      success: true,
+      stats: {
+        pending,
+        verified,
+        rejected,
+        notSubmitted,
+        total: pending + verified + rejected + notSubmitted,
+      },
+    });
+    
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch KYC stats" });
+  }
+});
+
+// Get all pending KYC submissions (MUST be before :userId route)
 router.get("/kyc/pending", requirePermission("users"), async (req, res) => {
   try {
     const { page = 1, limit = 20, status = "submitted" } = req.query;
@@ -1199,29 +1223,4 @@ router.post("/kyc/:userId/verify", requirePermission("users"), logActivity("KYC_
   }
 });
 
-// Get KYC statistics
-router.get("/kyc/stats/summary", requirePermission("users"), async (req, res) => {
-  try {
-    const pending = await User.countDocuments({ role: "editor", kycStatus: "submitted" });
-    const verified = await User.countDocuments({ role: "editor", kycStatus: "verified" });
-    const rejected = await User.countDocuments({ role: "editor", kycStatus: "rejected" });
-    const notSubmitted = await User.countDocuments({ role: "editor", kycStatus: { $in: ["not_submitted", null] } });
-    
-    res.status(200).json({
-      success: true,
-      stats: {
-        pending,
-        verified,
-        rejected,
-        notSubmitted,
-        total: pending + verified + rejected + notSubmitted,
-      },
-    });
-    
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to fetch KYC stats" });
-  }
-});
-
 export default router;
-
