@@ -41,6 +41,7 @@ export const createPortfolio = asyncHandler(async (req, res) => {
   const { title, description } = req.body;
   let originalClips = [];
   let editedClip = "";
+  let totalSizeBytes = 0; // Track actual file sizes for storage calculation
 
   // Handle multiple original clips
   if (req.files?.originalClip) {
@@ -52,11 +53,12 @@ export const createPortfolio = asyncHandler(async (req, res) => {
       throw new ApiError(400, `Maximum ${MAX_ORIGINAL_FILES} original files allowed`);
     }
 
-    // Upload each file
+    // Upload each file and track sizes
     for (const file of files) {
       validateFile(file, "video");
       const result = await uploadToCloudinary(file.buffer, "portfolio");
       originalClips.push(result.url);
+      totalSizeBytes += file.size || 0;
     }
   }
 
@@ -66,9 +68,10 @@ export const createPortfolio = asyncHandler(async (req, res) => {
     validateFile(file, "video");
     const result = await uploadToCloudinary(file.buffer, "portfolio");
     editedClip = result.url;
+    totalSizeBytes += file.size || 0;
   }
 
-  // Create portfolio
+  // Create portfolio with actual file size
   const portfolio = await Portfolio.create({
     user: req.user._id,
     title: title?.trim().substring(0, 100) || "",
@@ -76,6 +79,7 @@ export const createPortfolio = asyncHandler(async (req, res) => {
     originalClip: originalClips.length > 0 ? originalClips[0] : "", // First clip for backward compatibility
     originalClips: originalClips, // All clips in array
     editedClip,
+    totalSizeBytes, // Store actual size for accurate storage calculation
   });
 
   const populatedPortfolio = await Portfolio.findById(portfolio._id).populate(

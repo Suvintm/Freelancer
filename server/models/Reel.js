@@ -52,6 +52,11 @@ const reelSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        // Store file size in bytes for storage calculation
+        fileSizeBytes: {
+            type: Number,
+            default: 0,
+        },
         isPublished: {
             type: Boolean,
             default: true,

@@ -33,6 +33,11 @@ const portfolioSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    // Store total file size in bytes for accurate storage calculation
+    totalSizeBytes: {
+      type: Number,
+      default: 0,
+    },
     uploadedAt: {
       type: Date,
       default: Date.now,

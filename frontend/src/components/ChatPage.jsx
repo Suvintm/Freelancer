@@ -29,6 +29,7 @@ import {
   FaExternalLinkAlt,
   FaFolder,
   FaFilm,
+  FaImage,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";

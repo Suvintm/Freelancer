@@ -13,33 +13,50 @@ import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 
-// Initialize Razorpay
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+// Initialize Razorpay only if keys are configured
+let razorpay = null;
+if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+  razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+}
 
 /**
  * Calculate storage used by a user
- * Counts: Portfolio files, Reels, Chat attachments (active orders only)
+ * Uses actual file sizes from DB when available, estimates for legacy data
  */
 export const calculateStorageUsed = async (userId) => {
   let totalBytes = 0;
+  let portfolioBytes = 0;
+  let reelBytes = 0;
+  let chatBytes = 0;
 
-  // 1. Portfolio files - estimate based on count (avg 50MB per video, 2MB per image)
+  // 1. Portfolio files - use totalSizeBytes if stored, else estimate
   const portfolios = await Portfolio.find({ user: userId });
   for (const portfolio of portfolios) {
-    // Each portfolio video ~25MB average on Cloudinary
-    if (portfolio.editedClip) totalBytes += 25 * 1024 * 1024;
-    if (portfolio.originalClip) totalBytes += 25 * 1024 * 1024;
-    if (portfolio.originalClips?.length > 0) {
-      totalBytes += portfolio.originalClips.length * 25 * 1024 * 1024;
+    if (portfolio.totalSizeBytes && portfolio.totalSizeBytes > 0) {
+      // Use actual stored size
+      portfolioBytes += portfolio.totalSizeBytes;
+    } else {
+      // Fallback: estimate based on count (avg 25MB per video)
+      if (portfolio.editedClip) portfolioBytes += 25 * 1024 * 1024;
+      if (portfolio.originalClip) portfolioBytes += 25 * 1024 * 1024;
+      if (portfolio.originalClips?.length > 0) {
+        portfolioBytes += portfolio.originalClips.length * 25 * 1024 * 1024;
+      }
     }
   }
 
-  // 2. Reels - estimate ~15MB per reel
-  const reelsCount = await Reel.countDocuments({ editor: userId });
-  totalBytes += reelsCount * 15 * 1024 * 1024;
+  // 2. Reels - use fileSizeBytes if stored, else estimate ~15MB per reel
+  const reels = await Reel.find({ editor: userId });
+  for (const reel of reels) {
+    if (reel.fileSizeBytes && reel.fileSizeBytes > 0) {
+      reelBytes += reel.fileSizeBytes;
+    } else {
+      reelBytes += 15 * 1024 * 1024; // Estimate 15MB
+    }
+  }
 
   // 3. Chat files from active orders only (pending, in_progress, submitted)
   const activeOrders = await Order.find({
@@ -58,28 +75,31 @@ export const calculateStorageUsed = async (userId) => {
   });
 
   for (const msg of messages) {
-    // Parse mediaSize if available, otherwise estimate
-    if (msg.mediaSize) {
-      // mediaSize might be "2.5 MB" format or number
+    // Use mediaSizeBytes if available (new field), otherwise parse mediaSize string
+    if (msg.mediaSizeBytes && msg.mediaSizeBytes > 0) {
+      chatBytes += msg.mediaSizeBytes;
+    } else if (msg.mediaSize) {
+      // Parse mediaSize string (e.g., "2.5 MB")
       const sizeStr = String(msg.mediaSize);
       if (sizeStr.includes("MB")) {
-        totalBytes += parseFloat(sizeStr) * 1024 * 1024;
+        chatBytes += parseFloat(sizeStr) * 1024 * 1024;
       } else if (sizeStr.includes("KB")) {
-        totalBytes += parseFloat(sizeStr) * 1024;
+        chatBytes += parseFloat(sizeStr) * 1024;
       } else if (sizeStr.includes("GB")) {
-        totalBytes += parseFloat(sizeStr) * 1024 * 1024 * 1024;
+        chatBytes += parseFloat(sizeStr) * 1024 * 1024 * 1024;
       } else {
-        totalBytes += parseInt(sizeStr) || 5 * 1024 * 1024; // Default 5MB
+        chatBytes += parseInt(sizeStr) || 5 * 1024 * 1024;
       }
     } else {
       // Estimate by type
-      if (msg.type === "video") totalBytes += 30 * 1024 * 1024;
-      else if (msg.type === "image") totalBytes += 3 * 1024 * 1024;
-      else if (msg.type === "audio") totalBytes += 2 * 1024 * 1024;
-      else totalBytes += 5 * 1024 * 1024;
+      if (msg.type === "video") chatBytes += 30 * 1024 * 1024;
+      else if (msg.type === "image") chatBytes += 3 * 1024 * 1024;
+      else if (msg.type === "audio") chatBytes += 2 * 1024 * 1024;
+      else chatBytes += 5 * 1024 * 1024;
     }
   }
 
+  totalBytes = portfolioBytes + reelBytes + chatBytes;
   return Math.round(totalBytes);
 };
 
@@ -165,6 +185,11 @@ export const getStoragePlans = asyncHandler(async (req, res) => {
  * POST /api/storage/purchase
  */
 export const createStoragePurchaseOrder = asyncHandler(async (req, res) => {
+  // Check if Razorpay is configured
+  if (!razorpay) {
+    throw new ApiError(503, "Payment service is not configured. Please contact support.");
+  }
+
   const { planId } = req.body;
   const userId = req.user._id;
 
