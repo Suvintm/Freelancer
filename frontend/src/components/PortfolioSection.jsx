@@ -1033,7 +1033,7 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.03 }}
                   onClick={() => openReelsPopup(p)}
-                  className="relative aspect-square bg-zinc-900 cursor-pointer group overflow-hidden"
+                  className="relative aspect-[9/16] bg-zinc-900 cursor-pointer group overflow-hidden"
                 >
                   {/* Thumbnail */}
                   {coverIsVideo ? (
@@ -1050,7 +1050,10 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
                     />
                   )}
                   
-                  {/* Hover Overlay */}
+                  {/* Gradient overlay for visibility */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/40" />
+                  
+                  {/* Hover Overlay with stats */}
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
                     {isReel && (
                       <>
@@ -1066,26 +1069,41 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
                     )}
                   </div>
                   
-                  {/* Reel Icon & Views (if published) */}
-                  {isReel && (
-                    <div className="absolute top-2 right-2 flex items-center gap-1 text-white text-xs">
-                      <FaPlay className="text-[10px]" />
-                      <span>{p.viewsCount || 0}</span>
-                    </div>
+                  {/* Top-right: Push to Reel button (always visible) */}
+                  {!isPublic && (
+                    <button
+                      onClick={(e) => handlePushToReel(p._id, e)}
+                      className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center text-xs z-10 ${
+                        isReel 
+                          ? 'bg-green-500 text-white' 
+                          : 'bg-white/80 text-purple-600 hover:bg-white'
+                      }`}
+                      title={isReel ? "On Reels ✓" : "Push to Reels"}
+                    >
+                      {isReel ? <FaCheck className="text-[10px]" /> : <FaGlobe className="text-[10px]" />}
+                    </button>
                   )}
                   
-                  {/* Multiple clips indicator */}
+                  {/* Top-left: Clips indicator */}
                   {(p.originalClips?.length > 1 || (p.originalClip && p.editedClip)) && (
-                    <div className="absolute top-2 left-2">
+                    <div className="absolute top-2 left-2 z-10">
                       <FaFilm className="text-white text-sm drop-shadow-lg" />
                     </div>
                   )}
                   
-                  {/* Delete button on hover (if owner) */}
+                  {/* Bottom-left: Views (if published) */}
+                  {isReel && (
+                    <div className="absolute bottom-2 left-2 flex items-center gap-1 text-white text-xs z-10">
+                      <FaEye className="text-[10px]" />
+                      <span>{p.viewsCount || 0}</span>
+                    </div>
+                  )}
+                  
+                  {/* Bottom-right: Delete button (always visible) */}
                   {!isPublic && (
                     <button
                       onClick={(e) => confirmDelete(p._id, e)}
-                      className="absolute bottom-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                      className="absolute bottom-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center text-white text-xs z-10 hover:bg-red-500"
                     >
                       <FaTrash className="text-[10px]" />
                     </button>
