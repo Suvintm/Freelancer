@@ -1164,6 +1164,7 @@ router.post("/kyc/:userId/verify", requirePermission("users"), logActivity("KYC_
       user.kycVerifiedAt = new Date();
       user.kycRejectionReason = null;
       user.isVerified = true; // Mark editor as verified
+      user.profileCompleted = true; // Mark profile as complete so editor appears in explore
     } else {
       user.kycStatus = "rejected";
       user.kycRejectionReason = rejectionReason || "Documents could not be verified";
