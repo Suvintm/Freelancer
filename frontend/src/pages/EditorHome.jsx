@@ -326,8 +326,8 @@ const EditorHome = () => {
                 </motion.div>
               )}
 
-              {/* 🎉 Profile Listed in Explore - Show when fully verified + KYC done */}
-              {user?.isVerified && user?.kycStatus === "verified" && (
+              {/* 🎉 Profile Listed in Explore - Show when: verified + KYC done + 80%+ profile */}
+              {user?.isVerified && user?.kycStatus === "verified" && (user?.profileCompletionPercent >= 80 || completionPercent >= 80) && (
                 <motion.div 
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}

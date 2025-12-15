@@ -40,6 +40,12 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Editor verification status (set when KYC is approved)
+    isVerified: {
+      type: Boolean,
+      default: false,
+      index: true, // Index for faster explore queries
+    },
     profilePicture: {
       type: String,
       default: "https://cdn-icons-png.flaticon.com/512/149/149071.png",

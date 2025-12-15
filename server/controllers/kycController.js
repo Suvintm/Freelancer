@@ -109,6 +109,7 @@ export const submitKYC = asyncHandler(async (req, res) => {
       panNumber: panNumber.toUpperCase(),
     };
     user.kycStatus = "verified"; // Auto-verified via Razorpay
+    user.isVerified = true; // Mark as verified for explore page
     user.kycSubmittedAt = new Date();
     user.kycVerifiedAt = new Date();
 

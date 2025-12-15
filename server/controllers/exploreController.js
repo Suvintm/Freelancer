@@ -20,10 +20,12 @@ export const getAllEditors = asyncHandler(async (req, res) => {
   const skip = (pageNum - 1) * limitNum;
 
   // STEP 1: Find verified editors from User collection
+  // Requirements: isVerified + KYC verified + 80%+ profile completion
   const userQuery = {
     role: "editor",
     isVerified: true,
     kycStatus: "verified",
+    profileCompletionPercent: { $gte: 80 }, // Must have 80%+ profile
     isBanned: { $ne: true },
   };
 

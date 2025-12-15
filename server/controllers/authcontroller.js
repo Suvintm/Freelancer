@@ -155,6 +155,9 @@ export const login = asyncHandler(async (req, res) => {
       role: user.role,
       profileCompleted: user.profileCompleted,
       profilePicture: user.profilePicture,
+      isVerified: user.isVerified,
+      kycStatus: user.kycStatus,
+      profileCompletionPercent: user.profileCompletionPercent,
     },
     token,
   });
