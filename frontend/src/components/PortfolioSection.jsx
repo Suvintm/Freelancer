@@ -230,16 +230,38 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
 
   const handlePushToReel = async (portfolioId, e) => {
     e?.stopPropagation?.();
+    
+    // Check if already published
+    const portfolio = portfolios.find(p => p._id === portfolioId);
+    if (portfolio?.isPublished) {
+      toast.info("✨ Already published to Reels!");
+      return;
+    }
+    
     try {
-      await axios.post(
+      const res = await axios.post(
         `${backendURL}/api/reels/publish/${portfolioId}`,
         {},
         { headers: { Authorization: `Bearer ${user?.token}` } }
       );
       toast.success("🎉 Published to Reels!");
-      // Optionally update local state to show "Published" status
+      
+      // Update local state to show "Published" status
+      setPortfolios(prev => prev.map(p => 
+        p._id === portfolioId 
+          ? { ...p, isPublished: true, reelId: res.data.reel?._id }
+          : p
+      ));
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to publish");
+      if (err.response?.status === 400 && err.response?.data?.message?.includes("already")) {
+        toast.info("✨ Already published to Reels!");
+        // Update local state
+        setPortfolios(prev => prev.map(p => 
+          p._id === portfolioId ? { ...p, isPublished: true } : p
+        ));
+      } else {
+        toast.error(err.response?.data?.message || "Failed to publish");
+      }
     }
   };
 
@@ -353,8 +375,8 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
 
         {/* Content Container */}
         <div className="relative z-10 p-1">
-          {/* Media Container */}
-          <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-gradient-to-br from-green-100 to-emerald-50">
+          {/* Media Container - 9:16 Instagram Reels style */}
+          <div className="relative aspect-[9/16] rounded-2xl overflow-hidden bg-black">
             {coverIsVideo ? (
               <video
                 ref={videoRef}
@@ -372,8 +394,8 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
               />
             )}
 
-            {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            {/* Gradient Overlay - Always visible */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
 
             {/* Play Button (for videos) */}
             {coverIsVideo && !isPlaying && (
@@ -391,8 +413,8 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
               </motion.div>
             )}
 
-            {/* Top Badges */}
-            <div className="absolute top-3 left-3 right-3 flex justify-between items-start">
+            {/* Top Badges - Always visible */}
+            <div className="absolute top-3 left-3 right-3 flex justify-between items-start z-10">
               {/* Clip Count */}
               <motion.div
                 initial={{ x: -20, opacity: 0 }}
@@ -409,17 +431,25 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
               {/* Actions - Only show if NOT public */}
               {!isPublic && (
                 <div className="flex gap-2">
-                  {/* Push to Reel Button */}
+                  {/* Push to Reel Button - Shows Published state */}
                   <motion.button
                     initial={{ x: 20, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
-                    whileHover={{ scale: 1.1, rotate: 10 }}
+                    whileHover={{ scale: 1.1, rotate: portfolio.isPublished ? 0 : 10 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={(e) => handlePushToReel(portfolio._id, e)}
-                    className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg text-purple-500 hover:bg-purple-50"
-                    title="Push to Reels"
+                    className={`w-9 h-9 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg transition-all ${
+                      portfolio.isPublished 
+                        ? 'bg-green-500 text-white cursor-default' 
+                        : 'bg-white/90 text-purple-500 hover:bg-purple-50'
+                    }`}
+                    title={portfolio.isPublished ? "Already on Reels" : "Push to Reels"}
                   >
-                    <FaGlobe className="text-sm" />
+                    {portfolio.isPublished ? (
+                      <FaCheck className="text-sm" />
+                    ) : (
+                      <FaGlobe className="text-sm" />
+                    )}
                   </motion.button>
 
                   {/* Delete Button */}
@@ -773,9 +803,9 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-3 px-5 py-2.5 bg-white text-black rounded-lg text-sm font-semibold hover:bg-zinc-200 transition-colors"
+          className="flex items-center gap-3 px-2 py-1 bg-white text-black rounded-lg text-4px font-semibold hover:bg-zinc-200 transition-colors"
         >
-          <FaPlus className="text-xs" />
+          <FaPlus className="text-xl" />
           Add Portfolio
         </motion.button>
       )}

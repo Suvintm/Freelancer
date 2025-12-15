@@ -146,7 +146,7 @@ const EditorProfile = () => {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-      <main className="md:ml-64 pt-16 md:pt-20 lg:pt-24 px-3 md:px-6 pb-10">
+      <main className="md:ml-64 pt-6 md:pt-20 lg:pt-24 px-3 md:px-6 pb-10">
         <div className="max-w-5xl mx-auto">
           
           {/* ==================== PROFILE COMPLETION BANNER ==================== */}

@@ -19,6 +19,11 @@ import {
   FaSyncAlt,
   FaDatabase,
   FaCloudUploadAlt,
+  FaChevronDown,
+  FaChevronUp,
+  FaVideo,
+  FaImages,
+  FaComments,
 } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
@@ -45,6 +50,8 @@ const EditorHome = () => {
   const [completionPercent, setCompletionPercent] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [storageData, setStorageData] = useState(null);
+  const [storageBreakdown, setStorageBreakdown] = useState(null);
+  const [storageExpanded, setStorageExpanded] = useState(false);
   const navigate = useNavigate();
 
   // Fetch basic stats
@@ -108,6 +115,7 @@ const EditorHome = () => {
           headers: { Authorization: `Bearer ${token}` },
         });
         setStorageData(res.data?.storage || null);
+        setStorageBreakdown(res.data?.breakdown || null);
       } catch (err) {
         console.error("Failed to fetch storage:", err);
       }
@@ -261,100 +269,151 @@ const EditorHome = () => {
               exit={{ opacity: 0, x: 10 }}
               transition={{ duration: 0.2 }}
             >
-              {/* Show Verified Badge when >= 80%, otherwise show Completion Banner */}
-              {completionPercent >= 80 ? (
-                <VerifiedEditorBadge 
-                  user={user} 
-                  profile={profileData} 
-                  kycStatus={user?.kycStatus}
-                  completionPercent={completionPercent}
-                />
-              ) : (
-                <ProfileCompletionBanner minPercent={80} />
-              )}
-
-              {/* 💾 Storage Card - Shows editor's storage usage */}
-              {storageData && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`border rounded-2xl p-5 mb-6 ${
-                    storageData.isFull 
-                      ? 'bg-gradient-to-r from-red-500/10 to-rose-500/5 border-red-500/20' 
-                      : storageData.isLowStorage 
-                        ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/5 border-amber-500/20'
-                        : 'bg-gradient-to-r from-blue-500/10 to-purple-500/5 border-blue-500/20'
-                  }`}
-                >
-                  <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-                    <div className={`p-3 rounded-xl ${
-                      storageData.isFull ? 'bg-red-500/15' : storageData.isLowStorage ? 'bg-amber-500/15' : 'bg-blue-500/15'
-                    }`}>
-                      <FaDatabase className={`text-xl ${
-                        storageData.isFull ? 'text-red-400' : storageData.isLowStorage ? 'text-amber-400' : 'text-blue-400'
-                      }`} />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-white font-semibold text-sm">Storage</h3>
-                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ${
-                          storageData.plan === 'free' ? 'bg-gray-500/20 text-gray-400' :
-                          storageData.plan === 'pro' ? 'bg-purple-500/20 text-purple-400' :
-                          'bg-blue-500/20 text-blue-400'
-                        }`}>
-                          {storageData.plan}
-                        </span>
-                      </div>
-                      
-                      {/* Progress Bar */}
-                      <div className="h-2 bg-black/30 rounded-full overflow-hidden mb-2">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${Math.min(storageData.usedPercent, 100)}%` }}
-                          transition={{ duration: 0.8, ease: "easeOut" }}
-                          className={`h-full rounded-full ${
-                            storageData.isFull ? 'bg-gradient-to-r from-red-500 to-red-400' :
-                            storageData.isLowStorage ? 'bg-gradient-to-r from-amber-500 to-orange-400' :
-                            'bg-gradient-to-r from-blue-500 to-purple-500'
-                          }`}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-400">
-                          {storageData.usedFormatted} / {storageData.limitFormatted}
-                        </span>
-                        <span className={`font-medium ${
-                          storageData.isFull ? 'text-red-400' : 
-                          storageData.isLowStorage ? 'text-amber-400' : 'text-emerald-400'
-                        }`}>
-                          {storageData.remainingFormatted} free
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <button
-                      onClick={() => navigate('/storage-plans')}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
-                        storageData.isFull || storageData.isLowStorage
-                          ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:opacity-90'
-                          : 'bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10'
-                      }`}
-                    >
-                      <FaCloudUploadAlt className="text-sm" />
-                      {storageData.isFull ? 'Upgrade Now' : 'Upgrade'}
-                    </button>
-                  </div>
-                  
-                  {storageData.isFull && (
-                    <p className="text-red-400 text-xs mt-3 flex items-center gap-1">
-                      <FaExclamationCircle className="text-xs" />
-                      Storage full! Upgrade or delete files to continue uploading.
-                    </p>
+              {/* 🎯 Side-by-Side Banners: Profile + Storage */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                {/* Left: Verified Badge / Profile Completion */}
+                <div className="min-w-0">
+                  {completionPercent >= 80 ? (
+                    <VerifiedEditorBadge 
+                      user={user} 
+                      profile={profileData} 
+                      kycStatus={user?.kycStatus}
+                      completionPercent={completionPercent}
+                    />
+                  ) : (
+                    <ProfileCompletionBanner minPercent={80} />
                   )}
-                </motion.div>
-              )}
+                </div>
+
+                {/* Right: Storage Card with Analytics Dropdown */}
+                {storageData && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`border rounded-2xl p-4 h-fit ${
+                      storageData.isFull 
+                        ? 'bg-gradient-to-r from-red-500/10 to-rose-500/5 border-red-500/20' 
+                        : storageData.isLowStorage 
+                          ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/5 border-amber-500/20'
+                          : 'bg-gradient-to-r from-blue-500/10 to-purple-500/5 border-blue-500/20'
+                    }`}
+                  >
+                    {/* Main Storage Info */}
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2.5 rounded-xl ${
+                        storageData.isFull ? 'bg-red-500/15' : storageData.isLowStorage ? 'bg-amber-500/15' : 'bg-blue-500/15'
+                      }`}>
+                        <FaDatabase className={`text-lg ${
+                          storageData.isFull ? 'text-red-400' : storageData.isLowStorage ? 'text-amber-400' : 'text-blue-400'
+                        }`} />
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-white font-semibold text-sm">Storage</h3>
+                          <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded uppercase ${
+                            storageData.plan === 'free' ? 'bg-gray-500/20 text-gray-400' :
+                            storageData.plan === 'pro' ? 'bg-purple-500/20 text-purple-400' :
+                            'bg-blue-500/20 text-blue-400'
+                          }`}>
+                            {storageData.plan}
+                          </span>
+                        </div>
+                        
+                        {/* Progress Bar */}
+                        <div className="h-1.5 bg-black/30 rounded-full overflow-hidden mb-1">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.min(storageData.usedPercent, 100)}%` }}
+                            transition={{ duration: 0.8, ease: "easeOut" }}
+                            className={`h-full rounded-full ${
+                              storageData.isFull ? 'bg-gradient-to-r from-red-500 to-red-400' :
+                              storageData.isLowStorage ? 'bg-gradient-to-r from-amber-500 to-orange-400' :
+                              'bg-gradient-to-r from-blue-500 to-purple-500'
+                            }`}
+                          />
+                        </div>
+                        
+                        <div className="flex items-center justify-between text-[10px]">
+                          <span className="text-gray-400">
+                            {storageData.usedFormatted} / {storageData.limitFormatted}
+                          </span>
+                          <span className={`font-medium ${
+                            storageData.isFull ? 'text-red-400' : 
+                            storageData.isLowStorage ? 'text-amber-400' : 'text-emerald-400'
+                          }`}>
+                            {storageData.remainingFormatted} free
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Actions */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setStorageExpanded(!storageExpanded)}
+                          className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 transition-all"
+                          title="Storage details"
+                        >
+                          {storageExpanded ? <FaChevronUp className="text-xs" /> : <FaChevronDown className="text-xs" />}
+                        </button>
+                        <button
+                          onClick={() => navigate('/storage-plans')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
+                            storageData.isFull || storageData.isLowStorage
+                              ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:opacity-90'
+                              : 'bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10'
+                          }`}
+                        >
+                          <FaCloudUploadAlt className="text-xs" />
+                          {storageData.isFull ? 'Upgrade' : 'Buy'}
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Warning Message */}
+                    {storageData.isFull && (
+                      <p className="text-red-400 text-[10px] mt-2 flex items-center gap-1">
+                        <FaExclamationCircle className="text-[10px]" />
+                        Storage full! Upgrade or delete files to continue.
+                      </p>
+                    )}
+                    
+                    {/* Analytics Dropdown */}
+                    <AnimatePresence>
+                      {storageExpanded && storageBreakdown && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="mt-3 pt-3 border-t border-white/10">
+                            <p className="text-gray-500 text-[10px] uppercase font-medium mb-2">Storage Breakdown</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className="bg-black/20 rounded-lg p-2 text-center">
+                                <FaVideo className="text-purple-400 mx-auto mb-1 text-sm" />
+                                <p className="text-white font-bold text-sm">{storageBreakdown.portfolios || 0}</p>
+                                <p className="text-gray-500 text-[9px]">Portfolios</p>
+                              </div>
+                              <div className="bg-black/20 rounded-lg p-2 text-center">
+                                <FaImages className="text-blue-400 mx-auto mb-1 text-sm" />
+                                <p className="text-white font-bold text-sm">{storageBreakdown.reels || 0}</p>
+                                <p className="text-gray-500 text-[9px]">Reels</p>
+                              </div>
+                              <div className="bg-black/20 rounded-lg p-2 text-center">
+                                <FaComments className="text-emerald-400 mx-auto mb-1 text-sm" />
+                                <p className="text-white font-bold text-sm">{storageBreakdown.chatFiles || 0}</p>
+                                <p className="text-gray-500 text-[9px]">Chat Files</p>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                )}
+              </div>
 
               {/* KYC Banner - Show based on status */}
               {!user?.kycStatus || user?.kycStatus === 'not_submitted' || user?.kycStatus === 'rejected' ? (
