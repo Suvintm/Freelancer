@@ -32,6 +32,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: "/payments", icon: FaWallet, label: "Payments" },
     { to: "/conversations", icon: FaComments, label: "Conversations" },
     { to: "/users", icon: FaUsers, label: "Users" },
+    { to: "/kyc", icon: FaShieldAlt, label: "KYC Verification" },
     { to: "/orders", icon: FaShoppingCart, label: "Orders" },
     { to: "/gigs", icon: FaBriefcase, label: "Gigs" },
     { to: "/activity", icon: FaHistory, label: "Activity Logs" },

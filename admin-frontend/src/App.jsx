@@ -14,6 +14,7 @@ import Settings from "./pages/Settings";
 import Analytics from "./pages/Analytics";
 import Conversations from "./pages/Conversations";
 import Payments from "./pages/Payments";
+import KYCManagement from "./pages/KYCManagement";
 
 // Components
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -52,6 +53,7 @@ function App() {
           <Route path="/payments" element={<Payments />} />
           <Route path="/conversations" element={<Conversations />} />
           <Route path="/users" element={<Users />} />
+          <Route path="/kyc" element={<KYCManagement />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/gigs" element={<Gigs />} />
           <Route path="/activity" element={<Activity />} />

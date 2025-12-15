@@ -1,6 +1,6 @@
 import express from "express";
 import { getProfile, updateProfile, getProfileCompletionStatus } from "../controllers/profileController.js";
-import { getKYCStatus, submitKYC } from "../controllers/kycController.js";
+import { getKYCStatus, submitKYC, lookupIFSC, verifyKYC } from "../controllers/kycController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import { upload } from "../middleware/upload.js";
 import { updateProfileValidator, userIdValidator } from "../middleware/validators.js";
@@ -19,6 +19,12 @@ router.get("/kyc-status", authMiddleware, getKYCStatus);
 
 // Submit KYC details
 router.post("/submit-kyc", authMiddleware, submitKYC);
+
+// IFSC Lookup (proxy to avoid CORS)
+router.get("/lookup-ifsc/:ifsc", authMiddleware, lookupIFSC);
+
+// Admin: Verify KYC manually
+router.post("/verify-kyc/:userId", authMiddleware, verifyKYC);
 
 // Get logged-in user's own profile (this is what frontend calls)
 router.get("/", authMiddleware, getProfile);

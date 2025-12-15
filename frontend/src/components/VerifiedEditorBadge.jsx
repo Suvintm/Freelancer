@@ -1,6 +1,6 @@
 /**
  * VerifiedEditorBadge Component
- * Shows when profile >= 80% complete with professional verified badge
+ * Shows when profile >= 80% complete with profile completion ring
  * Also shows KYC/Earnings status
  */
 
@@ -14,7 +14,7 @@ import {
 } from 'react-icons/fa';
 import { HiCheckBadge } from 'react-icons/hi2';
 
-const VerifiedEditorBadge = ({ user, profile, kycStatus }) => {
+const VerifiedEditorBadge = ({ user, profile, kycStatus, completionPercent = 80 }) => {
   const isKycVerified = kycStatus === 'verified' || user?.kycStatus === 'verified';
   
   // Get profile picture
@@ -25,6 +25,14 @@ const VerifiedEditorBadge = ({ user, profile, kycStatus }) => {
   // Get name
   const name = profile?.user?.name || user?.name || 'Editor';
   const firstName = name.split(' ')[0];
+  
+  // Profile completion percentage for the ring
+  const percent = completionPercent || user?.profileCompletionPercent || 80;
+  
+  // Calculate SVG circle values
+  const radius = 42;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (circumference * percent / 100);
 
   return (
     <motion.div
@@ -39,23 +47,43 @@ const VerifiedEditorBadge = ({ user, profile, kycStatus }) => {
       <div className="relative p-5 md:p-6">
         <div className="flex flex-col md:flex-row items-start md:items-center gap-5">
           
-          {/* Profile Image with Verified Ring */}
+          {/* Profile Image with Completion Ring */}
           <div className="relative flex-shrink-0">
-            {/* Outer glow ring */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/30 to-blue-500/30 rounded-full blur-sm" />
-            
-            {/* Profile image container */}
-            <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-full p-[2px] bg-gradient-to-r from-emerald-500 to-blue-500">
-              <img
-                src={profilePicture}
-                alt={name}
-                className="w-full h-full rounded-full object-cover bg-[#1a1a1a]"
-              />
-            </div>
-            
-            {/* Verified badge on image */}
-            <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full flex items-center justify-center border-2 border-[#0a0a0c] shadow-lg shadow-emerald-500/30">
-              <FaCheckCircle className="text-white text-xs" />
+            {/* SVG Completion Ring */}
+            <div className="relative w-20 h-20 md:w-24 md:h-24">
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                {/* Background circle */}
+                <circle 
+                  className="fill-none stroke-white/[0.06]" 
+                  cx="50" cy="50" r={radius} 
+                  strokeWidth="4" 
+                />
+                {/* Progress circle */}
+                <circle 
+                  className="fill-none stroke-emerald-500 transition-all duration-700"
+                  cx="50" cy="50" r={radius}
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  style={{
+                    strokeDasharray: circumference,
+                    strokeDashoffset: strokeDashoffset,
+                  }}
+                />
+              </svg>
+              
+              {/* Profile image centered inside ring */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 md:w-16 md:h-16">
+                <img
+                  src={profilePicture}
+                  alt={name}
+                  className="w-full h-full rounded-full object-cover bg-[#1a1a1a] border-2 border-[#0a0a0c]"
+                />
+              </div>
+              
+              {/* Percentage badge */}
+              <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-[#0a0a0c] shadow-lg">
+                <span className="text-white text-[10px] font-bold">{percent}%</span>
+              </div>
             </div>
           </div>
 

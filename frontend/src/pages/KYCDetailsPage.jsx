@@ -1,6 +1,6 @@
 /**
- * KYCDetailsPage - Professional UI using Tailwind CSS
- * Shows Bank Account, verification status, and payout information
+ * KYCDetailsPage - Professional Dark UI
+ * Shows Bank Account, verification status, and allows submission
  */
 
 import { useState, useEffect } from 'react';
@@ -17,15 +17,19 @@ import {
   FaMoneyBillWave,
   FaEdit,
   FaShieldAlt,
-  FaClock
+  FaClock,
+  FaArrowRight,
+  FaCheck,
+  FaTimes
 } from 'react-icons/fa';
+import { HiSparkles } from 'react-icons/hi2';
 import { useAppContext } from '../context/AppContext';
 import Sidebar from '../components/Sidebar';
 import EditorNavbar from '../components/EditorNavbar';
 import axios from 'axios';
 
 const KYCDetailsPage = () => {
-  const { user, backendURL } = useAppContext();
+  const { user, backendURL, setUser } = useAppContext();
   const [kycData, setKycData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -35,12 +39,16 @@ const KYCDetailsPage = () => {
     accountHolderName: '',
     bankName: '',
     accountNumber: '',
+    confirmAccountNumber: '',
     ifscCode: '',
     panNumber: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [bankInfo, setBankInfo] = useState(null);
+  const [verifyingIfsc, setVerifyingIfsc] = useState(false);
 
+  // Fetch KYC status on mount
   useEffect(() => {
     const fetchKYCStatus = async () => {
       if (!user?.token) {
@@ -54,14 +62,17 @@ const KYCDetailsPage = () => {
         });
         setKycData(res.data);
         
+        // Pre-fill form if bank details exist
         if (res.data?.bankDetails) {
-          setFormData({
+          setFormData(prev => ({
+            ...prev,
             accountHolderName: res.data.bankDetails.accountHolderName || '',
             bankName: res.data.bankDetails.bankName || '',
-            accountNumber: res.data.bankDetails.accountNumber || '',
             ifscCode: res.data.bankDetails.ifscCode || '',
-            panNumber: res.data.bankDetails.panNumber || '',
-          });
+          }));
+          if (res.data.bankDetails.bankName) {
+            setBankInfo({ bankName: res.data.bankDetails.bankName });
+          }
         }
       } catch (error) {
         console.error('Failed to fetch KYC status:', error);
@@ -73,20 +84,77 @@ const KYCDetailsPage = () => {
     fetchKYCStatus();
   }, [user?.token, backendURL]);
 
+  // Lookup IFSC for bank info - use backend proxy to avoid CORS
+  const lookupIFSC = async (ifsc) => {
+    if (ifsc.length !== 11) return;
+    
+    setVerifyingIfsc(true);
+    try {
+      const res = await axios.get(`${backendURL}/api/profile/lookup-ifsc/${ifsc}`, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      if (res.data.success) {
+        setBankInfo({
+          bankName: res.data.bank,
+          branchName: res.data.branch,
+          city: res.data.city,
+        });
+        setFormData(prev => ({ ...prev, bankName: res.data.bank }));
+      }
+    } catch {
+      setBankInfo(null);
+    } finally {
+      setVerifyingIfsc(false);
+    }
+  };
+
+  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate account numbers match
+    if (formData.accountNumber !== formData.confirmAccountNumber) {
+      setMessage({ type: 'error', text: 'Account numbers do not match!' });
+      return;
+    }
+    
     setSubmitting(true);
     setMessage({ type: '', text: '' });
 
     try {
       const res = await axios.post(
         `${backendURL}/api/profile/submit-kyc`,
-        formData,
+        {
+          accountHolderName: formData.accountHolderName,
+          accountNumber: formData.accountNumber,
+          ifscCode: formData.ifscCode,
+          panNumber: formData.panNumber,
+          bankName: formData.bankName,
+        },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
 
-      setMessage({ type: 'success', text: 'KYC details submitted successfully!' });
-      setKycData(prev => ({ ...prev, ...res.data }));
+      // Update local kycData with response
+      setKycData(prev => ({
+        ...prev,
+        kycStatus: res.data.kycStatus,
+        bankDetails: {
+          accountHolderName: formData.accountHolderName,
+          bankName: formData.bankName,
+          ifscCode: formData.ifscCode,
+          accountNumber: '••••••' + formData.accountNumber.slice(-4),
+          panNumber: formData.panNumber,
+        }
+      }));
+      
+      // Update global user context
+      setUser(prev => ({
+        ...prev,
+        kycStatus: res.data.kycStatus,
+        profileCompletionPercent: res.data.profileCompletion,
+      }));
+
+      setMessage({ type: 'success', text: res.data.message || 'KYC submitted successfully!' });
       setShowForm(false);
     } catch (error) {
       setMessage({ 
@@ -98,184 +166,178 @@ const KYCDetailsPage = () => {
     }
   };
 
-  const getStatusInfo = () => {
+  // Get status configuration
+  const getStatusConfig = () => {
     const status = kycData?.kycStatus || user?.kycStatus || 'not_submitted';
     
     switch (status) {
       case 'verified':
         return {
           icon: FaCheckCircle,
-          color: 'text-green-500',
-          bgColor: 'bg-green-500/10',
+          iconColor: 'text-emerald-400',
+          bgColor: 'bg-emerald-500/10',
+          borderColor: 'border-emerald-500/20',
           label: 'Verified',
-          description: 'Your bank account is verified. You can receive payouts.'
+          labelColor: 'text-emerald-400',
+          description: 'Your bank account is verified and linked for payouts.',
+          gradient: 'from-emerald-500/10 to-green-500/5'
         };
+      case 'submitted':
       case 'pending':
         return {
           icon: FaClock,
-          color: 'text-amber-500',
+          iconColor: 'text-amber-400',
           bgColor: 'bg-amber-500/10',
-          label: 'Pending Review',
-          description: 'Your KYC is under review. This usually takes 24-48 hours.'
+          borderColor: 'border-amber-500/20',
+          label: 'Under Review',
+          labelColor: 'text-amber-400',
+          description: 'Your KYC is being verified. This usually takes 24-48 hours.',
+          gradient: 'from-amber-500/10 to-orange-500/5'
         };
       case 'rejected':
         return {
-          icon: FaExclamationCircle,
-          color: 'text-red-500',
+          icon: FaTimes,
+          iconColor: 'text-red-400',
           bgColor: 'bg-red-500/10',
+          borderColor: 'border-red-500/20',
           label: 'Rejected',
-          description: 'Your KYC was rejected. Please review and resubmit.'
+          labelColor: 'text-red-400',
+          description: 'Your KYC was rejected. Please update details and resubmit.',
+          gradient: 'from-red-500/10 to-rose-500/5'
         };
       default:
         return {
           icon: FaExclamationCircle,
-          color: 'text-gray-500',
-          bgColor: 'bg-gray-500/10',
+          iconColor: 'text-zinc-400',
+          bgColor: 'bg-zinc-500/10',
+          borderColor: 'border-zinc-500/20',
           label: 'Not Submitted',
-          description: 'Complete KYC to receive payouts from your orders.'
+          labelColor: 'text-zinc-400',
+          description: 'Complete KYC verification to receive payouts.',
+          gradient: 'from-zinc-500/10 to-zinc-600/5'
         };
     }
   };
 
-  const statusInfo = getStatusInfo();
-  const StatusIcon = statusInfo.icon;
-  const isVerified = kycData?.kycStatus === 'verified' || user?.kycStatus === 'verified';
+  const statusConfig = getStatusConfig();
+  const StatusIcon = statusConfig.icon;
+  const isVerified = (kycData?.kycStatus || user?.kycStatus) === 'verified';
+  const isSubmitted = ['submitted', 'pending', 'verified'].includes(kycData?.kycStatus || user?.kycStatus);
   const bankDetails = kycData?.bankDetails || {};
 
   return (
-    <div className="flex min-h-screen bg-[#050507]">
+    <div className="flex min-h-screen bg-black">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
       <div className="flex-1 md:ml-64 flex flex-col">
         <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex-1 p-4 md:p-8 max-w-[900px] mx-auto w-full mt-20">
+        <div className="flex-1 p-4 md:p-8 max-w-[800px] mx-auto w-full mt-16 md:mt-20">
           {/* Header */}
           <motion.div 
-            className="mb-8"
+            className="mb-6"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <h1 className="text-2xl font-semibold text-gray-100 mb-1">KYC Details</h1>
-            <p className="text-sm text-gray-500">Manage your bank account and verification</p>
+            <h1 className="text-xl font-semibold text-white mb-1 flex items-center gap-2">
+              <FaShieldAlt className="text-blue-400" />
+              KYC Verification
+            </h1>
+            <p className="text-sm text-zinc-500">Verify your identity to enable payouts</p>
           </motion.div>
 
           {loading ? (
-            <div className="flex items-center justify-center gap-3 py-16 text-gray-500 text-sm">
+            <div className="flex items-center justify-center gap-3 py-20 text-zinc-500 text-sm">
               <FaSpinner className="animate-spin" />
-              <span>Loading KYC details...</span>
+              <span>Loading...</span>
             </div>
           ) : (
             <>
               {/* Status Card */}
               <motion.div 
-                className="flex flex-wrap items-center gap-5 p-6 bg-[#0a0a0c] border border-white/5 rounded-xl mb-6"
+                className={`relative overflow-hidden rounded-2xl border ${statusConfig.borderColor} bg-gradient-to-r ${statusConfig.gradient} mb-6`}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
               >
-                <div className={`w-12 h-12 rounded-xl ${statusInfo.bgColor} flex items-center justify-center text-xl flex-shrink-0`}>
-                  <StatusIcon className={statusInfo.color} />
+                <div className="relative p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <div className={`w-14 h-14 rounded-xl ${statusConfig.bgColor} flex items-center justify-center`}>
+                    <StatusIcon className={`text-2xl ${statusConfig.iconColor}`} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-base font-semibold ${statusConfig.labelColor}`}>
+                        {statusConfig.label}
+                      </span>
+                      {isVerified && <HiSparkles className="text-emerald-400 text-sm" />}
+                    </div>
+                    <p className="text-sm text-zinc-400">{statusConfig.description}</p>
+                  </div>
+                  {!isVerified && (
+                    <button 
+                      className="flex items-center gap-2 px-5 py-2.5 bg-white text-black text-sm font-semibold rounded-xl hover:bg-zinc-100 transition-all"
+                      onClick={() => setShowForm(!showForm)}
+                    >
+                      {showForm ? 'Cancel' : (isSubmitted ? 'Update' : 'Start KYC')}
+                      {!showForm && <FaArrowRight className="text-xs" />}
+                    </button>
+                  )}
                 </div>
-                <div className="flex-1">
-                  <span className={`text-sm font-semibold ${statusInfo.color} block mb-0.5`}>
-                    {statusInfo.label}
-                  </span>
-                  <p className="text-xs text-gray-500">{statusInfo.description}</p>
-                </div>
-                {!isVerified && (
-                  <button 
-                    className="flex items-center gap-2 px-5 py-2.5 bg-[#18181b] border border-white/[0.08] rounded-lg text-gray-200 text-sm font-semibold cursor-pointer transition-all hover:bg-[#222225]"
-                    onClick={() => setShowForm(!showForm)}
-                  >
-                    {showForm ? 'Cancel' : (bankDetails.accountNumber ? 'Update Details' : 'Add Bank Details')}
-                  </button>
-                )}
               </motion.div>
 
-              {/* Message */}
+              {/* Success/Error Message */}
               {message.text && (
-                <div className={`flex items-center gap-3 p-4 rounded-lg text-sm mb-6 ${
-                  message.type === 'success' 
-                    ? 'bg-green-500/10 border border-green-500/20 text-green-500'
-                    : 'bg-red-500/10 border border-red-500/20 text-red-500'
-                }`}>
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex items-center gap-3 p-4 rounded-xl text-sm mb-6 ${
+                    message.type === 'success' 
+                      ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                      : 'bg-red-500/10 border border-red-500/20 text-red-400'
+                  }`}
+                >
                   {message.type === 'success' ? <FaCheckCircle /> : <FaExclamationCircle />}
                   <span>{message.text}</span>
-                </div>
+                </motion.div>
               )}
 
-              {/* Bank Details Display */}
-              {bankDetails.accountNumber && !showForm && (
+              {/* Bank Details Display (when submitted) */}
+              {isSubmitted && !showForm && bankDetails.accountHolderName && (
                 <motion.div 
-                  className="bg-[#0a0a0c] border border-white/5 rounded-xl mb-6 overflow-hidden"
+                  className="bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden mb-6"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
                 >
-                  <div className="flex items-center justify-between p-4 px-5 border-b border-white/[0.04]">
-                    <h3 className="flex items-center gap-2.5 text-sm font-semibold text-gray-200">
-                      <FaUniversity className="text-gray-500" /> Bank Account Details
+                  <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+                    <h3 className="flex items-center gap-2 text-sm font-medium text-white">
+                      <FaUniversity className="text-blue-400" />
+                      Bank Account Details
                     </h3>
                     {!isVerified && (
                       <button 
-                        className="flex items-center gap-1.5 px-3 py-2 bg-transparent border border-white/[0.08] rounded-md text-gray-400 text-xs font-medium cursor-pointer transition-all hover:bg-white/[0.04] hover:text-gray-300"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-400 hover:text-white transition-colors"
                         onClick={() => setShowForm(true)}
                       >
-                        <FaEdit /> Edit
+                        <FaEdit className="text-[10px]" /> Edit
                       </button>
                     )}
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-[1px] bg-white/[0.03]">
-                    <div className="p-5 bg-[#0a0a0c] flex flex-col gap-2">
-                      <span className="flex items-center gap-2 text-[0.7rem] text-gray-500 uppercase tracking-wide font-medium">
-                        <FaUser className="text-xs" /> Account Holder
-                      </span>
-                      <span className="text-sm font-medium text-gray-200">
-                        {bankDetails.accountHolderName || '-'}
-                      </span>
-                    </div>
-                    
-                    <div className="p-5 bg-[#0a0a0c] flex flex-col gap-2">
-                      <span className="flex items-center gap-2 text-[0.7rem] text-gray-500 uppercase tracking-wide font-medium">
-                        <FaBuilding className="text-xs" /> Bank Name
-                      </span>
-                      <span className="text-sm font-medium text-gray-200">
-                        {bankDetails.bankName || '-'}
-                      </span>
-                    </div>
-                    
-                    <div className="p-5 bg-[#0a0a0c] flex flex-col gap-2">
-                      <span className="flex items-center gap-2 text-[0.7rem] text-gray-500 uppercase tracking-wide font-medium">
-                        <FaMoneyBillWave className="text-xs" /> Account Number
-                      </span>
-                      <span className="text-sm font-medium text-gray-200 font-mono tracking-wide">
-                        {bankDetails.accountNumber 
-                          ? '****' + bankDetails.accountNumber.slice(-4) 
-                          : '-'}
-                      </span>
-                    </div>
-                    
-                    <div className="p-5 bg-[#0a0a0c] flex flex-col gap-2">
-                      <span className="flex items-center gap-2 text-[0.7rem] text-gray-500 uppercase tracking-wide font-medium">
-                        <FaUniversity className="text-xs" /> IFSC Code
-                      </span>
-                      <span className="text-sm font-medium text-gray-200">
-                        {bankDetails.ifscCode || '-'}
-                      </span>
-                    </div>
-                    
-                    <div className="p-5 bg-[#0a0a0c] flex flex-col gap-2">
-                      <span className="flex items-center gap-2 text-[0.7rem] text-gray-500 uppercase tracking-wide font-medium">
-                        <FaIdCard className="text-xs" /> PAN Number
-                      </span>
-                      <span className="text-sm font-medium text-gray-200 font-mono tracking-wide">
-                        {bankDetails.panNumber 
-                          ? bankDetails.panNumber.slice(0, 2) + '****' + bankDetails.panNumber.slice(-2) 
-                          : '-'}
-                      </span>
-                    </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-zinc-800">
+                    {[
+                      { icon: FaUser, iconColor: 'text-blue-400', label: 'Account Holder', value: bankDetails.accountHolderName },
+                      { icon: FaBuilding, iconColor: 'text-purple-400', label: 'Bank Name', value: bankDetails.bankName },
+                      { icon: FaMoneyBillWave, iconColor: 'text-emerald-400', label: 'Account Number', value: bankDetails.accountNumber },
+                      { icon: FaUniversity, iconColor: 'text-amber-400', label: 'IFSC Code', value: bankDetails.ifscCode },
+                      { icon: FaIdCard, iconColor: 'text-pink-400', label: 'PAN Number', value: bankDetails.panNumber ? `${bankDetails.panNumber.slice(0,2)}****${bankDetails.panNumber.slice(-2)}` : '-' },
+                    ].map((item, idx) => (
+                      <div key={idx} className="p-4 bg-zinc-900/80">
+                        <div className="flex items-center gap-2 text-[10px] text-zinc-500 uppercase tracking-wide font-medium mb-2">
+                          <item.icon className={`${item.iconColor}`} />
+                          {item.label}
+                        </div>
+                        <span className="text-sm text-white font-medium">{item.value || '-'}</span>
+                      </div>
+                    ))}
                   </div>
                 </motion.div>
               )}
@@ -283,71 +345,122 @@ const KYCDetailsPage = () => {
               {/* KYC Form */}
               {showForm && (
                 <motion.div 
-                  className="bg-[#0a0a0c] border border-white/5 rounded-xl mb-6 overflow-hidden"
+                  className="bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden mb-6"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <div className="p-5 border-b border-white/[0.04]">
-                    <h3 className="flex items-center gap-2.5 text-base font-semibold text-gray-200 mb-1">
-                      <FaShieldAlt className="text-gray-500" /> Bank Account Verification
+                  <div className="p-5 border-b border-zinc-800">
+                    <h3 className="flex items-center gap-2 text-base font-semibold text-white mb-1">
+                      <FaShieldAlt className="text-blue-400" />
+                      Bank Account Verification
                     </h3>
-                    <p className="text-xs text-gray-500">Enter your bank details for receiving payouts</p>
+                    <p className="text-xs text-zinc-500">Enter your bank details for receiving payouts</p>
                   </div>
 
-                  <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-4">
-                    <div className="flex flex-col gap-2">
-                      <label className="text-xs font-medium text-gray-400">Account Holder Name *</label>
+                  <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                    {/* Account Holder Name */}
+                    <div>
+                      <label className="flex items-center gap-2 text-xs font-medium text-zinc-400 mb-2">
+                        <FaUser className="text-blue-400" />
+                        Account Holder Name
+                      </label>
                       <input
                         type="text"
-                        placeholder="Enter full name as per bank"
+                        placeholder="Full name as per bank records"
                         value={formData.accountHolderName}
                         onChange={(e) => setFormData(prev => ({ ...prev, accountHolderName: e.target.value }))}
                         required
-                        className="px-4 py-3 bg-[#050507] border border-white/[0.08] rounded-lg text-gray-200 text-sm outline-none focus:border-white/20 transition-colors placeholder:text-gray-600"
+                        className="w-full px-4 py-3 bg-black border border-zinc-800 rounded-xl text-white text-sm outline-none focus:border-zinc-600 transition-colors placeholder:text-zinc-600"
                       />
                     </div>
 
+                    {/* IFSC + Bank Name */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="flex flex-col gap-2">
-                        <label className="text-xs font-medium text-gray-400">Bank Name *</label>
+                      <div>
+                        <label className="flex items-center gap-2 text-xs font-medium text-zinc-400 mb-2">
+                          <FaUniversity className="text-amber-400" />
+                          IFSC Code
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder="e.g., SBIN0001234"
+                            value={formData.ifscCode}
+                            onChange={(e) => {
+                              const val = e.target.value.toUpperCase();
+                              setFormData(prev => ({ ...prev, ifscCode: val }));
+                              if (val.length === 11) lookupIFSC(val);
+                            }}
+                            required
+                            maxLength={11}
+                            className="w-full px-4 py-3 bg-black border border-zinc-800 rounded-xl text-white text-sm outline-none focus:border-zinc-600 transition-colors placeholder:text-zinc-600"
+                          />
+                          {verifyingIfsc && (
+                            <FaSpinner className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 animate-spin" />
+                          )}
+                        </div>
+                        {bankInfo && (
+                          <p className="text-xs text-emerald-400 mt-1.5 flex items-center gap-1">
+                            <FaCheck /> {bankInfo.bankName} {bankInfo.branchName && `- ${bankInfo.branchName}`}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="flex items-center gap-2 text-xs font-medium text-zinc-400 mb-2">
+                          <FaBuilding className="text-purple-400" />
+                          Bank Name
+                        </label>
                         <input
                           type="text"
                           placeholder="e.g., State Bank of India"
                           value={formData.bankName}
                           onChange={(e) => setFormData(prev => ({ ...prev, bankName: e.target.value }))}
                           required
-                          className="px-4 py-3 bg-[#050507] border border-white/[0.08] rounded-lg text-gray-200 text-sm outline-none focus:border-white/20 transition-colors placeholder:text-gray-600"
+                          className="w-full px-4 py-3 bg-black border border-zinc-800 rounded-xl text-white text-sm outline-none focus:border-zinc-600 transition-colors placeholder:text-zinc-600"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Account Number + Confirm */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="flex items-center gap-2 text-xs font-medium text-zinc-400 mb-2">
+                          <FaMoneyBillWave className="text-emerald-400" />
+                          Account Number
+                        </label>
+                        <input
+                          type="password"
+                          placeholder="Enter account number"
+                          value={formData.accountNumber}
+                          onChange={(e) => setFormData(prev => ({ ...prev, accountNumber: e.target.value.replace(/\D/g, '') }))}
+                          required
+                          className="w-full px-4 py-3 bg-black border border-zinc-800 rounded-xl text-white text-sm outline-none focus:border-zinc-600 transition-colors placeholder:text-zinc-600"
                         />
                       </div>
 
-                      <div className="flex flex-col gap-2">
-                        <label className="text-xs font-medium text-gray-400">IFSC Code *</label>
+                      <div>
+                        <label className="flex items-center gap-2 text-xs font-medium text-zinc-400 mb-2">
+                          <FaMoneyBillWave className="text-emerald-400" />
+                          Confirm Account Number
+                        </label>
                         <input
                           type="text"
-                          placeholder="e.g., SBIN0001234"
-                          value={formData.ifscCode}
-                          onChange={(e) => setFormData(prev => ({ ...prev, ifscCode: e.target.value.toUpperCase() }))}
+                          placeholder="Re-enter account number"
+                          value={formData.confirmAccountNumber}
+                          onChange={(e) => setFormData(prev => ({ ...prev, confirmAccountNumber: e.target.value.replace(/\D/g, '') }))}
                           required
-                          maxLength={11}
-                          className="px-4 py-3 bg-[#050507] border border-white/[0.08] rounded-lg text-gray-200 text-sm outline-none focus:border-white/20 transition-colors placeholder:text-gray-600"
+                          className="w-full px-4 py-3 bg-black border border-zinc-800 rounded-xl text-white text-sm outline-none focus:border-zinc-600 transition-colors placeholder:text-zinc-600"
                         />
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-2">
-                      <label className="text-xs font-medium text-gray-400">Account Number *</label>
-                      <input
-                        type="text"
-                        placeholder="Enter bank account number"
-                        value={formData.accountNumber}
-                        onChange={(e) => setFormData(prev => ({ ...prev, accountNumber: e.target.value.replace(/\D/g, '') }))}
-                        required
-                        className="px-4 py-3 bg-[#050507] border border-white/[0.08] rounded-lg text-gray-200 text-sm outline-none focus:border-white/20 transition-colors placeholder:text-gray-600"
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <label className="text-xs font-medium text-gray-400">PAN Number *</label>
+                    {/* PAN Number */}
+                    <div>
+                      <label className="flex items-center gap-2 text-xs font-medium text-zinc-400 mb-2">
+                        <FaIdCard className="text-pink-400" />
+                        PAN Number
+                      </label>
                       <input
                         type="text"
                         placeholder="e.g., ABCDE1234F"
@@ -355,29 +468,29 @@ const KYCDetailsPage = () => {
                         onChange={(e) => setFormData(prev => ({ ...prev, panNumber: e.target.value.toUpperCase() }))}
                         required
                         maxLength={10}
-                        className="px-4 py-3 bg-[#050507] border border-white/[0.08] rounded-lg text-gray-200 text-sm outline-none focus:border-white/20 transition-colors placeholder:text-gray-600"
+                        className="w-full px-4 py-3 bg-black border border-zinc-800 rounded-xl text-white text-sm outline-none focus:border-zinc-600 transition-colors placeholder:text-zinc-600"
                       />
                     </div>
 
-                    <div className="flex items-center gap-2 text-xs text-gray-500 px-4 py-3 bg-white/[0.02] rounded-lg">
-                      <FaLock className="text-green-500" />
-                      <span>Your information is encrypted and secure</span>
+                    {/* Security Note */}
+                    <div className="flex items-center gap-2 text-xs text-zinc-500 px-4 py-3 bg-emerald-500/5 border border-emerald-500/10 rounded-xl">
+                      <FaLock className="text-emerald-400" />
+                      <span>Your data is encrypted with bank-grade security</span>
                     </div>
 
-                    <div className="flex flex-col md:flex-row gap-3 justify-end pt-2">
+                    {/* Submit */}
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
                       <button 
                         type="button" 
-                        className="flex items-center justify-center gap-2 px-5 py-3 bg-transparent border border-white/10 rounded-lg text-gray-400 text-sm font-medium cursor-pointer transition-all hover:bg-white/[0.03] hover:text-gray-300"
+                        className="flex-1 sm:flex-none px-5 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-zinc-300 text-sm font-medium hover:bg-zinc-700 transition-colors"
                         onClick={() => setShowForm(false)}
                       >
                         Cancel
                       </button>
                       <button 
                         type="submit" 
-                        className={`flex items-center justify-center gap-2 px-5 py-3 bg-[#18181b] border border-white/[0.08] rounded-lg text-gray-200 text-sm font-semibold cursor-pointer transition-all hover:bg-[#222225] ${
-                          submitting ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
                         disabled={submitting}
+                        className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-white text-black text-sm font-semibold rounded-xl hover:bg-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         {submitting ? (
                           <>
@@ -385,7 +498,10 @@ const KYCDetailsPage = () => {
                             Submitting...
                           </>
                         ) : (
-                          'Submit for Verification'
+                          <>
+                            <FaCheck />
+                            Submit for Verification
+                          </>
                         )}
                       </button>
                     </div>
@@ -393,27 +509,30 @@ const KYCDetailsPage = () => {
                 </motion.div>
               )}
 
-              {/* Info Section */}
+              {/* Why KYC Section */}
               <motion.div 
-                className="p-6 bg-white/[0.02] border border-white/[0.04] rounded-xl"
+                className="p-5 bg-zinc-900/30 border border-zinc-800 rounded-2xl"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
+                transition={{ delay: 0.2 }}
               >
-                <h4 className="text-sm font-semibold text-gray-200 mb-4">Why KYC is Required?</h4>
-                <ul className="flex flex-col gap-3">
-                  <li className="flex items-start gap-3 text-sm text-gray-400">
-                    <FaCheckCircle className="text-green-500 text-xs mt-1 flex-shrink-0" />
-                    <span>Receive payouts from completed orders directly to your bank</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-sm text-gray-400">
-                    <FaCheckCircle className="text-green-500 text-xs mt-1 flex-shrink-0" />
-                    <span>Comply with payment regulations and tax requirements</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-sm text-gray-400">
-                    <FaCheckCircle className="text-green-500 text-xs mt-1 flex-shrink-0" />
-                    <span>Protect your account from unauthorized transactions</span>
-                  </li>
+                <h4 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                  <FaShieldAlt className="text-blue-400" />
+                  Why KYC is Required
+                </h4>
+                <ul className="space-y-3">
+                  {[
+                    { icon: FaMoneyBillWave, iconColor: 'text-emerald-400', text: 'Receive payouts directly to your bank account' },
+                    { icon: FaShieldAlt, iconColor: 'text-blue-400', text: 'Comply with RBI payment regulations' },
+                    { icon: FaLock, iconColor: 'text-purple-400', text: 'Protect your account from unauthorized access' },
+                  ].map((item, idx) => (
+                    <li key={idx} className="flex items-center gap-3 text-sm text-zinc-400">
+                      <div className={`w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center ${item.iconColor}`}>
+                        <item.icon className="text-xs" />
+                      </div>
+                      <span>{item.text}</span>
+                    </li>
+                  ))}
                 </ul>
               </motion.div>
             </>

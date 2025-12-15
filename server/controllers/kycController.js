@@ -188,7 +188,81 @@ function calculateProfileCompletion(user) {
   return Math.round(completion);
 }
 
+/**
+ * Lookup IFSC Code (Proxy to avoid CORS)
+ * GET /api/profile/lookup-ifsc/:ifsc
+ */
+export const lookupIFSC = asyncHandler(async (req, res) => {
+  const { ifsc } = req.params;
+  
+  if (!ifsc || ifsc.length !== 11) {
+    throw new ApiError(400, "Invalid IFSC code");
+  }
+  
+  try {
+    const response = await fetch(`https://ifsc.razorpay.com/${ifsc.toUpperCase()}`);
+    
+    if (!response.ok) {
+      throw new ApiError(404, "IFSC code not found");
+    }
+    
+    const data = await response.json();
+    
+    res.json({
+      success: true,
+      bank: data.BANK,
+      branch: data.BRANCH,
+      city: data.CITY,
+      state: data.STATE,
+      address: data.ADDRESS,
+    });
+  } catch (error) {
+    if (error.statusCode === 404) throw error;
+    throw new ApiError(404, "Could not verify IFSC code");
+  }
+});
+
+/**
+ * Admin: Verify KYC (Manual verification)
+ * POST /api/profile/verify-kyc/:userId
+ */
+export const verifyKYC = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const { approve, rejectionReason } = req.body;
+  
+  // Check if requester is admin
+  if (req.user.role !== 'admin') {
+    throw new ApiError(403, "Only admins can verify KYC");
+  }
+  
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+  
+  if (approve) {
+    user.kycStatus = "verified";
+    user.kycVerifiedAt = new Date();
+    user.kycRejectionReason = null;
+  } else {
+    user.kycStatus = "rejected";
+    user.kycRejectionReason = rejectionReason || "Documents could not be verified";
+  }
+  
+  user.profileCompletionPercent = calculateProfileCompletion(user);
+  await user.save();
+  
+  res.json({
+    success: true,
+    message: approve ? "KYC verified successfully" : "KYC rejected",
+    kycStatus: user.kycStatus,
+  });
+});
+
 export default {
   getKYCStatus,
   submitKYC,
+  lookupIFSC,
+  verifyKYC,
 };
+

@@ -1022,5 +1022,206 @@ router.get("/analytics/categories", requirePermission("analytics"), async (req, 
   }
 });
 
+// ============ KYC MANAGEMENT ============
+
+// Get all pending KYC submissions
+router.get("/kyc/pending", requirePermission("users"), async (req, res) => {
+  try {
+    const { page = 1, limit = 20, status = "submitted" } = req.query;
+    
+    const query = {
+      role: "editor",
+      kycStatus: { $in: status === "all" ? ["submitted", "pending", "verified", "rejected"] : [status] }
+    };
+    
+    const users = await User.find(query)
+      .select("name email profilePicture kycStatus kycSubmittedAt kycVerifiedAt bankDetails.accountHolderName bankDetails.bankName bankDetails.ifscCode")
+      .sort("-kycSubmittedAt")
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .lean();
+    
+    const total = await User.countDocuments(query);
+    const pendingCount = await User.countDocuments({ role: "editor", kycStatus: "submitted" });
+    
+    res.status(200).json({
+      success: true,
+      users,
+      pendingCount,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    });
+    
+  } catch (error) {
+    console.error("KYC fetch error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch KYC submissions" });
+  }
+});
+
+// Get KYC details for a specific user
+router.get("/kyc/:userId", requirePermission("users"), async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId)
+      .select("-password")
+      .lean();
+    
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    
+    // Get additional profile data
+    const { Profile } = await import("../models/Profile.js");
+    const profile = await Profile.findOne({ user: user._id }).lean();
+    
+    res.status(200).json({
+      success: true,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        profilePicture: user.profilePicture,
+        role: user.role,
+        kycStatus: user.kycStatus,
+        kycSubmittedAt: user.kycSubmittedAt,
+        kycVerifiedAt: user.kycVerifiedAt,
+        kycRejectionReason: user.kycRejectionReason,
+        bankDetails: user.bankDetails ? {
+          accountHolderName: user.bankDetails.accountHolderName,
+          bankName: user.bankDetails.bankName,
+          ifscCode: user.bankDetails.ifscCode,
+          accountNumber: user.bankDetails.accountNumber 
+            ? "XXXX" + user.bankDetails.accountNumber.slice(-4) 
+            : null,
+          panNumber: user.bankDetails.panNumber
+            ? user.bankDetails.panNumber.slice(0,2) + "XXXX" + user.bankDetails.panNumber.slice(-2)
+            : null,
+        } : null,
+        createdAt: user.createdAt,
+      },
+      profile: profile ? {
+        about: profile.about,
+        skills: profile.skills,
+        location: profile.location,
+      } : null,
+    });
+    
+  } catch (error) {
+    console.error("KYC details error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch KYC details" });
+  }
+});
+
+// Approve/Reject KYC
+router.post("/kyc/:userId/verify", requirePermission("users"), logActivity("KYC_VERIFICATION"), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { action, rejectionReason } = req.body; // action: 'approve' or 'reject'
+    
+    if (!["approve", "reject"].includes(action)) {
+      return res.status(400).json({ success: false, message: "Invalid action" });
+    }
+    
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    
+    if (user.kycStatus === "verified" && action === "approve") {
+      return res.status(400).json({ success: false, message: "KYC already verified" });
+    }
+    
+    if (action === "approve") {
+      user.kycStatus = "verified";
+      user.kycVerifiedAt = new Date();
+      user.kycRejectionReason = null;
+      user.isVerified = true; // Mark editor as verified
+    } else {
+      user.kycStatus = "rejected";
+      user.kycRejectionReason = rejectionReason || "Documents could not be verified";
+      user.kycVerifiedAt = null;
+    }
+    
+    // Recalculate profile completion
+    let completion = 0;
+    if (user.name && user.profilePicture) completion += 12;
+    if (user.bio) completion += 8;
+    if (user.skills?.length >= 3) completion += 15;
+    else if (user.skills?.length > 0) completion += 8;
+    if (user.kycStatus === "verified") completion += 30;
+    else if (user.kycStatus === "submitted") completion += 15;
+    user.profileCompletionPercent = Math.min(completion, 100);
+    
+    await user.save();
+    
+    // Send notification to user
+    try {
+      const { Notification } = await import("../models/Notification.js");
+      await Notification.create({
+        recipient: user._id,
+        type: action === "approve" ? "success" : "warning",
+        title: action === "approve" ? "KYC Verified! 🎉" : "KYC Rejected",
+        message: action === "approve" 
+          ? "Your KYC has been verified. You can now receive payouts!"
+          : `Your KYC was rejected: ${user.kycRejectionReason}`,
+        link: "/kyc-details",
+      });
+      
+      // Emit real-time notification
+      emitToUser(userId, "notification:new", {
+        type: action === "approve" ? "success" : "warning",
+        title: action === "approve" ? "KYC Verified!" : "KYC Rejected",
+        message: action === "approve" 
+          ? "Your KYC has been verified successfully!"
+          : user.kycRejectionReason,
+      });
+    } catch (notifError) {
+      console.error("Notification error:", notifError);
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: action === "approve" ? "KYC approved successfully" : "KYC rejected",
+      user: {
+        _id: user._id,
+        name: user.name,
+        kycStatus: user.kycStatus,
+      },
+    });
+    
+  } catch (error) {
+    console.error("KYC verification error:", error);
+    res.status(500).json({ success: false, message: "Failed to verify KYC" });
+  }
+});
+
+// Get KYC statistics
+router.get("/kyc/stats/summary", requirePermission("users"), async (req, res) => {
+  try {
+    const pending = await User.countDocuments({ role: "editor", kycStatus: "submitted" });
+    const verified = await User.countDocuments({ role: "editor", kycStatus: "verified" });
+    const rejected = await User.countDocuments({ role: "editor", kycStatus: "rejected" });
+    const notSubmitted = await User.countDocuments({ role: "editor", kycStatus: { $in: ["not_submitted", null] } });
+    
+    res.status(200).json({
+      success: true,
+      stats: {
+        pending,
+        verified,
+        rejected,
+        notSubmitted,
+        total: pending + verified + rejected + notSubmitted,
+      },
+    });
+    
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch KYC stats" });
+  }
+});
+
 export default router;
 

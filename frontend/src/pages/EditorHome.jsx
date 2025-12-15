@@ -15,6 +15,7 @@ import {
   FaCheckCircle,
   FaClock,
   FaMoneyBillWave,
+  FaSpinner,
 } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
@@ -215,36 +216,112 @@ const EditorHome = () => {
                   user={user} 
                   profile={profileData} 
                   kycStatus={user?.kycStatus}
+                  completionPercent={completionPercent}
                 />
               ) : (
                 <ProfileCompletionBanner minPercent={80} />
               )}
 
-              {/* KYC Banner - Show when KYC not verified */}
-              {user?.kycStatus !== "verified" && (
+              {/* KYC Banner - Show based on status */}
+              {!user?.kycStatus || user?.kycStatus === 'not_submitted' || user?.kycStatus === 'rejected' ? (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-gradient-to-r from-amber-500/5 to-orange-500/5 border border-amber-500/20 rounded-2xl p-5 md:p-6 mb-6"
+                  className={`border rounded-2xl p-5 md:p-6 mb-6 ${
+                    user?.kycStatus === 'rejected' 
+                      ? 'bg-gradient-to-r from-red-500/5 to-rose-500/5 border-red-500/20'
+                      : 'bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-amber-500/20'
+                  }`}
                 >
                   <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-                    <div className="p-3 rounded-xl bg-amber-500/10">
-                      <FaUniversity className="text-amber-400 text-xl" />
+                    <div className={`p-3 rounded-xl ${user?.kycStatus === 'rejected' ? 'bg-red-500/10' : 'bg-amber-500/10'}`}>
+                      <FaUniversity className={`text-xl ${user?.kycStatus === 'rejected' ? 'text-red-400' : 'text-amber-400'}`} />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-white font-semibold text-base">
-                        Link Bank Account
+                      <h3 className={`font-semibold text-base ${user?.kycStatus === 'rejected' ? 'text-red-400' : 'text-white'}`}>
+                        {user?.kycStatus === 'rejected' ? 'KYC Verification Failed' : 'Link Bank Account'}
                       </h3>
                       <p className="text-gray-400 text-sm mt-0.5">
-                        Complete KYC verification to receive payouts from orders.
+                        {user?.kycStatus === 'rejected' 
+                          ? (user?.kycRejectionReason || 'Your documents could not be verified. Please update and resubmit.')
+                          : 'Complete KYC verification to receive payouts from orders.'}
                       </p>
                     </div>
                     <button
                       onClick={() => navigate('/kyc-details')}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-semibold rounded-xl hover:shadow-lg hover:shadow-amber-500/20 transition-all"
+                      className={`flex items-center gap-2 px-5 py-2.5 text-white text-sm font-semibold rounded-xl transition-all ${
+                        user?.kycStatus === 'rejected'
+                          ? 'bg-gradient-to-r from-red-500 to-rose-500 hover:shadow-lg hover:shadow-red-500/20'
+                          : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:shadow-lg hover:shadow-amber-500/20'
+                      }`}
                     >
-                      Complete KYC <FaArrowRight className="text-xs" />
+                      {user?.kycStatus === 'rejected' ? 'Resubmit KYC' : 'Complete KYC'} <FaArrowRight className="text-xs" />
                     </button>
+                  </div>
+                </motion.div>
+              ) : (user?.kycStatus === 'submitted' || user?.kycStatus === 'pending') && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-gradient-to-r from-blue-500/5 to-cyan-500/5 border border-blue-500/20 rounded-2xl p-5 md:p-6 mb-6"
+                >
+                  {/* Header */}
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="p-3 rounded-xl bg-blue-500/10">
+                      <FaClock className="text-blue-400 text-xl" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-blue-400 font-semibold text-base">
+                          KYC Under Review
+                        </h3>
+                        <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 text-xs font-bold rounded-full">
+                          IN PROGRESS
+                        </span>
+                      </div>
+                      <p className="text-gray-400 text-sm mt-0.5">
+                        Your documents are being verified. This usually takes 24-48 hours.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Progress Stages */}
+                  <div className="flex items-center justify-between gap-2 bg-black/20 rounded-xl p-4">
+                    {/* Stage 1: Submitted */}
+                    <div className="flex flex-col items-center gap-1.5">
+                      <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center">
+                        <FaCheckCircle className="text-white text-xs" />
+                      </div>
+                      <span className="text-[10px] text-emerald-400 font-medium">Submitted</span>
+                    </div>
+                    
+                    {/* Progress Line */}
+                    <div className="flex-1 h-1 bg-blue-500 rounded-full mx-1 relative overflow-hidden">
+                      <motion.div 
+                        className="absolute inset-0 bg-gradient-to-r from-blue-400 to-cyan-400"
+                        animate={{ x: ['-100%', '100%'] }}
+                        transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                      />
+                    </div>
+                    
+                    {/* Stage 2: Reviewing */}
+                    <div className="flex flex-col items-center gap-1.5">
+                      <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center relative">
+                        <FaSpinner className="text-white text-xs animate-spin" />
+                      </div>
+                      <span className="text-[10px] text-blue-400 font-medium">Reviewing</span>
+                    </div>
+                    
+                    {/* Progress Line */}
+                    <div className="flex-1 h-1 bg-zinc-700 rounded-full mx-1" />
+                    
+                    {/* Stage 3: Verified */}
+                    <div className="flex flex-col items-center gap-1.5">
+                      <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center">
+                        <FaCheckCircle className="text-zinc-500 text-xs" />
+                      </div>
+                      <span className="text-[10px] text-zinc-500 font-medium">Verified</span>
+                    </div>
                   </div>
                 </motion.div>
               )}
