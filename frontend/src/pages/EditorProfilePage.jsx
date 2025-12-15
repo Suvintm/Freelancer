@@ -268,6 +268,19 @@ const EditorProfile = () => {
                           </span>
                         </>
                       )}
+                      {/* Explore Listed Tag - Shows when verified + 80%+ profile */}
+                      {isVerified && completionPercent >= 80 && (
+                        <motion.span 
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="px-2.5 py-1 bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400 text-[10px] font-bold rounded-lg flex items-center gap-1"
+                        >
+                          <FaEye className="text-purple-400 text-[10px]" />
+                          <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+                            EXPLORE LISTED
+                          </span>
+                        </motion.span>
+                      )}
                     </div>
 
                     <p className="text-zinc-500 text-sm mb-3">
