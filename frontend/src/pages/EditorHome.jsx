@@ -326,32 +326,77 @@ const EditorHome = () => {
                 </motion.div>
               )}
 
-              {/* Earnings Enabled Badge - Show when KYC is verified */}
-              {user?.kycStatus === "verified" && (
+              {/* 🎉 Profile Listed in Explore - Show when fully verified + KYC done */}
+              {user?.isVerified && user?.kycStatus === "verified" && (
                 <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-gradient-to-r from-emerald-500/5 to-green-500/5 border border-emerald-500/20 rounded-2xl p-4 md:p-5 mb-6"
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                  className="relative overflow-hidden bg-gradient-to-r from-purple-500/10 via-blue-500/10 to-emerald-500/10 border border-purple-500/20 rounded-2xl p-5 md:p-6 mb-6"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-emerald-500/10">
-                      <FaCheckCircle className="text-emerald-400 text-xl" />
+                  {/* Sparkle animations */}
+                  <motion.div 
+                    className="absolute top-3 right-10 text-yellow-400 text-lg"
+                    animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.2, 1] }}
+                    transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                  >
+                    ✨
+                  </motion.div>
+                  <motion.div 
+                    className="absolute bottom-4 right-24 text-purple-400 text-sm"
+                    animate={{ y: [-2, 2, -2], opacity: [0.5, 1, 0.5] }}
+                    transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                  >
+                    🌟
+                  </motion.div>
+                  
+                  <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                    <div className="relative">
+                      <motion.div 
+                        className="p-4 rounded-2xl bg-gradient-to-br from-purple-500/20 to-blue-500/20"
+                        animate={{ boxShadow: ["0 0 20px rgba(139, 92, 246, 0.3)", "0 0 30px rgba(139, 92, 246, 0.5)", "0 0 20px rgba(139, 92, 246, 0.3)"] }}
+                        transition={{ repeat: Infinity, duration: 2 }}
+                      >
+                        <span className="text-3xl">🎉</span>
+                      </motion.div>
                     </div>
+                    
                     <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-emerald-400 font-semibold text-base">
-                          Earnings Enabled
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="text-lg font-bold bg-gradient-to-r from-purple-400 via-blue-400 to-emerald-400 bg-clip-text text-transparent">
+                          Congratulations! You're Live!
                         </h3>
-                        <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-xs font-bold rounded-full">
-                          VERIFIED
+                        <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 text-xs font-bold rounded-full flex items-center gap-1">
+                          <FaCheckCircle className="text-[10px]" /> LISTED
                         </span>
                       </div>
-                      <p className="text-gray-400 text-sm mt-0.5">
-                        You can now receive payments directly to your bank account.
+                      <p className="text-gray-400 text-sm">
+                        Your profile is now visible in the <span className="text-purple-400 font-medium">Explore Editors</span> page. Clients can discover and hire you!
                       </p>
                     </div>
-                    <FaMoneyBillWave className="text-emerald-400/50 text-3xl hidden md:block" />
+                    
+                    <div className="flex gap-3">
+                      <motion.div 
+                        className="hidden md:flex flex-col items-center gap-1 px-4 py-3 bg-black/20 rounded-xl border border-white/5"
+                        whileHover={{ scale: 1.05 }}
+                      >
+                        <FaMoneyBillWave className="text-emerald-400 text-xl" />
+                        <span className="text-[10px] text-gray-400 uppercase tracking-wide">Earnings</span>
+                        <span className="text-emerald-400 text-xs font-bold">Enabled</span>
+                      </motion.div>
+                      <motion.div 
+                        className="hidden md:flex flex-col items-center gap-1 px-4 py-3 bg-black/20 rounded-xl border border-white/5"
+                        whileHover={{ scale: 1.05 }}
+                      >
+                        <FaUsers className="text-blue-400 text-xl" />
+                        <span className="text-[10px] text-gray-400 uppercase tracking-wide">Status</span>
+                        <span className="text-blue-400 text-xs font-bold">Explored</span>
+                      </motion.div>
+                    </div>
                   </div>
+                  
+                  {/* Bottom gradient accent */}
+                  <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-purple-500 via-blue-500 to-emerald-500" />
                 </motion.div>
               )}
 
