@@ -355,6 +355,53 @@ const EditorHome = () => {
                 </motion.div>
               )}
 
+              {/* ✅ KYC Verified Banner - Show when KYC done but profile < 80% */}
+              {user?.kycStatus === "verified" && (user?.profileCompletionPercent < 80 && completionPercent < 80) && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="relative overflow-hidden bg-gradient-to-r from-emerald-500/10 to-green-500/5 border border-emerald-500/20 rounded-2xl p-5 md:p-6 mb-6"
+                >
+                  <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                    <div className="p-3 rounded-xl bg-emerald-500/15">
+                      <FaCheckCircle className="text-emerald-400 text-2xl" />
+                    </div>
+                    
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="text-emerald-400 font-semibold text-base">
+                          KYC Verified Successfully!
+                        </h3>
+                        <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-xs font-bold rounded-full">
+                          ✓ VERIFIED
+                        </span>
+                      </div>
+                      <p className="text-gray-400 text-sm">
+                        Great! Your identity has been verified. Complete your profile to <span className="text-emerald-400 font-medium">{80 - Math.max(user?.profileCompletionPercent || 0, completionPercent)}%</span> more to appear in the <span className="text-white font-medium">Explore Editors</span> page.
+                      </p>
+                    </div>
+                    
+                    <div className="hidden md:flex flex-col items-center gap-1 px-4 py-3 bg-black/20 rounded-xl border border-emerald-500/10">
+                      <span className="text-2xl font-bold text-emerald-400">{Math.max(user?.profileCompletionPercent || 0, completionPercent)}%</span>
+                      <span className="text-[10px] text-gray-400 uppercase tracking-wide">Profile</span>
+                    </div>
+                  </div>
+                  
+                  {/* Progress bar */}
+                  <div className="mt-4 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                    <motion.div 
+                      className="h-full bg-gradient-to-r from-emerald-500 to-green-400 rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.max(user?.profileCompletionPercent || 0, completionPercent)}%` }}
+                      transition={{ duration: 1, ease: "easeOut" }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Complete 80% profile + KYC = Visible to clients in Explore page
+                  </p>
+                </motion.div>
+              )}
+
               {/* 🎉 Profile Listed in Explore - Show when: verified + KYC done + 80%+ profile */}
               {user?.isVerified && user?.kycStatus === "verified" && (user?.profileCompletionPercent >= 80 || completionPercent >= 80) && (
                 <motion.div 
