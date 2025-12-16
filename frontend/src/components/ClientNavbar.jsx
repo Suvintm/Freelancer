@@ -23,21 +23,21 @@ const ClientNavbar = ({ onMenuClick }) => {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 md:left-64 z-30 bg-[#050509]/95 backdrop-blur-md border-b border-[#111827]">
+    <header className="fixed top-0 left-0 right-0 md:left-64 z-30 bg-[#050509]/95 light:bg-white/95 backdrop-blur-md border-b border-[#111827] light:border-slate-200 transition-colors duration-200">
       <div className="flex items-center justify-between px-4 md:px-6 py-3">
         {/* Left: Hamburger (mobile) + Title */}
         <div className="flex items-center gap-4">
           <button
             onClick={onMenuClick}
-            className="md:hidden p-2 rounded-xl bg-[#111319] border border-[#262A3B] hover:bg-[#1a1d25] transition-all"
+            className="md:hidden p-2 rounded-xl bg-[#111319] light:bg-slate-100 border border-[#262A3B] light:border-slate-300 hover:bg-[#1a1d25] light:hover:bg-slate-200 transition-all"
           >
-            <FaBars className="text-white" />
+            <FaBars className="text-white light:text-slate-700" />
           </button>
           <div className="hidden sm:block">
-            <h1 className="text-white font-semibold text-lg">
+            <h1 className="text-white light:text-slate-900 font-semibold text-lg">
               Welcome back, {user?.name?.split(" ")[0] || "Client"}!
             </h1>
-            <p className="text-gray-400 text-xs">Find your perfect video editor</p>
+            <p className="text-gray-400 light:text-slate-500 text-xs">Find your perfect video editor</p>
           </div>
         </div>
 
@@ -46,17 +46,17 @@ const ClientNavbar = ({ onMenuClick }) => {
           {/* Search */}
           <button
             onClick={() => setShowSearch(!showSearch)}
-            className="p-2.5 rounded-xl bg-[#111319] border border-[#262A3B] hover:bg-[#1a1d25] transition-all hidden sm:flex"
+            className="p-2.5 rounded-xl bg-[#111319] light:bg-slate-100 border border-[#262A3B] light:border-slate-300 hover:bg-[#1a1d25] light:hover:bg-slate-200 transition-all hidden sm:flex"
           >
-            <FaSearch className="text-gray-400 hover:text-white transition-colors" />
+            <FaSearch className="text-gray-400 light:text-slate-500 hover:text-white light:hover:text-slate-700 transition-colors" />
           </button>
 
           {/* Notifications */}
           <button
             onClick={() => navigate("/notifications")}
-            className="relative p-2.5 rounded-xl bg-[#111319] border border-[#262A3B] hover:bg-[#1a1d25] transition-all"
+            className="relative p-2.5 rounded-xl bg-[#111319] light:bg-slate-100 border border-[#262A3B] light:border-slate-300 hover:bg-[#1a1d25] light:hover:bg-slate-200 transition-all"
           >
-            <FaBell className="text-gray-400 hover:text-white transition-colors" />
+            <FaBell className="text-gray-400 light:text-slate-500 hover:text-white light:hover:text-slate-700 transition-colors" />
             {/* Notification Badge */}
             <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
               3
@@ -67,14 +67,14 @@ const ClientNavbar = ({ onMenuClick }) => {
           <div className="relative">
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="flex items-center gap-2 p-1 pr-3 rounded-xl bg-[#111319] border border-[#262A3B] hover:bg-[#1a1d25] transition-all"
+              className="flex items-center gap-2 p-1 pr-3 rounded-xl bg-[#111319] light:bg-slate-100 border border-[#262A3B] light:border-slate-300 hover:bg-[#1a1d25] light:hover:bg-slate-200 transition-all"
             >
               <img
                 src={user?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
                 alt="Profile"
                 className="w-8 h-8 rounded-lg object-cover"
               />
-              <span className="text-white text-sm font-medium hidden sm:block">
+              <span className="text-white light:text-slate-900 text-sm font-medium hidden sm:block">
                 {user?.name?.split(" ")[0] || "User"}
               </span>
             </button>
@@ -86,11 +86,11 @@ const ClientNavbar = ({ onMenuClick }) => {
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute right-0 mt-2 w-48 bg-[#111319] border border-[#262A3B] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] overflow-hidden z-50"
+                  className="absolute right-0 mt-2 w-48 bg-[#111319] light:bg-white border border-[#262A3B] light:border-slate-200 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] light:shadow-xl overflow-hidden z-50"
                 >
-                  <div className="p-3 border-b border-[#262A3B]">
-                    <p className="text-white font-medium text-sm">{user?.name}</p>
-                    <p className="text-gray-400 text-xs truncate">{user?.email}</p>
+                  <div className="p-3 border-b border-[#262A3B] light:border-slate-200">
+                    <p className="text-white light:text-slate-900 font-medium text-sm">{user?.name}</p>
+                    <p className="text-gray-400 light:text-slate-500 text-xs truncate">{user?.email}</p>
                   </div>
                   <div className="py-1">
                     <button
@@ -98,9 +98,9 @@ const ClientNavbar = ({ onMenuClick }) => {
                         setShowProfileMenu(false);
                         navigate("/client-profile");
                       }}
-                      className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-300 hover:bg-[#1a1d25] hover:text-white transition-all"
+                      className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-300 light:text-slate-600 hover:bg-[#1a1d25] light:hover:bg-slate-100 hover:text-white light:hover:text-slate-900 transition-all"
                     >
-                      <FaUserCircle className="text-gray-500" />
+                      <FaUserCircle className="text-gray-500 light:text-slate-400" />
                       My Profile
                     </button>
                     <button
@@ -108,9 +108,9 @@ const ClientNavbar = ({ onMenuClick }) => {
                         setShowProfileMenu(false);
                         navigate("/client-profile");
                       }}
-                      className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-300 hover:bg-[#1a1d25] hover:text-white transition-all"
+                      className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-300 light:text-slate-600 hover:bg-[#1a1d25] light:hover:bg-slate-100 hover:text-white light:hover:text-slate-900 transition-all"
                     >
-                      <FaCog className="text-gray-500" />
+                      <FaCog className="text-gray-500 light:text-slate-400" />
                       Settings
                     </button>
                     <button
@@ -140,7 +140,7 @@ const ClientNavbar = ({ onMenuClick }) => {
             <input
               type="text"
               placeholder="Search editors, gigs..."
-              className="w-full bg-[#111319] border border-[#262A3B] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-gray-500 focus:ring-2 focus:ring-emerald-500/30"
+              className="w-full bg-[#111319] light:bg-slate-100 border border-[#262A3B] light:border-slate-300 rounded-xl px-4 py-2.5 text-sm text-white light:text-slate-900 placeholder:text-gray-500 focus:ring-2 focus:ring-emerald-500/30"
             />
           </motion.div>
         )}

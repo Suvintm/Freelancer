@@ -59,7 +59,7 @@ const ClientHome = () => {
   }, [backendURL, user?.token]);
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] text-white">
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
       <ClientSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <ClientNavbar onMenuClick={() => setSidebarOpen(true)} />
 
@@ -70,14 +70,14 @@ const ClientHome = () => {
             whileHover={{ scale: 1.02, y: -2 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => navigate("/client-orders")}
-            className="bg-[#111319] border border-[#262A3B] hover:border-emerald-500/30 rounded-2xl p-5 flex items-center gap-4 transition-all group"
+            className="bg-[#111319] light:bg-white border border-[#262A3B] light:border-slate-200 hover:border-emerald-500/30 rounded-2xl p-5 flex items-center gap-4 transition-all group light:shadow-sm"
           >
             <div className="p-3 rounded-xl bg-emerald-500/10">
-              <FaClipboardList className="text-emerald-400 text-xl" />
+              <FaClipboardList className="text-emerald-400 light:text-emerald-600 text-xl" />
             </div>
             <div className="text-left flex-1">
-              <p className="text-white font-medium">My Orders</p>
-              <p className="text-gray-500 text-sm">{stats.totalOrders} total</p>
+              <p className="text-white light:text-slate-900 font-medium">My Orders</p>
+              <p className="text-gray-500 light:text-slate-500 text-sm">{stats.totalOrders} total</p>
             </div>
             <FaArrowRight className="text-gray-500 group-hover:text-emerald-400 transition-colors" />
           </motion.button>
@@ -86,14 +86,14 @@ const ClientHome = () => {
             whileHover={{ scale: 1.02, y: -2 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => navigate("/client-messages")}
-            className="bg-[#111319] border border-[#262A3B] hover:border-blue-500/30 rounded-2xl p-5 flex items-center gap-4 transition-all group"
+            className="bg-[#111319] light:bg-white border border-[#262A3B] light:border-slate-200 hover:border-blue-500/30 rounded-2xl p-5 flex items-center gap-4 transition-all group light:shadow-sm"
           >
             <div className="p-3 rounded-xl bg-blue-500/10">
-              <FaEnvelope className="text-blue-400 text-xl" />
+              <FaEnvelope className="text-blue-400 light:text-blue-600 text-xl" />
             </div>
             <div className="text-left flex-1">
-              <p className="text-white font-medium">Messages</p>
-              <p className="text-gray-500 text-sm">Chat with editors</p>
+              <p className="text-white light:text-slate-900 font-medium">Messages</p>
+              <p className="text-gray-500 light:text-slate-500 text-sm">Chat with editors</p>
             </div>
             <FaArrowRight className="text-gray-500 group-hover:text-blue-400 transition-colors" />
           </motion.button>
@@ -102,14 +102,14 @@ const ClientHome = () => {
             whileHover={{ scale: 1.02, y: -2 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => navigate("/saved-editors")}
-            className="bg-[#111319] border border-[#262A3B] hover:border-pink-500/30 rounded-2xl p-5 flex items-center gap-4 transition-all group"
+            className="bg-[#111319] light:bg-white border border-[#262A3B] light:border-slate-200 hover:border-pink-500/30 rounded-2xl p-5 flex items-center gap-4 transition-all group light:shadow-sm"
           >
             <div className="p-3 rounded-xl bg-pink-500/10">
-              <FaHeart className="text-pink-400 text-xl" />
+              <FaHeart className="text-pink-400 light:text-pink-600 text-xl" />
             </div>
             <div className="text-left flex-1">
-              <p className="text-white font-medium">Saved</p>
-              <p className="text-gray-500 text-sm">Favorite editors</p>
+              <p className="text-white light:text-slate-900 font-medium">Saved</p>
+              <p className="text-gray-500 light:text-slate-500 text-sm">Favorite editors</p>
             </div>
             <FaArrowRight className="text-gray-500 group-hover:text-pink-400 transition-colors" />
           </motion.button>
@@ -118,14 +118,14 @@ const ClientHome = () => {
             whileHover={{ scale: 1.02, y: -2 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => navigate("/reels")}
-            className="bg-[#111319] border border-[#262A3B] hover:border-purple-500/30 rounded-2xl p-5 flex items-center gap-4 transition-all group"
+            className="bg-[#111319] light:bg-white border border-[#262A3B] light:border-slate-200 hover:border-purple-500/30 rounded-2xl p-5 flex items-center gap-4 transition-all group light:shadow-sm"
           >
             <div className="p-3 rounded-xl bg-purple-500/10">
               <img src={reelIcon} className="w-5 h-5" alt="Reels" />
             </div>
             <div className="text-left flex-1">
-              <p className="text-white font-medium">Reels</p>
-              <p className="text-gray-500 text-sm">Watch portfolios</p>
+              <p className="text-white light:text-slate-900 font-medium">Reels</p>
+              <p className="text-gray-500 light:text-slate-500 text-sm">Watch portfolios</p>
             </div>
             <FaArrowRight className="text-gray-500 group-hover:text-purple-400 transition-colors" />
           </motion.button>
@@ -135,7 +135,7 @@ const ClientHome = () => {
         <div className="flex items-center justify-center mb-8">
           <motion.div
             layout
-            className="inline-flex p-1.5 bg-[#111319] border border-[#262A3B] rounded-2xl shadow-inner"
+            className="inline-flex p-1.5 bg-[#111319] light:bg-white border border-[#262A3B] light:border-slate-200 rounded-2xl shadow-inner light:shadow-md"
           >
             {[
               { id: "editors", label: "Explore Editors", icon: FaUsers },

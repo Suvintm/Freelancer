@@ -246,7 +246,7 @@ const ChatsPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-black text-white">
+    <div className="min-h-screen flex flex-col md:flex-row bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
@@ -255,13 +255,13 @@ const ChatsPage = () => {
         <div className="flex items-center gap-4 mb-5">
           <button
             onClick={() => navigate(-1)}
-            className="p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 transition-all"
+            className="p-2.5 rounded-lg bg-zinc-900 light:bg-white border border-zinc-800 light:border-slate-200 hover:bg-zinc-800 light:hover:bg-slate-100 transition-all light:shadow-sm"
           >
-            <FaArrowLeft className="text-sm" />
+            <FaArrowLeft className="text-sm light:text-slate-600" />
           </button>
           <div>
-            <h1 className="text-xl font-semibold text-white">Messages</h1>
-            <p className="text-zinc-500 text-xs">{chats.length} conversations</p>
+            <h1 className="text-xl font-semibold text-white light:text-slate-900">Messages</h1>
+            <p className="text-zinc-500 light:text-slate-500 text-xs">{chats.length} conversations</p>
           </div>
         </div>
 
@@ -277,14 +277,14 @@ const ChatsPage = () => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                   isActive 
-                    ? "bg-white text-black" 
-                    : "bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600"
+                    ? "bg-white light:bg-slate-900 text-black light:text-white" 
+                    : "bg-zinc-900 light:bg-white border border-zinc-800 light:border-slate-200 text-zinc-400 light:text-slate-600 hover:text-white light:hover:text-slate-900 hover:border-zinc-600 light:hover:border-slate-300"
                 }`}
               >
                 <tab.icon className="text-xs" />
                 {tab.label}
                 <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] ${
-                  isActive ? "bg-black/10" : "bg-zinc-800"
+                  isActive ? "bg-black/10 light:bg-white/20" : "bg-zinc-800 light:bg-slate-100"
                 }`}>
                   {count}
                 </span>
@@ -295,26 +295,26 @@ const ChatsPage = () => {
 
         {/* Search */}
         <div className="relative mb-5">
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 text-sm" />
+          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 light:text-slate-400 text-sm" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search chats..."
-            className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder:text-zinc-600 focus:border-zinc-600 outline-none transition-all"
+            className="w-full bg-zinc-900 light:bg-white border border-zinc-800 light:border-slate-200 rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder:text-zinc-600 light:placeholder:text-slate-400 focus:border-zinc-600 light:focus:border-slate-400 outline-none transition-all light:text-slate-900 light:shadow-sm"
           />
         </div>
 
         {/* Chat List */}
         {filteredChats.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mb-4">
-              <FaComments className="text-2xl text-zinc-600" />
+            <div className="w-16 h-16 bg-zinc-900 light:bg-slate-100 rounded-full flex items-center justify-center mb-4">
+              <FaComments className="text-2xl text-zinc-600 light:text-slate-400" />
             </div>
-            <h3 className="text-sm font-medium text-zinc-400 mb-1">
+            <h3 className="text-sm font-medium text-zinc-400 light:text-slate-600 mb-1">
               {search ? "No chats found" : "No chats yet"}
             </h3>
-            <p className="text-xs text-zinc-600">
+            <p className="text-xs text-zinc-600 light:text-slate-500">
               {search ? "Try a different search" : activeTab === "requested" ? "No request orders" : "Accept orders to start chatting!"}
             </p>
           </div>
@@ -341,10 +341,10 @@ const ChatsPage = () => {
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ delay: index * 0.02 }}
                     onClick={() => navigate(`/chat/${chat._id}`)}
-                    className={`bg-zinc-950 border rounded-xl p-3.5 cursor-pointer hover:border-zinc-600 transition-all group ${
+                    className={`bg-zinc-950 light:bg-white border rounded-xl p-3.5 cursor-pointer hover:border-zinc-600 light:hover:border-slate-300 transition-all group light:shadow-sm ${
                       isAwaitingPayment ? "border-orange-500/30" : 
                       isNewRequest ? "border-amber-500/30" :
-                      "border-zinc-800"
+                      "border-zinc-800 light:border-slate-200"
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -356,8 +356,8 @@ const ChatsPage = () => {
                           className="w-11 h-11 rounded-xl object-cover"
                         />
                         {/* Online indicator */}
-                        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-zinc-950 ${
-                          isOnline ? "bg-green-500" : "bg-zinc-600"
+                        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-zinc-950 light:border-white ${
+                          isOnline ? "bg-green-500" : "bg-zinc-600 light:bg-slate-300"
                         }`} />
                         
                         {/* Unread Badge */}
@@ -371,7 +371,7 @@ const ChatsPage = () => {
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
-                          <h3 className="font-medium text-white text-sm truncate group-hover:text-blue-400 transition-colors">
+                          <h3 className="font-medium text-white light:text-slate-900 text-sm truncate group-hover:text-blue-400 transition-colors">
                             {otherParty?.name}
                           </h3>
                           
@@ -418,7 +418,7 @@ const ChatsPage = () => {
                             Payment required to start
                           </p>
                         ) : chat.lastMessage ? (
-                          <p className="text-[11px] text-zinc-500 truncate">
+                          <p className="text-[11px] text-zinc-500 light:text-slate-500 truncate">
                             {chat.lastMessage.type === "image" ? "📷 Photo" :
                              chat.lastMessage.type === "video" ? "🎥 Video" :
                              chat.lastMessage.type === "file" ? "📎 File" :
@@ -428,11 +428,11 @@ const ChatsPage = () => {
                                : chat.lastMessage.content || "New message"}
                           </p>
                         ) : (
-                          <p className="text-[11px] text-zinc-600 italic">No messages yet</p>
+                          <p className="text-[11px] text-zinc-600 light:text-slate-400 italic">No messages yet</p>
                         )}
                         
-                        <div className="flex items-center gap-2 mt-1 text-[9px] text-zinc-600">
-                          <span className="flex items-center gap-0.5 text-emerald-400">
+                        <div className="flex items-center gap-2 mt-1 text-[9px] text-zinc-600 light:text-slate-500">
+                          <span className="flex items-center gap-0.5 text-emerald-400 light:text-emerald-500">
                             <FaRupeeSign className="text-[7px]" /> {chat.amount}
                           </span>
                           {chat.lastMessage && (
@@ -457,7 +457,7 @@ const ChatsPage = () => {
                         <span className={`text-[10px] px-2 py-1 rounded-lg font-medium ${statusConfig.bg} ${statusConfig.color}`}>
                           {statusConfig.label}
                         </span>
-                        <FaChevronRight className="text-zinc-600 text-[10px] group-hover:text-blue-400 transition-colors" />
+                        <FaChevronRight className="text-zinc-600 light:text-slate-400 text-[10px] group-hover:text-blue-400 transition-colors" />
                       </div>
                     </div>
                   </motion.div>

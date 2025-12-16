@@ -103,16 +103,16 @@ const navigate = useNavigate();
   );
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white flex flex-col">
+    <div className="min-h-screen bg-[#020617] light:bg-slate-50 text-white light:text-slate-900 flex flex-col transition-colors duration-200">
       {/* ✅ Top Navbar - Dark Glass */}
-      <nav className="w-full bg-[#050816]/80 border-b border-white/10 backdrop-blur-md py-3.5 px-4 md:px-8 flex justify-between items-center">
+      <nav className="w-full bg-[#050816]/80 light:bg-white/90 border-b border-white/10 light:border-slate-200 backdrop-blur-md py-3.5 px-4 md:px-8 flex justify-between items-center light:shadow-sm">
 
   {/* LEFT — LOGO + TEXT */}
   <div
     className="flex items-center gap-2 cursor-pointer"
     onClick={() => navigate("/editor-home")}
   >
-    <div className="w-9 h-9 rounded-2xl overflow-hidden bg-[#0B1220] border border-white/10 flex items-center justify-center">
+    <div className="w-9 h-9 rounded-2xl overflow-hidden bg-[#0B1220] light:bg-slate-100 border border-white/10 light:border-slate-200 flex items-center justify-center">
       <img
         src={logo}
         alt="Logo"
@@ -121,8 +121,8 @@ const navigate = useNavigate();
     </div>
 
     <div className="flex flex-col leading-tight">
-      <span className="text-lg font-semibold tracking-tight">SuviX</span>
-      <span className="text-[11px] text-gray-400 hidden sm:block">
+      <span className="text-lg font-semibold tracking-tight light:text-slate-900">SuviX</span>
+      <span className="text-[11px] text-gray-400 light:text-slate-500 hidden sm:block">
         Editor Profile · Update
       </span>
     </div>
@@ -134,8 +134,8 @@ const navigate = useNavigate();
     whileHover={{ x: 2, scale: 1.02 }}
     whileTap={{ scale: 0.97 }}
     className="flex items-center gap-2 text-xs md:text-sm 
-               text-gray-200 hover:text-white px-3 py-1.5 rounded-full
-               bg-white/5 border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.7)]"
+               text-gray-200 light:text-slate-700 hover:text-white light:hover:text-slate-900 px-3 py-1.5 rounded-full
+               bg-white/5 light:bg-slate-100 border border-white/10 light:border-slate-200 shadow-[0_0_20px_rgba(0,0,0,0.7)] light:shadow-sm"
   >
     <span>Back</span>
     <FaArrowAltCircleRight className="text-base md:text-lg text-[#22C55E]" />
@@ -180,8 +180,8 @@ const navigate = useNavigate();
                        md:grid-cols-[280px,minmax(0,1fr)] items-start"
           >
             {/* ================= LEFT COLUMN: AVATAR + BASIC INFO ================= */}
-            <div className="bg-[#050816] border border-white/10 rounded-3xl 
-                            px-6 py-1 flex flex-col items-center gap-4 relative">
+            <div className="bg-[#050816] light:bg-white border border-white/10 light:border-slate-200 rounded-3xl 
+                            px-6 py-1 flex flex-col items-center gap-4 relative light:shadow-md">
               {/* Glow accent */}
               <div className="absolute inset-x-10 -top-10 h-28 
                               bg-[radial-gradient(circle_at_top,rgba(0, 0, 0, 0.35),transparent)] pointer-events-none" />
@@ -220,10 +220,10 @@ const navigate = useNavigate();
 
               {/* Name + Email */}
               <div className="text-center space-y-1 mt-1">
-                <h2 className="text-xl md:text-2xl font-semibold text-white">
+                <h2 className="text-xl md:text-2xl font-semibold text-white light:text-slate-900">
                   {user?.name || "Editor Name"}
                 </h2>
-                <p className="text-xs md:text-sm text-gray-400 break-all">
+                <p className="text-xs md:text-sm text-gray-400 light:text-slate-500 break-all">
                   {user?.email}
                 </p>
               </div>
@@ -245,21 +245,21 @@ const navigate = useNavigate();
               </motion.button>
 
               {/* Small note */}
-              <p className="text-[11px] text-gray-500 text-center mt-1">
+              <p className="text-[11px] text-gray-500 light:text-slate-500 text-center mt-1">
                 Use a clear, high-quality image for better client trust.
               </p>
             </div>
 
             {/* ================= RIGHT COLUMN: UPDATE PROFILE FORM ================= */}
-            <div className="bg-[#050816] border border-white/10 rounded-3xl 
-                            shadow-[0_18px_50px_rgba(0,0,0,0.9)]
+            <div className="bg-[#050816] light:bg-white border border-white/10 light:border-slate-200 rounded-3xl 
+                            shadow-[0_18px_50px_rgba(0,0,0,0.9)] light:shadow-lg
                             p-5 md:p-7 lg:p-8 flex flex-col gap-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
                 <div>
-                  <h3 className="text-lg md:text-xl font-semibold text-white">
+                  <h3 className="text-lg md:text-xl font-semibold text-white light:text-slate-900">
                     Update Your Profile
                   </h3>
-                  <p className="text-xs md:text-sm text-gray-400 mt-1">
+                  <p className="text-xs md:text-sm text-gray-400 light:text-slate-500 mt-1">
                     Add your experience, skills, languages, and more. This helps clients
                     understand your editing style & background.
                   </p>
@@ -267,8 +267,8 @@ const navigate = useNavigate();
 
                 {/* Small badge */}
                 <div className="inline-flex items-center px-3 py-1 rounded-full 
-                                bg-white/5 border border-white/10 text-[11px] md:text-xs
-                                text-gray-300 self-start sm:self-auto">
+                                bg-white/5 light:bg-slate-100 border border-white/10 light:border-slate-200 text-[11px] md:text-xs
+                                text-gray-300 light:text-slate-600 self-start sm:self-auto">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse" />
                   Profile completion boosts your visibility
                 </div>

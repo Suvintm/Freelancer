@@ -237,13 +237,13 @@ const StoragePlans = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#050509] text-white p-4 md:p-8">
+    <div className="min-h-screen bg-[#050509] light:bg-slate-50 text-white light:text-slate-900 p-4 md:p-8 transition-colors duration-200">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-4"
+            className="flex items-center gap-2 text-gray-400 light:text-slate-600 hover:text-white light:hover:text-slate-900 transition-colors mb-4"
           >
             <FaArrowLeft />
             <span>Back</span>
@@ -253,7 +253,7 @@ const StoragePlans = () => {
             <h1 className="text-3xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
               Upgrade Your Storage
             </h1>
-            <p className="text-gray-400 max-w-xl mx-auto">
+            <p className="text-gray-400 light:text-slate-500 max-w-xl mx-auto">
               Get more space for your portfolio, reels, and project files. One-time payment, use forever.
             </p>
           </div>
@@ -264,7 +264,7 @@ const StoragePlans = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-[#111319] border border-[#262A3B] rounded-2xl p-6 mb-8"
+            className="bg-[#111319] light:bg-white border border-[#262A3B] light:border-slate-300 rounded-2xl p-6 mb-8 light:shadow-lg"
           >
             <div className="flex flex-col md:flex-row items-center gap-6">
               <div className="p-4 rounded-xl bg-blue-500/10">
@@ -272,8 +272,8 @@ const StoragePlans = () => {
               </div>
               
               <div className="flex-1 text-center md:text-left">
-                <h3 className="text-lg font-semibold text-white mb-1">Current Storage</h3>
-                <p className="text-gray-400 text-sm mb-3 flex items-center flex-wrap gap-2">
+                <h3 className="text-lg font-semibold text-white light:text-slate-900 mb-1">Current Storage</h3>
+                <p className="text-gray-400 light:text-slate-500 text-sm mb-3 flex items-center flex-wrap gap-2">
                   <span>Plan: <span className="text-purple-400 font-medium uppercase">{storageData.storage.plan}</span></span>
                   <span className="text-gray-600">•</span>
                   <span className="text-gray-500">{storageData.storage.limitFormatted} total</span>
@@ -301,7 +301,7 @@ const StoragePlans = () => {
                 </p>
                 
                 {/* Progress Bar */}
-                <div className="h-3 bg-black/40 rounded-full overflow-hidden mb-2">
+                <div className="h-3 bg-black/40 light:bg-slate-200 rounded-full overflow-hidden mb-2">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${Math.min(storageData.storage.usedPercent, 100)}%` }}
@@ -315,14 +315,14 @@ const StoragePlans = () => {
                 </div>
                 
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">{storageData.storage.usedFormatted} used</span>
-                  <span className="text-emerald-400">{storageData.storage.remainingFormatted} remaining</span>
+                  <span className="text-gray-400 light:text-slate-500">{storageData.storage.usedFormatted} used</span>
+                  <span className="text-emerald-400 light:text-emerald-600">{storageData.storage.remainingFormatted} remaining</span>
                 </div>
               </div>
               
-              <div className="text-center px-6 py-4 bg-black/20 rounded-xl border border-white/5">
-                <span className="text-4xl font-bold text-white">{storageData.storage.usedPercent}%</span>
-                <p className="text-gray-500 text-xs mt-1">USED</p>
+              <div className="text-center px-6 py-4 bg-black/20 light:bg-slate-100 rounded-xl border border-white/5 light:border-slate-200">
+                <span className="text-4xl font-bold text-white light:text-slate-900">{storageData.storage.usedPercent}%</span>
+                <p className="text-gray-500 light:text-slate-500 text-xs mt-1">USED</p>
               </div>
             </div>
           </motion.div>
@@ -333,15 +333,15 @@ const StoragePlans = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-[#111319] border border-[#262A3B] rounded-2xl p-6 mb-8"
+          className="bg-[#111319] light:bg-white border border-[#262A3B] light:border-slate-300 rounded-2xl p-6 mb-8 light:shadow-lg"
         >
-          <h3 className="text-lg font-semibold text-white mb-4">Storage Breakdown</h3>
+          <h3 className="text-lg font-semibold text-white light:text-slate-900 mb-4">Storage Breakdown</h3>
           
           <div className="grid gap-4">
             {/* Portfolio Storage */}
             <div 
               onClick={() => setExpandedCategory(expandedCategory === 'portfolios' ? null : 'portfolios')}
-              className="p-4 bg-black/30 rounded-xl cursor-pointer hover:bg-black/40 transition"
+              className="p-4 bg-black/30 light:bg-slate-50 rounded-xl cursor-pointer hover:bg-black/40 light:hover:bg-slate-100 transition border border-transparent light:border-slate-200"
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
@@ -349,8 +349,8 @@ const StoragePlans = () => {
                     <FaVideo className="text-purple-400" />
                   </div>
                   <div>
-                    <p className="text-white font-medium">Portfolio Items</p>
-                    <p className="text-xs text-gray-500">{storageData?.breakdown?.portfolios || 0} files</p>
+                    <p className="text-white light:text-slate-900 font-medium">Portfolio Items</p>
+                    <p className="text-xs text-gray-500 light:text-slate-500">{storageData?.breakdown?.portfolios || 0} files</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -363,7 +363,7 @@ const StoragePlans = () => {
                 </div>
               </div>
               {/* Mini progress bar */}
-              <div className="h-2 bg-black/40 rounded-full overflow-hidden">
+              <div className="h-2 bg-black/40 light:bg-slate-200 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-gradient-to-r from-purple-600 to-purple-400 rounded-full"
                   style={{ 
@@ -376,7 +376,7 @@ const StoragePlans = () => {
             {/* Reels Storage */}
             <div 
               onClick={() => setExpandedCategory(expandedCategory === 'reels' ? null : 'reels')}
-              className="p-4 bg-black/30 rounded-xl cursor-pointer hover:bg-black/40 transition"
+              className="p-4 bg-black/30 light:bg-slate-50 rounded-xl cursor-pointer hover:bg-black/40 light:hover:bg-slate-100 transition border border-transparent light:border-slate-200"
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
@@ -384,8 +384,8 @@ const StoragePlans = () => {
                     <FaImages className="text-blue-400" />
                   </div>
                   <div>
-                    <p className="text-white font-medium">Reels</p>
-                    <p className="text-xs text-gray-500">{storageData?.breakdown?.reels || 0} files</p>
+                    <p className="text-white light:text-slate-900 font-medium">Reels</p>
+                    <p className="text-xs text-gray-500 light:text-slate-500">{storageData?.breakdown?.reels || 0} files</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -523,7 +523,7 @@ const StoragePlans = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 + index * 0.1 }}
-                className={`relative bg-[#111319] border ${colors.border} rounded-2xl p-6 ${
+                className={`relative bg-[#111319] light:bg-white border ${colors.border} light:border-slate-300 rounded-2xl p-6 light:shadow-lg ${
                   plan.popular ? 'ring-2 ring-purple-500' : ''
                 }`}
               >
@@ -537,20 +537,20 @@ const StoragePlans = () => {
                   <Icon className="text-white text-xl" />
                 </div>
 
-                <h3 className="text-xl font-bold text-white mb-1">{plan.name}</h3>
-                <p className="text-gray-500 text-sm mb-4">
+                <h3 className="text-xl font-bold text-white light:text-slate-900 mb-1">{plan.name}</h3>
+                <p className="text-gray-500 light:text-slate-500 text-sm mb-4">
                   {formatBytes(plan.storageBytes)} storage
                 </p>
 
                 <div className="mb-4">
-                  <span className="text-3xl font-bold text-white">₹{plan.price}</span>
-                  <span className="text-gray-500 text-sm ml-1">one-time</span>
+                  <span className="text-3xl font-bold text-white light:text-slate-900">₹{plan.price}</span>
+                  <span className="text-gray-500 light:text-slate-500 text-sm ml-1">one-time</span>
                 </div>
 
                 <ul className="space-y-2 mb-6">
                   {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm text-gray-400">
-                      <FaCheck className="text-emerald-400 text-xs" />
+                    <li key={i} className="flex items-center gap-2 text-sm text-gray-400 light:text-slate-600">
+                      <FaCheck className="text-emerald-400 light:text-emerald-500 text-xs" />
                       {feature}
                     </li>
                   ))}
@@ -586,28 +586,28 @@ const StoragePlans = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="bg-[#111319] border border-[#262A3B] rounded-2xl p-6 mb-8"
+          className="bg-[#111319] light:bg-white border border-[#262A3B] light:border-slate-300 rounded-2xl p-6 mb-8 light:shadow-lg"
         >
-          <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-            <FaShieldAlt className="text-emerald-400" />
+          <h3 className="text-xl font-bold text-white light:text-slate-900 mb-4 flex items-center gap-2">
+            <FaShieldAlt className="text-emerald-400 light:text-emerald-500" />
             What's Included
           </h3>
           
           <div className="grid md:grid-cols-3 gap-4">
-            <div className="p-4 bg-black/20 rounded-xl">
-              <FaCloudUploadAlt className="text-2xl text-blue-400 mb-2" />
-              <h4 className="font-semibold text-white mb-1">Portfolio Uploads</h4>
-              <p className="text-gray-500 text-sm">Store your edited videos and images</p>
+            <div className="p-4 bg-black/20 light:bg-slate-50 rounded-xl light:border light:border-slate-200">
+              <FaCloudUploadAlt className="text-2xl text-blue-400 light:text-blue-500 mb-2" />
+              <h4 className="font-semibold text-white light:text-slate-900 mb-1">Portfolio Uploads</h4>
+              <p className="text-gray-500 light:text-slate-500 text-sm">Store your edited videos and images</p>
             </div>
-            <div className="p-4 bg-black/20 rounded-xl">
-              <FaVideo className="text-2xl text-purple-400 mb-2" />
-              <h4 className="font-semibold text-white mb-1">Reels Storage</h4>
-              <p className="text-gray-500 text-sm">Upload unlimited reels within limit</p>
+            <div className="p-4 bg-black/20 light:bg-slate-50 rounded-xl light:border light:border-slate-200">
+              <FaVideo className="text-2xl text-purple-400 light:text-purple-500 mb-2" />
+              <h4 className="font-semibold text-white light:text-slate-900 mb-1">Reels Storage</h4>
+              <p className="text-gray-500 light:text-slate-500 text-sm">Upload unlimited reels within limit</p>
             </div>
-            <div className="p-4 bg-black/20 rounded-xl">
-              <FaComments className="text-2xl text-emerald-400 mb-2" />
-              <h4 className="font-semibold text-white mb-1">Chat Files</h4>
-              <p className="text-gray-500 text-sm">Share files with clients in chat</p>
+            <div className="p-4 bg-black/20 light:bg-slate-50 rounded-xl light:border light:border-slate-200">
+              <FaComments className="text-2xl text-emerald-400 light:text-emerald-500 mb-2" />
+              <h4 className="font-semibold text-white light:text-slate-900 mb-1">Chat Files</h4>
+              <p className="text-gray-500 light:text-slate-500 text-sm">Share files with clients in chat</p>
             </div>
           </div>
         </motion.div>

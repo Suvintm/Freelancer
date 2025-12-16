@@ -451,7 +451,7 @@ const EditorAnalytics = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#050509]">
+    <div className="min-h-screen bg-[#050509] light:bg-slate-50 transition-colors duration-200">
       <Navbar />
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}

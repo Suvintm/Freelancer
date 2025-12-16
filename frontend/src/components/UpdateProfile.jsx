@@ -256,14 +256,14 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
     >
       {/* Header strip (inside card) */}
       <div className="flex items-center gap-2 mb-1">
-        <div className="w-9 h-9 rounded-2xl bg-[#0B1220] border border-white/10 flex items-center justify-center">
+        <div className="w-9 h-9 rounded-2xl bg-[#0B1220] light:bg-slate-100 border border-white/10 light:border-slate-300 flex items-center justify-center">
           <FaUserEdit className="text-[#22C55E]" />
         </div>
         <div>
-          <h2 className="font-semibold text-white text-base md:text-lg">
+          <h2 className="font-semibold text-white light:text-slate-900 text-base md:text-lg">
             Profile Details
           </h2>
-          <p className="text-[11px] text-gray-400">
+          <p className="text-[11px] text-gray-400 light:text-slate-500">
             Fill in these details to help clients understand you better.
           </p>
         </div>
@@ -271,7 +271,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
 
       {/* About */}
       <div>
-        <label className="block mb-2 font-medium text-gray-200">
+        <label className="block mb-2 font-medium text-gray-200 light:text-slate-700">
           About <span className="text-red-500">*</span>
         </label>
         <textarea
@@ -281,12 +281,12 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
           placeholder="Tell something about yourself, your editing style, tools, and niche..."
           rows="4"
           maxLength={1000}
-          className="w-full p-3.5 rounded-2xl bg-[#020617] border border-white/10
-                     text-gray-100 placeholder:text-gray-500
+          className="w-full p-3.5 rounded-2xl bg-[#020617] light:bg-white border border-white/10 light:border-slate-300
+                     text-gray-100 light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400
                      focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-[#2563EB]
-                     transition resize-none"
+                     transition resize-none light:shadow-sm"
         />
-        <p className="text-[11px] text-gray-500 mt-1 text-right">
+        <p className="text-[11px] text-gray-500 light:text-slate-500 mt-1 text-right">
           {formData.about.length}/1000
         </p>
       </div>
@@ -295,32 +295,32 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
       <div className="grid md:grid-cols-2 gap-5">
         {/* Contact Email */}
         <div>
-          <label className="block mb-2 font-medium text-gray-200">
+          <label className="block mb-2 font-medium text-gray-200 light:text-slate-700">
             Contact Email <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <FaEnvelope className="absolute left-3 top-3.5 text-gray-500" />
+            <FaEnvelope className="absolute left-3 top-3.5 text-gray-500 light:text-slate-400" />
             <input
               type="email"
               name="contactEmail"
               value={formData.contactEmail}
               onChange={handleChange}
               placeholder="Enter your contact email"
-              className="w-full p-3.5 pl-10 rounded-2xl bg-[#020617] border border-white/10
-                         text-gray-100 placeholder:text-gray-500
+              className="w-full p-3.5 pl-10 rounded-2xl bg-[#020617] light:bg-white border border-white/10 light:border-slate-300
+                         text-gray-100 light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400
                          focus:outline-none focus:ring-2 focus:ring-[#22C55E] focus:border-[#22C55E]
-                         transition"
+                         transition light:shadow-sm"
             />
           </div>
         </div>
 
         {/* Country */}
         <div>
-          <label className="block mb-2 font-medium text-gray-200">
+          <label className="block mb-2 font-medium text-gray-200 light:text-slate-700">
             Location <span className="text-red-500">*</span>
           </label>
           <div className="flex items-center gap-2">
-            <FaGlobe className="text-gray-400" />
+            <FaGlobe className="text-gray-400 light:text-slate-500" />
             <div className="flex-1">
               <Select
                 options={countries}
@@ -387,17 +387,17 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
 
       {/* Experience */}
       <div>
-        <label className="block mb-2 font-medium text-gray-200">
+        <label className="block mb-2 font-medium text-gray-200 light:text-slate-700">
           Experience <span className="text-red-500">*</span>
         </label>
         <select
           name="experience"
           value={formData.experience}
           onChange={handleChange}
-          className="w-full p-3.5 rounded-2xl bg-[#020617] border border-white/10
-                     text-gray-100 placeholder:text-gray-500
+          className="w-full p-3.5 rounded-2xl bg-[#020617] light:bg-white border border-white/10 light:border-slate-300
+                     text-gray-100 light:text-slate-900 placeholder:text-gray-500
                      focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-[#2563EB]
-                     transition"
+                     transition light:shadow-sm"
         >
           <option value="">Select experience</option>
           {experienceOptions.map((opt) => (
@@ -411,9 +411,9 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
       {/* Skills */}
      {/* ------------------------- SKILLS SECTION ------------------------- */}
 <div>
-  <label className="block mb-2 font-medium text-gray-200">
+  <label className="block mb-2 font-medium text-gray-200 light:text-slate-700">
     Skills <span className="text-red-500">*</span>
-    <span className="text-[11px] text-gray-400 ml-2">
+    <span className="text-[11px] text-gray-400 light:text-slate-500 ml-2">
       ({formData.skills.length}/20)
     </span>
   </label>
@@ -427,10 +427,10 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
       onChange={handleChange}
       onKeyPress={(e) => handleKeyPress(e, addSkill)}
       placeholder="Type a skill and press Enter or click +"
-      className="flex-1 p-3.5 rounded-2xl bg-[#020617] border border-white/10
-                 text-gray-100 placeholder:text-gray-500
+      className="flex-1 p-3.5 rounded-2xl bg-[#020617] light:bg-white border border-white/10 light:border-slate-300
+                 text-gray-100 light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400
                  focus:outline-none focus:ring-2 focus:ring-[#22C55E] focus:border-[#22C55E]
-                 transition"
+                 transition light:shadow-sm"
     />
     <button
       type="button"
@@ -493,8 +493,8 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
           className={`px-3 py-1.5 rounded-full text-xs border transition 
             ${
               active
-                ? "bg-emerald-500/20 border-emerald-400 text-emerald-200"
-                : "bg-[#020617] border-white/15 text-gray-300 hover:border-emerald-400/70 hover:text-emerald-100"
+                ? "bg-emerald-500/20 light:bg-emerald-100 border-emerald-400 text-emerald-200 light:text-emerald-700"
+                : "bg-[#020617] light:bg-white border-white/15 light:border-slate-300 text-gray-300 light:text-slate-600 hover:border-emerald-400/70 light:hover:border-emerald-400 hover:text-emerald-100 light:hover:text-emerald-600"
             }`}
         >
           {skill}
@@ -529,9 +529,9 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
 
       {/* Languages */}
       <div>
-        <label className="block mb-2 font-medium text-gray-200">
+        <label className="block mb-2 font-medium text-gray-200 light:text-slate-700">
           Languages <span className="text-red-500">*</span>
-          <span className="text-[11px] text-gray-400 ml-2">
+          <span className="text-[11px] text-gray-400 light:text-slate-500 ml-2">
             ({formData.languages.length}/10)
           </span>
         </label>
@@ -545,10 +545,10 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
             onChange={handleChange}
             onKeyPress={(e) => handleKeyPress(e, addLanguage)}
             placeholder="Type a language and press Enter or click +"
-            className="flex-1 p-3.5 rounded-2xl bg-[#020617] border border-white/10
-                       text-gray-100 placeholder:text-gray-500
+            className="flex-1 p-3.5 rounded-2xl bg-[#020617] light:bg-white border border-white/10 light:border-slate-300
+                       text-gray-100 light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400
                        focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-[#2563EB]
-                       transition"
+                       transition light:shadow-sm"
           />
           <button
             type="button"

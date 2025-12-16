@@ -31,14 +31,15 @@ const EditorNavbar = ({ onMenuClick }) => {
                 hidden md:flex fixed top-0 left-64 right-0 
                 h-20 lg:h-20 px-10 lg:px-14 
                 items-center justify-between z-40
-                bg-black backdrop-blur-xl
-                border-b border-[#1F1F1F]
-                shadow-[0_10px_30px_rgba(0,0,0,0.7)]
+                bg-black light:bg-white backdrop-blur-xl
+                border-b border-[#1F1F1F] light:border-slate-200
+                shadow-[0_10px_30px_rgba(0,0,0,0.7)] light:shadow-md
+                transition-colors duration-200
             ">
                 {/* PAGE TITLE */}
                 <h2 className="
                     text-2xl lg:text-3xl 
-                    font-semibold text-white tracking-wide
+                    font-semibold text-white light:text-slate-900 tracking-wide
                 ">
                     {navItems.find(item => item.path === location.pathname)?.label || "SuviX"}
                 </h2>
@@ -51,13 +52,13 @@ const EditorNavbar = ({ onMenuClick }) => {
                         className="
                             relative cursor-pointer p-3 lg:p-4 
                             rounded-full transition-all
-                            hover:bg-[#1A1A1A] group
+                            hover:bg-[#1A1A1A] light:hover:bg-slate-100 group
                         "
                         onClick={() => navigate("/notifications")}
                     >
                         <HiBell className="
                             text-3xl lg:text-4xl 
-                            text-gray-400 
+                            text-gray-400 light:text-slate-500
                             group-hover:text-[#1463FF]
                             transition
                         " />
@@ -69,7 +70,7 @@ const EditorNavbar = ({ onMenuClick }) => {
                                 flex items-center justify-center
                                 bg-red-600 text-white 
                                 text-[10px] lg:text-xs font-bold
-                                rounded-full border-2 border-[#0D0D0D]
+                                rounded-full border-2 border-[#0D0D0D] light:border-white
                                 shadow-md
                             ">
                                 {notificationBadge > 9 ? "9+" : notificationBadge}
@@ -83,7 +84,7 @@ const EditorNavbar = ({ onMenuClick }) => {
                             flex items-center gap-4 lg:gap-5 cursor-pointer rounded-full
                             px-2 pr-4 lg:px-3 lg:pr-5
                             border border-transparent
-                            hover:border-[#2A2A2A] hover:bg-[#1A1A1A]
+                            hover:border-[#2A2A2A] light:hover:border-slate-300 hover:bg-[#1A1A1A] light:hover:bg-slate-100
                             transition-all
                         "
                     >
@@ -104,7 +105,7 @@ const EditorNavbar = ({ onMenuClick }) => {
                             />
                         </ProfileCompletionRing>
                         <span 
-                            className="text-base lg:text-lg font-semibold text-gray-300"
+                            className="text-base lg:text-lg font-semibold text-gray-300 light:text-slate-700"
                             onClick={() => navigate("/editor-profile")}
                         >
                             {user?.name || "User"}
@@ -117,14 +118,15 @@ const EditorNavbar = ({ onMenuClick }) => {
             <div className="
                 md:hidden flex justify-between items-center sticky top-0 z-40
                 px-4 py-3
-                bg-black backdrop-blur-xl
-                border-b border-[#1F1F1F]
-                shadow-[0_8px_25px_rgba(0,0,0,0.8)]
+                bg-black light:bg-white backdrop-blur-xl
+                border-b border-[#1F1F1F] light:border-slate-200
+                shadow-[0_8px_25px_rgba(0,0,0,0.8)] light:shadow-md
+                transition-colors duration-200
             ">
                 {/* MENU BUTTON */}
                 <button
                     onClick={onMenuClick}
-                    className="text-3xl text-gray-300 hover:text-[#1463FF] transition"
+                    className="text-3xl text-gray-300 light:text-slate-600 hover:text-[#1463FF] transition"
                 >
                     <HiBars3 />
                 </button>
@@ -135,23 +137,23 @@ const EditorNavbar = ({ onMenuClick }) => {
                     onClick={() => navigate("/editor-home")}
                 >
                     <img src={logo} alt="SuviX" className="w-8 h-8 rounded-xl" />
-                    <h2 className="text-lg font-semibold text-white tracking-wide">SuviX</h2>
+                    <h2 className="text-lg font-semibold text-white light:text-slate-900 tracking-wide">SuviX</h2>
                 </div>
 
                 {/* RIGHT SIDE ICONS */}
                 <div className="flex items-center gap-3">
                     {/* BELL */}
                     <div
-                        className="relative cursor-pointer p-2 rounded-full hover:bg-[#1A1A1A] transition"
+                        className="relative cursor-pointer p-2 rounded-full hover:bg-[#1A1A1A] light:hover:bg-slate-100 transition"
                         onClick={() => navigate("/notifications")}
                     >
-                        <HiBell className="text-2xl text-gray-400" />
+                        <HiBell className="text-2xl text-gray-400 light:text-slate-500" />
                         {unreadCount > 0 && (
                             <span className="
                                 absolute top-1 right-1 w-4 h-4
                                 flex items-center justify-center
                                 bg-red-600 text-white text-[9px] font-bold
-                                rounded-full border-2 border-[#0D0D0D]
+                                rounded-full border-2 border-[#0D0D0D] light:border-white
                             ">
                                 {unreadCount > 9 ? "9+" : unreadCount}
                             </span>

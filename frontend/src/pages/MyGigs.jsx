@@ -105,7 +105,7 @@ const MyGigs = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] text-white">
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
@@ -115,13 +115,13 @@ const MyGigs = () => {
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate(-1)}
-              className="p-3 rounded-xl bg-[#111319] border border-[#262A3B] hover:bg-[#1a1d25] transition-all"
+              className="p-3 rounded-xl bg-[#111319] light:bg-white border border-[#262A3B] light:border-slate-200 hover:bg-[#1a1d25] light:hover:bg-slate-100 transition-all light:shadow-sm"
             >
-              <FaArrowLeft />
+              <FaArrowLeft className="light:text-slate-600" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-white">My Gigs</h1>
-              <p className="text-gray-400 text-sm">{gigs.length} gigs created</p>
+              <h1 className="text-2xl font-bold text-white light:text-slate-900">My Gigs</h1>
+              <p className="text-gray-400 light:text-slate-500 text-sm">{gigs.length} gigs created</p>
             </div>
           </div>
 
@@ -136,12 +136,12 @@ const MyGigs = () => {
         {/* Gigs List */}
         {gigs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <FaShoppingCart className="text-6xl text-gray-600 mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">No gigs yet</h3>
-            <p className="text-gray-400 text-sm mb-6">Create your first gig to start getting orders</p>
+            <FaShoppingCart className="text-6xl text-gray-600 light:text-slate-400 mb-4" />
+            <h3 className="text-xl font-semibold text-white light:text-slate-900 mb-2">No gigs yet</h3>
+            <p className="text-gray-400 light:text-slate-500 text-sm mb-6">Create your first gig to start getting orders</p>
             <button
               onClick={() => navigate("/create-gig")}
-              className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-medium transition-all"
+              className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-medium transition-all text-white"
             >
               <FaPlus /> Create Your First Gig
             </button>
@@ -156,9 +156,9 @@ const MyGigs = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ delay: index * 0.05 }}
-                  className={`bg-[#111319] border ${
-                    gig.isActive ? "border-[#262A3B]" : "border-red-500/20"
-                  } rounded-2xl p-5 relative overflow-hidden`}
+                  className={`bg-[#111319] light:bg-white border ${
+                    gig.isActive ? "border-[#262A3B] light:border-slate-200" : "border-red-500/20"
+                  } rounded-2xl p-5 relative overflow-hidden light:shadow-sm`}
                 >
                   {/* Status Indicator */}
                   {!gig.isActive && (
@@ -169,11 +169,11 @@ const MyGigs = () => {
 
                   <div className="flex gap-4">
                     {/* Thumbnail */}
-                    <div className="w-24 h-24 bg-[#1a1d25] rounded-xl overflow-hidden flex-shrink-0">
+                    <div className="w-24 h-24 bg-[#1a1d25] light:bg-slate-100 rounded-xl overflow-hidden flex-shrink-0">
                       {gig.thumbnail ? (
                         <img src={gig.thumbnail} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-600">
+                        <div className="w-full h-full flex items-center justify-center text-gray-600 light:text-slate-400">
                           <FaShoppingCart className="text-2xl" />
                         </div>
                       )}
@@ -181,11 +181,11 @@ const MyGigs = () => {
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-white mb-1 truncate">{gig.title}</h3>
-                      <p className="text-gray-400 text-xs mb-2">{gig.category}</p>
+                      <h3 className="font-semibold text-white light:text-slate-900 mb-1 truncate">{gig.title}</h3>
+                      <p className="text-gray-400 light:text-slate-500 text-xs mb-2">{gig.category}</p>
 
-                      <div className="flex items-center gap-4 text-xs text-gray-400">
-                        <span className="flex items-center gap-1 text-green-400">
+                      <div className="flex items-center gap-4 text-xs text-gray-400 light:text-slate-500">
+                        <span className="flex items-center gap-1 text-green-400 light:text-green-600">
                           <FaRupeeSign /> {gig.price}
                         </span>
                         <span className="flex items-center gap-1">
@@ -204,7 +204,7 @@ const MyGigs = () => {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-[#262A3B]">
+                  <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-[#262A3B] light:border-slate-200">
                     <button
                       onClick={() => handleToggleStatus(gig._id, gig.isActive)}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${

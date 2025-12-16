@@ -98,7 +98,7 @@ const NotificationsPage = () => {
     const unreadCount = notifications.filter((n) => !n.isRead).length;
 
     return (
-        <div className="min-h-screen bg-[#050509] flex text-white">
+        <div className="min-h-screen bg-[#050509] light:bg-slate-50 flex text-white light:text-slate-900 transition-colors duration-200">
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
             {/* MAIN CONTAINER */}
@@ -114,10 +114,10 @@ const NotificationsPage = () => {
                             <motion.h1
                                 initial={{ opacity: 0, y: -10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="text-3xl font-bold flex items-center gap-3"
+                                className="text-3xl font-bold flex items-center gap-3 light:text-slate-900"
                             >
-                                <div className="p-3 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-lg">
-                                    <HiBell className="text-blue-400 text-2xl" />
+                                <div className="p-3 bg-white/5 light:bg-white backdrop-blur-xl border border-white/10 light:border-slate-300 rounded-2xl shadow-lg light:shadow-md">
+                                    <HiBell className="text-blue-400 light:text-blue-500 text-2xl" />
                                 </div>
                                 Notifications
                                 {unreadCount > 0 && (
@@ -127,19 +127,19 @@ const NotificationsPage = () => {
                                 )}
                             </motion.h1>
 
-                            <p className="text-gray-400 mt-2 ml-1">
+                            <p className="text-gray-400 light:text-slate-500 mt-2 ml-1">
                                 Stay updated with your latest alerts
                             </p>
                         </div>
 
                         {/* FILTER BUTTONS */}
                         <div className="flex flex-wrap gap-3">
-                            <div className="flex bg-white/5 backdrop-blur-xl border border-white/10 p-1 rounded-2xl shadow-lg">
+                            <div className="flex bg-white/5 light:bg-white backdrop-blur-xl border border-white/10 light:border-slate-300 p-1 rounded-2xl shadow-lg light:shadow-md">
                                 <button
                                     onClick={() => setFilter("all")}
                                     className={`px-6 py-2 rounded-xl text-sm font-semibold transition-all ${filter === "all"
                                             ? "bg-blue-600 text-white shadow-lg"
-                                            : "text-gray-400 hover:text-white hover:bg-white/10"
+                                            : "text-gray-400 light:text-slate-600 hover:text-white light:hover:text-slate-900 hover:bg-white/10 light:hover:bg-slate-100"
                                         }`}
                                 >
                                     All
@@ -149,7 +149,7 @@ const NotificationsPage = () => {
                                     onClick={() => setFilter("unread")}
                                     className={`px-6 py-2 rounded-xl text-sm font-semibold transition-all ${filter === "unread"
                                             ? "bg-blue-600 text-white shadow-lg"
-                                            : "text-gray-400 hover:text-white hover:bg-white/10"
+                                            : "text-gray-400 light:text-slate-600 hover:text-white light:hover:text-slate-900 hover:bg-white/10 light:hover:bg-slate-100"
                                         }`}
                                 >
                                     Unread
@@ -159,7 +159,7 @@ const NotificationsPage = () => {
                             {unreadCount > 0 && (
                                 <button
                                     onClick={markAllAsRead}
-                                    className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-gray-300 hover:text-blue-400 transition-all flex items-center gap-2 backdrop-blur-xl"
+                                    className="px-4 py-2 bg-white/5 light:bg-white border border-white/10 light:border-slate-300 rounded-xl text-gray-300 light:text-slate-600 hover:text-blue-400 transition-all flex items-center gap-2 backdrop-blur-xl light:shadow-sm"
                                 >
                                     <HiEnvelopeOpen className="text-lg" />
                                     Mark all read
@@ -202,10 +202,10 @@ const NotificationsPage = () => {
                                             stiffness: 260,
                                             damping: 22,
                                         }}
-                                        className={`relative rounded-2xl border backdrop-blur-xl shadow-[0_18px_45px_rgba(0,0,0,0.85)] overflow-hidden cursor-pointer group
+                                        className={`relative rounded-2xl border backdrop-blur-xl shadow-[0_18px_45px_rgba(0,0,0,0.85)] light:shadow-lg overflow-hidden cursor-pointer group
                       ${!notification.isRead
-                                                ? "border-blue-500/40 bg-blue-500/10"
-                                                : "border-white/10 bg-white/5 hover:bg-white/10"
+                                                ? "border-blue-500/40 light:border-blue-400 bg-blue-500/10 light:bg-blue-50"
+                                                : "border-white/10 light:border-slate-300 bg-white/5 light:bg-white hover:bg-white/10 light:hover:bg-slate-50"
                                             }
                     `}
                                         onClick={() => {

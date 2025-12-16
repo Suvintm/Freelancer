@@ -58,7 +58,7 @@ const SavedEditors = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] text-white">
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
       <ClientSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <ClientNavbar onMenuClick={() => setSidebarOpen(true)} />
 

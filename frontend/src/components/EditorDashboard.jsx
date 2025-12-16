@@ -146,16 +146,16 @@ const EditorDashboard = ({ user, stats }) => {
         animate={{ opacity: 1, y: 0 }}
       >
         <div>
-          <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+          <h2 className="text-lg md:text-xl font-bold text-white light:text-slate-900 flex items-center gap-2">
             <HiLightningBolt className="text-amber-400" />
             {greeting()}, {user?.name?.split(' ')[0] || 'Editor'}!
           </h2>
-          <p className="text-gray-500 text-xs md:text-sm mt-0.5">
+          <p className="text-gray-500 light:text-slate-500 text-xs md:text-sm mt-0.5">
             Here's what's happening with your account
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-gray-500">
-          <FaCalendarAlt className="text-gray-600" />
+        <div className="flex items-center gap-2 text-xs text-gray-500 light:text-slate-500">
+          <FaCalendarAlt className="text-gray-600 light:text-slate-400" />
           {currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
         </div>
       </motion.div>
@@ -168,7 +168,7 @@ const EditorDashboard = ({ user, stats }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
-            className="bg-[#0a0a0c] border border-white/5 rounded-xl p-3 md:p-4 hover:border-white/10 transition-all"
+            className="bg-[#0a0a0c] light:bg-white border border-white/5 light:border-slate-300 rounded-xl p-3 md:p-4 hover:border-white/10 light:hover:border-blue-400 transition-all light:shadow-md light:hover:shadow-lg"
           >
             <div className="flex items-start justify-between mb-2">
               <div 
@@ -178,14 +178,14 @@ const EditorDashboard = ({ user, stats }) => {
                 <stat.icon className="text-sm" style={{ color: stat.color }} />
               </div>
               <span className={`text-[10px] font-semibold flex items-center gap-0.5 ${
-                stat.trendUp ? 'text-emerald-400' : 'text-red-400'
+                stat.trendUp ? 'text-emerald-400 light:text-emerald-600' : 'text-red-400 light:text-red-600'
               }`}>
                 {stat.trendUp ? <FaArrowUp className="text-[8px]" /> : <FaArrowDown className="text-[8px]" />}
                 {stat.trend}
               </span>
             </div>
-            <p className="text-xl md:text-2xl font-bold text-white">{stat.value}</p>
-            <p className="text-[10px] md:text-xs text-gray-500 mt-0.5">{stat.label}</p>
+            <p className="text-xl md:text-2xl font-bold text-white light:text-slate-900">{stat.value}</p>
+            <p className="text-[10px] md:text-xs text-gray-500 light:text-slate-500 mt-0.5">{stat.label}</p>
           </motion.div>
         ))}
       </div>
@@ -198,19 +198,19 @@ const EditorDashboard = ({ user, stats }) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="lg:col-span-2 bg-[#0a0a0c] border border-white/5 rounded-xl p-4"
+          className="lg:col-span-2 bg-[#0a0a0c] light:bg-white border border-white/5 light:border-slate-300 rounded-xl p-4 light:shadow-lg light:ring-1 light:ring-emerald-100"
         >
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                <FaMoneyBillWave className="text-emerald-400 text-xs" />
+              <h3 className="text-sm font-semibold text-white light:text-slate-900 flex items-center gap-2">
+                <FaMoneyBillWave className="text-emerald-400 light:text-emerald-500 text-xs" />
                 Earnings Overview
               </h3>
-              <p className="text-xs text-gray-500 mt-0.5">Last 7 days</p>
+              <p className="text-xs text-gray-500 light:text-slate-500 mt-0.5">Last 7 days</p>
             </div>
             <div className="text-right">
-              <p className="text-lg font-bold text-emerald-400">₹1,600</p>
-              <p className="text-[10px] text-emerald-400/70 flex items-center gap-1 justify-end">
+              <p className="text-lg font-bold text-emerald-400 light:text-emerald-600">₹1,600</p>
+              <p className="text-[10px] text-emerald-400/70 light:text-emerald-600 flex items-center gap-1 justify-end">
                 <HiTrendingUp /> +24% from last week
               </p>
             </div>
@@ -256,10 +256,10 @@ const EditorDashboard = ({ user, stats }) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
-          className="bg-[#0a0a0c] border border-white/5 rounded-xl p-4"
+          className="bg-[#0a0a0c] light:bg-white border border-white/5 light:border-slate-300 rounded-xl p-4 light:shadow-lg light:ring-1 light:ring-blue-100"
         >
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
-            <FaTasks className="text-blue-400 text-xs" />
+          <h3 className="text-sm font-semibold text-white light:text-slate-900 flex items-center gap-2 mb-3">
+            <FaTasks className="text-blue-400 light:text-blue-500 text-xs" />
             Order Status
           </h3>
           <div className="h-28 md:h-32">
@@ -285,7 +285,7 @@ const EditorDashboard = ({ user, stats }) => {
             {pieData.map((item) => (
               <div key={item.name} className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                <span className="text-[10px] text-gray-400">{item.name}</span>
+                <span className="text-[10px] text-gray-400 light:text-slate-500">{item.name}</span>
               </div>
             ))}
           </div>
@@ -300,10 +300,10 @@ const EditorDashboard = ({ user, stats }) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-[#0a0a0c] border border-white/5 rounded-xl p-4"
+          className="bg-[#0a0a0c] light:bg-white border border-white/5 light:border-slate-300 rounded-xl p-4 light:shadow-lg light:ring-1 light:ring-purple-100"
         >
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
-            <FaRocket className="text-purple-400 text-xs" />
+          <h3 className="text-sm font-semibold text-white light:text-slate-900 flex items-center gap-2 mb-3">
+            <FaRocket className="text-purple-400 light:text-purple-500 text-xs" />
             Quick Actions
           </h3>
           <div className="grid grid-cols-2 gap-2">
@@ -311,7 +311,7 @@ const EditorDashboard = ({ user, stats }) => {
               <button
                 key={action.label}
                 onClick={() => navigate(action.path)}
-                className="flex flex-col items-center gap-1.5 p-3 bg-white/[0.02] border border-white/5 rounded-lg hover:bg-white/[0.05] hover:border-white/10 transition-all group"
+                className="flex flex-col items-center gap-1.5 p-3 bg-white/[0.02] light:bg-slate-50 border border-white/5 light:border-slate-200 rounded-lg hover:bg-white/[0.05] light:hover:bg-slate-100 hover:border-white/10 light:hover:border-slate-300 transition-all group"
               >
                 <div 
                   className="w-8 h-8 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform"
@@ -319,7 +319,7 @@ const EditorDashboard = ({ user, stats }) => {
                 >
                   <action.icon className="text-sm" style={{ color: action.color }} />
                 </div>
-                <span className="text-[10px] text-gray-400 group-hover:text-gray-300">{action.label}</span>
+                <span className="text-[10px] text-gray-400 light:text-slate-600 group-hover:text-gray-300 light:group-hover:text-slate-900">{action.label}</span>
               </button>
             ))}
           </div>
@@ -330,17 +330,17 @@ const EditorDashboard = ({ user, stats }) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35 }}
-          className="bg-[#0a0a0c] border border-white/5 rounded-xl p-4"
+          className="bg-[#0a0a0c] light:bg-white border border-white/5 light:border-slate-300 rounded-xl p-4 light:shadow-lg light:ring-1 light:ring-amber-100"
         >
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
-            <FaBell className="text-amber-400 text-xs" />
+          <h3 className="text-sm font-semibold text-white light:text-slate-900 flex items-center gap-2 mb-3">
+            <FaBell className="text-amber-400 light:text-amber-500 text-xs" />
             Recent Activity
           </h3>
           <div className="space-y-2">
             {recentActivity.map((activity, i) => (
               <div 
                 key={i}
-                className="flex items-center gap-3 p-2 bg-white/[0.02] rounded-lg"
+                className="flex items-center gap-3 p-2 bg-white/[0.02] light:bg-slate-50 rounded-lg"
               >
                 <div 
                   className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
@@ -349,8 +349,8 @@ const EditorDashboard = ({ user, stats }) => {
                   <activity.icon className="text-[10px]" style={{ color: activity.color }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-300 truncate">{activity.text}</p>
-                  <p className="text-[10px] text-gray-500">{activity.time}</p>
+                  <p className="text-xs text-gray-300 light:text-slate-700 truncate">{activity.text}</p>
+                  <p className="text-[10px] text-gray-500 light:text-slate-500">{activity.time}</p>
                 </div>
               </div>
             ))}
@@ -362,10 +362,10 @@ const EditorDashboard = ({ user, stats }) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="bg-[#0a0a0c] border border-white/5 rounded-xl p-4"
+          className="bg-[#0a0a0c] light:bg-white border border-white/5 light:border-slate-300 rounded-xl p-4 light:shadow-lg light:ring-1 light:ring-cyan-100"
         >
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
-            <FaNewspaper className="text-cyan-400 text-xs" />
+          <h3 className="text-sm font-semibold text-white light:text-slate-900 flex items-center gap-2 mb-3">
+            <FaNewspaper className="text-cyan-400 light:text-cyan-500 text-xs" />
             Weekly Orders
           </h3>
           <div className="h-28">
@@ -401,10 +401,10 @@ const EditorDashboard = ({ user, stats }) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.45 }}
-          className="bg-gradient-to-br from-amber-500/5 to-orange-500/5 border border-amber-500/10 rounded-xl p-4"
+          className="bg-gradient-to-br from-amber-500/5 to-orange-500/5 light:from-amber-50 light:to-orange-50 border border-amber-500/10 light:border-amber-200 rounded-xl p-4"
         >
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
-            <FaTrophy className="text-amber-400 text-xs" />
+          <h3 className="text-sm font-semibold text-white light:text-slate-900 flex items-center gap-2 mb-3">
+            <FaTrophy className="text-amber-400 light:text-amber-500 text-xs" />
             Achievements
           </h3>
           <div className="flex flex-wrap gap-2">
@@ -416,10 +416,10 @@ const EditorDashboard = ({ user, stats }) => {
             ].map((badge) => (
               <div 
                 key={badge.label}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-black/30 rounded-full border border-white/5"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-black/30 light:bg-white rounded-full border border-white/5 light:border-slate-200 light:shadow-sm"
               >
                 <badge.icon className="text-[10px]" style={{ color: badge.color }} />
-                <span className="text-[10px] text-gray-300">{badge.label}</span>
+                <span className="text-[10px] text-gray-300 light:text-slate-700">{badge.label}</span>
               </div>
             ))}
           </div>
@@ -430,16 +430,16 @@ const EditorDashboard = ({ user, stats }) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="bg-gradient-to-br from-emerald-500/5 to-green-500/5 border border-emerald-500/10 rounded-xl p-4"
+          className="bg-gradient-to-br from-emerald-500/5 to-green-500/5 light:from-emerald-50 light:to-green-50 border border-emerald-500/10 light:border-emerald-200 rounded-xl p-4"
         >
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-2">
-            <FaChartLine className="text-emerald-400 text-xs" />
+          <h3 className="text-sm font-semibold text-white light:text-slate-900 flex items-center gap-2 mb-2">
+            <FaChartLine className="text-emerald-400 light:text-emerald-500 text-xs" />
             Performance Score
           </h3>
           <div className="flex items-center gap-4">
             <div className="relative w-16 h-16">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                <circle className="fill-none stroke-white/5" cx="50" cy="50" r="40" strokeWidth="8" />
+                <circle className="fill-none stroke-white/5 light:stroke-slate-200" cx="50" cy="50" r="40" strokeWidth="8" />
                 <circle 
                   className="fill-none stroke-emerald-400" 
                   cx="50" cy="50" r="40" 
@@ -450,19 +450,19 @@ const EditorDashboard = ({ user, stats }) => {
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-lg font-bold text-emerald-400">84</span>
+                <span className="text-lg font-bold text-emerald-400 light:text-emerald-600">84</span>
               </div>
             </div>
             <div className="flex-1">
-              <p className="text-xs text-gray-400">Your performance is <span className="text-emerald-400 font-semibold">Excellent</span></p>
+              <p className="text-xs text-gray-400 light:text-slate-600">Your performance is <span className="text-emerald-400 light:text-emerald-600 font-semibold">Excellent</span></p>
               <div className="mt-2 space-y-1.5">
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-gray-500">Response Time</span>
-                  <span className="text-emerald-400">Fast</span>
+                  <span className="text-gray-500 light:text-slate-500">Response Time</span>
+                  <span className="text-emerald-400 light:text-emerald-600">Fast</span>
                 </div>
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-gray-500">Completion Rate</span>
-                  <span className="text-emerald-400">98%</span>
+                  <span className="text-gray-500 light:text-slate-500">Completion Rate</span>
+                  <span className="text-emerald-400 light:text-emerald-600">98%</span>
                 </div>
               </div>
             </div>

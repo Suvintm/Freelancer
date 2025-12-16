@@ -42,7 +42,7 @@ const PaymentCard = ({ payment, isEditor, onClick }) => {
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
       onClick={onClick}
-      className="bg-[#1a1a1a] border border-white/5 rounded-2xl p-4 cursor-pointer hover:border-white/20 transition-all"
+      className="bg-[#1a1a1a] light:bg-white border border-white/5 light:border-slate-200 rounded-2xl p-4 cursor-pointer hover:border-white/20 light:hover:border-slate-300 transition-all light:shadow-sm"
     >
       <div className="flex items-center gap-4">
         {/* Direction Icon */}
@@ -50,16 +50,16 @@ const PaymentCard = ({ payment, isEditor, onClick }) => {
           isReceived ? "bg-emerald-500/20" : "bg-red-500/20"
         }`}>
           {isReceived ? (
-            <FaArrowDown className="text-emerald-400 text-lg" />
+            <FaArrowDown className="text-emerald-400 light:text-emerald-500 text-lg" />
           ) : (
-            <FaArrowUp className="text-red-400 text-lg" />
+            <FaArrowUp className="text-red-400 light:text-red-500 text-lg" />
           )}
         </div>
 
         {/* Details */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="text-white font-semibold truncate">
+            <h3 className="text-white light:text-slate-900 font-semibold truncate">
               {payment.order?.title || payment.orderSnapshot?.title || "Order"}
             </h3>
             <span className={`text-xs px-2 py-0.5 rounded-full ${status.bg} ${status.color}`}>
@@ -68,27 +68,27 @@ const PaymentCard = ({ payment, isEditor, onClick }) => {
             </span>
           </div>
           
-          <div className="flex items-center gap-2 mt-1 text-sm text-gray-400">
+          <div className="flex items-center gap-2 mt-1 text-sm text-gray-400 light:text-slate-500">
             <span>{isReceived ? "From" : "To"}: {otherParty}</span>
             <span>•</span>
             <span>{formatDate(payment.completedAt || payment.createdAt)}</span>
           </div>
           
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs text-gray-500 light:text-slate-400 mt-0.5">
             {payment.order?.orderNumber || payment.orderSnapshot?.orderNumber}
           </p>
         </div>
 
         {/* Amount */}
         <div className="text-right">
-          <p className={`text-lg font-bold ${isReceived ? "text-emerald-400" : "text-white"}`}>
+          <p className={`text-lg font-bold ${isReceived ? "text-emerald-400 light:text-emerald-600" : "text-white light:text-slate-900"}`}>
             {isReceived ? "+" : "-"}₹{displayAmount?.toLocaleString()}
           </p>
-          <p className="text-xs text-gray-500">{payment.receiptNumber}</p>
+          <p className="text-xs text-gray-500 light:text-slate-400">{payment.receiptNumber}</p>
         </div>
 
         {/* Chevron */}
-        <FaChevronRight className="text-gray-600 ml-2" />
+        <FaChevronRight className="text-gray-600 light:text-slate-400 ml-2" />
       </div>
     </motion.div>
   );

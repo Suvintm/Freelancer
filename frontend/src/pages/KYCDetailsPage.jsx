@@ -226,7 +226,7 @@ const KYCDetailsPage = () => {
   const bankDetails = kycData?.bankDetails || {};
 
   return (
-    <div className="flex min-h-screen bg-black">
+    <div className="flex min-h-screen bg-black light:bg-slate-50 transition-colors duration-200">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
       <div className="flex-1 md:ml-64 flex flex-col">
@@ -239,11 +239,11 @@ const KYCDetailsPage = () => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <h1 className="text-xl font-semibold text-white mb-1 flex items-center gap-2">
-              <FaShieldAlt className="text-blue-400" />
+            <h1 className="text-xl font-semibold text-white light:text-slate-900 mb-1 flex items-center gap-2">
+              <FaShieldAlt className="text-blue-400 light:text-blue-600" />
               KYC Verification
             </h1>
-            <p className="text-sm text-zinc-500">Verify your identity to enable payouts</p>
+            <p className="text-sm text-zinc-500 light:text-slate-500">Verify your identity to enable payouts</p>
           </motion.div>
 
           {loading ? (
@@ -270,7 +270,7 @@ const KYCDetailsPage = () => {
                       </span>
                       {isVerified && <HiSparkles className="text-emerald-400 text-sm" />}
                     </div>
-                    <p className="text-sm text-zinc-400">{statusConfig.description}</p>
+                    <p className="text-sm text-zinc-400 light:text-slate-500">{statusConfig.description}</p>
                   </div>
                   {!isVerified && (
                     <button 
@@ -303,18 +303,18 @@ const KYCDetailsPage = () => {
               {/* Bank Details Display (when submitted) */}
               {isSubmitted && !showForm && bankDetails.accountHolderName && (
                 <motion.div 
-                  className="bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden mb-6"
+                  className="bg-zinc-900/50 light:bg-white border border-zinc-800 light:border-slate-200 rounded-2xl overflow-hidden mb-6 light:shadow-sm"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-                    <h3 className="flex items-center gap-2 text-sm font-medium text-white">
-                      <FaUniversity className="text-blue-400" />
+                  <div className="flex items-center justify-between p-4 border-b border-zinc-800 light:border-slate-200">
+                    <h3 className="flex items-center gap-2 text-sm font-medium text-white light:text-slate-900">
+                      <FaUniversity className="text-blue-400 light:text-blue-600" />
                       Bank Account Details
                     </h3>
                     {!isVerified && (
                       <button 
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-400 hover:text-white transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-400 light:text-slate-500 hover:text-white light:hover:text-slate-900 transition-colors"
                         onClick={() => setShowForm(true)}
                       >
                         <FaEdit className="text-[10px]" /> Edit
@@ -322,20 +322,20 @@ const KYCDetailsPage = () => {
                     )}
                   </div>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-zinc-800">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-zinc-800 light:bg-slate-200">
                     {[
-                      { icon: FaUser, iconColor: 'text-blue-400', label: 'Account Holder', value: bankDetails.accountHolderName },
-                      { icon: FaBuilding, iconColor: 'text-purple-400', label: 'Bank Name', value: bankDetails.bankName },
-                      { icon: FaMoneyBillWave, iconColor: 'text-emerald-400', label: 'Account Number', value: bankDetails.accountNumber },
-                      { icon: FaUniversity, iconColor: 'text-amber-400', label: 'IFSC Code', value: bankDetails.ifscCode },
-                      { icon: FaIdCard, iconColor: 'text-pink-400', label: 'PAN Number', value: bankDetails.panNumber ? `${bankDetails.panNumber.slice(0,2)}****${bankDetails.panNumber.slice(-2)}` : '-' },
+                      { icon: FaUser, iconColor: 'text-blue-400 light:text-blue-600', label: 'Account Holder', value: bankDetails.accountHolderName },
+                      { icon: FaBuilding, iconColor: 'text-purple-400 light:text-purple-600', label: 'Bank Name', value: bankDetails.bankName },
+                      { icon: FaMoneyBillWave, iconColor: 'text-emerald-400 light:text-emerald-600', label: 'Account Number', value: bankDetails.accountNumber },
+                      { icon: FaUniversity, iconColor: 'text-amber-400 light:text-amber-600', label: 'IFSC Code', value: bankDetails.ifscCode },
+                      { icon: FaIdCard, iconColor: 'text-pink-400 light:text-pink-600', label: 'PAN Number', value: bankDetails.panNumber ? `${bankDetails.panNumber.slice(0,2)}****${bankDetails.panNumber.slice(-2)}` : '-' },
                     ].map((item, idx) => (
-                      <div key={idx} className="p-4 bg-zinc-900/80">
-                        <div className="flex items-center gap-2 text-[10px] text-zinc-500 uppercase tracking-wide font-medium mb-2">
+                      <div key={idx} className="p-4 bg-zinc-900/80 light:bg-white">
+                        <div className="flex items-center gap-2 text-[10px] text-zinc-500 light:text-slate-500 uppercase tracking-wide font-medium mb-2">
                           <item.icon className={`${item.iconColor}`} />
                           {item.label}
                         </div>
-                        <span className="text-sm text-white font-medium">{item.value || '-'}</span>
+                        <span className="text-sm text-white light:text-slate-900 font-medium">{item.value || '-'}</span>
                       </div>
                     ))}
                   </div>
@@ -345,7 +345,7 @@ const KYCDetailsPage = () => {
               {/* KYC Form */}
               {showForm && (
                 <motion.div 
-                  className="bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden mb-6"
+                  className="bg-zinc-900/50 light:bg-white border border-zinc-800 light:border-slate-200 rounded-2xl overflow-hidden mb-6 light:shadow-sm"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                 >

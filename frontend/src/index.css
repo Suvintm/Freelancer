@@ -1,5 +1,26 @@
  @import "tailwindcss";
 
+/* Tailwind v4 dark mode config - use .light class for light mode */
+@custom-variant light (&:where(.light, .light *));
+
+/* Light mode theme colors */
+html.light {
+  --color-bg-primary: #f8fafc;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #f1f5f9;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-border: #e2e8f0;
+}
+
+/* Ensure dark mode is default */
+html {
+  color-scheme: dark;
+}
+html.light {
+  color-scheme: light;
+}
+
  /* Slow bounce for logo */
 @keyframes bounce-slow {
   0%, 100% { transform: translateY(0); }

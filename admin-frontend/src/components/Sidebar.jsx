@@ -48,8 +48,8 @@ const Sidebar = ({ isOpen, onClose }) => {
       className={({ isActive }) =>
         `flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${
           isActive
-            ? "bg-gradient-to-r from-purple-600/20 to-blue-600/20 text-purple-400 border border-purple-500/30"
-            : "text-gray-400 hover:bg-white/5 hover:text-white"
+            ? "bg-gradient-to-r from-purple-600/20 to-blue-600/20 text-purple-600 dark:text-purple-400 border border-purple-500/30"
+            : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-white"
         }`
       }
     >
@@ -61,14 +61,14 @@ const Sidebar = ({ isOpen, onClose }) => {
   const sidebarContent = (
     <>
       {/* Header */}
-      <div className="p-6 border-b border-dark-500">
+      <div className="p-6 border-b border-gray-200 dark:border-zinc-800">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
             <FaShieldAlt className="text-xl text-white" />
           </div>
           <div>
-            <h2 className="font-bold text-white text-lg">SuviX Admin</h2>
-            <p className="text-xs text-gray-500 capitalize">{admin?.role}</p>
+            <h2 className="font-bold text-gray-900 dark:text-white text-lg">SuviX Admin</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{admin?.role}</p>
           </div>
         </div>
       </div>
@@ -77,11 +77,11 @@ const Sidebar = ({ isOpen, onClose }) => {
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {/* Stats Mini Card */}
         <div className="mb-4 p-4 bg-gradient-to-br from-purple-600/10 to-blue-600/10 rounded-xl border border-purple-500/20">
-          <div className="flex items-center gap-2 text-purple-400 text-sm mb-1">
+          <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 text-sm mb-1">
             <FaChartLine />
             <span>Quick Stats</span>
           </div>
-          <p className="text-2xl font-bold text-white">Platform Active</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">Platform Active</p>
         </div>
 
         {navItems.map((item) => (
@@ -90,14 +90,14 @@ const Sidebar = ({ isOpen, onClose }) => {
       </nav>
 
       {/* Admin Info & Logout */}
-      <div className="p-4 border-t border-dark-500">
-        <div className="px-4 py-3 mb-2 bg-dark-600 rounded-xl">
-          <p className="text-sm text-white font-medium truncate">{admin?.name}</p>
-          <p className="text-xs text-gray-500 truncate">{admin?.email}</p>
+      <div className="p-4 border-t border-gray-200 dark:border-zinc-800">
+        <div className="px-4 py-3 mb-2 bg-gray-50 dark:bg-zinc-800 rounded-xl">
+          <p className="text-sm text-gray-900 dark:text-white font-medium truncate">{admin?.name}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{admin?.email}</p>
         </div>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all border border-red-500/20"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all border border-red-500/20"
         >
           <FaSignOutAlt />
           <span>Logout</span>
@@ -109,7 +109,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col fixed left-0 top-0 h-screen w-64 bg-dark-800 border-r border-dark-500 z-40">
+      <aside className="hidden md:flex flex-col fixed left-0 top-0 h-screen w-64 bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 z-40 transition-colors duration-200">
         {sidebarContent}
       </aside>
 
@@ -131,11 +131,11 @@ const Sidebar = ({ isOpen, onClose }) => {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25 }}
-              className="md:hidden fixed left-0 top-0 h-screen w-72 bg-dark-800 border-r border-dark-500 z-50 flex flex-col"
+              className="md:hidden fixed left-0 top-0 h-screen w-72 bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 z-50 flex flex-col transition-colors duration-200"
             >
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white rounded-lg hover:bg-white/10"
+                className="absolute top-4 right-4 p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800"
               >
                 <FaTimes size={20} />
               </button>

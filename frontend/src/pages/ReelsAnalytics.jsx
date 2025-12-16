@@ -62,16 +62,16 @@ const ReelsAnalytics = () => {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-zinc-900/50 border border-zinc-800/50 rounded-2xl p-4"
+            className="bg-zinc-900/50 light:bg-white border border-zinc-800/50 light:border-slate-200 rounded-2xl p-4 light:shadow-sm"
         >
             <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center`}>
                     <Icon className="text-white text-lg" />
                 </div>
                 <div>
-                    <p className="text-2xl font-bold text-white">{value}</p>
-                    <p className="text-xs text-zinc-500">{label}</p>
-                    {subtext && <p className="text-[10px] text-zinc-600">{subtext}</p>}
+                    <p className="text-2xl font-bold text-white light:text-slate-900">{value}</p>
+                    <p className="text-xs text-zinc-500 light:text-slate-500">{label}</p>
+                    {subtext && <p className="text-[10px] text-zinc-600 light:text-slate-400">{subtext}</p>}
                 </div>
             </div>
         </motion.div>
@@ -86,7 +86,7 @@ const ReelsAnalytics = () => {
     }
 
     return (
-        <div className="min-h-screen bg-black text-white">
+        <div className="min-h-screen bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
@@ -102,19 +102,19 @@ const ReelsAnalytics = () => {
                         <div className="flex items-center gap-4">
                             <button
                                 onClick={() => navigate(-1)}
-                                className="w-10 h-10 bg-zinc-900 rounded-full flex items-center justify-center text-white hover:bg-zinc-800 transition"
+                                className="w-10 h-10 bg-zinc-900 light:bg-white rounded-full flex items-center justify-center text-white light:text-slate-600 hover:bg-zinc-800 light:hover:bg-slate-100 transition light:border light:border-slate-200 light:shadow-sm"
                             >
                                 <FaArrowLeft />
                             </button>
                             <div>
-                                <h1 className="text-xl font-bold">Reels Analytics</h1>
-                                <p className="text-sm text-zinc-500">Track your reel performance</p>
+                                <h1 className="text-xl font-bold light:text-slate-900">Reels Analytics</h1>
+                                <p className="text-sm text-zinc-500 light:text-slate-500">Track your reel performance</p>
                             </div>
                         </div>
                         
                         <button
                             onClick={() => navigate('/reels')}
-                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-sm font-semibold hover:opacity-90 transition"
+                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-sm font-semibold hover:opacity-90 transition text-white"
                         >
                             <FaPlay className="text-xs" />
                             View Reels
@@ -154,31 +154,31 @@ const ReelsAnalytics = () => {
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-2xl p-4 text-center"
+                            className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 light:from-purple-100 light:to-pink-100 border border-purple-500/20 rounded-2xl p-4 text-center"
                         >
-                            <FaChartLine className="text-purple-400 text-xl mx-auto mb-1" />
-                            <p className="text-lg font-bold text-white">{analytics?.engagementRate || 0}%</p>
-                            <p className="text-[10px] text-zinc-500 uppercase">Engagement Rate</p>
+                            <FaChartLine className="text-purple-400 light:text-purple-600 text-xl mx-auto mb-1" />
+                            <p className="text-lg font-bold text-white light:text-slate-900">{analytics?.engagementRate || 0}%</p>
+                            <p className="text-[10px] text-zinc-500 light:text-slate-500 uppercase">Engagement Rate</p>
                         </motion.div>
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.1 }}
-                            className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-2xl p-4 text-center"
+                            className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 light:from-blue-100 light:to-cyan-100 border border-blue-500/20 rounded-2xl p-4 text-center"
                         >
-                            <FaClock className="text-blue-400 text-xl mx-auto mb-1" />
-                            <p className="text-lg font-bold text-white">{analytics?.totalWatchTimeMinutes || 0} min</p>
-                            <p className="text-[10px] text-zinc-500 uppercase">Watch Time</p>
+                            <FaClock className="text-blue-400 light:text-blue-600 text-xl mx-auto mb-1" />
+                            <p className="text-lg font-bold text-white light:text-slate-900">{analytics?.totalWatchTimeMinutes || 0} min</p>
+                            <p className="text-[10px] text-zinc-500 light:text-slate-500 uppercase">Watch Time</p>
                         </motion.div>
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.2 }}
-                            className="bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-2xl p-4 text-center"
+                            className="bg-gradient-to-br from-orange-500/10 to-red-500/10 light:from-orange-100 light:to-red-100 border border-orange-500/20 rounded-2xl p-4 text-center"
                         >
-                            <FaFire className="text-orange-400 text-xl mx-auto mb-1" />
-                            <p className="text-lg font-bold text-white">{analytics?.totalReels || 0}</p>
-                            <p className="text-[10px] text-zinc-500 uppercase">Total Reels</p>
+                            <FaFire className="text-orange-400 light:text-orange-600 text-xl mx-auto mb-1" />
+                            <p className="text-lg font-bold text-white light:text-slate-900">{analytics?.totalReels || 0}</p>
+                            <p className="text-[10px] text-zinc-500 light:text-slate-500 uppercase">Total Reels</p>
                         </motion.div>
                     </div>
 
@@ -186,10 +186,10 @@ const ReelsAnalytics = () => {
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="bg-zinc-900/50 border border-zinc-800/50 rounded-2xl overflow-hidden"
+                        className="bg-zinc-900/50 light:bg-white border border-zinc-800/50 light:border-slate-200 rounded-2xl overflow-hidden light:shadow-sm"
                     >
-                        <div className="p-4 border-b border-zinc-800/50">
-                            <h2 className="font-semibold">Your Reels Performance</h2>
+                        <div className="p-4 border-b border-zinc-800/50 light:border-slate-200">
+                            <h2 className="font-semibold light:text-slate-900">Your Reels Performance</h2>
                         </div>
 
                         {reels.length === 0 ? (
@@ -198,19 +198,19 @@ const ReelsAnalytics = () => {
                                 <p>No reels published yet</p>
                             </div>
                         ) : (
-                            <div className="divide-y divide-zinc-800/50">
+                            <div className="divide-y divide-zinc-800/50 light:divide-slate-200">
                                 {reels.map((reel, index) => (
                                     <motion.div
                                         key={reel._id}
                                         initial={{ opacity: 0, x: -20 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{ delay: index * 0.05 }}
-                                        className="p-4 hover:bg-zinc-800/30 transition cursor-pointer"
+                                        className="p-4 hover:bg-zinc-800/30 light:hover:bg-slate-100 transition cursor-pointer"
                                         onClick={() => setSelectedReel(reel)}
                                     >
                                         <div className="flex items-center gap-4">
                                             {/* Thumbnail */}
-                                            <div className="w-16 h-24 bg-zinc-800 rounded-lg overflow-hidden flex-shrink-0">
+                                            <div className="w-16 h-24 bg-zinc-800 light:bg-slate-200 rounded-lg overflow-hidden flex-shrink-0">
                                                 {reel.mediaType === "video" ? (
                                                     <video
                                                         src={reel.mediaUrl}
@@ -228,8 +228,8 @@ const ReelsAnalytics = () => {
 
                                             {/* Info */}
                                             <div className="flex-1 min-w-0">
-                                                <h3 className="font-medium text-white truncate">{reel.title}</h3>
-                                                <p className="text-xs text-zinc-500 flex items-center gap-1 mt-1">
+                                                <h3 className="font-medium text-white light:text-slate-900 truncate">{reel.title}</h3>
+                                                <p className="text-xs text-zinc-500 light:text-slate-500 flex items-center gap-1 mt-1">
                                                     <FaCalendarAlt className="text-[10px]" />
                                                     {new Date(reel.createdAt).toLocaleDateString()}
                                                 </p>
@@ -238,16 +238,16 @@ const ReelsAnalytics = () => {
                                             {/* Stats */}
                                             <div className="flex items-center gap-4 text-sm">
                                                 <div className="text-center">
-                                                    <p className="font-bold text-white">{formatNumber(reel.viewsCount)}</p>
-                                                    <p className="text-[10px] text-zinc-500">Views</p>
+                                                    <p className="font-bold text-white light:text-slate-900">{formatNumber(reel.viewsCount)}</p>
+                                                    <p className="text-[10px] text-zinc-500 light:text-slate-500">Views</p>
                                                 </div>
                                                 <div className="text-center">
-                                                    <p className="font-bold text-pink-400">{formatNumber(reel.likesCount)}</p>
-                                                    <p className="text-[10px] text-zinc-500">Likes</p>
+                                                    <p className="font-bold text-pink-400 light:text-pink-600">{formatNumber(reel.likesCount)}</p>
+                                                    <p className="text-[10px] text-zinc-500 light:text-slate-500">Likes</p>
                                                 </div>
                                                 <div className="text-center">
-                                                    <p className="font-bold text-blue-400">{formatNumber(reel.commentsCount)}</p>
-                                                    <p className="text-[10px] text-zinc-500">Comments</p>
+                                                    <p className="font-bold text-blue-400 light:text-blue-600">{formatNumber(reel.commentsCount)}</p>
+                                                    <p className="text-[10px] text-zinc-500 light:text-slate-500">Comments</p>
                                                 </div>
                                             </div>
                                         </div>

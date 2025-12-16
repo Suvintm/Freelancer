@@ -192,7 +192,7 @@ const EditorHome = () => {
   const activeTabConfig = mainTabs.find(t => t.id === mainTab);
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] text-white">
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] light:bg-green-100/20 text-white light:text-slate-900 transition-colors duration-200">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
@@ -218,7 +218,7 @@ const EditorHome = () => {
       <main className="flex-1 px-4 md:px-8 py-6 lg:pt-20 md:pt-6 md:ml-64 md:mt-20">
         
         {/* ============ MAIN TABS (Home / Dashboard) ============ */}
-        <div className="flex justify-center items-center gap-2 mb-6">
+        <div className="flex justify-center items-center lg:gap-2 lg:mb-6 md:mb-4 mb-2 gap-3 md:gap-2 ">
           {mainTabs.map((tab) => {
             const isActive = mainTab === tab.id;
             return (
@@ -230,8 +230,8 @@ const EditorHome = () => {
                 className={`
                   relative px-5 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2.5
                   ${isActive 
-                    ? `bg-gradient-to-r ${tab.gradient} border-2/20` 
-                    : "bg-[#0a0a0c] border border-[#1a1a1f] hover:border-[#2a2a2f]"
+                    ? `bg-gradient-to-r ${tab.gradient} border-green-500 border-2/60` 
+                    : "bg-[#0a0a0c] light:bg-white border border-[#1a1a1f] light:border-slate-400/20 hover:border-[#2a2a2f] light:hover:border-blue-400 light:shadow-md light:hover:shadow-lg"
                   }
                 `}
                 style={{
@@ -243,7 +243,7 @@ const EditorHome = () => {
                   style={{ color: isActive ? tab.color : '#6b7280' }}
                   className="text-base"
                 />
-                <span style={{ color: isActive ? '#fff' : '#9ca3af' }}>
+                <span style={{ color: isActive ? '#fff' : undefined }} className={isActive ? '' : 'text-[#9ca3af] light:text-slate-700'}>
                   {tab.label}
                 </span>
                 {isActive && (
@@ -290,12 +290,12 @@ const EditorHome = () => {
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`border rounded-2xl p-3 sm:p-4 h-fit overflow-hidden ${
+                    className={`border-2 rounded-2xl p-3 sm:p-4 h-fit overflow-hidden light:shadow-lg light:bg-white ${
                       storageData.isFull 
-                        ? 'bg-gradient-to-r from-red-500/10 to-rose-500/5 border-red-500/20' 
+                        ? 'bg-gradient-to-r from-red-500/10 to-rose-500/5 border-red-500/20 light:border-red-300 light:ring-2 light:ring-red-100' 
                         : storageData.isLowStorage 
-                          ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/5 border-amber-500/20'
-                          : 'bg-gradient-to-r from-blue-500/10 to-purple-500/5 border-blue-500/20'
+                          ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/5 border-amber-500/20 light:border-amber-300 light:ring-2 light:ring-amber-100'
+                          : 'bg-gradient-to-r from-blue-500/10 to-purple-500/5 border-blue-500/20 light:border-blue-300 light:ring-2 light:ring-blue-100'
                     }`}
                   >
                     {/* Main Storage Info */}
@@ -310,7 +310,7 @@ const EditorHome = () => {
                       
                       <div className="flex-1 min-w-0 overflow-hidden">
                         <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
-                          <h3 className="text-white font-semibold text-xs sm:text-sm truncate">Storage</h3>
+                          <h3 className="text-white light:text-slate-900 font-semibold text-xs sm:text-sm truncate">Storage</h3>
                           <span className={`px-1 sm:px-1.5 py-0.5 text-[8px] sm:text-[9px] font-bold rounded uppercase shrink-0 ${
                             storageData.plan === 'free' ? 'bg-gray-500/20 text-gray-400' :
                             storageData.plan === 'pro' ? 'bg-purple-500/20 text-purple-400' :
@@ -335,7 +335,7 @@ const EditorHome = () => {
                         </div>
                         
                         <div className="flex items-center justify-between text-[9px] sm:text-[10px]">
-                          <span className="text-gray-400 truncate">
+                          <span className="text-gray-400 light:text-slate-600 truncate">
                             {storageData.usedFormatted}
                             <span className="hidden xs:inline"> / {storageData.limitFormatted}</span>
                           </span>
@@ -362,7 +362,7 @@ const EditorHome = () => {
                           className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-medium flex items-center gap-1 transition-all ${
                             storageData.isFull || storageData.isLowStorage
                               ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:opacity-90'
-                              : 'bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10'
+                              : 'bg-white/5 light:bg-slate-100 border border-white/10 light:border-slate-200 text-gray-300 light:text-slate-700 hover:bg-white/10 light:hover:bg-slate-200'
                           }`}
                         >
                           <FaCloudUploadAlt className="text-[9px] sm:text-xs" />
@@ -389,29 +389,49 @@ const EditorHome = () => {
                           transition={{ duration: 0.2 }}
                           className="overflow-hidden"
                         >
-                          <div className="mt-3 pt-3 border-t border-white/10">
-                            <p className="text-gray-500 text-[10px] uppercase font-medium mb-2">Storage Breakdown</p>
+                          <div className="mt-3 pt-3 border-t border-white/10 light:border-slate-200">
+                            <p className="text-gray-500 light:text-slate-500 text-[10px] uppercase font-medium mb-2">Storage Breakdown</p>
                             <div className="grid grid-cols-3 gap-2">
-                              <div className="bg-black/20 rounded-lg p-2 text-center">
-                                <FaVideo className="text-purple-400 mx-auto mb-1 text-sm" />
-                                <p className="text-white font-bold text-sm">{storageBreakdown.portfolios || 0}</p>
-                                <p className="text-gray-500 text-[9px]">Portfolios</p>
+                              <div className="bg-black/20 light:bg-slate-100 rounded-lg p-2 text-center">
+                                <FaVideo className="text-purple-400 light:text-purple-600 mx-auto mb-1 text-sm" />
+                                <p className="text-white light:text-slate-900 font-bold text-sm">{storageBreakdown.portfolios || 0}</p>
+                                <p className="text-gray-500 light:text-slate-500 text-[9px]">Portfolios</p>
                               </div>
-                              <div className="bg-black/20 rounded-lg p-2 text-center">
-                                <FaImages className="text-blue-400 mx-auto mb-1 text-sm" />
-                                <p className="text-white font-bold text-sm">{storageBreakdown.reels || 0}</p>
-                                <p className="text-gray-500 text-[9px]">Reels</p>
+                              <div className="bg-black/20 light:bg-slate-100 rounded-lg p-2 text-center">
+                                <FaImages className="text-blue-400 light:text-blue-600 mx-auto mb-1 text-sm" />
+                                <p className="text-white light:text-slate-900 font-bold text-sm">{storageBreakdown.reels || 0}</p>
+                                <p className="text-gray-500 light:text-slate-500 text-[9px]">Reels</p>
                               </div>
-                              <div className="bg-black/20 rounded-lg p-2 text-center">
-                                <FaComments className="text-emerald-400 mx-auto mb-1 text-sm" />
-                                <p className="text-white font-bold text-sm">{storageBreakdown.chatFiles || 0}</p>
-                                <p className="text-gray-500 text-[9px]">Chat Files</p>
+                              <div className="bg-black/20 light:bg-slate-100 rounded-lg p-2 text-center">
+                                <FaComments className="text-emerald-400 light:text-emerald-600 mx-auto mb-1 text-sm" />
+                                <p className="text-white light:text-slate-900 font-bold text-sm">{storageBreakdown.chatFiles || 0}</p>
+                                <p className="text-gray-500 light:text-slate-500 text-[9px]">Chat Files</p>
                               </div>
                             </div>
                           </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
+                  </motion.div>
+                )}
+                {storageData?.isFull && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="border rounded-2xl p-5 md:p-6 mb-6 bg-gradient-to-r from-red-500/5 to-rose-500/5 border-red-500/20"
+                  >
+                    <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                      <div className="p-3 rounded-xl bg-red-500/10">
+                        <FaExclamationCircle className="text-xl text-red-400" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-base text-red-400">Storage Full</h3>
+                        <p className="text-gray-400 light:text-slate-600 text-sm mt-0.5">
+                          Your storage is full. Please upgrade or delete files to continue.
+                        </p>
+                      </div>
+                    </div>
                   </motion.div>
                 )}
               </div>
@@ -435,7 +455,7 @@ const EditorHome = () => {
                       <h3 className={`font-semibold text-base ${user?.kycStatus === 'rejected' ? 'text-red-400' : 'text-white'}`}>
                         {user?.kycStatus === 'rejected' ? 'KYC Verification Failed' : 'Link Bank Account'}
                       </h3>
-                      <p className="text-gray-400 text-sm mt-0.5">
+                      <p className="text-gray-400 light:text-slate-600 text-sm mt-0.5">
                         {user?.kycStatus === 'rejected' 
                           ? (user?.kycRejectionReason || 'Your documents could not be verified. Please update and resubmit.')
                           : 'Complete KYC verification to receive payouts from orders.'}
@@ -457,7 +477,7 @@ const EditorHome = () => {
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-gradient-to-r from-blue-500/5 to-cyan-500/5 border border-blue-500/20 rounded-2xl p-5 md:p-6 mb-6"
+                  className="bg-gradient-to-r from-blue-500/5 to-cyan-500/5 light:from-blue-50 light:to-cyan-50 border-2 border-blue-500/20 light:border-blue-300 rounded-2xl p-5 md:p-6 mb-6 light:shadow-lg light:ring-2 light:ring-blue-100"
                 >
                   {/* Header */}
                   <div className="flex items-center gap-4 mb-4">
@@ -473,14 +493,14 @@ const EditorHome = () => {
                           IN PROGRESS
                         </span>
                       </div>
-                      <p className="text-gray-400 text-sm mt-0.5">
+                      <p className="text-gray-400 light:text-slate-600 text-sm mt-0.5">
                         Your documents are being verified. This usually takes 24-48 hours.
                       </p>
                     </div>
                   </div>
 
                   {/* Progress Stages */}
-                  <div className="flex items-center justify-between gap-2 bg-black/20 rounded-xl p-4">
+                  <div className="flex items-center justify-between gap-2 bg-black/20 light:bg-slate-100 rounded-xl p-4">
                     {/* Stage 1: Submitted */}
                     <div className="flex flex-col items-center gap-1.5">
                       <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center">
@@ -643,7 +663,7 @@ const EditorHome = () => {
 
               {/* Explore Tabs */}
               <div className="flex items-center justify-center mb-6">
-                <div className="inline-flex p-1.5 bg-[#0a0a0c] border border-[#1a1a1f] rounded-2xl">
+                <div className="inline-flex p-1.5 bg-[#0a0a0c] light:bg-white border border-[#1a1a1f] light:border-slate-300 rounded-2xl light:shadow-md">
                   {exploreTabs.map((tab) => {
                     const isActive = exploreTab === tab.id;
                     return (
@@ -654,7 +674,7 @@ const EditorHome = () => {
                           relative px-5 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center gap-2
                           ${isActive
                             ? "text-white bg-gradient-to-r from-blue-900/40 to-blue-600"
-                            : "text-[#6b7280] hover:text-white hover:bg-[#18181b]"
+                            : "text-[#6b7280] light:text-slate-600 hover:text-white light:hover:text-slate-900 hover:bg-[#18181b] light:hover:bg-slate-100"
                           }
                         `}
                       >
@@ -667,12 +687,12 @@ const EditorHome = () => {
               </div>
 
               {/* Explore Content */}
-              <div className="bg-[#0a0a0c] border border-[#1a1a1f] rounded-2xl p-4 md:p-6">
+              <div className="bg-[#0a0a0c] light:bg-white border-2 border-[#1a1a1f] light:border-slate-300 rounded-2xl p-4 md:p-6 light:shadow-lg light:ring-1 light:ring-slate-200">
                 <div className="text-center mb-6">
-                  <h2 className="text-xl font-semibold text-white mb-1">
+                  <h2 className="text-xl font-semibold text-white light:text-slate-900 mb-1">
                     {exploreTab === "editors" ? "Explore Other Editors" : "Browse Services"}
                   </h2>
-                  <p className="text-gray-500 text-sm">
+                  <p className="text-gray-500 light:text-slate-500 text-sm">
                     {exploreTab === "editors" 
                       ? "See what other editors are offering"
                       : "Find services that complement your skills"

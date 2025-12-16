@@ -114,7 +114,7 @@ const CreateGig = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] text-white">
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 

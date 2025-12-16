@@ -69,9 +69,9 @@ const OrderCard = ({ order, user, onAccept, onReject, onNavigate, accepting, rej
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className={`bg-[#111319] border ${
-        isNewOrder ? "border-blue-500/30" : "border-[#262A3B]"
-      } rounded-2xl overflow-hidden transition-all ${
+      className={`bg-[#111319] light:bg-white border ${
+        isNewOrder ? "border-blue-500/30" : "border-[#262A3B] light:border-slate-200"
+      } rounded-2xl overflow-hidden transition-all light:shadow-sm ${
         canAcceptReject ? "cursor-pointer hover:border-blue-500/50" : 
         order.status !== "rejected" && order.status !== "new" ? "cursor-pointer hover:border-blue-500/30" : ""
       }`}
@@ -91,7 +91,7 @@ const OrderCard = ({ order, user, onAccept, onReject, onNavigate, accepting, rej
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-white">{order.title}</h3>
+                  <h3 className="font-semibold text-white light:text-slate-900">{order.title}</h3>
                   {/* Order Type Tag */}
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                     order.type === "gig" 
@@ -105,7 +105,7 @@ const OrderCard = ({ order, user, onAccept, onReject, onNavigate, accepting, rej
                     )}
                   </span>
                 </div>
-                <p className="text-gray-400 text-sm mt-0.5">
+                <p className="text-gray-400 light:text-slate-500 text-sm mt-0.5">
                   {isEditor ? "Client: " : "Editor: "}
                   {otherParty?.name}
                 </p>
@@ -119,9 +119,9 @@ const OrderCard = ({ order, user, onAccept, onReject, onNavigate, accepting, rej
             </div>
 
             {/* Order Details */}
-            <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
-              <span className="text-gray-500">#{order.orderNumber}</span>
-              <span className="flex items-center gap-1 text-green-400 font-medium">
+            <div className="flex items-center gap-4 mt-3 text-xs text-gray-400 light:text-slate-500">
+              <span className="text-gray-500 light:text-slate-400">#{order.orderNumber}</span>
+              <span className="flex items-center gap-1 text-green-400 light:text-green-600 font-medium">
                 <FaRupeeSign /> {order.amount}
               </span>
               <span className="flex items-center gap-1">
@@ -153,7 +153,7 @@ const OrderCard = ({ order, user, onAccept, onReject, onNavigate, accepting, rej
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="border-t border-[#262A3B]"
+            className="border-t border-[#262A3B] light:border-slate-200"
           >
             <div className="p-5 bg-[#0a0c0f] space-y-4">
               {/* Description */}
@@ -326,7 +326,7 @@ const MyOrders = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] text-white">
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
@@ -335,20 +335,20 @@ const MyOrders = () => {
         <div className="flex items-center gap-4 mb-6">
           <button
             onClick={() => navigate(-1)}
-            className="p-3 rounded-xl bg-[#111319] border border-[#262A3B] hover:bg-[#1a1d25] transition-all"
+            className="p-3 rounded-xl bg-[#111319] light:bg-white border border-[#262A3B] light:border-slate-200 hover:bg-[#1a1d25] light:hover:bg-slate-100 transition-all light:shadow-sm"
           >
-            <FaArrowLeft />
+            <FaArrowLeft className="light:text-slate-600" />
           </button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-white">My Orders</h1>
+              <h1 className="text-2xl font-bold text-white light:text-slate-900">My Orders</h1>
               {newOrdersCount > 0 && (
                 <span className="px-2 py-1 bg-blue-500 text-white text-xs font-bold rounded-full">
                   {newOrdersCount} New
                 </span>
               )}
             </div>
-            <p className="text-gray-400 text-sm">{orders.length} orders total</p>
+            <p className="text-gray-400 light:text-slate-500 text-sm">{orders.length} orders total</p>
           </div>
         </div>
 
@@ -359,7 +359,7 @@ const MyOrders = () => {
             className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
               statusFilter === "all"
                 ? "bg-blue-600 text-white"
-                : "bg-[#111319] text-gray-400 hover:bg-[#1a1d25]"
+                : "bg-[#111319] light:bg-white text-gray-400 light:text-slate-600 hover:bg-[#1a1d25] light:hover:bg-slate-100 light:border light:border-slate-200"
             }`}
           >
             All
@@ -373,13 +373,13 @@ const MyOrders = () => {
                 className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2 ${
                   statusFilter === key
                     ? `${config.bg} ${config.color} border border-current`
-                    : "bg-[#111319] text-gray-400 hover:bg-[#1a1d25]"
+                    : "bg-[#111319] light:bg-white text-gray-400 light:text-slate-600 hover:bg-[#1a1d25] light:hover:bg-slate-100 light:border light:border-slate-200"
                 }`}
               >
                 {config.label}
                 {count > 0 && (
                   <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                    statusFilter === key ? "bg-white/20" : "bg-gray-700"
+                    statusFilter === key ? "bg-white/20" : "bg-gray-700 light:bg-slate-200"
                   }`}>
                     {count}
                   </span>
@@ -392,9 +392,9 @@ const MyOrders = () => {
         {/* Orders List */}
         {orders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <FaComments className="text-6xl text-gray-600 mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">No orders yet</h3>
-            <p className="text-gray-400 text-sm">Your orders will appear here</p>
+            <FaComments className="text-6xl text-gray-600 light:text-slate-400 mb-4" />
+            <h3 className="text-xl font-semibold text-white light:text-slate-900 mb-2">No orders yet</h3>
+            <p className="text-gray-400 light:text-slate-500 text-sm">Your orders will appear here</p>
           </div>
         ) : (
           <div className="space-y-4">
