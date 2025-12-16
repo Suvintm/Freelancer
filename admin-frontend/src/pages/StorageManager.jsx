@@ -1,0 +1,443 @@
+// StorageManager.jsx - Admin Storage Settings Management
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import {
+    FaDatabase,
+    FaEdit,
+    FaSave,
+    FaTimes,
+    FaPlus,
+    FaTrash,
+    FaInfoCircle,
+    FaSpinner,
+    FaCheck,
+} from "react-icons/fa";
+import { useAdminContext } from "../context/AdminContext";
+import { toast } from "react-toastify";
+
+const StorageManager = () => {
+    const { adminAxios } = useAdminContext();
+
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [settings, setSettings] = useState(null);
+    const [editMode, setEditMode] = useState(false);
+    
+    // Form state
+    const [freeStorageMB, setFreeStorageMB] = useState(500);
+    const [maxStorageMB, setMaxStorageMB] = useState(51200);
+    const [plans, setPlans] = useState([]);
+    
+    // New plan modal
+    const [showAddPlan, setShowAddPlan] = useState(false);
+    const [newPlan, setNewPlan] = useState({
+        id: "",
+        name: "",
+        storageMB: 1024,
+        price: 99,
+        features: "",
+        popular: false,
+    });
+
+    useEffect(() => {
+        fetchSettings();
+    }, []);
+
+    const fetchSettings = async () => {
+        try {
+            setLoading(true);
+            const { data } = await adminAxios.get("/admin/storage-settings");
+            if (data.success) {
+                setSettings(data.settings);
+                setFreeStorageMB(data.settings.freeStorageMB);
+                setMaxStorageMB(data.settings.maxStorageMB);
+                setPlans(data.settings.plans || []);
+            }
+        } catch (error) {
+            console.error("Error fetching storage settings:", error);
+            toast.error("Failed to load storage settings");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSave = async () => {
+        try {
+            setSaving(true);
+            const { data } = await adminAxios.put("/admin/storage-settings", {
+                freeStorageMB,
+                maxStorageMB,
+                plans,
+            });
+            
+            if (data.success) {
+                toast.success("Storage settings updated successfully");
+                setSettings(data.settings);
+                setEditMode(false);
+            }
+        } catch (error) {
+            console.error("Error saving storage settings:", error);
+            toast.error(error.response?.data?.message || "Failed to save settings");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleAddPlan = async () => {
+        if (!newPlan.id || !newPlan.name || !newPlan.storageMB || newPlan.price === undefined) {
+            toast.error("Please fill all required fields");
+            return;
+        }
+
+        try {
+            setSaving(true);
+            const features = newPlan.features.split("\n").filter(f => f.trim());
+            
+            const { data } = await adminAxios.post("/admin/storage-settings/plans", {
+                ...newPlan,
+                features,
+            });
+            
+            if (data.success) {
+                toast.success("Plan added successfully");
+                setPlans(data.plans);
+                setShowAddPlan(false);
+                setNewPlan({ id: "", name: "", storageMB: 1024, price: 99, features: "", popular: false });
+            }
+        } catch (error) {
+            console.error("Error adding plan:", error);
+            toast.error(error.response?.data?.message || "Failed to add plan");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDeletePlan = async (planId) => {
+        if (!window.confirm("Are you sure you want to delete this plan?")) return;
+        
+        try {
+            const { data } = await adminAxios.delete(`/admin/storage-settings/plans/${planId}`);
+            if (data.success) {
+                toast.success("Plan deleted successfully");
+                setPlans(data.plans);
+            }
+        } catch (error) {
+            console.error("Error deleting plan:", error);
+            toast.error(error.response?.data?.message || "Failed to delete plan");
+        }
+    };
+
+    const updatePlanField = (index, field, value) => {
+        const updated = [...plans];
+        updated[index][field] = value;
+        setPlans(updated);
+    };
+
+    const formatBytes = (mb) => {
+        if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
+        return `${mb} MB`;
+    };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-96">
+                <FaSpinner className="text-4xl animate-spin text-blue-500" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="p-6 max-w-5xl mx-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                        <FaDatabase className="text-white text-xl" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Storage Manager</h1>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Configure storage limits and plans for editors</p>
+                    </div>
+                </div>
+                
+                {!editMode ? (
+                    <button
+                        onClick={() => setEditMode(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                        <FaEdit /> Edit Settings
+                    </button>
+                ) : (
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => {
+                                setEditMode(false);
+                                fetchSettings();
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+                        >
+                            <FaTimes /> Cancel
+                        </button>
+                        <button
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+                        >
+                            {saving ? <FaSpinner className="animate-spin" /> : <FaSave />}
+                            Save Changes
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Free Storage Limit */}
+            <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 mb-6"
+            >
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
+                    <FaInfoCircle className="text-blue-500" />
+                    Default Storage Limits
+                </h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Free Storage */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Free Storage for New Editors
+                        </label>
+                        {editMode ? (
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    min="100"
+                                    max="10240"
+                                    value={freeStorageMB}
+                                    onChange={(e) => setFreeStorageMB(parseInt(e.target.value) || 100)}
+                                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                />
+                                <span className="text-gray-500 dark:text-gray-400">MB</span>
+                            </div>
+                        ) : (
+                            <p className="text-2xl font-bold text-blue-600">{formatBytes(freeStorageMB)}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">Min: 100 MB, Max: 10 GB</p>
+                    </div>
+
+                    {/* Max Storage */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Maximum Purchasable Storage
+                        </label>
+                        {editMode ? (
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    min="1024"
+                                    max="102400"
+                                    value={maxStorageMB}
+                                    onChange={(e) => setMaxStorageMB(parseInt(e.target.value) || 1024)}
+                                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                />
+                                <span className="text-gray-500 dark:text-gray-400">MB</span>
+                            </div>
+                        ) : (
+                            <p className="text-2xl font-bold text-purple-600">{formatBytes(maxStorageMB)}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">Min: 1 GB, Max: 100 GB</p>
+                    </div>
+                </div>
+            </motion.div>
+
+            {/* Storage Plans */}
+            <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6"
+            >
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Storage Plans</h2>
+                    {editMode && (
+                        <button
+                            onClick={() => setShowAddPlan(true)}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                        >
+                            <FaPlus /> Add Plan
+                        </button>
+                    )}
+                </div>
+
+                <div className="grid gap-4">
+                    {plans.map((plan, index) => (
+                        <div
+                            key={plan.id}
+                            className={`p-4 rounded-lg border ${
+                                plan.popular 
+                                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" 
+                                    : "border-gray-200 dark:border-gray-700"
+                            }`}
+                        >
+                            <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                    {editMode ? (
+                                        <div className="grid grid-cols-4 gap-4">
+                                            <input
+                                                value={plan.name}
+                                                onChange={(e) => updatePlanField(index, "name", e.target.value)}
+                                                placeholder="Plan Name"
+                                                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
+                                            />
+                                            <div className="flex items-center gap-1">
+                                                <input
+                                                    type="number"
+                                                    value={plan.storageMB}
+                                                    onChange={(e) => updatePlanField(index, "storageMB", parseInt(e.target.value))}
+                                                    className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
+                                                />
+                                                <span className="text-xs text-gray-500">MB</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-gray-500">₹</span>
+                                                <input
+                                                    type="number"
+                                                    value={plan.price}
+                                                    onChange={(e) => updatePlanField(index, "price", parseInt(e.target.value))}
+                                                    className="w-20 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
+                                                />
+                                            </div>
+                                            <label className="flex items-center gap-2 text-sm">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={plan.popular}
+                                                    onChange={(e) => updatePlanField(index, "popular", e.target.checked)}
+                                                    className="rounded"
+                                                />
+                                                Popular
+                                            </label>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-4">
+                                            <div>
+                                                <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                                    {plan.name}
+                                                    {plan.popular && (
+                                                        <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">Popular</span>
+                                                    )}
+                                                </h3>
+                                                <p className="text-sm text-gray-500">{formatBytes(plan.storageMB)}</p>
+                                            </div>
+                                            <div className="ml-auto text-right">
+                                                <p className="text-xl font-bold text-gray-900 dark:text-white">₹{plan.price}</p>
+                                                <p className="text-xs text-gray-500">one-time</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                {editMode && (
+                                    <button
+                                        onClick={() => handleDeletePlan(plan.id)}
+                                        className="ml-4 p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+                                    >
+                                        <FaTrash />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                    
+                    {plans.length === 0 && (
+                        <div className="text-center py-8 text-gray-500">
+                            No storage plans configured. Add one to get started.
+                        </div>
+                    )}
+                </div>
+            </motion.div>
+
+            {/* Add Plan Modal */}
+            {showAddPlan && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md mx-4"
+                    >
+                        <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Add New Plan</h3>
+                        
+                        <div className="space-y-4">
+                            <input
+                                placeholder="Plan ID (e.g., premium)"
+                                value={newPlan.id}
+                                onChange={(e) => setNewPlan({ ...newPlan, id: e.target.value.toLowerCase().replace(/\s/g, "_") })}
+                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                            />
+                            <input
+                                placeholder="Plan Name"
+                                value={newPlan.name}
+                                onChange={(e) => setNewPlan({ ...newPlan, name: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                            />
+                            <div className="flex gap-4">
+                                <div className="flex-1">
+                                    <label className="text-xs text-gray-500 dark:text-gray-400">Storage (MB)</label>
+                                    <input
+                                        type="number"
+                                        value={newPlan.storageMB}
+                                        onChange={(e) => setNewPlan({ ...newPlan, storageMB: parseInt(e.target.value) })}
+                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="text-xs text-gray-500 dark:text-gray-400">Price (₹)</label>
+                                    <input
+                                        type="number"
+                                        value={newPlan.price}
+                                        onChange={(e) => setNewPlan({ ...newPlan, price: parseInt(e.target.value) })}
+                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                                    />
+                                </div>
+                            </div>
+                            <textarea
+                                placeholder="Features (one per line)"
+                                value={newPlan.features}
+                                onChange={(e) => setNewPlan({ ...newPlan, features: e.target.value })}
+                                rows={3}
+                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                            />
+                            <label className="flex items-center gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    checked={newPlan.popular}
+                                    onChange={(e) => setNewPlan({ ...newPlan, popular: e.target.checked })}
+                                    className="rounded"
+                                />
+                                Mark as Popular
+                            </label>
+                        </div>
+                        
+                        <div className="flex gap-2 mt-6">
+                            <button
+                                onClick={() => setShowAddPlan(false)}
+                                className="flex-1 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleAddPlan}
+                                disabled={saving}
+                                className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {saving ? <FaSpinner className="animate-spin" /> : <FaCheck />}
+                                Add Plan
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default StorageManager;

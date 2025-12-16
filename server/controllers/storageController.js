@@ -9,6 +9,7 @@ import { Reel } from "../models/Reel.js";
 import { Message } from "../models/Message.js";
 import { Order } from "../models/Order.js";
 import { StoragePurchase, STORAGE_PLANS, formatBytes } from "../models/StoragePurchase.js";
+import { StorageSettings } from "../models/StorageSettings.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import Razorpay from "razorpay";
 import crypto from "crypto";
@@ -144,6 +145,10 @@ export const getStorageStatus = asyncHandler(async (req, res) => {
   const isLowStorage = usedPercent >= 80;
   const isFull = usedPercent >= 100;
 
+  // Fetch plans from DB settings
+  const storageSettings = await StorageSettings.getSettings();
+  const plansObject = storageSettings.toPlansObject();
+
   res.json({
     success: true,
     storage: {
@@ -164,7 +169,7 @@ export const getStorageStatus = asyncHandler(async (req, res) => {
       reels: reelsCount,
       chatFiles: messageFilesCount,
     },
-    plans: STORAGE_PLANS,
+    plans: plansObject,
   });
 });
 
@@ -173,9 +178,13 @@ export const getStorageStatus = asyncHandler(async (req, res) => {
  * GET /api/storage/plans
  */
 export const getStoragePlans = asyncHandler(async (req, res) => {
+  // Fetch plans from DB settings
+  const storageSettings = await StorageSettings.getSettings();
+  const plansObject = storageSettings.toPlansObject();
+  
   res.json({
     success: true,
-    plans: Object.values(STORAGE_PLANS).filter((p) => p.id !== "free"),
+    plans: Object.values(plansObject).filter((p) => p.id !== "free"),
     currentPlan: req.user?.storagePlan || "free",
   });
 });

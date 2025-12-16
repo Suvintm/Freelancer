@@ -7,6 +7,7 @@ import { Gig } from "../models/Gig.js";
 import { Message } from "../models/Message.js";
 import { Notification } from "../models/Notification.js";
 import { SiteSettings } from "../models/SiteSettings.js";
+import { StorageSettings } from "../models/StorageSettings.js";
 import { emitToUser, emitMaintenance } from "../socket.js";
 
 const router = express.Router();
@@ -1224,4 +1225,183 @@ router.post("/kyc/:userId/verify", requirePermission("users"), logActivity("KYC_
   }
 });
 
+// ============ STORAGE SETTINGS MANAGEMENT ============
+
+/**
+ * Get current storage settings
+ * GET /admin/storage-settings
+ */
+router.get("/storage-settings", requirePermission("settings"), async (req, res) => {
+  try {
+    const settings = await StorageSettings.getSettings();
+    
+    res.json({
+      success: true,
+      settings: {
+        freeStorageMB: settings.freeStorageMB,
+        maxStorageMB: settings.maxStorageMB,
+        plans: settings.plans,
+        updatedAt: settings.updatedAt,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching storage settings:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch storage settings" });
+  }
+});
+
+/**
+ * Update storage settings
+ * PUT /admin/storage-settings
+ */
+router.put("/storage-settings", requirePermission("settings"), logActivity("Updated storage settings"), async (req, res) => {
+  try {
+    const { freeStorageMB, maxStorageMB, plans } = req.body;
+    
+    const settings = await StorageSettings.getSettings();
+    
+    // Update free storage limit
+    if (freeStorageMB !== undefined) {
+      if (freeStorageMB < 100 || freeStorageMB > 10240) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Free storage must be between 100 MB and 10 GB" 
+        });
+      }
+      settings.freeStorageMB = freeStorageMB;
+    }
+    
+    // Update max storage limit
+    if (maxStorageMB !== undefined) {
+      if (maxStorageMB < 1024 || maxStorageMB > 102400) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Max storage must be between 1 GB and 100 GB" 
+        });
+      }
+      settings.maxStorageMB = maxStorageMB;
+    }
+    
+    // Update plans if provided
+    if (plans && Array.isArray(plans)) {
+      // Validate plans
+      for (const plan of plans) {
+        if (!plan.id || !plan.name || !plan.storageMB || plan.price === undefined) {
+          return res.status(400).json({
+            success: false,
+            message: "Each plan must have id, name, storageMB, and price"
+          });
+        }
+        if (plan.storageMB < 100) {
+          return res.status(400).json({
+            success: false,
+            message: `Plan ${plan.name} must have at least 100 MB storage`
+          });
+        }
+      }
+      settings.plans = plans;
+    }
+    
+    settings.updatedBy = req.admin._id;
+    await settings.save();
+    
+    res.json({
+      success: true,
+      message: "Storage settings updated successfully",
+      settings: {
+        freeStorageMB: settings.freeStorageMB,
+        maxStorageMB: settings.maxStorageMB,
+        plans: settings.plans,
+        updatedAt: settings.updatedAt,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating storage settings:", error);
+    res.status(500).json({ success: false, message: "Failed to update storage settings" });
+  }
+});
+
+/**
+ * Add a new storage plan
+ * POST /admin/storage-settings/plans
+ */
+router.post("/storage-settings/plans", requirePermission("settings"), logActivity("Added storage plan"), async (req, res) => {
+  try {
+    const { id, name, storageMB, price, features, popular } = req.body;
+    
+    if (!id || !name || !storageMB || price === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "Plan must have id, name, storageMB, and price"
+      });
+    }
+    
+    const settings = await StorageSettings.getSettings();
+    
+    // Check if plan ID already exists
+    if (settings.plans.some(p => p.id === id)) {
+      return res.status(400).json({
+        success: false,
+        message: "A plan with this ID already exists"
+      });
+    }
+    
+    settings.plans.push({
+      id,
+      name,
+      storageMB,
+      price,
+      features: features || [],
+      popular: popular || false,
+      active: true,
+    });
+    
+    settings.updatedBy = req.admin._id;
+    await settings.save();
+    
+    res.json({
+      success: true,
+      message: "Storage plan added successfully",
+      plans: settings.plans,
+    });
+  } catch (error) {
+    console.error("Error adding storage plan:", error);
+    res.status(500).json({ success: false, message: "Failed to add storage plan" });
+  }
+});
+
+/**
+ * Delete a storage plan
+ * DELETE /admin/storage-settings/plans/:planId
+ */
+router.delete("/storage-settings/plans/:planId", requirePermission("settings"), logActivity("Deleted storage plan"), async (req, res) => {
+  try {
+    const { planId } = req.params;
+    
+    const settings = await StorageSettings.getSettings();
+    
+    const planIndex = settings.plans.findIndex(p => p.id === planId);
+    if (planIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: "Plan not found"
+      });
+    }
+    
+    settings.plans.splice(planIndex, 1);
+    settings.updatedBy = req.admin._id;
+    await settings.save();
+    
+    res.json({
+      success: true,
+      message: "Storage plan deleted successfully",
+      plans: settings.plans,
+    });
+  } catch (error) {
+    console.error("Error deleting storage plan:", error);
+    res.status(500).json({ success: false, message: "Failed to delete storage plan" });
+  }
+});
+
 export default router;
+

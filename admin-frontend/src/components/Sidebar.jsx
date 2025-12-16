@@ -14,6 +14,7 @@ import {
   FaChartLine,
   FaComments,
   FaWallet,
+  FaDatabase,
 } from "react-icons/fa";
 import { useAdmin } from "../context/AdminContext";
 
@@ -36,6 +37,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: "/orders", icon: FaShoppingCart, label: "Orders" },
     { to: "/gigs", icon: FaBriefcase, label: "Gigs" },
     { to: "/activity", icon: FaHistory, label: "Activity Logs" },
+    { to: "/storage", icon: FaDatabase, label: "Storage Manager" },
     ...(isSuperAdmin ? [{ to: "/settings", icon: FaCog, label: "Settings" }] : []),
   ];
 
