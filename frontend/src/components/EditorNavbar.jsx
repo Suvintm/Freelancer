@@ -1,10 +1,12 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 import { useSocket } from "../context/SocketContext";
+import { useTheme } from "../context/ThemeContext";
 import logo from "../assets/logo.png";
-import { HiBell, HiBars3 } from "react-icons/hi2";
+import { HiBell, HiBars3, HiOutlineSun, HiOutlineMoon } from "react-icons/hi2";
 import { FaEnvelope } from "react-icons/fa";
 import ProfileCompletionRing from "./ProfileCompletionRing";
+import { motion, AnimatePresence } from "framer-motion";
 
 const navItems = [
     { path: "/editor-home", label: "Dashboard" },
@@ -17,6 +19,7 @@ const navItems = [
 const EditorNavbar = ({ onMenuClick }) => {
     const { user, unreadCount } = useAppContext();
     const { totalUnread, unreadNotifications } = useSocket() || {};
+    const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -137,17 +140,50 @@ const EditorNavbar = ({ onMenuClick }) => {
                     onClick={() => navigate("/editor-home")}
                 >
                     <img src={logo} alt="SuviX" className="w-8 h-8 rounded-xl" />
-                    <h2 className="text-lg font-semibold text-white light:text-slate-900 tracking-wide">SuviX</h2>
+                    <h2 className="text-lg font-bold text-white light:text-slate-900 tracking-wide">SuviX</h2>
                 </div>
 
                 {/* RIGHT SIDE ICONS */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
+                    {/* THEME TOGGLE */}
+                    <button
+                        onClick={toggleTheme}
+                        className="w-6 h-6 flex items-center justify-center rounded-full 
+                                   hover:bg-[#252525] light:hover:bg-slate-200 
+                                   transition-all duration-200"
+                        aria-label="Toggle theme"
+                    >
+                        <AnimatePresence mode="wait">
+                            {theme === "dark" ? (
+                                <motion.div
+                                    key="moon"
+                                    initial={{ rotate: -90, opacity: 0 }}
+                                    animate={{ rotate: 0, opacity: 1 }}
+                                    exit={{ rotate: 90, opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <HiOutlineMoon className="text-xl text-green-400" />
+                                </motion.div>
+                            ) : (
+                                <motion.div
+                                    key="sun"
+                                    initial={{ rotate: 90, opacity: 0 }}
+                                    animate={{ rotate: 0, opacity: 1 }}
+                                    exit={{ rotate: -90, opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <HiOutlineSun className="text-xl text-amber-500" />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </button>
+
                     {/* BELL */}
                     <div
                         className="relative cursor-pointer p-2 rounded-full hover:bg-[#1A1A1A] light:hover:bg-slate-100 transition"
                         onClick={() => navigate("/notifications")}
                     >
-                        <HiBell className="text-2xl text-gray-400 light:text-slate-500" />
+                        <HiBell className="text-xl text-gray-400 light:text-slate-500" />
                         {unreadCount > 0 && (
                             <span className="
                                 absolute top-1 right-1 w-4 h-4
