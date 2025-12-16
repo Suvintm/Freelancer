@@ -121,9 +121,9 @@ const EditorProfile = () => {
   const completionPercent = completionData?.percent || 0;
   const progressColor = getProgressColor(completionPercent);
 
-  // SVG circle calculations
-  const size = 120;
-  const strokeWidth = 4;
+  // SVG circle calculations - smaller for mobile
+  const size = 90;
+  const strokeWidth = 3;
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const strokeDashoffset = circumference - (completionPercent / 100) * circumference;
@@ -180,7 +180,7 @@ const EditorProfile = () => {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative overflow-hidden rounded-4xl mb-5 bg-gradient-to-b from-white via-zinc-950/80 to-white"
+            className="relative overflow-hidden rounded-2xl mb-4 bg-gradient-to-b from-white via-zinc-950/80 to-white"
           >
             {/* Glass Background */}
             <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] via-white/[0.03] to-transparent" />
@@ -188,8 +188,8 @@ const EditorProfile = () => {
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
             
             <div className="relative border border-zinc-800/50 rounded-xl">
-              <div className="p-5 md:p-7">
-                <div className="flex flex-col md:flex-row gap-5 items-center md:items-start">
+              <div className="p-4 md:p-6">
+                <div className="flex flex-col md:flex-row gap-4 items-center md:items-start">
                   
                   {/* Avatar with Progress Ring */}
                   <div className="relative flex-shrink-0">
