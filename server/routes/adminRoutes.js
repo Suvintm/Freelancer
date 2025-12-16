@@ -8,6 +8,7 @@ import { Message } from "../models/Message.js";
 import { Notification } from "../models/Notification.js";
 import { SiteSettings } from "../models/SiteSettings.js";
 import { StorageSettings } from "../models/StorageSettings.js";
+import { StoragePurchase } from "../models/StoragePurchase.js";
 import { emitToUser, emitMaintenance } from "../socket.js";
 
 const router = express.Router();
@@ -1413,5 +1414,88 @@ router.delete("/storage-settings/plans/:planId", requirePermission("settings"), 
   }
 });
 
+/**
+ * Get all storage purchases with user details
+ * GET /admin/storage-purchases
+ */
+router.get("/storage-purchases", requirePermission("analytics"), async (req, res) => {
+  try {
+    const { page = 1, limit = 20, status, search } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Build filter
+    const filter = {};
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+    
+    // Get total count
+    const total = await StoragePurchase.countDocuments(filter);
+    
+    // Fetch purchases with user info
+    let purchases = await StoragePurchase.find(filter)
+      .populate('user', 'name email profilePic')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    // If search query, filter by user name/email
+    if (search) {
+      const searchLower = search.toLowerCase();
+      purchases = purchases.filter(p => 
+        p.user?.name?.toLowerCase().includes(searchLower) ||
+        p.user?.email?.toLowerCase().includes(searchLower) ||
+        p.planName?.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Format for frontend
+    const formattedPurchases = purchases.map(p => ({
+      _id: p._id,
+      user: p.user ? {
+        _id: p.user._id,
+        name: p.user.name,
+        email: p.user.email,
+        profilePic: p.user.profilePic,
+      } : null,
+      planId: p.planId,
+      planName: p.planName,
+      storageMB: Math.round(p.storageBytes / (1024 * 1024)),
+      amount: p.amount,
+      currency: p.currency || 'INR',
+      razorpayOrderId: p.razorpayOrderId,
+      razorpayPaymentId: p.razorpayPaymentId,
+      status: p.status,
+      purchasedAt: p.purchasedAt,
+      createdAt: p.createdAt,
+    }));
+    
+    // Get summary stats
+    const completedPurchases = await StoragePurchase.find({ status: 'completed' });
+    const totalRevenue = completedPurchases.reduce((sum, p) => sum + p.amount, 0);
+    const pendingCount = await StoragePurchase.countDocuments({ status: 'pending' });
+    
+    res.json({
+      success: true,
+      purchases: formattedPurchases,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit)),
+      },
+      stats: {
+        totalRevenue,
+        totalCompleted: completedPurchases.length,
+        totalPending: pendingCount,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching storage purchases:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch storage purchases" });
+  }
+});
+
 export default router;
+
 

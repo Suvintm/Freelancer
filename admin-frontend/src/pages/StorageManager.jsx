@@ -11,6 +11,11 @@ import {
     FaInfoCircle,
     FaSpinner,
     FaCheck,
+    FaHistory,
+    FaUser,
+    FaMoneyBillWave,
+    FaChevronLeft,
+    FaChevronRight,
 } from "react-icons/fa";
 import { useAdmin } from "../context/AdminContext";
 import { toast } from "react-toastify";
@@ -39,9 +44,22 @@ const StorageManager = () => {
         popular: false,
     });
 
+    // Purchases state
+    const [purchases, setPurchases] = useState([]);
+    const [purchasesLoading, setPurchasesLoading] = useState(false);
+    const [purchaseStats, setPurchaseStats] = useState({ totalRevenue: 0, totalCompleted: 0, totalPending: 0 });
+    const [purchasePage, setPurchasePage] = useState(1);
+    const [purchasePagination, setPurchasePagination] = useState({ total: 0, pages: 1 });
+    const [statusFilter, setStatusFilter] = useState('all');
+
     useEffect(() => {
         fetchSettings();
+        fetchPurchases();
     }, []);
+
+    useEffect(() => {
+        fetchPurchases();
+    }, [purchasePage, statusFilter]);
 
     const fetchSettings = async () => {
         try {
@@ -58,6 +76,27 @@ const StorageManager = () => {
             toast.error("Failed to load storage settings");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchPurchases = async () => {
+        try {
+            setPurchasesLoading(true);
+            const params = new URLSearchParams({
+                page: purchasePage,
+                limit: 10,
+                status: statusFilter,
+            });
+            const { data } = await adminAxios.get(`/admin/storage-purchases?${params}`);
+            if (data.success) {
+                setPurchases(data.purchases || []);
+                setPurchasePagination(data.pagination || { total: 0, pages: 1 });
+                setPurchaseStats(data.stats || { totalRevenue: 0, totalCompleted: 0, totalPending: 0 });
+            }
+        } catch (error) {
+            console.error("Error fetching purchases:", error);
+        } finally {
+            setPurchasesLoading(false);
         }
     };
 
@@ -459,6 +498,167 @@ const StorageManager = () => {
                     </motion.div>
                 </div>
             )}
+
+            {/* ============ PURCHASE HISTORY SECTION ============ */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mt-6"
+            >
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <FaHistory className="text-2xl text-purple-500" />
+                        <h2 className="text-xl font-bold dark:text-white">Purchase History</h2>
+                    </div>
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => { setStatusFilter(e.target.value); setPurchasePage(1); }}
+                        className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
+                    >
+                        <option value="all">All Status</option>
+                        <option value="completed">Completed</option>
+                        <option value="pending">Pending</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                </div>
+
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-gradient-to-r from-emerald-500/10 to-green-500/10 border border-emerald-500/20 rounded-xl p-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-3 bg-emerald-500/20 rounded-lg">
+                                <FaMoneyBillWave className="text-emerald-500 text-lg" />
+                            </div>
+                            <div>
+                                <p className="text-gray-500 dark:text-gray-400 text-sm">Total Revenue</p>
+                                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">₹{purchaseStats.totalRevenue?.toLocaleString() || 0}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20 rounded-xl p-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-3 bg-blue-500/20 rounded-lg">
+                                <FaCheck className="text-blue-500 text-lg" />
+                            </div>
+                            <div>
+                                <p className="text-gray-500 dark:text-gray-400 text-sm">Completed</p>
+                                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{purchaseStats.totalCompleted || 0}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl p-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-3 bg-amber-500/20 rounded-lg">
+                                <FaSpinner className="text-amber-500 text-lg" />
+                            </div>
+                            <div>
+                                <p className="text-gray-500 dark:text-gray-400 text-sm">Pending</p>
+                                <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{purchaseStats.totalPending || 0}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Purchases Table */}
+                {purchasesLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <FaSpinner className="animate-spin text-3xl text-purple-500" />
+                    </div>
+                ) : purchases.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500">
+                        <FaDatabase className="text-4xl mx-auto mb-3 opacity-50" />
+                        <p>No purchases found</p>
+                    </div>
+                ) : (
+                    <>
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-50 dark:bg-gray-700/50">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">User</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Plan</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Amount</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                    {purchases.map((purchase) => (
+                                        <tr key={purchase._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-3">
+                                                    {purchase.user?.profilePic ? (
+                                                        <img src={purchase.user.profilePic} alt="" className="w-8 h-8 rounded-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
+                                                            <FaUser className="text-purple-500 text-sm" />
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <p className="font-medium text-gray-900 dark:text-white text-sm">{purchase.user?.name || 'Unknown User'}</p>
+                                                        <p className="text-xs text-gray-500">{purchase.user?.email || '-'}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div>
+                                                    <p className="font-medium text-gray-900 dark:text-white text-sm">{purchase.planName}</p>
+                                                    <p className="text-xs text-gray-500">{purchase.storageMB} MB</p>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className="font-semibold text-gray-900 dark:text-white">₹{purchase.amount}</span>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                                    purchase.status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' :
+                                                    purchase.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400' :
+                                                    'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'
+                                                }`}>
+                                                    {purchase.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-gray-500">
+                                                {purchase.purchasedAt 
+                                                    ? new Date(purchase.purchasedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                                                    : new Date(purchase.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                                                }
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Pagination */}
+                        {purchasePagination.pages > 1 && (
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                <p className="text-sm text-gray-500">
+                                    Showing {((purchasePage - 1) * 10) + 1} to {Math.min(purchasePage * 10, purchasePagination.total)} of {purchasePagination.total}
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setPurchasePage(p => Math.max(1, p - 1))}
+                                        disabled={purchasePage === 1}
+                                        className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+                                    >
+                                        <FaChevronLeft className="text-sm" />
+                                    </button>
+                                    <span className="px-3 py-1 text-sm font-medium">{purchasePage} / {purchasePagination.pages}</span>
+                                    <button
+                                        onClick={() => setPurchasePage(p => Math.min(purchasePagination.pages, p + 1))}
+                                        disabled={purchasePage >= purchasePagination.pages}
+                                        className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+                                    >
+                                        <FaChevronRight className="text-sm" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
+            </motion.div>
         </div>
     );
 };
