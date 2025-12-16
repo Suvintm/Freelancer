@@ -40,6 +40,27 @@ const StoragePlans = () => {
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [detailedItems, setDetailedItems] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  
+  // Recent purchase state for green +MB indicator
+  const [recentPurchase, setRecentPurchase] = useState(null);
+  
+  // Load recent purchase info on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('recentStoragePurchase');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        // Only show if purchase was within last 24 hours
+        if (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
+          setRecentPurchase(parsed);
+        } else {
+          localStorage.removeItem('recentStoragePurchase');
+        }
+      } catch (e) {
+        localStorage.removeItem('recentStoragePurchase');
+      }
+    }
+  }, []);
 
   // Fetch storage status and plans
   useEffect(() => {
@@ -143,7 +164,7 @@ const StoragePlans = () => {
         handler: async (response) => {
           try {
             // Verify payment
-            await axios.post(
+            const verifyRes = await axios.post(
               `${backendURL}/api/storage/verify`,
               {
                 razorpay_order_id: response.razorpay_order_id,
@@ -153,6 +174,15 @@ const StoragePlans = () => {
               },
               { headers: { Authorization: `Bearer ${user?.token}` } }
             );
+
+            // Store recent purchase info for display
+            if (verifyRes.data?.storage?.increaseFormatted) {
+              localStorage.setItem('recentStoragePurchase', JSON.stringify({
+                increase: verifyRes.data.storage.increaseFormatted,
+                planName: verifyRes.data.storage.planName,
+                timestamp: Date.now(),
+              }));
+            }
 
             toast.success("Storage upgraded successfully! 🎉");
             // Refresh data
@@ -174,7 +204,9 @@ const StoragePlans = () => {
       razorpay.open();
     } catch (err) {
       console.error("Purchase error:", err);
-      toast.error(err.response?.data?.message || "Failed to initiate purchase");
+      console.error("Error response data:", err.response?.data);
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || "Failed to initiate purchase";
+      toast.error(errorMessage);
     } finally {
       setPurchasing(null);
     }
@@ -241,10 +273,31 @@ const StoragePlans = () => {
               
               <div className="flex-1 text-center md:text-left">
                 <h3 className="text-lg font-semibold text-white mb-1">Current Storage</h3>
-                <p className="text-gray-400 text-sm mb-3">
-                  Plan: <span className="text-purple-400 font-medium uppercase">{storageData.storage.plan}</span>
-                  <span className="text-gray-600 mx-2">•</span>
+                <p className="text-gray-400 text-sm mb-3 flex items-center flex-wrap gap-2">
+                  <span>Plan: <span className="text-purple-400 font-medium uppercase">{storageData.storage.plan}</span></span>
+                  <span className="text-gray-600">•</span>
                   <span className="text-gray-500">{storageData.storage.limitFormatted} total</span>
+                  
+                  {/* Recent Purchase Badge */}
+                  {recentPurchase && (
+                    <motion.span
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/30 rounded-full text-emerald-400 text-xs font-semibold"
+                    >
+                      <span>+{recentPurchase.increase}</span>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          localStorage.removeItem('recentStoragePurchase');
+                          setRecentPurchase(null);
+                        }}
+                        className="ml-1 text-emerald-400/60 hover:text-emerald-400"
+                      >
+                        ×
+                      </button>
+                    </motion.span>
+                  )}
                 </p>
                 
                 {/* Progress Bar */}

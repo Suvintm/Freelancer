@@ -270,7 +270,7 @@ const EditorHome = () => {
               transition={{ duration: 0.2 }}
             >
               {/* 🎯 Side-by-Side Banners: Profile + Storage */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 {/* Left: Verified Badge / Profile Completion */}
                 <div className="min-w-0">
                   {completionPercent >= 80 ? (
@@ -290,7 +290,7 @@ const EditorHome = () => {
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`border rounded-2xl p-4 h-fit ${
+                    className={`border rounded-2xl p-3 sm:p-4 h-fit overflow-hidden ${
                       storageData.isFull 
                         ? 'bg-gradient-to-r from-red-500/10 to-rose-500/5 border-red-500/20' 
                         : storageData.isLowStorage 
@@ -299,19 +299,19 @@ const EditorHome = () => {
                     }`}
                   >
                     {/* Main Storage Info */}
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2.5 rounded-xl ${
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className={`p-2 sm:p-2.5 rounded-xl shrink-0 ${
                         storageData.isFull ? 'bg-red-500/15' : storageData.isLowStorage ? 'bg-amber-500/15' : 'bg-blue-500/15'
                       }`}>
-                        <FaDatabase className={`text-lg ${
+                        <FaDatabase className={`text-base sm:text-lg ${
                           storageData.isFull ? 'text-red-400' : storageData.isLowStorage ? 'text-amber-400' : 'text-blue-400'
                         }`} />
                       </div>
                       
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-white font-semibold text-sm">Storage</h3>
-                          <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded uppercase ${
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
+                          <h3 className="text-white font-semibold text-xs sm:text-sm truncate">Storage</h3>
+                          <span className={`px-1 sm:px-1.5 py-0.5 text-[8px] sm:text-[9px] font-bold rounded uppercase shrink-0 ${
                             storageData.plan === 'free' ? 'bg-gray-500/20 text-gray-400' :
                             storageData.plan === 'pro' ? 'bg-purple-500/20 text-purple-400' :
                             'bg-blue-500/20 text-blue-400'
@@ -334,47 +334,48 @@ const EditorHome = () => {
                           />
                         </div>
                         
-                        <div className="flex items-center justify-between text-[10px]">
-                          <span className="text-gray-400">
-                            {storageData.usedFormatted} / {storageData.limitFormatted}
+                        <div className="flex items-center justify-between text-[9px] sm:text-[10px]">
+                          <span className="text-gray-400 truncate">
+                            {storageData.usedFormatted}
+                            <span className="hidden xs:inline"> / {storageData.limitFormatted}</span>
                           </span>
-                          <span className={`font-medium ${
+                          <span className={`font-medium shrink-0 ${
                             storageData.isFull ? 'text-red-400' : 
                             storageData.isLowStorage ? 'text-amber-400' : 'text-emerald-400'
                           }`}>
-                            {storageData.remainingFormatted} free
+                            {storageData.remainingFormatted} <span className="hidden sm:inline">free</span>
                           </span>
                         </div>
                       </div>
                       
-                      {/* Actions */}
-                      <div className="flex items-center gap-2">
+                      {/* Actions - Stack on xs */}
+                      <div className="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-2 shrink-0">
                         <button
                           onClick={() => setStorageExpanded(!storageExpanded)}
-                          className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 transition-all"
+                          className="p-1.5 sm:p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 transition-all"
                           title="Storage details"
                         >
-                          {storageExpanded ? <FaChevronUp className="text-xs" /> : <FaChevronDown className="text-xs" />}
+                          {storageExpanded ? <FaChevronUp className="text-[10px] sm:text-xs" /> : <FaChevronDown className="text-[10px] sm:text-xs" />}
                         </button>
                         <button
                           onClick={() => navigate('/storage-plans')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
+                          className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-medium flex items-center gap-1 transition-all ${
                             storageData.isFull || storageData.isLowStorage
                               ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:opacity-90'
                               : 'bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10'
                           }`}
                         >
-                          <FaCloudUploadAlt className="text-xs" />
-                          {storageData.isFull ? 'Upgrade' : 'Buy'}
+                          <FaCloudUploadAlt className="text-[9px] sm:text-xs" />
+                          Buy
                         </button>
                       </div>
                     </div>
                     
                     {/* Warning Message */}
                     {storageData.isFull && (
-                      <p className="text-red-400 text-[10px] mt-2 flex items-center gap-1">
-                        <FaExclamationCircle className="text-[10px]" />
-                        Storage full! Upgrade or delete files to continue.
+                      <p className="text-red-400 text-[9px] sm:text-[10px] mt-2 flex items-center gap-1">
+                        <FaExclamationCircle className="text-[9px] sm:text-[10px] shrink-0" />
+                        <span className="truncate">Storage full! Upgrade or delete files.</span>
                       </p>
                     )}
                     

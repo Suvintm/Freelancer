@@ -244,71 +244,125 @@ export const getStoragePlans = asyncHandler(async (req, res) => {
  * Create Razorpay order for storage purchase
  * POST /api/storage/purchase
  */
-export const createStoragePurchaseOrder = asyncHandler(async (req, res) => {
-  // Check if Razorpay is configured
-  if (!razorpay) {
-    throw new ApiError(503, "Payment service is not configured. Please contact support.");
-  }
+export const createStoragePurchaseOrder = async (req, res) => {
+  try {
+    // Check if Razorpay is configured
+    if (!razorpay) {
+      return res.status(503).json({
+        success: false,
+        message: "Payment service is not configured. Please contact support."
+      });
+    }
 
-  const { planId } = req.body;
-  const userId = req.user._id;
+    const { planId } = req.body;
+    const userId = req.user._id;
 
-  // Validate plan
-  const plan = STORAGE_PLANS[planId];
-  if (!plan || planId === "free") {
-    throw new ApiError(400, "Invalid storage plan");
-  }
+    console.log(`[STORAGE_PURCHASE] User ${userId} attempting to purchase plan: ${planId}`);
 
-  // Check if user already has this plan or higher
-  const user = await User.findById(userId);
-  const currentPlanOrder = ["free", "starter", "pro", "business", "unlimited"];
-  const currentIndex = currentPlanOrder.indexOf(user.storagePlan);
-  const newIndex = currentPlanOrder.indexOf(planId);
+    // Fetch plans from DB settings
+    const storageSettings = await StorageSettings.getSettings();
+    const plansObject = storageSettings.toPlansObject();
+    
+    console.log(`[STORAGE_PURCHASE] Available plans:`, Object.keys(plansObject));
+    
+    // Validate plan
+    const plan = plansObject[planId];
+    if (!plan) {
+      console.log(`[STORAGE_PURCHASE] Plan ${planId} not found in available plans`);
+      return res.status(400).json({
+        success: false,
+        message: `Invalid storage plan: "${planId}" not found`
+      });
+    }
+    
+    if (planId === "free") {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot purchase free plan"
+      });
+    }
 
-  if (newIndex <= currentIndex) {
-    throw new ApiError(400, "You already have this plan or a higher plan");
-  }
+    // Check if user already has this plan or higher
+    const user = await User.findById(userId);
+    console.log(`[STORAGE_PURCHASE] User current plan: ${user.storagePlan}, storageLimit: ${user.storageLimit}`);
+    
+    const currentPlanOrder = ["free", "starter", "pro", "business", "unlimited"];
+    const currentIndex = currentPlanOrder.indexOf(user.storagePlan || "free");
+    const newIndex = currentPlanOrder.indexOf(planId);
 
-  // Create Razorpay order
-  const razorpayOrder = await razorpay.orders.create({
-    amount: plan.price * 100, // Amount in paise
-    currency: "INR",
-    receipt: `storage_${userId}_${Date.now()}`,
-    notes: {
-      userId: userId.toString(),
+    console.log(`[STORAGE_PURCHASE] Current plan index: ${currentIndex}, New plan index: ${newIndex}`);
+
+    if (newIndex <= currentIndex) {
+      return res.status(400).json({
+        success: false,
+        message: `You already have ${user.storagePlan || "free"} plan. Cannot downgrade or repurchase.`
+      });
+    }
+
+    console.log(`[STORAGE_PURCHASE] Creating Razorpay order for plan ${planId} at ₹${plan.price}`);
+    console.log(`[STORAGE_PURCHASE] Razorpay configured:`, !!razorpay);
+
+    // Create Razorpay order
+    let razorpayOrder;
+    try {
+      // Receipt must be <= 40 chars: use short userId + timestamp
+      const shortUserId = userId.toString().slice(-8);
+      const receipt = `strg_${shortUserId}_${Date.now().toString().slice(-10)}`;
+      
+      razorpayOrder = await razorpay.orders.create({
+        amount: plan.price * 100, // Amount in paise
+        currency: "INR",
+        receipt,
+        notes: {
+          userId: userId.toString(),
+          planId,
+          type: "storage_purchase",
+        },
+      });
+      console.log(`[STORAGE_PURCHASE] Razorpay order created:`, razorpayOrder.id);
+    } catch (razorpayError) {
+      console.error("[STORAGE_PURCHASE] Razorpay API error:", razorpayError);
+      return res.status(502).json({
+        success: false,
+        message: `Payment gateway error: ${razorpayError.error?.description || razorpayError.message || "Failed to create order"}`
+      });
+    }
+
+    // Save pending purchase
+    const purchase = await StoragePurchase.create({
+      user: userId,
       planId,
-      type: "storage_purchase",
-    },
-  });
+      planName: plan.name,
+      storageBytes: plan.storageBytes,
+      amount: plan.price,
+      razorpayOrderId: razorpayOrder.id,
+      status: "pending",
+    });
 
-  // Save pending purchase
-  const purchase = await StoragePurchase.create({
-    user: userId,
-    planId,
-    planName: plan.name,
-    storageBytes: plan.storageBytes,
-    amount: plan.price,
-    razorpayOrderId: razorpayOrder.id,
-    status: "pending",
-  });
-
-  res.json({
-    success: true,
-    order: {
-      id: razorpayOrder.id,
-      amount: razorpayOrder.amount,
-      currency: razorpayOrder.currency,
-    },
-    plan: {
-      id: plan.id,
-      name: plan.name,
-      storage: formatBytes(plan.storageBytes),
-      price: plan.price,
-    },
-    key: process.env.RAZORPAY_KEY_ID,
-    purchaseId: purchase._id,
-  });
-});
+    res.json({
+      success: true,
+      order: {
+        id: razorpayOrder.id,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+      },
+      plan: {
+        id: plan.id,
+        name: plan.name,
+        storage: formatBytes(plan.storageBytes),
+        price: plan.price,
+      },
+      key: process.env.RAZORPAY_KEY_ID,
+      purchaseId: purchase._id,
+    });
+  } catch (error) {
+    console.error("[STORAGE_PURCHASE] Error:", error);
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || "Failed to create storage purchase order"
+    });
+  }
+};
 
 /**
  * Verify storage purchase payment
@@ -354,11 +408,20 @@ export const verifyStoragePurchase = asyncHandler(async (req, res) => {
   purchase.purchasedAt = new Date();
   await purchase.save();
 
+  // Fetch plans from DB settings
+  const storageSettings = await StorageSettings.getSettings();
+  const plansObject = storageSettings.toPlansObject();
+  
   // Update user's storage limit
-  const plan = STORAGE_PLANS[purchase.planId];
+  const plan = plansObject[purchase.planId];
   const user = await User.findById(userId);
   
-  user.storageLimit = plan.storageBytes;
+  // Calculate the storage increase
+  const previousLimit = user.storageLimit;
+  const newLimit = plan.storageBytes;
+  const storageIncrease = newLimit - previousLimit;
+  
+  user.storageLimit = newLimit;
   user.storagePlan = purchase.planId;
   await user.save();
 
@@ -367,8 +430,15 @@ export const verifyStoragePurchase = asyncHandler(async (req, res) => {
     message: "Storage upgraded successfully!",
     storage: {
       plan: purchase.planId,
-      limitFormatted: formatBytes(plan.storageBytes),
+      planName: plan.name,
+      limitBytes: newLimit,
+      limitFormatted: formatBytes(newLimit),
+      previousLimitBytes: previousLimit,
+      previousLimitFormatted: formatBytes(previousLimit),
+      increaseBytes: storageIncrease,
+      increaseFormatted: formatBytes(storageIncrease),
     },
+    purchaseId: purchase._id,
   });
 });
 
