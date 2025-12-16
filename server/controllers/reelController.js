@@ -252,21 +252,44 @@ export const toggleLike = asyncHandler(async (req, res) => {
     });
 });
 
-// ============ INCREMENT VIEW COUNT ============
+// ============ INCREMENT VIEW COUNT (With Unique Tracking) ============
 export const incrementView = asyncHandler(async (req, res) => {
-    const reel = await Reel.findByIdAndUpdate(
-        req.params.id,
-        { $inc: { viewsCount: 1 } },
-        { new: true }
-    );
+    const reelId = req.params.id;
+    const { watchTime } = req.body; // Optional: seconds watched
+    
+    // Generate viewer ID (use IP + user-agent as fingerprint for anonymous)
+    const viewerFingerprint = req.headers['x-forwarded-for'] || 
+        req.connection?.remoteAddress || 
+        req.ip || 
+        'anonymous';
+    const viewerId = req.user?._id?.toString() || `anon_${viewerFingerprint}`;
 
+    const reel = await Reel.findById(reelId);
     if (!reel) {
-        throw new ApiError(404, "Reel not found");
+        return res.status(404).json({ success: false, message: "Reel not found" });
     }
+
+    // Check if this viewer already viewed
+    const alreadyViewed = reel.uniqueViewers?.includes(viewerId);
+    
+    if (!alreadyViewed) {
+        // New unique view
+        reel.uniqueViewers = reel.uniqueViewers || [];
+        reel.uniqueViewers.push(viewerId);
+        reel.viewsCount = (reel.viewsCount || 0) + 1;
+    }
+    
+    // Add watch time if provided
+    if (watchTime && typeof watchTime === 'number' && watchTime > 0) {
+        reel.watchTimeSeconds = (reel.watchTimeSeconds || 0) + Math.min(watchTime, 300); // Cap at 5 min
+    }
+    
+    await reel.save();
 
     res.status(200).json({
         success: true,
         viewsCount: reel.viewsCount,
+        isNewView: !alreadyViewed,
     });
 });
 
@@ -374,5 +397,58 @@ export const checkPublished = asyncHandler(async (req, res) => {
         success: true,
         isPublished: !!reel,
         reelId: reel?._id || null,
+    });
+});
+
+// ============ GET MY REELS ANALYTICS (For Editor Dashboard) ============
+export const getMyReelsAnalytics = asyncHandler(async (req, res) => {
+    const userId = req.user._id;
+    
+    // Get all reels by this editor with full stats
+    const reels = await Reel.find({ editor: userId })
+        .populate("portfolio", "title")
+        .sort({ createdAt: -1 })
+        .select("title description mediaUrl mediaType viewsCount likesCount commentsCount watchTimeSeconds uniqueViewers createdAt isPublished");
+    
+    // Calculate aggregate stats
+    const totalViews = reels.reduce((sum, r) => sum + (r.viewsCount || 0), 0);
+    const totalLikes = reels.reduce((sum, r) => sum + (r.likesCount || 0), 0);
+    const totalComments = reels.reduce((sum, r) => sum + (r.commentsCount || 0), 0);
+    const totalWatchTime = reels.reduce((sum, r) => sum + (r.watchTimeSeconds || 0), 0);
+    const uniqueReach = new Set(reels.flatMap(r => r.uniqueViewers || [])).size;
+    
+    // Calculate engagement rate (likes + comments) / views * 100
+    const engagementRate = totalViews > 0 
+        ? (((totalLikes + totalComments) / totalViews) * 100).toFixed(2) 
+        : 0;
+    
+    // Format reels for response (remove uniqueViewers array for privacy)
+    const formattedReels = reels.map(r => ({
+        _id: r._id,
+        title: r.title,
+        description: r.description,
+        mediaUrl: r.mediaUrl,
+        mediaType: r.mediaType,
+        viewsCount: r.viewsCount || 0,
+        likesCount: r.likesCount || 0,
+        commentsCount: r.commentsCount || 0,
+        watchTimeMinutes: Math.round((r.watchTimeSeconds || 0) / 60),
+        uniqueViewers: r.uniqueViewers?.length || 0,
+        createdAt: r.createdAt,
+        isPublished: r.isPublished,
+    }));
+    
+    res.status(200).json({
+        success: true,
+        analytics: {
+            totalReels: reels.length,
+            totalViews,
+            totalLikes,
+            totalComments,
+            totalWatchTimeMinutes: Math.round(totalWatchTime / 60),
+            uniqueReach,
+            engagementRate: parseFloat(engagementRate),
+        },
+        reels: formattedReels,
     });
 });

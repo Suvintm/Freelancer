@@ -9,6 +9,7 @@ import EditorProfileUpdate from "./pages/EditorProfileUpdate.jsx";
 import AddPortfolio from "./pages/addportfolio.jsx";
 import PublicEditorProfile from "./pages/PublicEditorProfile.jsx";
 import ReelsPage from "./pages/ReelsPage.jsx";
+import ReelsAnalytics from "./pages/ReelsAnalytics.jsx";
 import NotificationsPage from "./pages/NotificationsPage.jsx";
 import ChatsPage from "./pages/AllChatsPage.jsx";
 import Chatbox from "./components/ChatPage.jsx";
@@ -131,6 +132,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["editor"]}>
               <StoragePlans />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reels-analytics"
+          element={
+            <ProtectedRoute allowedRoles={["editor"]}>
+              <ReelsAnalytics />
             </ProtectedRoute>
           }
         />

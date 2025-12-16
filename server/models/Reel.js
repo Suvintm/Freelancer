@@ -52,6 +52,15 @@ const reelSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        // Unique viewers (user IDs or session fingerprints)
+        uniqueViewers: [{
+            type: String, // Can be userId or sessionId for anonymous
+        }],
+        // Total watch time in seconds for analytics
+        watchTimeSeconds: {
+            type: Number,
+            default: 0,
+        },
         // Store file size in bytes for storage calculation
         fileSizeBytes: {
             type: Number,
