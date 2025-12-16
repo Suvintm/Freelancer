@@ -12,11 +12,11 @@ import {
     FaSpinner,
     FaCheck,
 } from "react-icons/fa";
-import { useAdminContext } from "../context/AdminContext";
+import { useAdmin } from "../context/AdminContext";
 import { toast } from "react-toastify";
 
 const StorageManager = () => {
-    const { adminAxios } = useAdminContext();
+    const { adminAxios } = useAdmin();
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
