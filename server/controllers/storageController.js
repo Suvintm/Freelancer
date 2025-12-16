@@ -42,10 +42,21 @@ export const calculateStorageUsed = async (userId, includeDetails = false) => {
     if (portfolio.totalSizeBytes && portfolio.totalSizeBytes > 0) {
       size = portfolio.totalSizeBytes;
     } else {
-      if (portfolio.editedClip) size += 25 * 1024 * 1024;
-      if (portfolio.originalClip) size += 25 * 1024 * 1024;
-      if (portfolio.originalClips?.length > 0) {
-        size += portfolio.originalClips.length * 25 * 1024 * 1024;
+      // Estimate based on clip URLs - check for non-empty strings
+      if (portfolio.editedClip && portfolio.editedClip.length > 5) {
+        size += 25 * 1024 * 1024; // 25MB estimate per edited clip
+      }
+      if (portfolio.originalClip && portfolio.originalClip.length > 5) {
+        size += 25 * 1024 * 1024; // 25MB estimate per original clip
+      }
+      if (portfolio.originalClips && portfolio.originalClips.length > 0) {
+        // Count valid URLs in array
+        const validClips = portfolio.originalClips.filter(c => c && c.length > 5);
+        size += validClips.length * 25 * 1024 * 1024;
+      }
+      // If still 0, set a minimum estimate for any portfolio entry
+      if (size === 0) {
+        size = 10 * 1024 * 1024; // 10MB minimum estimate
       }
     }
     portfolioBytes += size;

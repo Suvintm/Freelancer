@@ -303,8 +303,8 @@ const StoragePlans = () => {
                 <div className="text-right">
                   <p className="text-lg font-bold text-purple-400">{storageData?.breakdown?.portfolioFormatted || '0 MB'}</p>
                   <p className="text-xs text-gray-500">
-                    {storageData?.storage?.used > 0 
-                      ? Math.round((storageData?.breakdown?.portfolioBytes / storageData?.storage?.used) * 100) 
+                    {(storageData?.storage?.used > 0 && storageData?.breakdown?.portfolioBytes) 
+                      ? Math.round((storageData.breakdown.portfolioBytes / storageData.storage.used) * 100) 
                       : 0}% of used
                   </p>
                 </div>
@@ -314,7 +314,7 @@ const StoragePlans = () => {
                 <div 
                   className="h-full bg-gradient-to-r from-purple-600 to-purple-400 rounded-full"
                   style={{ 
-                    width: `${storageData?.storage?.limit ? Math.min((storageData?.breakdown?.portfolioBytes / storageData?.storage?.limit) * 100, 100) : 0}%` 
+                    width: `${(storageData?.storage?.limit && storageData?.breakdown?.portfolioBytes) ? Math.min((storageData.breakdown.portfolioBytes / storageData.storage.limit) * 100, 100) : 0}%` 
                   }}
                 />
               </div>
@@ -338,8 +338,8 @@ const StoragePlans = () => {
                 <div className="text-right">
                   <p className="text-lg font-bold text-blue-400">{storageData?.breakdown?.reelFormatted || '0 MB'}</p>
                   <p className="text-xs text-gray-500">
-                    {storageData?.storage?.used > 0 
-                      ? Math.round((storageData?.breakdown?.reelBytes / storageData?.storage?.used) * 100) 
+                    {(storageData?.storage?.used > 0 && storageData?.breakdown?.reelBytes) 
+                      ? Math.round((storageData.breakdown.reelBytes / storageData.storage.used) * 100) 
                       : 0}% of used
                   </p>
                 </div>
@@ -348,7 +348,7 @@ const StoragePlans = () => {
                 <div 
                   className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full"
                   style={{ 
-                    width: `${storageData?.storage?.limit ? Math.min((storageData?.breakdown?.reelBytes / storageData?.storage?.limit) * 100, 100) : 0}%` 
+                    width: `${(storageData?.storage?.limit && storageData?.breakdown?.reelBytes) ? Math.min((storageData.breakdown.reelBytes / storageData.storage.limit) * 100, 100) : 0}%` 
                   }}
                 />
               </div>
@@ -372,8 +372,8 @@ const StoragePlans = () => {
                 <div className="text-right">
                   <p className="text-lg font-bold text-emerald-400">{storageData?.breakdown?.chatFormatted || '0 MB'}</p>
                   <p className="text-xs text-gray-500">
-                    {storageData?.storage?.used > 0 
-                      ? Math.round((storageData?.breakdown?.chatBytes / storageData?.storage?.used) * 100) 
+                    {(storageData?.storage?.used > 0 && storageData?.breakdown?.chatBytes) 
+                      ? Math.round((storageData.breakdown.chatBytes / storageData.storage.used) * 100) 
                       : 0}% of used
                   </p>
                 </div>
@@ -382,7 +382,7 @@ const StoragePlans = () => {
                 <div 
                   className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full"
                   style={{ 
-                    width: `${storageData?.storage?.limit ? Math.min((storageData?.breakdown?.chatBytes / storageData?.storage?.limit) * 100, 100) : 0}%` 
+                    width: `${(storageData?.storage?.limit && storageData?.breakdown?.chatBytes) ? Math.min((storageData.breakdown.chatBytes / storageData.storage.limit) * 100, 100) : 0}%` 
                   }}
                 />
               </div>
