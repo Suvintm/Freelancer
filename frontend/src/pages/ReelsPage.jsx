@@ -55,15 +55,21 @@ const ReelsPage = () => {
     }, []);
 
     // ----------------------------
-    // INFINITE LOOP — NO SCROLL RESET
+    // INFINITE LOOP — NEVER ENDS
     // ----------------------------
     const loadMoreReels = async () => {
+        if (loading) return; // Prevent multiple simultaneous loads
+        
         if (!hasMore) {
-            // No more reels → fetch random again
-            await fetchReels(1, true);
+            // No more reels → reset and fetch fresh random batch
+            console.log('[REELS] Reached end, fetching fresh random batch...');
+            viewedReelsRef.current.clear(); // Reset viewed tracking
+            setPage(1);
+            await fetchReels(1, true); // Append fresh random reels
             return;
         }
 
+        console.log(`[REELS] Loading more reels, page: ${page + 1}`);
         setPage(prev => prev + 1);
         await fetchReels(page + 1, true);
     };

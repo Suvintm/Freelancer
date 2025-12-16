@@ -86,25 +86,32 @@ export const unpublishReel = asyncHandler(async (req, res) => {
     });
 });
 
-// ============ GET REELS FEED (Weighted Random Algorithm) ============
+// ============ GET REELS FEED (Instagram-Style Algorithm) ============
 export const getReelsFeed = asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const excludeIds = req.query.exclude ? req.query.exclude.split(",") : [];
+    let excludeIds = req.query.exclude ? req.query.exclude.split(",").filter(id => id) : [];
+
+    console.log(`[FEED] Fetching reels - page: ${page}, limit: ${limit}, excluding: ${excludeIds.length} reels`);
+
+    // Convert exclude IDs to ObjectIds
+    const excludeObjectIds = excludeIds
+        .filter(id => mongoose.Types.ObjectId.isValid(id))
+        .map(id => new mongoose.Types.ObjectId(id));
 
     // Build aggregation pipeline for weighted random
     const pipeline = [
-        // Match published reels, exclude already seen
+        // Match published reels, exclude already seen (if any)
         {
             $match: {
                 isPublished: true,
-                _id: { $nin: excludeIds.map(id => new mongoose.Types.ObjectId(id)) },
+                ...(excludeObjectIds.length > 0 && { _id: { $nin: excludeObjectIds } }),
             },
         },
-        // Add weight based on freshness and engagement
+        // Add weight based on freshness, engagement, and randomness
         {
             $addFields: {
-                // Freshness score (higher for newer reels)
+                // Freshness score (higher for newer reels - exponential decay)
                 freshnessScore: {
                     $divide: [
                         1,
@@ -121,32 +128,31 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
                         },
                     ],
                 },
-                // Engagement score
+                // Engagement score (weighted: comments > likes > views)
                 engagementScore: {
                     $add: [
-                        { $multiply: ["$likesCount", 2] },
-                        { $multiply: ["$commentsCount", 3] },
-                        "$viewsCount",
+                        { $multiply: [{ $ifNull: ["$likesCount", 0] }, 5] },
+                        { $multiply: [{ $ifNull: ["$commentsCount", 0] }, 10] },
+                        { $multiply: [{ $ifNull: ["$viewsCount", 0] }, 1] },
                     ],
                 },
             },
         },
-        // Calculate total weight
+        // Calculate total weight with strong random factor for variety
         {
             $addFields: {
                 weight: {
                     $add: [
-                        { $multiply: ["$freshnessScore", 50] },
+                        { $multiply: ["$freshnessScore", 40] },
                         { $multiply: ["$engagementScore", 0.1] },
-                        { $multiply: [{ $rand: {} }, 30] }, // Random factor
+                        { $multiply: [{ $rand: {} }, 50] }, // Strong random factor for variety
                     ],
                 },
             },
         },
-        // Sort by weight
+        // Sort by weight (randomized)
         { $sort: { weight: -1 } },
-        // Pagination
-        { $skip: (page - 1) * limit },
+        // Limit
         { $limit: limit },
         // Lookup editor info
         {
@@ -157,7 +163,7 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
                 as: "editorInfo",
             },
         },
-        { $unwind: "$editorInfo" },
+        { $unwind: { path: "$editorInfo", preserveNullAndEmptyArrays: true } },
         // Lookup portfolio
         {
             $lookup: {
@@ -191,8 +197,18 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
         },
     ];
 
-    const reels = await Reel.aggregate(pipeline);
+    let reels = await Reel.aggregate(pipeline);
+    
+    // If no reels found with exclusions, fetch without exclusions (infinite loop)
+    if (reels.length === 0 && excludeObjectIds.length > 0) {
+        console.log('[FEED] No new reels found, fetching random without exclusions...');
+        pipeline[0].$match = { isPublished: true }; // Remove exclusion
+        reels = await Reel.aggregate(pipeline);
+    }
+
     const total = await Reel.countDocuments({ isPublished: true });
+
+    console.log(`[FEED] Returning ${reels.length} reels. Total in DB: ${total}`);
 
     res.status(200).json({
         success: true,
@@ -201,8 +217,8 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
             page,
             limit,
             total,
-            hasMore: page * limit < total,
-            hasMore: page * limit < total,
+            // Always hasMore = true for infinite scroll (unless 0 reels exist)
+            hasMore: total > 0,
         },
     });
 });
@@ -252,44 +268,29 @@ export const toggleLike = asyncHandler(async (req, res) => {
     });
 });
 
-// ============ INCREMENT VIEW COUNT (With Unique Tracking) ============
+// ============ INCREMENT VIEW COUNT ============
 export const incrementView = asyncHandler(async (req, res) => {
     const reelId = req.params.id;
-    const { watchTime } = req.body; // Optional: seconds watched
     
-    // Generate viewer ID (use IP + user-agent as fingerprint for anonymous)
-    const viewerFingerprint = req.headers['x-forwarded-for'] || 
-        req.connection?.remoteAddress || 
-        req.ip || 
-        'anonymous';
-    const viewerId = req.user?._id?.toString() || `anon_${viewerFingerprint}`;
+    console.log(`[VIEW] Attempting to increment view for reel: ${reelId}`);
+    
+    // Simply increment view count - no complex tracking to ensure it works
+    const reel = await Reel.findByIdAndUpdate(
+        reelId,
+        { $inc: { viewsCount: 1 } },
+        { new: true }
+    );
 
-    const reel = await Reel.findById(reelId);
     if (!reel) {
+        console.log(`[VIEW] Reel not found: ${reelId}`);
         return res.status(404).json({ success: false, message: "Reel not found" });
     }
 
-    // Check if this viewer already viewed
-    const alreadyViewed = reel.uniqueViewers?.includes(viewerId);
-    
-    if (!alreadyViewed) {
-        // New unique view
-        reel.uniqueViewers = reel.uniqueViewers || [];
-        reel.uniqueViewers.push(viewerId);
-        reel.viewsCount = (reel.viewsCount || 0) + 1;
-    }
-    
-    // Add watch time if provided
-    if (watchTime && typeof watchTime === 'number' && watchTime > 0) {
-        reel.watchTimeSeconds = (reel.watchTimeSeconds || 0) + Math.min(watchTime, 300); // Cap at 5 min
-    }
-    
-    await reel.save();
+    console.log(`[VIEW] Successfully incremented. New viewsCount: ${reel.viewsCount}`);
 
     res.status(200).json({
         success: true,
         viewsCount: reel.viewsCount,
-        isNewView: !alreadyViewed,
     });
 });
 
