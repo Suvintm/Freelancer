@@ -1,6 +1,7 @@
 import { Gig } from "../models/Gig.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import { createNotification } from "./notificationController.js";
+import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
 import logger from "../utils/logger.js";
 
 // ============ CREATE GIG ============
@@ -12,6 +13,13 @@ export const createGig = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Please provide all required fields");
   }
 
+  // Handle thumbnail upload if provided
+  let thumbnailUrl = "";
+  if (req.file) {
+    const uploadResult = await uploadToCloudinary(req.file.buffer, "gig-thumbnails");
+    thumbnailUrl = uploadResult.url;
+  }
+
   // Create gig
   const gig = await Gig.create({
     editor: req.user._id,
@@ -20,7 +28,8 @@ export const createGig = asyncHandler(async (req, res) => {
     category,
     price: Number(price),
     deliveryDays: Number(deliveryDays),
-    samples: samples || [],
+    samples: samples ? (Array.isArray(samples) ? samples : JSON.parse(samples)) : [],
+    thumbnail: thumbnailUrl,
   });
 
   // Populate editor info
@@ -142,6 +151,12 @@ export const updateGig = asyncHandler(async (req, res) => {
 
   if (gig.editor.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "Not authorized to update this gig");
+  }
+
+  // Handle thumbnail upload if provided
+  if (req.file) {
+    const uploadResult = await uploadToCloudinary(req.file.buffer, "gig-thumbnails");
+    gig.thumbnail = uploadResult.url;
   }
 
   // Update allowed fields

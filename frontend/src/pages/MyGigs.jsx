@@ -19,6 +19,9 @@ import { toast } from "react-toastify";
 import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
 
+// Default banner for gigs without custom banner
+const DEFAULT_GIG_BANNER = "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=400&q=80";
+
 const MyGigs = () => {
   const { backendURL, user } = useAppContext();
   const navigate = useNavigate();
@@ -105,7 +108,7 @@ const MyGigs = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] light:bg-slate-100 text-white light:text-slate-900 transition-colors duration-200">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
@@ -158,76 +161,71 @@ const MyGigs = () => {
                   transition={{ delay: index * 0.05 }}
                   className={`bg-[#111319] light:bg-white border ${
                     gig.isActive ? "border-[#262A3B] light:border-slate-200" : "border-red-500/20"
-                  } rounded-2xl p-5 relative overflow-hidden light:shadow-sm`}
+                  } rounded-2xl overflow-hidden relative light:shadow-md`}
                 >
+                  {/* Banner Image */}
+                  <div className="w-full h-32 overflow-hidden">
+                    <img 
+                      src={gig.thumbnail || DEFAULT_GIG_BANNER} 
+                      alt={gig.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+
                   {/* Status Indicator */}
                   {!gig.isActive && (
-                    <div className="absolute top-0 right-0 px-3 py-1 bg-red-500/20 text-red-400 text-xs font-medium rounded-bl-xl">
+                    <div className="absolute top-2 right-2 px-3 py-1 bg-red-500/90 text-white text-xs font-medium rounded-full">
                       Paused
                     </div>
                   )}
 
-                  <div className="flex gap-4">
-                    {/* Thumbnail */}
-                    <div className="w-24 h-24 bg-[#1a1d25] light:bg-slate-100 rounded-xl overflow-hidden flex-shrink-0">
-                      {gig.thumbnail ? (
-                        <img src={gig.thumbnail} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-600 light:text-slate-400">
-                          <FaShoppingCart className="text-2xl" />
-                        </div>
+                  <div className="p-5">
+                    <h3 className="font-semibold text-white light:text-slate-900 mb-1 truncate">{gig.title}</h3>
+                    <p className="text-gray-400 light:text-slate-500 text-xs mb-3">{gig.category}</p>
+
+                    <div className="flex items-center gap-4 text-xs text-gray-400 light:text-slate-500 mb-4">
+                      <span className="flex items-center gap-1 text-green-400 light:text-green-600">
+                        <FaRupeeSign /> {gig.price}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <FaClock /> {gig.deliveryDays}d
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <FaShoppingCart /> {gig.totalOrders}
+                      </span>
+                      {gig.rating > 0 && (
+                        <span className="flex items-center gap-1 text-yellow-500">
+                          <FaStar /> {gig.rating.toFixed(1)}
+                        </span>
                       )}
                     </div>
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-white light:text-slate-900 mb-1 truncate">{gig.title}</h3>
-                      <p className="text-gray-400 light:text-slate-500 text-xs mb-2">{gig.category}</p>
-
-                      <div className="flex items-center gap-4 text-xs text-gray-400 light:text-slate-500">
-                        <span className="flex items-center gap-1 text-green-400 light:text-green-600">
-                          <FaRupeeSign /> {gig.price}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <FaClock /> {gig.deliveryDays}d
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <FaShoppingCart /> {gig.totalOrders}
-                        </span>
-                        {gig.rating > 0 && (
-                          <span className="flex items-center gap-1 text-yellow-500">
-                            <FaStar /> {gig.rating.toFixed(1)}
-                          </span>
-                        )}
-                      </div>
+                    {/* Actions */}
+                    <div className="flex items-center justify-end gap-2 pt-4 border-t border-[#262A3B] light:border-slate-200">
+                      <button
+                        onClick={() => handleToggleStatus(gig._id, gig.isActive)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                          gig.isActive
+                            ? "bg-green-500/20 text-green-400 hover:bg-green-500/30"
+                            : "bg-gray-500/20 text-gray-400 hover:bg-gray-500/30"
+                        }`}
+                      >
+                        {gig.isActive ? <FaToggleOn /> : <FaToggleOff />}
+                        {gig.isActive ? "Active" : "Paused"}
+                      </button>
+                      <button
+                        onClick={() => navigate(`/edit-gig/${gig._id}`)}
+                        className="p-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all"
+                      >
+                        <FaEdit />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(gig._id)}
+                        className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all"
+                      >
+                        <FaTrash />
+                      </button>
                     </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-[#262A3B] light:border-slate-200">
-                    <button
-                      onClick={() => handleToggleStatus(gig._id, gig.isActive)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-                        gig.isActive
-                          ? "bg-green-500/20 text-green-400 hover:bg-green-500/30"
-                          : "bg-gray-500/20 text-gray-400 hover:bg-gray-500/30"
-                      }`}
-                    >
-                      {gig.isActive ? <FaToggleOn /> : <FaToggleOff />}
-                      {gig.isActive ? "Active" : "Paused"}
-                    </button>
-                    <button
-                      onClick={() => navigate(`/edit-gig/${gig._id}`)}
-                      className="p-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all"
-                    >
-                      <FaEdit />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(gig._id)}
-                      className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all"
-                    >
-                      <FaTrash />
-                    </button>
                   </div>
                 </motion.div>
               ))}
