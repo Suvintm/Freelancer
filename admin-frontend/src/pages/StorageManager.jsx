@@ -282,44 +282,57 @@ const StorageManager = () => {
                             <div className="flex items-start justify-between">
                                 <div className="flex-1">
                                     {editMode ? (
-                                        <div className="grid grid-cols-4 gap-4">
-                                            <input
-                                                value={plan.name}
-                                                onChange={(e) => updatePlanField(index, "name", e.target.value)}
-                                                placeholder="Plan Name"
-                                                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
-                                            />
-                                            <div className="flex items-center gap-1">
+                                        <div className="space-y-3">
+                                            <div className="grid grid-cols-4 gap-4">
                                                 <input
-                                                    type="number"
-                                                    value={plan.storageMB}
-                                                    onChange={(e) => updatePlanField(index, "storageMB", parseInt(e.target.value))}
-                                                    className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
+                                                    value={plan.name}
+                                                    onChange={(e) => updatePlanField(index, "name", e.target.value)}
+                                                    placeholder="Plan Name"
+                                                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
                                                 />
-                                                <span className="text-xs text-gray-500">MB</span>
+                                                <div className="flex items-center gap-1">
+                                                    <input
+                                                        type="number"
+                                                        value={plan.storageMB}
+                                                        onChange={(e) => updatePlanField(index, "storageMB", parseInt(e.target.value))}
+                                                        className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
+                                                    />
+                                                    <span className="text-xs text-gray-500">MB</span>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-gray-500">₹</span>
+                                                    <input
+                                                        type="number"
+                                                        value={plan.price}
+                                                        onChange={(e) => updatePlanField(index, "price", parseInt(e.target.value))}
+                                                        className="w-20 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
+                                                    />
+                                                </div>
+                                                <label className="flex items-center gap-2 text-sm">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={plan.popular}
+                                                        onChange={(e) => updatePlanField(index, "popular", e.target.checked)}
+                                                        className="rounded"
+                                                    />
+                                                    Popular
+                                                </label>
                                             </div>
-                                            <div className="flex items-center gap-1">
-                                                <span className="text-gray-500">₹</span>
-                                                <input
-                                                    type="number"
-                                                    value={plan.price}
-                                                    onChange={(e) => updatePlanField(index, "price", parseInt(e.target.value))}
-                                                    className="w-20 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
+                                            {/* Features editing */}
+                                            <div>
+                                                <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Features (one per line)</label>
+                                                <textarea
+                                                    value={Array.isArray(plan.features) ? plan.features.join("\n") : ""}
+                                                    onChange={(e) => updatePlanField(index, "features", e.target.value.split("\n").filter(f => f.trim()))}
+                                                    rows={3}
+                                                    placeholder="Feature 1&#10;Feature 2&#10;Feature 3"
+                                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
                                                 />
                                             </div>
-                                            <label className="flex items-center gap-2 text-sm">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={plan.popular}
-                                                    onChange={(e) => updatePlanField(index, "popular", e.target.checked)}
-                                                    className="rounded"
-                                                />
-                                                Popular
-                                            </label>
                                         </div>
                                     ) : (
-                                        <div className="flex items-center gap-4">
-                                            <div>
+                                        <div className="flex items-start gap-4">
+                                            <div className="flex-1">
                                                 <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                                                     {plan.name}
                                                     {plan.popular && (
@@ -327,8 +340,18 @@ const StorageManager = () => {
                                                     )}
                                                 </h3>
                                                 <p className="text-sm text-gray-500">{formatBytes(plan.storageMB)}</p>
+                                                {/* Show features */}
+                                                {plan.features && plan.features.length > 0 && (
+                                                    <ul className="mt-2 space-y-1">
+                                                        {plan.features.map((feature, fi) => (
+                                                            <li key={fi} className="text-xs text-gray-400 flex items-center gap-1">
+                                                                <FaCheck className="text-green-500 text-[10px]" /> {feature}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
                                             </div>
-                                            <div className="ml-auto text-right">
+                                            <div className="text-right">
                                                 <p className="text-xl font-bold text-gray-900 dark:text-white">₹{plan.price}</p>
                                                 <p className="text-xs text-gray-500">one-time</p>
                                             </div>

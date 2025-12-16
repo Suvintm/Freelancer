@@ -1305,6 +1305,16 @@ router.put("/storage-settings", requirePermission("settings"), logActivity("Upda
     settings.updatedBy = req.admin._id;
     await settings.save();
     
+    // Update all free-tier users' storage limits if freeStorageMB changed
+    if (freeStorageMB !== undefined) {
+      const newLimitBytes = freeStorageMB * 1024 * 1024;
+      const updateResult = await User.updateMany(
+        { storagePlan: "free" },
+        { $set: { storageLimit: newLimitBytes } }
+      );
+      console.log(`[STORAGE] Updated ${updateResult.modifiedCount} free-tier users' storage limit to ${freeStorageMB}MB`);
+    }
+    
     res.json({
       success: true,
       message: "Storage settings updated successfully",

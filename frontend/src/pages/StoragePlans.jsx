@@ -35,6 +35,11 @@ const StoragePlans = () => {
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(null);
   const [purchaseHistory, setPurchaseHistory] = useState([]);
+  
+  // New state for detailed breakdown
+  const [expandedCategory, setExpandedCategory] = useState(null);
+  const [detailedItems, setDetailedItems] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   // Fetch storage status and plans
   useEffect(() => {
@@ -55,7 +60,10 @@ const StoragePlans = () => {
           }),
         ]);
 
-        setStorageData(statusRes.data?.storage || null);
+        setStorageData({
+          storage: statusRes.data?.storage || null,
+          breakdown: statusRes.data?.breakdown || null,
+        });
         setPlans(plansRes.data?.plans || []);
         setPurchaseHistory(historyRes.data?.purchases || []);
       } catch (err) {
@@ -68,6 +76,25 @@ const StoragePlans = () => {
 
     fetchData();
   }, [backendURL, user?.token]);
+
+  // Fetch detailed file items
+  const fetchDetailedItems = async () => {
+    try {
+      setLoadingDetails(true);
+      const { data } = await axios.get(`${backendURL}/api/storage/status?details=true`, {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      });
+      
+      if (data.items) {
+        setDetailedItems(data.items);
+      }
+    } catch (err) {
+      console.error("Failed to fetch detailed items:", err);
+      toast.error("Failed to load file details");
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
 
   // Load Razorpay script
   const loadRazorpayScript = () => {
@@ -201,7 +228,7 @@ const StoragePlans = () => {
         </div>
 
         {/* Current Storage Status */}
-        {storageData && (
+        {storageData?.storage && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -215,59 +242,218 @@ const StoragePlans = () => {
               <div className="flex-1 text-center md:text-left">
                 <h3 className="text-lg font-semibold text-white mb-1">Current Storage</h3>
                 <p className="text-gray-400 text-sm mb-3">
-                  Plan: <span className="text-purple-400 font-medium uppercase">{storageData.plan}</span>
+                  Plan: <span className="text-purple-400 font-medium uppercase">{storageData.storage.plan}</span>
+                  <span className="text-gray-600 mx-2">•</span>
+                  <span className="text-gray-500">{storageData.storage.limitFormatted} total</span>
                 </p>
                 
                 {/* Progress Bar */}
                 <div className="h-3 bg-black/40 rounded-full overflow-hidden mb-2">
                   <motion.div
                     initial={{ width: 0 }}
-                    animate={{ width: `${Math.min(storageData.usedPercent, 100)}%` }}
+                    animate={{ width: `${Math.min(storageData.storage.usedPercent, 100)}%` }}
                     transition={{ duration: 1 }}
                     className={`h-full rounded-full ${
-                      storageData.usedPercent >= 90 ? 'bg-red-500' :
-                      storageData.usedPercent >= 70 ? 'bg-amber-500' :
+                      storageData.storage.usedPercent >= 90 ? 'bg-red-500' :
+                      storageData.storage.usedPercent >= 70 ? 'bg-amber-500' :
                       'bg-gradient-to-r from-blue-500 to-purple-500'
                     }`}
                   />
                 </div>
                 
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">{storageData.usedFormatted} used</span>
-                  <span className="text-emerald-400">{storageData.remainingFormatted} remaining</span>
+                  <span className="text-gray-400">{storageData.storage.usedFormatted} used</span>
+                  <span className="text-emerald-400">{storageData.storage.remainingFormatted} remaining</span>
                 </div>
               </div>
               
               <div className="text-center px-6 py-4 bg-black/20 rounded-xl border border-white/5">
-                <span className="text-4xl font-bold text-white">{storageData.usedPercent}%</span>
+                <span className="text-4xl font-bold text-white">{storageData.storage.usedPercent}%</span>
                 <p className="text-gray-500 text-xs mt-1">USED</p>
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* Storage Breakdown */}
+        {/* Storage Breakdown - Enhanced with Sizes */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="grid grid-cols-3 gap-4 mb-8"
+          className="bg-[#111319] border border-[#262A3B] rounded-2xl p-6 mb-8"
         >
-          <div className="bg-[#111319] border border-[#262A3B] rounded-xl p-4 text-center">
-            <FaVideo className="text-2xl text-purple-400 mx-auto mb-2" />
-            <p className="text-white font-semibold">{storageData?.breakdown?.portfolios || 0}</p>
-            <p className="text-gray-500 text-xs">Portfolio Items</p>
+          <h3 className="text-lg font-semibold text-white mb-4">Storage Breakdown</h3>
+          
+          <div className="grid gap-4">
+            {/* Portfolio Storage */}
+            <div 
+              onClick={() => setExpandedCategory(expandedCategory === 'portfolios' ? null : 'portfolios')}
+              className="p-4 bg-black/30 rounded-xl cursor-pointer hover:bg-black/40 transition"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                    <FaVideo className="text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">Portfolio Items</p>
+                    <p className="text-xs text-gray-500">{storageData?.breakdown?.portfolios || 0} files</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-purple-400">{storageData?.breakdown?.portfolioFormatted || '0 MB'}</p>
+                  <p className="text-xs text-gray-500">
+                    {storageData?.storage?.used > 0 
+                      ? Math.round((storageData?.breakdown?.portfolioBytes / storageData?.storage?.used) * 100) 
+                      : 0}% of used
+                  </p>
+                </div>
+              </div>
+              {/* Mini progress bar */}
+              <div className="h-2 bg-black/40 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-purple-600 to-purple-400 rounded-full"
+                  style={{ 
+                    width: `${storageData?.storage?.limit ? Math.min((storageData?.breakdown?.portfolioBytes / storageData?.storage?.limit) * 100, 100) : 0}%` 
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Reels Storage */}
+            <div 
+              onClick={() => setExpandedCategory(expandedCategory === 'reels' ? null : 'reels')}
+              className="p-4 bg-black/30 rounded-xl cursor-pointer hover:bg-black/40 transition"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                    <FaImages className="text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">Reels</p>
+                    <p className="text-xs text-gray-500">{storageData?.breakdown?.reels || 0} files</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-blue-400">{storageData?.breakdown?.reelFormatted || '0 MB'}</p>
+                  <p className="text-xs text-gray-500">
+                    {storageData?.storage?.used > 0 
+                      ? Math.round((storageData?.breakdown?.reelBytes / storageData?.storage?.used) * 100) 
+                      : 0}% of used
+                  </p>
+                </div>
+              </div>
+              <div className="h-2 bg-black/40 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full"
+                  style={{ 
+                    width: `${storageData?.storage?.limit ? Math.min((storageData?.breakdown?.reelBytes / storageData?.storage?.limit) * 100, 100) : 0}%` 
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Chat Files Storage */}
+            <div 
+              onClick={() => setExpandedCategory(expandedCategory === 'chatFiles' ? null : 'chatFiles')}
+              className="p-4 bg-black/30 rounded-xl cursor-pointer hover:bg-black/40 transition"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                    <FaComments className="text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">Chat Files</p>
+                    <p className="text-xs text-gray-500">{storageData?.breakdown?.chatFiles || 0} files</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-emerald-400">{storageData?.breakdown?.chatFormatted || '0 MB'}</p>
+                  <p className="text-xs text-gray-500">
+                    {storageData?.storage?.used > 0 
+                      ? Math.round((storageData?.breakdown?.chatBytes / storageData?.storage?.used) * 100) 
+                      : 0}% of used
+                  </p>
+                </div>
+              </div>
+              <div className="h-2 bg-black/40 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full"
+                  style={{ 
+                    width: `${storageData?.storage?.limit ? Math.min((storageData?.breakdown?.chatBytes / storageData?.storage?.limit) * 100, 100) : 0}%` 
+                  }}
+                />
+              </div>
+            </div>
           </div>
-          <div className="bg-[#111319] border border-[#262A3B] rounded-xl p-4 text-center">
-            <FaImages className="text-2xl text-blue-400 mx-auto mb-2" />
-            <p className="text-white font-semibold">{storageData?.breakdown?.reels || 0}</p>
-            <p className="text-gray-500 text-xs">Reels</p>
-          </div>
-          <div className="bg-[#111319] border border-[#262A3B] rounded-xl p-4 text-center">
-            <FaComments className="text-2xl text-emerald-400 mx-auto mb-2" />
-            <p className="text-white font-semibold">{storageData?.breakdown?.chatFiles || 0}</p>
-            <p className="text-gray-500 text-xs">Chat Files</p>
-          </div>
+
+          {/* Expanded File Details */}
+          {expandedCategory && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-4 p-4 bg-black/20 rounded-xl border border-white/5"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-white font-medium capitalize">
+                  {expandedCategory === 'chatFiles' ? 'Chat Files' : expandedCategory} Details
+                </h4>
+                {!detailedItems && (
+                  <button
+                    onClick={fetchDetailedItems}
+                    disabled={loadingDetails}
+                    className="text-xs text-blue-400 hover:text-blue-300"
+                  >
+                    {loadingDetails ? 'Loading...' : 'Load Details'}
+                  </button>
+                )}
+              </div>
+              
+              {detailedItems?.[expandedCategory]?.length > 0 ? (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {detailedItems[expandedCategory].map((item, idx) => (
+                    <div 
+                      key={item.id || idx}
+                      className="flex items-center justify-between p-2 bg-black/30 rounded-lg"
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {item.thumbnail ? (
+                          <img src={item.thumbnail} className="w-8 h-8 rounded object-cover" alt="" />
+                        ) : (
+                          <div className="w-8 h-8 bg-gray-700 rounded flex items-center justify-center">
+                            {expandedCategory === 'reels' ? <FaImages className="text-xs text-gray-400" /> :
+                             expandedCategory === 'portfolios' ? <FaVideo className="text-xs text-gray-400" /> :
+                             <FaComments className="text-xs text-gray-400" />}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-white truncate">{item.title || item.name || 'Untitled'}</p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(item.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right ml-3">
+                        <p className="text-sm font-medium text-gray-300">{formatBytes(item.size)}</p>
+                        <p className="text-xs text-gray-500">
+                          {storageData?.storage?.used > 0 
+                            ? Math.round((item.size / storageData?.storage?.used) * 100) 
+                            : 0}%
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : detailedItems ? (
+                <p className="text-gray-500 text-sm text-center py-4">No files in this category</p>
+              ) : (
+                <p className="text-gray-500 text-sm text-center py-4">Click "Load Details" to see file breakdown</p>
+              )}
+            </motion.div>
+          )}
         </motion.div>
 
         {/* Plans Grid */}
@@ -275,7 +461,7 @@ const StoragePlans = () => {
           {plans.map((plan, index) => {
             const Icon = planIcons[plan.id] || FaStar;
             const colors = planColors[plan.id] || planColors.starter;
-            const isCurrentPlan = storageData?.plan === plan.id;
+            const isCurrentPlan = storageData?.storage?.plan === plan.id;
             const isPurchased = purchaseHistory.some(p => p.plan === plan.name && p.status === "completed");
 
             return (

@@ -25,41 +25,65 @@ if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
 
 /**
  * Calculate storage used by a user
- * Uses actual file sizes from DB when available, estimates for legacy data
+ * Returns detailed breakdown by category with file lists
  */
-export const calculateStorageUsed = async (userId) => {
-  let totalBytes = 0;
+export const calculateStorageUsed = async (userId, includeDetails = false) => {
   let portfolioBytes = 0;
   let reelBytes = 0;
   let chatBytes = 0;
+  const portfolioItems = [];
+  const reelItems = [];
+  const chatItems = [];
 
   // 1. Portfolio files - use totalSizeBytes if stored, else estimate
-  const portfolios = await Portfolio.find({ user: userId });
+  const portfolios = await Portfolio.find({ user: userId }).select("title editedClip originalClip originalClips totalSizeBytes thumbnailUrl createdAt");
   for (const portfolio of portfolios) {
+    let size = 0;
     if (portfolio.totalSizeBytes && portfolio.totalSizeBytes > 0) {
-      // Use actual stored size
-      portfolioBytes += portfolio.totalSizeBytes;
+      size = portfolio.totalSizeBytes;
     } else {
-      // Fallback: estimate based on count (avg 25MB per video)
-      if (portfolio.editedClip) portfolioBytes += 25 * 1024 * 1024;
-      if (portfolio.originalClip) portfolioBytes += 25 * 1024 * 1024;
+      if (portfolio.editedClip) size += 25 * 1024 * 1024;
+      if (portfolio.originalClip) size += 25 * 1024 * 1024;
       if (portfolio.originalClips?.length > 0) {
-        portfolioBytes += portfolio.originalClips.length * 25 * 1024 * 1024;
+        size += portfolio.originalClips.length * 25 * 1024 * 1024;
       }
+    }
+    portfolioBytes += size;
+    
+    if (includeDetails) {
+      portfolioItems.push({
+        id: portfolio._id,
+        title: portfolio.title || "Untitled",
+        size,
+        thumbnail: portfolio.thumbnailUrl,
+        createdAt: portfolio.createdAt,
+      });
     }
   }
 
   // 2. Reels - use fileSizeBytes if stored, else estimate ~15MB per reel
-  const reels = await Reel.find({ editor: userId });
+  const reels = await Reel.find({ editor: userId }).select("title mediaUrl fileSizeBytes createdAt");
   for (const reel of reels) {
+    let size = 0;
     if (reel.fileSizeBytes && reel.fileSizeBytes > 0) {
-      reelBytes += reel.fileSizeBytes;
+      size = reel.fileSizeBytes;
     } else {
-      reelBytes += 15 * 1024 * 1024; // Estimate 15MB
+      size = 15 * 1024 * 1024;
+    }
+    reelBytes += size;
+    
+    if (includeDetails) {
+      reelItems.push({
+        id: reel._id,
+        title: reel.title || "Untitled Reel",
+        size,
+        mediaUrl: reel.mediaUrl,
+        createdAt: reel.createdAt,
+      });
     }
   }
 
-  // 3. Chat files from active orders only (pending, in_progress, submitted)
+  // 3. Chat files from active orders only
   const activeOrders = await Order.find({
     $or: [{ client: userId }, { editor: userId }],
     status: { $in: ["new", "accepted", "in_progress", "submitted"] },
@@ -67,81 +91,88 @@ export const calculateStorageUsed = async (userId) => {
 
   const activeOrderIds = activeOrders.map((o) => o._id);
 
-  // Get messages with media from active orders where user is sender
   const messages = await Message.find({
     order: { $in: activeOrderIds },
     sender: userId,
     type: { $in: ["file", "video", "image", "audio"] },
     isDeleted: false,
-  });
+  }).select("mediaName mediaSize mediaSizeBytes type mediaUrl createdAt");
 
   for (const msg of messages) {
-    // Use mediaSizeBytes if available (new field), otherwise parse mediaSize string
+    let size = 0;
     if (msg.mediaSizeBytes && msg.mediaSizeBytes > 0) {
-      chatBytes += msg.mediaSizeBytes;
+      size = msg.mediaSizeBytes;
     } else if (msg.mediaSize) {
-      // Parse mediaSize string (e.g., "2.5 MB")
       const sizeStr = String(msg.mediaSize);
-      if (sizeStr.includes("MB")) {
-        chatBytes += parseFloat(sizeStr) * 1024 * 1024;
-      } else if (sizeStr.includes("KB")) {
-        chatBytes += parseFloat(sizeStr) * 1024;
-      } else if (sizeStr.includes("GB")) {
-        chatBytes += parseFloat(sizeStr) * 1024 * 1024 * 1024;
-      } else {
-        chatBytes += parseInt(sizeStr) || 5 * 1024 * 1024;
-      }
+      if (sizeStr.includes("MB")) size = parseFloat(sizeStr) * 1024 * 1024;
+      else if (sizeStr.includes("KB")) size = parseFloat(sizeStr) * 1024;
+      else if (sizeStr.includes("GB")) size = parseFloat(sizeStr) * 1024 * 1024 * 1024;
+      else size = parseInt(sizeStr) || 5 * 1024 * 1024;
     } else {
-      // Estimate by type
-      if (msg.type === "video") chatBytes += 30 * 1024 * 1024;
-      else if (msg.type === "image") chatBytes += 3 * 1024 * 1024;
-      else if (msg.type === "audio") chatBytes += 2 * 1024 * 1024;
-      else chatBytes += 5 * 1024 * 1024;
+      if (msg.type === "video") size = 30 * 1024 * 1024;
+      else if (msg.type === "image") size = 3 * 1024 * 1024;
+      else if (msg.type === "audio") size = 2 * 1024 * 1024;
+      else size = 5 * 1024 * 1024;
+    }
+    chatBytes += size;
+    
+    if (includeDetails) {
+      chatItems.push({
+        id: msg._id,
+        name: msg.mediaName || "File",
+        type: msg.type,
+        size,
+        mediaUrl: msg.mediaUrl,
+        createdAt: msg.createdAt,
+      });
     }
   }
 
-  totalBytes = portfolioBytes + reelBytes + chatBytes;
-  return Math.round(totalBytes);
+  const totalBytes = portfolioBytes + reelBytes + chatBytes;
+  
+  return {
+    totalBytes: Math.round(totalBytes),
+    portfolioBytes: Math.round(portfolioBytes),
+    reelBytes: Math.round(reelBytes),
+    chatBytes: Math.round(chatBytes),
+    counts: {
+      portfolios: portfolios.length,
+      reels: reels.length,
+      chatFiles: messages.length,
+    },
+    ...(includeDetails && {
+      items: {
+        portfolios: portfolioItems.sort((a, b) => b.size - a.size),
+        reels: reelItems.sort((a, b) => b.size - a.size),
+        chatFiles: chatItems.sort((a, b) => b.size - a.size),
+      },
+    }),
+  };
 };
 
 /**
  * Get storage status for current user
  * GET /api/storage/status
+ * Query: ?details=true for per-file breakdown
  */
 export const getStorageStatus = asyncHandler(async (req, res) => {
   const userId = req.user._id;
+  const includeDetails = req.query.details === "true";
   const user = await User.findById(userId);
 
   if (!user) {
     throw new ApiError(404, "User not found");
   }
 
-  // Recalculate storage used
-  const storageUsed = await calculateStorageUsed(userId);
+  // Recalculate storage used with detailed breakdown
+  const storageData = await calculateStorageUsed(userId, includeDetails);
 
   // Update user's storage
-  user.storageUsed = storageUsed;
+  user.storageUsed = storageData.totalBytes;
   user.storageLastCalculated = new Date();
   await user.save();
 
-  // Get breakdown
-  const portfolioCount = await Portfolio.countDocuments({ user: userId });
-  const reelsCount = await Reel.countDocuments({ editor: userId });
-  
-  // Get message files count from active orders
-  const activeOrders = await Order.find({
-    $or: [{ client: userId }, { editor: userId }],
-    status: { $in: ["new", "accepted", "in_progress", "submitted"] },
-  }).select("_id");
-  
-  const messageFilesCount = await Message.countDocuments({
-    order: { $in: activeOrders.map((o) => o._id) },
-    sender: userId,
-    type: { $in: ["file", "video", "image", "audio"] },
-    isDeleted: false,
-  });
-
-  const usedPercent = Math.round((storageUsed / user.storageLimit) * 100);
+  const usedPercent = Math.round((storageData.totalBytes / user.storageLimit) * 100);
   const isLowStorage = usedPercent >= 80;
   const isFull = usedPercent >= 100;
 
@@ -152,23 +183,32 @@ export const getStorageStatus = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     storage: {
-      used: storageUsed,
+      used: storageData.totalBytes,
       limit: user.storageLimit,
-      usedFormatted: formatBytes(storageUsed),
+      usedFormatted: formatBytes(storageData.totalBytes),
       limitFormatted: formatBytes(user.storageLimit),
       usedPercent,
-      remainingBytes: Math.max(0, user.storageLimit - storageUsed),
-      remainingFormatted: formatBytes(Math.max(0, user.storageLimit - storageUsed)),
+      remainingBytes: Math.max(0, user.storageLimit - storageData.totalBytes),
+      remainingFormatted: formatBytes(Math.max(0, user.storageLimit - storageData.totalBytes)),
       plan: user.storagePlan,
       isLowStorage,
       isFull,
       lastCalculated: user.storageLastCalculated,
     },
     breakdown: {
-      portfolios: portfolioCount,
-      reels: reelsCount,
-      chatFiles: messageFilesCount,
+      portfolios: storageData.counts.portfolios,
+      reels: storageData.counts.reels,
+      chatFiles: storageData.counts.chatFiles,
+      // Add size breakdown
+      portfolioBytes: storageData.portfolioBytes,
+      reelBytes: storageData.reelBytes,
+      chatBytes: storageData.chatBytes,
+      portfolioFormatted: formatBytes(storageData.portfolioBytes),
+      reelFormatted: formatBytes(storageData.reelBytes),
+      chatFormatted: formatBytes(storageData.chatBytes),
     },
+    // Include detailed file items if requested
+    ...(includeDetails && storageData.items && { items: storageData.items }),
     plans: plansObject,
   });
 });
