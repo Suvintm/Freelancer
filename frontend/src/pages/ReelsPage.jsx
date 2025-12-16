@@ -97,6 +97,8 @@ const ReelsPage = () => {
     // ----------------------------
     // ACTIVE REEL DETECTOR
     // ----------------------------
+    const viewedReelsRef = useRef(new Set()); // Track which reels have been viewed
+    
     const handleScroll = () => {
         if (!containerRef.current) return;
 
@@ -106,12 +108,27 @@ const ReelsPage = () => {
 
         if (index !== activeReelIndex) {
             setActiveReelIndex(index);
+        }
 
-            if (reels[index]) {
-                axios.post(`${backendURL}/api/reels/${reels[index]._id}/view`).catch(() => {});
-            }
+        // Track view for current reel if not already viewed
+        const currentReel = reels[index];
+        if (currentReel && !viewedReelsRef.current.has(currentReel._id)) {
+            viewedReelsRef.current.add(currentReel._id);
+            axios.post(`${backendURL}/api/reels/${currentReel._id}/view`)
+                .then(res => console.log('View tracked:', res.data))
+                .catch(err => console.log('View tracking failed:', err.response?.data || err.message));
         }
     };
+
+    // Track view for the FIRST reel when page loads
+    useEffect(() => {
+        if (reels.length > 0 && !viewedReelsRef.current.has(reels[0]._id)) {
+            viewedReelsRef.current.add(reels[0]._id);
+            axios.post(`${backendURL}/api/reels/${reels[0]._id}/view`)
+                .then(res => console.log('First reel view tracked:', res.data))
+                .catch(err => console.log('First reel view tracking failed:', err.response?.data || err.message));
+        }
+    }, [reels, backendURL]);
 
     const handleCommentClick = (reelId) => {
         setActiveReelId(reelId);
