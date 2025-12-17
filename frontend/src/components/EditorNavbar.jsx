@@ -4,7 +4,6 @@ import { useSocket } from "../context/SocketContext";
 import { useTheme } from "../context/ThemeContext";
 import logo from "../assets/logo.png";
 import { HiBell, HiBars3, HiOutlineSun, HiOutlineMoon } from "react-icons/hi2";
-import { FaEnvelope } from "react-icons/fa";
 import ProfileCompletionRing from "./ProfileCompletionRing";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -30,127 +29,27 @@ const EditorNavbar = ({ onMenuClick }) => {
     return (
         <>
             {/* DESKTOP NAVBAR */}
-            <header className="
-                hidden md:flex fixed top-0 left-64 right-0 
-                h-20 lg:h-20 px-10 lg:px-14 
-                items-center justify-between z-40
-                bg-black light:bg-white backdrop-blur-xl
-                border-b border-[#1F1F1F] light:border-slate-200
-                shadow-[0_10px_30px_rgba(0,0,0,0.7)] light:shadow-md
-                transition-colors duration-200
-            ">
+            <header 
+                className="hidden md:flex fixed top-0 left-64 right-0 h-16 px-8 items-center justify-between z-40 bg-white/95 light:bg-white/95 backdrop-blur-sm border-b border-slate-200 light:border-slate-200 shadow-sm transition-colors duration-200"
+                style={{ fontFamily: "'Inter', sans-serif" }}
+            >
                 {/* PAGE TITLE */}
-                <h2 className="
-                    text-2xl lg:text-3xl 
-                    font-semibold text-white light:text-slate-900 tracking-wide
-                ">
-                    {navItems.find(item => item.path === location.pathname)?.label || "SuviX"}
-                </h2>
+                <div>
+                    <h2 
+                        className="text-xl font-bold text-slate-900 light:text-slate-900"
+                        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                    >
+                        {navItems.find(item => item.path === location.pathname)?.label || "Dashboard"}
+                    </h2>
+                    <p className="text-xs text-slate-500 light:text-slate-500">Welcome back, {user?.name || "User"}</p>
+                </div>
 
                 {/* RIGHT SECTION */}
-                <div className="flex items-center gap-8 lg:gap-10">
-
-                    {/* NOTIFICATION */}
-                    <div
-                        className="
-                            relative cursor-pointer p-3 lg:p-4 
-                            rounded-full transition-all
-                            hover:bg-[#1A1A1A] light:hover:bg-slate-100 group
-                        "
-                        onClick={() => navigate("/notifications")}
-                    >
-                        <HiBell className="
-                            text-3xl lg:text-4xl 
-                            text-gray-400 light:text-slate-500
-                            group-hover:text-[#1463FF]
-                            transition
-                        " />
-
-                        {notificationBadge > 0 && (
-                            <span className="
-                                absolute top-1 right-1 
-                                w-6 h-6 lg:w-7 lg:h-7
-                                flex items-center justify-center
-                                bg-red-600 text-white 
-                                text-[10px] lg:text-xs font-bold
-                                rounded-full border-2 border-[#0D0D0D] light:border-white
-                                shadow-md
-                            ">
-                                {notificationBadge > 9 ? "9+" : notificationBadge}
-                            </span>
-                        )}
-                    </div>
-
-                    {/* PROFILE */}
-                    <div
-                        className="
-                            flex items-center gap-4 lg:gap-5 cursor-pointer rounded-full
-                            px-2 pr-4 lg:px-3 lg:pr-5
-                            border border-transparent
-                            hover:border-[#2A2A2A] light:hover:border-slate-300 hover:bg-[#1A1A1A] light:hover:bg-slate-100
-                            transition-all
-                        "
-                    >
-                        {/* Profile Completion Ring with Dropdown */}
-                        <ProfileCompletionRing 
-                            user={user} 
-                            size={56} 
-                            strokeWidth={3}
-                            showDropdown={true}
-                        >
-                            <img
-                                src={user?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
-                                alt="Profile"
-                                className="
-                                    w-12 h-12 lg:w-12 lg:h-12
-                                    rounded-full object-cover
-                                "
-                            />
-                        </ProfileCompletionRing>
-                        <span 
-                            className="text-base lg:text-lg font-semibold text-gray-300 light:text-slate-700"
-                            onClick={() => navigate("/editor-profile")}
-                        >
-                            {user?.name || "User"}
-                        </span>
-                    </div>
-                </div>
-            </header>
-
-            {/* MOBILE NAVBAR */}
-            <div className="
-                md:hidden flex justify-between items-center sticky top-0 z-40
-                px-4 py-3
-                bg-black light:bg-white backdrop-blur-xl
-                border-b border-[#1F1F1F] light:border-slate-200
-                shadow-[0_8px_25px_rgba(0,0,0,0.8)] light:shadow-md
-                transition-colors duration-200
-            ">
-                {/* MENU BUTTON */}
-                <button
-                    onClick={onMenuClick}
-                    className="text-3xl text-gray-300 light:text-slate-600 hover:text-[#1463FF] transition"
-                >
-                    <HiBars3 />
-                </button>
-
-                {/* LOGO */}
-                <div
-                    className="flex items-center gap-2 cursor-pointer"
-                    onClick={() => navigate("/editor-home")}
-                >
-                    <img src={logo} alt="SuviX" className="w-8 h-8 rounded-xl" />
-                    <h2 className="text-lg font-bold text-white light:text-slate-900 tracking-wide">SuviX</h2>
-                </div>
-
-                {/* RIGHT SIDE ICONS */}
-                <div className="flex items-center gap-1">
-                    {/* THEME TOGGLE */}
+                <div className="flex items-center gap-4">
+                    {/* Theme Toggle */}
                     <button
                         onClick={toggleTheme}
-                        className="w-6 h-6 flex items-center justify-center rounded-full 
-                                   hover:bg-[#252525] light:hover:bg-slate-200 
-                                   transition-all duration-200"
+                        className="p-2.5 rounded-xl bg-slate-50 light:bg-slate-50 hover:bg-slate-100 light:hover:bg-slate-100 border border-slate-200 light:border-slate-200 transition-all"
                         aria-label="Toggle theme"
                     >
                         <AnimatePresence mode="wait">
@@ -162,7 +61,7 @@ const EditorNavbar = ({ onMenuClick }) => {
                                     exit={{ rotate: 90, opacity: 0 }}
                                     transition={{ duration: 0.2 }}
                                 >
-                                    <HiOutlineMoon className="text-xl text-green-400" />
+                                    <HiOutlineMoon className="text-lg text-slate-600 light:text-slate-600" />
                                 </motion.div>
                             ) : (
                                 <motion.div
@@ -172,39 +71,129 @@ const EditorNavbar = ({ onMenuClick }) => {
                                     exit={{ rotate: -90, opacity: 0 }}
                                     transition={{ duration: 0.2 }}
                                 >
-                                    <HiOutlineSun className="text-xl text-amber-500" />
+                                    <HiOutlineSun className="text-lg text-amber-500" />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </button>
+
+                    {/* NOTIFICATION */}
+                    <button
+                        className="relative p-2.5 rounded-xl bg-slate-50 light:bg-slate-50 hover:bg-slate-100 light:hover:bg-slate-100 border border-slate-200 light:border-slate-200 transition-all"
+                        onClick={() => navigate("/notifications")}
+                    >
+                        <HiBell className="text-lg text-slate-600 light:text-slate-600" />
+                        {notificationBadge > 0 && (
+                            <span className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-white light:border-white">
+                                {notificationBadge > 9 ? "9+" : notificationBadge}
+                            </span>
+                        )}
+                    </button>
+
+                    {/* PROFILE */}
+                    <div
+                        className="flex items-center gap-3 cursor-pointer px-3 py-2 rounded-xl hover:bg-slate-50 light:hover:bg-slate-50 border border-transparent hover:border-slate-200 light:hover:border-slate-200 transition-all"
+                        onClick={() => navigate("/editor-profile")}
+                    >
+                        <ProfileCompletionRing 
+                            user={user} 
+                            size={44} 
+                            strokeWidth={3}
+                            showDropdown={true}
+                        >
+                            <img
+                                src={user?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
+                                alt="Profile"
+                                className="w-10 h-10 rounded-full object-cover border-2 border-emerald-200 light:border-emerald-200"
+                            />
+                        </ProfileCompletionRing>
+                        <div className="hidden lg:block">
+                            <p className="text-sm font-semibold text-slate-900 light:text-slate-900">{user?.name || "User"}</p>
+                            <p className="text-[10px] text-slate-500 light:text-slate-500">Editor</p>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            {/* MOBILE NAVBAR */}
+            <div 
+                className="md:hidden flex justify-between items-center sticky top-0 z-40 px-4 py-3 bg-white/95 light:bg-white/95 backdrop-blur-sm border-b border-slate-200 light:border-slate-200 shadow-sm transition-colors duration-200"
+                style={{ fontFamily: "'Inter', sans-serif" }}
+            >
+                {/* MENU BUTTON */}
+                <button
+                    onClick={onMenuClick}
+                    className="p-2 rounded-xl bg-slate-50 light:bg-slate-50 hover:bg-slate-100 light:hover:bg-slate-100 text-slate-600 light:text-slate-600 transition-all"
+                >
+                    <HiBars3 className="text-xl" />
+                </button>
+
+                {/* LOGO */}
+                <div
+                    className="flex items-center gap-2 cursor-pointer"
+                    onClick={() => navigate("/editor-home")}
+                >
+                    <img src={logo} alt="SuviX" className="w-8 h-8 hover:scale-105 transition-transform" />
+                    <h2 
+                        className="text-lg font-bold text-slate-900 light:text-slate-900"
+                        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                    >
+                        Suvi<span className="text-emerald-500">X</span>
+                    </h2>
+                </div>
+
+                {/* RIGHT SIDE ICONS */}
+                <div className="flex items-center gap-2">
+                    {/* THEME TOGGLE */}
+                    <button
+                        onClick={toggleTheme}
+                        className="p-2 rounded-xl bg-slate-50 light:bg-slate-50 hover:bg-slate-100 light:hover:bg-slate-100 transition-all"
+                        aria-label="Toggle theme"
+                    >
+                        <AnimatePresence mode="wait">
+                            {theme === "dark" ? (
+                                <motion.div
+                                    key="moon"
+                                    initial={{ rotate: -90, opacity: 0 }}
+                                    animate={{ rotate: 0, opacity: 1 }}
+                                    exit={{ rotate: 90, opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <HiOutlineMoon className="text-lg text-slate-600 light:text-slate-600" />
+                                </motion.div>
+                            ) : (
+                                <motion.div
+                                    key="sun"
+                                    initial={{ rotate: 90, opacity: 0 }}
+                                    animate={{ rotate: 0, opacity: 1 }}
+                                    exit={{ rotate: -90, opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <HiOutlineSun className="text-lg text-amber-500" />
                                 </motion.div>
                             )}
                         </AnimatePresence>
                     </button>
 
                     {/* BELL */}
-                    <div
-                        className="relative cursor-pointer p-2 rounded-full hover:bg-[#1A1A1A] light:hover:bg-slate-100 transition"
+                    <button
+                        className="relative p-2 rounded-xl bg-slate-50 light:bg-slate-50 hover:bg-slate-100 light:hover:bg-slate-100 transition-all"
                         onClick={() => navigate("/notifications")}
                     >
-                        <HiBell className="text-xl text-gray-400 light:text-slate-500" />
-                        {unreadCount > 0 && (
-                            <span className="
-                                absolute top-1 right-1 w-4 h-4
-                                flex items-center justify-center
-                                bg-red-600 text-white text-[9px] font-bold
-                                rounded-full border-2 border-[#0D0D0D] light:border-white
-                            ">
-                                {unreadCount > 9 ? "9+" : unreadCount}
+                        <HiBell className="text-lg text-slate-600 light:text-slate-600" />
+                        {notificationBadge > 0 && (
+                            <span className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center bg-red-500 text-white text-[9px] font-bold rounded-full border-2 border-white light:border-white">
+                                {notificationBadge > 9 ? "9+" : notificationBadge}
                             </span>
                         )}
-                    </div>
+                    </button>
 
                     {/* PROFILE */}
                     <img
                         src={user?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
                         onClick={() => navigate("/editor-profile")}
-                        className="
-                            w-8 h-8 rounded-full object-cover cursor-pointer
-                            border-2 border-[#1463FF]
-                            shadow-[0_0_10px_rgba(20,99,255,0.35)]
-                        "
+                        className="w-9 h-9 rounded-full object-cover cursor-pointer border-2 border-emerald-300 light:border-emerald-300"
+                        alt="Profile"
                     />
                 </div>
             </div>

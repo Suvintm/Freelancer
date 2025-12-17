@@ -1,7 +1,7 @@
 /**
  * VerifiedEditorBadge Component
  * Shows when profile >= 80% complete with profile completion ring
- * Also shows KYC/Earnings status
+ * Professional light theme matching Homepage style
  */
 
 import { motion } from 'framer-motion';
@@ -36,13 +36,14 @@ const VerifiedEditorBadge = ({ user, profile, kycStatus, completionPercent = 80 
 
   return (
     <motion.div
-      className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0a0a0c] via-[#0d0d10] to-[#0a0a0c] border border-white/[0.06] mb-6"
+      className="relative overflow-hidden rounded-2xl bg-white light:bg-white border border-slate-200 light:border-slate-200 shadow-sm"
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
+      style={{ fontFamily: "'Inter', sans-serif" }}
     >
       {/* Subtle gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/[0.03] via-transparent to-blue-500/[0.03]" />
+      <div className="absolute inset-0 bg-gradient-to-r from-emerald-50/50 light:from-emerald-50/50 via-transparent to-blue-50/50 light:to-blue-50/50" />
       
       <div className="relative p-5 md:p-6">
         <div className="flex flex-col md:flex-row items-start md:items-center gap-5">
@@ -54,7 +55,7 @@ const VerifiedEditorBadge = ({ user, profile, kycStatus, completionPercent = 80 
               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
                 {/* Background circle */}
                 <circle 
-                  className="fill-none stroke-white/[0.06]" 
+                  className="fill-none stroke-slate-100 light:stroke-slate-100" 
                   cx="50" cy="50" r={radius} 
                   strokeWidth="4" 
                 />
@@ -76,12 +77,12 @@ const VerifiedEditorBadge = ({ user, profile, kycStatus, completionPercent = 80 
                 <img
                   src={profilePicture}
                   alt={name}
-                  className="w-full h-full rounded-full object-cover bg-[#1a1a1a] border-2 border-[#0a0a0c]"
+                  className="w-full h-full rounded-full object-cover bg-slate-100 light:bg-slate-100 border-2 border-white light:border-white shadow-sm"
                 />
               </div>
               
               {/* Percentage badge */}
-              <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-[#0a0a0c] shadow-lg">
+              <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white light:border-white shadow-lg">
                 <span className="text-white text-[10px] font-bold">{percent}%</span>
               </div>
             </div>
@@ -90,27 +91,27 @@ const VerifiedEditorBadge = ({ user, profile, kycStatus, completionPercent = 80 
           {/* Info Section */}
           <div className="flex-1 min-w-0">
             {/* Name with verified badge */}
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-lg md:text-xl font-bold text-white truncate">
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-lg md:text-xl font-bold text-slate-900 light:text-slate-900 truncate" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 Welcome back, {firstName}
               </h3>
-              <HiCheckBadge className="text-emerald-400 text-xl flex-shrink-0" />
+              <HiCheckBadge className="text-emerald-500 text-xl flex-shrink-0" />
             </div>
             
             {/* Verified Status */}
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-semibold">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 light:bg-emerald-50 border border-emerald-200 light:border-emerald-200 rounded-full text-emerald-600 light:text-emerald-600 text-xs font-semibold">
                 <FaShieldAlt className="text-[10px]" />
                 Verified Editor
               </span>
               
               {isKycVerified ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full text-blue-400 text-xs font-semibold">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 light:bg-blue-50 border border-blue-200 light:border-blue-200 rounded-full text-blue-600 light:text-blue-600 text-xs font-semibold">
                   <FaMoneyBillWave className="text-[10px]" />
                   Earnings Enabled
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full text-amber-400 text-xs font-semibold">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 light:bg-amber-50 border border-amber-200 light:border-amber-200 rounded-full text-amber-600 light:text-amber-600 text-xs font-semibold">
                   <FaMoneyBillWave className="text-[10px]" />
                   Complete KYC to Earn
                 </span>
@@ -119,26 +120,26 @@ const VerifiedEditorBadge = ({ user, profile, kycStatus, completionPercent = 80 
           </div>
 
           {/* Right side - Stats/Crown */}
-          <div className="hidden md:flex items-center gap-4 flex-shrink-0">
+          <div className="hidden md:flex items-center gap-3 flex-shrink-0">
             {/* Premium Editor Badge */}
-            <div className="flex flex-col items-center gap-1 px-5 py-3 bg-gradient-to-b from-white/[0.03] to-transparent rounded-xl border border-white/[0.05]">
-              <FaCrown className="text-amber-400 text-lg" />
-              <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Pro Editor</span>
+            <div className="flex flex-col items-center gap-1 px-5 py-3 bg-gradient-to-b from-amber-50 light:from-amber-50 to-white light:to-white rounded-xl border border-amber-100 light:border-amber-100">
+              <FaCrown className="text-amber-500 text-lg" />
+              <span className="text-[10px] text-slate-500 light:text-slate-500 font-medium uppercase tracking-wider">Pro Editor</span>
             </div>
             
             {/* Rating */}
-            <div className="flex flex-col items-center gap-1 px-5 py-3 bg-gradient-to-b from-white/[0.03] to-transparent rounded-xl border border-white/[0.05]">
+            <div className="flex flex-col items-center gap-1 px-5 py-3 bg-gradient-to-b from-slate-50 light:from-slate-50 to-white light:to-white rounded-xl border border-slate-100 light:border-slate-100">
               <div className="flex items-center gap-1">
                 <FaStar className="text-amber-400 text-sm" />
-                <span className="text-white font-bold text-lg">{profile?.rating || user?.rating || '5.0'}</span>
+                <span className="text-slate-900 light:text-slate-900 font-bold text-lg">{profile?.rating || user?.rating || '5.0'}</span>
               </div>
-              <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Rating</span>
+              <span className="text-[10px] text-slate-500 light:text-slate-500 font-medium uppercase tracking-wider">Rating</span>
             </div>
           </div>
         </div>
 
         {/* Bottom accent line */}
-        <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-500" />
       </div>
     </motion.div>
   );

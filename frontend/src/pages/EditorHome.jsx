@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
 import {
   FaExclamationCircle,
-  FaArrowAltCircleRight,
+  FaArrowRight,
   FaFacebookMessenger,
   FaPlayCircle,
   FaUsers,
   FaBriefcase,
   FaClipboardList,
   FaChartLine,
-  FaArrowRight,
   FaUniversity,
   FaHome,
   FaTachometerAlt,
@@ -24,7 +23,11 @@ import {
   FaVideo,
   FaImages,
   FaComments,
+  FaRocket,
+  FaGem,
+  FaStar,
 } from "react-icons/fa";
+import { HiOutlineSparkles } from "react-icons/hi";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar.jsx";
@@ -129,13 +132,13 @@ const EditorHome = () => {
     setIsRefreshing(true);
     setTimeout(() => {
       window.location.reload();
-    }, 300); // Small delay for animation
+    }, 300);
   };
 
-  // Main tabs with colors
+  // Main tabs configuration
   const mainTabs = [
-    { id: "home", label: "Home", icon: FaHome, color: "#22C55E", gradient: "from-emerald-500/20 to-green-500/10" },
-    { id: "dashboard", label: "Dashboard", icon: FaTachometerAlt, color: "#3B82F6", gradient: "from-blue-500/20 to-cyan-500/10" },
+    { id: "home", label: "Home", icon: FaHome },
+    { id: "dashboard", label: "Dashboard", icon: FaTachometerAlt },
   ];
 
   // Explore tabs configuration  
@@ -145,118 +148,54 @@ const EditorHome = () => {
     { id: "reels", label: "Reels", icon: FaPlayCircle },
   ];
 
-  // Dashboard box configs with colors
-  const dashboardBoxes = [
-    { 
-      id: "orders", 
-      path: "/editor-my-orders", 
-      icon: FaClipboardList, 
-      label: "My Orders", 
-      stat: `${stats.totalOrders} total`,
-      color: "#22C55E",
-      bgColor: "rgba(34, 197, 94, 0.08)",
-      borderColor: "rgba(34, 197, 94, 0.2)"
-    },
-    { 
-      id: "gigs", 
-      path: "/my-gigs", 
-      icon: FaBriefcase, 
-      label: "My Gigs", 
-      stat: `${stats.activeGigs} active`,
-      color: "#3B82F6",
-      bgColor: "rgba(59, 130, 246, 0.08)",
-      borderColor: "rgba(59, 130, 246, 0.2)"
-    },
-    { 
-      id: "messages", 
-      path: "/chats", 
-      icon: FaFacebookMessenger, 
-      label: "Messages", 
-      stat: "Chat with clients",
-      color: "#A855F7",
-      bgColor: "rgba(168, 85, 247, 0.08)",
-      borderColor: "rgba(168, 85, 247, 0.2)"
-    },
-    { 
-      id: "analytics", 
-      path: "/editor-analytics", 
-      icon: FaChartLine, 
-      label: "Analytics", 
-      stat: "View insights",
-      color: "#F59E0B",
-      bgColor: "rgba(245, 158, 11, 0.08)",
-      borderColor: "rgba(245, 158, 11, 0.2)"
-    },
-  ];
-
-  const activeTabConfig = mainTabs.find(t => t.id === mainTab);
-
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] light:bg-green-100/20 text-white light:text-slate-900 transition-colors duration-200">
+    <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 light:bg-slate-50 text-slate-900 light:text-slate-900 transition-colors duration-200" style={{ fontFamily: "'Inter', sans-serif" }}>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-      {/* Professional Refresh Button */}
+      {/* Refresh Button */}
       <motion.button
         onClick={handleRefresh}
         disabled={isRefreshing}
-        whileHover={{ scale: 1.02, backgroundColor: "rgba(59, 131, 246, 0)" }}
-        whileTap={{ scale: 0.98 }}
-        className="fixed top-17 animate-spin bg-gradient-to-r from-green-500/20 to-green-500/10 md:top- right-2 md:right-8 z-50 px-2 py-2 rounded-full hover:border-green-500/40 flex items-center gap-2.5 text-white transition-all disabled:opacity-70 shadow-lg"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        className="fixed top-20 right-4 md:right-8 z-50 p-3 rounded-xl bg-white light:bg-white shadow-lg border border-slate-200 light:border-slate-200 hover:shadow-xl transition-all"
         title="Refresh page"
       >
         <motion.div
           animate={isRefreshing ? { rotate: 360 } : { rotate: 0 }}
           transition={isRefreshing ? { repeat: Infinity, duration: 0.8, ease: "linear" } : { duration: 0.3 }}
-          className="text-green-400"
         >
-          <FaSyncAlt className="text-sm" />
+          <FaSyncAlt className="text-emerald-500 text-sm" />
         </motion.div>
-        {/* <span className="text-sm font-medium text-gray-300">Refresh</span> */}
       </motion.button>
 
-      <main className="flex-1 px-4 md:px-8 py-6 lg:pt-20 md:pt-6 md:ml-64 md:mt-20">
+      <main className="flex-1 px-4 md:px-8 py-6 lg:pt-24 md:pt-6 md:ml-64 md:mt-16">
         
-        {/* ============ MAIN TABS (Home / Dashboard) ============ */}
-        <div className="flex justify-center items-center lg:gap-2 lg:mb-6 md:mb-4 mb-2 gap-3 md:gap-2 ">
-          {mainTabs.map((tab) => {
-            const isActive = mainTab === tab.id;
-            return (
-              <motion.button
-                key={tab.id}
-                onClick={() => setMainTab(tab.id)}
-                whileHover={{ y: -1 }}
-                whileTap={{ scale: 0.98 }}
-                className={`
-                  relative px-5 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2.5
-                  ${isActive 
-                    ? `bg-gradient-to-r ${tab.gradient} border-green-500 border-2/60` 
-                    : "bg-[#0a0a0c] light:bg-white border border-[#1a1a1f] light:border-slate-400/20 hover:border-[#2a2a2f] light:hover:border-blue-400 light:shadow-md light:hover:shadow-lg"
-                  }
-                `}
-                style={{
-                  borderColor: isActive ? tab.color : undefined,
-                  boxShadow: isActive ? `0 0 20px ${tab.color}20` : undefined
-                }}
-              >
-                <tab.icon 
-                  style={{ color: isActive ? tab.color : '#6b7280' }}
-                  className="text-base"
-                />
-                <span style={{ color: isActive ? '#fff' : undefined }} className={isActive ? '' : 'text-[#9ca3af] light:text-slate-700'}>
+        {/* ============ MAIN TABS ============ */}
+        <div className="flex justify-center mb-6">
+          <div className="inline-flex p-1 bg-white light:bg-white rounded-2xl shadow-sm border border-slate-200 light:border-slate-200">
+            {mainTabs.map((tab) => {
+              const isActive = mainTab === tab.id;
+              return (
+                <motion.button
+                  key={tab.id}
+                  onClick={() => setMainTab(tab.id)}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className={`relative px-6 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2
+                    ${isActive 
+                      ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" 
+                      : "text-slate-600 light:text-slate-600 hover:bg-slate-50 light:hover:bg-slate-50"
+                    }
+                  `}
+                >
+                  <tab.icon className="text-sm" />
                   {tab.label}
-                </span>
-                {isActive && (
-                  <motion.div
-                    layoutId="mainTabDot"
-                    className="w-2 h-2 rounded-full ml-1"
-                    style={{ backgroundColor: tab.color }}
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
-                  />
-                )}
-              </motion.button>
-            );
-          })}
+                </motion.button>
+              );
+            })}
+          </div>
         </div>
 
         <AnimatePresence mode="wait">
@@ -264,14 +203,14 @@ const EditorHome = () => {
           {mainTab === "home" && (
             <motion.div
               key="home"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 10 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
             >
-              {/* 🎯 Side-by-Side Banners: Profile + Storage */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                {/* Left: Verified Badge / Profile Completion */}
+              {/* Profile & Storage Cards */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                {/* Left: Profile Status */}
                 <div className="min-w-0">
                   {completionPercent >= 80 ? (
                     <VerifiedEditorBadge 
@@ -285,101 +224,93 @@ const EditorHome = () => {
                   )}
                 </div>
 
-                {/* Right: Storage Card with Analytics Dropdown */}
+                {/* Right: Storage Card */}
                 {storageData && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`border-2 rounded-2xl p-3 sm:p-4 h-fit overflow-hidden light:shadow-lg light:bg-white ${
+                    className={`bg-white light:bg-white rounded-2xl p-4 sm:p-5 border shadow-sm transition-all ${
                       storageData.isFull 
-                        ? 'bg-gradient-to-r from-red-500/10 to-rose-500/5 border-red-500/20 light:border-red-300 light:ring-2 light:ring-red-100' 
+                        ? 'border-red-200 light:border-red-200' 
                         : storageData.isLowStorage 
-                          ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/5 border-amber-500/20 light:border-amber-300 light:ring-2 light:ring-amber-100'
-                          : 'bg-gradient-to-r from-blue-500/10 to-purple-500/5 border-blue-500/20 light:border-blue-300 light:ring-2 light:ring-blue-100'
+                          ? 'border-amber-200 light:border-amber-200'
+                          : 'border-slate-200 light:border-slate-200'
                     }`}
                   >
-                    {/* Main Storage Info */}
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <div className={`p-2 sm:p-2.5 rounded-xl shrink-0 ${
-                        storageData.isFull ? 'bg-red-500/15' : storageData.isLowStorage ? 'bg-amber-500/15' : 'bg-blue-500/15'
+                    {/* Storage Header */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`p-2.5 rounded-xl ${
+                        storageData.isFull ? 'bg-red-50 light:bg-red-50' : storageData.isLowStorage ? 'bg-amber-50 light:bg-amber-50' : 'bg-blue-50 light:bg-blue-50'
                       }`}>
-                        <FaDatabase className={`text-base sm:text-lg ${
-                          storageData.isFull ? 'text-red-400' : storageData.isLowStorage ? 'text-amber-400' : 'text-blue-400'
+                        <FaDatabase className={`text-lg ${
+                          storageData.isFull ? 'text-red-500' : storageData.isLowStorage ? 'text-amber-500' : 'text-blue-500'
                         }`} />
                       </div>
                       
-                      <div className="flex-1 min-w-0 overflow-hidden">
-                        <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
-                          <h3 className="text-white light:text-slate-900 font-semibold text-xs sm:text-sm truncate">Storage</h3>
-                          <span className={`px-1 sm:px-1.5 py-0.5 text-[8px] sm:text-[9px] font-bold rounded uppercase shrink-0 ${
-                            storageData.plan === 'free' ? 'bg-gray-500/20 text-gray-400' :
-                            storageData.plan === 'pro' ? 'bg-purple-500/20 text-purple-400' :
-                            'bg-blue-500/20 text-blue-400'
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-slate-900 light:text-slate-900 text-sm">Cloud Storage</h3>
+                          <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ${
+                            storageData.plan === 'free' ? 'bg-slate-100 light:bg-slate-100 text-slate-600 light:text-slate-600' :
+                            storageData.plan === 'pro' ? 'bg-purple-100 light:bg-purple-100 text-purple-600 light:text-purple-600' :
+                            'bg-blue-100 light:bg-blue-100 text-blue-600 light:text-blue-600'
                           }`}>
                             {storageData.plan}
                           </span>
                         </div>
                         
                         {/* Progress Bar */}
-                        <div className="h-1.5 bg-black/30 rounded-full overflow-hidden mb-1">
+                        <div className="h-2 bg-slate-100 light:bg-slate-100 rounded-full overflow-hidden">
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${Math.min(storageData.usedPercent, 100)}%` }}
                             transition={{ duration: 0.8, ease: "easeOut" }}
                             className={`h-full rounded-full ${
-                              storageData.isFull ? 'bg-gradient-to-r from-red-500 to-red-400' :
+                              storageData.isFull ? 'bg-gradient-to-r from-red-500 to-rose-400' :
                               storageData.isLowStorage ? 'bg-gradient-to-r from-amber-500 to-orange-400' :
-                              'bg-gradient-to-r from-blue-500 to-purple-500'
+                              'bg-gradient-to-r from-blue-500 to-emerald-500'
                             }`}
                           />
                         </div>
-                        
-                        <div className="flex items-center justify-between text-[9px] sm:text-[10px]">
-                          <span className="text-gray-400 light:text-slate-600 truncate">
-                            {storageData.usedFormatted}
-                            <span className="hidden xs:inline"> / {storageData.limitFormatted}</span>
-                          </span>
-                          <span className={`font-medium shrink-0 ${
-                            storageData.isFull ? 'text-red-400' : 
-                            storageData.isLowStorage ? 'text-amber-400' : 'text-emerald-400'
-                          }`}>
-                            {storageData.remainingFormatted} <span className="hidden sm:inline">free</span>
-                          </span>
-                        </div>
                       </div>
                       
-                      {/* Actions - Stack on xs */}
-                      <div className="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-2 shrink-0">
+                      <div className="flex items-center gap-2">
                         <button
                           onClick={() => setStorageExpanded(!storageExpanded)}
-                          className="p-1.5 sm:p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 transition-all"
-                          title="Storage details"
+                          className="p-2 rounded-lg bg-slate-50 light:bg-slate-50 hover:bg-slate-100 light:hover:bg-slate-100 text-slate-500 light:text-slate-500 transition-all"
                         >
-                          {storageExpanded ? <FaChevronUp className="text-[10px] sm:text-xs" /> : <FaChevronDown className="text-[10px] sm:text-xs" />}
+                          {storageExpanded ? <FaChevronUp className="text-xs" /> : <FaChevronDown className="text-xs" />}
                         </button>
                         <button
                           onClick={() => navigate('/storage-plans')}
-                          className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-medium flex items-center gap-1 transition-all ${
-                            storageData.isFull || storageData.isLowStorage
-                              ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:opacity-90'
-                              : 'bg-white/5 light:bg-slate-100 border border-white/10 light:border-slate-200 text-gray-300 light:text-slate-700 hover:bg-white/10 light:hover:bg-slate-200'
-                          }`}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 text-white hover:bg-emerald-600 transition-all flex items-center gap-1"
                         >
-                          <FaCloudUploadAlt className="text-[9px] sm:text-xs" />
-                          Buy
+                          <FaCloudUploadAlt className="text-xs" /> Upgrade
                         </button>
                       </div>
                     </div>
                     
-                    {/* Warning Message */}
+                    {/* Storage Stats */}
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 light:text-slate-500">
+                        {storageData.usedFormatted} / {storageData.limitFormatted}
+                      </span>
+                      <span className={`font-medium ${
+                        storageData.isFull ? 'text-red-500' : 
+                        storageData.isLowStorage ? 'text-amber-500' : 'text-emerald-500'
+                      }`}>
+                        {storageData.remainingFormatted} free
+                      </span>
+                    </div>
+                    
+                    {/* Warning */}
                     {storageData.isFull && (
-                      <p className="text-red-400 text-[9px] sm:text-[10px] mt-2 flex items-center gap-1">
-                        <FaExclamationCircle className="text-[9px] sm:text-[10px] shrink-0" />
-                        <span className="truncate">Storage full! Upgrade or delete files.</span>
-                      </p>
+                      <div className="mt-3 p-2 bg-red-50 light:bg-red-50 rounded-lg flex items-center gap-2 text-red-600 light:text-red-600 text-xs">
+                        <FaExclamationCircle /> Storage full! Upgrade or delete files.
+                      </div>
                     )}
                     
-                    {/* Analytics Dropdown */}
+                    {/* Breakdown Dropdown */}
                     <AnimatePresence>
                       {storageExpanded && storageBreakdown && (
                         <motion.div
@@ -389,23 +320,23 @@ const EditorHome = () => {
                           transition={{ duration: 0.2 }}
                           className="overflow-hidden"
                         >
-                          <div className="mt-3 pt-3 border-t border-white/10 light:border-slate-200">
-                            <p className="text-gray-500 light:text-slate-500 text-[10px] uppercase font-medium mb-2">Storage Breakdown</p>
-                            <div className="grid grid-cols-3 gap-2">
-                              <div className="bg-black/20 light:bg-slate-100 rounded-lg p-2 text-center">
-                                <FaVideo className="text-purple-400 light:text-purple-600 mx-auto mb-1 text-sm" />
-                                <p className="text-white light:text-slate-900 font-bold text-sm">{storageBreakdown.portfolios || 0}</p>
-                                <p className="text-gray-500 light:text-slate-500 text-[9px]">Portfolios</p>
+                          <div className="mt-4 pt-4 border-t border-slate-100 light:border-slate-100">
+                            <p className="text-slate-500 light:text-slate-500 text-xs font-medium mb-3">Storage Breakdown</p>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div className="bg-slate-50 light:bg-slate-50 rounded-xl p-3 text-center">
+                                <FaVideo className="text-purple-500 mx-auto mb-1" />
+                                <p className="font-bold text-slate-900 light:text-slate-900">{storageBreakdown.portfolios || 0}</p>
+                                <p className="text-slate-500 light:text-slate-500 text-[10px]">Portfolios</p>
                               </div>
-                              <div className="bg-black/20 light:bg-slate-100 rounded-lg p-2 text-center">
-                                <FaImages className="text-blue-400 light:text-blue-600 mx-auto mb-1 text-sm" />
-                                <p className="text-white light:text-slate-900 font-bold text-sm">{storageBreakdown.reels || 0}</p>
-                                <p className="text-gray-500 light:text-slate-500 text-[9px]">Reels</p>
+                              <div className="bg-slate-50 light:bg-slate-50 rounded-xl p-3 text-center">
+                                <FaImages className="text-blue-500 mx-auto mb-1" />
+                                <p className="font-bold text-slate-900 light:text-slate-900">{storageBreakdown.reels || 0}</p>
+                                <p className="text-slate-500 light:text-slate-500 text-[10px]">Reels</p>
                               </div>
-                              <div className="bg-black/20 light:bg-slate-100 rounded-lg p-2 text-center">
-                                <FaComments className="text-emerald-400 light:text-emerald-600 mx-auto mb-1 text-sm" />
-                                <p className="text-white light:text-slate-900 font-bold text-sm">{storageBreakdown.chatFiles || 0}</p>
-                                <p className="text-gray-500 light:text-slate-500 text-[9px]">Chat Files</p>
+                              <div className="bg-slate-50 light:bg-slate-50 rounded-xl p-3 text-center">
+                                <FaComments className="text-emerald-500 mx-auto mb-1" />
+                                <p className="font-bold text-slate-900 light:text-slate-900">{storageBreakdown.chatFiles || 0}</p>
+                                <p className="text-slate-500 light:text-slate-500 text-[10px]">Chat Files</p>
                               </div>
                             </div>
                           </div>
@@ -414,269 +345,165 @@ const EditorHome = () => {
                     </AnimatePresence>
                   </motion.div>
                 )}
-                {storageData?.isFull && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                    className="border rounded-2xl p-5 md:p-6 mb-6 bg-gradient-to-r from-red-500/5 to-rose-500/5 border-red-500/20"
-                  >
-                    <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-                      <div className="p-3 rounded-xl bg-red-500/10">
-                        <FaExclamationCircle className="text-xl text-red-400" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-base text-red-400">Storage Full</h3>
-                        <p className="text-gray-400 light:text-slate-600 text-sm mt-0.5">
-                          Your storage is full. Please upgrade or delete files to continue.
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
               </div>
 
-              {/* KYC Banner - Show based on status */}
-              {!user?.kycStatus || user?.kycStatus === 'not_submitted' || user?.kycStatus === 'rejected' ? (
+              {/* KYC Banners */}
+              {(!user?.kycStatus || user?.kycStatus === 'not_submitted' || user?.kycStatus === 'rejected') && (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`border rounded-2xl p-5 md:p-6 mb-6 ${
+                  className={`bg-white light:bg-white rounded-2xl p-5 md:p-6 mb-6 border shadow-sm ${
                     user?.kycStatus === 'rejected' 
-                      ? 'bg-gradient-to-r from-red-500/5 to-rose-500/5 border-red-500/20'
-                      : 'bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-amber-500/20'
+                      ? 'border-red-200 light:border-red-200'
+                      : 'border-amber-200 light:border-amber-200'
                   }`}
                 >
                   <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-                    <div className={`p-3 rounded-xl ${user?.kycStatus === 'rejected' ? 'bg-red-500/10' : 'bg-amber-500/10'}`}>
-                      <FaUniversity className={`text-xl ${user?.kycStatus === 'rejected' ? 'text-red-400' : 'text-amber-400'}`} />
+                    <div className={`p-3 rounded-xl ${user?.kycStatus === 'rejected' ? 'bg-red-50 light:bg-red-50' : 'bg-amber-50 light:bg-amber-50'}`}>
+                      <FaUniversity className={`text-xl ${user?.kycStatus === 'rejected' ? 'text-red-500' : 'text-amber-500'}`} />
                     </div>
                     <div className="flex-1">
-                      <h3 className={`font-semibold text-base ${user?.kycStatus === 'rejected' ? 'text-red-400' : 'text-white'}`}>
-                        {user?.kycStatus === 'rejected' ? 'KYC Verification Failed' : 'Link Bank Account'}
+                      <h3 className={`font-semibold text-base ${user?.kycStatus === 'rejected' ? 'text-red-600 light:text-red-600' : 'text-slate-900 light:text-slate-900'}`}>
+                        {user?.kycStatus === 'rejected' ? 'KYC Verification Failed' : 'Complete KYC Verification'}
                       </h3>
-                      <p className="text-gray-400 light:text-slate-600 text-sm mt-0.5">
+                      <p className="text-slate-500 light:text-slate-500 text-sm mt-1">
                         {user?.kycStatus === 'rejected' 
                           ? (user?.kycRejectionReason || 'Your documents could not be verified. Please update and resubmit.')
-                          : 'Complete KYC verification to receive payouts from orders.'}
+                          : 'Link your bank account to receive payouts from completed orders.'}
                       </p>
                     </div>
                     <button
                       onClick={() => navigate('/kyc-details')}
                       className={`flex items-center gap-2 px-5 py-2.5 text-white text-sm font-semibold rounded-xl transition-all ${
                         user?.kycStatus === 'rejected'
-                          ? 'bg-gradient-to-r from-red-500 to-rose-500 hover:shadow-lg hover:shadow-red-500/20'
-                          : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:shadow-lg hover:shadow-amber-500/20'
+                          ? 'bg-red-500 hover:bg-red-600'
+                          : 'bg-amber-500 hover:bg-amber-600'
                       }`}
                     >
                       {user?.kycStatus === 'rejected' ? 'Resubmit KYC' : 'Complete KYC'} <FaArrowRight className="text-xs" />
                     </button>
                   </div>
                 </motion.div>
-              ) : (user?.kycStatus === 'submitted' || user?.kycStatus === 'pending') && (
+              )}
+
+              {/* KYC Under Review */}
+              {(user?.kycStatus === 'submitted' || user?.kycStatus === 'pending') && (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-gradient-to-r from-blue-500/5 to-cyan-500/5 light:from-blue-50 light:to-cyan-50 border-2 border-blue-500/20 light:border-blue-300 rounded-2xl p-5 md:p-6 mb-6 light:shadow-lg light:ring-2 light:ring-blue-100"
+                  className="bg-white light:bg-white border border-blue-200 light:border-blue-200 rounded-2xl p-5 md:p-6 mb-6 shadow-sm"
                 >
-                  {/* Header */}
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="p-3 rounded-xl bg-blue-500/10">
-                      <FaClock className="text-blue-400 text-xl" />
+                    <div className="p-3 rounded-xl bg-blue-50 light:bg-blue-50">
+                      <FaClock className="text-blue-500 text-xl" />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <h3 className="text-blue-400 font-semibold text-base">
-                          KYC Under Review
-                        </h3>
-                        <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 text-xs font-bold rounded-full">
+                        <h3 className="text-blue-600 light:text-blue-600 font-semibold">KYC Under Review</h3>
+                        <span className="px-2 py-0.5 bg-blue-100 light:bg-blue-100 text-blue-600 light:text-blue-600 text-xs font-bold rounded-full">
                           IN PROGRESS
                         </span>
                       </div>
-                      <p className="text-gray-400 light:text-slate-600 text-sm mt-0.5">
+                      <p className="text-slate-500 light:text-slate-500 text-sm mt-1">
                         Your documents are being verified. This usually takes 24-48 hours.
                       </p>
                     </div>
                   </div>
 
-                  {/* Progress Stages */}
-                  <div className="flex items-center justify-between gap-2 bg-black/20 light:bg-slate-100 rounded-xl p-4">
-                    {/* Stage 1: Submitted */}
-                    <div className="flex flex-col items-center gap-1.5">
+                  {/* Progress Steps */}
+                  <div className="flex items-center justify-between gap-2 bg-slate-50 light:bg-slate-50 rounded-xl p-4">
+                    <div className="flex flex-col items-center gap-1">
                       <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center">
                         <FaCheckCircle className="text-white text-xs" />
                       </div>
-                      <span className="text-[10px] text-emerald-400 font-medium">Submitted</span>
+                      <span className="text-[10px] text-emerald-600 light:text-emerald-600 font-medium">Submitted</span>
                     </div>
-                    
-                    {/* Progress Line */}
                     <div className="flex-1 h-1 bg-blue-500 rounded-full mx-1 relative overflow-hidden">
                       <motion.div 
-                        className="absolute inset-0 bg-gradient-to-r from-blue-400 to-cyan-400"
+                        className="absolute inset-0 bg-gradient-to-r from-blue-400 to-emerald-400"
                         animate={{ x: ['-100%', '100%'] }}
                         transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
                       />
                     </div>
-                    
-                    {/* Stage 2: Reviewing */}
-                    <div className="flex flex-col items-center gap-1.5">
-                      <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center relative">
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
                         <FaSpinner className="text-white text-xs animate-spin" />
                       </div>
-                      <span className="text-[10px] text-blue-400 font-medium">Reviewing</span>
+                      <span className="text-[10px] text-blue-600 light:text-blue-600 font-medium">Reviewing</span>
                     </div>
-                    
-                    {/* Progress Line */}
-                    <div className="flex-1 h-1 bg-zinc-700 rounded-full mx-1" />
-                    
-                    {/* Stage 3: Verified */}
-                    <div className="flex flex-col items-center gap-1.5">
-                      <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center">
-                        <FaCheckCircle className="text-zinc-500 text-xs" />
+                    <div className="flex-1 h-1 bg-slate-200 light:bg-slate-200 rounded-full mx-1" />
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="w-8 h-8 rounded-full bg-slate-200 light:bg-slate-200 flex items-center justify-center">
+                        <FaCheckCircle className="text-slate-400 light:text-slate-400 text-xs" />
                       </div>
-                      <span className="text-[10px] text-zinc-500 font-medium">Verified</span>
+                      <span className="text-[10px] text-slate-400 light:text-slate-400 font-medium">Verified</span>
                     </div>
                   </div>
                 </motion.div>
               )}
 
-              {/* ✅ KYC Verified Banner - Show when KYC done but profile < 80% */}
-              {user?.kycStatus === "verified" && (user?.profileCompletionPercent < 80 && completionPercent < 80) && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="relative overflow-hidden bg-gradient-to-r from-emerald-500/10 to-green-500/5 border border-emerald-500/20 rounded-2xl p-5 md:p-6 mb-6"
-                >
-                  <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-                    <div className="p-3 rounded-xl bg-emerald-500/15">
-                      <FaCheckCircle className="text-emerald-400 text-2xl" />
-                    </div>
-                    
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <h3 className="text-emerald-400 font-semibold text-base">
-                          KYC Verified Successfully!
-                        </h3>
-                        <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-xs font-bold rounded-full">
-                          ✓ VERIFIED
-                        </span>
-                      </div>
-                      <p className="text-gray-400 text-sm">
-                        Great! Your identity has been verified. Complete your profile to <span className="text-emerald-400 font-medium">{80 - Math.max(user?.profileCompletionPercent || 0, completionPercent)}%</span> more to appear in the <span className="text-white font-medium">Explore Editors</span> page.
-                      </p>
-                    </div>
-                    
-                    <div className="hidden md:flex flex-col items-center gap-1 px-4 py-3 bg-black/20 rounded-xl border border-emerald-500/10">
-                      <span className="text-2xl font-bold text-emerald-400">{Math.max(user?.profileCompletionPercent || 0, completionPercent)}%</span>
-                      <span className="text-[10px] text-gray-400 uppercase tracking-wide">Profile</span>
-                    </div>
-                  </div>
-                  
-                  {/* Progress bar */}
-                  <div className="mt-4 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                    <motion.div 
-                      className="h-full bg-gradient-to-r from-emerald-500 to-green-400 rounded-full"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.max(user?.profileCompletionPercent || 0, completionPercent)}%` }}
-                      transition={{ duration: 1, ease: "easeOut" }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Complete 80% profile + KYC = Visible to clients in Explore page
-                  </p>
-                </motion.div>
-              )}
-
-              {/* 🎉 Profile Listed in Explore - Show when: verified + KYC done + 80%+ profile */}
+              {/* Profile Listed Successfully */}
               {user?.isVerified && user?.kycStatus === "verified" && (user?.profileCompletionPercent >= 80 || completionPercent >= 80) && (
                 <motion.div 
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.5, ease: "easeOut" }}
-                  className="relative overflow-hidden bg-gradient-to-r from-purple-500/10 via-blue-500/10 to-emerald-500/10 border border-purple-500/20 rounded-2xl p-5 md:p-6 mb-6"
+                  className="relative overflow-hidden bg-gradient-to-r from-emerald-50 light:from-emerald-50 via-blue-50 light:via-blue-50 to-purple-50 light:to-purple-50 border border-emerald-200 light:border-emerald-200 rounded-2xl p-5 md:p-6 mb-6"
                 >
-                  {/* Sparkle animations */}
-                  <motion.div 
-                    className="absolute top-3 right-10 text-yellow-400 text-lg"
-                    animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.2, 1] }}
-                    transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                  >
-                    ✨
-                  </motion.div>
-                  <motion.div 
-                    className="absolute bottom-4 right-24 text-purple-400 text-sm"
-                    animate={{ y: [-2, 2, -2], opacity: [0.5, 1, 0.5] }}
-                    transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-                  >
-                    🌟
-                  </motion.div>
-                  
                   <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-                    <div className="relative">
-                      <motion.div 
-                        className="p-4 rounded-2xl bg-gradient-to-br from-purple-500/20 to-blue-500/20"
-                        animate={{ boxShadow: ["0 0 20px rgba(139, 92, 246, 0.3)", "0 0 30px rgba(139, 92, 246, 0.5)", "0 0 20px rgba(139, 92, 246, 0.3)"] }}
-                        transition={{ repeat: Infinity, duration: 2 }}
-                      >
-                        <span className="text-3xl">🎉</span>
-                      </motion.div>
-                    </div>
+                    <motion.div 
+                      className="p-4 rounded-2xl bg-gradient-to-br from-emerald-100 light:from-emerald-100 to-blue-100 light:to-blue-100"
+                      animate={{ scale: [1, 1.05, 1] }}
+                      transition={{ repeat: Infinity, duration: 2 }}
+                    >
+                      <span className="text-3xl">🎉</span>
+                    </motion.div>
                     
                     <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <h3 className="text-lg font-bold bg-gradient-to-r from-purple-400 via-blue-400 to-emerald-400 bg-clip-text text-transparent">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-lg font-bold text-emerald-600 light:text-emerald-600">
                           Congratulations! You're Live!
                         </h3>
-                        <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 text-xs font-bold rounded-full flex items-center gap-1">
+                        <span className="px-2.5 py-1 bg-emerald-100 light:bg-emerald-100 text-emerald-600 light:text-emerald-600 text-xs font-bold rounded-full flex items-center gap-1">
                           <FaCheckCircle className="text-[10px]" /> LISTED
                         </span>
                       </div>
-                      <p className="text-gray-400 text-sm">
-                        Your profile is now visible in the <span className="text-purple-400 font-medium">Explore Editors</span> page. Clients can discover and hire you!
+                      <p className="text-slate-600 light:text-slate-600 text-sm">
+                        Your profile is now visible in the <span className="text-emerald-600 light:text-emerald-600 font-medium">Explore Editors</span> page. Clients can discover and hire you!
                       </p>
                     </div>
                     
-                    <div className="flex gap-3">
-                      <motion.div 
-                        className="hidden md:flex flex-col items-center gap-1 px-4 py-3 bg-black/20 rounded-xl border border-white/5"
-                        whileHover={{ scale: 1.05 }}
-                      >
-                        <FaMoneyBillWave className="text-emerald-400 text-xl" />
-                        <span className="text-[10px] text-gray-400 uppercase tracking-wide">Earnings</span>
-                        <span className="text-emerald-400 text-xs font-bold">Enabled</span>
-                      </motion.div>
-                      <motion.div 
-                        className="hidden md:flex flex-col items-center gap-1 px-4 py-3 bg-black/20 rounded-xl border border-white/5"
-                        whileHover={{ scale: 1.05 }}
-                      >
-                        <FaUsers className="text-blue-400 text-xl" />
-                        <span className="text-[10px] text-gray-400 uppercase tracking-wide">Status</span>
-                        <span className="text-blue-400 text-xs font-bold">Explored</span>
-                      </motion.div>
+                    <div className="hidden md:flex gap-3">
+                      <div className="flex flex-col items-center gap-1 px-4 py-3 bg-white light:bg-white rounded-xl border border-slate-200 light:border-slate-200">
+                        <FaMoneyBillWave className="text-emerald-500 text-xl" />
+                        <span className="text-[10px] text-slate-500 light:text-slate-500">Earnings</span>
+                        <span className="text-emerald-600 light:text-emerald-600 text-xs font-bold">Enabled</span>
+                      </div>
+                      <div className="flex flex-col items-center gap-1 px-4 py-3 bg-white light:bg-white rounded-xl border border-slate-200 light:border-slate-200">
+                        <FaUsers className="text-blue-500 text-xl" />
+                        <span className="text-[10px] text-slate-500 light:text-slate-500">Status</span>
+                        <span className="text-blue-600 light:text-blue-600 text-xs font-bold">Discoverable</span>
+                      </div>
                     </div>
                   </div>
                   
-                  {/* Bottom gradient accent */}
-                  <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-purple-500 via-blue-500 to-emerald-500" />
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500" />
                 </motion.div>
               )}
 
               {/* Explore Tabs */}
               <div className="flex items-center justify-center mb-6">
-                <div className="inline-flex p-1.5 bg-[#0a0a0c] light:bg-white border border-[#1a1a1f] light:border-slate-300 rounded-2xl light:shadow-md">
+                <div className="inline-flex p-1 bg-white light:bg-white border border-slate-200 light:border-slate-200 rounded-2xl shadow-sm">
                   {exploreTabs.map((tab) => {
                     const isActive = exploreTab === tab.id;
                     return (
                       <button
                         key={tab.id}
                         onClick={() => tab.id === "reels" ? navigate("/reels") : setExploreTab(tab.id)}
-                        className={`
-                          relative px-5 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center gap-2
-                          ${isActive
-                            ? "text-white bg-gradient-to-r from-blue-900/40 to-blue-600"
-                            : "text-[#6b7280] light:text-slate-600 hover:text-white light:hover:text-slate-900 hover:bg-[#18181b] light:hover:bg-slate-100"
-                          }
-                        `}
+                        className={`relative px-5 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${
+                          isActive
+                            ? "text-white bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg"
+                            : "text-slate-600 light:text-slate-600 hover:text-slate-900 light:hover:text-slate-900 hover:bg-slate-50 light:hover:bg-slate-50"
+                        }`}
                       >
                         <tab.icon size={14} />
                         {tab.label}
@@ -687,14 +514,17 @@ const EditorHome = () => {
               </div>
 
               {/* Explore Content */}
-              <div className="bg-[#0a0a0c] light:bg-white border-2 border-[#1a1a1f] light:border-slate-300 rounded-2xl p-4 md:p-6 light:shadow-lg light:ring-1 light:ring-slate-200">
+              <div className="bg-white light:bg-white border border-slate-200 light:border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm">
                 <div className="text-center mb-6">
-                  <h2 className="text-xl font-semibold text-white light:text-slate-900 mb-1">
-                    {exploreTab === "editors" ? "Explore Other Editors" : "Browse Services"}
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 light:bg-emerald-50 text-emerald-600 light:text-emerald-600 text-xs font-semibold rounded-full mb-3">
+                    <HiOutlineSparkles /> {exploreTab === "editors" ? "Discover Talent" : "Browse Services"}
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-900 light:text-slate-900 mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    {exploreTab === "editors" ? "Explore Other Editors" : "Browse Available Gigs"}
                   </h2>
-                  <p className="text-gray-500 light:text-slate-500 text-sm">
+                  <p className="text-slate-500 light:text-slate-500 text-sm">
                     {exploreTab === "editors" 
-                      ? "See what other editors are offering"
+                      ? "See what other editors are offering and get inspired"
                       : "Find services that complement your skills"
                     }
                   </p>
@@ -730,10 +560,10 @@ const EditorHome = () => {
           {mainTab === "dashboard" && (
             <motion.div
               key="dashboard"
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
             >
               <EditorDashboard user={user} stats={stats} />
             </motion.div>
@@ -746,7 +576,7 @@ const EditorHome = () => {
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           whileHover={{ scale: 1.1 }}
-          className="fixed bottom-6 right-6 z-[200] w-14 h-14 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/30"
+          className="fixed bottom-6 right-6 z-[200] w-14 h-14 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/30 border-2 border-white light:border-white"
         >
           <img src={reelIcon} alt="reels" className="w-6 h-6 object-contain" />
         </motion.button>
@@ -755,9 +585,7 @@ const EditorHome = () => {
       {/* KYC Form Modal */}
       {showKYC && (
         <EditorKYCForm
-          onSuccess={() => {
-            setShowKYC(false);
-          }}
+          onSuccess={() => setShowKYC(false)}
           onClose={() => setShowKYC(false)}
         />
       )}

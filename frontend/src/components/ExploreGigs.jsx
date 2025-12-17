@@ -13,6 +13,7 @@ import {
   FaShoppingCart,
   FaPlay,
   FaLock,
+  FaArrowRight,
 } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
@@ -21,8 +22,8 @@ import { toast } from "react-toastify";
 import RazorpayCheckout from "./RazorpayCheckout";
 
 /**
- * ExploreGigs — Browse gigs created by editors
- * Dark theme matching ExploreEditors style
+ * ExploreGigs - Professional Light Corporate Design
+ * Clean cards, enhanced search, polished modals
  */
 
 const CATEGORIES = [
@@ -61,26 +62,15 @@ const ExploreGigs = () => {
     pages: 1,
   });
 
-  // Order modal state
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedGig, setSelectedGig] = useState(null);
-  const [orderForm, setOrderForm] = useState({
-    description: "",
-    deadline: "",
-  });
+  const [orderForm, setOrderForm] = useState({ description: "", deadline: "" });
   const [ordering, setOrdering] = useState(false);
-  
-  // Payment state
   const [showPayment, setShowPayment] = useState(false);
   const [createdOrder, setCreatedOrder] = useState(null);
 
-  // Loading text animation
   useEffect(() => {
-    const texts = [
-      "Discovering amazing gigs...",
-      "Finding talented editors...",
-      "Loading creative services...",
-    ];
+    const texts = ["Discovering amazing gigs...", "Finding talented editors...", "Loading creative services..."];
     let i = 0;
     const interval = setInterval(() => {
       i = (i + 1) % texts.length;
@@ -120,16 +110,11 @@ const ExploreGigs = () => {
 
   useEffect(() => {
     fetchGigs(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backendURL, user]);
 
-  // Debounced search
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchGigs(1);
-    }, 500);
+    const timer = setTimeout(() => fetchGigs(1), 500);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, selectedCategory, sortBy, priceRange]);
 
   const handleCreateOrder = async () => {
@@ -144,15 +129,10 @@ const ExploreGigs = () => {
 
       const res = await axios.post(
         `${backendURL}/api/orders/gig`,
-        {
-          gigId: selectedGig._id,
-          description: orderForm.description,
-          deadline: orderForm.deadline,
-        },
+        { gigId: selectedGig._id, description: orderForm.description, deadline: orderForm.deadline },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // Order created, now show payment
       setCreatedOrder(res.data.order);
       setShowOrderModal(false);
       setShowPayment(true);
@@ -164,28 +144,24 @@ const ExploreGigs = () => {
     }
   };
 
-  // Payment success handler
   const handlePaymentSuccess = (data) => {
     setShowPayment(false);
     const orderData = {
       orderNumber: data?.order?.orderNumber || createdOrder?.orderNumber,
       amount: data?.order?.amount || createdOrder?.amount || selectedGig?.price,
       title: data?.order?.title || createdOrder?.title || selectedGig?.title,
-      transactionId: data?.order?.razorpayPaymentId || '',
+      transactionId: data?.order?.razorpayPaymentId || "",
     };
     setCreatedOrder(null);
     setSelectedGig(null);
     setOrderForm({ description: "", deadline: "" });
-    // Navigate to success page with order data
     navigate("/payment-success", { state: orderData });
   };
 
-  // Payment failure handler
   const handlePaymentFailure = (error) => {
     toast.error(error?.description || "Payment failed. Please try again.");
   };
 
-  // Close payment modal
   const handlePaymentClose = () => {
     setShowPayment(false);
     toast.info("Payment cancelled. Your order is saved - pay anytime from My Orders.");
@@ -196,21 +172,15 @@ const ExploreGigs = () => {
     setShowOrderModal(true);
   };
 
-  // ============ RENDER ============
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center">
+      <div className="min-h-[50vh] flex flex-col items-center justify-center">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full"
+          className="w-10 h-10 border-3 border-emerald-500 border-t-transparent rounded-full"
         />
-        <motion.p
-          key={loadingText}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-4 text-gray-400 text-sm"
-        >
+        <motion.p key={loadingText} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 text-slate-500 light:text-slate-500 text-sm">
           {loadingText}
         </motion.p>
       </div>
@@ -218,37 +188,36 @@ const ExploreGigs = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0B0D] text-white">
-      {/* ============ HEADER ============ */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-white mb-2">Explore Gigs</h2>
-        <p className="text-gray-400 text-sm">Find the perfect video editing service</p>
-      </div>
-
-      {/* ============ SEARCH & FILTERS ============ */}
+    <div className="min-h-[50vh]" style={{ fontFamily: "'Inter', sans-serif" }}>
+      {/* Search & Category Bar */}
       <div className="flex flex-col lg:flex-row gap-4 mb-6">
         {/* Search */}
-        <div className="relative flex-1">
-          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+        <div className="relative flex-1 max-w-xl">
+          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 light:text-slate-400" />
           <input
             type="text"
             placeholder="Search gigs..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#111319] border border-[#262A3B] rounded-xl py-3 pl-12 pr-4 text-sm placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all"
+            className="w-full bg-slate-50 light:bg-slate-50 border border-slate-200 light:border-slate-200 rounded-xl py-3 pl-12 pr-4 text-sm text-slate-900 light:text-slate-900 placeholder:text-slate-400 light:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all"
           />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 light:text-slate-400 hover:text-slate-600 light:hover:text-slate-600">
+              <FaTimes />
+            </button>
+          )}
         </div>
 
         {/* Category Tabs */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
           {CATEGORIES.slice(0, 6).map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
               className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
                 selectedCategory === cat
-                  ? "bg-blue-600 text-white"
-                  : "bg-[#111319] text-gray-400 hover:bg-[#1a1d25]"
+                  ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25"
+                  : "bg-white light:bg-white border border-slate-200 light:border-slate-200 text-slate-600 light:text-slate-600 hover:bg-slate-50 light:hover:bg-slate-50"
               }`}
             >
               {cat}
@@ -257,20 +226,21 @@ const ExploreGigs = () => {
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
-              showFilters ? "bg-blue-600 text-white" : "bg-[#111319] text-gray-400 hover:bg-[#1a1d25]"
+              showFilters
+                ? "bg-emerald-50 light:bg-emerald-50 text-emerald-700 light:text-emerald-700 border border-emerald-200 light:border-emerald-200"
+                : "bg-white light:bg-white border border-slate-200 light:border-slate-200 text-slate-600 light:text-slate-600 hover:bg-slate-50 light:hover:bg-slate-50"
             }`}
           >
-            <FaFilter /> More
+            <FaFilter className="text-xs" /> More
           </button>
         </div>
 
         {/* Sort */}
         <div className="flex items-center gap-2">
-          <FaSortAmountDown className="text-gray-500" />
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="bg-[#111319] border border-[#262A3B] rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500/30"
+            className="bg-white light:bg-white border border-slate-200 light:border-slate-200 rounded-xl py-2.5 px-4 text-sm text-slate-700 light:text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
           >
             <option value="newest">Newest</option>
             <option value="price_low">Price: Low to High</option>
@@ -280,16 +250,16 @@ const ExploreGigs = () => {
         </div>
       </div>
 
-      {/* ============ EXPANDED FILTERS ============ */}
+      {/* Expanded Filters */}
       <AnimatePresence>
         {showFilters && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="bg-[#111319] border border-[#262A3B] rounded-2xl p-4 mb-6"
+            className="bg-slate-50 light:bg-slate-50 border border-slate-200 light:border-slate-200 rounded-2xl p-5 mb-6 overflow-hidden"
           >
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-4 items-center">
               {/* All Categories */}
               <div className="flex flex-wrap gap-2">
                 {CATEGORIES.map((cat) => (
@@ -298,8 +268,8 @@ const ExploreGigs = () => {
                     onClick={() => setSelectedCategory(cat)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                       selectedCategory === cat
-                        ? "bg-blue-600 text-white"
-                        : "bg-[#1a1d25] text-gray-400 hover:bg-[#252830]"
+                        ? "bg-emerald-500 text-white"
+                        : "bg-white light:bg-white border border-slate-200 light:border-slate-200 text-slate-600 light:text-slate-600 hover:border-emerald-300 light:hover:border-emerald-300"
                     }`}
                   >
                     {cat}
@@ -309,32 +279,32 @@ const ExploreGigs = () => {
 
               {/* Price Range */}
               <div className="flex items-center gap-2">
-                <span className="text-gray-400 text-sm">Price:</span>
+                <span className="text-slate-500 light:text-slate-500 text-sm">Price:</span>
                 <input
                   type="number"
                   placeholder="Min"
                   value={priceRange.min}
                   onChange={(e) => setPriceRange({ ...priceRange, min: e.target.value })}
-                  className="w-20 bg-[#1a1d25] border border-[#262A3B] rounded-lg px-2 py-1 text-sm"
+                  className="w-20 bg-white light:bg-white border border-slate-200 light:border-slate-200 rounded-lg px-3 py-1.5 text-sm"
                 />
-                <span className="text-gray-500">-</span>
+                <span className="text-slate-400 light:text-slate-400">-</span>
                 <input
                   type="number"
                   placeholder="Max"
                   value={priceRange.max}
                   onChange={(e) => setPriceRange({ ...priceRange, max: e.target.value })}
-                  className="w-20 bg-[#1a1d25] border border-[#262A3B] rounded-lg px-2 py-1 text-sm"
+                  className="w-20 bg-white light:bg-white border border-slate-200 light:border-slate-200 rounded-lg px-3 py-1.5 text-sm"
                 />
               </div>
 
-              {/* Clear Filters */}
+              {/* Clear */}
               <button
                 onClick={() => {
                   setSelectedCategory("All");
                   setPriceRange({ min: "", max: "" });
                   setSortBy("newest");
                 }}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/20 text-red-400 hover:bg-red-500/30 flex items-center gap-1"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-50 light:bg-red-50 text-red-600 light:text-red-600 hover:bg-red-100 light:hover:bg-red-100 flex items-center gap-1"
               >
                 <FaTimes /> Clear
               </button>
@@ -343,38 +313,45 @@ const ExploreGigs = () => {
         )}
       </AnimatePresence>
 
-      {/* ============ GIGS GRID ============ */}
+      {/* Results Info */}
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-slate-500 light:text-slate-500">
+          <span className="font-semibold text-slate-900 light:text-slate-900">{pagination.total}</span> gigs found
+        </p>
+        {pagination.pages > 1 && (
+          <p className="text-sm text-slate-400 light:text-slate-400">
+            Page {pagination.page} of {pagination.pages}
+          </p>
+        )}
+      </div>
+
+      {/* Gigs Grid */}
       {gigs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+        <div className="flex flex-col items-center justify-center py-20 text-slate-400 light:text-slate-400">
           <FaShoppingCart className="text-5xl mb-4 opacity-50" />
-          <p className="text-lg">No gigs found</p>
+          <p className="text-lg font-medium text-slate-600 light:text-slate-600">No gigs found</p>
           <p className="text-sm">Try adjusting your filters</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {gigs.map((gig, index) => (
             <motion.div
               key={gig._id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className="bg-[#111319] border border-[#262A3B] rounded-2xl overflow-hidden hover:border-blue-500/30 transition-all group"
+              transition={{ delay: index * 0.03 }}
+              className="bg-white light:bg-white border border-slate-200 light:border-slate-200 rounded-2xl overflow-hidden hover:border-emerald-300 light:hover:border-emerald-300 hover:shadow-xl transition-all group"
             >
               {/* Thumbnail */}
-              <div className="relative h-40 bg-[#1a1d25] overflow-hidden">
+              <div className="relative h-44 bg-slate-100 light:bg-slate-100 overflow-hidden">
                 {gig.thumbnail ? (
-                  <img
-                    src={gig.thumbnail}
-                    alt={gig.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
+                  <img src={gig.thumbnail} alt={gig.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <FaPlay className="text-3xl text-gray-600" />
+                    <FaPlay className="text-3xl text-slate-300 light:text-slate-300" />
                   </div>
                 )}
-                {/* Category Badge */}
-                <span className="absolute top-3 left-3 px-2 py-1 bg-black/70 rounded-lg text-xs font-medium">
+                <span className="absolute top-3 left-3 px-2.5 py-1 bg-white/90 light:bg-white/90 backdrop-blur-sm rounded-lg text-xs font-medium text-slate-700 light:text-slate-700 shadow-sm">
                   {gig.category}
                 </span>
               </div>
@@ -386,39 +363,39 @@ const ExploreGigs = () => {
                   <img
                     src={gig.editor?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
                     alt={gig.editor?.name}
-                    className="w-8 h-8 rounded-full object-cover"
+                    className="w-7 h-7 rounded-full object-cover border border-slate-200 light:border-slate-200"
                   />
-                  <span className="text-sm text-gray-300">{gig.editor?.name}</span>
+                  <span className="text-sm text-slate-600 light:text-slate-600">{gig.editor?.name}</span>
                 </div>
 
                 {/* Title */}
-                <h3 className="font-semibold text-white mb-2 line-clamp-2 group-hover:text-blue-400 transition-colors">
+                <h3 className="font-semibold text-slate-900 light:text-slate-900 mb-2 line-clamp-2 group-hover:text-emerald-600 light:group-hover:text-emerald-600 transition-colors" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                   {gig.title}
                 </h3>
 
                 {/* Stats */}
-                <div className="flex items-center gap-3 text-xs text-gray-400 mb-3">
+                <div className="flex items-center gap-3 text-xs text-slate-500 light:text-slate-500 mb-4">
                   <span className="flex items-center gap-1">
-                    <FaClock /> {gig.deliveryDays} days
+                    <FaClock className="text-slate-400 light:text-slate-400" /> {gig.deliveryDays} days
                   </span>
                   {gig.rating > 0 && (
-                    <span className="flex items-center gap-1 text-yellow-500">
+                    <span className="flex items-center gap-1 text-amber-500">
                       <FaStar /> {gig.rating.toFixed(1)}
                     </span>
                   )}
                 </div>
 
                 {/* Price & Action */}
-                <div className="flex items-center justify-between pt-3 border-t border-[#262A3B]">
-                  <div className="flex items-center gap-1 text-green-400 font-bold">
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100 light:border-slate-100">
+                  <div className="flex items-center gap-1 text-emerald-600 light:text-emerald-600 font-bold">
                     <FaRupeeSign className="text-sm" />
-                    <span className="text-lg">{gig.price}</span>
+                    <span className="text-xl">{gig.price}</span>
                   </div>
                   <button
                     onClick={() => openOrderModal(gig)}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-medium transition-all hover:scale-105"
+                    className="px-4 py-2 bg-slate-900 light:bg-slate-900 text-white rounded-xl text-sm font-semibold hover:bg-emerald-500 transition-all flex items-center gap-1.5"
                   >
-                    Order Now
+                    Order <FaArrowRight className="text-xs" />
                   </button>
                 </div>
               </div>
@@ -427,115 +404,107 @@ const ExploreGigs = () => {
         </div>
       )}
 
-      {/* ============ PAGINATION ============ */}
+      {/* Pagination */}
       {pagination.pages > 1 && (
-        <div className="flex justify-center items-center gap-4 mt-8">
+        <div className="flex justify-center items-center gap-2 mt-10">
           <button
             onClick={() => fetchGigs(pagination.page - 1)}
             disabled={pagination.page === 1}
-            className="p-2 rounded-lg bg-[#111319] border border-[#262A3B] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1a1d25] transition-all"
+            className="w-10 h-10 rounded-xl bg-white light:bg-white border border-slate-200 light:border-slate-200 flex items-center justify-center text-slate-500 light:text-slate-500 hover:bg-slate-50 light:hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
-            <FaChevronLeft />
+            <FaChevronLeft className="text-sm" />
           </button>
-          <span className="text-gray-400 text-sm">
-            Page {pagination.page} of {pagination.pages}
+          <span className="text-slate-500 light:text-slate-500 text-sm px-3">
+            {pagination.page} / {pagination.pages}
           </span>
           <button
             onClick={() => fetchGigs(pagination.page + 1)}
             disabled={pagination.page === pagination.pages}
-            className="p-2 rounded-lg bg-[#111319] border border-[#262A3B] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1a1d25] transition-all"
+            className="w-10 h-10 rounded-xl bg-white light:bg-white border border-slate-200 light:border-slate-200 flex items-center justify-center text-slate-500 light:text-slate-500 hover:bg-slate-50 light:hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
-            <FaChevronRight />
+            <FaChevronRight className="text-sm" />
           </button>
         </div>
       )}
 
-      {/* ============ ORDER MODAL ============ */}
+      {/* Order Modal */}
       <AnimatePresence>
         {showOrderModal && selectedGig && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
             onClick={() => setShowOrderModal(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-[#111319] border border-[#262A3B] rounded-2xl p-6 w-full max-w-lg"
+              className="bg-white light:bg-white border border-slate-200 light:border-slate-200 rounded-2xl p-6 w-full max-w-lg shadow-2xl"
             >
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-white">Create Order</h3>
-                <button
-                  onClick={() => setShowOrderModal(false)}
-                  className="p-2 rounded-lg hover:bg-[#1a1d25] transition-all"
-                >
+                <h3 className="text-xl font-bold text-slate-900 light:text-slate-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Create Order</h3>
+                <button onClick={() => setShowOrderModal(false)} className="p-2 rounded-lg hover:bg-slate-100 light:hover:bg-slate-100 text-slate-500 light:text-slate-500 transition-all">
                   <FaTimes />
                 </button>
               </div>
 
               {/* Gig Summary */}
-              <div className="bg-[#0B0B0D] border border-[#262A3B] rounded-xl p-4 mb-6">
+              <div className="bg-slate-50 light:bg-slate-50 border border-slate-200 light:border-slate-200 rounded-xl p-4 mb-6">
                 <div className="flex gap-4">
-                  <div className="w-20 h-14 bg-[#1a1d25] rounded-lg overflow-hidden flex-shrink-0">
+                  <div className="w-20 h-14 bg-slate-100 light:bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
                     {selectedGig.thumbnail ? (
                       <img src={selectedGig.thumbnail} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <FaPlay className="text-gray-600" />
+                        <FaPlay className="text-slate-400 light:text-slate-400" />
                       </div>
                     )}
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-semibold text-white text-sm">{selectedGig.title}</h4>
-                    <p className="text-gray-400 text-xs mt-1">by {selectedGig.editor?.name}</p>
+                    <h4 className="font-semibold text-slate-900 light:text-slate-900 text-sm">{selectedGig.title}</h4>
+                    <p className="text-slate-500 light:text-slate-500 text-xs mt-1">by {selectedGig.editor?.name}</p>
                   </div>
                 </div>
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#262A3B]">
-                  <span className="text-gray-400 text-sm">Price</span>
-                  <span className="text-green-400 font-bold text-lg">₹{selectedGig.price}</span>
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200 light:border-slate-200">
+                  <span className="text-slate-500 light:text-slate-500 text-sm">Price</span>
+                  <span className="text-emerald-600 light:text-emerald-600 font-bold text-lg">₹{selectedGig.price}</span>
                 </div>
               </div>
 
               {/* Form */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Project Details (Optional)
-                  </label>
+                  <label className="block text-sm font-medium text-slate-700 light:text-slate-700 mb-2">Project Details (Optional)</label>
                   <textarea
                     value={orderForm.description}
                     onChange={(e) => setOrderForm({ ...orderForm, description: e.target.value })}
                     placeholder="Describe your requirements..."
                     rows={3}
-                    className="w-full bg-[#0B0B0D] border border-[#262A3B] rounded-xl px-4 py-3 text-sm placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500/30 resize-none"
+                    className="w-full bg-slate-50 light:bg-slate-50 border border-slate-200 light:border-slate-200 rounded-xl px-4 py-3 text-sm placeholder:text-slate-400 light:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 resize-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Deadline *
-                  </label>
+                  <label className="block text-sm font-medium text-slate-700 light:text-slate-700 mb-2">Deadline *</label>
                   <input
                     type="date"
                     value={orderForm.deadline}
                     onChange={(e) => setOrderForm({ ...orderForm, deadline: e.target.value })}
                     min={new Date().toISOString().split("T")[0]}
-                    className="w-full bg-[#0B0B0D] border border-[#262A3B] rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/30"
+                    className="w-full bg-slate-50 light:bg-slate-50 border border-slate-200 light:border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>
               </div>
 
               {/* Payment Info */}
-              <div className="bg-[#0a1a10] border border-green-500/20 rounded-xl p-4 mt-6">
-                <p className="text-green-400 text-sm font-medium mb-2">💳 Payment Info</p>
-                <p className="text-gray-400 text-xs">
-                  Your payment will be held securely until the work is complete. 
-                  You'll only be charged after you approve the final delivery.
+              <div className="bg-emerald-50 light:bg-emerald-50 border border-emerald-200 light:border-emerald-200 rounded-xl p-4 mt-6">
+                <p className="text-emerald-700 light:text-emerald-700 text-sm font-medium mb-1">💳 Secure Payment</p>
+                <p className="text-slate-600 light:text-slate-600 text-xs">
+                  Your payment will be held securely until the work is complete.
                 </p>
               </div>
 
@@ -543,18 +512,16 @@ const ExploreGigs = () => {
               <div className="flex gap-3 mt-6">
                 <button
                   onClick={() => setShowOrderModal(false)}
-                  className="flex-1 py-3 rounded-xl border border-[#262A3B] text-gray-400 hover:bg-[#1a1d25] transition-all"
+                  className="flex-1 py-3 rounded-xl border border-slate-200 light:border-slate-200 text-slate-600 light:text-slate-600 hover:bg-slate-50 light:hover:bg-slate-50 font-medium transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCreateOrder}
                   disabled={ordering}
-                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {ordering ? (
-                    "Processing..."
-                  ) : (
+                  {ordering ? "Processing..." : (
                     <>
                       <FaLock className="text-sm" />
                       Pay ₹{selectedGig.price}
@@ -567,16 +534,13 @@ const ExploreGigs = () => {
         )}
       </AnimatePresence>
 
-      {/* ============ RAZORPAY PAYMENT MODAL ============ */}
+      {/* Razorpay Payment Modal */}
       {showPayment && createdOrder && (
         <RazorpayCheckout
           orderId={createdOrder._id}
           amount={createdOrder.amount || selectedGig?.price}
           currency="INR"
-          orderDetails={{
-            title: selectedGig?.title || createdOrder.title,
-            orderNumber: createdOrder.orderNumber,
-          }}
+          orderDetails={{ title: selectedGig?.title || createdOrder.title, orderNumber: createdOrder.orderNumber }}
           onSuccess={handlePaymentSuccess}
           onFailure={handlePaymentFailure}
           onClose={handlePaymentClose}
@@ -587,4 +551,3 @@ const ExploreGigs = () => {
 };
 
 export default ExploreGigs;
-

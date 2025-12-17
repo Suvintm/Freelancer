@@ -10,16 +10,15 @@ import {
   FaWallet,
   FaUniversity,
   FaChartLine,
+  FaHome,
 } from "react-icons/fa";
 import { HiOutlineSun, HiOutlineMoon } from "react-icons/hi2";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "../assets/logo.png";
-import { FaCircle } from "react-icons/fa";
 import { useTheme } from "../context/ThemeContext";
 
-
 const navItems = [
-  { path: "/editor-home", icon: FaBriefcase, label: "Dashboard" },
+  { path: "/editor-home", icon: FaHome, label: "Dashboard" },
   { path: "/my-gigs", icon: FaShoppingCart, label: "My Gigs" },
   { path: "/my-orders", icon: FaClipboardList, label: "My Orders" },
   { path: "/reels-analytics", icon: FaChartLine, label: "Reels Analytics" },
@@ -44,114 +43,99 @@ const Sidebar = ({ isOpen, onClose }) => {
       {/* Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden"
           onClick={onClose}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`bg-[#050509] light:bg-white text-white light:text-slate-900 shadow-[0_18px_50px_rgba(0,0,0,0.9)] light:shadow-xl
+        className={`bg-white light:bg-white text-slate-900 light:text-slate-900 shadow-xl
         flex flex-col fixed top-0 left-0 z-50 h-screen transition-all duration-300
         ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
-        w-64 border-r border-[#111827] light:border-slate-200`}
+        w-64 border-r border-slate-200 light:border-slate-200`}
+        style={{ fontFamily: "'Inter', sans-serif" }}
       >
         {/* Header */}
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-blue-600/20 light:border-slate-200 bg-[#050509] light:bg-white">
+        <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-100 light:border-slate-100 bg-white light:bg-white">
           <img
             onClick={() => handleNavigation("/")}
             src={logo}
-            className="w-10 h-10 cursor-pointer"
+            className="w-10 h-10 cursor-pointer hover:scale-105 transition-transform"
+            alt="SuviX"
           />
           <div>
             <h1
               onClick={() => handleNavigation("/")}
-              className="text-lg font-semibold cursor-pointer hover:text-[#BFDBFE] light:hover:text-blue-600 transition"
+              className="text-lg font-bold cursor-pointer text-slate-900 light:text-slate-900"
+              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
             >
-              SuviX
+              Suvi<span className="text-emerald-500">X</span>
             </h1>
-            <p className="text-[11px] text-[#6B7280] light:text-slate-500">Editor Workspace</p>
+            <p className="text-[11px] text-slate-500 light:text-slate-500">Editor Workspace</p>
           </div>
           <button
             onClick={onClose}
-            className="md:hidden ml-auto text-[#9CA3AF] light:text-slate-600 hover:text-white light:hover:text-slate-900 text-lg"
+            className="md:hidden ml-auto text-slate-400 light:text-slate-400 hover:text-slate-600 light:hover:text-slate-600 text-lg p-2 hover:bg-slate-100 light:hover:bg-slate-100 rounded-lg transition-all"
           >
             <FaTimes />
           </button>
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 px-4 py-4 flex flex-col gap-2 overflow-y-auto relative">
+        <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">
           {navItems.map(({ path, icon: Icon, label }) => {
-  const isActive = location.pathname === path;
+            const isActive = location.pathname === path;
 
-  return (
-    <button
-      key={path}
-      onClick={() => handleNavigation(path)}
-      className={`
-        relative flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium
-        transition-all overflow-hidden
-        ${isActive
-          ? "text-white light:text-blue-600"
-          : "text-[#9CA3AF] light:text-slate-600 hover:text-white light:hover:text-slate-900 hover:bg-[#0A0D14] light:hover:bg-slate-100"
-        }
-      `}
-    >
-      {/* Animated Bubble */}
-      {isActive && (
-        <motion.div
-          layoutId="sidebarBubble"
-          className="absolute inset-0 bg-[#1463FF]/20 light:bg-blue-100 rounded-2xl"
-          transition={{
-            type: "spring",
-            stiffness: 260,
-            damping: 22,
-          }}
-        />
-      )}
+            return (
+              <button
+                key={path}
+                onClick={() => handleNavigation(path)}
+                className={`
+                  relative flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
+                  transition-all overflow-hidden group
+                  ${isActive
+                    ? "bg-emerald-50 light:bg-emerald-50 text-emerald-600 light:text-emerald-600"
+                    : "text-slate-600 light:text-slate-600 hover:text-slate-900 light:hover:text-slate-900 hover:bg-slate-50 light:hover:bg-slate-50"
+                  }
+                `}
+              >
+                {/* Active Indicator */}
+                {isActive && (
+                  <motion.div
+                    layoutId="sidebarActiveIndicator"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-emerald-500 rounded-r-full"
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                  />
+                )}
 
-      {/* Icon + Text */}
-      <div className="relative z-10 flex items-center gap-3">
-        <Icon
-          className={`text-base ${
-            isActive ? "text-[#60A5FA] light:text-blue-600" : "text-[#6B7280] light:text-slate-500"
-          }`}
-        />
-        <span>{label}</span>
-      </div>
+                {/* Icon + Text */}
+                <Icon className={`text-base ${isActive ? "text-emerald-500" : "text-slate-400 light:text-slate-400 group-hover:text-slate-600 light:group-hover:text-slate-600"}`} />
+                <span>{label}</span>
 
-      {/* ACTIVE ICON INDICATOR */}
-      {isActive && (
-        <motion.div
-          layoutId="sidebarActiveIcon"
-          className="absolute right-4 flex items-center justify-center"
-          transition={{
-            type: "spring",
-            stiffness: 300,
-            damping: 20,
-            mass: 0.4,
-          }}
-        >
-          <FaCircle className="text-green-500 text-xs drop-shadow-[0_0_6px_rgba(34,197,94,0.9)]" />
-        </motion.div>
-      )}
-    </button>
-  );
-})}
-
+                {/* Active Dot */}
+                {isActive && (
+                  <motion.div
+                    layoutId="sidebarDot"
+                    className="absolute right-4 w-2 h-2 rounded-full bg-emerald-500"
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  />
+                )}
+              </button>
+            );
+          })}
         </nav>
 
         {/* Theme Toggle */}
-        <div className="px-4 py-3 border-t border-[#111827] light:border-slate-200">
+        <div className="px-3 py-3 border-t border-slate-100 light:border-slate-100">
           <button
             onClick={toggleTheme}
-            className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-[#0A0D14] light:bg-slate-100 hover:bg-[#111827] light:hover:bg-slate-200 transition-all group"
+            className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-50 light:bg-slate-50 hover:bg-slate-100 light:hover:bg-slate-100 transition-all group"
           >
-            <span className="text-sm font-medium text-[#9CA3AF] light:text-slate-600 group-hover:text-white light:group-hover:text-slate-900">
+            <span className="text-sm font-medium text-slate-600 light:text-slate-600 group-hover:text-slate-900 light:group-hover:text-slate-900">
               {theme === "dark" ? "Dark Mode" : "Light Mode"}
             </span>
-            <div className="relative w-10 h-10 flex items-center justify-center rounded-lg bg-[#1a1d25] light:bg-white overflow-hidden">
+            <div className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-white light:bg-white border border-slate-200 light:border-slate-200 overflow-hidden">
               <AnimatePresence mode="wait">
                 {theme === "dark" ? (
                   <motion.div
@@ -161,7 +145,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                     exit={{ y: 20, opacity: 0 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <HiOutlineMoon className="text-xl text-amber-400" />
+                    <HiOutlineMoon className="text-xl text-slate-600 light:text-slate-600" />
                   </motion.div>
                 ) : (
                   <motion.div
@@ -180,7 +164,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-4 text-[11px] text-[#6B7280] light:text-slate-500 text-center border-t border-[#111827] light:border-slate-200">
+        <div className="px-4 py-4 text-[11px] text-slate-400 light:text-slate-400 text-center border-t border-slate-100 light:border-slate-100">
           © 2024 SuviX • All rights reserved
         </div>
       </aside>
