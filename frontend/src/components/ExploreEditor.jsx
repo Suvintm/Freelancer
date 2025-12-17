@@ -18,16 +18,14 @@ import {
   FaHistory,
   FaArrowRight,
 } from "react-icons/fa";
-import { HiOutlineSparkles } from "react-icons/hi";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
 import EmptyState from "./EmptyState.jsx";
 import { motion, AnimatePresence } from "framer-motion";
 
 /**
- * ExploreEditors - Professional Light Corporate Design
- * Clean minimal cards, wider layout, enhanced typography
- * All logic preserved exactly as before
+ * ExploreEditors - Professional Design
+ * Dark base with light: variant overrides for theme toggle
  */
 
 const ExploreEditors = () => {
@@ -41,38 +39,16 @@ const ExploreEditors = () => {
   const [recentSearches, setRecentSearches] = useState([]);
   const searchInputRef = useRef(null);
 
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 12,
-    total: 0,
-    pages: 1,
-  });
-
-  const [filterOptions, setFilterOptions] = useState({
-    skills: [],
-    languages: [],
-    countries: [],
-    experience: [],
-  });
-
-  const [filters, setFilters] = useState({
-    skills: [],
-    languages: [],
-    experience: "",
-    country: "",
-    sortBy: "relevance",
-  });
+  const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, pages: 1 });
+  const [filterOptions, setFilterOptions] = useState({ skills: [], languages: [], countries: [], experience: [] });
+  const [filters, setFilters] = useState({ skills: [], languages: [], experience: "", country: "", sortBy: "relevance" });
 
   const navigate = useNavigate();
 
   useEffect(() => {
     const saved = localStorage.getItem("recentEditorSearches");
     if (saved) {
-      try {
-        setRecentSearches(JSON.parse(saved).slice(0, 5));
-      } catch {
-        setRecentSearches([]);
-      }
+      try { setRecentSearches(JSON.parse(saved).slice(0, 5)); } catch { setRecentSearches([]); }
     }
   }, []);
 
@@ -115,10 +91,7 @@ const ExploreEditors = () => {
     }
   };
 
-  useEffect(() => {
-    fetchEditors(1, "", filters);
-  }, [backendURL, user]);
-
+  useEffect(() => { fetchEditors(1, "", filters); }, [backendURL, user]);
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchQuery) saveToRecentSearches(searchQuery);
@@ -126,33 +99,18 @@ const ExploreEditors = () => {
     }, 500);
     return () => clearTimeout(timer);
   }, [searchQuery]);
-
-  useEffect(() => {
-    fetchEditors(1, searchQuery, filters);
-  }, [filters]);
+  useEffect(() => { fetchEditors(1, searchQuery, filters); }, [filters]);
 
   const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= pagination.pages) {
-      fetchEditors(newPage, searchQuery, filters);
-    }
+    if (newPage >= 1 && newPage <= pagination.pages) fetchEditors(newPage, searchQuery, filters);
   };
 
   const toggleSkillFilter = (skill) => {
-    setFilters((prev) => ({
-      ...prev,
-      skills: prev.skills.includes(skill)
-        ? prev.skills.filter((s) => s !== skill)
-        : [...prev.skills, skill],
-    }));
+    setFilters((prev) => ({ ...prev, skills: prev.skills.includes(skill) ? prev.skills.filter((s) => s !== skill) : [...prev.skills, skill] }));
   };
 
   const toggleLanguageFilter = (lang) => {
-    setFilters((prev) => ({
-      ...prev,
-      languages: prev.languages.includes(lang)
-        ? prev.languages.filter((l) => l !== lang)
-        : [...prev.languages, lang],
-    }));
+    setFilters((prev) => ({ ...prev, languages: prev.languages.includes(lang) ? prev.languages.filter((l) => l !== lang) : [...prev.languages, lang] }));
   };
 
   const clearAllFilters = () => {
@@ -165,16 +123,13 @@ const ExploreEditors = () => {
   if (error) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center">
-        <div className="text-center max-w-md p-8 bg-white light:bg-white rounded-2xl border border-slate-200 light:border-slate-200 shadow-lg">
-          <div className="w-16 h-16 bg-red-50 light:bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="text-center max-w-md p-8 bg-[#0a0a0c] light:bg-white rounded-2xl border border-white/10 light:border-slate-200 shadow-lg">
+          <div className="w-16 h-16 bg-red-500/10 light:bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-2xl">⚠️</span>
           </div>
-          <h3 className="text-xl font-bold text-slate-900 light:text-slate-900 mb-2">Something went wrong</h3>
-          <p className="text-slate-500 light:text-slate-500 mb-6">{error}</p>
-          <button
-            onClick={() => fetchEditors(1, "", filters)}
-            className="inline-flex items-center gap-2 bg-emerald-500 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-emerald-600 transition-all"
-          >
+          <h3 className="text-xl font-bold text-white light:text-slate-900 mb-2">Something went wrong</h3>
+          <p className="text-gray-500 light:text-slate-500 mb-6">{error}</p>
+          <button onClick={() => fetchEditors(1, "", filters)} className="inline-flex items-center gap-2 bg-emerald-500 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-emerald-600 transition-all">
             Try Again
           </button>
         </div>
@@ -187,7 +142,7 @@ const ExploreEditors = () => {
       {/* Search Bar */}
       <div className="mb-6">
         <div className="relative max-w-2xl mx-auto">
-          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 light:text-slate-400" />
+          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 light:text-slate-400" />
           <input
             ref={searchInputRef}
             type="text"
@@ -196,13 +151,10 @@ const ExploreEditors = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => setShowSuggestions(true)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-            className="w-full py-3.5 pl-12 pr-12 bg-slate-50 light:bg-slate-50 border border-slate-200 light:border-slate-200 rounded-xl text-slate-900 light:text-slate-900 placeholder:text-slate-400 light:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all"
+            className="w-full py-3.5 pl-12 pr-12 bg-white/5 light:bg-slate-50 border border-white/10 light:border-slate-200 rounded-xl text-white light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/50 light:focus:border-emerald-300 transition-all"
           />
           {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 light:text-slate-400 hover:text-slate-600 light:hover:text-slate-600"
-            >
+            <button onClick={() => setSearchQuery("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 light:text-slate-400 hover:text-gray-300 light:hover:text-slate-600">
               <FaTimes />
             </button>
           )}
@@ -213,18 +165,14 @@ const ExploreEditors = () => {
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
-                className="absolute top-full left-0 right-0 mt-2 bg-white light:bg-white rounded-xl shadow-xl border border-slate-200 light:border-slate-200 py-2 z-20 overflow-hidden"
+                className="absolute top-full left-0 right-0 mt-2 bg-[#0a0a0c] light:bg-white rounded-xl shadow-xl border border-white/10 light:border-slate-200 py-2 z-20 overflow-hidden"
               >
-                <div className="px-4 py-2 text-xs text-slate-500 light:text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                <div className="px-4 py-2 text-xs text-gray-500 light:text-slate-500 uppercase tracking-wider flex items-center gap-2">
                   <FaHistory /> Recent Searches
                 </div>
                 {recentSearches.map((search, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSearchQuery(search)}
-                    className="w-full px-4 py-2.5 text-left text-slate-700 light:text-slate-700 hover:bg-slate-50 light:hover:bg-slate-50 flex items-center gap-3 text-sm"
-                  >
-                    <FaSearch className="text-slate-400 light:text-slate-400 text-xs" />
+                  <button key={idx} onClick={() => setSearchQuery(search)} className="w-full px-4 py-2.5 text-left text-gray-300 light:text-slate-700 hover:bg-white/5 light:hover:bg-slate-50 flex items-center gap-3 text-sm">
+                    <FaSearch className="text-gray-500 light:text-slate-400 text-xs" />
                     {search}
                   </button>
                 ))}
@@ -241,60 +189,44 @@ const ExploreEditors = () => {
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
               showFilters || activeFilterCount > 0
-                ? "bg-emerald-50 light:bg-emerald-50 text-emerald-700 light:text-emerald-700 border-emerald-200 light:border-emerald-200"
-                : "bg-white light:bg-white text-slate-600 light:text-slate-600 border-slate-200 light:border-slate-200 hover:bg-slate-50 light:hover:bg-slate-50"
+                ? "bg-emerald-500/10 light:bg-emerald-50 text-emerald-400 light:text-emerald-700 border-emerald-500/30 light:border-emerald-200"
+                : "bg-white/5 light:bg-white text-gray-400 light:text-slate-600 border-white/10 light:border-slate-200 hover:bg-white/10 light:hover:bg-slate-50"
             }`}
           >
             <FaFilter className="text-xs" />
             Filters
-            {activeFilterCount > 0 && (
-              <span className="bg-emerald-500 text-white text-xs px-2 py-0.5 rounded-full">{activeFilterCount}</span>
-            )}
+            {activeFilterCount > 0 && <span className="bg-emerald-500 text-white text-xs px-2 py-0.5 rounded-full">{activeFilterCount}</span>}
           </button>
-
           {activeFilterCount > 0 && (
-            <button
-              onClick={clearAllFilters}
-              className="text-sm text-slate-500 light:text-slate-500 hover:text-slate-700 light:hover:text-slate-700 underline"
-            >
-              Clear all
-            </button>
+            <button onClick={clearAllFilters} className="text-sm text-gray-500 light:text-slate-500 hover:text-gray-300 light:hover:text-slate-700 underline">Clear all</button>
           )}
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="text-sm text-slate-500 light:text-slate-500">
-            <span className="font-semibold text-slate-900 light:text-slate-900">{pagination.total}</span> editors found
+          <span className="text-sm text-gray-500 light:text-slate-500">
+            <span className="font-semibold text-white light:text-slate-900">{pagination.total}</span> editors found
           </span>
-
-          <div className="relative">
-            <select
-              value={filters.sortBy}
-              onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}
-              className="pl-3 pr-8 py-2.5 bg-white light:bg-white border border-slate-200 light:border-slate-200 rounded-xl text-sm text-slate-700 light:text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
-            >
-              <option value="relevance">Relevance</option>
-              <option value="experience">Experience</option>
-              <option value="newest">Newest</option>
-            </select>
-          </div>
+          <select
+            value={filters.sortBy}
+            onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}
+            className="pl-3 pr-8 py-2.5 bg-white/5 light:bg-white border border-white/10 light:border-slate-200 rounded-xl text-sm text-gray-300 light:text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
+          >
+            <option value="relevance">Relevance</option>
+            <option value="experience">Experience</option>
+            <option value="newest">Newest</option>
+          </select>
         </div>
       </div>
 
       {/* Expandable Filters */}
       <AnimatePresence>
         {showFilters && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden mb-6"
-          >
-            <div className="bg-slate-50 light:bg-slate-50 rounded-2xl p-5 border border-slate-200 light:border-slate-200">
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-6">
+            <div className="bg-white/5 light:bg-slate-50 rounded-2xl p-5 border border-white/10 light:border-slate-200">
               <div className="grid md:grid-cols-2 gap-6">
                 {filterOptions.skills.length > 0 && (
                   <div>
-                    <label className="text-xs font-semibold text-slate-600 light:text-slate-600 uppercase tracking-wider mb-3 block">Skills</label>
+                    <label className="text-xs font-semibold text-gray-400 light:text-slate-600 uppercase tracking-wider mb-3 block">Skills</label>
                     <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
                       {filterOptions.skills.slice(0, 20).map((skill) => (
                         <button
@@ -303,7 +235,7 @@ const ExploreEditors = () => {
                           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                             filters.skills.includes(skill)
                               ? "bg-emerald-500 text-white"
-                              : "bg-white light:bg-white text-slate-600 light:text-slate-600 border border-slate-200 light:border-slate-200 hover:border-emerald-300 light:hover:border-emerald-300"
+                              : "bg-white/5 light:bg-white text-gray-400 light:text-slate-600 border border-white/10 light:border-slate-200 hover:border-emerald-500/50 light:hover:border-emerald-300"
                           }`}
                         >
                           {skill}
@@ -312,10 +244,9 @@ const ExploreEditors = () => {
                     </div>
                   </div>
                 )}
-
                 {filterOptions.languages.length > 0 && (
                   <div>
-                    <label className="text-xs font-semibold text-slate-600 light:text-slate-600 uppercase tracking-wider mb-3 block">Languages</label>
+                    <label className="text-xs font-semibold text-gray-400 light:text-slate-600 uppercase tracking-wider mb-3 block">Languages</label>
                     <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
                       {filterOptions.languages.slice(0, 15).map((lang) => (
                         <button
@@ -324,7 +255,7 @@ const ExploreEditors = () => {
                           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                             filters.languages.includes(lang)
                               ? "bg-blue-500 text-white"
-                              : "bg-white light:bg-white text-slate-600 light:text-slate-600 border border-slate-200 light:border-slate-200 hover:border-blue-300 light:hover:border-blue-300"
+                              : "bg-white/5 light:bg-white text-gray-400 light:text-slate-600 border border-white/10 light:border-slate-200 hover:border-blue-500/50 light:hover:border-blue-300"
                           }`}
                         >
                           {lang}
@@ -343,29 +274,19 @@ const ExploreEditors = () => {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-white light:bg-white rounded-2xl p-5 animate-pulse border border-slate-100 light:border-slate-100">
+            <div key={i} className="bg-[#0a0a0c] light:bg-white rounded-2xl p-5 animate-pulse border border-white/10 light:border-slate-100">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-16 h-16 bg-slate-100 light:bg-slate-100 rounded-full" />
+                <div className="w-16 h-16 bg-white/10 light:bg-slate-100 rounded-full" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 w-32 bg-slate-100 light:bg-slate-100 rounded" />
-                  <div className="h-3 w-24 bg-slate-100 light:bg-slate-100 rounded" />
+                  <div className="h-4 w-32 bg-white/10 light:bg-slate-100 rounded" />
+                  <div className="h-3 w-24 bg-white/10 light:bg-slate-100 rounded" />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <div className="h-3 w-full bg-slate-100 light:bg-slate-100 rounded" />
-                <div className="h-3 w-3/4 bg-slate-100 light:bg-slate-100 rounded" />
               </div>
             </div>
           ))}
         </div>
       ) : editors.length === 0 ? (
-        <EmptyState
-          icon={FaUsers}
-          title="No editors found"
-          description={searchQuery || activeFilterCount > 0 ? "Try adjusting your search or filters" : "No editors have completed their profiles yet"}
-          actionLabel={activeFilterCount > 0 ? "Clear Filters" : undefined}
-          onAction={activeFilterCount > 0 ? clearAllFilters : undefined}
-        />
+        <EmptyState icon={FaUsers} title="No editors found" description={searchQuery || activeFilterCount > 0 ? "Try adjusting your search or filters" : "No editors have completed their profiles yet"} actionLabel={activeFilterCount > 0 ? "Clear Filters" : undefined} onAction={activeFilterCount > 0 ? clearAllFilters : undefined} />
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -377,14 +298,9 @@ const ExploreEditors = () => {
           {/* Pagination */}
           {pagination.pages > 1 && (
             <div className="flex justify-center items-center gap-2 mt-10">
-              <button
-                onClick={() => handlePageChange(pagination.page - 1)}
-                disabled={pagination.page === 1}
-                className="w-10 h-10 rounded-xl bg-white light:bg-white border border-slate-200 light:border-slate-200 flex items-center justify-center text-slate-500 light:text-slate-500 hover:bg-slate-50 light:hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-              >
+              <button onClick={() => handlePageChange(pagination.page - 1)} disabled={pagination.page === 1} className="w-10 h-10 rounded-xl bg-white/5 light:bg-white border border-white/10 light:border-slate-200 flex items-center justify-center text-gray-500 light:text-slate-500 hover:bg-white/10 light:hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
                 <FaChevronLeft className="text-sm" />
               </button>
-
               <div className="flex gap-1">
                 {Array.from({ length: Math.min(5, pagination.pages) }, (_, i) => {
                   let pageNum;
@@ -400,7 +316,7 @@ const ExploreEditors = () => {
                       className={`w-10 h-10 rounded-xl text-sm font-semibold transition-all ${
                         pagination.page === pageNum
                           ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25"
-                          : "bg-white light:bg-white border border-slate-200 light:border-slate-200 text-slate-600 light:text-slate-600 hover:bg-slate-50 light:hover:bg-slate-50"
+                          : "bg-white/5 light:bg-white border border-white/10 light:border-slate-200 text-gray-400 light:text-slate-600 hover:bg-white/10 light:hover:bg-slate-50"
                       }`}
                     >
                       {pageNum}
@@ -408,12 +324,7 @@ const ExploreEditors = () => {
                   );
                 })}
               </div>
-
-              <button
-                onClick={() => handlePageChange(pagination.page + 1)}
-                disabled={pagination.page === pagination.pages}
-                className="w-10 h-10 rounded-xl bg-white light:bg-white border border-slate-200 light:border-slate-200 flex items-center justify-center text-slate-500 light:text-slate-500 hover:bg-slate-50 light:hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-              >
+              <button onClick={() => handlePageChange(pagination.page + 1)} disabled={pagination.page === pagination.pages} className="w-10 h-10 rounded-xl bg-white/5 light:bg-white border border-white/10 light:border-slate-200 flex items-center justify-center text-gray-500 light:text-slate-500 hover:bg-white/10 light:hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
                 <FaChevronRight className="text-sm" />
               </button>
             </div>
@@ -424,10 +335,7 @@ const ExploreEditors = () => {
   );
 };
 
-/* =========================
-   EditorCard - Clean Professional Design
-   Wider layout, minimal borders, enhanced content
-   ========================= */
+/* EditorCard - Clean Professional Design with theme support */
 const EditorCard = ({ editor, navigate, searchQuery }) => {
   const rating = (4 + (editor._id?.charCodeAt(0) % 10) / 10).toFixed(1);
   const reviewCount = 5 + (editor._id?.charCodeAt(1) % 50);
@@ -437,7 +345,7 @@ const EditorCard = ({ editor, navigate, searchQuery }) => {
     const parts = text.split(new RegExp(`(${query})`, "gi"));
     return parts.map((part, i) =>
       part.toLowerCase() === query.toLowerCase() ? (
-        <mark key={i} className="bg-emerald-100 light:bg-emerald-100 rounded px-0.5 text-emerald-700 light:text-emerald-700">{part}</mark>
+        <mark key={i} className="bg-emerald-500/20 light:bg-emerald-100 rounded px-0.5 text-emerald-400 light:text-emerald-700">{part}</mark>
       ) : (
         part
       )
@@ -447,7 +355,7 @@ const EditorCard = ({ editor, navigate, searchQuery }) => {
   return (
     <motion.div
       onClick={() => navigate(`/public-profile/${editor.user?._id}`)}
-      className="group bg-white light:bg-white rounded-2xl overflow-hidden border border-slate-200 light:border-slate-200 hover:border-emerald-300 light:hover:border-emerald-300 hover:shadow-xl transition-all duration-300 cursor-pointer"
+      className="group bg-[#0a0a0c] light:bg-white rounded-2xl overflow-hidden border border-white/10 light:border-slate-200 hover:border-emerald-500/30 light:hover:border-emerald-300 hover:shadow-xl transition-all duration-300 cursor-pointer"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4 }}
@@ -455,45 +363,37 @@ const EditorCard = ({ editor, navigate, searchQuery }) => {
       {/* Header with Avatar */}
       <div className="p-5 pb-4">
         <div className="flex items-start gap-4">
-          {/* Avatar */}
           <div className="relative flex-shrink-0">
-            <img
-              src={editor.user?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
-              alt={editor.user?.name}
-              className="w-14 h-14 rounded-full object-cover border-2 border-slate-100 light:border-slate-100 group-hover:border-emerald-200 light:group-hover:border-emerald-200 transition-colors"
-            />
-            <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white light:border-white" />
+            <img src={editor.user?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"} alt={editor.user?.name} className="w-14 h-14 rounded-full object-cover border-2 border-white/10 light:border-slate-100 group-hover:border-emerald-500/30 light:group-hover:border-emerald-200 transition-colors" />
+            <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-500 rounded-full border-2 border-[#0a0a0c] light:border-white" />
           </div>
 
-          {/* Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold text-slate-900 light:text-slate-900 truncate text-base" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              <h3 className="font-semibold text-white light:text-slate-900 truncate text-base" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 {highlightMatch(editor.user?.name, searchQuery)}
               </h3>
               {editor.verified && <FaCheckCircle className="text-emerald-500 text-sm flex-shrink-0" />}
             </div>
 
-            <p className="text-slate-500 light:text-slate-500 text-sm flex items-center gap-1.5">
-              <FaBriefcase className="text-slate-400 light:text-slate-400 text-xs" />
+            <p className="text-gray-500 light:text-slate-500 text-sm flex items-center gap-1.5">
+              <FaBriefcase className="text-gray-600 light:text-slate-400 text-xs" />
               <span className="capitalize">{editor.user?.role || "Video Editor"}</span>
             </p>
 
-            {/* Rating */}
             <div className="flex items-center gap-2 mt-2">
-              <div className="flex items-center gap-1 bg-amber-50 light:bg-amber-50 px-2 py-0.5 rounded-md">
+              <div className="flex items-center gap-1 bg-amber-500/10 light:bg-amber-50 px-2 py-0.5 rounded-md">
                 <FaStar className="text-amber-400 text-xs" />
-                <span className="font-semibold text-xs text-slate-900 light:text-slate-900">{rating}</span>
+                <span className="font-semibold text-xs text-white light:text-slate-900">{rating}</span>
               </div>
-              <span className="text-slate-400 light:text-slate-400 text-xs">({reviewCount} reviews)</span>
+              <span className="text-gray-500 light:text-slate-400 text-xs">({reviewCount} reviews)</span>
             </div>
           </div>
         </div>
 
-        {/* Location */}
         {editor.location?.country && (
-          <div className="flex items-center gap-1.5 text-slate-500 light:text-slate-500 text-xs mt-3">
-            <FaMapMarkerAlt className="text-slate-400 light:text-slate-400" />
+          <div className="flex items-center gap-1.5 text-gray-500 light:text-slate-500 text-xs mt-3">
+            <FaMapMarkerAlt className="text-gray-600 light:text-slate-400" />
             <span>{highlightMatch(editor.location.country, searchQuery)}</span>
           </div>
         )}
@@ -502,25 +402,19 @@ const EditorCard = ({ editor, navigate, searchQuery }) => {
       {/* Skills & Languages */}
       <div className="px-5 pb-4 space-y-3">
         {editor.skills?.length > 0 && (
-          <div>
-            <div className="flex flex-wrap gap-1.5">
-              {editor.skills.filter(Boolean).slice(0, 3).map((skill, idx) => (
-                <span key={idx} className="px-2.5 py-1 bg-emerald-50 light:bg-emerald-50 text-emerald-700 light:text-emerald-700 rounded-lg text-xs font-medium">
-                  {skill}
-                </span>
-              ))}
-              {editor.skills.filter(Boolean).length > 3 && (
-                <span className="px-2.5 py-1 bg-slate-100 light:bg-slate-100 text-slate-500 light:text-slate-500 rounded-lg text-xs font-medium">
-                  +{editor.skills.filter(Boolean).length - 3}
-                </span>
-              )}
-            </div>
+          <div className="flex flex-wrap gap-1.5">
+            {editor.skills.filter(Boolean).slice(0, 3).map((skill, idx) => (
+              <span key={idx} className="px-2.5 py-1 bg-emerald-500/10 light:bg-emerald-50 text-emerald-400 light:text-emerald-700 rounded-lg text-xs font-medium">{skill}</span>
+            ))}
+            {editor.skills.filter(Boolean).length > 3 && (
+              <span className="px-2.5 py-1 bg-white/5 light:bg-slate-100 text-gray-500 light:text-slate-500 rounded-lg text-xs font-medium">+{editor.skills.filter(Boolean).length - 3}</span>
+            )}
           </div>
         )}
 
         {editor.languages?.length > 0 && (
-          <div className="flex items-center gap-2 text-xs text-slate-500 light:text-slate-500">
-            <FaGlobe className="text-slate-400 light:text-slate-400" />
+          <div className="flex items-center gap-2 text-xs text-gray-500 light:text-slate-500">
+            <FaGlobe className="text-gray-600 light:text-slate-400" />
             {editor.languages.filter(Boolean).slice(0, 2).join(", ")}
             {editor.languages.filter(Boolean).length > 2 && ` +${editor.languages.filter(Boolean).length - 2}`}
           </div>
@@ -529,14 +423,14 @@ const EditorCard = ({ editor, navigate, searchQuery }) => {
         {editor.experience && (
           <div className="flex items-center gap-2 text-xs">
             <FaAward className="text-purple-500" />
-            <span className="text-slate-700 light:text-slate-700 font-medium">{editor.experience}</span>
+            <span className="text-gray-300 light:text-slate-700 font-medium">{editor.experience}</span>
           </div>
         )}
       </div>
 
       {/* CTA */}
       <div className="px-5 pb-5">
-        <button className="w-full py-2.5 bg-slate-900 light:bg-slate-900 text-white text-sm font-semibold rounded-xl group-hover:bg-emerald-500 transition-all duration-300 flex items-center justify-center gap-2">
+        <button className="w-full py-2.5 bg-white/5 light:bg-slate-900 text-gray-300 light:text-white text-sm font-semibold rounded-xl group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300 flex items-center justify-center gap-2 border border-white/10 light:border-transparent group-hover:border-transparent">
           View Profile <FaArrowRight className="text-xs group-hover:translate-x-0.5 transition-transform" />
         </button>
       </div>

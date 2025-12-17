@@ -149,7 +149,7 @@ const EditorHome = () => {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 light:bg-slate-50 text-slate-900 light:text-slate-900 transition-colors duration-200" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200" style={{ fontFamily: "'Inter', sans-serif" }}>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
@@ -159,7 +159,7 @@ const EditorHome = () => {
         disabled={isRefreshing}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className="fixed top-20 right-4 md:right-8 z-50 p-3 rounded-xl bg-white light:bg-white shadow-lg border border-slate-200 light:border-slate-200 hover:shadow-xl transition-all"
+        className="fixed top-20 right-4 md:right-8 z-50 p-3 rounded-xl bg-[#0a0a0c] light:bg-white shadow-lg border border-white/10 light:border-slate-200 hover:shadow-xl transition-all"
         title="Refresh page"
       >
         <motion.div
@@ -174,7 +174,7 @@ const EditorHome = () => {
         
         {/* ============ MAIN TABS ============ */}
         <div className="flex justify-center mb-6">
-          <div className="inline-flex p-1 bg-white light:bg-white rounded-2xl shadow-sm border border-slate-200 light:border-slate-200">
+          <div className="inline-flex p-1 bg-[#0a0a0c] light:bg-white rounded-2xl shadow-sm border border-white/10 light:border-slate-200">
             {mainTabs.map((tab) => {
               const isActive = mainTab === tab.id;
               return (
@@ -186,7 +186,7 @@ const EditorHome = () => {
                   className={`relative px-6 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2
                     ${isActive 
                       ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" 
-                      : "text-slate-600 light:text-slate-600 hover:bg-slate-50 light:hover:bg-slate-50"
+                      : "text-gray-400 light:text-slate-600 hover:bg-white/5 light:hover:bg-slate-50"
                     }
                   `}
                 >
@@ -229,18 +229,18 @@ const EditorHome = () => {
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`bg-white light:bg-white rounded-2xl p-4 sm:p-5 border shadow-sm transition-all ${
+                    className={`bg-[#0a0a0c] light:bg-white rounded-2xl p-4 sm:p-5 border shadow-sm transition-all ${
                       storageData.isFull 
-                        ? 'border-red-200 light:border-red-200' 
+                        ? 'border-red-500/30 light:border-red-200' 
                         : storageData.isLowStorage 
-                          ? 'border-amber-200 light:border-amber-200'
-                          : 'border-slate-200 light:border-slate-200'
+                          ? 'border-amber-500/30 light:border-amber-200'
+                          : 'border-white/10 light:border-slate-200'
                     }`}
                   >
                     {/* Storage Header */}
                     <div className="flex items-center gap-3 mb-3">
                       <div className={`p-2.5 rounded-xl ${
-                        storageData.isFull ? 'bg-red-50 light:bg-red-50' : storageData.isLowStorage ? 'bg-amber-50 light:bg-amber-50' : 'bg-blue-50 light:bg-blue-50'
+                        storageData.isFull ? 'bg-red-500/10 light:bg-red-50' : storageData.isLowStorage ? 'bg-amber-500/10 light:bg-amber-50' : 'bg-blue-500/10 light:bg-blue-50'
                       }`}>
                         <FaDatabase className={`text-lg ${
                           storageData.isFull ? 'text-red-500' : storageData.isLowStorage ? 'text-amber-500' : 'text-blue-500'
@@ -249,18 +249,18 @@ const EditorHome = () => {
                       
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-slate-900 light:text-slate-900 text-sm">Cloud Storage</h3>
+                          <h3 className="font-semibold text-white light:text-slate-900 text-sm">Cloud Storage</h3>
                           <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ${
-                            storageData.plan === 'free' ? 'bg-slate-100 light:bg-slate-100 text-slate-600 light:text-slate-600' :
-                            storageData.plan === 'pro' ? 'bg-purple-100 light:bg-purple-100 text-purple-600 light:text-purple-600' :
-                            'bg-blue-100 light:bg-blue-100 text-blue-600 light:text-blue-600'
+                            storageData.plan === 'free' ? 'bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600' :
+                            storageData.plan === 'pro' ? 'bg-purple-500/20 light:bg-purple-100 text-purple-400 light:text-purple-600' :
+                            'bg-blue-500/20 light:bg-blue-100 text-blue-400 light:text-blue-600'
                           }`}>
                             {storageData.plan}
                           </span>
                         </div>
                         
                         {/* Progress Bar */}
-                        <div className="h-2 bg-slate-100 light:bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-2 bg-white/10 light:bg-slate-100 rounded-full overflow-hidden">
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${Math.min(storageData.usedPercent, 100)}%` }}
@@ -277,7 +277,7 @@ const EditorHome = () => {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setStorageExpanded(!storageExpanded)}
-                          className="p-2 rounded-lg bg-slate-50 light:bg-slate-50 hover:bg-slate-100 light:hover:bg-slate-100 text-slate-500 light:text-slate-500 transition-all"
+                          className="p-2 rounded-lg bg-white/5 light:bg-slate-50 hover:bg-white/10 light:hover:bg-slate-100 text-gray-400 light:text-slate-500 transition-all"
                         >
                           {storageExpanded ? <FaChevronUp className="text-xs" /> : <FaChevronDown className="text-xs" />}
                         </button>
@@ -292,7 +292,7 @@ const EditorHome = () => {
                     
                     {/* Storage Stats */}
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 light:text-slate-500">
+                      <span className="text-gray-500 light:text-slate-500">
                         {storageData.usedFormatted} / {storageData.limitFormatted}
                       </span>
                       <span className={`font-medium ${
@@ -305,7 +305,7 @@ const EditorHome = () => {
                     
                     {/* Warning */}
                     {storageData.isFull && (
-                      <div className="mt-3 p-2 bg-red-50 light:bg-red-50 rounded-lg flex items-center gap-2 text-red-600 light:text-red-600 text-xs">
+                      <div className="mt-3 p-2 bg-red-500/10 light:bg-red-50 rounded-lg flex items-center gap-2 text-red-400 light:text-red-600 text-xs">
                         <FaExclamationCircle /> Storage full! Upgrade or delete files.
                       </div>
                     )}
@@ -320,23 +320,23 @@ const EditorHome = () => {
                           transition={{ duration: 0.2 }}
                           className="overflow-hidden"
                         >
-                          <div className="mt-4 pt-4 border-t border-slate-100 light:border-slate-100">
-                            <p className="text-slate-500 light:text-slate-500 text-xs font-medium mb-3">Storage Breakdown</p>
+                          <div className="mt-4 pt-4 border-t border-white/10 light:border-slate-100">
+                            <p className="text-gray-500 light:text-slate-500 text-xs font-medium mb-3">Storage Breakdown</p>
                             <div className="grid grid-cols-3 gap-3">
-                              <div className="bg-slate-50 light:bg-slate-50 rounded-xl p-3 text-center">
+                              <div className="bg-white/5 light:bg-slate-50 rounded-xl p-3 text-center">
                                 <FaVideo className="text-purple-500 mx-auto mb-1" />
-                                <p className="font-bold text-slate-900 light:text-slate-900">{storageBreakdown.portfolios || 0}</p>
-                                <p className="text-slate-500 light:text-slate-500 text-[10px]">Portfolios</p>
+                                <p className="font-bold text-white light:text-slate-900">{storageBreakdown.portfolios || 0}</p>
+                                <p className="text-gray-500 light:text-slate-500 text-[10px]">Portfolios</p>
                               </div>
-                              <div className="bg-slate-50 light:bg-slate-50 rounded-xl p-3 text-center">
+                              <div className="bg-white/5 light:bg-slate-50 rounded-xl p-3 text-center">
                                 <FaImages className="text-blue-500 mx-auto mb-1" />
-                                <p className="font-bold text-slate-900 light:text-slate-900">{storageBreakdown.reels || 0}</p>
-                                <p className="text-slate-500 light:text-slate-500 text-[10px]">Reels</p>
+                                <p className="font-bold text-white light:text-slate-900">{storageBreakdown.reels || 0}</p>
+                                <p className="text-gray-500 light:text-slate-500 text-[10px]">Reels</p>
                               </div>
-                              <div className="bg-slate-50 light:bg-slate-50 rounded-xl p-3 text-center">
+                              <div className="bg-white/5 light:bg-slate-50 rounded-xl p-3 text-center">
                                 <FaComments className="text-emerald-500 mx-auto mb-1" />
-                                <p className="font-bold text-slate-900 light:text-slate-900">{storageBreakdown.chatFiles || 0}</p>
-                                <p className="text-slate-500 light:text-slate-500 text-[10px]">Chat Files</p>
+                                <p className="font-bold text-white light:text-slate-900">{storageBreakdown.chatFiles || 0}</p>
+                                <p className="text-gray-500 light:text-slate-500 text-[10px]">Chat Files</p>
                               </div>
                             </div>
                           </div>
@@ -352,21 +352,21 @@ const EditorHome = () => {
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`bg-white light:bg-white rounded-2xl p-5 md:p-6 mb-6 border shadow-sm ${
+                  className={`bg-[#0a0a0c] light:bg-white rounded-2xl p-5 md:p-6 mb-6 border shadow-sm ${
                     user?.kycStatus === 'rejected' 
-                      ? 'border-red-200 light:border-red-200'
-                      : 'border-amber-200 light:border-amber-200'
+                      ? 'border-red-500/30 light:border-red-200'
+                      : 'border-amber-500/30 light:border-amber-200'
                   }`}
                 >
                   <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-                    <div className={`p-3 rounded-xl ${user?.kycStatus === 'rejected' ? 'bg-red-50 light:bg-red-50' : 'bg-amber-50 light:bg-amber-50'}`}>
+                    <div className={`p-3 rounded-xl ${user?.kycStatus === 'rejected' ? 'bg-red-500/10 light:bg-red-50' : 'bg-amber-500/10 light:bg-amber-50'}`}>
                       <FaUniversity className={`text-xl ${user?.kycStatus === 'rejected' ? 'text-red-500' : 'text-amber-500'}`} />
                     </div>
                     <div className="flex-1">
-                      <h3 className={`font-semibold text-base ${user?.kycStatus === 'rejected' ? 'text-red-600 light:text-red-600' : 'text-slate-900 light:text-slate-900'}`}>
+                      <h3 className={`font-semibold text-base ${user?.kycStatus === 'rejected' ? 'text-red-400 light:text-red-600' : 'text-white light:text-slate-900'}`}>
                         {user?.kycStatus === 'rejected' ? 'KYC Verification Failed' : 'Complete KYC Verification'}
                       </h3>
-                      <p className="text-slate-500 light:text-slate-500 text-sm mt-1">
+                      <p className="text-gray-500 light:text-slate-500 text-sm mt-1">
                         {user?.kycStatus === 'rejected' 
                           ? (user?.kycRejectionReason || 'Your documents could not be verified. Please update and resubmit.')
                           : 'Link your bank account to receive payouts from completed orders.'}
@@ -391,32 +391,32 @@ const EditorHome = () => {
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-white light:bg-white border border-blue-200 light:border-blue-200 rounded-2xl p-5 md:p-6 mb-6 shadow-sm"
+                  className="bg-[#0a0a0c] light:bg-white border border-blue-500/30 light:border-blue-200 rounded-2xl p-5 md:p-6 mb-6 shadow-sm"
                 >
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="p-3 rounded-xl bg-blue-50 light:bg-blue-50">
+                    <div className="p-3 rounded-xl bg-blue-500/10 light:bg-blue-50">
                       <FaClock className="text-blue-500 text-xl" />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <h3 className="text-blue-600 light:text-blue-600 font-semibold">KYC Under Review</h3>
-                        <span className="px-2 py-0.5 bg-blue-100 light:bg-blue-100 text-blue-600 light:text-blue-600 text-xs font-bold rounded-full">
+                        <h3 className="text-blue-400 light:text-blue-600 font-semibold">KYC Under Review</h3>
+                        <span className="px-2 py-0.5 bg-blue-500/20 light:bg-blue-100 text-blue-400 light:text-blue-600 text-xs font-bold rounded-full">
                           IN PROGRESS
                         </span>
                       </div>
-                      <p className="text-slate-500 light:text-slate-500 text-sm mt-1">
+                      <p className="text-gray-500 light:text-slate-500 text-sm mt-1">
                         Your documents are being verified. This usually takes 24-48 hours.
                       </p>
                     </div>
                   </div>
 
                   {/* Progress Steps */}
-                  <div className="flex items-center justify-between gap-2 bg-slate-50 light:bg-slate-50 rounded-xl p-4">
+                  <div className="flex items-center justify-between gap-2 bg-white/5 light:bg-slate-50 rounded-xl p-4">
                     <div className="flex flex-col items-center gap-1">
                       <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center">
                         <FaCheckCircle className="text-white text-xs" />
                       </div>
-                      <span className="text-[10px] text-emerald-600 light:text-emerald-600 font-medium">Submitted</span>
+                      <span className="text-[10px] text-emerald-400 light:text-emerald-600 font-medium">Submitted</span>
                     </div>
                     <div className="flex-1 h-1 bg-blue-500 rounded-full mx-1 relative overflow-hidden">
                       <motion.div 
@@ -429,14 +429,14 @@ const EditorHome = () => {
                       <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
                         <FaSpinner className="text-white text-xs animate-spin" />
                       </div>
-                      <span className="text-[10px] text-blue-600 light:text-blue-600 font-medium">Reviewing</span>
+                      <span className="text-[10px] text-blue-400 light:text-blue-600 font-medium">Reviewing</span>
                     </div>
-                    <div className="flex-1 h-1 bg-slate-200 light:bg-slate-200 rounded-full mx-1" />
+                    <div className="flex-1 h-1 bg-white/10 light:bg-slate-200 rounded-full mx-1" />
                     <div className="flex flex-col items-center gap-1">
-                      <div className="w-8 h-8 rounded-full bg-slate-200 light:bg-slate-200 flex items-center justify-center">
-                        <FaCheckCircle className="text-slate-400 light:text-slate-400 text-xs" />
+                      <div className="w-8 h-8 rounded-full bg-white/10 light:bg-slate-200 flex items-center justify-center">
+                        <FaCheckCircle className="text-gray-500 light:text-slate-400 text-xs" />
                       </div>
-                      <span className="text-[10px] text-slate-400 light:text-slate-400 font-medium">Verified</span>
+                      <span className="text-[10px] text-gray-500 light:text-slate-400 font-medium">Verified</span>
                     </div>
                   </div>
                 </motion.div>
@@ -447,11 +447,11 @@ const EditorHome = () => {
                 <motion.div 
                   initial={{ opacity: 0, y: 10, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  className="relative overflow-hidden bg-gradient-to-r from-emerald-50 light:from-emerald-50 via-blue-50 light:via-blue-50 to-purple-50 light:to-purple-50 border border-emerald-200 light:border-emerald-200 rounded-2xl p-5 md:p-6 mb-6"
+                  className="relative overflow-hidden bg-gradient-to-r from-emerald-500/10 light:from-emerald-50 via-blue-500/10 light:via-blue-50 to-purple-500/10 light:to-purple-50 border border-emerald-500/30 light:border-emerald-200 rounded-2xl p-5 md:p-6 mb-6"
                 >
                   <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
                     <motion.div 
-                      className="p-4 rounded-2xl bg-gradient-to-br from-emerald-100 light:from-emerald-100 to-blue-100 light:to-blue-100"
+                      className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/20 light:from-emerald-100 to-blue-500/20 light:to-blue-100"
                       animate={{ scale: [1, 1.05, 1] }}
                       transition={{ repeat: Infinity, duration: 2 }}
                     >
@@ -460,28 +460,28 @@ const EditorHome = () => {
                     
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-lg font-bold text-emerald-600 light:text-emerald-600">
+                        <h3 className="text-lg font-bold text-emerald-400 light:text-emerald-600">
                           Congratulations! You're Live!
                         </h3>
-                        <span className="px-2.5 py-1 bg-emerald-100 light:bg-emerald-100 text-emerald-600 light:text-emerald-600 text-xs font-bold rounded-full flex items-center gap-1">
+                        <span className="px-2.5 py-1 bg-emerald-500/20 light:bg-emerald-100 text-emerald-400 light:text-emerald-600 text-xs font-bold rounded-full flex items-center gap-1">
                           <FaCheckCircle className="text-[10px]" /> LISTED
                         </span>
                       </div>
-                      <p className="text-slate-600 light:text-slate-600 text-sm">
-                        Your profile is now visible in the <span className="text-emerald-600 light:text-emerald-600 font-medium">Explore Editors</span> page. Clients can discover and hire you!
+                      <p className="text-gray-400 light:text-slate-600 text-sm">
+                        Your profile is now visible in the <span className="text-emerald-400 light:text-emerald-600 font-medium">Explore Editors</span> page. Clients can discover and hire you!
                       </p>
                     </div>
                     
                     <div className="hidden md:flex gap-3">
-                      <div className="flex flex-col items-center gap-1 px-4 py-3 bg-white light:bg-white rounded-xl border border-slate-200 light:border-slate-200">
+                      <div className="flex flex-col items-center gap-1 px-4 py-3 bg-white/5 light:bg-white rounded-xl border border-white/10 light:border-slate-200">
                         <FaMoneyBillWave className="text-emerald-500 text-xl" />
-                        <span className="text-[10px] text-slate-500 light:text-slate-500">Earnings</span>
-                        <span className="text-emerald-600 light:text-emerald-600 text-xs font-bold">Enabled</span>
+                        <span className="text-[10px] text-gray-500 light:text-slate-500">Earnings</span>
+                        <span className="text-emerald-400 light:text-emerald-600 text-xs font-bold">Enabled</span>
                       </div>
-                      <div className="flex flex-col items-center gap-1 px-4 py-3 bg-white light:bg-white rounded-xl border border-slate-200 light:border-slate-200">
+                      <div className="flex flex-col items-center gap-1 px-4 py-3 bg-white/5 light:bg-white rounded-xl border border-white/10 light:border-slate-200">
                         <FaUsers className="text-blue-500 text-xl" />
-                        <span className="text-[10px] text-slate-500 light:text-slate-500">Status</span>
-                        <span className="text-blue-600 light:text-blue-600 text-xs font-bold">Discoverable</span>
+                        <span className="text-[10px] text-gray-500 light:text-slate-500">Status</span>
+                        <span className="text-blue-400 light:text-blue-600 text-xs font-bold">Discoverable</span>
                       </div>
                     </div>
                   </div>
@@ -492,7 +492,7 @@ const EditorHome = () => {
 
               {/* Explore Tabs */}
               <div className="flex items-center justify-center mb-6">
-                <div className="inline-flex p-1 bg-white light:bg-white border border-slate-200 light:border-slate-200 rounded-2xl shadow-sm">
+                <div className="inline-flex p-1 bg-[#0a0a0c] light:bg-white border border-white/10 light:border-slate-200 rounded-2xl shadow-sm">
                   {exploreTabs.map((tab) => {
                     const isActive = exploreTab === tab.id;
                     return (
@@ -502,7 +502,7 @@ const EditorHome = () => {
                         className={`relative px-5 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${
                           isActive
                             ? "text-white bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg"
-                            : "text-slate-600 light:text-slate-600 hover:text-slate-900 light:hover:text-slate-900 hover:bg-slate-50 light:hover:bg-slate-50"
+                            : "text-gray-400 light:text-slate-600 hover:text-white light:hover:text-slate-900 hover:bg-white/5 light:hover:bg-slate-50"
                         }`}
                       >
                         <tab.icon size={14} />
@@ -514,15 +514,15 @@ const EditorHome = () => {
               </div>
 
               {/* Explore Content */}
-              <div className="bg-white light:bg-white border border-slate-200 light:border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm">
+              <div className="bg-[#0a0a0c] light:bg-white border border-white/10 light:border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm">
                 <div className="text-center mb-6">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 light:bg-emerald-50 text-emerald-600 light:text-emerald-600 text-xs font-semibold rounded-full mb-3">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 light:bg-emerald-50 text-emerald-400 light:text-emerald-600 text-xs font-semibold rounded-full mb-3">
                     <HiOutlineSparkles /> {exploreTab === "editors" ? "Discover Talent" : "Browse Services"}
                   </div>
-                  <h2 className="text-xl font-bold text-slate-900 light:text-slate-900 mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                  <h2 className="text-xl font-bold text-white light:text-slate-900 mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                     {exploreTab === "editors" ? "Explore Other Editors" : "Browse Available Gigs"}
                   </h2>
-                  <p className="text-slate-500 light:text-slate-500 text-sm">
+                  <p className="text-gray-500 light:text-slate-500 text-sm">
                     {exploreTab === "editors" 
                       ? "See what other editors are offering and get inspired"
                       : "Find services that complement your skills"
@@ -576,7 +576,7 @@ const EditorHome = () => {
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           whileHover={{ scale: 1.1 }}
-          className="fixed bottom-6 right-6 z-[200] w-14 h-14 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/30 border-2 border-white light:border-white"
+          className="fixed bottom-6 right-6 z-[200] w-14 h-14 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/30 border-2 border-[#0a0a0c] light:border-white"
         >
           <img src={reelIcon} alt="reels" className="w-6 h-6 object-contain" />
         </motion.button>
