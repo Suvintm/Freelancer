@@ -782,6 +782,55 @@ const ChatPage = () => {
       };
       socket.on("message:deleted", handleMessageDeleted);
 
+      // 🆕 Listen for delivery acceptance (real-time card update)
+      const handleDeliveryAccepted = ({ messageId, status, acceptedAt }) => {
+        setMessages(prev => prev.map(m => 
+          m._id === messageId 
+            ? { ...m, finalDelivery: { ...m.finalDelivery, status, acceptedAt } } 
+            : m
+        ));
+        // Refetch order to update header status
+        fetchMessages();
+      };
+      socket.on("delivery:accepted", handleDeliveryAccepted);
+
+      // 🆕 Listen for order completion
+      const handleOrderCompleted = ({ orderId: completedOrderId, status, paymentReleased }) => {
+        if (completedOrderId === orderId) {
+          // Refetch order data to update UI
+          fetchMessages();
+        }
+      };
+      socket.on("order:completed", handleOrderCompleted);
+
+      // 🆕 Listen for message updates (finalDelivery status changes)
+      const handleMessageUpdated = ({ messageId, updates }) => {
+        setMessages(prev => prev.map(m => {
+          if (m._id === messageId) {
+            const updated = { ...m };
+            // Apply nested updates
+            Object.entries(updates).forEach(([key, value]) => {
+              const keys = key.split('.');
+              if (keys.length === 2 && keys[0] === 'finalDelivery') {
+                updated.finalDelivery = { ...updated.finalDelivery, [keys[1]]: value };
+              }
+            });
+            return updated;
+          }
+          return m;
+        }));
+      };
+      socket.on("message:updated", handleMessageUpdated);
+
+      // 🆕 Listen for when editor submits delivery
+      const handleDeliverySubmitted = ({ orderId: submittedOrderId }) => {
+        if (submittedOrderId === orderId) {
+          // Refetch to get the new final delivery message
+          fetchMessages();
+        }
+      };
+      socket.on("delivery:submitted", handleDeliverySubmitted);
+
       return () => {
         leaveRoom(orderId);
         socket.off("message:new", handleNewMessage);
@@ -791,6 +840,11 @@ const ChatPage = () => {
         socket.off("message:seen", handleMessageSeen);
         socket.off("messages:status_update", handleStatusUpdate);
         socket.off("message:read", handleMessageRead);
+        socket.off("message:deleted", handleMessageDeleted);
+        socket.off("delivery:accepted", handleDeliveryAccepted);
+        socket.off("order:completed", handleOrderCompleted);
+        socket.off("message:updated", handleMessageUpdated);
+        socket.off("delivery:submitted", handleDeliverySubmitted);
       };
     }
   }, [orderId, socket, joinRoom, leaveRoom, markAsRead, user?._id]);
@@ -982,15 +1036,41 @@ const ChatPage = () => {
         { headers: { Authorization: `Bearer ${user?.token}` } }
       );
       
-      // Download the clean file
+      // 🆕 Enhanced high-quality download using fetch + blob
       if (data.downloadUrl) {
-        const link = document.createElement("a");
-        link.href = data.downloadUrl;
-        link.download = currentDelivery.fileName || "final_delivery";
-        link.target = "_blank";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        try {
+          // Use the filename from response or fallback to original
+          const fileName = data.fileName || currentDelivery.fileName || "final_delivery";
+          
+          // Fetch the file as blob for proper download
+          const response = await fetch(data.downloadUrl);
+          const blob = await response.blob();
+          
+          // Create download link with proper filename
+          const blobUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = blobUrl;
+          link.download = fileName;
+          link.style.display = "none";
+          document.body.appendChild(link);
+          link.click();
+          
+          // Cleanup
+          setTimeout(() => {
+            window.URL.revokeObjectURL(blobUrl);
+            document.body.removeChild(link);
+          }, 100);
+        } catch (downloadErr) {
+          // Fallback to direct link if blob fails
+          console.log("Blob download failed, using direct link:", downloadErr);
+          const link = document.createElement("a");
+          link.href = data.downloadUrl;
+          link.download = data.fileName || currentDelivery.fileName || "final_delivery";
+          link.target = "_blank";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
       }
       
       toast.success("🎉 Order completed! Payment released to editor.");

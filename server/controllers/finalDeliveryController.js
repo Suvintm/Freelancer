@@ -473,6 +473,15 @@ export const confirmDownload = asyncHandler(async (req, res) => {
   // Emit real-time updates
   const io = getIO();
   if (io) {
+    // 🆕 Notify about delivery acceptance (for editor real-time update)
+    io.to(`order_${orderId}`).emit("delivery:accepted", {
+      orderId,
+      messageId: deliveryMessage._id,
+      status: "downloaded",
+      acceptedAt: deliveryMessage.finalDelivery.acceptedAt,
+      clientName: order.client.name,
+    });
+
     io.to(`order_${orderId}`).emit("delivery:completed", {
       orderId,
       completedAt: order.completedAt,
@@ -481,6 +490,7 @@ export const confirmDownload = asyncHandler(async (req, res) => {
     io.to(`order_${orderId}`).emit("order:completed", {
       orderId,
       paymentReleased: true,
+      status: "completed",
     });
 
     // Emit payment completed event for analytics refresh
@@ -489,6 +499,17 @@ export const confirmDownload = asyncHandler(async (req, res) => {
       orderId,
       amount: payment.amount,
       editorEarning: payment.editorEarning,
+    });
+
+    // 🆕 Emit message update for the final delivery card status change
+    io.to(`order_${orderId}`).emit("message:updated", {
+      messageId: deliveryMessage._id,
+      orderId,
+      updates: {
+        "finalDelivery.status": "downloaded",
+        "finalDelivery.acceptedAt": deliveryMessage.finalDelivery.acceptedAt,
+        "finalDelivery.downloadedAt": deliveryMessage.finalDelivery.downloadedAt,
+      },
     });
   }
 
@@ -511,9 +532,24 @@ export const confirmDownload = asyncHandler(async (req, res) => {
     deliveredAt: new Date(),
   });
 
+  // 🆕 Generate high-quality download URL with fl_attachment flag
+  // This forces the browser to download the file instead of displaying it
+  // and ensures no quality loss during download
+  let downloadUrl = delivery.originalUrl;
+  
+  // Add fl_attachment to Cloudinary URL for proper file download
+  if (downloadUrl.includes("cloudinary.com")) {
+    // Insert fl_attachment transformation
+    if (downloadUrl.includes("/upload/")) {
+      downloadUrl = downloadUrl.replace("/upload/", "/upload/fl_attachment/");
+    }
+  }
+
   res.json({
     success: true,
-    downloadUrl: delivery.originalUrl, // Clean file without watermark
+    downloadUrl: downloadUrl, // High-quality download URL with attachment flag
+    originalUrl: delivery.originalUrl, // Fallback URL
+    fileName: delivery.fileName, // Original filename for download
     message: "Download successful. Payment has been released to the editor.",
     order: {
       status: order.status,

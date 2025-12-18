@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { useTheme } from "../context/ThemeContext";
+import { useSocket } from "../context/SocketContext";
 import logo from "../assets/logo.png";
 
 const ClientSidebar = ({ isOpen, onClose }) => {
@@ -29,6 +30,10 @@ const ClientSidebar = ({ isOpen, onClose }) => {
 
   const [newOrdersCount, setNewOrdersCount] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
+
+  // 🆕 Get real-time unread count from socket context
+  const socketContext = useSocket();
+  const totalUnread = socketContext?.totalUnread || 0;
 
   // Fetch counts for badges
   useEffect(() => {
@@ -47,10 +52,16 @@ const ClientSidebar = ({ isOpen, onClose }) => {
         ).length;
         setNewOrdersCount(activeCount);
 
-        const chatOrders = orders.filter(o => 
-          ["accepted", "in_progress", "submitted"].includes(o.status)
-        );
-        setUnreadMessages(chatOrders.length);
+        // 🆕 Fetch real unread message count from API
+        try {
+          const unreadRes = await axios.get(`${backendURL}/api/messages/unread-count`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setUnreadMessages(unreadRes.data.unreadCount || 0);
+        } catch (err) {
+          // Fallback to 0 if API not available
+          setUnreadMessages(0);
+        }
       } catch (err) {
         console.error("Failed to fetch counts:", err);
       }
@@ -59,11 +70,14 @@ const ClientSidebar = ({ isOpen, onClose }) => {
     fetchCounts();
   }, [backendURL, user?.token]);
 
+  // 🆕 Use socket's real-time totalUnread if available, otherwise fallback to fetched count
+  const displayUnread = totalUnread > 0 ? totalUnread : unreadMessages;
+
   const navItems = [
     { path: "/client-home", icon: FaHome, label: "Dashboard" },
     { path: "/client-orders", icon: FaClipboardList, label: "My Orders", badge: newOrdersCount },
     { path: "/payments", icon: FaCreditCard, label: "Payments" },
-    { path: "/client-messages", icon: FaEnvelope, label: "Messages", badge: unreadMessages },
+    { path: "/client-messages", icon: FaEnvelope, label: "Messages", badge: displayUnread },
     { path: "/saved-editors", icon: FaHeart, label: "Saved Editors" },
     { path: "/client-profile", icon: FaUserTie, label: "Profile" },
   ];

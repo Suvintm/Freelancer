@@ -16,22 +16,28 @@ import { HiOutlineSun, HiOutlineMoon } from "react-icons/hi2";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "../assets/logo.png";
 import { useTheme } from "../context/ThemeContext";
-
-const navItems = [
-  { path: "/editor-home", icon: FaHome, label: "Dashboard" },
-  { path: "/my-gigs", icon: FaShoppingCart, label: "My Gigs" },
-  { path: "/my-orders", icon: FaClipboardList, label: "My Orders" },
-  { path: "/reels-analytics", icon: FaChartLine, label: "Reels Analytics" },
-  { path: "/payments", icon: FaWallet, label: "Payments" },
-  { path: "/kyc-details", icon: FaUniversity, label: "KYC Details" },
-  { path: "/editor-profile", icon: FaUserTie, label: "Profile" },
-  { path: "/chats", icon: FaEnvelope, label: "Messages" },
-];
+import { useSocket } from "../context/SocketContext";
 
 const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
+  
+  // 🆕 Get real-time unread count from socket context
+  const socketContext = useSocket();
+  const totalUnread = socketContext?.totalUnread || 0;
+
+  // 🆕 Move navItems inside component to access totalUnread
+  const navItems = [
+    { path: "/editor-home", icon: FaHome, label: "Dashboard" },
+    { path: "/my-gigs", icon: FaShoppingCart, label: "My Gigs" },
+    { path: "/my-orders", icon: FaClipboardList, label: "My Orders" },
+    { path: "/reels-analytics", icon: FaChartLine, label: "Reels Analytics" },
+    { path: "/payments", icon: FaWallet, label: "Payments" },
+    { path: "/kyc-details", icon: FaUniversity, label: "KYC Details" },
+    { path: "/editor-profile", icon: FaUserTie, label: "Profile" },
+    { path: "/chats", icon: FaEnvelope, label: "Messages", badge: totalUnread },
+  ];
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -84,7 +90,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         {/* Navigation Items */}
         <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">
-          {navItems.map(({ path, icon: Icon, label }) => {
+          {navItems.map(({ path, icon: Icon, label, badge }) => {
             const isActive = location.pathname === path;
 
             return (
@@ -113,8 +119,15 @@ const Sidebar = ({ isOpen, onClose }) => {
                 <Icon className={`text-base ${isActive ? "text-emerald-500" : "text-gray-500 light:text-slate-400 group-hover:text-gray-300 light:group-hover:text-slate-600"}`} />
                 <span>{label}</span>
 
-                {/* Active Dot */}
-                {isActive && (
+                {/* 🆕 Badge for unread count */}
+                {badge > 0 && (
+                  <span className="ml-auto px-2 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full animate-pulse">
+                    {badge > 9 ? "9+" : badge}
+                  </span>
+                )}
+
+                {/* Active Dot - only show if no badge */}
+                {isActive && !badge && (
                   <motion.div
                     layoutId="sidebarDot"
                     className="absolute right-4 w-2 h-2 rounded-full bg-emerald-500"

@@ -128,17 +128,8 @@ export const sendMessage = asyncHandler(async (req, res) => {
     console.log("❌ Socket IO not available");
   }
 
-  // Notify recipient
-  const recipientId = isClient ? order.editor._id : order.client._id;
-  const recipientName = isClient ? order.editor.name : order.client.name;
-
-  await createNotification({
-    recipient: recipientId,
-    type: "info",
-    title: "New Message",
-    message: `${req.user.name}: ${content?.substring(0, 50) || "Sent a file"}...`,
-    link: `/chat/${orderId}`,
-  });
+  // 🔕 Notification removed - using unread count badge instead to save storage
+  // Real-time socket event already notifies the recipient
 
   logger.info(`Message sent in order: ${order.orderNumber}`);
 
@@ -358,16 +349,8 @@ export const uploadFile = asyncHandler(async (req, res) => {
     });
   }
 
-  // Notify recipient
-  const recipientId = isClient ? order.editor._id : order.client._id;
-
-  await createNotification({
-    recipient: recipientId,
-    type: "info",
-    title: "New File",
-    message: `${req.user.name} sent a file: ${req.file.originalname}`,
-    link: `/chat/${orderId}`,
-  });
+  // 🔕 Notification removed - using unread count badge instead to save storage
+  // Real-time socket event already notifies the recipient
 
   logger.info(`File uploaded in order: ${order.orderNumber}`);
 
@@ -390,6 +373,12 @@ export const deleteMessage = asyncHandler(async (req, res) => {
   // Check if user is the sender
   if (message.sender.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "You can only delete your own messages");
+  }
+
+  // 🔒 Block deletion for completed/cancelled/disputed orders
+  const protectedStatuses = ["completed", "cancelled", "disputed"];
+  if (protectedStatuses.includes(message.order.status)) {
+    throw new ApiError(403, "Cannot delete messages from completed or closed orders. Chat history is preserved for record.");
   }
 
   // Soft delete
@@ -618,16 +607,8 @@ export const uploadVoice = asyncHandler(async (req, res) => {
     });
   }
 
-  // Notify recipient
-  const recipientId = isClient ? order.editor._id : order.client._id;
-
-  await createNotification({
-    recipient: recipientId,
-    type: "info",
-    title: "Voice Message",
-    message: `${req.user.name} sent a voice message`,
-    link: `/chat/${orderId}`,
-  });
+  // 🔕 Notification removed - using unread count badge instead to save storage
+  // Real-time socket event already notifies the recipient
 
   res.status(201).json({
     success: true,
