@@ -41,6 +41,7 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import paymentGatewayRoutes from "./routes/paymentGatewayRoutes.js";
 import adminPaymentRoutes from "./routes/adminPaymentRoutes.js";
 import storageRoutes from "./routes/storageRoutes.js";
+import bannerRoutes from "./routes/bannerRoutes.js";
 
 // Scheduled Jobs
 import { startScheduledJobs } from "./jobs/scheduledJobs.js";
@@ -166,6 +167,7 @@ app.use("/api/admin/payment-settings", adminPaymentRoutes);
 app.use("/api/editor/analytics", editorAnalyticsRoutes);
 app.use("/api/storage", storageRoutes);
 app.use("/api/client/analytics", clientAnalyticsRoutes);
+app.use("/api/banners", bannerRoutes);
 
 // Public maintenance status check (no auth required)
 import { SiteSettings } from "./models/SiteSettings.js";

@@ -1,4 +1,5 @@
 import Navbar from "../components/Navbar";
+import PromoBanner from "../components/PromoBanner";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthForm from "../components/AuthForm";
@@ -215,27 +216,9 @@ const Homepage = () => {
 
             {/* Banner - Shows second/below on mobile, second on desktop */}
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.2 }} className="relative order-2 lg:order-2">
+              {/* Dynamic Promotional Banner - Admin Controlled */}
               <div className="relative bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200/80">
-                <div className="aspect-[4/3] relative">
-                  <AnimatePresence mode="wait">
-                    <motion.img key={currentBanner} src={bannerSlides[currentBanner].image} alt={bannerSlides[currentBanner].title} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} className="w-full h-full object-cover" />
-                  </AnimatePresence>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-5">
-                    <div className="flex items-end justify-between">
-                      <div>
-                        <span className="inline-block px-2 py-1 bg-emerald-500 text-white text-[10px] font-semibold rounded mb-2">{bannerSlides[currentBanner].tag}</span>
-                        <h3 className="text-white text-xl font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{bannerSlides[currentBanner].title}</h3>
-                      </div>
-                      <button className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors">
-                        <FaPlay className="text-xs ml-0.5" />
-                      </button>
-                    </div>
-                    <div className="flex gap-1.5 mt-4">
-                      {bannerSlides.map((_, i) => <button key={i} onClick={() => setCurrentBanner(i)} className={`h-1 rounded-full transition-all ${i === currentBanner ? "w-6 bg-white" : "w-1.5 bg-white/40"}`} />)}
-                    </div>
-                  </div>
-                </div>
+                <PromoBanner />
               </div>
               <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 3, repeat: Infinity }} className="absolute -top-4 -right-4 bg-white rounded-2xl shadow-xl p-4 border border-slate-100 hidden lg:flex items-center gap-3">
                 <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center"><FaCheckCircle className="text-emerald-500" /></div>
