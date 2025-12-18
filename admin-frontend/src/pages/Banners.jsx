@@ -28,6 +28,9 @@ import {
   FaSearch,
   FaFilter,
   FaSync,
+  FaArrowUp,
+  FaLock,
+  FaAd,
 } from "react-icons/fa";
 import { HiOutlineSparkles, HiSparkles } from "react-icons/hi2";
 import { useAdmin } from "../context/AdminContext";

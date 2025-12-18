@@ -23,6 +23,8 @@ import {
   FaBolt,
   FaClock,
   FaGem,
+  FaAd,
+  FaLock,
 } from "react-icons/fa";
 import { HiSparkles } from "react-icons/hi2";
 import axios from "axios";
