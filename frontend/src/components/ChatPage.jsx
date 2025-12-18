@@ -1699,8 +1699,8 @@ const ChatPage = () => {
                           </button>
                         )}
                         
-                        {/* Delete */}
-                        {isMe && (
+                        {/* Delete - 🆕 Hidden for completed/cancelled/disputed orders */}
+                        {isMe && !["completed", "cancelled", "disputed"].includes(order?.status) && (
                           <button onClick={() => handleDeleteMessage(msg._id)} className="p-1.5 bg-red-500/20 rounded-full hover:bg-red-500/40 text-red-400">
                               <FaTrash className="text-xs" />
                           </button>

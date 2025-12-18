@@ -35,6 +35,7 @@ import { FaUsers, FaBriefcase, FaPlayCircle } from "react-icons/fa";
 import { PiHeartFill } from "react-icons/pi";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
+import { useSocket } from "../context/SocketContext";
 import ClientSidebar from "../components/ClientSidebar.jsx";
 import ClientNavbar from "../components/ClientNavbar.jsx";
 import ExploreEditor from "../components/ExploreEditor.jsx";
@@ -53,6 +54,10 @@ const ClientHome = () => {
   const [featuredEditors, setFeaturedEditors] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // 🆕 Get real-time unread count from socket context
+  const socketContext = useSocket();
+  const totalUnread = socketContext?.totalUnread || 0;
 
   const scrollToExplore = (tab = "editors") => {
     setActiveTab(tab);
@@ -219,7 +224,7 @@ const ClientHome = () => {
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { label: "Orders", icon: HiOutlineClipboardDocumentList, path: "/client-orders", color: "text-emerald-500", bg: "bg-emerald-500/10 light:bg-emerald-50" },
-                  { label: "Messages", icon: HiOutlineChatBubbleLeftRight, path: "/client-messages", color: "text-blue-500", bg: "bg-blue-500/10 light:bg-blue-50" },
+                  { label: "Messages", icon: HiOutlineChatBubbleLeftRight, path: "/client-messages", color: "text-blue-500", bg: "bg-blue-500/10 light:bg-blue-50", badge: totalUnread },
                   { label: "Saved", icon: HiOutlineHeart, path: "/saved-editors", color: "text-rose-500", bg: "bg-rose-500/10 light:bg-rose-50" },
                   { label: "Reels", icon: HiOutlinePlayCircle, path: "/reels", color: "text-violet-500", bg: "bg-violet-500/10 light:bg-violet-50" },
                 ].map((item) => (
@@ -228,10 +233,16 @@ const ClientHome = () => {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => navigate(item.path)}
-                    className={`${item.bg} rounded-xl p-3 flex items-center gap-2.5 transition-all`}
+                    className={`${item.bg} rounded-xl p-3 flex items-center gap-2.5 transition-all relative`}
                   >
                     <item.icon className={`w-4 h-4 ${item.color} shrink-0`} />
                     <span className="text-sm font-medium truncate">{item.label}</span>
+                    {/* 🆕 Unread badge for Messages */}
+                    {item.badge > 0 && (
+                      <span className="absolute -top-1 -right-1 px-1.5 py-0.5 text-[9px] font-bold bg-red-500 text-white rounded-full animate-pulse shadow-sm">
+                        {item.badge > 9 ? "9+" : item.badge}
+                      </span>
+                    )}
                   </motion.button>
                 ))}
               </div>
