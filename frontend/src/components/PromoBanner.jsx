@@ -28,7 +28,7 @@ import { HiSparkles } from "react-icons/hi2";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 
-const AUTO_ADVANCE_DELAY = 6000; // 6 seconds for images
+const AUTO_ADVANCE_DELAY = 1500; // 1.5 seconds for images
 
 // Badge configurations with icons
 const BADGE_CONFIG = {
@@ -116,9 +116,10 @@ const PromoBanner = () => {
 
     const currentBanner = banners[currentIndex];
     
-    // Skip auto-advance for videos (they loop continuously)
+    // For videos, don't auto-advance - wait for video to end
     if (currentBanner?.mediaType === "video") {
       setProgress(0);
+      if (progressInterval.current) clearInterval(progressInterval.current);
       return;
     }
 
@@ -269,9 +270,10 @@ const PromoBanner = () => {
               src={currentBanner.mediaUrl}
               poster={currentBanner.thumbnailUrl}
               autoPlay
-              loop={currentBanner.loopVideo !== false}
+              loop={false}
               muted={isMuted}
               playsInline
+              onEnded={goToNext}
               className="w-full h-full object-cover"
             />
           ) : (
