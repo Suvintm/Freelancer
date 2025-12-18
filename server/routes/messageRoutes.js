@@ -6,6 +6,7 @@ import {
   markAsSeen,
   markAsDownloaded,
   getUnreadCount,
+  getUnreadCountsPerOrder,
   uploadFile,
   deleteMessage,
   editMessage,
@@ -31,8 +32,11 @@ const upload = multer({
 // All routes are protected
 router.use(authMiddleware);
 
-// Get unread count
+// Get unread count (total across all orders)
 router.get("/unread", getUnreadCount);
+
+// 🆕 Get unread counts per order (for chat list)
+router.get("/unread-per-order", getUnreadCountsPerOrder);
 
 // Search messages in an order
 router.get("/:orderId/search", searchMessages);

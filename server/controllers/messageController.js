@@ -263,6 +263,49 @@ export const getUnreadCount = asyncHandler(async (req, res) => {
   });
 });
 
+// ============ GET UNREAD COUNTS PER ORDER ============
+// 🆕 Returns unread count for each order (used by chat list without marking as seen)
+export const getUnreadCountsPerOrder = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
+  // Get all orders where user is participant
+  const orders = await Order.find({
+    $or: [{ client: userId }, { editor: userId }],
+    status: { $in: ["accepted", "in_progress", "submitted", "completed"] },
+  });
+
+  const orderIds = orders.map((o) => o._id);
+
+  // Get unread counts grouped by order using aggregation
+  const unreadCounts = await Message.aggregate([
+    {
+      $match: {
+        order: { $in: orderIds },
+        sender: { $ne: userId },
+        seen: false,
+        isDeleted: { $ne: true },
+      },
+    },
+    {
+      $group: {
+        _id: "$order",
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+
+  // Convert to object { orderId: count }
+  const counts = {};
+  unreadCounts.forEach((item) => {
+    counts[item._id.toString()] = item.count;
+  });
+
+  res.status(200).json({
+    success: true,
+    unreadCounts: counts,
+  });
+});
+
 // ============ UPLOAD FILE ============
 export const uploadFile = asyncHandler(async (req, res) => {
   const { orderId } = req.params;

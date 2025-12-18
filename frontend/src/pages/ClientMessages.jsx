@@ -92,7 +92,18 @@ const ClientMessages = () => {
         ["accepted", "in_progress", "submitted", "completed"].includes(order.status)
       );
 
-      // Fetch latest message AND unread count for each chat
+      // 🆕 Fetch unread counts from dedicated endpoint (doesn't mark as seen)
+      let unreadCounts = {};
+      try {
+        const unreadRes = await axios.get(`${backendURL}/api/messages/unread-per-order`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        unreadCounts = unreadRes.data.unreadCounts || {};
+      } catch (err) {
+        console.error("Failed to fetch unread counts:", err);
+      }
+
+      // Fetch only the last message for each chat (without counting unread there)
       const chatsWithMessages = await Promise.all(
         activeChats.map(async (chat) => {
           try {
@@ -101,20 +112,14 @@ const ClientMessages = () => {
             });
             const messages = msgRes.data.messages || [];
             
-            // Count unread messages (not from me and not seen)
-            const unreadCount = messages.filter(m => 
-              m.sender?._id !== user?._id && 
-              m.sender !== user?._id && 
-              !m.seen
-            ).length;
-            
             return {
               ...chat,
               lastMessage: messages.length > 0 ? messages[messages.length - 1] : null,
-              unreadCount,
+              // 🆕 Use unread count from dedicated endpoint
+              unreadCount: unreadCounts[chat._id] || 0,
             };
           } catch {
-            return { ...chat, lastMessage: null, unreadCount: 0 };
+            return { ...chat, lastMessage: null, unreadCount: unreadCounts[chat._id] || 0 };
           }
         })
       );
