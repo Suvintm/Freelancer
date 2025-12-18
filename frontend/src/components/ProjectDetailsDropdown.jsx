@@ -4,18 +4,20 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   FaChevronDown,
   FaCheckCircle,
-  FaCircle,
   FaRupeeSign,
-  FaReceipt,
-  FaClipboardList,
-  FaCreditCard,
-  FaTasks,
 } from "react-icons/fa";
+import { 
+  HiOutlineClipboardDocumentList,
+  HiOutlineCreditCard,
+  HiOutlineClipboardDocumentCheck,
+  HiOutlineReceiptPercent,
+  HiOutlineCheckCircle
+} from "react-icons/hi2";
 
 const PAYMENT_STAGES = [
-  { key: "pending", label: "Payment Pending", icon: FaCircle },
-  { key: "escrow", label: "In Escrow", icon: FaCreditCard },
-  { key: "released", label: "Payment Released", icon: FaCheckCircle },
+  { key: "pending", label: "Payment Pending" },
+  { key: "escrow", label: "In Escrow" },
+  { key: "released", label: "Payment Released" },
 ];
 
 const WORK_STAGES = [
@@ -57,21 +59,23 @@ const ProjectDetailsDropdown = ({ order }) => {
   const editorEarning = order.editorEarning || orderAmount - platformFee;
 
   return (
-    <div className="border-b border-white/5">
+    <div className="border-b border-zinc-800/50 light:border-zinc-200">
       {/* Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-3 bg-transparent hover:bg-white/5 transition-all"
+        className="w-full flex items-center justify-between p-3 bg-transparent hover:bg-zinc-800/30 light:hover:bg-zinc-100 transition-all"
       >
         <div className="flex items-center gap-3">
-          <FaClipboardList className="text-blue-400" />
-          <span className="text-white font-medium text-sm">Project Details</span>
+          <div className="p-2 rounded-lg bg-blue-500/15 light:bg-blue-100">
+            <HiOutlineClipboardDocumentList className="text-blue-500 w-4 h-4" />
+          </div>
+          <span className="text-white light:text-zinc-900 font-semibold text-sm">Project Details</span>
         </div>
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2 }}
         >
-          <FaChevronDown className="text-gray-400" />
+          <FaChevronDown className="text-zinc-400 light:text-zinc-500 w-3 h-3" />
         </motion.div>
       </button>
 
@@ -85,47 +89,49 @@ const ProjectDetailsDropdown = ({ order }) => {
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="p-4 bg-black/40 backdrop-blur-md grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-white/5">
+            <div className="p-4 bg-zinc-900/50 light:bg-zinc-50 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-zinc-800/50 light:border-zinc-200">
               {/* LEFT: Progress Bars */}
-              <div className="space-y-6">
+              <div className="space-y-5">
                 {/* Payment Progress */}
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <FaCreditCard className="text-yellow-400 text-sm" />
-                    <h4 className="text-sm font-semibold text-white">Payment Status</h4>
+                <div className="bg-zinc-800/50 light:bg-white rounded-xl p-4 border border-zinc-700/50 light:border-zinc-200">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-1.5 rounded-lg bg-amber-500/15 light:bg-amber-100">
+                      <HiOutlineCreditCard className="text-amber-500 w-4 h-4" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-white light:text-zinc-900">Payment Status</h4>
                   </div>
-                  <div className="space-y-2 pl-2">
+                  <div className="space-y-3 pl-1">
                     {PAYMENT_STAGES.map((stage, index) => {
                       const isActive = index <= paymentStage;
                       const isCurrent = index === paymentStage;
                       return (
-                        <div key={stage.key} className="flex items-center gap-3">
+                        <div key={stage.key} className="flex items-center gap-3 relative">
                           {/* Vertical Line */}
                           {index < PAYMENT_STAGES.length - 1 && (
                             <div
-                              className={`absolute ml-[7px] mt-8 w-0.5 h-6 ${
-                                index < paymentStage ? "bg-green-500" : "bg-gray-600"
+                              className={`absolute left-[9px] top-5 w-0.5 h-5 ${
+                                index < paymentStage ? "bg-emerald-500" : "bg-zinc-600 light:bg-zinc-300"
                               }`}
                             />
                           )}
                           {/* Circle */}
                           <div
-                            className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                              isActive ? "bg-green-500" : "bg-gray-600"
+                            className={`w-5 h-5 rounded-full flex items-center justify-center z-10 shrink-0 ${
+                              isActive ? "bg-emerald-500" : "bg-zinc-600 light:bg-zinc-300"
                             }`}
                           >
                             {isActive && (
-                              <FaCheckCircle className="text-white text-[10px]" />
+                              <HiOutlineCheckCircle className="text-white text-xs" />
                             )}
                           </div>
                           {/* Label */}
                           <span
-                            className={`text-xs ${
+                            className={`text-xs font-medium ${
                               isCurrent
-                                ? "text-green-400 font-semibold"
+                                ? "text-emerald-400 light:text-emerald-600"
                                 : isActive
-                                ? "text-gray-300"
-                                : "text-gray-500"
+                                ? "text-zinc-300 light:text-zinc-600"
+                                : "text-zinc-500 light:text-zinc-400"
                             }`}
                           >
                             {stage.label}
@@ -137,12 +143,14 @@ const ProjectDetailsDropdown = ({ order }) => {
                 </div>
 
                 {/* Work Progress */}
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <FaTasks className="text-blue-400 text-sm" />
-                    <h4 className="text-sm font-semibold text-white">Work Status</h4>
+                <div className="bg-zinc-800/50 light:bg-white rounded-xl p-4 border border-zinc-700/50 light:border-zinc-200">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-1.5 rounded-lg bg-blue-500/15 light:bg-blue-100">
+                      <HiOutlineClipboardDocumentCheck className="text-blue-500 w-4 h-4" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-white light:text-zinc-900">Work Status</h4>
                   </div>
-                  <div className="space-y-2 pl-2">
+                  <div className="space-y-3 pl-1">
                     {WORK_STAGES.map((stage, index) => {
                       const isActive = index <= workStage;
                       const isCurrent = index === workStage;
@@ -151,29 +159,29 @@ const ProjectDetailsDropdown = ({ order }) => {
                           {/* Vertical Line */}
                           {index < WORK_STAGES.length - 1 && (
                             <div
-                              className={`absolute left-[7px] top-4 w-0.5 h-4 ${
-                                index < workStage ? "bg-blue-500" : "bg-gray-600"
+                              className={`absolute left-[9px] top-5 w-0.5 h-5 ${
+                                index < workStage ? "bg-blue-500" : "bg-zinc-600 light:bg-zinc-300"
                               }`}
                             />
                           )}
                           {/* Circle */}
                           <div
-                            className={`w-4 h-4 rounded-full flex items-center justify-center z-10 ${
-                              isActive ? "bg-blue-500" : "bg-gray-600"
+                            className={`w-5 h-5 rounded-full flex items-center justify-center z-10 shrink-0 ${
+                              isActive ? "bg-blue-500" : "bg-zinc-600 light:bg-zinc-300"
                             }`}
                           >
                             {isActive && (
-                              <FaCheckCircle className="text-white text-[10px]" />
+                              <HiOutlineCheckCircle className="text-white text-xs" />
                             )}
                           </div>
                           {/* Label */}
                           <span
-                            className={`text-xs ${
+                            className={`text-xs font-medium ${
                               isCurrent
-                                ? "text-blue-400 font-semibold"
+                                ? "text-blue-400 light:text-blue-600"
                                 : isActive
-                                ? "text-gray-300"
-                                : "text-gray-500"
+                                ? "text-zinc-300 light:text-zinc-600"
+                                : "text-zinc-500 light:text-zinc-400"
                             }`}
                           >
                             {stage.label}
@@ -186,17 +194,19 @@ const ProjectDetailsDropdown = ({ order }) => {
               </div>
 
               {/* RIGHT: Receipt */}
-              <div className="bg-[#111319] rounded-xl p-4 border border-[#262A3B]">
+              <div className="bg-zinc-800/50 light:bg-white rounded-xl p-4 border border-zinc-700/50 light:border-zinc-200 h-fit">
                 <div className="flex items-center gap-2 mb-4">
-                  <FaReceipt className="text-emerald-400" />
-                  <h4 className="text-sm font-semibold text-white">Order Receipt</h4>
+                  <div className="p-1.5 rounded-lg bg-emerald-500/15 light:bg-emerald-100">
+                    <HiOutlineReceiptPercent className="text-emerald-500 w-4 h-4" />
+                  </div>
+                  <h4 className="text-sm font-semibold text-white light:text-zinc-900">Order Receipt</h4>
                 </div>
 
                 <div className="space-y-3">
                   {/* Order Amount */}
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-400 text-sm">Order Amount</span>
-                    <span className="text-white font-semibold flex items-center gap-1">
+                    <span className="text-zinc-400 light:text-zinc-500 text-sm">Order Amount</span>
+                    <span className="text-white light:text-zinc-900 font-semibold flex items-center gap-1">
                       <FaRupeeSign className="text-xs" />
                       {orderAmount.toLocaleString("en-IN")}
                     </span>
@@ -204,7 +214,7 @@ const ProjectDetailsDropdown = ({ order }) => {
 
                   {/* Platform Fee */}
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-400 text-sm">Platform Fee (5%)</span>
+                    <span className="text-zinc-400 light:text-zinc-500 text-sm">Platform Fee (5%)</span>
                     <span className="text-red-400 font-medium flex items-center gap-1">
                       - <FaRupeeSign className="text-xs" />
                       {platformFee.toLocaleString("en-IN")}
@@ -212,14 +222,14 @@ const ProjectDetailsDropdown = ({ order }) => {
                   </div>
 
                   {/* Divider */}
-                  <div className="border-t border-[#262A3B] my-2" />
+                  <div className="border-t border-zinc-700/50 light:border-zinc-200 my-2" />
 
                   {/* You Receive */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-white font-semibold text-sm">
+                  <div className="flex items-center justify-between bg-emerald-500/10 light:bg-emerald-50 rounded-lg p-3 -mx-1">
+                    <span className="text-white light:text-zinc-900 font-semibold text-sm">
                       {order.editor?._id === order.currentUserId ? "You Receive" : "Editor Receives"}
                     </span>
-                    <span className="text-emerald-400 font-bold text-lg flex items-center gap-1">
+                    <span className="text-emerald-400 light:text-emerald-600 font-bold text-lg flex items-center gap-1">
                       <FaRupeeSign className="text-sm" />
                       {editorEarning.toLocaleString("en-IN")}
                     </span>
@@ -227,14 +237,14 @@ const ProjectDetailsDropdown = ({ order }) => {
                 </div>
 
                 {/* Order Details */}
-                <div className="mt-4 pt-4 border-t border-[#262A3B] space-y-2">
+                <div className="mt-4 pt-4 border-t border-zinc-700/50 light:border-zinc-200 space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-500">Order ID</span>
-                    <span className="text-gray-300 font-mono">{order.orderNumber || order._id?.slice(-8)}</span>
+                    <span className="text-zinc-500 light:text-zinc-400">Order ID</span>
+                    <span className="text-zinc-300 light:text-zinc-600 font-mono">{order.orderNumber || order._id?.slice(-8)}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-500">Created</span>
-                    <span className="text-gray-300">
+                    <span className="text-zinc-500 light:text-zinc-400">Created</span>
+                    <span className="text-zinc-300 light:text-zinc-600">
                       {new Date(order.createdAt).toLocaleDateString("en-IN", {
                         day: "numeric",
                         month: "short",
@@ -244,8 +254,8 @@ const ProjectDetailsDropdown = ({ order }) => {
                   </div>
                   {order.deadline && (
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-500">Deadline</span>
-                      <span className="text-yellow-400">
+                      <span className="text-zinc-500 light:text-zinc-400">Deadline</span>
+                      <span className="text-amber-400 light:text-amber-600 font-medium">
                         {new Date(order.deadline).toLocaleDateString("en-IN", {
                           day: "numeric",
                           month: "short",

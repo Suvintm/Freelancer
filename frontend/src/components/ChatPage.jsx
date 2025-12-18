@@ -36,8 +36,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 import { useSocket } from "../context/SocketContext";
 import MediaPreviewModal from "./MediaPreviewModal";
-import ProjectDetailsDropdown from "./ProjectDetailsDropdown";
-import FootageLinksDropdown from "./FootageLinksDropdown";
+import ChatInfoTabs from "./ChatInfoTabs";
 import FinalDeliveryCard from "./FinalDeliveryCard";
 import WatermarkPreviewModal from "./WatermarkPreviewModal";
 import DownloadConfirmPopup from "./DownloadConfirmPopup";
@@ -397,53 +396,99 @@ const EditMessageModal = ({ message, onSave, onClose }) => {
   );
 };
 
-// 📁 Drive Link Card - Display shared external links
+// 📁 Drive Link Card - Clean Corporate Style
 const DriveLinkCard = ({ link }) => {
+  // Real SVG icons for each provider
+  const GoogleDriveIcon = () => (
+    <svg viewBox="0 0 87.3 78" className="w-5 h-5">
+      <path fill="#0066DA" d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5l5.4 9.35z"/>
+      <path fill="#00AC47" d="M43.65 25L29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44-.2.35c.8-1.4 1.95-2.5 3.3-3.3L43.65 25z"/>
+      <path fill="#EA4335" d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.55L73.55 76.8z"/>
+      <path fill="#00832D" d="M43.65 25L29.9 1.2A8.86 8.86 0 0026.6.0H.0l29.9 52.15L43.65 25z"/>
+      <path fill="#2684FC" d="M59.55 53H27.5l-13.75 23.8c1.35.8 2.85 1.2 4.4 1.2h50.4c1.55 0 3.05-.4 4.4-1.2L59.55 53z"/>
+      <path fill="#FFBA00" d="M73.4 26.5L60.7.0C59.35.0 57.85.4 56.5 1.2L43.65 25l15.9 28H87.3c0-1.55-.4-3.1-1.2-4.5L73.4 26.5z"/>
+    </svg>
+  );
+  
+  const DropboxIcon = () => (
+    <svg viewBox="0 0 43 40" className="w-5 h-5">
+      <path fill="#0061FF" d="M12.5 0L0 8.1 12.5 16.2 25 8.1zM0 24.4l12.5 8.1 12.5-8.1-12.5-8.1zM25 16.3l12.5-8.1L25 0 12.5 8.1zM37.5 16.3L25 24.4l12.5 8.1 12.5-8.1zM12.5 35.5L25 27.4 12.5 19.3 0 27.4z"/>
+    </svg>
+  );
+  
+  const OneDriveIcon = () => (
+    <svg viewBox="0 0 24 24" className="w-5 h-5">
+      <path fill="#0078D4" d="M14.5 18H6c-3.31 0-6-2.69-6-6 0-2.97 2.16-5.43 5-5.91V6c0-3.31 2.69-6 6-6 2.97 0 5.43 2.16 5.91 5H17c3.31 0 6 2.69 6 6s-2.69 6-6 6h-2.5z"/>
+    </svg>
+  );
+  
+  const WeTransferIcon = () => (
+    <svg viewBox="0 0 24 24" className="w-5 h-5">
+      <circle fill="#409FFF" cx="12" cy="12" r="12"/>
+      <path fill="white" d="M6 8h12v2H6zm0 3h12v2H6zm0 3h8v2H6z"/>
+    </svg>
+  );
+  
+  const MegaIcon = () => (
+    <svg viewBox="0 0 24 24" className="w-5 h-5">
+      <path fill="#D9272E" d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5 16.5l-3.5-5v5h-3v-5l-3.5 5H4.5l5-7.5-5-7.5H7l3.5 5v-5h3v5l3.5-5h2.5l-5 7.5 5 7.5H17z"/>
+    </svg>
+  );
+  
   const getProviderInfo = (provider) => {
     switch (provider) {
       case "google_drive":
-        return { name: "Google Drive", color: "from-yellow-500 to-green-500", icon: "📁" };
+        return { name: "Google Drive", btnColor: "bg-[#1a73e8] hover:bg-[#1557b0]", Icon: GoogleDriveIcon };
       case "dropbox":
-        return { name: "Dropbox", color: "from-blue-400 to-blue-600", icon: "📦" };
+        return { name: "Dropbox", btnColor: "bg-[#0061ff] hover:bg-[#004dcc]", Icon: DropboxIcon };
       case "onedrive":
-        return { name: "OneDrive", color: "from-blue-500 to-cyan-500", icon: "☁️" };
+        return { name: "OneDrive", btnColor: "bg-[#0078d4] hover:bg-[#005a9e]", Icon: OneDriveIcon };
       case "wetransfer":
-        return { name: "WeTransfer", color: "from-purple-500 to-pink-500", icon: "📤" };
+        return { name: "WeTransfer", btnColor: "bg-[#409fff] hover:bg-[#2d8ce6]", Icon: WeTransferIcon };
       case "mega":
-        return { name: "MEGA", color: "from-red-500 to-orange-500", icon: "📂" };
+        return { name: "MEGA", btnColor: "bg-[#d9272e] hover:bg-[#b81f25]", Icon: MegaIcon };
       default:
-        return { name: "External Link", color: "from-gray-500 to-gray-700", icon: "🔗" };
+        return { name: "External Link", btnColor: "bg-zinc-600 hover:bg-zinc-700", Icon: () => <FaExternalLinkAlt className="w-4 h-4 text-zinc-400" /> };
     }
   };
 
   const providerInfo = getProviderInfo(link.provider);
+  const ProviderIcon = providerInfo.Icon;
 
   return (
-    <div className={`bg-gradient-to-r ${providerInfo.color} p-[1px] rounded-2xl`}>
-      <div className="bg-[#1a1a1a] rounded-2xl p-4">
-        <div className="flex items-start gap-3">
-          <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-2xl">
-            {providerInfo.icon}
+    <div className="w-full max-w-[280px]">
+      <div className="bg-white light:bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-sm overflow-hidden">
+        {/* Compact Header */}
+        <div className="p-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center border border-zinc-100 dark:border-zinc-700">
+            <ProviderIcon />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="font-bold text-white text-sm truncate">{link.title || "Raw Footage Package"}</h4>
-            <p className="text-gray-400 text-xs">{providerInfo.name}</p>
-            {link.description && (
-              <p className="text-gray-300 text-xs mt-1 line-clamp-2">{link.description}</p>
-            )}
-            <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-500">
-              {link.fileCount && <span>📎 {link.fileCount} files</span>}
-              {link.totalSize && <span>💾 {link.totalSize}</span>}
-            </div>
+            <h4 className="font-medium text-zinc-900 dark:text-white text-[13px] truncate leading-tight">
+              {link.title || "Shared Files"}
+            </h4>
+            <p className="text-zinc-500 dark:text-zinc-400 text-[11px]">{providerInfo.name}</p>
           </div>
         </div>
-        <button
-          onClick={() => window.open(link.url, "_blank")}
-          className={`w-full mt-3 py-2.5 bg-gradient-to-r ${providerInfo.color} text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition`}
-        >
-          <FaExternalLinkAlt className="text-xs" />
-          Open in {providerInfo.name}
-        </button>
+        
+        {/* Description */}
+        {link.description && (
+          <div className="px-3 pb-2">
+            <p className="text-zinc-600 dark:text-zinc-400 text-[11px] leading-relaxed line-clamp-2">{link.description}</p>
+          </div>
+        )}
+        
+        {/* Link-style Action Button */}
+        <div className="px-3 pb-3">
+          <button
+            onClick={() => window.open(link.url, "_blank")}
+            className="w-full py-2 px-3 bg-transparent border border-zinc-200 dark:border-zinc-700 hover:border-blue-400 dark:hover:border-blue-500 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-[12px] font-medium rounded-md flex items-center justify-center gap-2 transition-all group"
+          >
+            <FaExternalLinkAlt className="text-[9px] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            <span>Open in {providerInfo.name}</span>
+            <span className="text-zinc-400 dark:text-zinc-500 text-[10px]">↗</span>
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1128,7 +1173,7 @@ const ChatPage = () => {
     };
   }, [socket]);
 
-  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Loading...</div>;
+  if (loading) return <div className="min-h-screen bg-[#09090B] light:bg-[#FAFAFA] flex items-center justify-center text-white light:text-zinc-900">Loading...</div>;
 
   // Calculate deadline status for header
   const getDeadlineStatus = () => {
@@ -1168,13 +1213,13 @@ const ChatPage = () => {
   const deadlineStatus = getDeadlineStatus();
 
   return (
-    <div className="flex flex-col h-screen bg-black text-white font-sans overflow-hidden">
+    <div className="flex flex-col h-screen bg-[#09090B] light:bg-[#FAFAFA] text-white light:text-zinc-900 font-sans overflow-hidden">
       
       {/* 1. Fixed Header (Glassmorphism) - STICKY */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-md border-b border-white/10">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#09090B]/95 light:bg-white/95 backdrop-blur-md border-b border-white/10 light:border-zinc-200">
         <div className="flex items-center gap-4 px-4 py-3">
-          <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition">
-            <FaArrowLeft className="text-white text-lg" />
+          <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-white/10 light:hover:bg-zinc-100 transition">
+            <FaArrowLeft className="text-white light:text-zinc-700 text-lg" />
           </button>
 
           {/* User Info */}
@@ -1184,15 +1229,15 @@ const ChatPage = () => {
                 <img 
                   src={otherParty?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
                   alt="Profile"
-                  className="w-full h-full rounded-full object-cover border-2 border-black"
+                  className="w-full h-full rounded-full object-cover border-2 border-[#09090B] light:border-white"
                 />
               </div>
-              {isOnline && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-black"></div>}
+              {isOnline && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#09090B] light:border-white"></div>}
             </div>
             <div className="flex flex-col justify-center">
-              <span className="font-semibold text-sm truncate leading-tight">{otherParty?.name || "Unknown User"}</span>
+              <span className="font-semibold text-sm truncate leading-tight light:text-zinc-900">{otherParty?.name || "Unknown User"}</span>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] text-gray-400 leading-tight">
+                <span className="text-[11px] text-gray-400 light:text-zinc-500 leading-tight">
                   {isOnline ? "Active now" : "Offline"}
                 </span>
                 {/* Deadline Badge */}
@@ -1210,7 +1255,7 @@ const ChatPage = () => {
             {/* Media Gallery Toggle */}
             <button 
               onClick={() => setShowMediaGallery(true)}
-              className="p-2 rounded-full transition hover:bg-white/10 text-gray-400"
+              className="p-2 rounded-full transition hover:bg-white/10 light:hover:bg-zinc-100 text-gray-400 light:text-zinc-500"
               title="View all media"
             >
               <FaImage className="text-sm" />
@@ -1219,7 +1264,7 @@ const ChatPage = () => {
             {/* Search Toggle */}
             <button 
               onClick={() => setShowSearch(!showSearch)}
-              className={`p-2 rounded-full transition ${showSearch ? 'bg-purple-500/30 text-purple-400' : 'hover:bg-white/10 text-gray-400'}`}
+              className={`p-2 rounded-full transition ${showSearch ? 'bg-purple-500/30 text-purple-400' : 'hover:bg-white/10 light:hover:bg-zinc-100 text-gray-400 light:text-zinc-500'}`}
             >
               <FaSearch className="text-sm" />
             </button>
@@ -1227,7 +1272,7 @@ const ChatPage = () => {
             {/* Checklist Toggle */}
             <button 
               onClick={() => setShowChecklist(!showChecklist)}
-              className={`p-2 rounded-full transition ${showChecklist ? 'bg-purple-500/30 text-purple-400' : 'hover:bg-white/10 text-gray-400'}`}
+              className={`p-2 rounded-full transition ${showChecklist ? 'bg-purple-500/30 text-purple-400' : 'hover:bg-white/10 light:hover:bg-zinc-100 text-gray-400 light:text-zinc-500'}`}
             >
               <FaList className="text-sm" />
             </button>
@@ -1243,7 +1288,7 @@ const ChatPage = () => {
               exit={{ height: 0, opacity: 0 }}
               className="px-4 pb-3 overflow-hidden"
             >
-              <div className="flex items-center gap-2 bg-white/5 rounded-xl px-3 py-2">
+              <div className="flex items-center gap-2 bg-zinc-800/50 light:bg-zinc-100 rounded-xl px-3 py-2">
                 <FaSearch className="text-gray-500" />
                 <input
                   type="text"
@@ -1253,7 +1298,7 @@ const ChatPage = () => {
                     setSearchQuery(e.target.value);
                     handleSearch(e.target.value);
                   }}
-                  className="flex-1 bg-transparent text-white text-sm focus:outline-none placeholder-gray-500"
+                  className="flex-1 bg-transparent text-white light:text-zinc-900 text-sm focus:outline-none placeholder-gray-500 light:placeholder-zinc-400"
                 />
                 {searchQuery && (
                   <button onClick={() => { setSearchQuery(""); setSearchResults([]); }}>
@@ -1291,11 +1336,13 @@ const ChatPage = () => {
           )}
         </AnimatePresence>
 
-        {/* Integrated Project Details (Collapsible) */}
-        <div className="bg-white/5 border-t border-white/5 flex max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-            <ProjectDetailsDropdown order={{ ...order, currentUserId: user?._id }} />
-            <FootageLinksDropdown messages={messages} userRole={user?.role} orderId={orderId} />
-        </div>
+        {/* Integrated Project Details - Tab Interface */}
+        <ChatInfoTabs 
+          order={{ ...order, currentUserId: user?._id }} 
+          messages={messages} 
+          userRole={user?.role} 
+          orderId={orderId} 
+        />
       </header>
 
 
@@ -1310,7 +1357,7 @@ const ChatPage = () => {
         }}
       >
         {/* Dark overlay for readability */}
-        <div className="fixed inset-0 bg-black/70 pointer-events-none z-0" />
+        <div className="fixed inset-0 bg-black/70 light:bg-white/70 pointer-events-none z-0" />
 
         <div className="relative z-10 flex flex-col gap-1 pb-4">
           {messages.map((msg, i) => {
@@ -1416,7 +1463,7 @@ const ChatPage = () => {
 
                   {/* Message Bubble - Gradient for ME, Dark Grey for THEM */}
                   <div 
-                    className={`relative px-4 py-2 ${
+                    className={`relative px-4 py-2 overflow-hidden ${
                         msg.isDeleted 
                             ? "bg-[#1a1a1a] text-gray-500 rounded-[20px] border border-white/5 italic" 
                             : isMe 
@@ -1444,12 +1491,12 @@ const ChatPage = () => {
                         
                         {/* File Content - Enhanced with download option */}
                         {msg.type === "file" && (
-                            <div className="bg-black/20 rounded-xl p-3 mb-1">
+                            <div className="bg-black/20 rounded-xl p-3 mb-1 max-w-[260px]">
                               <div className="flex items-center gap-3">
-                                <div className="p-3 bg-purple-500/20 rounded-xl">
+                                <div className="p-3 bg-purple-500/20 rounded-xl shrink-0">
                                   <FaFileAlt className="text-purple-400 text-lg" />
                                 </div>
-                                <div className="flex-1 min-w-0">
+                                <div className="flex-1 min-w-0 overflow-hidden">
                                   <p className="text-sm font-medium truncate">{msg.mediaName || "File"}</p>
                                   <p className="text-[11px] text-gray-400">{msg.mediaSize ? `${(msg.mediaSize / 1024).toFixed(1)} KB` : "Document"}</p>
                                 </div>
@@ -1504,7 +1551,7 @@ const ChatPage = () => {
 
                         {/* Text Content */}
                         {msg.content && msg.type === "text" && (
-                          <p className="text-[15px] leading-relaxed whitespace-pre-wrap emoji-font">{msg.content}</p>
+                          <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words emoji-font">{msg.content}</p>
                         )}
                         
                         {/* Edited Indicator */}
@@ -1673,7 +1720,7 @@ const ChatPage = () => {
         </footer>
       ) : (
         /* Normal Chat Footer */
-        <footer className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md px-4 py-3 pb-6 z-50 border-t border-white/10" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
+        <footer className="fixed bottom-0 left-0 right-0 bg-[#09090B]/95 light:bg-white/95 backdrop-blur-md px-4 py-3 pb-6 z-50 border-t border-white/10 light:border-zinc-200" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
          {/* Reply Preview Context */}
          <AnimatePresence>
             {replyingTo && (
@@ -1681,7 +1728,7 @@ const ChatPage = () => {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="flex items-center justify-between bg-[#1c1c1c] border-l-4 border-purple-500 p-3 rounded-t-xl mb-2"
+                    className="flex items-center justify-between bg-zinc-800 light:bg-zinc-100 border-l-4 border-purple-500 p-3 rounded-t-xl mb-2"
                 >
                     <div className="overflow-hidden">
                         <p className="text-xs text-purple-400 font-bold">Replying to {replyingTo.sender?.name || "User"}</p>
@@ -1697,7 +1744,7 @@ const ChatPage = () => {
              <div className="relative">
                  <button 
                     onClick={() => setShowMediaMenu(!showMediaMenu)}
-                    className="p-3 text-white bg-[#262626] rounded-full hover:bg-[#333] transition"
+                    className="p-3 text-white light:text-zinc-700 bg-zinc-800 light:bg-zinc-100 rounded-full hover:bg-zinc-700 light:hover:bg-zinc-200 transition"
                  >
                     <FaPaperclip />
                  </button>
@@ -1708,11 +1755,11 @@ const ChatPage = () => {
                             initial={{ opacity: 0, scale: 0.9, y: 10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                            className="absolute bottom-14 left-0 bg-[#262626] border border-white/10 rounded-xl shadow-2xl p-2 w-40 flex flex-col gap-1 z-[60]"
+                            className="absolute bottom-14 left-0 bg-zinc-800 light:bg-white border border-white/10 light:border-zinc-200 rounded-xl shadow-2xl p-2 w-40 flex flex-col gap-1 z-[60]"
                         >
-                             <button onClick={() => imageInputRef.current.click()} className="flex items-center gap-3 p-2 hover:bg-white/10 rounded-lg text-sm"><FaCamera className="text-pink-500" /> Photo</button>
-                             <button onClick={() => videoInputRef.current.click()} className="flex items-center gap-3 p-2 hover:bg-white/10 rounded-lg text-sm"><FaVideo className="text-blue-500" /> Video</button>
-                             <button onClick={() => docInputRef.current.click()} className="flex items-center gap-3 p-2 hover:bg-white/10 rounded-lg text-sm"><FaFileAlt className="text-yellow-500" /> Document</button>
+                             <button onClick={() => imageInputRef.current.click()} className="flex items-center gap-3 p-2 hover:bg-white/10 light:hover:bg-zinc-100 rounded-lg text-sm"><FaCamera className="text-pink-500" /> Photo</button>
+                             <button onClick={() => videoInputRef.current.click()} className="flex items-center gap-3 p-2 hover:bg-white/10 light:hover:bg-zinc-100 rounded-lg text-sm"><FaVideo className="text-blue-500" /> Video</button>
+                             <button onClick={() => docInputRef.current.click()} className="flex items-center gap-3 p-2 hover:bg-white/10 light:hover:bg-zinc-100 rounded-lg text-sm"><FaFileAlt className="text-yellow-500" /> Document</button>
                              
                              {/* Share Raw Footage - Client Only */}
                              {user?.role === "client" && (

@@ -208,33 +208,33 @@ const ChatsPage = () => {
 
   // Shimmer skeleton component
   const ShimmerCard = () => (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 animate-pulse">
+    <div className="bg-zinc-900 light:bg-white border border-zinc-800 light:border-zinc-200 rounded-xl p-4 animate-pulse light:shadow-sm">
       <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-zinc-800" />
+        <div className="w-12 h-12 rounded-xl bg-zinc-800 light:bg-zinc-200" />
         <div className="flex-1 space-y-2">
-          <div className="h-4 w-32 bg-zinc-800 rounded" />
-          <div className="h-3 w-48 bg-zinc-800 rounded" />
+          <div className="h-4 w-32 bg-zinc-800 light:bg-zinc-200 rounded" />
+          <div className="h-3 w-48 bg-zinc-800 light:bg-zinc-200 rounded" />
         </div>
-        <div className="h-6 w-20 bg-zinc-800 rounded-lg" />
+        <div className="h-6 w-20 bg-zinc-800 light:bg-zinc-200 rounded-lg" />
       </div>
     </div>
   );
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col md:flex-row bg-black text-white">
+      <div className="min-h-screen flex flex-col md:flex-row bg-[#09090B] light:bg-[#FAFAFA] text-white light:text-zinc-900">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 px-4 md:px-6 py-6 pt-20 md:pt-6 md:ml-64 md:mt-20">
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-zinc-800 animate-pulse" />
+            <div className="w-10 h-10 rounded-xl bg-zinc-800 light:bg-zinc-200 animate-pulse" />
             <div className="space-y-2">
-              <div className="h-6 w-32 bg-zinc-800 rounded animate-pulse" />
-              <div className="h-3 w-24 bg-zinc-800 rounded animate-pulse" />
+              <div className="h-6 w-32 bg-zinc-800 light:bg-zinc-200 rounded animate-pulse" />
+              <div className="h-3 w-24 bg-zinc-800 light:bg-zinc-200 rounded animate-pulse" />
             </div>
           </div>
-          <div className="h-10 w-full bg-zinc-900 rounded-lg mb-4 animate-pulse" />
-          <div className="h-12 w-full bg-zinc-900 rounded-xl mb-6 animate-pulse" />
+          <div className="h-10 w-full bg-zinc-900 light:bg-zinc-100 rounded-lg mb-4 animate-pulse" />
+          <div className="h-12 w-full bg-zinc-900 light:bg-zinc-100 rounded-xl mb-6 animate-pulse" />
           <div className="space-y-3">
             <ShimmerCard />
             <ShimmerCard />
@@ -246,7 +246,7 @@ const ChatsPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#09090B] light:bg-[#FAFAFA] text-white light:text-zinc-900 transition-colors duration-200" style={{ fontFamily: "'Manrope', sans-serif" }}>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
