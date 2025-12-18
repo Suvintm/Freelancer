@@ -178,6 +178,26 @@ export const updateBanner = asyncHandler(async (req, res) => {
     "showArrows",
     "showDots",
     "showProgressBar",
+    // Advanced Typography
+    "textColor",
+    "fontFamily",
+    "textShadow",
+    // Advanced Visual Effects
+    "borderRadius",
+    "bgBlur",
+    "overlayType",
+    "overlayColor",
+    // CTA Button Advanced
+    "ctaColor",
+    "ctaTextColor",
+    "ctaSize",
+    "ctaRounded",
+    // Badge & Animation
+    "showBadgeAnimation",
+    "contentAnimation",
+    // Layout
+    "contentPadding",
+    "contentWidth",
   ];
 
   allowedFields.forEach((field) => {

@@ -123,8 +123,11 @@ const PromoBanner = () => {
       return;
     }
 
+    // Use per-banner display duration, fallback to default
+    const displayDuration = currentBanner?.autoAdvanceDelay || AUTO_ADVANCE_DELAY;
+    
     // Progress bar animation
-    const progressStep = 100 / (AUTO_ADVANCE_DELAY / 50);
+    const progressStep = 100 / (displayDuration / 50);
     progressInterval.current = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {

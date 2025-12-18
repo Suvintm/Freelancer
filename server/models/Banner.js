@@ -125,6 +125,87 @@ const bannerSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+    // Advanced Typography
+    textColor: {
+      type: String,
+      default: "#ffffff",
+    },
+    fontFamily: {
+      type: String,
+      enum: ["default", "inter", "poppins", "roboto", "montserrat", "playfair"],
+      default: "default",
+    },
+    textShadow: {
+      type: String,
+      enum: ["none", "light", "medium", "strong"],
+      default: "medium",
+    },
+
+    // Advanced Visual Effects
+    borderRadius: {
+      type: String,
+      enum: ["none", "small", "medium", "large", "full"],
+      default: "large",
+    },
+    bgBlur: {
+      type: Number,
+      min: 0,
+      max: 20,
+      default: 0,
+    },
+    overlayType: {
+      type: String,
+      enum: ["gradient", "solid", "none"],
+      default: "gradient",
+    },
+    overlayColor: {
+      type: String,
+      default: "#000000",
+    },
+
+    // CTA Button Advanced
+    ctaColor: {
+      type: String,
+      default: "#ffffff",
+    },
+    ctaTextColor: {
+      type: String,
+      default: "#000000",
+    },
+    ctaSize: {
+      type: String,
+      enum: ["small", "medium", "large"],
+      default: "medium",
+    },
+    ctaRounded: {
+      type: String,
+      enum: ["none", "small", "medium", "large", "full"],
+      default: "medium",
+    },
+
+    // Badge & Animation
+    showBadgeAnimation: {
+      type: Boolean,
+      default: true,
+    },
+    contentAnimation: {
+      type: String,
+      enum: ["fade", "slide-up", "slide-left", "zoom", "none"],
+      default: "slide-up",
+    },
+
+    // Layout
+    contentPadding: {
+      type: String,
+      enum: ["small", "medium", "large"],
+      default: "medium",
+    },
+    contentWidth: {
+      type: String,
+      enum: ["narrow", "medium", "wide", "full"],
+      default: "medium",
+    },
     
     // Scheduling
     startDate: {

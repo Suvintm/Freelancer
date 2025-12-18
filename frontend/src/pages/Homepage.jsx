@@ -147,7 +147,7 @@ const Homepage = () => {
       <Navbar />
 
       {/* HERO */}
-      <section className="relative bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 pt-8 pb-16 lg:pt-12 lg:pb-20 overflow-hidden">
+      <section className="relative bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 pt-4 pb-16 lg:pt-12 lg:pb-20 overflow-hidden">
         <div className="absolute top-20 right-0 w-[500px] h-[500px] bg-emerald-100/50 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-100/30 rounded-full blur-3xl pointer-events-none" />
 
@@ -167,11 +167,11 @@ const Homepage = () => {
                 <span className="text-slate-500 text-sm">Trusted by 2M+ users</span>
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 leading-[1.1] mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 leading-[1.1] mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 {user ? <>Your Projects <span className="text-emerald-500">Await</span></> : <>Hire Expert <span className="text-emerald-500">Video Editors</span> in Minutes</>}
               </h1>
 
-              <p className="text-lg text-slate-600 mb-8 leading-relaxed max-w-lg">
+              <p className="text-lg text-slate-600 mb-3 text-[14px] leading-relaxed max-w-lg">
                 {user ? "Continue where you left off. Your workspace, messages, and earnings are ready." : "India's largest marketplace for video editing talent. Find your perfect creative partner."}
               </p>
               
@@ -193,8 +193,8 @@ const Homepage = () => {
               )}
 
               {user && (
-                <button onClick={handleGoWorkspace} className="group inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-full font-semibold shadow-lg shadow-emerald-500/25 transition-all hover:scale-105">
-                  Enter Workspace <FaArrowRight className="text-sm group-hover:translate-x-1 transition-transform" />
+                <button onClick={handleGoWorkspace} className="group inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-3 rounded-full font-semibold shadow-lg shadow-emerald-500/25 transition-all hover:scale-105">
+                  Enter Workspace <FaArrowRight className="text-[6px] group-hover:translate-x-1 transition-transform" />
                 </button>
               )}
 

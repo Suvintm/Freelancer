@@ -92,6 +92,71 @@ const TITLE_SIZE_OPTIONS = [
   { value: "xlarge", label: "Extra Large" },
 ];
 
+// Advanced: Font Family
+const FONT_FAMILY_OPTIONS = [
+  { value: "default", label: "Default" },
+  { value: "inter", label: "Inter" },
+  { value: "poppins", label: "Poppins" },
+  { value: "roboto", label: "Roboto" },
+  { value: "montserrat", label: "Montserrat" },
+  { value: "playfair", label: "Playfair Display" },
+];
+
+// Advanced: Text Shadow
+const TEXT_SHADOW_OPTIONS = [
+  { value: "none", label: "None" },
+  { value: "light", label: "Light" },
+  { value: "medium", label: "Medium" },
+  { value: "strong", label: "Strong" },
+];
+
+// Advanced: Border Radius
+const BORDER_RADIUS_OPTIONS = [
+  { value: "none", label: "None" },
+  { value: "small", label: "Small" },
+  { value: "medium", label: "Medium" },
+  { value: "large", label: "Large" },
+  { value: "full", label: "Full" },
+];
+
+// Advanced: Overlay Type
+const OVERLAY_TYPE_OPTIONS = [
+  { value: "gradient", label: "Gradient" },
+  { value: "solid", label: "Solid Color" },
+  { value: "none", label: "None" },
+];
+
+// Advanced: CTA Size
+const CTA_SIZE_OPTIONS = [
+  { value: "small", label: "Small" },
+  { value: "medium", label: "Medium" },
+  { value: "large", label: "Large" },
+];
+
+// Advanced: Content Animation
+const CONTENT_ANIMATION_OPTIONS = [
+  { value: "fade", label: "Fade In" },
+  { value: "slide-up", label: "Slide Up" },
+  { value: "slide-left", label: "Slide Left" },
+  { value: "zoom", label: "Zoom In" },
+  { value: "none", label: "None" },
+];
+
+// Advanced: Content Padding
+const CONTENT_PADDING_OPTIONS = [
+  { value: "small", label: "Small" },
+  { value: "medium", label: "Medium" },
+  { value: "large", label: "Large" },
+];
+
+// Advanced: Content Width
+const CONTENT_WIDTH_OPTIONS = [
+  { value: "narrow", label: "Narrow" },
+  { value: "medium", label: "Medium" },
+  { value: "wide", label: "Wide" },
+  { value: "full", label: "Full Width" },
+];
+
 const Banners = () => {
   const { adminAxios } = useAdmin();
   const [banners, setBanners] = useState([]);
@@ -130,6 +195,26 @@ const Banners = () => {
     showArrows: true,
     showDots: true,
     showProgressBar: true,
+    // Advanced Typography
+    textColor: "#ffffff",
+    fontFamily: "default",
+    textShadow: "medium",
+    // Advanced Visual Effects
+    borderRadius: "large",
+    bgBlur: 0,
+    overlayType: "gradient",
+    overlayColor: "#000000",
+    // CTA Button Advanced
+    ctaColor: "#ffffff",
+    ctaTextColor: "#000000",
+    ctaSize: "medium",
+    ctaRounded: "medium",
+    // Badge & Animation
+    showBadgeAnimation: true,
+    contentAnimation: "slide-up",
+    // Layout
+    contentPadding: "medium",
+    contentWidth: "medium",
   });
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -320,9 +405,41 @@ const Banners = () => {
       showArrows: true,
       showDots: true,
       showProgressBar: true,
+      // Advanced Typography
+      textColor: "#ffffff",
+      fontFamily: "default",
+      textShadow: "medium",
+      // Advanced Visual Effects
+      borderRadius: "large",
+      bgBlur: 0,
+      overlayType: "gradient",
+      overlayColor: "#000000",
+      // CTA Button Advanced
+      ctaColor: "#ffffff",
+      ctaTextColor: "#000000",
+      ctaSize: "medium",
+      ctaRounded: "medium",
+      // Badge & Animation
+      showBadgeAnimation: true,
+      contentAnimation: "slide-up",
+      // Layout
+      contentPadding: "medium",
+      contentWidth: "medium",
     });
     setEditingBanner(null);
     setShowAdvanced(false);
+  };
+
+  // Helper to format date for datetime-local input
+  const formatDateTimeLocal = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const hours = String(d.getHours()).padStart(2, "0");
+    const mins = String(d.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${mins}`;
   };
 
   // Open edit modal
@@ -338,8 +455,8 @@ const Banners = () => {
       linkText: banner.linkText || "Learn More",
       linkTarget: banner.linkTarget || "_blank",
       isActive: banner.isActive,
-      startDate: banner.startDate ? banner.startDate.split("T")[0] : "",
-      endDate: banner.endDate ? banner.endDate.split("T")[0] : "",
+      startDate: formatDateTimeLocal(banner.startDate),
+      endDate: formatDateTimeLocal(banner.endDate),
       badge: banner.badge || "none",
       priority: banner.priority || "medium",
       gradientFrom: banner.gradientFrom || "#6366f1",
@@ -354,6 +471,26 @@ const Banners = () => {
       showArrows: banner.showArrows !== false,
       showDots: banner.showDots !== false,
       showProgressBar: banner.showProgressBar !== false,
+      // Advanced Typography
+      textColor: banner.textColor || "#ffffff",
+      fontFamily: banner.fontFamily || "default",
+      textShadow: banner.textShadow || "medium",
+      // Advanced Visual Effects
+      borderRadius: banner.borderRadius || "large",
+      bgBlur: banner.bgBlur || 0,
+      overlayType: banner.overlayType || "gradient",
+      overlayColor: banner.overlayColor || "#000000",
+      // CTA Button Advanced
+      ctaColor: banner.ctaColor || "#ffffff",
+      ctaTextColor: banner.ctaTextColor || "#000000",
+      ctaSize: banner.ctaSize || "medium",
+      ctaRounded: banner.ctaRounded || "medium",
+      // Badge & Animation
+      showBadgeAnimation: banner.showBadgeAnimation !== false,
+      contentAnimation: banner.contentAnimation || "slide-up",
+      // Layout
+      contentPadding: banner.contentPadding || "medium",
+      contentWidth: banner.contentWidth || "medium",
     });
     setShowModal(true);
     setShowAdvanced(false);
@@ -812,25 +949,52 @@ const Banners = () => {
                   </div>
                 </div>
 
-                {/* Schedule */}
+                {/* Schedule with Time */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Start Date</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Start Date & Time</label>
                     <input
-                      type="date"
+                      type="datetime-local"
                       value={formData.startDate}
                       onChange={(e) => setFormData((p) => ({ ...p, startDate: e.target.value }))}
                       className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-purple-500/30 text-gray-900 dark:text-white"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">End Date</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">End Date & Time</label>
                     <input
-                      type="date"
+                      type="datetime-local"
                       value={formData.endDate}
                       onChange={(e) => setFormData((p) => ({ ...p, endDate: e.target.value }))}
                       className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-purple-500/30 text-gray-900 dark:text-white"
                     />
+                    <p className="text-xs text-gray-400 mt-1">Leave empty for no expiry</p>
+                  </div>
+                </div>
+
+                {/* Display Duration - Prominent control */}
+                <div className="bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border border-purple-500/20 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                      ⏱️ Display Duration
+                    </label>
+                    <span className="text-lg font-bold text-purple-500">
+                      {(formData.autoAdvanceDelay / 1000).toFixed(1)}s
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1000"
+                    max="15000"
+                    step="500"
+                    value={formData.autoAdvanceDelay}
+                    onChange={(e) => setFormData((p) => ({ ...p, autoAdvanceDelay: parseInt(e.target.value) }))}
+                    className="w-full accent-purple-500 h-2"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>1s (fast)</span>
+                    <span>How long this banner shows before next</span>
+                    <span>15s (slow)</span>
                   </div>
                 </div>
 
@@ -963,6 +1127,201 @@ const Banners = () => {
                           <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.showProgressBar ? "translate-x-5" : ""}`} />
                         </button>
                         <span className="text-xs text-gray-600 dark:text-gray-400">Progress</span>
+                      </div>
+                    </div>
+
+                    {/* Section: Typography */}
+                    <div className="pt-3 border-t border-gray-200 dark:border-zinc-700">
+                      <h4 className="text-sm font-semibold text-purple-500 mb-3">📝 Typography</h4>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Font Family</label>
+                          <select
+                            value={formData.fontFamily}
+                            onChange={(e) => setFormData((p) => ({ ...p, fontFamily: e.target.value }))}
+                            className="w-full bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white"
+                          >
+                            {FONT_FAMILY_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Text Shadow</label>
+                          <select
+                            value={formData.textShadow}
+                            onChange={(e) => setFormData((p) => ({ ...p, textShadow: e.target.value }))}
+                            className="w-full bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white"
+                          >
+                            {TEXT_SHADOW_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Text Color</label>
+                          <input
+                            type="color"
+                            value={formData.textColor}
+                            onChange={(e) => setFormData((p) => ({ ...p, textColor: e.target.value }))}
+                            className="w-full h-9 rounded-lg cursor-pointer border-0"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section: Visual Effects */}
+                    <div className="pt-3 border-t border-gray-200 dark:border-zinc-700">
+                      <h4 className="text-sm font-semibold text-purple-500 mb-3">✨ Visual Effects</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Border Radius</label>
+                          <select
+                            value={formData.borderRadius}
+                            onChange={(e) => setFormData((p) => ({ ...p, borderRadius: e.target.value }))}
+                            className="w-full bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white"
+                          >
+                            {BORDER_RADIUS_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Background Blur: {formData.bgBlur}px</label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="20"
+                            value={formData.bgBlur}
+                            onChange={(e) => setFormData((p) => ({ ...p, bgBlur: parseInt(e.target.value) }))}
+                            className="w-full accent-purple-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Overlay Type</label>
+                          <select
+                            value={formData.overlayType}
+                            onChange={(e) => setFormData((p) => ({ ...p, overlayType: e.target.value }))}
+                            className="w-full bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white"
+                          >
+                            {OVERLAY_TYPE_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Overlay Color</label>
+                          <input
+                            type="color"
+                            value={formData.overlayColor}
+                            onChange={(e) => setFormData((p) => ({ ...p, overlayColor: e.target.value }))}
+                            className="w-full h-9 rounded-lg cursor-pointer border-0"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section: CTA Button */}
+                    <div className="pt-3 border-t border-gray-200 dark:border-zinc-700">
+                      <h4 className="text-sm font-semibold text-purple-500 mb-3">🔘 CTA Button</h4>
+                      <div className="grid grid-cols-4 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Button Color</label>
+                          <input
+                            type="color"
+                            value={formData.ctaColor}
+                            onChange={(e) => setFormData((p) => ({ ...p, ctaColor: e.target.value }))}
+                            className="w-full h-9 rounded-lg cursor-pointer border-0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Text Color</label>
+                          <input
+                            type="color"
+                            value={formData.ctaTextColor}
+                            onChange={(e) => setFormData((p) => ({ ...p, ctaTextColor: e.target.value }))}
+                            className="w-full h-9 rounded-lg cursor-pointer border-0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Size</label>
+                          <select
+                            value={formData.ctaSize}
+                            onChange={(e) => setFormData((p) => ({ ...p, ctaSize: e.target.value }))}
+                            className="w-full bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white"
+                          >
+                            {CTA_SIZE_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Rounded</label>
+                          <select
+                            value={formData.ctaRounded}
+                            onChange={(e) => setFormData((p) => ({ ...p, ctaRounded: e.target.value }))}
+                            className="w-full bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white"
+                          >
+                            {BORDER_RADIUS_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section: Layout & Animation */}
+                    <div className="pt-3 border-t border-gray-200 dark:border-zinc-700">
+                      <h4 className="text-sm font-semibold text-purple-500 mb-3">📐 Layout & Animation</h4>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Content Animation</label>
+                          <select
+                            value={formData.contentAnimation}
+                            onChange={(e) => setFormData((p) => ({ ...p, contentAnimation: e.target.value }))}
+                            className="w-full bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white"
+                          >
+                            {CONTENT_ANIMATION_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Content Padding</label>
+                          <select
+                            value={formData.contentPadding}
+                            onChange={(e) => setFormData((p) => ({ ...p, contentPadding: e.target.value }))}
+                            className="w-full bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white"
+                          >
+                            {CONTENT_PADDING_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Content Width</label>
+                          <select
+                            value={formData.contentWidth}
+                            onChange={(e) => setFormData((p) => ({ ...p, contentWidth: e.target.value }))}
+                            className="w-full bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white"
+                          >
+                            {CONTENT_WIDTH_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mt-3">
+                        <button
+                          type="button"
+                          onClick={() => setFormData((p) => ({ ...p, showBadgeAnimation: !p.showBadgeAnimation }))}
+                          className={`relative w-10 h-5 rounded-full transition-colors ${
+                            formData.showBadgeAnimation ? "bg-purple-500" : "bg-gray-300 dark:bg-zinc-600"
+                          }`}
+                        >
+                          <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.showBadgeAnimation ? "translate-x-5" : ""}`} />
+                        </button>
+                        <span className="text-xs text-gray-600 dark:text-gray-400">Animate Badge</span>
                       </div>
                     </div>
                   </div>
