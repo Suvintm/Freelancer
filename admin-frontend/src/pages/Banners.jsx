@@ -41,6 +41,12 @@ const BADGE_OPTIONS = [
   { value: "sale", label: "SALE", icon: FaBolt, color: "text-pink-500" },
   { value: "limited", label: "LIMITED", icon: FaClock, color: "text-purple-500" },
   { value: "featured", label: "FEATURED", icon: FaGem, color: "text-amber-500" },
+  { value: "popular", label: "POPULAR", icon: FaStar, color: "text-yellow-500" },
+  { value: "trending", label: "TRENDING", icon: FaArrowUp, color: "text-blue-500" },
+  { value: "exclusive", label: "EXCLUSIVE", icon: FaLock, color: "text-red-500" },
+  { value: "limited-time", label: "LIMITED TIME", icon: FaClock, color: "text-purple-500" },
+  { value: "limited-time", label: "LIMITED TIME", icon: FaClock, color: "text-purple-500" },
+  { value: "advertisment", label: "ADVERTISEMENTS", icon:FaAd, color: "text-blue-500" },
 ];
 
 // Priority options

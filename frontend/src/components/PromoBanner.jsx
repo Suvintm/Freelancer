@@ -37,6 +37,10 @@ const BADGE_CONFIG = {
   sale: { label: "SALE", icon: FaBolt, bgClass: "bg-gradient-to-r from-pink-500 to-rose-500" },
   limited: { label: "LIMITED", icon: FaClock, bgClass: "bg-gradient-to-r from-purple-500 to-indigo-500" },
   featured: { label: "FEATURED", icon: FaGem, bgClass: "bg-gradient-to-r from-amber-500 to-yellow-500" },
+  advertisment: { label: "ADVERTISEMENTS", icon: FaAd, bgClass: "bg-gradient-to-r from-blue-500 to-indigo-500" },
+  exclusive: { label: "EXCLUSIVE", icon: FaLock, bgClass: "bg-gradient-to-r from-red-500 to-indigo-500" },
+  
+
 };
 
 const PromoBanner = () => {
@@ -106,11 +110,10 @@ const PromoBanner = () => {
     setProgress(0);
   };
 
-  // Auto-advance logic with progress bar (only for images)
+  // Auto-advance timer for images
   useEffect(() => {
+    // Skip if only one banner, hovering, or current is video
     if (banners.length <= 1 || isHovered) {
-      if (progressInterval.current) clearInterval(progressInterval.current);
-      if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
       return;
     }
 
@@ -119,30 +122,33 @@ const PromoBanner = () => {
     // For videos, don't auto-advance - wait for video to end
     if (currentBanner?.mediaType === "video") {
       setProgress(0);
-      if (progressInterval.current) clearInterval(progressInterval.current);
       return;
     }
 
     // Use per-banner display duration, fallback to default
     const displayDuration = currentBanner?.autoAdvanceDelay || AUTO_ADVANCE_DELAY;
     
-    // Progress bar animation
-    const progressStep = 100 / (displayDuration / 50);
-    progressInterval.current = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          goToNext();
-          return 0;
-        }
-        return prev + progressStep;
-      });
+    // Reset progress when banner changes
+    setProgress(0);
+    
+    // Progress bar animation - separate from advance logic
+    const startTime = Date.now();
+    const progressTimer = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const newProgress = Math.min((elapsed / displayDuration) * 100, 100);
+      setProgress(newProgress);
     }, 50);
 
+    // Auto-advance timer
+    const advanceTimer = setTimeout(() => {
+      setCurrentIndex((prev) => (prev + 1) % banners.length);
+    }, displayDuration);
+
     return () => {
-      if (progressInterval.current) clearInterval(progressInterval.current);
-      if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
+      clearInterval(progressTimer);
+      clearTimeout(advanceTimer);
     };
-  }, [currentIndex, isHovered, banners, goToNext]);
+  }, [currentIndex, isHovered, banners.length]);
 
   // Touch/swipe handling
   const handleTouchStart = (e) => {
