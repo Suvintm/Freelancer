@@ -12,6 +12,7 @@ import {
   FaTimes,
   FaShieldAlt,
   FaUserShield,
+  FaImage,
 } from "react-icons/fa";
 import { useAdmin } from "../../context/AdminContext";
 
@@ -29,6 +30,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
     { path: "/admin/users", icon: FaUsers, label: "Users" },
     { path: "/admin/orders", icon: FaShoppingCart, label: "Orders" },
     { path: "/admin/gigs", icon: FaBriefcase, label: "Gigs" },
+    { path: "/admin/banners", icon: FaImage, label: "Banners" },
     { path: "/admin/activity", icon: FaHistory, label: "Activity Logs" },
     ...(isSuperAdmin ? [
       { path: "/admin/admins", icon: FaUserShield, label: "Admins" },

@@ -2,6 +2,26 @@
 import { Banner } from "../models/Banner.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
+import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
+
+// ============ ADMIN: UPLOAD BANNER MEDIA ============
+export const uploadBannerMedia = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    throw new ApiError(400, "No file uploaded");
+  }
+
+  const isVideo = req.file.mimetype.startsWith("video/");
+  const folder = isVideo ? "banners/videos" : "banners/images";
+
+  const result = await uploadToCloudinary(req.file.buffer, folder);
+
+  res.status(200).json({
+    success: true,
+    mediaUrl: result.url,
+    mediaType: isVideo ? "video" : "image",
+    thumbnailUrl: isVideo ? result.url.replace(/\.[^.]+$/, ".jpg") : null,
+  });
+});
 
 // ============ PUBLIC: GET ACTIVE BANNERS ============
 export const getBanners = asyncHandler(async (req, res) => {
@@ -9,13 +29,21 @@ export const getBanners = asyncHandler(async (req, res) => {
   
   const banners = await Banner.find({
     isActive: true,
-    $or: [
-      { startDate: { $exists: false } },
-      { startDate: { $lte: now } },
-    ],
-    $or: [
-      { endDate: { $exists: false } },
-      { endDate: { $gte: now } },
+    $and: [
+      {
+        $or: [
+          { startDate: { $exists: false } },
+          { startDate: null },
+          { startDate: { $lte: now } },
+        ],
+      },
+      {
+        $or: [
+          { endDate: { $exists: false } },
+          { endDate: null },
+          { endDate: { $gte: now } },
+        ],
+      },
     ],
   })
     .sort({ order: 1, createdAt: -1 })

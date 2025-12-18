@@ -29,10 +29,13 @@ import {
 import { HiOutlineSparkles } from "react-icons/hi2";
 import axios from "axios";
 import { toast } from "react-toastify";
+import AdminSidebar from "../../components/admin/AdminSidebar";
+import AdminNavbar from "../../components/admin/AdminNavbar";
 
 const ADMIN_API = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
 const AdminBanners = () => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -251,15 +254,22 @@ const AdminBanners = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#050509] text-white">
+        <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <AdminNavbar onMenuClick={() => setSidebarOpen(true)} />
+        <main className="md:ml-64 pt-20 flex items-center justify-center min-h-[80vh]">
+          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-white p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-[#050509] text-white">
+      <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <AdminNavbar onMenuClick={() => setSidebarOpen(true)} />
+
+      <main className="md:ml-64 pt-20 px-4 md:px-8 pb-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -628,6 +638,7 @@ const AdminBanners = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      </main>
     </div>
   );
 };
