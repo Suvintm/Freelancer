@@ -1,50 +1,86 @@
 /**
  * PromoBanner.jsx - Premium Promotional Carousel
  * Features:
- * - Image/Video support with auto-advance
- * - Swipe navigation (left/right)
- * - Videos play from start, muted, wait to finish before advancing
- * - Text overlay with gradient
- * - CTA button with link redirect
- * - Analytics tracking (views/clicks)
+ * - Real-time WebSocket updates
+ * - Image/Video with looping video support
+ * - Swipe/Touch navigation
+ * - Professional design with badges, gradients, animations
+ * - Progress bar for auto-advance
+ * - Analytics tracking
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaChevronLeft, FaChevronRight, FaExternalLinkAlt, FaPlay, FaVolumeUp, FaVolumeMute } from "react-icons/fa";
+import {
+  FaChevronLeft,
+  FaChevronRight,
+  FaExternalLinkAlt,
+  FaPlay,
+  FaVolumeUp,
+  FaVolumeMute,
+  FaFire,
+  FaStar,
+  FaBolt,
+  FaClock,
+  FaGem,
+} from "react-icons/fa";
+import { HiSparkles } from "react-icons/hi2";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 
-const AUTO_ADVANCE_DELAY = 5000; // 5 seconds for images
+const AUTO_ADVANCE_DELAY = 6000; // 6 seconds for images
+
+// Badge configurations with icons
+const BADGE_CONFIG = {
+  new: { label: "NEW", icon: HiSparkles, bgClass: "bg-gradient-to-r from-emerald-500 to-teal-500" },
+  hot: { label: "HOT", icon: FaFire, bgClass: "bg-gradient-to-r from-orange-500 to-red-500" },
+  sale: { label: "SALE", icon: FaBolt, bgClass: "bg-gradient-to-r from-pink-500 to-rose-500" },
+  limited: { label: "LIMITED", icon: FaClock, bgClass: "bg-gradient-to-r from-purple-500 to-indigo-500" },
+  featured: { label: "FEATURED", icon: FaGem, bgClass: "bg-gradient-to-r from-amber-500 to-yellow-500" },
+};
 
 const PromoBanner = () => {
-  const { backendURL } = useAppContext();
+  const { backendURL, socket } = useAppContext();
   const [banners, setBanners] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
   const [loading, setLoading] = useState(true);
-  
+  const [progress, setProgress] = useState(0);
+
   const videoRef = useRef(null);
   const autoAdvanceTimer = useRef(null);
+  const progressInterval = useRef(null);
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
 
   // Fetch banners from API
-  useEffect(() => {
-    const fetchBanners = async () => {
-      try {
-        const res = await axios.get(`${backendURL}/api/banners`);
-        setBanners(res.data.banners || []);
-      } catch (err) {
-        console.error("Failed to fetch banners:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchBanners();
+  const fetchBanners = useCallback(async () => {
+    try {
+      const res = await axios.get(`${backendURL}/api/banners`);
+      setBanners(res.data.banners || []);
+    } catch (err) {
+      console.error("Failed to fetch banners:", err);
+    } finally {
+      setLoading(false);
+    }
   }, [backendURL]);
+
+  useEffect(() => {
+    fetchBanners();
+  }, [fetchBanners]);
+
+  // Real-time WebSocket listener for banner updates
+  useEffect(() => {
+    if (socket) {
+      const handleBannerRefresh = () => {
+        console.log("Banner refresh event received");
+        fetchBanners();
+      };
+      socket.on("banner:refresh", handleBannerRefresh);
+      return () => socket.off("banner:refresh", handleBannerRefresh);
+    }
+  }, [socket, fetchBanners]);
 
   // Track view when banner changes
   useEffect(() => {
@@ -54,56 +90,55 @@ const PromoBanner = () => {
     }
   }, [currentIndex, banners, backendURL]);
 
-  // Auto-advance logic
-  const startAutoAdvance = useCallback(() => {
-    if (autoAdvanceTimer.current) {
-      clearTimeout(autoAdvanceTimer.current);
-    }
-    
-    const currentBanner = banners[currentIndex];
-    if (!currentBanner || currentBanner.mediaType === "video") {
-      // Don't auto-advance for videos - wait for onEnded
-      return;
-    }
-
-    autoAdvanceTimer.current = setTimeout(() => {
-      goToNext();
-    }, AUTO_ADVANCE_DELAY);
-  }, [currentIndex, banners]);
-
-  useEffect(() => {
-    if (!isHovered && banners.length > 1) {
-      startAutoAdvance();
-    }
-    return () => {
-      if (autoAdvanceTimer.current) {
-        clearTimeout(autoAdvanceTimer.current);
-      }
-    };
-  }, [currentIndex, isHovered, banners.length, startAutoAdvance]);
-
-  // Handle video events
-  const handleVideoEnded = () => {
-    setIsVideoPlaying(false);
-    goToNext();
-  };
-
-  const handleVideoPlay = () => {
-    setIsVideoPlaying(true);
-  };
-
   // Navigation functions
-  const goToNext = () => {
+  const goToNext = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % banners.length);
-  };
+    setProgress(0);
+  }, [banners.length]);
 
-  const goToPrev = () => {
+  const goToPrev = useCallback(() => {
     setCurrentIndex((prev) => (prev - 1 + banners.length) % banners.length);
-  };
+    setProgress(0);
+  }, [banners.length]);
 
   const goToIndex = (index) => {
     setCurrentIndex(index);
+    setProgress(0);
   };
+
+  // Auto-advance logic with progress bar (only for images)
+  useEffect(() => {
+    if (banners.length <= 1 || isHovered) {
+      if (progressInterval.current) clearInterval(progressInterval.current);
+      if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
+      return;
+    }
+
+    const currentBanner = banners[currentIndex];
+    
+    // Skip auto-advance for videos (they loop continuously)
+    if (currentBanner?.mediaType === "video") {
+      setProgress(0);
+      return;
+    }
+
+    // Progress bar animation
+    const progressStep = 100 / (AUTO_ADVANCE_DELAY / 50);
+    progressInterval.current = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          goToNext();
+          return 0;
+        }
+        return prev + progressStep;
+      });
+    }, 50);
+
+    return () => {
+      if (progressInterval.current) clearInterval(progressInterval.current);
+      if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
+    };
+  }, [currentIndex, isHovered, banners, goToNext]);
 
   // Touch/swipe handling
   const handleTouchStart = (e) => {
@@ -120,9 +155,9 @@ const PromoBanner = () => {
 
     if (Math.abs(diff) > minSwipeDistance) {
       if (diff > 0) {
-        goToNext(); // Swipe left → next
+        goToNext();
       } else {
-        goToPrev(); // Swipe right → prev
+        goToPrev();
       }
     }
   };
@@ -138,10 +173,7 @@ const PromoBanner = () => {
   // Handle banner click
   const handleBannerClick = (banner) => {
     if (banner.link) {
-      // Track click
       axios.post(`${backendURL}/api/banners/${banner._id}/click`).catch(() => {});
-      
-      // Open link
       window.open(banner.link, banner.linkTarget || "_blank");
     }
   };
@@ -155,11 +187,36 @@ const PromoBanner = () => {
     }
   };
 
+  // Render badge
+  const renderBadge = (badge) => {
+    if (!badge || badge === "none") return null;
+    const config = BADGE_CONFIG[badge];
+    if (!config) return null;
+    const Icon = config.icon;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`absolute top-4 left-4 ${config.bgClass} px-3 py-1.5 rounded-full flex items-center gap-1.5 text-white text-xs font-bold shadow-lg z-20`}
+      >
+        <Icon className="text-sm" />
+        {config.label}
+      </motion.div>
+    );
+  };
+
   if (loading) {
     return (
-      <div className="relative w-full h-[350px] md:h-[450px] rounded-2xl overflow-hidden bg-gradient-to-br from-zinc-800 to-zinc-900 animate-pulse">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      <div className="relative w-full h-[350px] md:h-[450px] rounded-2xl overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 animate-pulse">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full"
+            />
+          </div>
         </div>
       </div>
     );
@@ -167,9 +224,14 @@ const PromoBanner = () => {
 
   if (banners.length === 0) {
     return (
-      <div className="relative w-full h-[350px] md:h-[450px] rounded-2xl overflow-hidden bg-gradient-to-br from-zinc-800 to-zinc-900">
+      <div className="relative w-full h-[350px] md:h-[450px] rounded-2xl overflow-hidden bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-800">
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
-          <FaPlay className="text-4xl text-emerald-500 mb-4" />
+          <motion.div
+            animate={{ scale: [1, 1.1, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <FaPlay className="text-5xl text-emerald-500 mb-4" />
+          </motion.div>
           <h3 className="text-xl font-bold text-white mb-2">No Promotions</h3>
           <p className="text-gray-400 text-sm">Check back later for exciting offers!</p>
         </div>
@@ -178,10 +240,12 @@ const PromoBanner = () => {
   }
 
   const currentBanner = banners[currentIndex];
+  const gradientFrom = currentBanner.gradientFrom || "#6366f1";
+  const gradientTo = currentBanner.gradientTo || "#8b5cf6";
 
   return (
     <div
-      className="relative w-full h-[350px] md:h-[450px] rounded-2xl overflow-hidden group cursor-pointer select-none"
+      className="relative w-full h-[350px] md:h-[450px] rounded-2xl overflow-hidden group cursor-pointer select-none shadow-2xl"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onTouchStart={handleTouchStart}
@@ -193,10 +257,10 @@ const PromoBanner = () => {
       <AnimatePresence mode="wait">
         <motion.div
           key={currentIndex}
-          initial={{ opacity: 0, scale: 1.05 }}
+          initial={{ opacity: 0, scale: 1.1 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
           className="absolute inset-0"
         >
           {currentBanner.mediaType === "video" ? (
@@ -205,10 +269,9 @@ const PromoBanner = () => {
               src={currentBanner.mediaUrl}
               poster={currentBanner.thumbnailUrl}
               autoPlay
+              loop={currentBanner.loopVideo !== false}
               muted={isMuted}
               playsInline
-              onEnded={handleVideoEnded}
-              onPlay={handleVideoPlay}
               className="w-full h-full object-cover"
             />
           ) : (
@@ -221,74 +284,122 @@ const PromoBanner = () => {
         </motion.div>
       </AnimatePresence>
 
-      {/* Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+      {/* Dynamic Gradient Overlay */}
+      <div 
+        className="absolute inset-0"
+        style={{
+          background: `linear-gradient(to top, ${gradientFrom}ee, ${gradientTo}66 50%, transparent 80%)`,
+        }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+
+      {/* Badge */}
+      {renderBadge(currentBanner.badge)}
 
       {/* Content Overlay */}
-      <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-8">
+      <div className={`absolute inset-0 flex flex-col justify-end p-6 md:p-8 ${
+        currentBanner.textPosition === "center" ? "items-center text-center" :
+        currentBanner.textPosition === "right" ? "items-end text-right" : "items-start text-left"
+      }`}>
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
           className="max-w-lg"
         >
-          {/* Title */}
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-2 drop-shadow-lg">
-            {currentBanner.title}
-          </h2>
+          {/* Title with animated underline */}
+          <div className="relative inline-block mb-2">
+            <h2 className="text-2xl md:text-4xl font-extrabold text-white drop-shadow-lg">
+              {currentBanner.title}
+            </h2>
+            <motion.div
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: 1 }}
+              transition={{ delay: 0.5, duration: 0.4 }}
+              className="absolute -bottom-1 left-0 h-1 w-full rounded-full"
+              style={{ background: `linear-gradient(to right, ${gradientFrom}, ${gradientTo})` }}
+            />
+          </div>
 
           {/* Description */}
           {currentBanner.description && (
-            <p className="text-sm md:text-base text-gray-200 mb-4 line-clamp-2 drop-shadow">
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="text-sm md:text-base text-gray-100 mb-5 line-clamp-2 drop-shadow"
+            >
               {currentBanner.description}
-            </p>
+            </motion.p>
           )}
 
-          {/* CTA Button */}
+          {/* CTA Button with shine effect */}
           {currentBanner.link && (
             <motion.button
-              whileHover={{ scale: 1.05 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.95 }}
               onClick={(e) => {
                 e.stopPropagation();
                 handleBannerClick(currentBanner);
               }}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-all shadow-lg shadow-emerald-500/30"
+              className="relative inline-flex items-center gap-2 px-6 py-3 bg-white text-gray-900 font-bold rounded-xl transition-all shadow-xl overflow-hidden group/btn"
             >
-              {currentBanner.linkText || "Learn More"}
-              <FaExternalLinkAlt className="text-xs" />
+              {/* Shine effect */}
+              <span className="absolute inset-0 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+              <span className="relative">{currentBanner.linkText || "Learn More"}</span>
+              <FaExternalLinkAlt className="text-xs relative" />
             </motion.button>
           )}
         </motion.div>
       </div>
 
+      {/* Progress Bar (for images only) */}
+      {banners.length > 1 && currentBanner.mediaType !== "video" && (
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/30">
+          <motion.div
+            className="h-full rounded-r-full"
+            style={{
+              width: `${progress}%`,
+              background: `linear-gradient(to right, ${gradientFrom}, ${gradientTo})`,
+            }}
+          />
+        </div>
+      )}
+
       {/* Navigation Arrows */}
       {banners.length > 1 && (
         <>
-          <button
+          <motion.button
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: isHovered ? 1 : 0, x: 0 }}
             onClick={(e) => {
               e.stopPropagation();
               goToPrev();
             }}
-            className="absolute left-3 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/40 hover:bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm"
+            className="absolute left-3 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md border border-white/20 transition-all"
           >
             <FaChevronLeft />
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: isHovered ? 1 : 0, x: 0 }}
             onClick={(e) => {
               e.stopPropagation();
               goToNext();
             }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/40 hover:bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md border border-white/20 transition-all"
           >
             <FaChevronRight />
-          </button>
+          </motion.button>
         </>
       )}
 
       {/* Dot Indicators */}
       {banners.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10">
           {banners.map((_, index) => (
             <button
               key={index}
@@ -296,10 +407,10 @@ const PromoBanner = () => {
                 e.stopPropagation();
                 goToIndex(index);
               }}
-              className={`transition-all ${
+              className={`transition-all rounded-full ${
                 index === currentIndex
-                  ? "w-6 h-2 bg-emerald-500 rounded-full"
-                  : "w-2 h-2 bg-white/50 hover:bg-white/80 rounded-full"
+                  ? "w-8 h-2.5 bg-white shadow-lg"
+                  : "w-2.5 h-2.5 bg-white/40 hover:bg-white/70"
               }`}
             />
           ))}
@@ -308,19 +419,21 @@ const PromoBanner = () => {
 
       {/* Video Controls */}
       {currentBanner.mediaType === "video" && (
-        <button
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: isHovered ? 1 : 0 }}
           onClick={toggleMute}
-          className="absolute top-4 right-4 p-2.5 rounded-full bg-black/40 hover:bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm"
+          className="absolute top-4 right-4 p-3 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-sm border border-white/20 transition-all z-20"
         >
           {isMuted ? <FaVolumeMute /> : <FaVolumeUp />}
-        </button>
+        </motion.button>
       )}
 
-      {/* Video Playing Indicator */}
-      {currentBanner.mediaType === "video" && isVideoPlaying && (
-        <div className="absolute top-4 left-4 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full flex items-center gap-1.5">
+      {/* Video Indicator */}
+      {currentBanner.mediaType === "video" && (
+        <div className="absolute top-4 right-16 px-3 py-1.5 bg-red-500/90 text-white text-xs font-bold rounded-full flex items-center gap-1.5 z-20">
           <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
-          LIVE
+          VIDEO
         </div>
       )}
     </div>

@@ -3,6 +3,19 @@ import { Banner } from "../models/Banner.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
 import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
+import { getIO } from "../socket.js";
+
+// Helper to emit banner refresh event
+const emitBannerRefresh = () => {
+  try {
+    const io = getIO();
+    if (io) {
+      io.emit("banner:refresh");
+    }
+  } catch (err) {
+    console.error("Failed to emit banner refresh:", err);
+  }
+};
 
 // ============ ADMIN: UPLOAD BANNER MEDIA ============
 export const uploadBannerMedia = asyncHandler(async (req, res) => {
@@ -93,6 +106,9 @@ export const createBanner = asyncHandler(async (req, res) => {
   const maxOrder = await Banner.findOne().sort({ order: -1 }).select("order");
   const order = (maxOrder?.order || 0) + 1;
 
+  // Extract new fields from body
+  const { badge, priority, gradientFrom, gradientTo, textPosition, loopVideo } = req.body;
+
   const banner = await Banner.create({
     title,
     description,
@@ -106,10 +122,19 @@ export const createBanner = asyncHandler(async (req, res) => {
     order,
     startDate,
     endDate,
+    badge,
+    priority,
+    gradientFrom,
+    gradientTo,
+    textPosition,
+    loopVideo,
     createdBy: req.user?._id || req.admin?._id,
   });
 
   logger.info(`Banner created: ${banner.title}`);
+
+  // Emit real-time update
+  emitBannerRefresh();
 
   res.status(201).json({
     success: true,
@@ -139,6 +164,20 @@ export const updateBanner = asyncHandler(async (req, res) => {
     "isActive",
     "startDate",
     "endDate",
+    "badge",
+    "priority",
+    "gradientFrom",
+    "gradientTo",
+    "textPosition",
+    "loopVideo",
+    "animationType",
+    "overlayOpacity",
+    "buttonStyle",
+    "titleSize",
+    "autoAdvanceDelay",
+    "showArrows",
+    "showDots",
+    "showProgressBar",
   ];
 
   allowedFields.forEach((field) => {
@@ -149,6 +188,9 @@ export const updateBanner = asyncHandler(async (req, res) => {
 
   await banner.save();
   logger.info(`Banner updated: ${banner.title}`);
+
+  // Emit real-time update
+  emitBannerRefresh();
 
   res.status(200).json({
     success: true,
@@ -167,6 +209,9 @@ export const deleteBanner = asyncHandler(async (req, res) => {
   }
 
   logger.info(`Banner deleted: ${banner.title}`);
+
+  // Emit real-time update
+  emitBannerRefresh();
 
   res.status(200).json({
     success: true,
@@ -192,6 +237,9 @@ export const reorderBanners = asyncHandler(async (req, res) => {
 
   await Banner.bulkWrite(updates);
   logger.info(`Banners reordered: ${orderedIds.length} items`);
+
+  // Emit real-time update
+  emitBannerRefresh();
 
   res.status(200).json({
     success: true,

@@ -56,6 +56,76 @@ const bannerSchema = new mongoose.Schema(
       default: 0, // Lower = first
     },
     
+    // Enhanced features
+    badge: {
+      type: String,
+      enum: ["none", "new", "hot", "sale", "limited", "featured"],
+      default: "none",
+    },
+    priority: {
+      type: String,
+      enum: ["low", "medium", "high", "urgent"],
+      default: "medium",
+    },
+    gradientFrom: {
+      type: String,
+      default: "#6366f1", // Indigo
+    },
+    gradientTo: {
+      type: String,
+      default: "#8b5cf6", // Purple
+    },
+    textPosition: {
+      type: String,
+      enum: ["left", "center", "right"],
+      default: "left",
+    },
+    loopVideo: {
+      type: Boolean,
+      default: true, // Videos loop by default
+    },
+
+    // Advanced styling options
+    animationType: {
+      type: String,
+      enum: ["fade", "slide", "zoom", "flip"],
+      default: "fade",
+    },
+    overlayOpacity: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 60, // 60% opacity
+    },
+    buttonStyle: {
+      type: String,
+      enum: ["solid", "outline", "gradient", "glass"],
+      default: "solid",
+    },
+    titleSize: {
+      type: String,
+      enum: ["small", "medium", "large", "xlarge"],
+      default: "large",
+    },
+    autoAdvanceDelay: {
+      type: Number,
+      min: 2000,
+      max: 15000,
+      default: 6000, // 6 seconds
+    },
+    showArrows: {
+      type: Boolean,
+      default: true,
+    },
+    showDots: {
+      type: Boolean,
+      default: true,
+    },
+    showProgressBar: {
+      type: Boolean,
+      default: true,
+    },
+    
     // Scheduling
     startDate: {
       type: Date,
