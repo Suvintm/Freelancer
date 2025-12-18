@@ -28,6 +28,9 @@ import RazorpayCheckout from "./RazorpayCheckout";
 
 const CATEGORIES = ["All", "Wedding", "Birthday", "Corporate", "Music Video", "Short Film", "Social Media", "Commercial", "Documentary", "YouTube", "Other"];
 
+// Professional default banner for gigs without a thumbnail
+const DEFAULT_GIG_BANNER = "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=800&q=80";
+
 const ExploreGigs = () => {
   const { backendURL, user } = useAppContext();
   const navigate = useNavigate();
@@ -240,11 +243,11 @@ const ExploreGigs = () => {
               className="bg-[#0a0a0c] light:bg-white border border-white/10 light:border-slate-200 rounded-2xl overflow-hidden hover:border-emerald-500/30 light:hover:border-emerald-300 hover:shadow-xl transition-all group"
             >
               <div className="relative h-44 bg-white/5 light:bg-slate-100 overflow-hidden">
-                {gig.thumbnail ? (
-                  <img src={gig.thumbnail} alt={gig.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center"><FaPlay className="text-3xl text-gray-600 light:text-slate-300" /></div>
-                )}
+                <img 
+                  src={gig.thumbnail || gig.banner || DEFAULT_GIG_BANNER} 
+                  alt={gig.title} 
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                />
                 <span className="absolute top-3 left-3 px-2.5 py-1 bg-black/70 light:bg-white/90 backdrop-blur-sm rounded-lg text-xs font-medium text-white light:text-slate-700 shadow-sm">{gig.category}</span>
               </div>
 

@@ -22,11 +22,10 @@ const VerifiedEditorBadge = ({ user, profile, kycStatus, completionPercent }) =>
   
   return (
     <motion.div
-      className="relative overflow-hidden rounded-2xl bg-[#0a0a0c] light:bg-white border border-white/10 light:border-slate-200 shadow-sm"
+      className="relative overflow-hidden rounded-2xl bg-[#0a0a0c] light:bg-white border border-white/[0.06] light:border-slate-200 mb-6"
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      style={{ fontFamily: "'Inter', sans-serif" }}
     >
       {/* Gradient accent line */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-500" />
@@ -53,7 +52,7 @@ const VerifiedEditorBadge = ({ user, profile, kycStatus, completionPercent }) =>
           {/* Text */}
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-bold text-white light:text-slate-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              <h3 className="font-bold text-gray-100 light:text-slate-900">
                 {isFullyVerified ? 'Verified Editor' : 'Profile Status'}
               </h3>
               {isFullyVerified && (
@@ -74,10 +73,10 @@ const VerifiedEditorBadge = ({ user, profile, kycStatus, completionPercent }) =>
         {/* Stats/Badges */}
         <div className="grid grid-cols-3 gap-3">
           {/* Profile Score */}
-          <div className="bg-white/5 light:bg-slate-50 rounded-xl p-3 text-center">
+          <div className="bg-white/[0.03] light:bg-slate-50 rounded-xl p-3 text-center">
             <div className="relative w-12 h-12 mx-auto mb-2">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                <circle className="fill-none stroke-white/10 light:stroke-slate-200" cx="50" cy="50" r="40" strokeWidth="8" />
+                <circle className="fill-none stroke-white/[0.06] light:stroke-slate-200" cx="50" cy="50" r="40" strokeWidth="8" />
                 <circle 
                   className="fill-none stroke-emerald-500" 
                   cx="50" cy="50" r="40" 
@@ -95,7 +94,7 @@ const VerifiedEditorBadge = ({ user, profile, kycStatus, completionPercent }) =>
           </div>
           
           {/* KYC Status */}
-          <div className="bg-white/5 light:bg-slate-50 rounded-xl p-3 text-center">
+          <div className="bg-white/[0.03] light:bg-slate-50 rounded-xl p-3 text-center">
             <div className={`w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center ${
               kycStatus === 'verified' ? 'bg-emerald-500/10 light:bg-emerald-100' :
               kycStatus === 'pending' || kycStatus === 'submitted' ? 'bg-blue-500/10 light:bg-blue-100' :
@@ -115,7 +114,7 @@ const VerifiedEditorBadge = ({ user, profile, kycStatus, completionPercent }) =>
           </div>
           
           {/* Rank */}
-          <div className="bg-white/5 light:bg-slate-50 rounded-xl p-3 text-center">
+          <div className="bg-white/[0.03] light:bg-slate-50 rounded-xl p-3 text-center">
             <div className={`w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center ${
               isFullyVerified ? 'bg-amber-500/10 light:bg-amber-100' : 'bg-gray-500/10 light:bg-slate-100'
             }`}>
@@ -135,7 +134,7 @@ const VerifiedEditorBadge = ({ user, profile, kycStatus, completionPercent }) =>
         {!isFullyVerified && (
           <button
             onClick={() => navigate('/editor-profile-update')}
-            className="w-full mt-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
+            className="w-full mt-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
           >
             Complete Your Profile
           </button>
