@@ -38,6 +38,7 @@ import { useSocket } from "../context/SocketContext";
 import MediaPreviewModal from "./MediaPreviewModal";
 import ChatInfoTabs from "./ChatInfoTabs";
 import FinalDeliveryCard from "./FinalDeliveryCard";
+import SystemMessageCard from "./SystemMessageCard";
 import WatermarkPreviewModal from "./WatermarkPreviewModal";
 import DownloadConfirmPopup from "./DownloadConfirmPopup";
 import ChangesRequestModal from "./ChangesRequestModal";
@@ -789,16 +790,16 @@ const ChatPage = () => {
             ? { ...m, finalDelivery: { ...m.finalDelivery, status, acceptedAt } } 
             : m
         ));
-        // Refetch order to update header status
-        fetchMessages();
+        // Reload to update header status
+        window.location.reload();
       };
       socket.on("delivery:accepted", handleDeliveryAccepted);
 
       // 🆕 Listen for order completion
       const handleOrderCompleted = ({ orderId: completedOrderId, status, paymentReleased }) => {
         if (completedOrderId === orderId) {
-          // Refetch order data to update UI
-          fetchMessages();
+          // Reload to update UI
+          window.location.reload();
         }
       };
       socket.on("order:completed", handleOrderCompleted);
@@ -825,8 +826,8 @@ const ChatPage = () => {
       // 🆕 Listen for when editor submits delivery
       const handleDeliverySubmitted = ({ orderId: submittedOrderId }) => {
         if (submittedOrderId === orderId) {
-          // Refetch to get the new final delivery message
-          fetchMessages();
+          // Reload to get the new final delivery message
+          window.location.reload();
         }
       };
       socket.on("delivery:submitted", handleDeliverySubmitted);
@@ -1600,6 +1601,11 @@ const ChatPage = () => {
                                 )}
                               </div>
                             </div>
+                        )}
+
+                        {/* 🏷️ System/Platform Message Card */}
+                        {msg.type === "system" && (
+                          <SystemMessageCard message={msg} userRole={user?.role} />
                         )}
 
                         {/* 🎙️ Voice Message Player */}

@@ -12,34 +12,46 @@ import {
 } from "react-icons/fa";
 import axios from "axios";
 import RatingModal from "./RatingModal";
+import { useAppContext } from "../context/AppContext";
 
 const API_BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
 const DownloadConfirmPopup = ({ isOpen, onClose, onConfirm, editorEarning, loading, orderId, editorName }) => {
+  const { user } = useAppContext();
   const [confirmText, setConfirmText] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [isRated, setIsRated] = useState(null); // null = loading, true = rated, false = not rated
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [checkingRating, setCheckingRating] = useState(false);
 
-  // Check if order is already rated when popup opens
+  // Check if order is already rated when popup opens - if not, show rating modal first
   useEffect(() => {
-    if (isOpen && orderId) {
-      checkRating();
+    if (isOpen && orderId && user?.token) {
+      checkRatingAndShowModal();
+    } else if (isOpen && orderId && !user?.token) {
+      // No token but modal opened - show rating modal anyway
+      setIsRated(false);
+      setShowRatingModal(true);
     }
-  }, [isOpen, orderId]);
+  }, [isOpen, orderId, user?.token]);
 
-  const checkRating = async () => {
+  const checkRatingAndShowModal = async () => {
     setCheckingRating(true);
     try {
-      const token = localStorage.getItem("token");
       const res = await axios.get(`${API_BASE}/api/ratings/check/${orderId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${user.token}` },
       });
       setIsRated(res.data.isRated);
+      
+      // If not rated, show rating modal immediately
+      if (!res.data.isRated) {
+        setShowRatingModal(true);
+      }
     } catch (error) {
       console.error("Error checking rating:", error);
+      // If error (like 401), just show rating modal
       setIsRated(false);
+      setShowRatingModal(true);
     } finally {
       setCheckingRating(false);
     }
@@ -49,10 +61,6 @@ const DownloadConfirmPopup = ({ isOpen, onClose, onConfirm, editorEarning, loadi
   const canProceed = isConfirmValid && agreed && isRated;
 
   const handleConfirm = () => {
-    if (!isRated) {
-      setShowRatingModal(true);
-      return;
-    }
     if (canProceed) {
       onConfirm(confirmText);
     }
@@ -63,6 +71,7 @@ const DownloadConfirmPopup = ({ isOpen, onClose, onConfirm, editorEarning, loadi
     setConfirmText("");
     setAgreed(false);
     setIsRated(null);
+    setShowRatingModal(false);
     onClose();
   };
 
@@ -70,19 +79,24 @@ const DownloadConfirmPopup = ({ isOpen, onClose, onConfirm, editorEarning, loadi
   const handleRatingSuccess = () => {
     setIsRated(true);
     setShowRatingModal(false);
+    // Now show the download confirm popup
   };
 
-  return (
-    <>
-      {/* Rating Modal */}
+  // If rating modal is showing, render only that
+  if (showRatingModal) {
+    return (
       <RatingModal
-        isOpen={showRatingModal}
-        onClose={() => setShowRatingModal(false)}
+        isOpen={true}
+        onClose={handleClose}
         orderId={orderId}
         editorName={editorName}
         onSuccess={handleRatingSuccess}
       />
+    );
+  }
 
+  return (
+    <>
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -114,33 +128,12 @@ const DownloadConfirmPopup = ({ isOpen, onClose, onConfirm, editorEarning, loadi
 
               {/* Content */}
               <div className="p-5 space-y-4">
-                {/* Rating Status */}
-                <div className={`flex items-center gap-3 p-3 rounded-xl ${
-                  checkingRating 
-                    ? "bg-gray-500/20 border border-gray-500/30" 
-                    : isRated 
-                      ? "bg-green-500/20 border border-green-500/30" 
-                      : "bg-amber-500/20 border border-amber-500/30"
-                }`}>
-                  <FaStar className={checkingRating ? "text-gray-400" : isRated ? "text-green-400" : "text-amber-400"} />
-                  <div className="flex-1">
-                    <p className={`text-sm font-medium ${checkingRating ? "text-gray-300" : isRated ? "text-green-300" : "text-amber-300"}`}>
-                      {checkingRating 
-                        ? "Checking rating status..." 
-                        : isRated 
-                          ? "✅ You have rated this editor" 
-                          : "⭐ Rating required before download"
-                      }
-                    </p>
-                    {!isRated && !checkingRating && (
-                      <button
-                        onClick={() => setShowRatingModal(true)}
-                        className="text-amber-400 text-xs underline hover:text-amber-300 mt-1"
-                      >
-                        Click here to rate now
-                      </button>
-                    )}
-                  </div>
+                {/* Rating Completed Indicator */}
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-green-500/20 border border-green-500/30">
+                  <FaStar className="text-green-400" />
+                  <p className="text-sm font-medium text-green-300">
+                    ✅ Thank you for rating! You can now download the file.
+                  </p>
                 </div>
 
                 {/* What happens */}

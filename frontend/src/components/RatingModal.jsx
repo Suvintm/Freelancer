@@ -11,10 +11,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FaStar, FaTimes, FaCheckCircle } from "react-icons/fa";
 import { HiSparkles } from "react-icons/hi2";
 import axios from "axios";
+import { useAppContext } from "../context/AppContext";
 
 const API_BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
 const RatingModal = ({ isOpen, onClose, orderId, editorName, onSuccess }) => {
+  const { user } = useAppContext();
   const [ratings, setRatings] = useState({
     overall: 0,
     quality: 0,
@@ -45,13 +47,17 @@ const RatingModal = ({ isOpen, onClose, orderId, editorName, onSuccess }) => {
       return;
     }
 
+    if (!user?.token) {
+      alert("Authentication error. Please login again.");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const token = localStorage.getItem("token");
       await axios.post(
         `${API_BASE}/api/ratings/${orderId}`,
         { ...ratings, review },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${user.token}` } }
       );
       setSubmitted(true);
       setTimeout(() => {
