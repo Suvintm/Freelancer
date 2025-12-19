@@ -74,8 +74,19 @@ const EditorProfile = () => {
   const [showRatingsModal, setShowRatingsModal] = useState(false);
 
   const navigate = useNavigate();
-  const { hasActiveSubscription } = useSubscription();
+  const { hasActiveSubscription, getSubscription } = useSubscription();
   const hasInsightsSub = hasActiveSubscription("profile_insights");
+  const insightsSubscription = getSubscription("profile_insights");
+  
+  // Calculate days remaining for subscription
+  const getDaysRemaining = () => {
+    if (!insightsSubscription?.endDate) return 0;
+    const endDate = new Date(insightsSubscription.endDate);
+    const now = new Date();
+    const diff = endDate - now;
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  };
+  const daysRemaining = getDaysRemaining();
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
@@ -180,10 +191,12 @@ const EditorProfile = () => {
       label: "Views", 
       value: hasInsightsSub ? formatNumber(analytics?.profileViews || 0) : null, 
       icon: hasInsightsSub ? FaEye : HiLockClosed, 
-      color: hasInsightsSub ? "#6B7280" : "#9CA3AF",
+      color: hasInsightsSub ? "#10B981" : "#9CA3AF",
       clickable: true,
       locked: !hasInsightsSub,
-      onClick: () => navigate("/profile-insights")
+      onClick: () => navigate("/profile-insights"),
+      tag: hasInsightsSub ? "PRO" : "Upgrade",
+      tagColor: hasInsightsSub ? "#10B981" : "#F59E0B"
     },
     { label: "Earnings", value: formatCurrency(analytics?.totalEarnings || 0), icon: FaMoneyBillWave, color: "#22C55E" },
   ];
@@ -196,6 +209,32 @@ const EditorProfile = () => {
       <main className="md:ml-64 pt-6 md:pt-20 lg:pt-24 px-3 md:px-6 pb-10">
         <div className="max-w-5xl mx-auto">
           
+          {/* ==================== SUBSCRIPTION STATUS BADGE ==================== */}
+          {hasInsightsSub && daysRemaining > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 flex justify-end"
+            >
+              <div 
+                onClick={() => navigate("/profile-insights")}
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-full cursor-pointer hover:border-emerald-500/50 transition-colors"
+              >
+                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                  <FaEye className="text-[10px] text-emerald-400" />
+                </div>
+                <span className="text-xs font-medium text-emerald-400">Profile Insights PRO</span>
+                <span className="text-[10px] text-zinc-400">•</span>
+                <span className={`text-xs font-semibold ${daysRemaining <= 7 ? 'text-amber-400' : 'text-zinc-300'}`}>
+                  {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} left
+                </span>
+                {insightsSubscription?.status === 'trial' && (
+                  <span className="px-1.5 py-0.5 text-[9px] font-bold bg-amber-500/20 text-amber-400 rounded">TRIAL</span>
+                )}
+              </div>
+            </motion.div>
+          )}
+
           {/* ==================== PROFILE COMPLETION BANNER ==================== */}
           {completionPercent < 80 && (
             <motion.div
@@ -390,6 +429,17 @@ const EditorProfile = () => {
                         {stat.count && <span className="text-xs text-zinc-500">{stat.count}</span>}
                       </div>
                       <p className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-wide">{stat.label}</p>
+                      {stat.tag && (
+                        <span 
+                          className="inline-block mt-1 px-1.5 py-0.5 text-[8px] md:text-[9px] font-bold rounded"
+                          style={{ 
+                            backgroundColor: stat.tagColor + '20', 
+                            color: stat.tagColor 
+                          }}
+                        >
+                          {stat.tag}
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>

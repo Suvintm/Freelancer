@@ -406,27 +406,54 @@ const ProfileInsightsPage = () => {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="mt-8 p-4 bg-zinc-900/30 rounded-xl border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4"
+              className="mt-8 p-4 bg-gradient-to-r from-emerald-500/5 to-teal-500/5 rounded-xl border border-emerald-500/20"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
-                  <FaCrown className="text-amber-400" />
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                    <FaCrown className="text-lg text-emerald-400" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-white">{subscription.planName}</p>
+                      {subscription.status === "trial" && (
+                        <span className="px-1.5 py-0.5 text-[9px] font-bold bg-amber-500/20 text-amber-400 rounded">TRIAL</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-zinc-400">
+                      {subscription.status === "trial"
+                        ? "Free trial period"
+                        : "Active subscription"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium">{subscription.planName}</p>
-                  <p className="text-xs text-zinc-500">
-                    {subscription.status === "trial"
-                      ? `Trial ends ${new Date(subscription.endDate).toLocaleDateString()}`
-                      : `Renews ${new Date(subscription.endDate).toLocaleDateString()}`}
-                  </p>
+
+                {/* Days Remaining Badge */}
+                <div className="flex items-center gap-4">
+                  <div className="text-center px-4 py-2 bg-zinc-900/50 rounded-lg border border-zinc-800">
+                    {(() => {
+                      const endDate = new Date(subscription.endDate);
+                      const now = new Date();
+                      const diff = endDate - now;
+                      const days = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+                      return (
+                        <>
+                          <p className={`text-2xl font-bold ${days <= 7 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                            {days}
+                          </p>
+                          <p className="text-[10px] text-zinc-500 uppercase">Days Left</p>
+                        </>
+                      );
+                    })()}
+                  </div>
+                  <button
+                    onClick={() => navigate("/subscription/plans")}
+                    className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-sm text-white rounded-lg transition-colors"
+                  >
+                    Manage →
+                  </button>
                 </div>
               </div>
-              <button
-                onClick={() => navigate("/subscription/plans")}
-                className="text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                Manage Subscription →
-              </button>
             </motion.div>
           )}
         </div>
