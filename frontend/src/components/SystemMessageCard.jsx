@@ -1,109 +1,108 @@
 /**
- * SystemMessageCard.jsx - Special platform message card for system events
+ * SystemMessageCard.jsx - Professional platform message card for system events
  * Features:
- * - Centered layout (not sender aligned)
- * - Platform logo
- * - Different themes per action type
- * - Helpful guidance text
- * - Delete disabled
+ * - Clean, professional design
+ * - Responsive (smaller on mobile)
+ * - Centered layout
+ * - No delete option
  */
 
 import { motion } from "framer-motion";
 import { 
-  FaCheckCircle, 
-  FaRocket, 
-  FaFilm, 
-  FaHandshake, 
-  FaCreditCard,
-  FaExclamationTriangle,
-  FaTrophy
-} from "react-icons/fa";
-import { HiSparkles } from "react-icons/hi2";
+  HiCheckCircle, 
+  HiRocketLaunch, 
+  HiFilm, 
+  HiShieldCheck,
+  HiCreditCard,
+  HiExclamationTriangle,
+  HiTrophy,
+  HiSparkles,
+  HiBanknotes
+} from "react-icons/hi2";
 
-// Platform logo - you can replace this with actual logo URL
-const PLATFORM_LOGO = "/logo.png";
-
-// Action configurations with themes, icons, and guidance
+// Action configurations with professional themes
 const ACTION_CONFIG = {
   order_created: {
-    theme: "from-blue-500 to-cyan-500",
-    bgClass: "bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border-blue-500/30",
-    icon: FaRocket,
-    title: "🚀 New Project Request",
+    gradient: "from-blue-600 to-cyan-600",
+    bgLight: "bg-blue-500/5",
+    borderColor: "border-blue-500/20",
+    icon: HiRocketLaunch,
+    iconBg: "bg-blue-500",
+    title: "New Project Request",
     getDescription: (isEditor) => isEditor 
-      ? "A client has sent you a project request. Review the details and accept to start working!"
-      : "Your project request has been sent. Wait for the editor to accept.",
+      ? "A client has sent you a project request. Review and accept to begin."
+      : "Your request has been sent successfully.",
   },
   order_accepted: {
-    theme: "from-emerald-500 to-green-500",
-    bgClass: "bg-gradient-to-r from-emerald-500/10 to-green-500/10 border-emerald-500/30",
-    icon: FaHandshake,
-    title: "🎉 Order Accepted!",
+    gradient: "from-emerald-600 to-green-600",
+    bgLight: "bg-emerald-500/5",
+    borderColor: "border-emerald-500/20",
+    icon: HiCheckCircle,
+    iconBg: "bg-emerald-500",
+    title: "Order Accepted",
     getDescription: (isEditor) => isEditor
-      ? "You've accepted this project! Start working and communicate regularly with the client."
-      : "Great news! The editor accepted your order. You can now discuss project details together.",
-    tips: [
-      "💬 Use chat to share requirements and updates",
-      "📁 Share files via Google Drive or direct upload",
-      "⏰ Keep track of the deadline",
-    ],
+      ? "You've accepted this project. Start working and keep the client updated."
+      : "Great news! The editor accepted your order. Start collaborating now.",
   },
   order_rejected: {
-    theme: "from-red-500 to-orange-500",
-    bgClass: "bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30",
-    icon: FaExclamationTriangle,
+    gradient: "from-red-600 to-rose-600",
+    bgLight: "bg-red-500/5",
+    borderColor: "border-red-500/20",
+    icon: HiExclamationTriangle,
+    iconBg: "bg-red-500",
     title: "Order Declined",
-    getDescription: () => "This order has been declined by the editor.",
+    getDescription: () => "This order has been declined.",
   },
   payment_required: {
-    theme: "from-blue-500 to-indigo-500",
-    bgClass: "bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border-blue-500/30",
-    icon: FaCreditCard,
-    title: "💳 Payment Required",
+    gradient: "from-indigo-600 to-blue-600",
+    bgLight: "bg-indigo-500/5",
+    borderColor: "border-indigo-500/20",
+    icon: HiCreditCard,
+    iconBg: "bg-indigo-500",
+    title: "Payment Required",
     getDescription: (isEditor) => isEditor
-      ? "Waiting for client to complete payment to start working."
-      : "Please complete the payment to confirm your order and start the project.",
+      ? "Waiting for client payment."
+      : "Complete payment to confirm your order.",
   },
   payment_confirmed: {
-    theme: "from-green-500 to-emerald-500",
-    bgClass: "bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30",
-    icon: FaCheckCircle,
-    title: "✅ Payment Confirmed",
-    getDescription: () => "Payment has been received and held in escrow. The project can now begin!",
+    gradient: "from-green-600 to-emerald-600",
+    bgLight: "bg-green-500/5",
+    borderColor: "border-green-500/20",
+    icon: HiShieldCheck,
+    iconBg: "bg-green-500",
+    title: "Payment Confirmed",
+    getDescription: () => "Payment received and secured. Project is ready to begin.",
   },
   work_submitted: {
-    theme: "from-purple-500 to-pink-500",
-    bgClass: "bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30",
-    icon: FaFilm,
-    title: "🎬 Final Delivery Submitted!",
+    gradient: "from-purple-600 to-violet-600",
+    bgLight: "bg-purple-500/5",
+    borderColor: "border-purple-500/20",
+    icon: HiFilm,
+    iconBg: "bg-purple-500",
+    title: "Work Submitted",
     getDescription: (isEditor) => isEditor
-      ? "You've submitted the final work! Wait for the client to review and approve."
-      : "The editor has submitted the final work. Review carefully before accepting.",
-    tips: [
-      "👀 Preview the work thoroughly",
-      "📝 Request changes if needed",
-      "✅ Accept to release payment",
-    ],
+      ? "Your work has been submitted. Awaiting client review."
+      : "The editor has delivered the final work. Please review.",
   },
   work_completed: {
-    theme: "from-yellow-500 to-orange-500",
-    bgClass: "bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-yellow-500/30",
-    icon: FaTrophy,
-    title: "🏆 Order Completed!",
+    gradient: "from-amber-600 to-yellow-600",
+    bgLight: "bg-amber-500/5",
+    borderColor: "border-amber-500/20",
+    icon: HiTrophy,
+    iconBg: "bg-amber-500",
+    title: "Order Completed",
     getDescription: (isEditor) => isEditor
-      ? "Congratulations! The order is complete and payment has been released to your account."
-      : "Thank you for using our platform! The project is complete.",
-    tips: [
-      "⭐ Don't forget to rate your experience",
-      "💬 You can still access chat history",
-    ],
+      ? "Congratulations! Payment has been released to your account."
+      : "Order complete. Thank you for using our platform!",
   },
   payment_released: {
-    theme: "from-emerald-500 to-teal-500",
-    bgClass: "bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border-emerald-500/30",
-    icon: FaCheckCircle,
-    title: "💰 Payment Released",
-    getDescription: () => "Payment has been released to the editor successfully.",
+    gradient: "from-teal-600 to-emerald-600",
+    bgLight: "bg-teal-500/5",
+    borderColor: "border-teal-500/20",
+    icon: HiBanknotes,
+    iconBg: "bg-teal-500",
+    title: "Payment Released",
+    getDescription: () => "Payment has been released to the editor.",
   },
 };
 
@@ -113,65 +112,57 @@ const SystemMessageCard = ({ message, userRole }) => {
   const Icon = config.icon;
   const isEditor = userRole === "editor";
 
+  const formatTime = (date) => {
+    return new Date(date).toLocaleString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      month: "short",
+      day: "numeric",
+    });
+  };
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      className="flex justify-center my-4"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="flex justify-center my-3 md:my-4 px-3"
     >
-      <div className={`relative max-w-md w-full mx-4 p-4 rounded-2xl border ${config.bgClass} backdrop-blur-sm overflow-hidden`}>
-        {/* Background decoration */}
-        <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-white/5 to-transparent rounded-full -translate-y-1/2 translate-x-1/2" />
+      <div className={`relative w-full max-w-[320px] md:max-w-md rounded-xl border ${config.borderColor} ${config.bgLight} backdrop-blur-sm overflow-hidden`}>
+        {/* Subtle gradient line at top */}
+        <div className={`h-0.5 w-full bg-gradient-to-r ${config.gradient}`} />
         
-        {/* Platform badge */}
-        <div className="flex items-center gap-2 mb-3">
-          <div className={`p-1.5 rounded-lg bg-gradient-to-r ${config.theme}`}>
-            <HiSparkles className="text-white text-sm" />
-          </div>
-          <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
-            Platform Message
-          </span>
-        </div>
-
-        {/* Header with icon and title */}
-        <div className="flex items-center gap-3 mb-3">
-          <div className={`w-10 h-10 rounded-xl bg-gradient-to-r ${config.theme} flex items-center justify-center shadow-lg`}>
-            <Icon className="text-white text-lg" />
-          </div>
-          <h3 className="text-lg font-bold text-white">
-            {config.title}
-          </h3>
-        </div>
-
-        {/* Description */}
-        <p className="text-gray-300 text-sm leading-relaxed mb-3">
-          {config.getDescription(isEditor)}
-        </p>
-
-        {/* Tips section */}
-        {config.tips && config.tips.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-white/10">
-            <p className="text-xs text-gray-400 font-medium mb-2">Quick Tips:</p>
-            <div className="space-y-1">
-              {config.tips.map((tip, index) => (
-                <p key={index} className="text-xs text-gray-400">
-                  {tip}
-                </p>
-              ))}
+        <div className="p-3 md:p-4">
+          {/* Header */}
+          <div className="flex items-center gap-2.5 md:gap-3">
+            <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg ${config.iconBg} flex items-center justify-center shadow-sm`}>
+              <Icon className="text-white text-sm md:text-lg" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <HiSparkles className="text-gray-400 text-xs" />
+                <span className="text-[10px] md:text-xs text-gray-400 font-medium uppercase tracking-wide">
+                  Platform
+                </span>
+              </div>
+              <h3 className="text-sm md:text-base font-semibold text-white truncate">
+                {config.title}
+              </h3>
             </div>
           </div>
-        )}
 
-        {/* Timestamp */}
-        <div className="mt-3 text-right">
-          <span className="text-[10px] text-gray-500">
-            {new Date(message.createdAt).toLocaleString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-              month: "short",
-              day: "numeric",
-            })}
-          </span>
+          {/* Description */}
+          <p className="mt-2 md:mt-3 text-xs md:text-sm text-gray-300 leading-relaxed">
+            {config.getDescription(isEditor)}
+          </p>
+
+          {/* Timestamp */}
+          <div className="mt-2 md:mt-3 pt-2 border-t border-white/5 flex justify-end">
+            <span className="text-[10px] md:text-xs text-gray-500">
+              {formatTime(message.createdAt)}
+            </span>
+          </div>
         </div>
       </div>
     </motion.div>

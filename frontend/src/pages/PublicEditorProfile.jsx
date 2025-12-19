@@ -36,6 +36,7 @@ import { toast } from "react-toastify";
 import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
 import PortfolioSection from "../components/PortfolioSection.jsx";
+import EditorRatingsModal from "../components/EditorRatingsModal.jsx";
 
 // Country Code Mapping
 const countryNameToCode = {
@@ -64,6 +65,7 @@ const PublicEditorProfile = () => {
     deadline: "",
   });
   const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [showRatingsModal, setShowRatingsModal] = useState(false);
 
   const navigate = useNavigate();
 
@@ -174,9 +176,14 @@ const PublicEditorProfile = () => {
     { id: "gigs", label: "Gigs", icon: FaShoppingCart },
   ];
 
+  // Real ratings from profile ratingStats
+  const hasRatings = profile?.ratingStats && profile.ratingStats.totalReviews > 0;
+  const displayRating = hasRatings ? profile.ratingStats.averageRating?.toFixed(1) : "N/A";
+  const reviewCount = hasRatings ? profile.ratingStats.totalReviews : 0;
+
   const statsData = [
-    { label: "Rating", value: profile?.rating || "5.0", icon: FaStar, color: "#F59E0B" },
-    { label: "Projects", value: profile?.projectsCompleted || "24", icon: FaBriefcase, color: "#6B7280" },
+    { label: "Rating", value: displayRating, count: reviewCount > 0 ? `(${reviewCount})` : "", icon: FaStar, color: hasRatings ? "#F59E0B" : "#6B7280", clickable: true },
+    { label: "Projects", value: profile?.projectsCompleted || "0", icon: FaBriefcase, color: "#6B7280" },
     { label: "Views", value: "1.2K", icon: FaEye, color: "#6B7280" },
   ];
 
@@ -287,10 +294,15 @@ const PublicEditorProfile = () => {
                 {/* Stats Row */}
                 <div className="grid grid-cols-3 gap-2 md:gap-4 mt-5 pt-5 border-t border-zinc-800/50">
                   {statsData.map((stat) => (
-                    <div key={stat.label} className="text-center">
+                    <div 
+                      key={stat.label} 
+                      className={`text-center ${stat.clickable && (isOwner || reviewCount > 0) ? 'cursor-pointer hover:bg-zinc-800/30 rounded-lg py-2 -my-2 transition-colors' : ''}`}
+                      onClick={() => stat.clickable && (isOwner || reviewCount > 0) && setShowRatingsModal(true)}
+                    >
                       <div className="flex items-center justify-center gap-1 md:gap-1.5 mb-0.5">
                         <stat.icon className="text-[10px] md:text-xs" style={{ color: stat.color }} />
                         <span className="text-base md:text-lg font-semibold text-white">{stat.value}</span>
+                        {stat.count && <span className="text-xs text-zinc-500">{stat.count}</span>}
                       </div>
                       <p className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-wide">{stat.label}</p>
                     </div>
@@ -709,6 +721,13 @@ const PublicEditorProfile = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Editor Ratings Modal */}
+      <EditorRatingsModal
+        isOpen={showRatingsModal}
+        onClose={() => setShowRatingsModal(false)}
+        editorId={userData?._id}
+      />
     </div>
   );
 };

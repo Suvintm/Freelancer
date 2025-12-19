@@ -337,8 +337,10 @@ const ExploreEditors = () => {
 
 /* EditorCard - Clean Professional Design with theme support */
 const EditorCard = ({ editor, navigate, searchQuery }) => {
-  const rating = (4 + (editor._id?.charCodeAt(0) % 10) / 10).toFixed(1);
-  const reviewCount = 5 + (editor._id?.charCodeAt(1) % 50);
+  // Use real ratings from profile ratingStats, fallback to N/A
+  const hasRatings = editor.ratingStats && editor.ratingStats.totalReviews > 0;
+  const rating = hasRatings ? editor.ratingStats.averageRating?.toFixed(1) : null;
+  const reviewCount = hasRatings ? editor.ratingStats.totalReviews : 0;
 
   const highlightMatch = (text, query) => {
     if (!query || !text) return text;
@@ -382,11 +384,20 @@ const EditorCard = ({ editor, navigate, searchQuery }) => {
             </p>
 
             <div className="flex items-center gap-2 mt-2">
-              <div className="flex items-center gap-1 bg-amber-500/10 light:bg-amber-50 px-2 py-0.5 rounded-md">
-                <FaStar className="text-amber-400 text-xs" />
-                <span className="font-semibold text-xs text-white light:text-slate-900">{rating}</span>
-              </div>
-              <span className="text-gray-500 light:text-slate-400 text-xs">({reviewCount} reviews)</span>
+              {hasRatings ? (
+                <>
+                  <div className="flex items-center gap-1 bg-amber-500/10 light:bg-amber-50 px-2 py-0.5 rounded-md">
+                    <FaStar className="text-amber-400 text-xs" />
+                    <span className="font-semibold text-xs text-white light:text-slate-900">{rating}</span>
+                  </div>
+                  <span className="text-gray-500 light:text-slate-400 text-xs">({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})</span>
+                </>
+              ) : (
+                <div className="flex items-center gap-1 bg-gray-500/10 light:bg-slate-100 px-2 py-0.5 rounded-md">
+                  <FaStar className="text-gray-500 text-xs" />
+                  <span className="font-medium text-xs text-gray-400 light:text-slate-500">N/A</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
