@@ -285,25 +285,61 @@ export const cancelSubscription = asyncHandler(async (req, res) => {
 });
 
 // ============ ADMIN: CREATE/UPDATE PLAN ============
-export const upsertPlan = asyncHandler(async (req, res) => {
-  const { planId, ...planData } = req.body;
+export const upsertPlan = async (req, res) => {
+  try {
+    const { planId, ...planData } = req.body;
 
-  let plan;
-  if (planId) {
-    plan = await SubscriptionPlan.findByIdAndUpdate(planId, planData, {
-      new: true,
-      runValidators: true,
+    console.log("upsertPlan called with:", { planId, planData });
+
+    let plan;
+    if (planId) {
+      plan = await SubscriptionPlan.findByIdAndUpdate(planId, planData, {
+        new: true,
+        runValidators: true,
+      });
+      if (!plan) {
+        return res.status(404).json({
+          success: false,
+          message: "Plan not found",
+        });
+      }
+    } else {
+      plan = await SubscriptionPlan.create(planData);
+    }
+
+    console.log("Plan saved:", plan);
+
+    res.status(200).json({
+      success: true,
+      message: planId ? "Plan updated" : "Plan created",
+      plan,
     });
-  } else {
-    plan = await SubscriptionPlan.create(planData);
-  }
+  } catch (error) {
+    console.error("upsertPlan error:", error);
+    
+    // Handle mongoose validation errors
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(", "),
+      });
+    }
 
-  res.status(200).json({
-    success: true,
-    message: planId ? "Plan updated" : "Plan created",
-    plan,
-  });
-});
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "A plan with this slug already exists",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to save plan",
+    });
+  }
+};
 
 // ============ ADMIN: GET ALL SUBSCRIPTIONS ============
 export const getAllSubscriptions = asyncHandler(async (req, res) => {

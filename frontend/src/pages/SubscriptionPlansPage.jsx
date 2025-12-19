@@ -184,138 +184,263 @@ const SubscriptionPlansPage = () => {
             </motion.div>
           )}
 
-          {/* Plans Grid */}
-          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-            {loading ? (
-              // Skeleton loaders
-              [1, 2].map((i) => (
+          {/* Plans - Mobile Carousel / Desktop Grid */}
+          {loading ? (
+            // Skeleton loaders
+            <div className="flex md:grid md:grid-cols-2 gap-4 max-w-3xl mx-auto overflow-x-auto pb-4 snap-x snap-mandatory md:overflow-visible">
+              {[1, 2].map((i) => (
                 <div
                   key={i}
-                  className="bg-zinc-900/50 rounded-2xl p-6 animate-pulse"
+                  className="flex-shrink-0 w-72 md:w-auto bg-zinc-900/50 rounded-xl p-5 animate-pulse snap-center"
                 >
-                  <div className="h-6 bg-zinc-800 rounded w-1/2 mb-4"></div>
-                  <div className="h-10 bg-zinc-800 rounded w-1/3 mb-6"></div>
-                  <div className="space-y-3">
-                    {[1, 2, 3, 4].map((j) => (
-                      <div key={j} className="h-4 bg-zinc-800 rounded"></div>
+                  <div className="h-5 bg-zinc-800 rounded w-1/2 mb-3"></div>
+                  <div className="h-8 bg-zinc-800 rounded w-1/3 mb-4"></div>
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((j) => (
+                      <div key={j} className="h-3 bg-zinc-800 rounded"></div>
                     ))}
                   </div>
                 </div>
-              ))
-            ) : profileInsightsPlans.length === 0 ? (
-              <div className="col-span-2 text-center py-12 text-zinc-500">
-                No subscription plans available at the moment.
-              </div>
-            ) : (
-              profileInsightsPlans.map((plan, index) => {
-                const isPopular = plan.badge === "BEST VALUE";
-                const Icon = isPopular ? FaCrown : HiSparkles;
+              ))}
+            </div>
+          ) : profileInsightsPlans.length === 0 ? (
+            <div className="text-center py-12 text-zinc-500">
+              No subscription plans available at the moment.
+            </div>
+          ) : (
+            <>
+              {/* Mobile Carousel */}
+              <div className="md:hidden overflow-x-auto scrollbar-hide">
+                <div className="flex gap-4 pb-4 px-1 snap-x snap-mandatory overflow-x-auto">
+                  {profileInsightsPlans.map((plan, index) => {
+                    const isPopular = plan.badge === "BEST VALUE";
+                    const Icon = isPopular ? FaCrown : HiSparkles;
 
-                return (
-                  <motion.div
-                    key={plan._id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className={`relative rounded-2xl p-6 ${
-                      isPopular
-                        ? "bg-gradient-to-b from-amber-500/10 to-zinc-900 border-2 border-amber-500/30"
-                        : "bg-zinc-900/50 border border-zinc-800"
-                    }`}
-                  >
-                    {/* Badge */}
-                    {plan.badge && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                        <span className="px-3 py-1 bg-amber-500 text-black text-xs font-bold rounded-full">
-                          {plan.badge}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Header */}
-                    <div className="flex items-center gap-2 mb-4">
-                      <Icon
-                        className={`text-xl ${
-                          isPopular ? "text-amber-400" : "text-zinc-400"
+                    return (
+                      <motion.div
+                        key={plan._id}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: index * 0.1 }}
+                        className={`flex-shrink-0 w-72 snap-center rounded-xl p-5 ${
+                          isPopular
+                            ? "bg-gradient-to-b from-amber-500/10 to-zinc-900 border-2 border-amber-500/30"
+                            : "bg-zinc-900/50 border border-zinc-800"
                         }`}
-                      />
-                      <h3 className="text-lg font-semibold">{plan.duration === "monthly" ? "Monthly" : "Yearly"}</h3>
-                    </div>
+                      >
+                        {/* Badge */}
+                        {plan.badge && (
+                          <div className="mb-3">
+                            <span className="px-2 py-0.5 bg-amber-500 text-black text-[10px] font-bold rounded-full">
+                              {plan.badge}
+                            </span>
+                          </div>
+                        )}
 
-                    {/* Pricing */}
-                    <div className="mb-6">
-                      <div className="flex items-baseline gap-1">
-                        <FaRupeeSign className="text-lg text-zinc-400" />
-                        <span className="text-4xl font-bold">{plan.price}</span>
-                        <span className="text-zinc-500">
-                          /{plan.duration === "monthly" ? "month" : "year"}
-                        </span>
-                      </div>
-                      {plan.discountPercent > 0 && (
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-sm text-zinc-500 line-through">
-                            ₹{plan.originalPrice}
-                          </span>
-                          <span className="text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded">
-                            Save {plan.discountPercent}%
+                        {/* Header */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <Icon
+                            className={`text-lg ${
+                              isPopular ? "text-amber-400" : "text-zinc-400"
+                            }`}
+                          />
+                          <h3 className="text-base font-semibold">{plan.duration === "monthly" ? "Monthly" : "Yearly"}</h3>
+                        </div>
+
+                        {/* Pricing */}
+                        <div className="mb-4">
+                          <div className="flex items-baseline gap-1">
+                            <FaRupeeSign className="text-sm text-zinc-400" />
+                            <span className="text-3xl font-bold">{plan.price}</span>
+                            <span className="text-zinc-500 text-sm">
+                              /{plan.duration === "monthly" ? "mo" : "yr"}
+                            </span>
+                          </div>
+                          {plan.discountPercent > 0 && (
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-zinc-500 line-through">
+                                ₹{plan.originalPrice}
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded">
+                                Save {plan.discountPercent}%
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Features - Compact */}
+                        <ul className="space-y-2 mb-4">
+                          {plan.features?.slice(0, 4).map((feature, i) => {
+                            const FeatureIcon =
+                              featureIcons[feature] || featureIcons.default;
+                            return (
+                              <li key={i} className="flex items-start gap-2">
+                                <FeatureIcon className="text-emerald-400 text-xs mt-0.5 flex-shrink-0" />
+                                <span className="text-xs text-zinc-300 leading-tight">
+                                  {feature}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+
+                        {/* CTA Buttons */}
+                        <div className="space-y-2">
+                          {!trialUsed && plan.trialDays > 0 && !hasSubscription && (
+                            <button
+                              onClick={() => handleStartTrial(plan)}
+                              disabled={processing === plan._id}
+                              className="w-full py-2 bg-zinc-800 text-white text-xs font-medium rounded-lg hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+                            >
+                              {processing === plan._id
+                                ? "Starting..."
+                                : `${plan.trialDays}-Day Free Trial`}
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => handleSubscribe(plan)}
+                            disabled={processing === plan._id || hasSubscription}
+                            className={`w-full py-2.5 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 ${
+                              isPopular
+                                ? "bg-amber-500 text-black hover:bg-amber-400"
+                                : "bg-emerald-500 text-white hover:bg-emerald-400"
+                            }`}
+                          >
+                            {processing === plan._id
+                              ? "Processing..."
+                              : hasSubscription
+                              ? "Subscribed"
+                              : "Subscribe"}
+                          </button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+                {/* Carousel Indicator */}
+                <div className="flex justify-center gap-1.5 mt-2">
+                  {profileInsightsPlans.map((_, i) => (
+                    <div
+                      key={i}
+                      className="w-1.5 h-1.5 rounded-full bg-zinc-700"
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Desktop Grid */}
+              <div className="hidden md:grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+                {profileInsightsPlans.map((plan, index) => {
+                  const isPopular = plan.badge === "BEST VALUE";
+                  const Icon = isPopular ? FaCrown : HiSparkles;
+
+                  return (
+                    <motion.div
+                      key={plan._id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className={`relative rounded-2xl p-6 ${
+                        isPopular
+                          ? "bg-gradient-to-b from-amber-500/10 to-zinc-900 border-2 border-amber-500/30"
+                          : "bg-zinc-900/50 border border-zinc-800"
+                      }`}
+                    >
+                      {/* Badge */}
+                      {plan.badge && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                          <span className="px-3 py-1 bg-amber-500 text-black text-xs font-bold rounded-full">
+                            {plan.badge}
                           </span>
                         </div>
                       )}
-                    </div>
 
-                    {/* Features */}
-                    <ul className="space-y-3 mb-6">
-                      {plan.features?.map((feature, i) => {
-                        const FeatureIcon =
-                          featureIcons[feature] || featureIcons.default;
-                        return (
-                          <li key={i} className="flex items-start gap-2">
-                            <FeatureIcon className="text-emerald-400 mt-0.5 flex-shrink-0" />
-                            <span className="text-sm text-zinc-300">
-                              {feature}
+                      {/* Header */}
+                      <div className="flex items-center gap-2 mb-4">
+                        <Icon
+                          className={`text-xl ${
+                            isPopular ? "text-amber-400" : "text-zinc-400"
+                          }`}
+                        />
+                        <h3 className="text-lg font-semibold">{plan.duration === "monthly" ? "Monthly" : "Yearly"}</h3>
+                      </div>
+
+                      {/* Pricing */}
+                      <div className="mb-6">
+                        <div className="flex items-baseline gap-1">
+                          <FaRupeeSign className="text-lg text-zinc-400" />
+                          <span className="text-4xl font-bold">{plan.price}</span>
+                          <span className="text-zinc-500">
+                            /{plan.duration === "monthly" ? "month" : "year"}
+                          </span>
+                        </div>
+                        {plan.discountPercent > 0 && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-sm text-zinc-500 line-through">
+                              ₹{plan.originalPrice}
                             </span>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                            <span className="text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded">
+                              Save {plan.discountPercent}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
 
-                    {/* CTA Buttons */}
-                    <div className="space-y-2">
-                      {/* Trial Button */}
-                      {!trialUsed && plan.trialDays > 0 && !hasSubscription && (
+                      {/* Features */}
+                      <ul className="space-y-3 mb-6">
+                        {plan.features?.map((feature, i) => {
+                          const FeatureIcon =
+                            featureIcons[feature] || featureIcons.default;
+                          return (
+                            <li key={i} className="flex items-start gap-2">
+                              <FeatureIcon className="text-emerald-400 mt-0.5 flex-shrink-0" />
+                              <span className="text-sm text-zinc-300">
+                                {feature}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+
+                      {/* CTA Buttons */}
+                      <div className="space-y-2">
+                        {/* Trial Button */}
+                        {!trialUsed && plan.trialDays > 0 && !hasSubscription && (
+                          <button
+                            onClick={() => handleStartTrial(plan)}
+                            disabled={processing === plan._id}
+                            className="w-full py-2.5 bg-zinc-800 text-white text-sm font-medium rounded-xl hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+                          >
+                            {processing === plan._id
+                              ? "Starting..."
+                              : `Start ${plan.trialDays}-Day Free Trial`}
+                          </button>
+                        )}
+
+                        {/* Subscribe Button */}
                         <button
-                          onClick={() => handleStartTrial(plan)}
-                          disabled={processing === plan._id}
-                          className="w-full py-2.5 bg-zinc-800 text-white text-sm font-medium rounded-xl hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+                          onClick={() => handleSubscribe(plan)}
+                          disabled={processing === plan._id || hasSubscription}
+                          className={`w-full py-3 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 ${
+                            isPopular
+                              ? "bg-amber-500 text-black hover:bg-amber-400"
+                              : "bg-emerald-500 text-white hover:bg-emerald-400"
+                          }`}
                         >
                           {processing === plan._id
-                            ? "Starting..."
-                            : `Start ${plan.trialDays}-Day Free Trial`}
+                            ? "Processing..."
+                            : hasSubscription
+                            ? "Already Subscribed"
+                            : "Subscribe Now"}
                         </button>
-                      )}
-
-                      {/* Subscribe Button */}
-                      <button
-                        onClick={() => handleSubscribe(plan)}
-                        disabled={processing === plan._id || hasSubscription}
-                        className={`w-full py-3 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 ${
-                          isPopular
-                            ? "bg-amber-500 text-black hover:bg-amber-400"
-                            : "bg-emerald-500 text-white hover:bg-emerald-400"
-                        }`}
-                      >
-                        {processing === plan._id
-                          ? "Processing..."
-                          : hasSubscription
-                          ? "Already Subscribed"
-                          : "Subscribe Now"}
-                      </button>
-                    </div>
-                  </motion.div>
-                );
-              })
-            )}
-          </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </>
+          )}
 
           {/* FAQ Section */}
           <motion.div

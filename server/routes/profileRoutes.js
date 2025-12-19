@@ -1,7 +1,7 @@
 import express from "express";
 import { getProfile, updateProfile, getProfileCompletionStatus } from "../controllers/profileController.js";
 import { getKYCStatus, submitKYC, lookupIFSC, verifyKYC } from "../controllers/kycController.js";
-import authMiddleware from "../middleware/authMiddleware.js";
+import authMiddleware, { optionalAuth } from "../middleware/authMiddleware.js";
 import { upload } from "../middleware/upload.js";
 import { updateProfileValidator, userIdValidator } from "../middleware/validators.js";
 import { uploadLimiter } from "../middleware/rateLimiter.js";
@@ -42,7 +42,9 @@ router.put(
 
 // ============ PUBLIC ROUTE ============
 // Fetch any user's profile by ID (for Explore -> View Profile)
+// Uses optionalAuth to track logged-in visitors without requiring login
 // This must be LAST to avoid matching other routes as userId
-router.get("/:userId", userIdValidator, getProfile);
+router.get("/:userId", optionalAuth, userIdValidator, getProfile);
 
 export default router;
+

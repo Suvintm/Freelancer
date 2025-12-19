@@ -17,6 +17,7 @@ import Payments from "./pages/Payments";
 import KYCManagement from "./pages/KYCManagement";
 import StorageManager from "./pages/StorageManager";
 import Banners from "./pages/Banners";
+import SubscriptionPlans from "./pages/SubscriptionPlans";
 
 // Components
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -59,6 +60,7 @@ function App() {
           <Route path="/orders" element={<Orders />} />
           <Route path="/gigs" element={<Gigs />} />
           <Route path="/banners" element={<Banners />} />
+          <Route path="/subscriptions" element={<SubscriptionPlans />} />
           <Route path="/activity" element={<Activity />} />
           <Route path="/storage" element={<StorageManager />} />
           <Route path="/settings" element={<Settings />} />

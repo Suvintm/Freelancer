@@ -5,6 +5,7 @@
 
 import express from "express";
 import protect from "../middleware/authMiddleware.js";
+import { protectAdmin } from "../middleware/adminAuth.js";
 import {
   getPlans,
   getMySubscriptions,
@@ -23,7 +24,11 @@ const router = express.Router();
 // Get all available plans
 router.get("/plans", getPlans);
 
-// ============ PROTECTED ROUTES ============
+// ============ ADMIN ROUTES (must be before protect middleware) ============
+router.post("/admin/plan", protectAdmin, upsertPlan);
+router.get("/admin/all", protectAdmin, getAllSubscriptions);
+
+// ============ PROTECTED ROUTES (User auth) ============
 router.use(protect);
 
 // Get user's subscriptions
@@ -44,9 +49,5 @@ router.post("/verify-payment", verifyPayment);
 // Cancel subscription
 router.post("/cancel/:id", cancelSubscription);
 
-// ============ ADMIN ROUTES ============
-// TODO: Add admin middleware check
-router.post("/admin/plan", upsertPlan);
-router.get("/admin/all", getAllSubscriptions);
-
 export default router;
+

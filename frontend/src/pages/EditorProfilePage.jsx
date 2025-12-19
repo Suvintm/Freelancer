@@ -105,10 +105,10 @@ const EditorProfile = () => {
           axios.get(`${backendURL}/api/profile/completion-status`, {
             headers: { Authorization: `Bearer ${user?.token}` },
           }),
-          axios.get(`${backendURL}/api/editor-analytics/earnings`, {
+          axios.get(`${backendURL}/api/editor/analytics/earnings`, {
             headers: { Authorization: `Bearer ${user?.token}` },
           }).catch(() => ({ data: { analytics: {} } })),
-          axios.get(`${backendURL}/api/editor-analytics/orders`, {
+          axios.get(`${backendURL}/api/editor/analytics/orders`, {
             headers: { Authorization: `Bearer ${user?.token}` },
           }).catch(() => ({ data: { analytics: {} } })),
         ]);
