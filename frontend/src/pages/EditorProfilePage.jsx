@@ -28,7 +28,7 @@ import {
   FaExclamationCircle,
   FaArrowRight,
 } from "react-icons/fa";
-import { HiCheckBadge } from "react-icons/hi2";
+import { HiCheckBadge, HiLockClosed } from "react-icons/hi2";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -39,6 +39,7 @@ import EditorNavbar from "../components/EditorNavbar.jsx";
 import PortfolioSection from "../components/PortfolioSection.jsx";
 import GigsSection from "../components/GigsSection.jsx";
 import EditorRatingsModal from "../components/EditorRatingsModal.jsx";
+import { useSubscription } from "../context/SubscriptionContext";
 
 // Country Code Mapping
 const countryNameToCode = {
@@ -73,6 +74,8 @@ const EditorProfile = () => {
   const [showRatingsModal, setShowRatingsModal] = useState(false);
 
   const navigate = useNavigate();
+  const { hasActiveSubscription } = useSubscription();
+  const hasInsightsSub = hasActiveSubscription("profile_insights");
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
@@ -171,9 +174,17 @@ const EditorProfile = () => {
   };
 
   const statsData = [
-    { label: "Rating", value: displayRating, count: reviewCount > 0 ? `(${reviewCount})` : "", icon: FaStar, color: hasRatings ? "#F59E0B" : "#6B7280", clickable: true },
+    { label: "Rating", value: displayRating, count: reviewCount > 0 ? `(${reviewCount})` : "", icon: FaStar, color: hasRatings ? "#F59E0B" : "#6B7280", clickable: true, onClick: () => setShowRatingsModal(true) },
     { label: "Projects", value: analytics?.completedOrders || 0, icon: FaBriefcase, color: "#6B7280" },
-    { label: "Views", value: formatNumber(analytics?.profileViews || 0), icon: FaEye, color: "#6B7280" },
+    { 
+      label: "Views", 
+      value: hasInsightsSub ? formatNumber(analytics?.profileViews || 0) : null, 
+      icon: hasInsightsSub ? FaEye : HiLockClosed, 
+      color: hasInsightsSub ? "#6B7280" : "#9CA3AF",
+      clickable: true,
+      locked: !hasInsightsSub,
+      onClick: () => navigate("/profile-insights")
+    },
     { label: "Earnings", value: formatCurrency(analytics?.totalEarnings || 0), icon: FaMoneyBillWave, color: "#22C55E" },
   ];
 
@@ -367,11 +378,15 @@ const EditorProfile = () => {
                     <div 
                       key={stat.label} 
                       className={`text-center ${stat.clickable ? 'cursor-pointer hover:bg-zinc-800/30 rounded-lg py-2 -my-2 transition-colors' : ''}`}
-                      onClick={() => stat.clickable && setShowRatingsModal(true)}
+                      onClick={() => stat.onClick && stat.onClick()}
                     >
                       <div className="flex items-center justify-center gap-1 md:gap-1.5 mb-0.5">
                         <stat.icon className="text-[10px] md:text-xs" style={{ color: stat.color }} />
-                        <span className="text-base md:text-lg font-semibold text-white">{stat.value}</span>
+                        {stat.locked ? (
+                          <span className="text-base md:text-lg font-semibold text-zinc-500">—</span>
+                        ) : (
+                          <span className="text-base md:text-lg font-semibold text-white">{stat.value}</span>
+                        )}
                         {stat.count && <span className="text-xs text-zinc-500">{stat.count}</span>}
                       </div>
                       <p className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-wide">{stat.label}</p>

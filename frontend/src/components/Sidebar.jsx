@@ -12,7 +12,7 @@ import {
   FaChartLine,
   FaHome,
 } from "react-icons/fa";
-import { HiOutlineSun, HiOutlineMoon } from "react-icons/hi2";
+import { HiOutlineSun, HiOutlineMoon, HiEye } from "react-icons/hi2";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "../assets/logo.png";
 import { useTheme } from "../context/ThemeContext";
@@ -33,6 +33,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: "/my-gigs", icon: FaShoppingCart, label: "My Gigs" },
     { path: "/my-orders", icon: FaClipboardList, label: "My Orders" },
     { path: "/reels-analytics", icon: FaChartLine, label: "Reels Analytics" },
+    { path: "/profile-insights", icon: HiEye, label: "Profile Insights" },
     { path: "/payments", icon: FaWallet, label: "Payments" },
     { path: "/kyc-details", icon: FaUniversity, label: "KYC Details" },
     { path: "/editor-profile", icon: FaUserTie, label: "Profile" },

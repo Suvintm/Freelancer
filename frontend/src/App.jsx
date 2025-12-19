@@ -39,6 +39,10 @@ import PaymentSuccess from "./pages/PaymentSuccess.jsx";
 import KYCDetailsPage from "./pages/KYCDetailsPage.jsx";
 import StoragePlans from "./pages/StoragePlans.jsx";
 
+// Subscription Pages
+import SubscriptionPlansPage from "./pages/SubscriptionPlansPage.jsx";
+import ProfileInsightsPage from "./pages/ProfileInsightsPage.jsx";
+
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
 import "react-toastify/dist/ReactToastify.css";
@@ -286,6 +290,26 @@ function App() {
           element={
             <ProtectedRoute>
               <PaymentsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Subscription Plans (accessible by any logged-in user) */}
+        <Route
+          path="/subscription/plans"
+          element={
+            <ProtectedRoute>
+              <SubscriptionPlansPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Profile Insights (accessible by any logged-in user) */}
+        <Route
+          path="/profile-insights"
+          element={
+            <ProtectedRoute>
+              <ProfileInsightsPage />
             </ProtectedRoute>
           }
         />
