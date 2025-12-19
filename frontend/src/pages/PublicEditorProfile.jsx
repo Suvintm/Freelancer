@@ -38,6 +38,7 @@ import EditorNavbar from "../components/EditorNavbar.jsx";
 import PortfolioSection from "../components/PortfolioSection.jsx";
 import EditorRatingsModal from "../components/EditorRatingsModal.jsx";
 import SuvixScoreBadge from "../components/SuvixScoreBadge.jsx";
+import KYCRequiredModal from "../components/KYCRequiredModal.jsx";
 
 // Country Code Mapping
 const countryNameToCode = {
@@ -68,6 +69,7 @@ const PublicEditorProfile = () => {
   const [submittingRequest, setSubmittingRequest] = useState(false);
   const [showRatingsModal, setShowRatingsModal] = useState(false);
   const [suvixScore, setSuvixScore] = useState(null);
+  const [showKYCModal, setShowKYCModal] = useState(false);
 
   const navigate = useNavigate();
 
@@ -133,6 +135,12 @@ const PublicEditorProfile = () => {
     }
     if (!requestData.description.trim()) {
       toast.error("Please describe your project");
+      return;
+    }
+
+    // Check client KYC status before proceeding
+    if (user?.role === "client" && user?.clientKycStatus !== "verified") {
+      setShowKYCModal(true);
       return;
     }
 
@@ -406,7 +414,13 @@ const PublicEditorProfile = () => {
                   {/* Contact Button (for clients only) */}
                   {!isOwner && user?.role === "client" && (
                     <button
-                      onClick={() => setRequestModalOpen(true)}
+                      onClick={() => {
+                      if (user?.role === "client" && user?.clientKycStatus !== "verified") {
+                        setShowKYCModal(true);
+                      } else {
+                        setRequestModalOpen(true);
+                      }
+                    }}
                       className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-500 transition-colors"
                     >
                       <FaPaperPlane className="text-xs" />
@@ -436,7 +450,13 @@ const PublicEditorProfile = () => {
                 {/* Mobile Contact Button */}
                 {!isOwner && user?.role === "client" && (
                   <button
-                    onClick={() => setRequestModalOpen(true)}
+                    onClick={() => {
+                      if (user?.role === "client" && user?.clientKycStatus !== "verified") {
+                        setShowKYCModal(true);
+                      } else {
+                        setRequestModalOpen(true);
+                      }
+                    }}
                     className="md:hidden w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg"
                   >
                     <FaPaperPlane className="text-xs" />
@@ -882,6 +902,13 @@ const PublicEditorProfile = () => {
         isOpen={showRatingsModal}
         onClose={() => setShowRatingsModal(false)}
         editorId={userData?._id}
+      />
+
+      {/* KYC Required Modal */}
+      <KYCRequiredModal
+        isOpen={showKYCModal}
+        onClose={() => setShowKYCModal(false)}
+        kycStatus={user?.clientKycStatus}
       />
     </div>
   );

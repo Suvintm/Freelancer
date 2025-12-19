@@ -419,12 +419,24 @@ export const rejectOrder = asyncHandler(async (req, res) => {
     systemAction: "order_rejected",
   });
 
+  // Auto-refund if payment was completed
+  if (order.paymentStatus === "completed") {
+    try {
+      const { autoRefundOrder } = await import("./refundController.js");
+      await autoRefundOrder(order._id, "order_rejected");
+      logger.info(`Auto-refund initiated for rejected order: ${order.orderNumber}`);
+    } catch (refundErr) {
+      logger.error(`Auto-refund failed for order ${order.orderNumber}: ${refundErr.message}`);
+      // Don't fail the rejection if refund fails - it will be retried
+    }
+  }
+
   // Notify client
   await createNotification({
     recipient: order.client,
     type: "warning",
     title: "Order Declined",
-    message: `${req.user.name} declined your order "${order.title}"`,
+    message: `${req.user.name} declined your order "${order.title}"${order.paymentStatus === "completed" ? ". Your payment will be refunded." : ""}`,
     link: "/chats",
   });
 
@@ -434,8 +446,10 @@ export const rejectOrder = asyncHandler(async (req, res) => {
     success: true,
     message: "Order rejected",
     order,
+    refundInitiated: order.paymentStatus === "completed",
   });
 });
+
 
 // ============ SUBMIT WORK (Editor) ============
 export const submitWork = asyncHandler(async (req, res) => {

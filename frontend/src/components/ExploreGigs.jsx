@@ -20,6 +20,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 import RazorpayCheckout from "./RazorpayCheckout";
+import KYCRequiredModal from "./KYCRequiredModal";
 
 /**
  * ExploreGigs - Professional Design
@@ -54,6 +55,7 @@ const ExploreGigs = () => {
   const [ordering, setOrdering] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [createdOrder, setCreatedOrder] = useState(null);
+  const [showKYCModal, setShowKYCModal] = useState(false);
 
   useEffect(() => {
     const texts = ["Discovering amazing gigs...", "Finding talented editors...", "Loading creative services..."];
@@ -116,7 +118,14 @@ const ExploreGigs = () => {
 
   const handlePaymentFailure = (error) => { toast.error(error?.description || "Payment failed. Please try again."); };
   const handlePaymentClose = () => { setShowPayment(false); toast.info("Payment cancelled. Your order is saved - pay anytime from My Orders."); };
-  const openOrderModal = (gig) => { setSelectedGig(gig); setShowOrderModal(true); };
+  const openOrderModal = (gig) => {
+    if (user?.role === "client" && user?.clientKycStatus !== "verified") {
+      setShowKYCModal(true);
+      return;
+    }
+    setSelectedGig(gig);
+    setShowOrderModal(true);
+  };
 
   if (loading) {
     return (
@@ -348,6 +357,13 @@ const ExploreGigs = () => {
       {showPayment && createdOrder && (
         <RazorpayCheckout orderId={createdOrder._id} amount={createdOrder.amount || selectedGig?.price} currency="INR" orderDetails={{ title: selectedGig?.title || createdOrder.title, orderNumber: createdOrder.orderNumber }} onSuccess={handlePaymentSuccess} onFailure={handlePaymentFailure} onClose={handlePaymentClose} />
       )}
+      
+      {/* KYC Required Modal */}
+      <KYCRequiredModal
+        isOpen={showKYCModal}
+        onClose={() => setShowKYCModal(false)}
+        kycStatus={user?.clientKycStatus}
+      />
     </div>
   );
 };

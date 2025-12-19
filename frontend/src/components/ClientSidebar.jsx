@@ -13,6 +13,7 @@ import {
   FaTimes,
   FaHeart,
   FaCreditCard,
+  FaShieldAlt,
 } from "react-icons/fa";
 import { HiOutlineSun, HiOutlineMoon } from "react-icons/hi2";
 import { motion, AnimatePresence } from "framer-motion";
@@ -54,7 +55,7 @@ const ClientSidebar = ({ isOpen, onClose }) => {
 
         // 🆕 Fetch real unread message count from API
         try {
-          const unreadRes = await axios.get(`${backendURL}/api/messages/unread-count`, {
+          const unreadRes = await axios.get(`${backendURL}/api/messages/unread`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           setUnreadMessages(unreadRes.data.unreadCount || 0);
@@ -73,11 +74,23 @@ const ClientSidebar = ({ isOpen, onClose }) => {
   // 🆕 Use socket's real-time totalUnread if available, otherwise fallback to fetched count
   const displayUnread = totalUnread > 0 ? totalUnread : unreadMessages;
 
+  // Determine KYC status badge
+  const getKycBadge = () => {
+    switch (user?.clientKycStatus) {
+      case 'verified': return null; // No badge needed
+      case 'pending':
+      case 'under_review': return '⏳';
+      case 'rejected': return '❌';
+      default: return '!';
+    }
+  };
+
   const navItems = [
     { path: "/client-home", icon: FaHome, label: "Dashboard" },
     { path: "/client-orders", icon: FaClipboardList, label: "My Orders", badge: newOrdersCount },
     { path: "/payments", icon: FaCreditCard, label: "Payments" },
     { path: "/client-messages", icon: FaEnvelope, label: "Messages", badge: displayUnread },
+    { path: "/client-kyc", icon: FaShieldAlt, label: "KYC Verification", kycBadge: getKycBadge() },
     { path: "/saved-editors", icon: FaHeart, label: "Saved Editors" },
     { path: "/client-profile", icon: FaUserTie, label: "Profile" },
   ];
@@ -133,7 +146,7 @@ const ClientSidebar = ({ isOpen, onClose }) => {
 
         {/* Navigation Items */}
         <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">
-          {navItems.map(({ path, icon: Icon, label, badge }) => {
+          {navItems.map(({ path, icon: Icon, label, badge, kycBadge }) => {
             const isActive = location.pathname === path;
 
             return (
@@ -162,10 +175,17 @@ const ClientSidebar = ({ isOpen, onClose }) => {
                 <Icon className={`text-base ${isActive ? "text-emerald-500" : "text-gray-500 light:text-slate-400 group-hover:text-gray-300 light:group-hover:text-slate-600"}`} />
                 <span>{label}</span>
 
-                {/* Badge */}
+                {/* Badge (Numeric) */}
                 {badge > 0 && (
                   <span className="ml-auto bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                     {badge}
+                  </span>
+                )}
+                
+                {/* KYC Badge (Status) */}
+                {kycBadge && (
+                   <span className="ml-auto text-xs font-bold px-2 py-0.5" title="KYC Status">
+                    {kycBadge}
                   </span>
                 )}
 

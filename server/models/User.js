@@ -156,6 +156,30 @@ const userSchema = new mongoose.Schema(
       enum: ["none", "pending", "onboarding", "active", "restricted"],
       default: "none",
     },
+
+    // ==================== CLIENT KYC & WALLET ====================
+    
+    // Client KYC Status (separate from editor KYC)
+    clientKycStatus: {
+      type: String,
+      enum: ["not_started", "pending", "under_review", "verified", "rejected"],
+      default: "not_started",
+    },
+    clientKycVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+    
+    // Wallet Balance (for refunds credited to wallet)
+    walletBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    walletLastUpdated: {
+      type: Date,
+      default: null,
+    },
     
     // Bank Details (for editor payouts)
     bankDetails: {

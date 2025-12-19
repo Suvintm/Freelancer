@@ -24,6 +24,7 @@ import ClientOrders from "./pages/ClientOrders.jsx";
 import ClientMessages from "./pages/ClientMessages.jsx";
 import ClientProfile from "./pages/ClientProfile.jsx";
 import SavedEditors from "./pages/SavedEditors.jsx";
+import ExploreEditors from "./components/ExploreEditor.jsx";
 
 // OAuth Pages
 import OAuthSuccess from "./pages/OAuthSuccess.jsx";
@@ -44,6 +45,7 @@ import StoragePlans from "./pages/StoragePlans.jsx";
 import SubscriptionPlansPage from "./pages/SubscriptionPlansPage.jsx";
 import ProfileInsightsPage from "./pages/ProfileInsightsPage.jsx";
 import SuvixScorePage from "./pages/SuvixScorePage.jsx";
+import ClientKYCPage from "./pages/ClientKYCPage.jsx";
 
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
@@ -85,6 +87,14 @@ function App() {
           }
         />
         <Route
+          path="/client-kyc"
+          element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <ClientKYCPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/client-orders"
           element={
             <ProtectedRoute allowedRoles={["client"]}>
@@ -113,6 +123,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["client"]}>
               <SavedEditors />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/explore-editors"
+          element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <ExploreEditors />
             </ProtectedRoute>
           }
         />

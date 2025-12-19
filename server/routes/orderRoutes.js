@@ -14,15 +14,17 @@ import {
 } from "../controllers/orderController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 
+import { requireClientKYC } from "../middleware/kycCheckMiddleware.js";
+
 const router = express.Router();
 
 // All routes are protected
 router.use(authMiddleware);
 
 // ========== SPECIFIC ROUTES FIRST (before /:id) ==========
-// Create orders
-router.post("/gig", createOrderFromGig);
-router.post("/request/create-payment", createRequestPaymentOrder);
+// Create orders - REQUIRE KYC
+router.post("/gig", requireClientKYC, createOrderFromGig);
+router.post("/request/create-payment", requireClientKYC, createRequestPaymentOrder);
 router.post("/request/verify-payment", verifyRequestPayment);
 
 // Get orders - stats must come before /:id

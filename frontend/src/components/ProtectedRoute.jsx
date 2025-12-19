@@ -72,7 +72,13 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 }
 
 
-  if (!user || (allowedRoles && !allowedRoles.includes(user.role))) {
+  if (!user) {
+    console.log("🔒 ProtectedRoute: No user found. Redirecting to /");
+    return <Navigate to="/" replace />;
+  }
+
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    console.log(`🔒 ProtectedRoute: Role mismatch. User: ${user.role}, Allowed: ${allowedRoles}. Redirecting to /`);
     return <Navigate to="/" replace />;
   }
 

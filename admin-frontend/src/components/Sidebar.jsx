@@ -17,6 +17,7 @@ import {
   FaDatabase,
   FaImage,
   FaCrown,
+  FaUserCheck,
 } from "react-icons/fa";
 import { useAdmin } from "../context/AdminContext";
 
@@ -35,7 +36,8 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: "/payments", icon: FaWallet, label: "Payments" },
     { to: "/conversations", icon: FaComments, label: "Conversations" },
     { to: "/users", icon: FaUsers, label: "Users" },
-    { to: "/kyc", icon: FaShieldAlt, label: "KYC Verification" },
+    { to: "/kyc", icon: FaShieldAlt, label: "Editor KYC" },
+    { to: "/client-kyc", icon: FaUserCheck, label: "Client KYC" },
     { to: "/orders", icon: FaShoppingCart, label: "Orders" },
     { to: "/gigs", icon: FaBriefcase, label: "Gigs" },
     { to: "/banners", icon: FaImage, label: "Banners" },

@@ -40,6 +40,7 @@ import ClientSidebar from "../components/ClientSidebar.jsx";
 import ClientNavbar from "../components/ClientNavbar.jsx";
 import ExploreEditor from "../components/ExploreEditor.jsx";
 import ExploreGigs from "../components/ExploreGigs.jsx";
+import KYCPendingBanner from "../components/KYCPendingBanner.jsx";
 import reelIcon from "../assets/reelicon.png";
 
 const ClientHome = () => {
@@ -147,6 +148,9 @@ const ClientHome = () => {
       </motion.button>
 
       <main className="flex-1 px-4 md:px-6 py-4 pt-18 md:pt-4 md:ml-64 md:mt-16 overflow-x-hidden">
+        
+        {/* KYC Warning Banner */}
+        <KYCPendingBanner />
         
         {/* ===== WELCOME CARD ===== */}
         <motion.div 
