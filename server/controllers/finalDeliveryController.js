@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { Order } from "../models/Order.js";
 import {Message} from "../models/Message.js";
 import { Payment } from "../models/Payment.js";
+import { Rating } from "../models/Rating.js";
 import { ApiError } from "../middleware/errorHandler.js";
 import { getIO } from "../socket.js";
 import { createNotification } from "./notificationController.js";
@@ -433,6 +434,12 @@ export const confirmDownload = asyncHandler(async (req, res) => {
   // Check token expiry
   if (new Date() > new Date(delivery.tokenExpiry)) {
     throw new ApiError(403, "Download token has expired. Please contact support.");
+  }
+
+  // ⭐ MANDATORY RATING CHECK - Client must rate before downloading
+  const existingRating = await Rating.findOne({ order: orderId });
+  if (!existingRating) {
+    throw new ApiError(400, "Please rate the editor before downloading. Your feedback helps improve our platform!");
   }
 
   // Update delivery status

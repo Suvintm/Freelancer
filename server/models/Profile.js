@@ -95,6 +95,15 @@ const profileSchema = new mongoose.Schema(
       enum: ["", "within-hour", "within-day", "1-2-days", "3-5-days"],
       default: "",
     },
+
+    // Rating Statistics (calculated from Rating model)
+    ratingStats: {
+      averageRating: { type: Number, default: 0 },
+      totalReviews: { type: Number, default: 0 },
+      qualityAvg: { type: Number, default: 0 },
+      communicationAvg: { type: Number, default: 0 },
+      speedAvg: { type: Number, default: 0 },
+    },
   },
   { timestamps: true }
 );

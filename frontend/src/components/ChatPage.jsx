@@ -2052,6 +2052,8 @@ const ChatPage = () => {
         onConfirm={handleConfirmDownload}
         editorEarning={order?.editorEarning}
         loading={deliveryLoading}
+        orderId={order?._id}
+        editorName={order?.editor?.name || "the editor"}
       />
 
       <ChangesRequestModal

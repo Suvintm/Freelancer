@@ -225,6 +225,12 @@ const orderSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Message",
     },
+
+    // ⭐ Rating Status
+    isRated: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
