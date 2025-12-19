@@ -59,13 +59,25 @@ export const createOrderFromGig = asyncHandler(async (req, res) => {
   });
 });
 
-// ============ CREATE ORDER FROM REQUEST ============
-export const createOrderFromRequest = asyncHandler(async (req, res) => {
+// ============ CREATE REQUEST WITH PAYMENT (Step 1: Create Razorpay Order) ============
+export const createRequestPaymentOrder = asyncHandler(async (req, res) => {
   const { editorId, title, description, deadline, amount } = req.body;
+
+  console.log("createRequestPaymentOrder called with:", { editorId, title, description, deadline, amount });
 
   // Validate
   if (!editorId || !title || !description || !deadline || !amount) {
-    throw new ApiError(400, "Please provide all required fields");
+    const missing = [];
+    if (!editorId) missing.push("editorId");
+    if (!title) missing.push("title");
+    if (!description) missing.push("description");
+    if (!deadline) missing.push("deadline");
+    if (!amount) missing.push("amount");
+    throw new ApiError(400, `Missing required fields: ${missing.join(", ")}`);
+  }
+
+  if (amount < 100) {
+    throw new ApiError(400, "Minimum amount is ₹100");
   }
 
   // Prevent self-order
@@ -73,7 +85,52 @@ export const createOrderFromRequest = asyncHandler(async (req, res) => {
     throw new ApiError(400, "You cannot send request to yourself");
   }
 
-  // Create order
+  // Verify editor exists
+  const editor = await User.findById(editorId);
+  if (!editor || editor.role !== "editor") {
+    throw new ApiError(404, "Editor not found");
+  }
+
+  // Calculate platform fee (10%)
+  const platformFeePercent = 10;
+  const platformFee = Math.round(amount * (platformFeePercent / 100));
+  const editorEarning = amount - platformFee;
+
+  // Create Razorpay order
+  let razorpayOrder;
+  try {
+    const Razorpay = (await import("razorpay")).default;
+    const razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+
+    console.log("Creating Razorpay order with:", {
+      amount: amount * 100,
+      currency: "INR",
+      keyId: process.env.RAZORPAY_KEY_ID ? "SET" : "NOT SET",
+      keySecret: process.env.RAZORPAY_KEY_SECRET ? "SET" : "NOT SET",
+    });
+
+    razorpayOrder = await razorpay.orders.create({
+      amount: amount * 100, // Paise
+      currency: "INR",
+      receipt: `req_${Date.now()}`, // Max 40 chars
+      notes: {
+        clientId: req.user._id.toString(),
+        editorId: editorId,
+        title: title,
+        type: "request",
+      },
+    });
+    
+    console.log("Razorpay order created:", razorpayOrder.id);
+  } catch (razorpayError) {
+    console.error("Razorpay order creation failed:", razorpayError);
+    throw new ApiError(500, `Payment gateway error: ${razorpayError.message}`);
+  }
+
+  // Create order in pending_payment state
   const order = await Order.create({
     type: "request",
     client: req.user._id,
@@ -82,38 +139,114 @@ export const createOrderFromRequest = asyncHandler(async (req, res) => {
     description: description.trim(),
     deadline: new Date(deadline),
     amount: Number(amount),
-    status: "new",
+    platformFee,
+    editorEarning,
+    status: "pending_payment",
     paymentStatus: "pending",
+    razorpayOrderId: razorpayOrder.id,
+    paymentGateway: "razorpay",
   });
+
+  logger.info(`Request payment order created: ${order.orderNumber}, Razorpay: ${razorpayOrder.id}`);
+
+  res.status(200).json({
+    success: true,
+    order: {
+      _id: order._id,
+      orderNumber: order.orderNumber,
+      title: order.title,
+      amount: order.amount,
+      platformFee,
+      editorEarning,
+      deadline: order.deadline,
+    },
+    razorpay: {
+      orderId: razorpayOrder.id,
+      amount: razorpayOrder.amount,
+      currency: razorpayOrder.currency,
+      key: process.env.RAZORPAY_KEY_ID,
+    },
+    editor: {
+      name: editor.name,
+      profilePicture: editor.profilePicture,
+    },
+  });
+});
+
+// ============ VERIFY REQUEST PAYMENT (Step 2: Confirm Payment) ============
+export const verifyRequestPayment = asyncHandler(async (req, res) => {
+  const { orderId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+  // Find order
+  const order = await Order.findById(orderId)
+    .populate("editor", "name profilePicture")
+    .populate("client", "name profilePicture");
+
+  if (!order) {
+    throw new ApiError(404, "Order not found");
+  }
+
+  if (order.status !== "pending_payment") {
+    throw new ApiError(400, "Order is not in pending payment state");
+  }
+
+  if (order.client._id.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "Not authorized");
+  }
+
+  // Verify Razorpay signature
+  const crypto = await import("crypto");
+  const body = razorpay_order_id + "|" + razorpay_payment_id;
+  const expectedSignature = crypto
+    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+    .update(body)
+    .digest("hex");
+
+  if (expectedSignature !== razorpay_signature) {
+    throw new ApiError(400, "Invalid payment signature");
+  }
+
+  // Update order status
+  order.status = "new";
+  order.paymentStatus = "escrow";
+  order.escrowStatus = "held";
+  order.escrowHeldAt = new Date();
+  order.razorpayPaymentId = razorpay_payment_id;
+  order.razorpaySignature = razorpay_signature;
+  await order.save();
 
   // Create system message
   await Message.create({
     order: order._id,
     sender: req.user._id,
     type: "system",
-    content: `New project request: "${title}"`,
+    content: `💰 New paid project request: "${order.title}" (₹${order.amount})`,
     systemAction: "order_created",
   });
 
   // Notify editor
   await createNotification({
-    recipient: editorId,
-    type: "info",
-    title: "New Project Request",
-    message: `${req.user.name} sent you a request - "${title}" for ₹${amount}`,
+    recipient: order.editor._id,
+    type: "success",
+    title: "💰 New Paid Request!",
+    message: `${req.user.name} sent you a paid request - "${order.title}" for ₹${order.amount}`,
     link: "/chats",
   });
 
-  const populatedOrder = await Order.findById(order._id)
-    .populate("client", "name profilePicture")
-    .populate("editor", "name profilePicture");
+  logger.info(`Request payment verified: ${order.orderNumber}`);
 
-  logger.info(`Request order created: ${order.orderNumber}`);
-
-  res.status(201).json({
+  res.status(200).json({
     success: true,
-    message: "Request sent successfully",
-    order: populatedOrder,
+    message: "Payment verified! Request sent to editor.",
+    order: {
+      _id: order._id,
+      orderNumber: order.orderNumber,
+      title: order.title,
+      amount: order.amount,
+      deadline: order.deadline,
+      editorName: order.editor.name,
+      editorPicture: order.editor.profilePicture,
+    },
   });
 });
 
@@ -185,8 +318,9 @@ export const acceptOrder = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Not authorized");
   }
 
-  if (order.status !== "new") {
-    throw new ApiError(400, "Order cannot be accepted in current state");
+  // Allow accepting orders that are new OR pending_payment (for request orders)
+  if (!["new", "pending_payment"].includes(order.status)) {
+    throw new ApiError(400, `Order cannot be accepted in current state (${order.status})`);
   }
 
   // For REQUEST orders that haven't been paid yet, set to awaiting_payment

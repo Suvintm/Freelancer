@@ -11,6 +11,7 @@ import {
   FaUniversity,
   FaChartLine,
   FaHome,
+  FaTrophy,
 } from "react-icons/fa";
 import { HiOutlineSun, HiOutlineMoon, HiEye } from "react-icons/hi2";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,6 +35,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: "/my-orders", icon: FaClipboardList, label: "My Orders" },
     { path: "/reels-analytics", icon: FaChartLine, label: "Reels Analytics" },
     { path: "/profile-insights", icon: HiEye, label: "Profile Insights" },
+    { path: "/suvix-score", icon: FaTrophy, label: "Suvix Score" },
     { path: "/payments", icon: FaWallet, label: "Payments" },
     { path: "/kyc-details", icon: FaUniversity, label: "KYC Details" },
     { path: "/editor-profile", icon: FaUserTie, label: "Profile" },

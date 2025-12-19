@@ -231,6 +231,22 @@ const orderSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    
+    // 📊 Suvix Score Tracking
+    deliveryTiming: {
+      daysEarlyOrLate: {
+        type: Number,  // Positive = early, Negative = late
+        default: null,
+      },
+      calculatedAt: {
+        type: Date,
+        default: null,
+      },
+    },
+    revisionCount: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true }
 );

@@ -45,6 +45,7 @@ import bannerRoutes from "./routes/bannerRoutes.js";
 import ratingRoutes from "./routes/ratingRoutes.js";
 import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 import profileInsightsRoutes from "./routes/profileInsightsRoutes.js";
+import suvixScoreRoutes from "./routes/suvixScoreRoutes.js";
 
 // Scheduled Jobs
 import { startScheduledJobs } from "./jobs/scheduledJobs.js";
@@ -174,6 +175,7 @@ app.use("/api/banners", bannerRoutes);
 app.use("/api/ratings", ratingRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
 app.use("/api/profile-insights", profileInsightsRoutes);
+app.use("/api/suvix-score", suvixScoreRoutes);
 
 // Public maintenance status check (no auth required)
 import { SiteSettings } from "./models/SiteSettings.js";

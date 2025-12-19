@@ -9,6 +9,7 @@ import { Rating } from "../models/Rating.js";
 import { ApiError } from "../middleware/errorHandler.js";
 import { getIO } from "../socket.js";
 import { createNotification } from "./notificationController.js";
+import { recalculateEditorScore } from "./suvixScoreController.js";
 
 // Generate a secure download token
 const generateDownloadToken = () => {
@@ -538,6 +539,14 @@ export const confirmDownload = asyncHandler(async (req, res) => {
     delivered: true,
     deliveredAt: new Date(),
   });
+
+  // 📊 Recalculate editor's Suvix Score after order completion
+  try {
+    await recalculateEditorScore(order.editor._id);
+  } catch (scoreError) {
+    console.error("Failed to recalculate Suvix Score:", scoreError);
+    // Don't block the response if score calculation fails
+  }
 
   // 🆕 Generate high-quality download URL with fl_attachment flag
   // This forces the browser to download the file instead of displaying it

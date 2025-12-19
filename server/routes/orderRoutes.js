@@ -1,7 +1,8 @@
 import express from "express";
 import {
   createOrderFromGig,
-  createOrderFromRequest,
+  createRequestPaymentOrder,
+  verifyRequestPayment,
   getMyOrders,
   getOrder,
   acceptOrder,
@@ -18,13 +19,18 @@ const router = express.Router();
 // All routes are protected
 router.use(authMiddleware);
 
+// ========== SPECIFIC ROUTES FIRST (before /:id) ==========
 // Create orders
 router.post("/gig", createOrderFromGig);
-router.post("/request", createOrderFromRequest);
+router.post("/request/create-payment", createRequestPaymentOrder);
+router.post("/request/verify-payment", verifyRequestPayment);
 
-// Get orders
-router.get("/", getMyOrders);
+// Get orders - stats must come before /:id
 router.get("/stats", getOrderStats);
+router.get("/", getMyOrders);
+
+// ========== PARAMETERIZED ROUTES LAST ==========
+// Get single order by ID (must be last among GET routes)
 router.get("/:id", getOrder);
 
 // Order actions
@@ -35,3 +41,4 @@ router.patch("/:id/complete", completeOrder);
 router.patch("/:id/dispute", raiseDispute);
 
 export default router;
+

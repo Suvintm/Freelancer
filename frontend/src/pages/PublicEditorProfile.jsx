@@ -37,6 +37,7 @@ import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
 import PortfolioSection from "../components/PortfolioSection.jsx";
 import EditorRatingsModal from "../components/EditorRatingsModal.jsx";
+import SuvixScoreBadge from "../components/SuvixScoreBadge.jsx";
 
 // Country Code Mapping
 const countryNameToCode = {
@@ -66,6 +67,7 @@ const PublicEditorProfile = () => {
   });
   const [submittingRequest, setSubmittingRequest] = useState(false);
   const [showRatingsModal, setShowRatingsModal] = useState(false);
+  const [suvixScore, setSuvixScore] = useState(null);
 
   const navigate = useNavigate();
 
@@ -87,7 +89,39 @@ const PublicEditorProfile = () => {
     fetchProfile();
   }, [backendURL, userId, user?._id]);
 
-  // Handle request submission
+  // Fetch Suvix Score
+  useEffect(() => {
+    const fetchSuvixScore = async () => {
+      try {
+        const targetId = userId || user?._id;
+        if (!targetId) return;
+        const res = await axios.get(`${backendURL}/api/suvix-score/${targetId}`);
+        if (res.data.success) {
+          setSuvixScore(res.data.score);
+        }
+      } catch (error) {
+        console.error("Error fetching Suvix Score:", error);
+      }
+    };
+    fetchSuvixScore();
+  }, [backendURL, userId, user?._id]);
+
+  // Load Razorpay script
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  // Handle request submission with payment
   const handleSubmitRequest = async () => {
     if (!requestData.amount || requestData.amount < 100) {
       toast.error("Please enter an amount (min ₹100)");
@@ -104,24 +138,94 @@ const PublicEditorProfile = () => {
 
     try {
       setSubmittingRequest(true);
-      await axios.post(
-        `${backendURL}/api/orders/request`,
-        {
-          editorId: profile.user._id,
-          title: `Project request from ${user?.name}`,
-          description: requestData.description.trim(),
-          amount: Number(requestData.amount),
-          deadline: requestData.deadline,
-        },
+
+      // Load Razorpay
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        toast.error("Failed to load payment gateway. Please try again.");
+        setSubmittingRequest(false);
+        return;
+      }
+
+      // Create payment order
+      const payload = {
+        editorId: profile.user._id,
+        title: `Project request from ${user?.name}`,
+        description: requestData.description.trim(),
+        amount: Number(requestData.amount),
+        deadline: requestData.deadline,
+      };
+      console.log("Sending request payment payload:", payload);
+      
+      const createRes = await axios.post(
+        `${backendURL}/api/orders/request/create-payment`,
+        payload,
         { headers: { Authorization: `Bearer ${user?.token}` } }
       );
 
-      toast.success("Request sent! Editor will review your request.");
-      setRequestModalOpen(false);
-      setRequestData({ description: "", amount: "", deadline: "" });
+      const { order, razorpay, editor } = createRes.data;
+
+      // Open Razorpay checkout
+      const options = {
+        key: razorpay.key,
+        amount: razorpay.amount,
+        currency: razorpay.currency,
+        name: "SuviX",
+        description: `Project Request: ${order.title}`,
+        order_id: razorpay.orderId,
+        handler: async (response) => {
+          try {
+            // Verify payment
+            const verifyRes = await axios.post(
+              `${backendURL}/api/orders/request/verify-payment`,
+              {
+                orderId: order._id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              },
+              { headers: { Authorization: `Bearer ${user?.token}` } }
+            );
+
+            toast.success("Payment successful! Request sent to editor.");
+            setRequestModalOpen(false);
+            setRequestData({ description: "", amount: "", deadline: "" });
+
+            // Navigate to success page
+            navigate("/request-payment-success", {
+              state: {
+                orderNumber: verifyRes.data.order.orderNumber,
+                title: verifyRes.data.order.title,
+                amount: verifyRes.data.order.amount,
+                deadline: verifyRes.data.order.deadline,
+                editorName: verifyRes.data.order.editorName,
+                editorPicture: verifyRes.data.order.editorPicture,
+                transactionId: response.razorpay_payment_id,
+              },
+            });
+          } catch (err) {
+            toast.error(err.response?.data?.message || "Payment verification failed");
+          }
+        },
+        prefill: {
+          name: user?.name,
+          email: user?.email,
+        },
+        theme: {
+          color: "#10B981",
+        },
+        modal: {
+          ondismiss: () => {
+            setSubmittingRequest(false);
+          },
+        },
+      };
+
+      const razorpayInstance = new window.Razorpay(options);
+      razorpayInstance.open();
+      setSubmittingRequest(false);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to send request");
-    } finally {
+      toast.error(err.response?.data?.message || "Failed to initiate payment");
       setSubmittingRequest(false);
     }
   };
@@ -245,6 +349,26 @@ const PublicEditorProfile = () => {
                             VERIFIED
                           </span>
                         </>
+                      )}
+                      {suvixScore && suvixScore.isEligible && (
+                        <div className="flex items-center gap-2">
+                          <SuvixScoreBadge
+                            score={suvixScore.total}
+                            tier={suvixScore.tier}
+                            isEligible={suvixScore.isEligible}
+                            size="small"
+                            showLabel={false}
+                          />
+                          <span 
+                            className="px-2 py-0.5 text-[10px] font-medium rounded"
+                            style={{ 
+                              backgroundColor: suvixScore.tierColor + '20', 
+                              color: suvixScore.tierColor 
+                            }}
+                          >
+                            {suvixScore.tierLabel}
+                          </span>
+                        </div>
                       )}
                     </div>
 
@@ -709,13 +833,44 @@ const PublicEditorProfile = () => {
                   />
                 </div>
 
+                {/* Payment Info */}
+                {requestData.amount && requestData.amount >= 100 && (
+                  <div className="p-3 bg-emerald-900/30 border border-emerald-500/30 rounded-lg">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-zinc-400">Amount:</span>
+                      <span className="text-white font-medium">₹{Number(requestData.amount).toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm mt-1">
+                      <span className="text-zinc-400">Platform Fee (10%):</span>
+                      <span className="text-zinc-400">-₹{Math.round(Number(requestData.amount) * 0.1).toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm mt-1 pt-1 border-t border-emerald-500/20">
+                      <span className="text-emerald-400">Editor Receives:</span>
+                      <span className="text-emerald-400 font-semibold">₹{(Number(requestData.amount) - Math.round(Number(requestData.amount) * 0.1)).toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
+
                 <button
                   onClick={handleSubmitRequest}
                   disabled={submittingRequest}
-                  className="w-full py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="w-full py-3 bg-gradient-to-r from-emerald-600 to-green-500 text-white text-sm font-semibold rounded-lg hover:from-emerald-500 hover:to-green-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                 >
-                  {submittingRequest ? "Sending..." : "Send Request"}
+                  {submittingRequest ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <FaRupeeSign className="text-xs" />
+                      Pay & Send Request
+                    </>
+                  )}
                 </button>
+                <p className="text-xs text-zinc-500 text-center">
+                  Payment is held securely until project completion
+                </p>
               </div>
             </motion.div>
           </motion.div>

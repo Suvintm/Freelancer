@@ -227,6 +227,45 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    
+    // ==================== SUVIX SCORE ====================
+    
+    // Editor Performance Score (0-100)
+    suvixScore: {
+      total: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 100,
+      },
+      tier: {
+        type: String,
+        enum: ["newcomer", "rising", "established", "professional", "expert", "elite"],
+        default: "newcomer",
+      },
+      // Component breakdown (for analytics)
+      components: {
+        deadline: { type: Number, default: 0 },      // 0-25 points
+        ratings: { type: Number, default: 0 },       // 0-25 points
+        completion: { type: Number, default: 0 },    // 0-20 points
+        response: { type: Number, default: 0 },      // 0-15 points
+        revisions: { type: Number, default: 0 },     // 0-10 points
+        experience: { type: Number, default: 0 },    // 0-5 points
+      },
+      // Eligible for display (min 2 orders)
+      isEligible: {
+        type: Boolean,
+        default: false,
+      },
+      completedOrders: {
+        type: Number,
+        default: 0,
+      },
+      lastCalculated: {
+        type: Date,
+        default: null,
+      },
+    },
   },
   {
     timestamps: true,

@@ -1,0 +1,289 @@
+/* SuvixScoreAnalytics.css - Full analytics dashboard styles */
+
+.suvix-analytics {
+  background: linear-gradient(135deg, rgba(26, 26, 46, 0.95), rgba(22, 33, 62, 0.95));
+  border-radius: 20px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.suvix-analytics--loading,
+.suvix-analytics--error {
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.suvix-analytics__loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.suvix-analytics__loader .spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #3498DB;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Header */
+.suvix-analytics__header {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.suvix-analytics__title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.suvix-analytics__logo {
+  font-size: 28px;
+}
+
+.suvix-analytics__subtitle {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 4px;
+  display: block;
+}
+
+/* Main layout */
+.suvix-analytics__main {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+/* Tier section */
+.suvix-analytics__tier-section {
+  display: flex;
+  justify-content: center;
+}
+
+/* Details section */
+.suvix-analytics__details {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Badge section */
+.suvix-analytics__badge-section {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+}
+
+.suvix-analytics__completed {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.suvix-analytics__completed-count {
+  font-size: 36px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.suvix-analytics__completed-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Breakdown section */
+.suvix-analytics__breakdown h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 16px 0;
+}
+
+.suvix-analytics__components {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.suvix-analytics__component {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  transition: background 0.3s;
+}
+
+.suvix-analytics__component:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.component__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.component__icon {
+  font-size: 18px;
+}
+
+.component__label {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.component__score {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.component__bar-track {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.component__bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 1s ease-out;
+}
+
+.component__description {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.component__extra {
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  font-size: 10px;
+}
+
+/* Tips section */
+.suvix-analytics__tips {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.suvix-analytics__tips h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 16px 0;
+}
+
+.suvix-analytics__tips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.suvix-analytics__tip {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(52, 152, 219, 0.1);
+  border-radius: 10px;
+  border-left: 3px solid #3498DB;
+}
+
+.tip__icon {
+  font-size: 20px;
+}
+
+.tip__content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tip__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.tip__message {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Eligibility notice */
+.suvix-analytics__eligibility {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(241, 196, 15, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(241, 196, 15, 0.3);
+  margin-top: 16px;
+}
+
+.eligibility__icon {
+  font-size: 20px;
+}
+
+.eligibility__text {
+  font-size: 13px;
+  color: #F1C40F;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .suvix-analytics {
+    padding: 16px;
+  }
+
+  .suvix-analytics__main {
+    grid-template-columns: 1fr;
+  }
+
+  .suvix-analytics__tier-section {
+    order: 2;
+  }
+
+  .suvix-analytics__badge-section {
+    flex-direction: column;
+    text-align: center;
+  }
+}

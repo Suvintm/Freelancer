@@ -1,0 +1,573 @@
+/* SuvixScorePage.css - Premium Suvix Score Page Styling */
+
+.suvix-page {
+  min-height: 100vh;
+  background: var(--bg-primary, #000);
+  color: var(--text-primary, #fff);
+  font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+}
+
+.suvix-page__main {
+  margin-left: 0;
+  padding: 80px 16px 40px;
+  min-height: 100vh;
+}
+
+@media (min-width: 768px) {
+  .suvix-page__main {
+    margin-left: 256px;
+    padding: 100px 32px 60px;
+  }
+}
+
+.suvix-page__container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Loading & Error States */
+.suvix-page__loading,
+.suvix-page__error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 16px;
+  color: #6B7280;
+}
+
+.suvix-page__loading-spinner {
+  font-size: 48px;
+  color: #FFD700;
+}
+
+.suvix-page__error svg {
+  font-size: 48px;
+  color: #E74C3C;
+}
+
+.suvix-page__error button {
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #3498DB, #2980B9);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 0.2s;
+}
+
+.suvix-page__error button:hover {
+  transform: scale(1.05);
+}
+
+/* Header */
+.suvix-page__header {
+  margin-bottom: 32px;
+}
+
+.suvix-page__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #9CA3AF;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 24px;
+}
+
+.suvix-page__back:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.light .suvix-page__back {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #64748B;
+}
+
+.light .suvix-page__back:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #1E293B;
+}
+
+.suvix-page__title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 28px;
+  font-weight: 700;
+  color: white;
+  margin: 0 0 8px 0;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.light .suvix-page__title {
+  color: #1E293B;
+}
+
+.suvix-page__title-icon {
+  color: #FFD700;
+  font-size: 32px;
+}
+
+.suvix-page__subtitle {
+  color: #6B7280;
+  font-size: 15px;
+  margin: 0;
+}
+
+/* Hero Section */
+.suvix-page__hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  margin-bottom: 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.suvix-page__hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+}
+
+@media (min-width: 900px) {
+  .suvix-page__hero {
+    grid-template-columns: 340px 1fr;
+    gap: 40px;
+    padding: 32px;
+  }
+}
+
+.light .suvix-page__hero {
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.01));
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Tier Progress */
+.tier-progress {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.light .tier-progress {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+.tier-progress__track {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tier-progress__tier {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.tier-progress__tier--active {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.light .tier-progress__tier--active {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.tier-progress__marker {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.tier-progress__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.tier-progress__label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #9CA3AF;
+  transition: color 0.3s;
+}
+
+.tier-progress__tier--active .tier-progress__label,
+.tier-progress__tier--passed .tier-progress__label {
+  color: white;
+}
+
+.light .tier-progress__tier--active .tier-progress__label,
+.light .tier-progress__tier--passed .tier-progress__label {
+  color: #1E293B;
+}
+
+.tier-progress__range {
+  display: block;
+  font-size: 11px;
+  color: #6B7280;
+  margin-top: 2px;
+}
+
+.tier-progress__current {
+  position: absolute;
+  right: 12px;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: white;
+  letter-spacing: 0.5px;
+}
+
+/* Score Display */
+.suvix-page__score-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.score-circle {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+
+.score-circle__svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.score-circle__bg {
+  stroke: rgba(255, 255, 255, 0.1);
+}
+
+.light .score-circle__bg {
+  stroke: rgba(0, 0, 0, 0.1);
+}
+
+.score-circle__progress {
+  stroke-dasharray: 534;
+  transition: stroke-dashoffset 1.5s ease-out;
+}
+
+.score-circle__content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.score-circle__number {
+  display: block;
+  font-size: 56px;
+  font-weight: 800;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  line-height: 1;
+}
+
+.score-circle__label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7280;
+  letter-spacing: 2px;
+  margin-top: 4px;
+}
+
+/* Tier Info */
+.suvix-page__tier-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 50px;
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.tier-badge svg {
+  font-size: 16px;
+}
+
+.tier-next,
+.tier-orders {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #9CA3AF;
+}
+
+.tier-next svg {
+  color: #27AE60;
+}
+
+.tier-orders svg {
+  color: #3498DB;
+}
+
+.suvix-page__eligibility-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  border-radius: 12px;
+  color: #E74C3C;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+/* Breakdown Section */
+.suvix-page__breakdown {
+  margin-bottom: 32px;
+}
+
+.suvix-page__section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+  margin: 0 0 20px 0;
+}
+
+.suvix-page__section-title svg {
+  color: #FFD700;
+}
+
+.light .suvix-page__section-title {
+  color: #1E293B;
+}
+
+.breakdown-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 600px) {
+  .breakdown-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1000px) {
+  .breakdown-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.breakdown-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 20px;
+  transition: all 0.3s;
+}
+
+.breakdown-card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.light .breakdown-card {
+  background: white;
+  border-color: #E2E8F0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.light .breakdown-card:hover {
+  border-color: #CBD5E1;
+}
+
+.breakdown-card--low {
+  border-color: rgba(231, 76, 60, 0.3);
+}
+
+.breakdown-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.breakdown-card__icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.breakdown-card__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.breakdown-card__title h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  margin: 0 0 4px 0;
+}
+
+.light .breakdown-card__title h3 {
+  color: #1E293B;
+}
+
+.breakdown-card__title p {
+  font-size: 11px;
+  color: #6B7280;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.breakdown-card__score {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.breakdown-card__points {
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+}
+
+.light .breakdown-card__points {
+  color: #1E293B;
+}
+
+.breakdown-card__max {
+  font-size: 14px;
+  color: #6B7280;
+}
+
+.breakdown-card__bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.light .breakdown-card__bar {
+  background: #E2E8F0;
+}
+
+.breakdown-card__fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.8s ease-out;
+}
+
+.breakdown-card__extra {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #9CA3AF;
+  margin-top: 8px;
+}
+
+.breakdown-card__extra svg {
+  font-size: 12px;
+  color: #6B7280;
+}
+
+/* Tips Section */
+.suvix-page__tips {
+  margin-bottom: 32px;
+}
+
+.tips-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 768px) {
+  .tips-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.tip-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(39, 174, 96, 0.1), rgba(39, 174, 96, 0.02));
+  border: 1px solid rgba(39, 174, 96, 0.2);
+  border-radius: 12px;
+}
+
+.light .tip-card {
+  background: linear-gradient(135deg, rgba(39, 174, 96, 0.08), rgba(39, 174, 96, 0.02));
+}
+
+.tip-card__icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.tip-card__content h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #27AE60;
+  margin: 0 0 4px 0;
+}
+
+.tip-card__content p {
+  font-size: 13px;
+  color: #9CA3AF;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.light .tip-card__content p {
+  color: #64748B;
+}

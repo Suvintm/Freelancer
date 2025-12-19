@@ -31,7 +31,7 @@ export const getAllEditors = asyncHandler(async (req, res) => {
 
   // Get all verified editors
   const verifiedEditors = await User.find(userQuery)
-    .select("_id name email profilePicture role isVerified kycStatus createdAt profileCompletionPercent")
+    .select("_id name email profilePicture role isVerified kycStatus createdAt profileCompletionPercent suvixScore")
     .lean();
 
   if (verifiedEditors.length === 0) {
@@ -78,7 +78,7 @@ export const getAllEditors = asyncHandler(async (req, res) => {
   let allProfiles = await Profile.find(profileQuery)
     .populate({
       path: "user",
-      select: "name email profilePicture role isVerified kycStatus createdAt profileCompletionPercent",
+      select: "name email profilePicture role isVerified kycStatus createdAt profileCompletionPercent suvixScore",
     })
     .lean();
 

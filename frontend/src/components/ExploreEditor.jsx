@@ -22,11 +22,25 @@ import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
 import EmptyState from "./EmptyState.jsx";
 import { motion, AnimatePresence } from "framer-motion";
+import SuvixScoreBadge from "./SuvixScoreBadge.jsx";
 
 /**
  * ExploreEditors - Professional Design
  * Dark base with light: variant overrides for theme toggle
  */
+
+// Helper function to get tier color
+const getTierColor = (tier) => {
+  const colors = {
+    elite: '#FFD700',
+    expert: '#9B59B6',
+    professional: '#3498DB',
+    established: '#27AE60',
+    rising: '#1ABC9C',
+    newcomer: '#95A5A6',
+  };
+  return colors[tier] || colors.newcomer;
+};
 
 const ExploreEditors = () => {
   const { backendURL, user } = useAppContext();
@@ -342,6 +356,10 @@ const EditorCard = ({ editor, navigate, searchQuery }) => {
   const rating = hasRatings ? editor.ratingStats.averageRating?.toFixed(1) : null;
   const reviewCount = hasRatings ? editor.ratingStats.totalReviews : 0;
 
+  // Get Suvix Score from user
+  const suvixScore = editor.user?.suvixScore;
+  const showSuvixScore = suvixScore?.isEligible && suvixScore?.total > 0;
+
   const highlightMatch = (text, query) => {
     if (!query || !text) return text;
     const parts = text.split(new RegExp(`(${query})`, "gi"));
@@ -357,13 +375,13 @@ const EditorCard = ({ editor, navigate, searchQuery }) => {
   return (
     <motion.div
       onClick={() => navigate(`/public-profile/${editor.user?._id}`)}
-      className="group bg-[#0a0a0c] light:bg-white rounded-2xl overflow-hidden border border-white/10 light:border-slate-200 hover:border-emerald-500/30 light:hover:border-emerald-300 hover:shadow-xl transition-all duration-300 cursor-pointer"
+      className="group relative bg-[#0a0a0c] light:bg-white rounded-2xl overflow-hidden border border-white/10 light:border-slate-200 hover:border-emerald-500/30 light:hover:border-emerald-300 hover:shadow-xl transition-all duration-300 cursor-pointer"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4 }}
     >
       {/* Header with Avatar */}
-      <div className="p-5 pb-4">
+      <div className="relative p-5 pb-4">
         <div className="flex items-start gap-4">
           <div className="relative flex-shrink-0">
             <img src={editor.user?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"} alt={editor.user?.name} className="w-14 h-14 rounded-full object-cover border-2 border-white/10 light:border-slate-100 group-hover:border-emerald-500/30 light:group-hover:border-emerald-200 transition-colors" />
@@ -401,7 +419,44 @@ const EditorCard = ({ editor, navigate, searchQuery }) => {
             </div>
           </div>
         </div>
-
+        
+        {/* Premium Suvix Score Badge - Top Right Corner */}
+        {showSuvixScore && (
+          <div 
+            className="absolute top-3 right-3 z-10"
+            style={{
+              filter: `drop-shadow(0 4px 12px ${getTierColor(suvixScore.tier)}40)`,
+            }}
+          >
+            <div 
+              className="relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg backdrop-blur-md"
+              style={{ 
+                background: `linear-gradient(135deg, ${getTierColor(suvixScore.tier)}20, ${getTierColor(suvixScore.tier)}10)`,
+                border: `1px solid ${getTierColor(suvixScore.tier)}40`,
+              }}
+            >
+              <div 
+                className="w-5 h-5 rounded-full flex items-center justify-center"
+                style={{ 
+                  background: `linear-gradient(135deg, ${getTierColor(suvixScore.tier)}, ${getTierColor(suvixScore.tier)}CC)`,
+                  boxShadow: `0 0 8px ${getTierColor(suvixScore.tier)}60`,
+                }}
+              >
+                <span className="text-[10px] font-bold text-white">{suvixScore.tier?.charAt(0).toUpperCase()}</span>
+              </div>
+              <div className="flex flex-col items-start leading-none">
+                <span 
+                  className="font-bold text-sm"
+                  style={{ color: getTierColor(suvixScore.tier) }}
+                >
+                  {suvixScore.total}
+                </span>
+                <span className="text-[8px] font-medium text-gray-400 uppercase tracking-wider">Score</span>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {editor.location?.country && (
           <div className="flex items-center gap-1.5 text-gray-500 light:text-slate-500 text-xs mt-3">
             <FaMapMarkerAlt className="text-gray-600 light:text-slate-400" />

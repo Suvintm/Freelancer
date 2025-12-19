@@ -40,6 +40,8 @@ import PortfolioSection from "../components/PortfolioSection.jsx";
 import GigsSection from "../components/GigsSection.jsx";
 import EditorRatingsModal from "../components/EditorRatingsModal.jsx";
 import { useSubscription } from "../context/SubscriptionContext";
+import SuvixScoreCard from "../components/SuvixScoreCard.jsx";
+
 
 // Country Code Mapping
 const countryNameToCode = {
@@ -595,6 +597,9 @@ const EditorProfile = () => {
                   {/* Sidebar */}
                   <div className="space-y-4">
                     
+                    {/* Suvix Score Card */}
+                    <SuvixScoreCard />
+                    
                     {/* Quick Links */}
                     <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4">
                       <h4 className="text-sm font-semibold text-white mb-3">Quick Links</h4>
@@ -706,6 +711,19 @@ const EditorProfile = () => {
                 className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5"
               >
                 <GigsSection />
+              </motion.div>
+            )}
+
+            {/* SUVIX SCORE TAB */}
+            {activeTab === "suvix-score" && (
+              <motion.div
+                key="suvix-score"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.15 }}
+              >
+                <SuvixScoreAnalytics />
               </motion.div>
             )}
           </AnimatePresence>

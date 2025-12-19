@@ -36,12 +36,14 @@ import EditorAnalytics from "./pages/EditorAnalytics.jsx";
 import ClientAnalytics from "./pages/ClientAnalytics.jsx";
 import PaymentsPage from "./pages/PaymentsPage.jsx";
 import PaymentSuccess from "./pages/PaymentSuccess.jsx";
+import RequestPaymentSuccess from "./pages/RequestPaymentSuccess.jsx";
 import KYCDetailsPage from "./pages/KYCDetailsPage.jsx";
 import StoragePlans from "./pages/StoragePlans.jsx";
 
 // Subscription Pages
 import SubscriptionPlansPage from "./pages/SubscriptionPlansPage.jsx";
 import ProfileInsightsPage from "./pages/ProfileInsightsPage.jsx";
+import SuvixScorePage from "./pages/SuvixScorePage.jsx";
 
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
@@ -63,6 +65,7 @@ function App() {
         {/* Banned & Maintenance Pages (Public) */}
         <Route path="/banned" element={<BannedPage />} />
         <Route path="/maintenance" element={<MaintenancePage />} />
+        <Route path="/request-payment-success" element={<RequestPaymentSuccess />} />
 
         {/* ============ CLIENT ROUTES ============ */}
         <Route
@@ -184,6 +187,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["editor"]}>
               <KYCDetailsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/suvix-score"
+          element={
+            <ProtectedRoute allowedRoles={["editor"]}>
+              <SuvixScorePage />
             </ProtectedRoute>
           }
         />

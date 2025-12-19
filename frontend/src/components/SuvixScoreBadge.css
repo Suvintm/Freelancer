@@ -1,0 +1,105 @@
+/* SuvixScoreBadge.css - Styles for Suvix Score Badge */
+
+.suvix-badge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.suvix-badge__circle-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.suvix-badge__score {
+  position: absolute;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.suvix-badge__icon-center {
+  position: absolute;
+  font-size: 1.2em;
+}
+
+.suvix-badge__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+  max-width: 80px;
+}
+
+/* Animated progress */
+.suvix-badge--animated .suvix-badge__progress {
+  animation: suvix-progress 1.5s ease-out forwards;
+}
+
+@keyframes suvix-progress {
+  from {
+    stroke-dashoffset: 1000;
+  }
+}
+
+/* Ineligible state */
+.suvix-badge--ineligible {
+  opacity: 0.7;
+}
+
+.suvix-badge--ineligible .suvix-badge__circle {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  border: 2px dashed rgba(255, 255, 255, 0.3);
+}
+
+.suvix-badge--ineligible .suvix-badge__label {
+  color: #95a5a6;
+}
+
+/* Size variants */
+.suvix-badge--small .suvix-badge__label {
+  font-size: 9px;
+  max-width: 60px;
+}
+
+.suvix-badge--large .suvix-badge__label {
+  font-size: 13px;
+  max-width: 100px;
+}
+
+/* Hover effect */
+.suvix-badge:hover .suvix-badge__progress {
+  filter: brightness(1.2);
+}
+
+/* Pulse animation for high scores */
+.suvix-badge--animated[data-tier="elite"] .suvix-badge__progress,
+.suvix-badge--animated[data-tier="expert"] .suvix-badge__progress {
+  animation: suvix-progress 1.5s ease-out forwards, suvix-pulse 2s ease-in-out infinite 1.5s;
+}
+
+@keyframes suvix-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px var(--tier-color, #FFD700));
+  }
+  50% {
+    filter: drop-shadow(0 0 16px var(--tier-color, #FFD700));
+  }
+}
+
+/* Dark mode optimizations */
+@media (prefers-color-scheme: dark) {
+  .suvix-badge__score {
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  }
+}
