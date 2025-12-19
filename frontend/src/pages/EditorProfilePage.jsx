@@ -68,6 +68,7 @@ const EditorProfile = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCert, setSelectedCert] = useState(null);
   const [completionData, setCompletionData] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
   const [searchParams] = useSearchParams();
   const [showRatingsModal, setShowRatingsModal] = useState(false);
 
@@ -83,16 +84,28 @@ const EditorProfile = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [profileRes, completionRes] = await Promise.all([
+        const [profileRes, completionRes, earningsRes, ordersRes] = await Promise.all([
           axios.get(`${backendURL}/api/profile`, {
             headers: { Authorization: `Bearer ${user?.token}` },
           }),
           axios.get(`${backendURL}/api/profile/completion-status`, {
             headers: { Authorization: `Bearer ${user?.token}` },
           }),
+          axios.get(`${backendURL}/api/editor-analytics/earnings`, {
+            headers: { Authorization: `Bearer ${user?.token}` },
+          }).catch(() => ({ data: { analytics: {} } })),
+          axios.get(`${backendURL}/api/editor-analytics/orders`, {
+            headers: { Authorization: `Bearer ${user?.token}` },
+          }).catch(() => ({ data: { analytics: {} } })),
         ]);
         setProfile(profileRes.data.profile);
         setCompletionData(completionRes.data);
+        setAnalytics({
+          totalEarnings: earningsRes.data.analytics?.totalEarnings || 0,
+          totalOrders: ordersRes.data.analytics?.totalOrders || 0,
+          completedOrders: ordersRes.data.analytics?.completedOrders || 0,
+          profileViews: profileRes.data.profile?.profileViews || 0,
+        });
       } catch (error) {
         console.error("Error fetching profile:", error);
       } finally {
@@ -141,11 +154,27 @@ const EditorProfile = () => {
   const displayRating = hasRatings ? profileData.ratingStats.averageRating?.toFixed(1) : "N/A";
   const reviewCount = hasRatings ? profileData.ratingStats.totalReviews : 0;
 
+  // Format large numbers (1000 -> 1K, 1000000 -> 1M)
+  const formatNumber = (num) => {
+    if (!num || num === 0) return "0";
+    if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, '') + "M";
+    if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, '') + "K";
+    return num.toString();
+  };
+
+  // Format currency
+  const formatCurrency = (amount) => {
+    if (!amount || amount === 0) return "₹0";
+    if (amount >= 100000) return "₹" + (amount / 100000).toFixed(1).replace(/\.0$/, '') + "L";
+    if (amount >= 1000) return "₹" + (amount / 1000).toFixed(1).replace(/\.0$/, '') + "K";
+    return "₹" + amount;
+  };
+
   const statsData = [
     { label: "Rating", value: displayRating, count: reviewCount > 0 ? `(${reviewCount})` : "", icon: FaStar, color: hasRatings ? "#F59E0B" : "#6B7280", clickable: true },
-    { label: "Projects", value: profileData?.projectsCompleted || "0", icon: FaBriefcase, color: "#6B7280" },
-    { label: "Views", value: "1.2K", icon: FaEye, color: "#6B7280" },
-    { label: "Earnings", value: "₹25K", icon: FaMoneyBillWave, color: "#22C55E" },
+    { label: "Projects", value: analytics?.completedOrders || 0, icon: FaBriefcase, color: "#6B7280" },
+    { label: "Views", value: formatNumber(analytics?.profileViews || 0), icon: FaEye, color: "#6B7280" },
+    { label: "Earnings", value: formatCurrency(analytics?.totalEarnings || 0), icon: FaMoneyBillWave, color: "#22C55E" },
   ];
 
   return (

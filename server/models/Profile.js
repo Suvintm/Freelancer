@@ -104,6 +104,9 @@ const profileSchema = new mongoose.Schema(
       communicationAvg: { type: Number, default: 0 },
       speedAvg: { type: Number, default: 0 },
     },
+
+    // Profile Views counter
+    profileViews: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

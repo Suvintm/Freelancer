@@ -2,6 +2,7 @@ import { Profile } from "../models/Profile.js";
 import User from "../models/User.js";
 import { Reel } from "../models/Reel.js";
 import { Portfolio } from "../models/Portfolio.js";
+import { ProfileVisit } from "../models/ProfileVisit.js";
 import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
@@ -11,13 +12,39 @@ import fs from "fs";
 // ============ GET PROFILE ============
 export const getProfile = asyncHandler(async (req, res) => {
   const userId = req.params.userId || req.user?.id;
+  const viewerId = req.user?._id?.toString() || req.user?.id;
 
   let profile = await Profile.findOne({ user: userId })
-    .populate("user", "name email role profilePicture")
+    .populate("user", "name email role profilePicture kycStatus")
     .lean();
 
   if (!profile) {
     throw new ApiError(404, "Profile not found");
+  }
+
+  // Record profile visit if viewer is different from profile owner
+  if (viewerId && viewerId !== userId.toString()) {
+    // Get viewer info for caching
+    const viewer = req.user;
+    const source = req.query.source || "direct";
+    const referrerGig = req.query.gig || null;
+
+    // Record detailed visit (async, don't wait)
+    ProfileVisit.recordVisit({
+      profileOwner: userId,
+      visitor: viewer._id,
+      visitorName: viewer.name || "Anonymous",
+      visitorPicture: viewer.profilePicture || "",
+      visitorRole: viewer.role || "guest",
+      source,
+      referrerGig,
+    }).catch(err => logger.warn("Failed to record profile visit:", err));
+
+    // Also increment the simple counter for backward compatibility
+    await Profile.findOneAndUpdate(
+      { user: userId },
+      { $inc: { profileViews: 1 } }
+    );
   }
 
   // Fetch Portfolios manually (since they might not be linked in profile array)
