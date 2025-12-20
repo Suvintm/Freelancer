@@ -668,30 +668,14 @@ const ChatPage = () => {
   const [isAcceptingPolicy, setIsAcceptingPolicy] = useState(false);
 
   // Handle Drive Link Click
-  const handleDriveLinkClick = async (url) => {
-    // If not editor, or already accepted, just open
+  const handleDriveLinkClick = async (url, title = "Files") => {
+    // If not editor, just open the link directly
     if (user?.role !== "editor") {
         window.open(url, "_blank");
         return;
     }
 
-    if (user?.legalAcceptance?.contentPolicyAccepted) {
-        // Log access silently (optional but good for audit)
-        try {
-            axios.post(`${backendURL}/api/user/legal/log-access`, 
-                { orderId, clientId: order?.client?._id },
-                { headers: { Authorization: `Bearer ${user?.token}` } }
-            );
-        } catch (e) {
-            console.error("Failed to log access", e);
-        }
-        
-        toast.info("Opening confidential files...", { autoClose: 2000 });
-        window.open(url, "_blank");
-        return;
-    }
-
-    // Else show modal
+    // For editors: ALWAYS show the terms modal before accessing
     setPendingDriveLink(url);
     setAccessModalOpen(true);
   };
@@ -707,16 +691,17 @@ const ChatPage = () => {
             { headers: { Authorization: `Bearer ${token}` } }
         );
 
-        // 2. Log Access
-        await axios.post(`${backendURL}/api/user/legal/log-access`, 
-            { orderId, clientId: order?.client?._id },
+        // 2. Log Access (This triggers the system message on first access)
+        const logRes = await axios.post(`${backendURL}/api/user/legal/log-access`, 
+            { orderId, clientId: order?.client?._id, linkTitle: "Client Project Files" },
             { headers: { Authorization: `Bearer ${token}` } }
         );
 
-        // 3. Refresh User Context
-        await refreshUser();
-        
-        // 4. Open Link
+        if (logRes.data.newMessage) {
+            setMessages(prev => [...prev, logRes.data.newMessage]);
+        }
+
+        // 3. Open Link
         window.open(pendingDriveLink, "_blank");
         
         toast.success("AGREEMENT ACCEPTED. You now have access.");
@@ -729,10 +714,6 @@ const ChatPage = () => {
         setIsAcceptingPolicy(false);
     }
   };
-
-  // --- Derived State ---
-  const otherParty = user?.role === "editor" ? order?.client : order?.editor;
-  const isOnline = otherParty?._id ? onlineUsers.includes(otherParty._id) : false;
 
   // Play Sound Helper
   const playPopSound = () => {
@@ -1324,6 +1305,17 @@ const ChatPage = () => {
     };
   }, [socket]);
 
+
+
+  // --- Derived State ---
+  const otherParty = user?.role === "editor" ? order?.client : order?.editor;
+  const isOnline = otherParty?._id ? onlineUsers.includes(otherParty._id) : false;
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, typingUsers]);
+
   if (loading) return <div className="min-h-screen bg-[#09090B] light:bg-[#FAFAFA] flex items-center justify-center text-white light:text-zinc-900">Loading...</div>;
 
   // Calculate deadline status for header
@@ -1468,17 +1460,18 @@ const ChatPage = () => {
                         const el = document.getElementById(`msg-${msg._id}`);
                         if (el) {
                           el.scrollIntoView({ behavior: "smooth", block: "center" });
-                          el.classList.add("ring-2", "ring-purple-500");
-                          setTimeout(() => el.classList.remove("ring-2", "ring-purple-500"), 2000);
+                          const highlight = document.createElement("div");
+                          highlight.className = "absolute inset-0 bg-yellow-500/20 z-0 animate-pulse rounded-lg";
+                          el.appendChild(highlight);
+                          setTimeout(() => el.removeChild(highlight), 2000);
                         }
-                        setShowSearch(false);
-                        setSearchQuery("");
-                        setSearchResults([]);
                       }}
-                      className="w-full text-left px-3 py-2 bg-white/5 rounded-lg hover:bg-white/10 transition"
+                      className="w-full text-left p-2 rounded-lg hover:bg-white/5 flex items-center gap-2 text-xs"
                     >
-                      <p className="text-xs text-gray-400">{msg.sender?.name}</p>
-                      <p className="text-sm text-white truncate">{msg.content}</p>
+                      <span className="text-gray-400 truncate flex-1">{msg.content}</span>
+                      <span className="text-gray-600 text-[10px] whitespace-nowrap">
+                        {new Date(msg.createdAt).toLocaleDateString()}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -1486,14 +1479,9 @@ const ChatPage = () => {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Integrated Project Details - Tab Interface */}
-        <ChatInfoTabs 
-          order={{ ...order, currentUserId: user?._id }} 
-          messages={messages} 
-          userRole={user?.role} 
-          orderId={orderId} 
-        />
+        
+        {/* Unified Info Tabs */}
+        <ChatInfoTabs order={order} messages={messages} userRole={user?.role} orderId={orderId} onLinkClick={handleDriveLinkClick} />
       </header>
 
 
@@ -2097,7 +2085,15 @@ const ChatPage = () => {
         )}
       </AnimatePresence>
 
-      {/* � Add Drive Link Modal (Client Only) */}
+      {/* 🔒 Content Access / Legal Agreement Modal (Editor Only) */}
+      <ContentAccessModal
+        isOpen={accessModalOpen}
+        onClose={() => { setAccessModalOpen(false); setPendingDriveLink(null); }}
+        onAccept={handleAcceptPolicy}
+        isLoading={isAcceptingPolicy}
+      />
+
+      {/* 📁 Add Drive Link Modal (Client Only) */}
       <AnimatePresence>
         {showDriveLinkModal && (
           <AddDriveLinkModal 

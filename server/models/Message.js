@@ -157,10 +157,11 @@ const messageSchema = new mongoose.Schema(
         "work_submitted",
         "work_completed",
         "payment_released",
-        "payment_confirmed",  // New: when payment is verified
-        "payment_required",   // When editor accepts request, client needs to pay
+        "payment_confirmed",
+        "payment_required",
         "dispute_raised",
         "deadline_reminder",
+        "content_accessed",  // Editor accepted terms and accessed drive link
       ],
     },
 

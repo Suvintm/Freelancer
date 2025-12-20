@@ -104,6 +104,17 @@ const ACTION_CONFIG = {
     title: "Payment Released",
     getDescription: () => "Payment has been released to the editor.",
   },
+  content_accessed: {
+    gradient: "from-amber-600 to-orange-600",
+    bgLight: "bg-amber-500/5",
+    borderColor: "border-amber-500/20",
+    icon: HiShieldCheck,
+    iconBg: "bg-amber-500",
+    title: "Drive Access Confirmed",
+    getDescription: (isEditor) => isEditor
+      ? "You have accepted the terms and opened the client's drive files."
+      : "Editor has accepted the content protection agreement and opened your drive files.",
+  },
 };
 
 const SystemMessageCard = ({ message, userRole }) => {

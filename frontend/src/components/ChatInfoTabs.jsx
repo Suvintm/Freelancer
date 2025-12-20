@@ -45,7 +45,7 @@ const getProviderInfo = (provider) => {
   }
 };
 
-const ChatInfoTabs = ({ order, messages, userRole, orderId }) => {
+const ChatInfoTabs = ({ order, messages, userRole, orderId, onLinkClick }) => {
   const [activeTab, setActiveTab] = useState(null); // null = closed, 'details' or 'footage'
   const [seenLinks, setSeenLinks] = useState([]);
 
@@ -63,10 +63,17 @@ const ChatInfoTabs = ({ order, messages, userRole, orderId }) => {
   useEffect(() => {
     if (activeTab === 'footage' && userRole === "editor" && footageLinks.length > 0) {
       const allLinkIds = footageLinks.map(msg => msg._id);
-      localStorage.setItem(`footage_seen_${orderId}`, JSON.stringify(allLinkIds));
-      setSeenLinks(allLinkIds);
+      
+      // Check if we actually need to update to avoid loop
+      const hasNewLinks = allLinkIds.some(id => !seenLinks.includes(id));
+      
+      if (hasNewLinks) {
+        localStorage.setItem(`footage_seen_${orderId}`, JSON.stringify(allLinkIds));
+        setSeenLinks(allLinkIds);
+      }
     }
-  }, [activeTab, userRole, footageLinks, orderId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, userRole, footageLinks.length, orderId]);
 
   const unseenCount = userRole === "editor" 
     ? footageLinks.filter(msg => !seenLinks.includes(msg._id)).length 
@@ -330,7 +337,13 @@ const ChatInfoTabs = ({ order, messages, userRole, orderId }) => {
                           </div>
 
                           <button
-                            onClick={() => window.open(link.url, "_blank")}
+                            onClick={() => {
+                              if (onLinkClick) {
+                                onLinkClick(link.url, link.title || "Shared Files");
+                              } else {
+                                window.open(link.url, "_blank");
+                              }
+                            }}
                             className={`shrink-0 px-3 py-2 bg-gradient-to-r ${providerInfo.color} text-white text-xs font-bold rounded-lg flex items-center gap-1.5 hover:opacity-90 transition shadow-lg`}
                           >
                             <FaExternalLinkAlt className="text-[10px]" />
