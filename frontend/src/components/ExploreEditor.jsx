@@ -58,7 +58,7 @@ const ExploreEditors = () => {
 
   const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, pages: 1 });
   const [filterOptions, setFilterOptions] = useState({ skills: [], languages: [], countries: [], experience: [] });
-  const [filters, setFilters] = useState({ skills: [], languages: [], experience: "", country: "", sortBy: "relevance" });
+  const [filters, setFilters] = useState({ skills: [], languages: [], experience: "", country: "", availability: [], sortBy: "relevance" });
   
   // Favorites Logic
   const [savedEditors, setSavedEditors] = useState([]); // Array of editor IDs
@@ -131,6 +131,7 @@ const ExploreEditors = () => {
         page: page.toString(),
         limit: "12",
         ...(search && { search }),
+        ...(activeFilters.availability.length > 0 && { availability: activeFilters.availability.join(",") }),
         ...(activeFilters.skills.length > 0 && { skills: activeFilters.skills.join(",") }),
         ...(activeFilters.languages.length > 0 && { languages: activeFilters.languages.join(",") }),
         ...(activeFilters.experience && { experience: activeFilters.experience }),
@@ -176,12 +177,16 @@ const ExploreEditors = () => {
     setFilters((prev) => ({ ...prev, languages: prev.languages.includes(lang) ? prev.languages.filter((l) => l !== lang) : [...prev.languages, lang] }));
   };
 
+  const toggleAvailabilityFilter = (status) => {
+    setFilters((prev) => ({ ...prev, availability: prev.availability.includes(status) ? prev.availability.filter((s) => s !== status) : [...prev.availability, status] }));
+  };
+
   const clearAllFilters = () => {
-    setFilters({ skills: [], languages: [], experience: "", country: "", sortBy: "relevance" });
+    setFilters({ skills: [], languages: [], experience: "", country: "", availability: [], sortBy: "relevance" });
     setSearchQuery("");
   };
 
-  const activeFilterCount = filters.skills.length + filters.languages.length + (filters.experience ? 1 : 0) + (filters.country ? 1 : 0);
+  const activeFilterCount = filters.skills.length + filters.languages.length + (filters.experience ? 1 : 0) + (filters.country ? 1 : 0) + filters.availability.length;
 
   if (error) {
     return (
@@ -287,6 +292,30 @@ const ExploreEditors = () => {
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-6">
             <div className="bg-white/5 light:bg-slate-50 rounded-2xl p-5 border border-white/10 light:border-slate-200">
               <div className="grid md:grid-cols-2 gap-6">
+                {/* Availability Filter */}
+                <div>
+                   <label className="text-xs font-semibold text-gray-400 light:text-slate-600 uppercase tracking-wider mb-3 block">Availability</label>
+                   <div className="flex flex-wrap gap-2">
+                      {[
+                          { id: 'available', label: 'Available Now', color: 'bg-emerald-500', border: 'border-emerald-500/50' },
+                          { id: 'small_only', label: 'Small Projects', color: 'bg-blue-500', border: 'border-blue-500/50' },
+                          { id: 'busy', label: 'Busy', color: 'bg-amber-500', border: 'border-amber-500/50' }
+                      ].map(status => (
+                         <button
+                           key={status.id}
+                           onClick={() => toggleAvailabilityFilter(status.id)}
+                           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 ${
+                              filters.availability.includes(status.id)
+                                ? `${status.color} text-white`
+                                : `bg-white/5 light:bg-white text-gray-400 light:text-slate-600 border border-white/10 light:border-slate-200 hover:${status.border}`
+                           }`}
+                         >
+                            <span className={`w-2 h-2 rounded-full ${filters.availability.includes(status.id) ? 'bg-white' : status.color.replace('bg-', 'text-').replace('500', '400')}`} style={{backgroundColor: filters.availability.includes(status.id) ? 'white' : undefined}} />
+                            {status.label}
+                         </button>
+                      ))}
+                   </div>
+                </div>
                 {filterOptions.skills.length > 0 && (
                   <div>
                     <label className="text-xs font-semibold text-gray-400 light:text-slate-600 uppercase tracking-wider mb-3 block">Skills</label>
@@ -471,14 +500,19 @@ const EditorCard = ({ editor, navigate, searchQuery, isSaved, onToggleFavorite }
               {editor.verified && <FaCheckCircle className="text-emerald-500 text-sm flex-shrink-0" />}
               
               {/* Availability Chip for Context */}
-              {isBusy && availability.busyUntil && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 whitespace-nowrap">
-                   Busy till {new Date(availability.busyUntil).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
-                </span>
-              )}
-              {isSmallOnly && (
+              {isBusy ? (
+                availability.busyUntil && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 whitespace-nowrap">
+                       Busy till {new Date(availability.busyUntil).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                    </span>
+                )
+              ) : isSmallOnly ? (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20 whitespace-nowrap">
                    Small Projects
+                </span>
+              ) : (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 whitespace-nowrap">
+                   Available
                 </span>
               )}
             </div>

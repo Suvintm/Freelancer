@@ -12,6 +12,7 @@ export const getAllEditors = asyncHandler(async (req, res) => {
     languages = "",
     experience = "",
     country = "",
+    availability = "", // available, busy, small_only
     sortBy = "relevance", // relevance, experience, newest
   } = req.query;
 
@@ -74,6 +75,25 @@ export const getAllEditors = asyncHandler(async (req, res) => {
     profileQuery["location.country"] = new RegExp(country, "i");
   }
 
+  // Availability filter logic is applied AFTER fetching user data because it lives on the User model, not Profile.
+  // Actually, we can filter `verifiedUserIds` first if we want, but `verifiedEditors` contains the user data including availability.
+  // Let's filter `verifiedEditors` first to reduce the set of users we fetch profiles for.
+  
+  // NOTE: Availability is on the User model.
+  let filteredUserIds = verifiedUserIds;
+  if (availability) {
+      const statusList = availability.split(',').map(s => s.trim());
+      filteredUserIds = verifiedEditors
+          .filter(u => {
+              const uStatus = u.availability?.status || 'available';
+              return statusList.includes(uStatus);
+          })
+          .map(u => u._id);
+      
+      // Update profile query to only look for these users
+      profileQuery.user = { $in: filteredUserIds };
+  }
+
   // Get profiles with user data
   let allProfiles = await Profile.find(profileQuery)
     .populate({
@@ -94,21 +114,23 @@ export const getAllEditors = asyncHandler(async (req, res) => {
   // STEP 3: Add verified editors without profiles (show them too!)
   const profileUserIds = new Set(allProfiles.map(p => p.user?._id?.toString()).filter(Boolean));
   
-  // Only add editors without profiles if there are no filters applied
+  // Only add editors without profiles if there are no filters applied (OR if availability filter is consistent)
   const hasFilters = skills || languages || experience || country;
+  
+  // If technical filters exist, we generally rely on profile data.
+  // But if ONLY availability is set (or no filters), we can show users without profiles if they match.
   if (!hasFilters) {
     verifiedEditors.forEach(editor => {
+       // Check availability filter
+       if (availability) {
+            const statusList = availability.split(',').map(s => s.trim());
+            const uStatus = editor.availability?.status || 'available';
+            if (!statusList.includes(uStatus)) return;
+       }
+
       if (!profileUserIds.has(editor._id.toString())) {
         // Create a minimal profile for display
-        filteredEditors.push({
-          user: editor,
-          skills: [],
-          languages: [],
-          about: "",
-          experience: "",
-          location: {},
-        });
-      }
+
     });
   }
 
