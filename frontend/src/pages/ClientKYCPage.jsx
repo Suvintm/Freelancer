@@ -7,7 +7,7 @@ import { toast } from 'react-hot-toast';
 import { 
   FaUser, FaPhone, FaUniversity, FaShieldAlt, FaCheckCircle, 
   FaArrowRight, FaArrowLeft, FaSpinner, FaExclamationTriangle,
-  FaLock, FaCreditCard, FaIdCard, FaInfoCircle
+  FaLock, FaCreditCard, FaIdCard, FaInfoCircle, FaCloudUploadAlt, FaFileAlt
 } from 'react-icons/fa';
 import { HiSparkles, HiBadgeCheck } from 'react-icons/hi';
 import { useAppContext } from '../context/AppContext';
@@ -36,7 +36,27 @@ const ClientKYCPage = () => {
     panNumber: '',
     preferredRefundMethod: 'original_payment',
     termsAccepted: false,
+    street: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    gstin: '',
   });
+
+  const [files, setFiles] = useState({
+    id_proof: null,
+    bank_proof: null
+  });
+
+  const handleFileChange = (e, type) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) return toast.error("Max file size is 5MB");
+      setFiles(prev => ({ ...prev, [type]: file }));
+      // Clear error
+      if (errors[type]) setErrors(prev => ({ ...prev, [type]: null }));
+    }
+  };
 
   const [errors, setErrors] = useState({});
 
@@ -89,6 +109,12 @@ const ClientKYCPage = () => {
     if (stepNum === 1) {
       if (!formData.fullName.trim()) newErrors.fullName = 'Full name is required';
       if (!formData.phone.match(/^[6-9]\d{9}$/)) newErrors.phone = 'Enter valid 10-digit phone';
+      
+      // Address Validation
+      if (!formData.street.trim()) newErrors.street = 'Street address is required';
+      if (!formData.city.trim()) newErrors.city = 'City is required';
+      if (!formData.state.trim()) newErrors.state = 'State is required';
+      if (!formData.postalCode.match(/^\d{6}$/)) newErrors.postalCode = 'Enter valid 6-digit PIN code';
     }
     
     if (stepNum === 2) {
@@ -110,6 +136,13 @@ const ClientKYCPage = () => {
     }
     
     if (stepNum === 3) {
+      if (!files.id_proof) newErrors.id_proof = 'Identity proof is required';
+      if (formData.preferredRefundMethod === 'bank_transfer' && !files.bank_proof) {
+         newErrors.bank_proof = 'Bank proof is required for bank transfer';
+      }
+    }
+
+    if (stepNum === 4) {
       if (!formData.termsAccepted) newErrors.termsAccepted = 'Please accept the terms';
     }
     
@@ -128,13 +161,21 @@ const ClientKYCPage = () => {
   };
 
   const handleSubmit = async () => {
-    if (!validateStep(3)) return;
+    if (!validateStep(4)) return;
     
     try {
       setLoading(true);
+
+      const data = new FormData();
+      Object.keys(formData).forEach(key => data.append(key, formData[key]));
+      if (files.id_proof) data.append("id_proof", files.id_proof);
+      if (files.bank_proof) data.append("bank_proof", files.bank_proof);
       
-      const res = await axios.post(`${backendURL}/api/client-kyc`, formData, {
-        headers: { Authorization: `Bearer ${user?.token}` }
+      const res = await axios.post(`${backendURL}/api/client-kyc`, data, {
+        headers: { 
+          Authorization: `Bearer ${user?.token}`,
+          'Content-Type': 'multipart/form-data'
+        }
       });
       
       if (res.data.success) {
@@ -303,7 +344,8 @@ const ClientKYCPage = () => {
   const steps = [
     { num: 1, label: 'Personal', icon: FaUser },
     { num: 2, label: 'Bank Details', icon: FaUniversity },
-    { num: 3, label: 'Confirm', icon: FaShieldAlt },
+    { num: 3, label: 'Documents', icon: FaCloudUploadAlt },
+    { num: 4, label: 'Confirm', icon: FaShieldAlt },
   ];
 
   return (
@@ -412,6 +454,48 @@ const ClientKYCPage = () => {
                     <span className="kyc-page__hint">
                       <FaInfoCircle /> Required for transactions above ₹50,000
                     </span>
+                  </div>
+
+                  {/* Address Section */}
+                  <div className="kyc-page__section-divider" style={{margin:'2rem 0', borderTop:'1px solid #e2e8f0'}}></div>
+                  <h3 style={{fontSize:'1.1rem', marginBottom:'1.5rem', color:'#334155'}}>Address & Tax Details</h3>
+
+                  <div className="kyc-page__field">
+                    <label>Street Address</label>
+                    <input
+                      type="text"
+                      name="street"
+                      value={formData.street}
+                      onChange={handleChange}
+                      placeholder="e.g. 123, Main Street, Area"
+                      className={errors.street ? 'kyc-page__input--error' : ''}
+                    />
+                    {errors.street && <span className="kyc-page__error">{errors.street}</span>}
+                  </div>
+
+                  <div className="kyc-page__field-row" style={{display:'flex', gap:'1rem'}}>
+                    <div className="kyc-page__field" style={{flex:1}}>
+                      <label>City</label>
+                      <input type="text" name="city" value={formData.city} onChange={handleChange} className={errors.city ? 'kyc-page__input--error' : ''} />
+                      {errors.city && <span className="kyc-page__error">{errors.city}</span>}
+                    </div>
+                    <div className="kyc-page__field" style={{flex:1}}>
+                      <label>State</label>
+                      <input type="text" name="state" value={formData.state} onChange={handleChange} className={errors.state ? 'kyc-page__input--error' : ''} />
+                      {errors.state && <span className="kyc-page__error">{errors.state}</span>}
+                    </div>
+                  </div>
+
+                  <div className="kyc-page__field-row" style={{display:'flex', gap:'1rem'}}>
+                    <div className="kyc-page__field" style={{flex:1}}>
+                      <label>PIN Code</label>
+                      <input type="text" name="postalCode" value={formData.postalCode} onChange={handleChange} maxLength={6} className={errors.postalCode ? 'kyc-page__input--error' : ''} />
+                      {errors.postalCode && <span className="kyc-page__error">{errors.postalCode}</span>}
+                    </div>
+                    <div className="kyc-page__field" style={{flex:1}}>
+                      <label>GSTIN (Optional)</label>
+                      <input type="text" name="gstin" value={formData.gstin} onChange={handleChange} placeholder="GST Number" style={{ textTransform: 'uppercase' }} />
+                    </div>
                   </div>
 
                   <div className="kyc-page__actions">
@@ -587,10 +671,92 @@ const ClientKYCPage = () => {
                 </motion.div>
               )}
 
-              {/* Step 3: Confirm */}
+              {/* Step 3: Documents */}
               {step === 3 && (
                 <motion.div 
                   key="step3"
+                  className="kyc-page__form-step"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                >
+                  <h2><FaCloudUploadAlt /> Document Proofs</h2>
+                  <p className="kyc-page__subtitle">Upload images of your documents to verify the details provided.</p>
+                  
+                  <div className="kyc-page__field">
+                    <label>Identity Proof (Aadhar/PAN/Voter ID) <span style={{color:'red'}}>*</span></label>
+                    <div className="kyc-page__file-input-wrapper">
+                      <input 
+                        type="file" 
+                        onChange={(e) => handleFileChange(e, 'id_proof')} 
+                        accept="image/*,.pdf" 
+                        id="id_proof_upload"
+                        className="kyc-page__file-input"
+                        hidden
+                      />
+                      <label htmlFor="id_proof_upload" className={`kyc-page__file-label ${errors.id_proof ? 'kyc-page__input--error' : ''}`}>
+                         {files.id_proof ? (
+                           <div className="kyc-page__file-preview">
+                              <FaFileAlt style={{color:'#10b981'}} />
+                              <span>{files.id_proof.name}</span>
+                              <span className="kyc-page__change-file">Change</span>
+                           </div>
+                         ) : (
+                           <div className="kyc-page__file-placeholder">
+                              <FaCloudUploadAlt />
+                              <span>Click to upload Aadhar/PAN Card</span>
+                              <span style={{fontSize:'12px', opacity:0.7}}>Max 5MB</span>
+                           </div>
+                         )}
+                      </label>
+                    </div>
+                    {errors.id_proof && <span className="kyc-page__error">{errors.id_proof}</span>}
+                  </div>
+
+                  <div className="kyc-page__field">
+                    <label>Bank Proof {formData.preferredRefundMethod === 'bank_transfer' ? <span style={{color:'red'}}>*</span> : '(Recommended)'}</label>
+                    <div className="kyc-page__file-input-wrapper">
+                      <input 
+                        type="file" 
+                        onChange={(e) => handleFileChange(e, 'bank_proof')} 
+                        accept="image/*,.pdf" 
+                        id="bank_proof_upload"
+                        className="kyc-page__file-input"
+                        hidden
+                      />
+                      <label htmlFor="bank_proof_upload" className={`kyc-page__file-label ${errors.bank_proof ? 'kyc-page__input--error' : ''}`}>
+                         {files.bank_proof ? (
+                           <div className="kyc-page__file-preview">
+                              <FaFileAlt style={{color:'#3b82f6'}} />
+                              <span>{files.bank_proof.name}</span>
+                              <span className="kyc-page__change-file">Change</span>
+                           </div>
+                         ) : (
+                           <div className="kyc-page__file-placeholder">
+                              <FaCloudUploadAlt />
+                              <span>Click to upload Cancelled Cheque / Statement</span>
+                           </div>
+                         )}
+                      </label>
+                    </div>
+                    {errors.bank_proof && <span className="kyc-page__error">{errors.bank_proof}</span>}
+                  </div>
+
+                  <div className="kyc-page__actions">
+                    <button className="kyc-page__btn kyc-page__btn--secondary" onClick={prevStep}>
+                      <FaArrowLeft /> Back
+                    </button>
+                    <button className="kyc-page__btn kyc-page__btn--primary" onClick={nextStep}>
+                      Continue <FaArrowRight />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Step 4: Confirm */}
+              {step === 4 && (
+                <motion.div 
+                  key="step4"
                   className="kyc-page__form-step"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -678,10 +844,10 @@ const ClientKYCPage = () => {
                 </motion.div>
               )}
 
-              {/* Step 4: Success */}
-              {step === 4 && (
+              {/* Step 5: Success */}
+              {step === 5 && (
                 <motion.div 
-                  key="step4"
+                  key="step5"
                   className="kyc-page__form-step kyc-page__success"
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}

@@ -12,19 +12,37 @@ import {
   verifyKYC,
   getKYCStats,
 } from "../controllers/clientKYCController.js";
+import { upload } from "../middleware/upload.js";
+import { uploadLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 
 // ==================== CLIENT ENDPOINTS ====================
 
 // Submit KYC
-router.post("/", protect, authorize("client"), submitKYC);
+// Submit KYC
+router.post(
+  "/", 
+  protect, 
+  authorize("client"), 
+  uploadLimiter, 
+  upload.fields([{ name: "id_proof", maxCount: 1 }, { name: "bank_proof", maxCount: 1 }]), 
+  submitKYC
+);
 
 // Get my KYC status
 router.get("/my", protect, authorize("client"), getMyKYC);
 
 // Update KYC
-router.put("/update", protect, authorize("client"), updateKYC);
+// Update KYC
+router.put(
+  "/update", 
+  protect, 
+  authorize("client"), 
+  uploadLimiter, 
+  upload.fields([{ name: "id_proof", maxCount: 1 }, { name: "bank_proof", maxCount: 1 }]), 
+  updateKYC
+);
 
 // Check if can proceed (KYC verified)
 router.get("/can-proceed", protect, authorize("client"), canProceed);

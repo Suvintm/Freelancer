@@ -19,6 +19,7 @@ import ClientKYCRequests from "./pages/ClientKYCRequests";
 import StorageManager from "./pages/StorageManager";
 import Banners from "./pages/Banners";
 import SubscriptionPlans from "./pages/SubscriptionPlans";
+import KYCRequestDetail from "./pages/KYCRequestDetail";
 
 // Components
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -59,6 +60,7 @@ function App() {
           <Route path="/users" element={<Users />} />
           <Route path="/kyc" element={<KYCManagement />} />
           <Route path="/client-kyc" element={<ClientKYCRequests />} />
+          <Route path="/kyc/detail/:type/:id" element={<KYCRequestDetail />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/gigs" element={<Gigs />} />
           <Route path="/banners" element={<Banners />} />

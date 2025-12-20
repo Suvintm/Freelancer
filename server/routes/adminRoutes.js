@@ -10,6 +10,7 @@ import { SiteSettings } from "../models/SiteSettings.js";
 import { StorageSettings } from "../models/StorageSettings.js";
 import { StoragePurchase } from "../models/StoragePurchase.js";
 import { emitToUser, emitMaintenance } from "../socket.js";
+import KYCLog from "../models/KYCLog.js";
 
 const router = express.Router();
 
@@ -1064,8 +1065,7 @@ router.get("/kyc/pending", requirePermission("users"), async (req, res) => {
       .select("name email profilePicture kycStatus kycSubmittedAt kycVerifiedAt bankDetails.accountHolderName bankDetails.bankName bankDetails.ifscCode")
       .sort("-kycSubmittedAt")
       .skip((page - 1) * limit)
-      .limit(parseInt(limit))
-      .lean();
+      .limit(parseInt(limit));
     
     const total = await User.countDocuments(query);
     const pendingCount = await User.countDocuments({ role: "editor", kycStatus: "submitted" });
@@ -1092,8 +1092,7 @@ router.get("/kyc/pending", requirePermission("users"), async (req, res) => {
 router.get("/kyc/:userId", requirePermission("users"), async (req, res) => {
   try {
     const user = await User.findById(req.params.userId)
-      .select("-password")
-      .lean();
+      .select("-password +bankDetails.accountNumber +bankDetails.panNumber");
     
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
@@ -1102,6 +1101,12 @@ router.get("/kyc/:userId", requirePermission("users"), async (req, res) => {
     // Get additional profile data
     const { Profile } = await import("../models/Profile.js");
     const profile = await Profile.findOne({ user: user._id }).lean();
+
+    // Fetch Audit Logs
+    const logs = await KYCLog.find({ user: user._id, userRole: "editor" })
+      .sort({ createdAt: -1 })
+      .populate("performedBy.adminId", "name email")
+      .lean();
     
     res.status(200).json({
       success: true,
@@ -1134,6 +1139,7 @@ router.get("/kyc/:userId", requirePermission("users"), async (req, res) => {
         skills: profile.skills,
         location: profile.location,
       } : null,
+      logs,
     });
     
   } catch (error) {
@@ -1184,6 +1190,19 @@ router.post("/kyc/:userId/verify", requirePermission("users"), logActivity("KYC_
     user.profileCompletionPercent = Math.min(completion, 100);
     
     await user.save();
+
+    // Audit Log
+    await KYCLog.create({
+      user: userId,
+      userRole: "editor",
+      performedBy: { adminId: req.admin._id, role: "admin" },
+      action: action === "approve" ? "verified" : "rejected",
+      reason: rejectionReason,
+      metadata: { 
+        previousStatus: user.kycStatus, 
+        newStatus: action === "approve" ? "verified" : "rejected" 
+      }
+    });
     
     // Send notification to user
     try {

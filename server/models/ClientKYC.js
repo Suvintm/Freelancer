@@ -2,37 +2,7 @@
 // Stores client's verification details for refund processing
 
 import mongoose from "mongoose";
-import crypto from "crypto";
-
-// Encryption key from env (should be 32 bytes for AES-256)
-const ENCRYPTION_KEY = process.env.KYC_ENCRYPTION_KEY || process.env.JWT_SECRET?.slice(0, 32).padEnd(32, '0');
-const IV_LENGTH = 16;
-
-// Encryption helper functions
-const encrypt = (text) => {
-  if (!text) return null;
-  const iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
-  let encrypted = cipher.update(text);
-  encrypted = Buffer.concat([encrypted, cipher.final()]);
-  return iv.toString('hex') + ':' + encrypted.toString('hex');
-};
-
-const decrypt = (text) => {
-  if (!text) return null;
-  try {
-    const textParts = text.split(':');
-    const iv = Buffer.from(textParts.shift(), 'hex');
-    const encryptedText = Buffer.from(textParts.join(':'), 'hex');
-    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
-    let decrypted = decipher.update(encryptedText);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    return decrypted.toString();
-  } catch (err) {
-    console.error('Decryption error:', err);
-    return null;
-  }
-};
+import { encrypt, decrypt } from "../utils/encryption.js";
 
 // Mask account number for display (show last 4 digits)
 const maskAccountNumber = (accountNumber) => {
@@ -71,6 +41,21 @@ const clientKYCSchema = new mongoose.Schema(
       required: true,
       lowercase: true,
       trim: true,
+    },
+
+    // === Address & Tax Information ===
+    address: {
+        street: { type: String, trim: true },
+        city: { type: String, trim: true },
+        state: { type: String, trim: true },
+        postalCode: { type: String, trim: true },
+        country: { type: String, default: "IN" }
+    },
+    
+    gstin: {
+        type: String,
+        trim: true,
+        uppercase: true,
     },
 
     // === Bank Account Details (Encrypted) ===
@@ -129,6 +114,14 @@ const clientKYCSchema = new mongoose.Schema(
     },
 
     // === Verification Status ===
+    // Documents (ID Proof, Bank Statement, etc.)
+    documents: [{
+      type: { type: String, enum: ["id_proof", "bank_proof", "other"], required: true },
+      url: { type: String, required: true },
+      verified: { type: Boolean, default: false },
+      uploadedAt: { type: Date, default: Date.now }
+    }],
+
     status: {
       type: String,
       enum: ["not_started", "pending", "under_review", "verified", "rejected"],

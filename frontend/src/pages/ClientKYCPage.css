@@ -781,3 +781,69 @@
   font-size: 14px;
   margin: 0 0 24px;
 }
+
+/* File Upload Styles */
+.kyc-page__file-input-wrapper {
+  margin-top: 0.5rem;
+}
+
+.kyc-page__file-label {
+  display: block;
+  width: 100%;
+  border: 2px dashed #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+}
+
+.kyc-page__file-label:hover {
+  border-color: #3b82f6;
+  background: #f8fafc;
+}
+
+.dark-mode .kyc-page__file-label {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.dark-mode .kyc-page__file-label:hover {
+  border-color: #60a5fa;
+  background: #0f172a;
+}
+
+.kyc-page__file-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: #64748b;
+}
+
+.kyc-page__file-placeholder svg {
+  font-size: 2rem;
+  color: #94a3b8;
+}
+
+.kyc-page__file-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: #0f172a;
+  font-weight: 500;
+}
+
+.dark-mode .kyc-page__file-preview {
+  color: #f1f5f9;
+}
+
+.kyc-page__change-file {
+  font-size: 0.75rem;
+  color: #ef4444;
+  text-decoration: underline;
+  margin-left: 0.5rem;
+}
+

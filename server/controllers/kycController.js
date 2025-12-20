@@ -4,6 +4,8 @@
  */
 
 import User from "../models/User.js";
+import KYCLog from "../models/KYCLog.js";
+import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
 import { RazorpayProvider } from "../services/RazorpayProvider.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 
@@ -27,6 +29,8 @@ export const getKYCStatus = asyncHandler(async (req, res) => {
       accountNumber: user.bankDetails.accountNumber 
         ? '••••••' + user.bankDetails.accountNumber.slice(-4) 
         : null,
+      address: user.bankDetails.address,
+      gstin: user.bankDetails.gstin,
     } : null,
   });
 });
@@ -36,7 +40,26 @@ export const getKYCStatus = asyncHandler(async (req, res) => {
  * POST /api/profile/submit-kyc
  */
 export const submitKYC = asyncHandler(async (req, res) => {
-  const { accountHolderName, accountNumber, ifscCode, panNumber, bankName } = req.body;
+  const { 
+    accountHolderName, accountNumber, ifscCode, panNumber, bankName,
+    street, city, state, postalCode, country, gstin 
+  } = req.body;
+
+  // STRICT DEBUG: Return body if street is missing
+  if (!street) {
+      return res.status(400).json({ 
+          success: false, 
+          message: "DEBUG: Street is missing", 
+          debugBody: req.body,
+          debugFiles: req.files ? Object.keys(req.files) : "No files"
+      });
+  }
+
+  console.log("KYC SUBMISSION RECEIVED:", {
+      body: req.body,
+      files: req.files
+  });
+
   const userId = req.user._id;
 
   // Validate required fields
@@ -59,6 +82,32 @@ export const submitKYC = asyncHandler(async (req, res) => {
   // Validate account number
   if (!/^\d{9,18}$/.test(accountNumber)) {
     throw new ApiError(400, "Invalid account number (9-18 digits required)");
+  }
+
+  // Process Document Uploads
+  const newDocuments = [];
+  if (req.files) {
+    const processUpload = async (files, typeCode) => {
+      if (files && files.length > 0) {
+        const file = files[0];
+        const result = await uploadToCloudinary(file.buffer, "kyc-documents");
+        return {
+          type: typeCode,
+          url: result.url,
+          uploadedAt: new Date()
+        };
+      }
+      return null;
+    };
+
+    if (req.files['id_proof']) {
+      const doc = await processUpload(req.files['id_proof'], 'id_proof');
+      if (doc) newDocuments.push(doc);
+    }
+    if (req.files['bank_proof']) {
+      const doc = await processUpload(req.files['bank_proof'], 'bank_proof');
+      if (doc) newDocuments.push(doc);
+    }
   }
 
   const user = await User.findById(userId);
@@ -107,7 +156,10 @@ export const submitKYC = asyncHandler(async (req, res) => {
       ifscCode: ifscCode.toUpperCase(),
       bankName,
       panNumber: panNumber.toUpperCase(),
+      gstin,
+      address: { street, city, state, postalCode, country: country || "IN" }
     };
+    if (newDocuments.length > 0) user.kycDocuments = newDocuments;
     user.kycStatus = "verified"; // Auto-verified via Razorpay
     user.isVerified = true; // Mark as verified for explore page
     user.kycSubmittedAt = new Date();
@@ -117,6 +169,16 @@ export const submitKYC = asyncHandler(async (req, res) => {
     user.profileCompletionPercent = calculateProfileCompletion(user);
 
     await user.save();
+    
+    // Audit Log (Auto verified)
+    await KYCLog.create({
+      user: userId,
+      userRole: "editor",
+      performedBy: { userId: userId, role: "system" },
+      action: "auto_verified",
+      reason: "Razorpay automated verification",
+      metadata: { ip: req.ip, userAgent: req.headers["user-agent"] }
+    });
 
     res.json({
       success: true,
@@ -135,14 +197,26 @@ export const submitKYC = asyncHandler(async (req, res) => {
       ifscCode: ifscCode.toUpperCase(),
       bankName,
       panNumber: panNumber.toUpperCase(),
+      gstin,
+      address: { street, city, state, postalCode, country: country || "IN" }
     };
+    if (newDocuments.length > 0) user.kycDocuments = newDocuments;
     user.kycStatus = "submitted"; // Pending manual verification
     user.kycSubmittedAt = new Date();
     user.profileCompletionPercent = calculateProfileCompletion(user);
 
     await user.save();
+    
+    // Audit Log (Manual Submission)
+    await KYCLog.create({
+      user: userId,
+      userRole: "editor",
+      performedBy: { userId: userId, role: "user" },
+      action: "submitted",
+      metadata: { ip: req.ip, userAgent: req.headers["user-agent"], razorpayError: error.message }
+    });
 
-    res.json({
+    return res.status(200).json({
       success: true,
       message: "KYC submitted for verification",
       kycStatus: user.kycStatus,
@@ -231,10 +305,10 @@ export const verifyKYC = asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const { approve, rejectionReason } = req.body;
   
-  // Check if requester is admin
-  if (req.user.role !== 'admin') {
+  // Check if requester is admin (Handled by protectAdmin middleware)
+  /* if (req.user.role !== 'admin') {
     throw new ApiError(403, "Only admins can verify KYC");
-  }
+  } */
   
   const user = await User.findById(userId);
   if (!user) {
@@ -252,6 +326,15 @@ export const verifyKYC = asyncHandler(async (req, res) => {
   
   user.profileCompletionPercent = calculateProfileCompletion(user);
   await user.save();
+
+  // Audit Log
+  await KYCLog.create({
+    user: userId,
+    userRole: "editor",
+    performedBy: { adminId: req.admin._id, role: "admin" },
+    action: approve ? "verified" : "rejected",
+    reason: rejectionReason,
+  });
   
   res.json({
     success: true,

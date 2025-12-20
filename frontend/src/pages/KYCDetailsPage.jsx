@@ -20,7 +20,9 @@ import {
   FaClock,
   FaArrowRight,
   FaCheck,
-  FaTimes
+  FaTimes,
+  FaFileAlt,
+  FaCloudUploadAlt
 } from 'react-icons/fa';
 import { HiSparkles } from 'react-icons/hi2';
 import { useAppContext } from '../context/AppContext';
@@ -41,8 +43,15 @@ const KYCDetailsPage = () => {
     accountNumber: '',
     confirmAccountNumber: '',
     ifscCode: '',
+    ifscCode: '',
     panNumber: '',
+    street: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    gstin: '',
   });
+  const [files, setFiles] = useState({ id_proof: null, bank_proof: null });
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [bankInfo, setBankInfo] = useState(null);
@@ -117,21 +126,42 @@ const KYCDetailsPage = () => {
       setMessage({ type: 'error', text: 'Account numbers do not match!' });
       return;
     }
+
+    // Validate files
+    if (!files.id_proof) {
+       setMessage({ type: 'error', text: 'Identity Proof is required' });
+       return;
+    }
     
     setSubmitting(true);
     setMessage({ type: '', text: '' });
 
     try {
+      const data = new FormData();
+      data.append('accountHolderName', formData.accountHolderName);
+      data.append('accountNumber', formData.accountNumber);
+      data.append('ifscCode', formData.ifscCode);
+      data.append('panNumber', formData.panNumber);
+      data.append('bankName', formData.bankName);
+      
+      // Address & Tax
+      data.append('street', formData.street);
+      data.append('city', formData.city);
+      data.append('state', formData.state);
+      data.append('postalCode', formData.postalCode);
+      if (formData.gstin) data.append('gstin', formData.gstin);
+
+      // Files
+      if (files.id_proof) data.append('id_proof', files.id_proof);
+      if (files.bank_proof) data.append('bank_proof', files.bank_proof);
+
       const res = await axios.post(
         `${backendURL}/api/profile/submit-kyc`,
-        {
-          accountHolderName: formData.accountHolderName,
-          accountNumber: formData.accountNumber,
-          ifscCode: formData.ifscCode,
-          panNumber: formData.panNumber,
-          bankName: formData.bankName,
-        },
-        { headers: { Authorization: `Bearer ${user.token}` } }
+        data,
+        { headers: { 
+            Authorization: `Bearer ${user.token}`,
+            'Content-Type': 'multipart/form-data'
+        } }
       );
 
       // Update local kycData with response
@@ -144,6 +174,10 @@ const KYCDetailsPage = () => {
           ifscCode: formData.ifscCode,
           accountNumber: '••••••' + formData.accountNumber.slice(-4),
           panNumber: formData.panNumber,
+          address: {
+             street: formData.street, city: formData.city, state: formData.state, postalCode: formData.postalCode
+          },
+          gstin: formData.gstin
         }
       }));
       
@@ -470,6 +504,129 @@ const KYCDetailsPage = () => {
                         maxLength={10}
                         className="w-full px-4 py-3 bg-black border border-zinc-800 rounded-xl text-white text-sm outline-none focus:border-zinc-600 transition-colors placeholder:text-zinc-600"
                       />
+                    </div>
+
+                    {/* Address Section */}
+                    <div className="pt-4 border-t border-zinc-800">
+                      <h4 className="text-sm font-medium text-white mb-4">Address & Tax Details</h4>
+                      
+                      {/* Street */}
+                      <div className="mb-4">
+                        <label className="text-xs text-zinc-400 block mb-2">Street Address</label>
+                        <input
+                           type="text"
+                           placeholder="House No, Street, Area"
+                           value={formData.street}
+                           onChange={(e) => setFormData(prev => ({...prev, street: e.target.value}))}
+                           required
+                           className="w-full px-4 py-3 bg-black border border-zinc-800 rounded-xl text-white text-sm outline-none focus:border-zinc-600 transition-colors"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                         <div>
+                           <label className="text-xs text-zinc-400 block mb-2">City</label>
+                           <input
+                              type="text"
+                              value={formData.city}
+                              onChange={(e) => setFormData(prev => ({...prev, city: e.target.value}))}
+                              required
+                              className="w-full px-4 py-3 bg-black border border-zinc-800 rounded-xl text-white text-sm outline-none focus:border-zinc-600 transition-colors"
+                           />
+                         </div>
+                         <div>
+                           <label className="text-xs text-zinc-400 block mb-2">State</label>
+                           <input
+                              type="text"
+                              value={formData.state}
+                              onChange={(e) => setFormData(prev => ({...prev, state: e.target.value}))}
+                              required
+                              className="w-full px-4 py-3 bg-black border border-zinc-800 rounded-xl text-white text-sm outline-none focus:border-zinc-600 transition-colors"
+                           />
+                         </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                         <div>
+                           <label className="text-xs text-zinc-400 block mb-2">Postal Code</label>
+                           <input
+                              type="text"
+                              value={formData.postalCode}
+                              onChange={(e) => setFormData(prev => ({...prev, postalCode: e.target.value}))}
+                              required
+                              maxLength={6}
+                              className="w-full px-4 py-3 bg-black border border-zinc-800 rounded-xl text-white text-sm outline-none focus:border-zinc-600 transition-colors"
+                           />
+                         </div>
+                         <div>
+                           <label className="text-xs text-zinc-400 block mb-2">GSTIN (Optional)</label>
+                           <input
+                              type="text"
+                              value={formData.gstin}
+                              onChange={(e) => setFormData(prev => ({...prev, gstin: e.target.value.toUpperCase()}))}
+                              className="w-full px-4 py-3 bg-black border border-zinc-800 rounded-xl text-white text-sm outline-none focus:border-zinc-600 transition-colors"
+                           />
+                         </div>
+                      </div>
+                    </div>
+
+                    {/* Documents Section */}
+                    <div className="pt-4 border-t border-zinc-800">
+                       <h4 className="text-sm font-medium text-white mb-4">Document Verification</h4>
+                       
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* ID Proof */}
+                          <div className="relative">
+                             <input 
+                               type="file" 
+                               id="id_proof_upload" 
+                               hidden 
+                               accept="image/*,.pdf" 
+                               onChange={(e) => setFiles(prev => ({...prev, id_proof: e.target.files[0]}))}
+                             />
+                             <label htmlFor="id_proof_upload" className={`flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${files.id_proof ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-zinc-700 hover:border-zinc-500'}`}>
+                                {files.id_proof ? (
+                                   <>
+                                     <FaCheckCircle className="text-emerald-500 text-xl mb-2" />
+                                     <span className="text-xs text-emerald-400 truncate w-full text-center">{files.id_proof.name}</span>
+                                     <span className="text-[10px] text-zinc-500 mt-1">Click to change</span>
+                                   </>
+                                ) : (
+                                   <>
+                                     <FaCloudUploadAlt className="text-zinc-400 text-xl mb-2" />
+                                     <span className="text-xs text-zinc-300">Upload Identity Proof</span>
+                                     <span className="text-[10px] text-zinc-500 mt-1">(PAN / Aadhar) *Required</span>
+                                   </>
+                                )}
+                             </label>
+                          </div>
+
+                          {/* Bank Proof */}
+                          <div className="relative">
+                             <input 
+                               type="file" 
+                               id="bank_proof_upload" 
+                               hidden 
+                               accept="image/*,.pdf" 
+                               onChange={(e) => setFiles(prev => ({...prev, bank_proof: e.target.files[0]}))}
+                             />
+                             <label htmlFor="bank_proof_upload" className={`flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${files.bank_proof ? 'border-blue-500/50 bg-blue-500/5' : 'border-zinc-700 hover:border-zinc-500'}`}>
+                                {files.bank_proof ? (
+                                   <>
+                                     <FaCheckCircle className="text-blue-500 text-xl mb-2" />
+                                     <span className="text-xs text-blue-400 truncate w-full text-center">{files.bank_proof.name}</span>
+                                     <span className="text-[10px] text-zinc-500 mt-1">Click to change</span>
+                                   </>
+                                ) : (
+                                   <>
+                                     <FaUniversity className="text-zinc-400 text-xl mb-2" />
+                                     <span className="text-xs text-zinc-300">Upload Bank Proof</span>
+                                     <span className="text-[10px] text-zinc-500 mt-1">(Cheque / Statement) *Required</span>
+                                   </>
+                                )}
+                             </label>
+                          </div>
+                       </div>
                     </div>
 
                     {/* Security Note */}

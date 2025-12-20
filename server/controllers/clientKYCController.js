@@ -2,8 +2,10 @@
 import asyncHandler from "express-async-handler";
 import ClientKYC from "../models/ClientKYC.js";
 import User from "../models/User.js";
+import KYCLog from "../models/KYCLog.js";
 import { ApiError } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
+import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
 
 /**
  * @desc    Submit Client KYC
@@ -34,7 +36,36 @@ export const submitKYC = asyncHandler(async (req, res) => {
     panNumber,
     preferredRefundMethod,
     termsAccepted,
+    // Address Fields
+    street, city, state, postalCode, country,
+    gstin
   } = req.body;
+
+  // Process Document Uploads
+  const newDocuments = [];
+  if (req.files) {
+    const processUpload = async (files, typeCode) => {
+      if (files && files.length > 0) {
+        const file = files[0];
+        const result = await uploadToCloudinary(file.buffer, "kyc-documents");
+        return {
+          type: typeCode,
+          url: result.url,
+          uploadedAt: new Date()
+        };
+      }
+      return null;
+    };
+
+    if (req.files['id_proof']) {
+      const doc = await processUpload(req.files['id_proof'], 'id_proof');
+      if (doc) newDocuments.push(doc);
+    }
+    if (req.files['bank_proof']) {
+      const doc = await processUpload(req.files['bank_proof'], 'bank_proof');
+      if (doc) newDocuments.push(doc);
+    }
+  }
 
   // Validate required fields
   if (!fullName || !phone) {
@@ -69,13 +100,32 @@ export const submitKYC = asyncHandler(async (req, res) => {
     kyc.accountType = accountType || "savings";
     kyc.upiId = upiId;
     kyc.panNumber = panNumber;
+    kyc.panNumber = panNumber;
     kyc.preferredRefundMethod = preferredRefundMethod || "original_payment";
+    
+    // Update Address & GSTIN
+    kyc.address = { 
+      street, city, state, postalCode, 
+      country: country || "IN" 
+    };
+    kyc.gstin = gstin;
     kyc.termsAccepted = termsAccepted;
     kyc.termsAcceptedAt = new Date();
     kyc.status = "pending";
     kyc.ipAddress = req.ip;
     kyc.userAgent = req.headers["user-agent"];
     kyc.rejectionReason = null; // Clear any previous rejection
+    
+    // Update documents if provided
+    if (newDocuments.length > 0) {
+       const currentDocs = kyc.documents || [];
+       newDocuments.forEach(newDoc => {
+          const idx = currentDocs.findIndex(d => d.type === newDoc.type);
+          if (idx > -1) currentDocs[idx] = newDoc;
+          else currentDocs.push(newDoc);
+       });
+       kyc.documents = currentDocs;
+    }
   } else {
     // Create new KYC
     kyc = new ClientKYC({
@@ -92,10 +142,17 @@ export const submitKYC = asyncHandler(async (req, res) => {
       panNumber,
       preferredRefundMethod: preferredRefundMethod || "original_payment",
       termsAccepted,
+      // Address & GSTIN
+      address: { 
+        street, city, state, postalCode, 
+        country: country || "IN" 
+      },
+      gstin,
       termsAcceptedAt: new Date(),
       status: "pending",
       ipAddress: req.ip,
       userAgent: req.headers["user-agent"],
+      documents: newDocuments,
     });
   }
 
@@ -107,6 +164,15 @@ export const submitKYC = asyncHandler(async (req, res) => {
   });
 
   logger.info(`Client KYC submitted: ${userId}`);
+  
+  // Audit Log
+  await KYCLog.create({
+    user: userId,
+    userRole: "client",
+    performedBy: { userId: userId, role: "user" },
+    action: "submitted",
+    metadata: { ip: req.ip, userAgent: req.headers["user-agent"] }
+  });
 
   res.status(201).json({
     success: true,
@@ -195,8 +261,17 @@ export const updateKYC = asyncHandler(async (req, res) => {
   const allowedFields = [
     "fullName", "phone", "bankAccountNumber", "ifscCode", 
     "bankName", "accountHolderName", "accountType", "upiId",
-    "panNumber", "preferredRefundMethod"
+    "panNumber", "preferredRefundMethod", "gstin"
   ];
+
+  // Handle address update separately or flatten allowed fields
+  const addressFields = ["street", "city", "state", "postalCode", "country"];
+  if (addressFields.some(f => req.body[f] !== undefined)) {
+    if (!kyc.address) kyc.address = {};
+    addressFields.forEach(f => {
+      if (req.body[f] !== undefined) kyc.address[f] = req.body[f];
+    });
+  }
 
   allowedFields.forEach(field => {
     if (req.body[field] !== undefined) {
@@ -215,6 +290,15 @@ export const updateKYC = asyncHandler(async (req, res) => {
   // Update user status
   await User.findByIdAndUpdate(userId, {
     clientKycStatus: kyc.status,
+  });
+
+  // Audit Log
+  await KYCLog.create({
+    user: userId,
+    userRole: "client",
+    performedBy: { userId: userId, role: "user" },
+    action: kyc.status === "pending" ? "re_submitted" : "details_updated",
+    metadata: { ip: req.ip, userAgent: req.headers["user-agent"], newStatus: kyc.status }
   });
 
   res.json({
@@ -273,7 +357,7 @@ export const getPendingKYC = asyncHandler(async (req, res) => {
       .sort({ submittedAt: 1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit))
-      .lean(),
+      .limit(parseInt(limit)),
     ClientKYC.countDocuments(query),
   ]);
 
@@ -305,9 +389,16 @@ export const getKYCDetails = asyncHandler(async (req, res) => {
     throw new ApiError(404, "KYC not found");
   }
 
+  // Fetch Audit Logs
+  const logs = await KYCLog.find({ user: kyc.user, userRole: "client" })
+    .sort({ createdAt: -1 })
+    .populate("performedBy.adminId", "name email")
+    .lean();
+
   res.json({
     success: true,
     kyc,
+    logs,
   });
 });
 
@@ -363,6 +454,19 @@ export const verifyKYC = asyncHandler(async (req, res) => {
 
     logger.info(`Client KYC rejected: ${kyc.user} by admin ${adminId}`);
   }
+
+  // Audit Log
+  await KYCLog.create({
+    user: kyc.user,
+    userRole: "client",
+    performedBy: { adminId: adminId, role: "admin" },
+    action: action === "approve" ? "verified" : "rejected",
+    reason: rejectionReason,
+    metadata: { 
+      previousStatus: kyc.status, 
+      newStatus: action === "approve" ? "verified" : "rejected" 
+    }
+  });
 
   await kyc.save();
 

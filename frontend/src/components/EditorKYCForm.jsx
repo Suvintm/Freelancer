@@ -13,6 +13,8 @@ import {
   FaLock,
   FaTimes,
   FaUser,
+  FaCloudUploadAlt,
+  FaFileAlt
 } from 'react-icons/fa';
 import axios from 'axios';
 import { useAppContext } from '../context/AppContext';
@@ -47,7 +49,25 @@ const EditorKYCForm = ({ onSuccess, onClose }) => {
     confirmAccountNumber: '',
     ifscCode: '',
     panNumber: '',
+    street: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    gstin: '',
   });
+
+  const [files, setFiles] = useState({
+    id_proof: null,
+    bank_proof: null
+  });
+
+  const handleFileChange = (e, type) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) return setErrors(prev => ({...prev, submit: "Max file size is 5MB"}));
+      setFiles(prev => ({ ...prev, [type]: file }));
+    }
+  };
 
   // Fetch existing KYC status
   useEffect(() => {
@@ -115,6 +135,16 @@ const EditorKYCForm = ({ onSuccess, onClose }) => {
       newErrors.panNumber = 'Invalid PAN format';
     }
 
+    if (!formData.street.trim()) newErrors.street = 'Street address is required';
+    if (!formData.city.trim()) newErrors.city = 'City is required';
+    if (!formData.state.trim()) newErrors.state = 'State is required';
+    if (!formData.postalCode.trim()) newErrors.postalCode = 'Postal code is required';
+
+    if (!files.id_proof) newErrors.id_proof = 'Identity proof is required';
+    // Bank proof optional but recommended? Let's make it optional for now or mirror client logic.
+    // Making it required ensures robustness.
+    if (!files.bank_proof) newErrors.bank_proof = 'Bank proof is required';
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -151,16 +181,33 @@ const EditorKYCForm = ({ onSuccess, onClose }) => {
     setLoading(true);
     try {
       const token = user?.token || localStorage.getItem('token');
+      
+      const data = new FormData();
+      data.append('accountHolderName', formData.accountHolderName);
+      data.append('accountNumber', formData.accountNumber);
+      data.append('ifscCode', formData.ifscCode);
+      data.append('panNumber', formData.panNumber);
+      data.append('bankName', bankInfo?.bankName || '');
+      
+      // Address & Tax
+      data.append('street', formData.street);
+      data.append('city', formData.city);
+      data.append('state', formData.state);
+      data.append('postalCode', formData.postalCode);
+      if (formData.gstin) data.append('gstin', formData.gstin);
+      
+      if (files.id_proof) data.append('id_proof', files.id_proof);
+      if (files.bank_proof) data.append('bank_proof', files.bank_proof);
+
       const res = await axios.post(
         `${backendURL}/api/profile/submit-kyc`,
-        {
-          accountHolderName: formData.accountHolderName,
-          accountNumber: formData.accountNumber,
-          ifscCode: formData.ifscCode,
-          panNumber: formData.panNumber,
-          bankName: bankInfo?.bankName || '',
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+        data,
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          } 
+        }
       );
 
       if (res.data.success) {
@@ -346,6 +393,122 @@ const EditorKYCForm = ({ onSuccess, onClose }) => {
             {errors.panNumber && (
               <span className="kyc-error-text">{errors.panNumber}</span>
             )}
+          </div>
+
+          {/* Address Information */}
+          <div className="kyc-section-divider" style={{margin:'1.5rem 0', borderTop:'1px solid #e2e8f0'}}></div>
+          <h3 style={{fontSize:'1rem', fontWeight:'600', marginBottom:'1rem', color:'#475569'}}>Address & Tax Details</h3>
+
+          <div className="kyc-field">
+            <label>Street Address</label>
+            <input
+              type="text"
+              name="street"
+              value={formData.street}
+              onChange={handleChange}
+              placeholder="House/Building No, Street Area"
+              className={errors.street ? 'kyc-error' : ''}
+            />
+            {errors.street && <span className="kyc-error-text">{errors.street}</span>}
+          </div>
+
+          <div style={{display:'flex', gap:'1rem'}}>
+             <div className="kyc-field" style={{flex:1}}>
+               <label>City</label>
+               <input type="text" name="city" value={formData.city} onChange={handleChange} className={errors.city ? 'kyc-error' : ''} />
+               {errors.city && <span className="kyc-error-text">{errors.city}</span>}
+             </div>
+             <div className="kyc-field" style={{flex:1}}>
+               <label>State</label>
+               <input type="text" name="state" value={formData.state} onChange={handleChange} className={errors.state ? 'kyc-error' : ''} />
+               {errors.state && <span className="kyc-error-text">{errors.state}</span>}
+             </div>
+          </div>
+          
+          <div style={{display:'flex', gap:'1rem'}}>
+             <div className="kyc-field" style={{flex:1}}>
+               <label>Postal Code</label>
+               <input type="text" name="postalCode" value={formData.postalCode} onChange={handleChange} maxLength={6} className={errors.postalCode ? 'kyc-error' : ''} />
+               {errors.postalCode && <span className="kyc-error-text">{errors.postalCode}</span>}
+             </div>
+             <div className="kyc-field" style={{flex:1}}>
+               <label>GSTIN (Optional)</label>
+               <input type="text" name="gstin" value={formData.gstin} onChange={handleChange} placeholder="GST Number" />
+             </div>
+          </div>
+
+          <div className="kyc-section-divider" style={{margin:'1.5rem 0', borderTop:'1px solid #e2e8f0'}}></div>
+
+          {/* Document Uploads */}
+          <div className="kyc-field">
+            <label><FaCloudUploadAlt /> Document Proofs</label>
+            <div className="kyc-file-group" style={{display:'flex', gap:'1rem', marginTop:'0.5rem'}}>
+              
+              {/* ID Proof */}
+              <div className="kyc-file-input" style={{flex:1}}>
+                <input 
+                  type="file" 
+                  id="id_proof_editor" 
+                  hidden 
+                  accept="image/*,.pdf"
+                  onChange={(e) => handleFileChange(e, 'id_proof')}
+                />
+                <label 
+                  htmlFor="id_proof_editor" 
+                  style={{
+                    display:'flex', flexDirection:'column', alignItems:'center', 
+                    padding:'1rem', border: errors.id_proof ? '2px dashed #ef4444' : '2px dashed #cbd5e1', 
+                    borderRadius:'0.5rem', cursor:'pointer'
+                  }}
+                >
+                  {files.id_proof ? (
+                    <>
+                      <FaFileAlt style={{color:'#10b981', fontSize:'1.5rem'}} />
+                      <span style={{fontSize:'0.8rem', marginTop:'0.5rem'}}>{files.id_proof.name}</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaIdCard style={{fontSize:'1.5rem', color:'#94a3b8'}} />
+                      <span style={{fontSize:'0.8rem', marginTop:'0.5rem'}}>Upload ID (PAN/Aadhar)</span>
+                    </>
+                  )}
+                </label>
+                {errors.id_proof && <span className="kyc-error-text" style={{fontSize:'0.75rem'}}>{errors.id_proof}</span>}
+              </div>
+
+              {/* Bank Proof */}
+              <div className="kyc-file-input" style={{flex:1}}>
+                <input 
+                  type="file" 
+                  id="bank_proof_editor" 
+                  hidden 
+                  accept="image/*,.pdf"
+                  onChange={(e) => handleFileChange(e, 'bank_proof')}
+                />
+                <label 
+                  htmlFor="bank_proof_editor" 
+                  style={{
+                    display:'flex', flexDirection:'column', alignItems:'center', 
+                    padding:'1rem', border: errors.bank_proof ? '2px dashed #ef4444' : '2px dashed #cbd5e1', 
+                    borderRadius:'0.5rem', cursor:'pointer'
+                  }}
+                >
+                  {files.bank_proof ? (
+                    <>
+                      <FaFileAlt style={{color:'#3b82f6', fontSize:'1.5rem'}} />
+                      <span style={{fontSize:'0.8rem', marginTop:'0.5rem'}}>{files.bank_proof.name}</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaUniversity style={{fontSize:'1.5rem', color:'#94a3b8'}} />
+                      <span style={{fontSize:'0.8rem', marginTop:'0.5rem'}}>Upload Bank Proof</span>
+                    </>
+                  )}
+                </label>
+                {errors.bank_proof && <span className="kyc-error-text" style={{fontSize:'0.75rem'}}>{errors.bank_proof}</span>}
+              </div>
+
+            </div>
           </div>
 
           {/* Submit Error */}

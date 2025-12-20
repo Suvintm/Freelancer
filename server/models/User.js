@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { encrypt, decrypt } from "../utils/encryption.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -135,6 +136,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    kycDocuments: [{
+      type: { type: String, enum: ["id_proof", "bank_proof", "other"], required: true },
+      url: { type: String, required: true },
+      verified: { type: Boolean, default: false },
+      uploadedAt: { type: Date, default: Date.now }
+    }],
     
     // Razorpay Fields (for India)
     razorpayContactId: {
@@ -191,6 +198,8 @@ const userSchema = new mongoose.Schema(
         type: String,
         default: null,
         select: false, // Don't include in queries by default
+        set: encrypt,
+        get: decrypt,
       },
       ifscCode: {
         type: String,
@@ -204,6 +213,17 @@ const userSchema = new mongoose.Schema(
         type: String,
         default: null,
         select: false, // Sensitive - don't include by default
+      },
+      gstin: {
+        type: String,
+        default: null,
+      },
+      address: {
+        street: { type: String, default: null },
+        city: { type: String, default: null },
+        state: { type: String, default: null },
+        postalCode: { type: String, default: null },
+        country: { type: String, default: "IN" },
       },
     },
     
@@ -293,6 +313,8 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { getters: true },
+    toObject: { getters: true },
   }
 );
 

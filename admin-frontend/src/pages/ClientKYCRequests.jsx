@@ -1,5 +1,6 @@
 // ClientKYCRequests.jsx - Admin Client KYC verification page
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaShieldAlt,
@@ -15,12 +16,15 @@ import {
   FaTimesCircle,
   FaChevronLeft,
   FaChevronRight,
+  FaIdCard,
+  FaFileAlt,
 } from "react-icons/fa";
 import { useAdmin } from "../context/AdminContext";
 import { toast } from "react-toastify";
 
 const ClientKYCRequests = () => {
   const { adminAxios } = useAdmin();
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ pending: 0, verified: 0, rejected: 0, not_started: 0 });
@@ -69,20 +73,8 @@ const ClientKYCRequests = () => {
   }, [fetchStats, fetchKYC]);
 
   // View user details
-  const viewDetails = async (id) => {
-    setDetailsLoading(true);
-    try {
-      // Use the KYC ID or User ID depending on API. Based on route: /admin/:kycId
-      // The list endpoint likely returns KYC objects.
-      const res = await adminAxios.get(`/client-kyc/admin/${id}`);
-      if (res.data.success) {
-        setSelectedUser(res.data.kyc);
-      }
-    } catch (error) {
-      toast.error("Failed to load details");
-    } finally {
-      setDetailsLoading(false);
-    }
+  const viewDetails = (id) => {
+    navigate(`/kyc/detail/client/${id}`);
   };
 
   // Approve KYC
@@ -431,6 +423,42 @@ const ClientKYCRequests = () => {
                   )}
                 </div>
 
+
+                {/* Documents */}
+                 {selectedUser.documents && selectedUser.documents.length > 0 && (
+                      <div className="bg-zinc-800 rounded-lg p-3 mt-4">
+                        <h4 className="text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wide flex items-center gap-2">
+                          <FaIdCard /> Documents
+                        </h4>
+                        <div className="flex gap-3 overflow-x-auto pb-2">
+                          {selectedUser.documents.map((doc, idx) => (
+                            <a 
+                              key={idx} 
+                              href={doc.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="block min-w-[100px] w-24 h-24 bg-zinc-700 rounded-lg overflow-hidden relative group border border-zinc-600"
+                            >
+                               {doc.url.endsWith('.pdf') ? (
+                                  <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 bg-zinc-800">
+                                    <FaFileAlt className="text-2xl mb-1" />
+                                    <span className="text-[10px]">PDF</span>
+                                  </div>
+                               ) : (
+                                  <img src={doc.url} alt={doc.type} className="w-full h-full object-cover" />
+                               )}
+                               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                                  <FaEye className="text-white" />
+                               </div>
+                               <span className="absolute bottom-0 left-0 right-0 bg-black/80 text-[9px] text-white text-center py-1 truncate uppercase font-medium">
+                                 {doc.type.replace('_', ' ')}
+                               </span>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                 {selectedUser.rejectionReason && (
                   <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
                     <p className="text-red-400 text-sm">
@@ -438,6 +466,31 @@ const ClientKYCRequests = () => {
                     </p>
                   </div>
                 )}
+                  {selectedUser.logs && selectedUser.logs.length > 0 && (
+                  <div className="mt-4 border-t border-zinc-800 pt-4">
+                    <h4 className="text-sm font-semibold text-zinc-300 mb-2 flex items-center gap-2">
+                       Audit History
+                    </h4>
+                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                      {selectedUser.logs.map((log, i) => (
+                        <div key={i} className="text-xs bg-zinc-800/50 p-2 rounded border border-zinc-800">
+                           <div className="flex justify-between mb-1">
+                             <span className={`font-medium ${
+                               log.action === 'verified' ? 'text-emerald-400' : 
+                               log.action === 'rejected' ? 'text-red-400' : 'text-blue-400'
+                             }`}>{log.action.toUpperCase().replace('_', ' ')}</span>
+                             <span className="text-zinc-500">{new Date(log.createdAt).toLocaleString()}</span>
+                           </div>
+                           {log.reason && <p className="text-zinc-400">Reason: {log.reason}</p>}
+                           <p className="text-zinc-500 text-[10px]">
+                             By: {log.performedBy?.adminId?.name || (log.performedBy?.userId ? "User" : "System")}
+                           </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  )}
+
               </div>
 
               {selectedUser.status === "pending" && (
