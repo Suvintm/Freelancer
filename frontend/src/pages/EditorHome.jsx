@@ -42,6 +42,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import reelIcon from "../assets/reelicon.png";
 
+import LegalBanner from "../components/LegalBanner.jsx";
+
 const EditorHome = () => {
   const { user, backendURL, refreshUser } = useAppContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -172,6 +174,9 @@ const EditorHome = () => {
 
       <main className="flex-1 px-4 md:px-8 py-6 lg:pt-24 md:pt-6 md:ml-64 md:mt-16">
         
+        {/* Legal Banner */}
+        <LegalBanner />
+
         {/* ============ MAIN TABS ============ */}
         <div className="flex justify-center mb-6">
           <div className="inline-flex p-1 bg-[#0a0a0c] light:bg-white rounded-2xl shadow-sm border border-white/10 light:border-slate-200">

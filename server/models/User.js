@@ -181,6 +181,24 @@ const userSchema = new mongoose.Schema(
       },
     },
 
+    // ==================== LEGAL & COMPLIANCE ====================
+    legalAcceptance: {
+      contentPolicyAccepted: {
+        type: Boolean,
+        default: false,
+      },
+      acceptedAt: {
+        type: Date,
+      },
+      agreementVersion: {
+        type: String,
+        default: "v1.0",
+      },
+      ipAddress: {
+        type: String,
+      },
+    },
+
     // ==================== SAVED ITEMS ====================
     savedEditors: [{
       type: mongoose.Schema.Types.ObjectId,

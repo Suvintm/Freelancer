@@ -47,6 +47,8 @@ import ProfileInsightsPage from "./pages/ProfileInsightsPage.jsx";
 import SuvixScorePage from "./pages/SuvixScorePage.jsx";
 import ClientKYCPage from "./pages/ClientKYCPage.jsx";
 
+import { TermsAndConditions, PrivacyPolicy, ContentProtectionPolicy, EditorCodeOfConduct } from "./pages/LegalPages";
+
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
 import "react-toastify/dist/ReactToastify.css";
@@ -57,6 +59,12 @@ function App() {
     <>
       <ToastContainer />
       <Routes>
+        {/* Legal Routes */}
+        <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/content-protection-policy" element={<ContentProtectionPolicy />} />
+        <Route path="/editor-code-of-conduct" element={<EditorCodeOfConduct />} />
+
         {/* Public Route */}
         <Route path="/" element={<Homepage />} />
 

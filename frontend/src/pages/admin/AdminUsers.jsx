@@ -144,6 +144,7 @@ const AdminUsers = () => {
                   <th className="p-4">Name</th>
                   <th className="p-4">Email</th>
                   <th className="p-4">Role</th>
+                  <th className="p-4">Legal</th>
                   <th className="p-4">Joined</th>
                   <th className="p-4">Actions</th>
                 </tr>
@@ -189,6 +190,15 @@ const AdminUsers = () => {
                         }`}>
                           {user.role}
                         </span>
+                      </td>
+                      <td className="p-4">
+                        {user.legalAcceptance?.contentPolicyAccepted ? (
+                          <span className="text-emerald-400 text-xs flex items-center gap-1">
+                            <FaCheck className="text-[10px]" /> Signed
+                          </span>
+                        ) : (
+                          <span className="text-gray-500 text-xs">Pending</span>
+                        )}
                       </td>
                       <td className="p-4 text-gray-400 text-sm">
                         {new Date(user.createdAt).toLocaleDateString()}
@@ -285,6 +295,30 @@ const AdminUsers = () => {
                   <span className="text-gray-400">Auth Provider</span>
                   <span className="capitalize">{selectedUser.authProvider || "local"}</span>
                 </div>
+
+                {selectedUser.legalAcceptance && (
+                    <div className="pt-3 border-t border-[#262A3B] mt-3">
+                        <p className="text-xs font-semibold text-gray-300 mb-2">Legal Compliance</p>
+                        <div className="flex justify-between text-sm mb-1">
+                            <span className="text-gray-400">Content Policy</span>
+                            <span className={selectedUser.legalAcceptance.contentPolicyAccepted ? "text-emerald-400" : "text-yellow-400"}>
+                                {selectedUser.legalAcceptance.contentPolicyAccepted ? "Accepted" : "Pending"}
+                            </span>
+                        </div>
+                        {selectedUser.legalAcceptance.contentPolicyAccepted && (
+                            <>
+                                <div className="flex justify-between text-sm mb-1">
+                                    <span className="text-gray-400">Date</span>
+                                    <span className="text-xs text-mono">{new Date(selectedUser.legalAcceptance.acceptedAt).toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-gray-400">IP Address</span>
+                                    <span className="text-xs text-mono">{selectedUser.legalAcceptance.ipAddress || "N/A"}</span>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                )}
               </div>
 
               <button

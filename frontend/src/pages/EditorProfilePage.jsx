@@ -24,6 +24,7 @@ import {
   FaMoneyBillWave,
   FaCalendarAlt,
   FaRocket,
+  FaLock,
   FaShieldAlt,
   FaExclamationCircle,
   FaArrowRight,
@@ -400,6 +401,20 @@ const EditorProfile = () => {
                         <FaCalendarAlt className="text-[10px]" />
                         <span>Member since 2024</span>
                       </div>
+                      
+                      {/* Legal Badge */}
+                      {userData?.legalAcceptance?.contentPolicyAccepted && (
+                        <div className="group relative flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded cursor-help">
+                          <FaLock className="text-emerald-500 text-[10px]" />
+                          <span className="text-emerald-500 text-xs font-medium">Content Policy Accepted</span>
+                          
+                          {/* Tooltip */}
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-black/95 text-white text-[10px] p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none text-center border border-white/10 z-20 shadow-xl">
+                            This editor has accepted Suvix’s confidentiality and content protection agreement.
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black/95"></div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 

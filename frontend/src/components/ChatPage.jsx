@@ -398,7 +398,7 @@ const EditMessageModal = ({ message, onSave, onClose }) => {
 };
 
 // 📁 Drive Link Card - Clean Corporate Style
-const DriveLinkCard = ({ link }) => {
+const DriveLinkCard = ({ link, onLinkClick }) => {
   // Real SVG icons for each provider
   const GoogleDriveIcon = () => (
     <svg viewBox="0 0 87.3 78" className="w-5 h-5">
@@ -482,7 +482,7 @@ const DriveLinkCard = ({ link }) => {
         {/* Link-style Action Button */}
         <div className="px-3 pb-3">
           <button
-            onClick={() => window.open(link.url, "_blank")}
+            onClick={() => onLinkClick ? onLinkClick(link.url) : window.open(link.url, "_blank")}
             className="w-full py-2 px-3 bg-transparent border border-zinc-200 dark:border-zinc-700 hover:border-blue-400 dark:hover:border-blue-500 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-[12px] font-medium rounded-md flex items-center justify-center gap-2 transition-all group"
           >
             <FaExternalLinkAlt className="text-[9px] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
@@ -596,10 +596,12 @@ const AddDriveLinkModal = ({ onSubmit, onClose }) => {
   );
 };
 
+import ContentAccessModal from "./ContentAccessModal";
+
 const ChatPage = () => {
   const navigate = useNavigate();
   const { orderId } = useParams();
-  const { user, backendURL } = useAppContext();
+  const { user, backendURL, refreshUser } = useAppContext();
   const socketContext = useSocket();
   const popAudio = useRef(new Audio(POP_SOUND));
 
@@ -659,6 +661,74 @@ const ChatPage = () => {
   
   // --- Media Gallery State ---
   const [showMediaGallery, setShowMediaGallery] = useState(false);
+
+  // --- Legal / Content Access State ---
+  const [accessModalOpen, setAccessModalOpen] = useState(false);
+  const [pendingDriveLink, setPendingDriveLink] = useState(null);
+  const [isAcceptingPolicy, setIsAcceptingPolicy] = useState(false);
+
+  // Handle Drive Link Click
+  const handleDriveLinkClick = async (url) => {
+    // If not editor, or already accepted, just open
+    if (user?.role !== "editor") {
+        window.open(url, "_blank");
+        return;
+    }
+
+    if (user?.legalAcceptance?.contentPolicyAccepted) {
+        // Log access silently (optional but good for audit)
+        try {
+            axios.post(`${backendURL}/api/user/legal/log-access`, 
+                { orderId, clientId: order?.client?._id },
+                { headers: { Authorization: `Bearer ${user?.token}` } }
+            );
+        } catch (e) {
+            console.error("Failed to log access", e);
+        }
+        
+        toast.info("Opening confidential files...", { autoClose: 2000 });
+        window.open(url, "_blank");
+        return;
+    }
+
+    // Else show modal
+    setPendingDriveLink(url);
+    setAccessModalOpen(true);
+  };
+
+  const handleAcceptPolicy = async () => {
+    setIsAcceptingPolicy(true);
+    try {
+        const token = user?.token;
+        
+        // 1. Accept Policy
+        await axios.post(`${backendURL}/api/user/legal/accept-policy`, 
+            { agreementVersion: "v1.0" },
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        // 2. Log Access
+        await axios.post(`${backendURL}/api/user/legal/log-access`, 
+            { orderId, clientId: order?.client?._id },
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        // 3. Refresh User Context
+        await refreshUser();
+        
+        // 4. Open Link
+        window.open(pendingDriveLink, "_blank");
+        
+        toast.success("AGREEMENT ACCEPTED. You now have access.");
+        setAccessModalOpen(false);
+        setPendingDriveLink(null);
+    } catch (err) {
+        console.error("Policy acceptance failed", err);
+        toast.error("Failed to process agreement. Please try again.");
+    } finally {
+        setIsAcceptingPolicy(false);
+    }
+  };
 
   // --- Derived State ---
   const otherParty = user?.role === "editor" ? order?.client : order?.editor;
@@ -1615,7 +1685,7 @@ const ChatPage = () => {
 
                         {/* 📁 Drive Link Card */}
                         {msg.type === "drive_link" && msg.externalLink && (
-                          <DriveLinkCard link={msg.externalLink} />
+                          <DriveLinkCard link={msg.externalLink} onLinkClick={handleDriveLinkClick} />
                         )}
 
                         {/* 🎬 Final Delivery Card */}
