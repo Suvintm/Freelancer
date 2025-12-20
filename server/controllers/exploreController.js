@@ -130,7 +130,15 @@ export const getAllEditors = asyncHandler(async (req, res) => {
 
       if (!profileUserIds.has(editor._id.toString())) {
         // Create a minimal profile for display
-
+        filteredEditors.push({
+            user: editor,
+            experience: 'New',
+            ratingStats: { averageRating: 0, totalReviews: 0 },
+            skills: [],
+            hourlyRate: 0,
+            availability: editor.availability
+        });
+      }
     });
   }
 
