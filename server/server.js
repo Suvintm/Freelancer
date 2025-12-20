@@ -22,6 +22,7 @@ import passport from "./config/passport.js";
 // Routes
 import authRoutes from "./routes/authRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 import portfolioRoutes from "./routes/portfolioRoutes.js";
 import exploreRoutes from "./routes/exploreRoutes.js";
 import oauthRoutes from "./routes/oauthRoutes.js";
@@ -157,6 +158,7 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/auth", oauthRoutes); // OAuth routes under /api/auth
 app.use("/api/profile", profileRoutes);
+app.use("/api/user", userRoutes);
 app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/explore", exploreRoutes);
 app.use("/api/reels", reelRoutes);

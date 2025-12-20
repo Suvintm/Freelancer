@@ -17,12 +17,15 @@ import {
   FaSortAmountDown,
   FaHistory,
   FaArrowRight,
+  FaRegHeart,
+  FaHeart,
 } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
 import EmptyState from "./EmptyState.jsx";
 import { motion, AnimatePresence } from "framer-motion";
 import SuvixScoreBadge from "./SuvixScoreBadge.jsx";
+import { toast } from "react-toastify";
 
 /**
  * ExploreEditors - Professional Design
@@ -56,8 +59,54 @@ const ExploreEditors = () => {
   const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, pages: 1 });
   const [filterOptions, setFilterOptions] = useState({ skills: [], languages: [], countries: [], experience: [] });
   const [filters, setFilters] = useState({ skills: [], languages: [], experience: "", country: "", sortBy: "relevance" });
+  
+  // Favorites Logic
+  const [savedEditors, setSavedEditors] = useState([]); // Array of editor IDs
 
   const navigate = useNavigate();
+
+  // Fetch saved editors on mount
+  useEffect(() => {
+    const fetchSavedEditors = async () => {
+       if (!user?.token) return;
+       try {
+         const res = await axios.get(`${backendURL}/api/user/saved-editors`, {
+            headers: { Authorization: `Bearer ${user.token}` }
+         });
+         if (res.data.success) {
+            // Map to IDs for easy checking
+            const ids = res.data.savedEditors.map(editor => editor._id);
+            setSavedEditors(ids);
+         }
+       } catch (err) {
+         console.error("Failed to fetch saved editors", err);
+       }
+    };
+    fetchSavedEditors();
+  }, [user, backendURL]);
+
+  const toggleFavorite = async (e, editorId) => {
+    e.stopPropagation(); // Prevent card click
+    if (!user?.token) {
+        toast.info("Please login to save editors");
+        return;
+    }
+    
+    // Optimistic update
+    const isSaved = savedEditors.includes(editorId);
+    setSavedEditors(prev => isSaved ? prev.filter(id => id !== editorId) : [...prev, editorId]);
+    
+    try {
+        const res = await axios.post(`${backendURL}/api/user/saved-editors/${editorId}`, {}, {
+            headers: { Authorization: `Bearer ${user.token}` }
+        });
+        toast.success(res.data.message);
+    } catch (err) {
+        toast.error("Failed to update favorites");
+        // Revert on error
+        setSavedEditors(prev => isSaved ? [...prev, editorId] : prev.filter(id => id !== editorId));
+    }
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem("recentEditorSearches");
@@ -305,7 +354,14 @@ const ExploreEditors = () => {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {editors.map((editor) => (
-              <EditorCard key={editor._id} editor={editor} navigate={navigate} searchQuery={searchQuery} />
+              <EditorCard 
+                key={editor._id} 
+                editor={editor} 
+                navigate={navigate} 
+                searchQuery={searchQuery}
+                isSaved={savedEditors.includes(editor.user?._id)}
+                onToggleFavorite={(e) => toggleFavorite(e, editor.user?._id)}
+              />
             ))}
           </div>
 
@@ -350,7 +406,7 @@ const ExploreEditors = () => {
 };
 
 /* EditorCard - Clean Professional Design with theme support */
-const EditorCard = ({ editor, navigate, searchQuery }) => {
+const EditorCard = ({ editor, navigate, searchQuery, isSaved, onToggleFavorite }) => {
   // Use real ratings from profile ratingStats, fallback to N/A
   const hasRatings = editor.ratingStats && editor.ratingStats.totalReviews > 0;
   const rating = hasRatings ? editor.ratingStats.averageRating?.toFixed(1) : null;
@@ -380,6 +436,17 @@ const EditorCard = ({ editor, navigate, searchQuery }) => {
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4 }}
     >
+      {/* Heart Button */}
+      <button 
+        onClick={onToggleFavorite}
+        className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full light:bg-black/20 bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center transition-all hover:bg-white/20 active:scale-95"
+      >
+        {isSaved ? (
+            <FaHeart className="text-pink-500 text-sm" />
+        ) : (
+            <FaRegHeart className="text-white/70 text-sm hover:text-white" />
+        )}
+      </button>
       {/* Header with Avatar */}
       <div className="relative p-5 pb-4">
         <div className="flex items-start gap-4">

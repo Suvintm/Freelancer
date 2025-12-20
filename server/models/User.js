@@ -164,6 +164,12 @@ const userSchema = new mongoose.Schema(
       default: "none",
     },
 
+    // ==================== SAVED ITEMS ====================
+    savedEditors: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    }],
+
     // ==================== CLIENT KYC & WALLET ====================
     
     // Client KYC Status (separate from editor KYC)

@@ -24,7 +24,7 @@ import ClientOrders from "./pages/ClientOrders.jsx";
 import ClientMessages from "./pages/ClientMessages.jsx";
 import ClientProfile from "./pages/ClientProfile.jsx";
 import SavedEditors from "./pages/SavedEditors.jsx";
-import ExploreEditors from "./components/ExploreEditor.jsx";
+import ExploreEditorsPage from "./pages/ExploreEditorsPage.jsx";
 
 // OAuth Pages
 import OAuthSuccess from "./pages/OAuthSuccess.jsx";
@@ -130,7 +130,7 @@ function App() {
           path="/explore-editors"
           element={
             <ProtectedRoute allowedRoles={["client"]}>
-              <ExploreEditors />
+              <ExploreEditorsPage />
             </ProtectedRoute>
           }
         />

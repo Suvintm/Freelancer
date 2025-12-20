@@ -3,21 +3,25 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { toast } from 'react-hot-toast';
+
 import { 
   FaUser, FaPhone, FaUniversity, FaShieldAlt, FaCheckCircle, 
   FaArrowRight, FaArrowLeft, FaSpinner, FaExclamationTriangle,
   FaLock, FaCreditCard, FaIdCard, FaInfoCircle, FaCloudUploadAlt, FaFileAlt
 } from 'react-icons/fa';
 import { HiSparkles, HiBadgeCheck } from 'react-icons/hi';
+import { toast } from "react-toastify";
+import KYCRequiredModal from "../components/KYCRequiredModal";
+import ClientSidebar from "../components/ClientSidebar.jsx";
+import ClientNavbar from "../components/ClientNavbar.jsx";
 import { useAppContext } from '../context/AppContext';
-import ClientNavbar from '../components/ClientNavbar';
 import './ClientKYCPage.css';
 
 const ClientKYCPage = () => {
   const { backendURL, user, setUser } = useAppContext();
   const navigate = useNavigate();
   
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -184,13 +188,13 @@ const ClientKYCPage = () => {
         if (setUser) {
           setUser(prev => ({ ...prev, clientKycStatus: 'pending' }));
         }
-        // Immediately show the processing workflow (pending view)
-        setExistingKYC({
+        // Update new status and kycData states
+        setStatus('pending');
+        setKycData({
            status: 'pending',
            submittedAt: new Date(),
            ...formData
         });
-        // fetchExistingKYC(); // Background refresh
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to submit KYC');
@@ -199,178 +203,520 @@ const ClientKYCPage = () => {
     }
   };
 
-  if (checking) {
-    return (
-      <div className="kyc-page">
-        <ClientNavbar />
-        <div className="kyc-page__loading">
-          <FaSpinner className="kyc-page__spinner" />
-          <span>Checking verification status...</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Already verified
-  if (existingKYC?.status === 'verified') {
-    return (
-      <div className="kyc-page">
-        <ClientNavbar />
-        <main className="kyc-page__main">
+  const renderStep = () => {
+    switch (step) {
+      case 1:
+        return (
           <motion.div 
-            className="kyc-page__verified"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
+            key="step1"
+            className="kyc-page__form-step"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
           >
-            <div className="kyc-page__verified-icon">
-              <HiBadgeCheck />
-            </div>
-            <h1>KYC Verified</h1>
-            <p>Your identity has been verified. You can now place orders and receive refunds securely.</p>
+            <h2><FaUser /> Personal Information</h2>
             
-            <div className="kyc-page__verified-details">
-              <div className="kyc-page__verified-item">
-                <FaUser />
-                <span>{existingKYC.fullName}</span>
+            <div className="kyc-page__field">
+              <label>Full Legal Name</label>
+              <input
+                type="text"
+                name="fullName"
+                value={formData.fullName}
+                onChange={handleChange}
+                placeholder="As per bank account"
+                className={errors.fullName ? 'kyc-page__input--error' : ''}
+              />
+              {errors.fullName && <span className="kyc-page__error">{errors.fullName}</span>}
+            </div>
+
+            <div className="kyc-page__field">
+              <label>Phone Number</label>
+              <div className="kyc-page__phone-input">
+                <span className="kyc-page__phone-prefix">+91</span>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  placeholder="10-digit mobile number"
+                  maxLength={10}
+                  className={errors.phone ? 'kyc-page__input--error' : ''}
+                />
               </div>
-              <div className="kyc-page__verified-item">
-                <FaPhone />
-                <span>{existingKYC.phone}</span>
+              {errors.phone && <span className="kyc-page__error">{errors.phone}</span>}
+            </div>
+
+            <div className="kyc-page__field">
+              <label>PAN Number (Optional)</label>
+              <input
+                type="text"
+                name="panNumber"
+                value={formData.panNumber}
+                onChange={handleChange}
+                placeholder="ABCDE1234F"
+                maxLength={10}
+                style={{ textTransform: 'uppercase' }}
+              />
+              <span className="kyc-page__hint">
+                <FaInfoCircle /> Required for transactions above ₹50,000
+              </span>
+            </div>
+
+            {/* Address Section */}
+            <div className="kyc-page__section-divider" style={{margin:'2rem 0', borderTop:'1px solid #e2e8f0'}}></div>
+            <h3 style={{fontSize:'1.1rem', marginBottom:'1.5rem', color:'#334155'}}>Address & Tax Details</h3>
+
+            <div className="kyc-page__field">
+              <label>Street Address</label>
+              <input
+                type="text"
+                name="street"
+                value={formData.street}
+                onChange={handleChange}
+                placeholder="e.g. 123, Main Street, Area"
+                className={errors.street ? 'kyc-page__input--error' : ''}
+              />
+              {errors.street && <span className="kyc-page__error">{errors.street}</span>}
+            </div>
+
+            <div className="kyc-page__field-row" style={{display:'flex', gap:'1rem'}}>
+              <div className="kyc-page__field" style={{flex:1}}>
+                <label>City</label>
+                <input type="text" name="city" value={formData.city} onChange={handleChange} className={errors.city ? 'kyc-page__input--error' : ''} />
+                {errors.city && <span className="kyc-page__error">{errors.city}</span>}
               </div>
-              {existingKYC.displayAccountInfo?.bankAccount && (
-                <div className="kyc-page__verified-item">
+              <div className="kyc-page__field" style={{flex:1}}>
+                <label>State</label>
+                <input type="text" name="state" value={formData.state} onChange={handleChange} className={errors.state ? 'kyc-page__input--error' : ''} />
+                {errors.state && <span className="kyc-page__error">{errors.state}</span>}
+              </div>
+            </div>
+
+            <div className="kyc-page__field-row" style={{display:'flex', gap:'1rem'}}>
+              <div className="kyc-page__field" style={{flex:1}}>
+                <label>PIN Code</label>
+                <input type="text" name="postalCode" value={formData.postalCode} onChange={handleChange} maxLength={6} className={errors.postalCode ? 'kyc-page__input--error' : ''} />
+                {errors.postalCode && <span className="kyc-page__error">{errors.postalCode}</span>}
+              </div>
+              <div className="kyc-page__field" style={{flex:1}}>
+                <label>GSTIN (Optional)</label>
+                <input type="text" name="gstin" value={formData.gstin} onChange={handleChange} placeholder="GST Number" style={{ textTransform: 'uppercase' }} />
+              </div>
+            </div>
+
+            <div className="kyc-page__actions">
+              <button className="kyc-page__btn kyc-page__btn--primary" onClick={nextStep}>
+                Continue <FaArrowRight />
+              </button>
+            </div>
+          </motion.div>
+        );
+      case 2:
+        return (
+          <motion.div 
+            key="step2"
+            className="kyc-page__form-step"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+          >
+            <h2><FaUniversity /> Refund Account Details</h2>
+            
+            <div className="kyc-page__field">
+              <label>Preferred Refund Method</label>
+              <div className="kyc-page__radio-group">
+                <label className={`kyc-page__radio ${formData.preferredRefundMethod === 'original_payment' ? 'kyc-page__radio--selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="preferredRefundMethod"
+                    value="original_payment"
+                    checked={formData.preferredRefundMethod === 'original_payment'}
+                    onChange={handleChange}
+                  />
+                  <FaCreditCard />
+                  <span>Original Payment Method</span>
+                </label>
+                <label className={`kyc-page__radio ${formData.preferredRefundMethod === 'bank_transfer' ? 'kyc-page__radio--selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="preferredRefundMethod"
+                    value="bank_transfer"
+                    checked={formData.preferredRefundMethod === 'bank_transfer'}
+                    onChange={handleChange}
+                  />
                   <FaUniversity />
-                  <span>Account ending {existingKYC.displayAccountInfo.bankAccount.slice(-4)}</span>
+                  <span>Bank Account</span>
+                </label>
+                <label className={`kyc-page__radio ${formData.preferredRefundMethod === 'upi' ? 'kyc-page__radio--selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="preferredRefundMethod"
+                    value="upi"
+                    checked={formData.preferredRefundMethod === 'upi'}
+                    onChange={handleChange}
+                  />
+                  <FaIdCard />
+                  <span>UPI</span>
+                </label>
+              </div>
+            </div>
+
+            {formData.preferredRefundMethod === 'bank_transfer' && (
+              <>
+                <div className="kyc-page__field">
+                  <label>Account Holder Name</label>
+                  <input
+                    type="text"
+                    name="accountHolderName"
+                    value={formData.accountHolderName}
+                    onChange={handleChange}
+                    placeholder="Name as per bank"
+                    className={errors.accountHolderName ? 'kyc-page__input--error' : ''}
+                  />
+                  {errors.accountHolderName && <span className="kyc-page__error">{errors.accountHolderName}</span>}
                 </div>
+                <div className="kyc-page__field">
+                  <label>Bank Account Number</label>
+                  <input
+                    type="text"
+                    name="bankAccountNumber"
+                    value={formData.bankAccountNumber}
+                    onChange={handleChange}
+                    placeholder="Account Number"
+                    className={errors.bankAccountNumber ? 'kyc-page__input--error' : ''}
+                  />
+                  {errors.bankAccountNumber && <span className="kyc-page__error">{errors.bankAccountNumber}</span>}
+                </div>
+                <div className="kyc-page__field">
+                  <label>Confirm Account Number</label>
+                  <input
+                    type="text"
+                    name="confirmAccountNumber"
+                    value={formData.confirmAccountNumber}
+                    onChange={handleChange}
+                    placeholder="Confirm Account Number"
+                    className={errors.confirmAccountNumber ? 'kyc-page__input--error' : ''}
+                  />
+                  {errors.confirmAccountNumber && <span className="kyc-page__error">{errors.confirmAccountNumber}</span>}
+                </div>
+                <div className="kyc-page__field">
+                  <label>IFSC Code</label>
+                  <input
+                    type="text"
+                    name="ifscCode"
+                    value={formData.ifscCode}
+                    onChange={handleChange}
+                    placeholder="e.g., SBIN0001234"
+                    maxLength={11}
+                    style={{ textTransform: 'uppercase' }}
+                    className={errors.ifscCode ? 'kyc-page__input--error' : ''}
+                  />
+                  {errors.ifscCode && <span className="kyc-page__error">{errors.ifscCode}</span>}
+                </div>
+                <div className="kyc-page__field">
+                  <label>Bank Name (Optional)</label>
+                  <input
+                    type="text"
+                    name="bankName"
+                    value={formData.bankName}
+                    onChange={handleChange}
+                    placeholder="e.g., State Bank of India"
+                  />
+                </div>
+                <div className="kyc-page__field">
+                  <label>Account Type</label>
+                  <select
+                    name="accountType"
+                    value={formData.accountType}
+                    onChange={handleChange}
+                  >
+                    <option value="savings">Savings</option>
+                    <option value="current">Current</option>
+                  </select>
+                </div>
+              </>
+            )}
+
+            {formData.preferredRefundMethod === 'upi' && (
+              <div className="kyc-page__field">
+                <label>UPI ID</label>
+                <input
+                  type="text"
+                  name="upiId"
+                  value={formData.upiId}
+                  onChange={handleChange}
+                  placeholder="yourname@bankupi"
+                  className={errors.upiId ? 'kyc-page__input--error' : ''}
+                />
+                {errors.upiId && <span className="kyc-page__error">{errors.upiId}</span>}
+              </div>
+            )}
+
+            <div className="kyc-page__actions">
+              <button className="kyc-page__btn kyc-page__btn--secondary" onClick={prevStep}>
+                <FaArrowLeft /> Back
+              </button>
+              <button className="kyc-page__btn kyc-page__btn--primary" onClick={nextStep}>
+                Continue <FaArrowRight />
+              </button>
+            </div>
+          </motion.div>
+        );
+      case 3:
+        return (
+          <motion.div 
+            key="step3"
+            className="kyc-page__form-step"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+          >
+            <h2><FaCloudUploadAlt /> Upload Documents</h2>
+            <p className="kyc-page__hint">
+              <FaInfoCircle /> Accepted formats: JPG, PNG, PDF (Max 5MB per file)
+            </p>
+
+            <div className="kyc-page__field">
+              <label>Identity Proof (e.g., Aadhaar, Passport, Driving License)</label>
+              <div className={`kyc-page__file-upload ${errors.id_proof ? 'kyc-page__file-upload--error' : ''}`}>
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  onChange={(e) => handleFileChange(e, 'id_proof')}
+                />
+                {files.id_proof ? (
+                  <span><FaFileAlt /> {files.id_proof.name}</span>
+                ) : (
+                  <span><FaCloudUploadAlt /> Choose File</span>
+                )}
+              </div>
+              {errors.id_proof && <span className="kyc-page__error">{errors.id_proof}</span>}
+            </div>
+
+            {formData.preferredRefundMethod === 'bank_transfer' && (
+              <div className="kyc-page__field">
+                <label>Bank Proof (e.g., Bank Statement, Cancelled Cheque)</label>
+                <div className={`kyc-page__file-upload ${errors.bank_proof ? 'kyc-page__file-upload--error' : ''}`}>
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.pdf"
+                    onChange={(e) => handleFileChange(e, 'bank_proof')}
+                  />
+                  {files.bank_proof ? (
+                    <span><FaFileAlt /> {files.bank_proof.name}</span>
+                  ) : (
+                    <span><FaCloudUploadAlt /> Choose File</span>
+                  )}
+                </div>
+                {errors.bank_proof && <span className="kyc-page__error">{errors.bank_proof}</span>}
+              </div>
+            )}
+
+            <div className="kyc-page__actions">
+              <button className="kyc-page__btn kyc-page__btn--secondary" onClick={prevStep}>
+                <FaArrowLeft /> Back
+              </button>
+              <button className="kyc-page__btn kyc-page__btn--primary" onClick={nextStep}>
+                Continue <FaArrowRight />
+              </button>
+            </div>
+          </motion.div>
+        );
+      case 4:
+        return (
+          <motion.div 
+            key="step4"
+            className="kyc-page__form-step"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+          >
+            <h2><FaShieldAlt /> Review & Confirm</h2>
+            <p className="kyc-page__hint">Please review your details before submitting.</p>
+
+            <div className="kyc-page__summary">
+              <h3>Personal Details</h3>
+              <p><strong>Full Name:</strong> {formData.fullName}</p>
+              <p><strong>Phone:</strong> {formData.phone}</p>
+              <p><strong>Address:</strong> {formData.street}, {formData.city}, {formData.state} - {formData.postalCode}</p>
+              {formData.panNumber && <p><strong>PAN:</strong> {formData.panNumber}</p>}
+              {formData.gstin && <p><strong>GSTIN:</strong> {formData.gstin}</p>}
+
+              <h3>Refund Details</h3>
+              <p><strong>Method:</strong> {formData.preferredRefundMethod.replace('_', ' ').toUpperCase()}</p>
+              {formData.preferredRefundMethod === 'bank_transfer' && (
+                <>
+                  <p><strong>Account Holder:</strong> {formData.accountHolderName}</p>
+                  <p><strong>Account No:</strong> {formData.bankAccountNumber}</p>
+                  <p><strong>IFSC:</strong> {formData.ifscCode}</p>
+                </>
+              )}
+              {formData.preferredRefundMethod === 'upi' && (
+                <p><strong>UPI ID:</strong> {formData.upiId}</p>
+              )}
+
+              <h3>Documents</h3>
+              <p><strong>Identity Proof:</strong> {files.id_proof ? files.id_proof.name : 'Not uploaded'}</p>
+              {formData.preferredRefundMethod === 'bank_transfer' && (
+                <p><strong>Bank Proof:</strong> {files.bank_proof ? files.bank_proof.name : 'Not uploaded'}</p>
               )}
             </div>
 
-            <button 
-              className="kyc-page__btn kyc-page__btn--primary"
-              onClick={() => navigate('/explore-editors')}
-            >
-              Browse Editors <FaArrowRight />
-            </button>
-          </motion.div>
-        </main>
-      </div>
-    );
-  }
+            <div className="kyc-page__field kyc-page__terms">
+              <label>
+                <input
+                  type="checkbox"
+                  name="termsAccepted"
+                  checked={formData.termsAccepted}
+                  onChange={handleChange}
+                />
+                I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer">Terms & Conditions</a> and confirm all information provided is accurate.
+              </label>
+              {errors.termsAccepted && <span className="kyc-page__error">{errors.termsAccepted}</span>}
+            </div>
 
-  // Pending verification
-  if (existingKYC?.status === 'pending' || existingKYC?.status === 'under_review') {
+            <div className="kyc-page__actions">
+              <button className="kyc-page__btn kyc-page__btn--secondary" onClick={prevStep}>
+                <FaArrowLeft /> Back
+              </button>
+              <button 
+                className="kyc-page__btn kyc-page__btn--primary" 
+                onClick={handleSubmit}
+                disabled={loading}
+              >
+                {loading ? <FaSpinner className="kyc-page__spinner--small" /> : <FaCheckCircle />}
+                {loading ? 'Submitting...' : 'Submit KYC'}
+              </button>
+            </div>
+          </motion.div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="kyc-page">
-        <ClientNavbar />
-        <main className="kyc-page__main">
-          <motion.div 
-            className="kyc-page__pending"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <div className="kyc-page__pending-icon">
-              <FaSpinner className="kyc-page__pending-spinner" />
-            </div>
-            <h1>Verification In Progress</h1>
-            <p>Your KYC documents are being reviewed. This usually takes 24-48 hours.</p>
-            
-            <div className="kyc-page__pending-timeline">
-              <div className="kyc-page__timeline-item kyc-page__timeline-item--done">
-                <FaCheckCircle />
-                <span>KYC Submitted</span>
-              </div>
-              <div className="kyc-page__timeline-item kyc-page__timeline-item--active">
-                <FaSpinner className="kyc-page__mini-spinner" />
-                <span>Under Review</span>
-              </div>
-              <div className="kyc-page__timeline-item">
-                <FaCheckCircle />
-                <span>Verified</span>
-              </div>
-            </div>
-
-            <p className="kyc-page__pending-note">
-              You'll receive a notification once your verification is complete.
-            </p>
-            <button 
-              className="kyc-page__btn kyc-page__btn--secondary" 
-              style={{ marginTop: '1.5rem' }}
-              onClick={fetchExistingKYC}
-            >
-              Refresh Status
-            </button>
-          </motion.div>
-        </main>
-      </div>
-    );
-  }
-
-  // Rejected - allow resubmission
-  if (existingKYC?.status === 'rejected') {
-    return (
-      <div className="kyc-page">
-        <ClientNavbar />
-        <main className="kyc-page__main">
-          <motion.div 
-            className="kyc-page__rejected"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <div className="kyc-page__rejected-icon">
-              <FaExclamationTriangle />
-            </div>
-            <h1>Verification Rejected</h1>
-            <p className="kyc-page__rejected-reason">
-              <strong>Reason:</strong> {existingKYC.rejectionReason || 'Information provided was incorrect'}
-            </p>
-            
-            <p>Please update your information and resubmit for verification.</p>
-
-            <button 
-              className="kyc-page__btn kyc-page__btn--primary"
-              onClick={() => {
-                setExistingKYC(null);
-                setStep(1);
-              }}
-            >
-              Update & Resubmit <FaArrowRight />
-            </button>
-          </motion.div>
-        </main>
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f] text-white">
+        <div className="kyc-page__spinner">
+          <FaSpinner />
+        </div>
       </div>
     );
   }
 
   const steps = [
     { num: 1, label: 'Personal', icon: FaUser },
-    { num: 2, label: 'Bank Details', icon: FaUniversity },
+    { num: 2, label: 'Bank Info', icon: FaUniversity },
     { num: 3, label: 'Documents', icon: FaCloudUploadAlt },
     { num: 4, label: 'Confirm', icon: FaShieldAlt },
   ];
 
   return (
-    <div className="kyc-page">
-      <ClientNavbar />
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] text-white">
+      <ClientSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <ClientNavbar onMenuClick={() => setSidebarOpen(true)} />
       
-      <main className="kyc-page__main">
-        <div className="kyc-page__container">
-          
+      <main className="flex-1 flex flex-col md:ml-64 transition-all duration-300">
+        <div className="kyc-page__container p-4 md:p-8 mt-16 md:mt-0">
           {/* Header */}
-          <motion.div 
-            className="kyc-page__header"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
+          <div className="kyc-page__header">
             <div className="kyc-page__header-icon">
               <FaShieldAlt />
             </div>
-            <h1>KYC Verification</h1>
-            <p>Complete verification to securely place orders and receive refunds</p>
-          </motion.div>
+            <h1>Client Verification</h1>
+            <p>Verify your identity to enable refunds and higher limits.</p>
+          </div>
 
-          {/* Progress Steps */}
-          <div className="kyc-page__steps">
-            {steps.map((s, idx) => {
+          {/* Content based on status */}
+          {status === "verified" ? (
+            <div className="kyc-page__verified">
+              <div className="kyc-page__verified-icon">
+                <FaCheckCircle />
+              </div>
+              <h1>Verification Complete</h1>
+              <p>Your account is fully verified and refund-ready.</p>
+              
+              <div className="kyc-page__verified-details">
+                <div className="kyc-page__verified-item">
+                  <FaUser />
+                  <span>{kycData?.fullName}</span>
+                </div>
+                {kycData?.displayAccountInfo?.bankAccount && (
+                  <div className="kyc-page__verified-item">
+                    <FaUniversity />
+                    <span>{kycData.displayAccountInfo.bankAccount}</span>
+                  </div>
+                )}
+                {kycData?.displayAccountInfo?.upi && (
+                   <div className="kyc-page__verified-item">
+                    <FaCreditCard />
+                     <span>{kycData.displayAccountInfo.upi}</span>
+                   </div>
+                )}
+              </div>
+
+              <p className="text-sm text-gray-500">
+                Verified on {new Date(kycData?.verifiedAt).toLocaleDateString()}
+              </p>
+            </div>
+          ) : status === "pending" || status === "under_review" ? (
+            <div className="kyc-page__pending">
+              <div className="kyc-page__pending-icon">
+                <div className="kyc-page__pending-spinner">
+                  <FaClock />
+                </div>
+              </div>
+              <h1>Verification in Progress</h1>
+              <p>We are reviewing your documents. This usually takes 24-48 hours.</p>
+              
+              <div className="kyc-page__pending-timeline">
+                <div className="kyc-page__timeline-item kyc-page__timeline-item--done">
+                  <FaCheckCircle />
+                  <span>Submitted</span>
+                </div>
+                <div className="kyc-page__timeline-item kyc-page__timeline-item--active">
+                  <FaSpinner className="kyc-page__mini-spinner" />
+                  <span>Reviewing</span>
+                </div>
+                <div className="kyc-page__timeline-item">
+                  <FaCheckCircle />
+                  <span>Verified</span>
+                </div>
+              </div>
+
+              <p className="kyc-page__pending-note">
+                You will be notified via email once the process is complete.
+              </p>
+            </div>
+          ) : status === "rejected" ? (
+            <div className="kyc-page__rejected">
+              <div className="kyc-page__rejected-icon">
+                <FaExclamationTriangle />
+              </div>
+              <h1>Verification Failed</h1>
+              
+              {kycData?.rejectionReason && (
+                <div className="kyc-page__rejected-reason">
+                  <strong>Reason:</strong> {kycData.rejectionReason}
+                </div>
+              )}
+              
+              <p>Please fix the issues and submit again.</p>
+              
+              <button 
+                onClick={() => setStatus("not_started")}
+                className="kyc-page__btn kyc-page__btn--primary"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : (
+            /* Registration Form */
+            <div className="kyc-page__form-wrapper">
+              {/* Progress Steps */}
+              <div className="kyc-page__steps">
+                {steps.map((s, idx) => {
               const StepIcon = s.icon;
               const isActive = step === s.num;
               const isDone = step > s.num;
@@ -867,8 +1213,12 @@ const ClientKYCPage = () => {
                 </motion.div>
               )}
 
+          
             </AnimatePresence>
           </motion.div>
+          </div>
+          )}
+
         </div>
       </main>
     </div>

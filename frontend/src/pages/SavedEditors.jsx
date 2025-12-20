@@ -26,16 +26,54 @@ const SavedEditors = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // For now, show placeholder - saved editors feature to be implemented
-    // In the future, this would fetch from /api/user/saved-editors
-    setLoading(false);
-    // Demo data for UI
-    setSavedEditors([]);
-  }, []);
+    const fetchSavedEditors = async () => {
+      try {
+        const token = user?.token;
+        if (!token) return;
 
-  const handleRemove = (editorId) => {
-    setSavedEditors(prev => prev.filter(e => e._id !== editorId));
-    toast.info("Editor removed from saved list");
+        const res = await axios.get(`${backendURL}/api/user/saved-editors`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.data.success) {
+          setSavedEditors(res.data.savedEditors);
+        }
+      } catch (err) {
+        console.error("Error fetching saved editors:", err);
+        toast.error("Failed to load saved editors");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSavedEditors();
+  }, [user, backendURL]);
+
+  const handleRemove = async (editorId) => {
+    try {
+      const token = user?.token;
+      if (!token) return;
+
+      // Optimistic update
+      const prevEditors = [...savedEditors];
+      setSavedEditors(prev => prev.filter(e => e._id !== editorId));
+
+      const res = await axios.post(`${backendURL}/api/user/saved-editors/${editorId}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.data.success) {
+        toast.info("Editor removed from saved list");
+      } else {
+        // Revert if failed
+        setSavedEditors(prevEditors);
+        toast.error("Failed to remove editor");
+      }
+    } catch (err) {
+      console.error("Error removing editor:", err);
+      toast.error("Failed to remove editor");
+      // Revert if failed (requires storing previous state, simplified here by refetching or just warning)
+    }
   };
 
   if (loading) {
@@ -152,13 +190,13 @@ const SavedEditors = () => {
                   {/* Actions */}
                   <div className="flex gap-2 mt-4">
                     <button
-                      onClick={() => navigate(`/editor/${editor._id}`)}
+                      onClick={() => navigate(`/public-profile/${editor._id}`)}
                       className="flex-1 py-2 bg-[#1a1d25] hover:bg-[#262A3B] rounded-xl text-sm font-medium transition-all"
                     >
                       View Profile
                     </button>
                     <button
-                      onClick={() => navigate(`/editor/${editor._id}`)}
+                      onClick={() => navigate(`/public-profile/${editor._id}`)}
                       className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded-xl text-sm font-medium transition-all"
                     >
                       <FaEnvelope />
