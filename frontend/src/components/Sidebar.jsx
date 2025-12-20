@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import logo from "../assets/logo.png";
 import { useTheme } from "../context/ThemeContext";
 import { useSocket } from "../context/SocketContext";
+import AvailabilitySelector from "./AvailabilitySelector";
 
 const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
@@ -91,8 +92,15 @@ const Sidebar = ({ isOpen, onClose }) => {
           </button>
         </div>
 
+
+
+        {/* Status Selector - Only visible for Editors (handled inside component) */}
+        <div className="px-5 py-2">
+            <AvailabilitySelector />
+        </div>
+
         {/* Navigation Items */}
-        <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">
+        <nav className="flex-1 px-3 py-2 flex flex-col gap-1 overflow-y-auto">
           {navItems.map(({ path, icon: Icon, label, badge }) => {
             const isActive = location.pathname === path;
 

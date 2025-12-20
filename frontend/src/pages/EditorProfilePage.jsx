@@ -41,6 +41,7 @@ import GigsSection from "../components/GigsSection.jsx";
 import EditorRatingsModal from "../components/EditorRatingsModal.jsx";
 import { useSubscription } from "../context/SubscriptionContext";
 import SuvixScoreCard from "../components/SuvixScoreCard.jsx";
+import AvailabilitySelector from "../components/AvailabilitySelector.jsx";
 
 
 // Country Code Mapping
@@ -411,6 +412,10 @@ const EditorProfile = () => {
                     <FaEdit className="text-xs" />
                     Edit Profile
                   </motion.button>
+
+                  <div className="hidden md:block">
+                      <AvailabilitySelector />
+                  </div>
                 </div>
 
                 {/* Stats Row */}
@@ -455,6 +460,10 @@ const EditorProfile = () => {
                   <FaEdit className="text-xs" />
                   Edit Profile
                 </motion.button>
+
+                <div className="md:hidden w-full mt-3 flex justify-center">
+                    <AvailabilitySelector />
+                </div>
               </div>
             </div>
           </motion.div>

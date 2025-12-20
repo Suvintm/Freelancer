@@ -416,6 +416,12 @@ const EditorCard = ({ editor, navigate, searchQuery, isSaved, onToggleFavorite }
   const suvixScore = editor.user?.suvixScore;
   const showSuvixScore = suvixScore?.isEligible && suvixScore?.total > 0;
 
+  // Availability Logic
+  const availability = editor.user?.availability || { status: 'available' };
+  const isBusy = availability.status === 'busy';
+  const isSmallOnly = availability.status === 'small_only';
+
+
   const highlightMatch = (text, query) => {
     if (!query || !text) return text;
     const parts = text.split(new RegExp(`(${query})`, "gi"));
@@ -452,7 +458,9 @@ const EditorCard = ({ editor, navigate, searchQuery, isSaved, onToggleFavorite }
         <div className="flex items-start gap-4">
           <div className="relative flex-shrink-0">
             <img src={editor.user?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"} alt={editor.user?.name} className="w-14 h-14 rounded-full object-cover border-2 border-white/10 light:border-slate-100 group-hover:border-emerald-500/30 light:group-hover:border-emerald-200 transition-colors" />
-            <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-500 rounded-full border-2 border-[#0a0a0c] light:border-white" />
+            <span className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-[#0a0a0c] light:border-white ${
+                isBusy ? 'bg-amber-500' : isSmallOnly ? 'bg-blue-500' : 'bg-emerald-500'
+            }`} />
           </div>
 
           <div className="flex-1 min-w-0">
@@ -461,6 +469,18 @@ const EditorCard = ({ editor, navigate, searchQuery, isSaved, onToggleFavorite }
                 {highlightMatch(editor.user?.name, searchQuery)}
               </h3>
               {editor.verified && <FaCheckCircle className="text-emerald-500 text-sm flex-shrink-0" />}
+              
+              {/* Availability Chip for Context */}
+              {isBusy && availability.busyUntil && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 whitespace-nowrap">
+                   Busy till {new Date(availability.busyUntil).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                </span>
+              )}
+              {isSmallOnly && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20 whitespace-nowrap">
+                   Small Projects
+                </span>
+              )}
             </div>
 
             <p className="text-gray-500 light:text-slate-500 text-sm flex items-center gap-1.5">

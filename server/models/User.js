@@ -164,6 +164,23 @@ const userSchema = new mongoose.Schema(
       default: "none",
     },
 
+    // ==================== AVAILABILITY STATUS ====================
+    availability: {
+      status: {
+        type: String,
+        enum: ["available", "busy", "small_only"],
+        default: "available",
+      },
+      busyUntil: {
+        type: Date,
+        default: null,
+      },
+      updatedAt: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+
     // ==================== SAVED ITEMS ====================
     savedEditors: [{
       type: mongoose.Schema.Types.ObjectId,
