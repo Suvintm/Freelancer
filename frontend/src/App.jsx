@@ -47,6 +47,8 @@ import ProfileInsightsPage from "./pages/ProfileInsightsPage.jsx";
 import SuvixScorePage from "./pages/SuvixScorePage.jsx";
 import ClientKYCPage from "./pages/ClientKYCPage.jsx";
 import LegalCenterPage from "./pages/LegalCenterPage.jsx";
+import LocalEditorsNetworkPage from "./pages/LocalEditorsNetworkPage.jsx";
+import LocationSettingsPage from "./pages/LocationSettingsPage.jsx";
 
 import { TermsAndConditions, PrivacyPolicy, ContentProtectionPolicy, EditorCodeOfConduct } from "./pages/LegalPages";
 
@@ -144,6 +146,14 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/editors-near-you"
+          element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <LocalEditorsNetworkPage />
+            </ProtectedRoute>
+          }
+        />
 
         {/* ============ EDITOR ROUTES ============ */}
         <Route
@@ -215,6 +225,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["editor"]}>
               <KYCDetailsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/location-settings"
+          element={
+            <ProtectedRoute allowedRoles={["editor"]}>
+              <LocationSettingsPage />
             </ProtectedRoute>
           }
         />

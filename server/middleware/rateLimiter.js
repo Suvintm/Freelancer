@@ -54,3 +54,14 @@ export const exploreLimiter = rateLimit({
   max: 200, // 200 requests per minute (safe)
 });
 
+// Location search limiter - 10 requests per minute (prevent scraping)
+export const locationSearchLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // 10 searches per minute
+  message: {
+    success: false,
+    message: "Too many location searches, please try again in a minute.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

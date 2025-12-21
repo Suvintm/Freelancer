@@ -39,6 +39,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: "/suvix-score", icon: FaTrophy, label: "Suvix Score" },
     { path: "/payments", icon: FaWallet, label: "Payments" },
     { path: "/kyc-details", icon: FaUniversity, label: "KYC Details" },
+    { path: "/location-settings", icon: FaBriefcase, label: "Location Settings" },
     { path: "/editor-profile", icon: FaUserTie, label: "Profile" },
     { path: "/chats", icon: FaEnvelope, label: "Messages", badge: totalUnread },
     { path: "/legal-center", icon: FaBriefcase, label: "Legal & Terms" },

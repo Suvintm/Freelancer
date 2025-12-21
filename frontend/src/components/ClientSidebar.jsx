@@ -14,6 +14,7 @@ import {
   FaHeart,
   FaCreditCard,
   FaShieldAlt,
+  FaMapMarkerAlt,
 } from "react-icons/fa";
 import { HiOutlineSun, HiOutlineMoon } from "react-icons/hi2";
 import { motion, AnimatePresence } from "framer-motion";
@@ -87,6 +88,8 @@ const ClientSidebar = ({ isOpen, onClose }) => {
 
   const navItems = [
     { path: "/client-home", icon: FaHome, label: "Dashboard" },
+    { path: "/explore-editors", icon: FaUserTie, label: "Explore Editors" },
+    { path: "/editors-near-you", icon: FaMapMarkerAlt, label: "Editors Near You" },
     { path: "/client-orders", icon: FaClipboardList, label: "My Orders", badge: newOrdersCount },
     { path: "/payments", icon: FaCreditCard, label: "Payments" },
     { path: "/client-messages", icon: FaEnvelope, label: "Messages", badge: displayUnread },
