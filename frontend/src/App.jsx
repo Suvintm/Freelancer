@@ -46,6 +46,7 @@ import SubscriptionPlansPage from "./pages/SubscriptionPlansPage.jsx";
 import ProfileInsightsPage from "./pages/ProfileInsightsPage.jsx";
 import SuvixScorePage from "./pages/SuvixScorePage.jsx";
 import ClientKYCPage from "./pages/ClientKYCPage.jsx";
+import LegalCenterPage from "./pages/LegalCenterPage.jsx";
 
 import { TermsAndConditions, PrivacyPolicy, ContentProtectionPolicy, EditorCodeOfConduct } from "./pages/LegalPages";
 
@@ -60,6 +61,7 @@ function App() {
       <ToastContainer />
       <Routes>
         {/* Legal Routes */}
+        <Route path="/legal-center" element={<LegalCenterPage />} />
         <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/content-protection-policy" element={<ContentProtectionPolicy />} />

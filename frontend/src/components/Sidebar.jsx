@@ -41,6 +41,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: "/kyc-details", icon: FaUniversity, label: "KYC Details" },
     { path: "/editor-profile", icon: FaUserTie, label: "Profile" },
     { path: "/chats", icon: FaEnvelope, label: "Messages", badge: totalUnread },
+    { path: "/legal-center", icon: FaBriefcase, label: "Legal & Terms" },
   ];
 
   const handleNavigation = (path) => {
