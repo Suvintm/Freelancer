@@ -27,21 +27,25 @@ const editorLocationSchema = new mongoose.Schema(
         required: true,
         default: "India",
       },
-      // Approximate coordinates (rounded for privacy)
+      // Approximate coordinates in GeoJSON format (required for 2dsphere index)
       approxCoordinates: {
-        lat: {
-          type: Number,
+        type: {
+          type: String,
+          enum: ["Point"],
           required: true,
-          // Validate reasonable latitude range
-          min: -90,
-          max: 90,
+          default: "Point",
         },
-        lng: {
-          type: Number,
+        coordinates: {
+          type: [Number], // [longitude, latitude] order (GeoJSON standard!)
           required: true,
-          // Validate reasonable longitude range
-          min: -180,
-          max: 180,
+          validate: {
+            validator: function(coords) {
+              return coords.length === 2 && 
+                     coords[0] >= -180 && coords[0] <= 180 && // lng
+                     coords[1] >= -90 && coords[1] <= 90; // lat
+            },
+            message: "Invalid coordinates format [lng, lat]"
+          }
         },
       },
     },
@@ -84,7 +88,7 @@ const editorLocationSchema = new mongoose.Schema(
   }
 );
 
-// Geospatial index for efficient nearby queries
+// Geospatial index for efficient nearby queries (MUST be on GeoJSON Point)
 editorLocationSchema.index({
   "location.approxCoordinates": "2dsphere",
 });

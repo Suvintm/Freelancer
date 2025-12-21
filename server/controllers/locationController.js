@@ -67,7 +67,11 @@ export const updateLocationSettings = asyncHandler(async (req, res) => {
       location.location.city = city;
       location.location.state = state;
       location.location.country = country || "India";
-      location.location.approxCoordinates = roundedCoords;
+      // ✅ Use GeoJSON format: {type: "Point", coordinates: [lng, lat]}
+      location.location.approxCoordinates = {
+        type: "Point",
+        coordinates: [roundedCoords.lng, roundedCoords.lat], // [longitude, latitude]
+      };
 
       if (visibility !== undefined) {
         location.visibility.enabled = visibility.enabled ?? location.visibility.enabled;
@@ -84,7 +88,11 @@ export const updateLocationSettings = asyncHandler(async (req, res) => {
           city,
           state,
           country: country || "India",
-          approxCoordinates: roundedCoords,
+          // ✅ Use GeoJSON format
+          approxCoordinates: {
+            type: "Point",
+            coordinates: [roundedCoords.lng, roundedCoords.lat],
+          },
         },
         visibility: {
           enabled: visibility?.enabled || false,
@@ -94,6 +102,15 @@ export const updateLocationSettings = asyncHandler(async (req, res) => {
     }
 
     console.log("✅ Location saved successfully");
+    
+    // ✅ DEBUG: Log what was saved to database
+    console.log("📝 Saved location details:", {
+      userId: location.userId,
+      city: location.location.city,
+      state: location.location.state,
+      coordinates: location.location.approxCoordinates,
+      visibility: location.visibility,
+    });
 
     res.status(200).json({
       success: true,
@@ -177,22 +194,43 @@ export const getNearbyEditors = asyncHandler(async (req, res) => {
     },
   };
 
+  console.log("🔍 Nearby editors query:", {
+    userLocation: { lat: userLat, lng: userLng },
+    searchRadius: `${searchRadius}km (${searchRadius * 1000}m)`,
+    query: JSON.stringify(query, null, 2),
+  });
+
   const locations = await EditorLocation.find(query).populate({
     path: "userId",
     select: "name profilePhoto suvixScore availability rating completedOrders skills badges",
   });
+
+  console.log(`📍 Found ${locations.length} location records from database`);
+  
+  if (locations.length === 0) {
+    console.warn("⚠️ No editors found! Checking all editor locations in database...");
+    const allEditors = await EditorLocation.find({});
+    console.log(`Total editors in database: ${allEditors.length}`);
+    allEditors.forEach((ed, idx) => {
+      console.log(`Editor ${idx + 1}:`, {
+        visibility: ed.visibility,
+        coordinates: ed.location?.approxCoordinates,
+        city: ed.location?.city,
+      });
+    });
+  }
 
   // Filter out invalid/deleted users and apply additional filters
   let editors = locations
     .filter((loc) => loc.userId) // Has valid user
     .map((loc) => {
       const user = loc.userId;
+      // ✅ Extract coordinates from GeoJSON format
+      const [editorLng, editorLat] = loc.location.approxCoordinates.coordinates;
+      
       const distance = calculateDistance(
         { lat: userLat, lng: userLng },
-        {
-          lat: loc.location.approxCoordinates.lat,
-          lng: loc.location.approxCoordinates.lng,
-        }
+        { lat: editorLat, lng: editorLng }
       );
 
       return {
@@ -209,6 +247,8 @@ export const getNearbyEditors = asyncHandler(async (req, res) => {
           city: loc.location.city,
           state: loc.location.state,
           distance: parseFloat(distance.toFixed(1)), // km, rounded to 1 decimal
+          lat: editorLat, // ✅ Send lat/lng for map
+          lng: editorLng, // ✅ Send lat/lng for map
         },
       };
     });

@@ -76,31 +76,71 @@ export const getDistanceLabel = (distanceKm) => {
 };
 
 /**
- * Geocode city name to coordinates using a simple lookup
- * (In production, use Google Maps Geocoding API)
- * @param {string} city
- * @param {string} state
- * @returns {{lat: number, lng: number} | null}
+ * Geocode city to approximate coordinates
+ * In production, use Google Maps Geocoding API
+ * For now, using hardcoded major Indian cities
  */
 export const geocodeCity = (city, state) => {
-  // Simplified geocoding for major Indian cities
-  const cityCoordinates = {
-    "mumbai": { lat: 19.076, lng: 72.877 },
-    "delhi": { lat: 28.704, lng: 77.102 },
-    "bangalore": { lat: 12.971, lng: 77.594 },
-    "hyderabad": { lat: 17.385, lng: 78.486 },
-    "chennai": { lat: 13.082, lng: 80.270 },
-    "kolkata": { lat: 22.572, lng: 88.363 },
-    "pune": { lat: 18.520, lng: 73.856 },
-    "ahmedabad": { lat: 23.022, lng: 72.571 },
-    "jaipur": { lat: 26.912, lng: 75.787 },
-    "surat": { lat: 21.170, lng: 72.831 },
+  const cityLower = city.toLowerCase().trim();
+  const stateLower = state.toLowerCase().trim();
+
+  // Major Indian cities with approximate coordinates (rounded to 2 decimals for privacy)
+  const indianCities = {
+    // Karnataka
+    bangalore: { lat: 12.97, lng: 77.59 },
+    bengaluru: { lat: 12.97, lng: 77.59 },
+    banglore: { lat: 12.97, lng: 77.59 }, // ✅ Common typo
+    mysore: { lat: 12.30, lng: 76.65 },
+    mangalore: { lat: 12.91, lng: 74.86 },
+    
+    // Maharashtra
+    mumbai: { lat: 19.08, lng: 72.88 },
+    pune: { lat: 18.52, lng: 73.86 },
+    nagpur: { lat: 21.15, lng: 79.08 },
+    
+    // Delhi NCR
+    delhi: { lat: 28.70, lng: 77.10 },
+    "new delhi": { lat: 28.61, lng: 77.23 },
+    gurgaon: { lat: 28.46, lng: 77.03 },
+    noida: { lat: 28.58, lng: 77.33 },
+    
+    // Tamil Nadu
+    chennai: { lat: 13.08, lng: 80.27 },
+    coimbatore: { lat: 11.02, lng: 76.97 },
+    madurai: { lat: 9.92, lng: 78.12 },
+    
+    // Telangana
+    hyderabad: { lat: 17.39, lng: 78.49 },
+    
+    // West Bengal
+    kolkata: { lat: 22.57, lng: 88.36 },
+    
+    // Gujarat
+    ahmedabad: { lat: 23.02, lng: 72.57 },
+    surat: { lat: 21.17, lng: 72.83 },
+    
+    // Rajasthan
+    jaipur: { lat: 26.91, lng: 75.79 },
+    
+    // Kerala
+    kochi: { lat: 9.93, lng: 76.27 },
+    trivandrum: { lat: 8.52, lng: 76.95 },
+    
+    // Uttar Pradesh
+    lucknow: { lat: 26.85, lng: 80.95 },
+    kanpur: { lat: 26.45, lng: 80.33 },
   };
 
-  const cityKey = city.toLowerCase().trim();
-  return cityCoordinates[cityKey] || null;
-};
+  const coords = indianCities[cityLower];
+  
+  if (coords) {
+    console.log(`✅ Geocoded ${city} to:`, coords);
+    return coords;
+  }
 
+  console.warn(`⚠️ City ${city} not in database. Returning null.`);
+  return null;
+};
 /**
  * Adjust visibility radius based on level
  * @param {string} level - "city" | "region" | "country"
