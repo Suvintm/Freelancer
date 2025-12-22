@@ -1,8 +1,10 @@
 /**
  * VerifiedEditorBadge Component
  * Dark base with light: variant overrides for theme toggle
+ * Now includes achievement badge icons in the third section
  */
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   FaCheckCircle, 
@@ -12,13 +14,79 @@ import {
   FaUserCheck,
   FaChartLine
 } from 'react-icons/fa';
-import { HiSparkles } from 'react-icons/hi';
+import {
+  HiSparkles,
+  HiOutlineStar,
+  HiOutlineTrophy,
+  HiOutlineBolt,
+  HiOutlineFilm,
+  HiOutlinePlayCircle,
+  HiOutlineCheckBadge,
+  HiOutlineCurrencyRupee,
+  HiOutlineUserGroup,
+} from 'react-icons/hi2';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { useAppContext } from '../context/AppContext';
 
-const VerifiedEditorBadge = ({ user, profile, kycStatus, completionPercent }) => {
+// Badge icon mapping
+const BADGE_ICONS = {
+  rising_star: HiOutlineStar,
+  order_master: HiOutlineTrophy,
+  elite_editor: FaCrown,
+  top_rated: HiOutlineStar,
+  fast_deliverer: HiOutlineBolt,
+  portfolio_pro: HiOutlineFilm,
+  reel_creator: HiOutlinePlayCircle,
+  verified_pro: HiOutlineCheckBadge,
+  high_earner: HiOutlineCurrencyRupee,
+  community_star: HiOutlineUserGroup,
+};
+
+// Badge colors
+const BADGE_COLORS = {
+  rising_star: '#F59E0B',
+  order_master: '#8B5CF6',
+  elite_editor: '#F97316',
+  top_rated: '#EAB308',
+  fast_deliverer: '#3B82F6',
+  portfolio_pro: '#EC4899',
+  reel_creator: '#14B8A6',
+  verified_pro: '#10B981',
+  high_earner: '#22C55E',
+  community_star: '#6366F1',
+};
+
+const VerifiedEditorBadge = ({ user: userProp, profile, kycStatus, completionPercent }) => {
   const navigate = useNavigate();
+  const { user, backendURL } = useAppContext();
+  const [badgeProgress, setBadgeProgress] = useState([]);
   
-  const isFullyVerified = user?.isVerified && kycStatus === 'verified' && completionPercent >= 80;
+  const isFullyVerified = userProp?.isVerified && kycStatus === 'verified' && completionPercent >= 80;
+  
+  // Fetch badge progress on mount
+  useEffect(() => {
+    const fetchBadges = async () => {
+      try {
+        const token = user?.token;
+        if (!token) return;
+        
+        const res = await axios.get(`${backendURL}/api/badges/progress`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (res.data.success) {
+          setBadgeProgress(res.data.progress || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch badges:', err);
+      }
+    };
+    
+    fetchBadges();
+  }, [user?.token, backendURL]);
+  
+  const earnedCount = badgeProgress.filter(b => b.earned).length;
   
   return (
     <motion.div
@@ -70,11 +138,11 @@ const VerifiedEditorBadge = ({ user, profile, kycStatus, completionPercent }) =>
           </div>
         </div>
         
-        {/* Stats/Badges */}
-        <div className="grid grid-cols-3 gap-3">
-          {/* Profile Score */}
-          <div className="bg-white/[0.03] light:bg-slate-50 rounded-xl p-3 text-center">
-            <div className="relative w-12 h-12 mx-auto mb-2">
+        {/* Stats/Badges - Custom widths: 20% + 20% + 60% */}
+        <div className="flex gap-3">
+          {/* Profile Score - 20% */}
+          <div className="w-[20%] min-w-[70px] bg-white/[0.03] light:bg-slate-50 rounded-xl p-3 text-center">
+            <div className="relative w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
                 <circle className="fill-none stroke-white/[0.06] light:stroke-slate-200" cx="50" cy="50" r="40" strokeWidth="8" />
                 <circle 
@@ -87,45 +155,68 @@ const VerifiedEditorBadge = ({ user, profile, kycStatus, completionPercent }) =>
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-sm font-bold text-emerald-400 light:text-emerald-600">{completionPercent || 0}%</span>
+                <span className="text-xs sm:text-sm font-bold text-emerald-400 light:text-emerald-600">{completionPercent || 0}%</span>
               </div>
             </div>
-            <p className="text-[10px] text-gray-500 light:text-slate-500 font-medium">Profile Score</p>
+            <p className="text-[9px] sm:text-[10px] text-gray-500 light:text-slate-500 font-medium">Profile Score</p>
           </div>
           
-          {/* KYC Status */}
-          <div className="bg-white/[0.03] light:bg-slate-50 rounded-xl p-3 text-center">
-            <div className={`w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center ${
+          {/* KYC Status - 20% */}
+          <div className="w-[20%] min-w-[70px] bg-white/[0.03] light:bg-slate-50 rounded-xl p-3 text-center">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 rounded-full flex items-center justify-center ${
               kycStatus === 'verified' ? 'bg-emerald-500/10 light:bg-emerald-100' :
               kycStatus === 'pending' || kycStatus === 'submitted' ? 'bg-blue-500/10 light:bg-blue-100' :
               'bg-amber-500/10 light:bg-amber-100'
             }`}>
               {kycStatus === 'verified' ? (
-                <FaCheckCircle className="text-lg text-emerald-500" />
+                <FaCheckCircle className="text-base sm:text-lg text-emerald-500" />
               ) : kycStatus === 'pending' || kycStatus === 'submitted' ? (
-                <FaChartLine className="text-lg text-blue-500" />
+                <FaChartLine className="text-base sm:text-lg text-blue-500" />
               ) : (
-                <FaShieldAlt className="text-lg text-amber-500" />
+                <FaShieldAlt className="text-base sm:text-lg text-amber-500" />
               )}
             </div>
-            <p className="text-[10px] text-gray-500 light:text-slate-500 font-medium">
+            <p className="text-[9px] sm:text-[10px] text-gray-500 light:text-slate-500 font-medium">
               KYC {kycStatus === 'verified' ? 'Verified' : kycStatus === 'pending' || kycStatus === 'submitted' ? 'Pending' : 'Required'}
             </p>
           </div>
           
-          {/* Rank */}
-          <div className="bg-white/[0.03] light:bg-slate-50 rounded-xl p-3 text-center">
-            <div className={`w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center ${
-              isFullyVerified ? 'bg-amber-500/10 light:bg-amber-100' : 'bg-gray-500/10 light:bg-slate-100'
-            }`}>
-              {isFullyVerified ? (
-                <FaCrown className="text-lg text-amber-500" />
-              ) : (
-                <FaStar className="text-lg text-gray-500 light:text-slate-400" />
-              )}
+          {/* Achievements - 60% - All 10 badge icons */}
+          <div 
+            className="flex-1 bg-white/[0.03] light:bg-slate-50 rounded-xl p-3 cursor-pointer hover:bg-white/[0.06] light:hover:bg-slate-100 transition-colors"
+            onClick={() => navigate('/achievements')}
+          >
+            {/* Badge Icons Grid - 4 per row (2.5 rows for 10 badges) */}
+            <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5 mb-2 justify-items-center">
+              {Object.entries(BADGE_ICONS).map(([badgeId, IconComponent]) => {
+                const badge = badgeProgress.find(b => b.id === badgeId);
+                const isEarned = badge?.earned || false;
+                const color = BADGE_COLORS[badgeId];
+                
+                return (
+                  <div
+                    key={badgeId}
+                    className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center transition-all ${
+                      isEarned 
+                        ? 'opacity-100' 
+                        : 'opacity-30 grayscale'
+                    }`}
+                    style={{
+                      backgroundColor: isEarned ? `${color}20` : 'rgba(255,255,255,0.05)',
+                      border: isEarned ? `1.5px solid ${color}` : '1px solid rgba(255,255,255,0.1)',
+                    }}
+                    title={badge?.name || badgeId}
+                  >
+                    <IconComponent 
+                      className="text-xs sm:text-sm" 
+                      style={{ color: isEarned ? color : '#666' }}
+                    />
+                  </div>
+                );
+              })}
             </div>
-            <p className="text-[10px] text-gray-500 light:text-slate-500 font-medium">
-              {isFullyVerified ? 'Top Editor' : 'New Editor'}
+            <p className="text-[10px] text-gray-500 light:text-slate-500 font-medium text-center">
+              {earnedCount}/10 Badges
             </p>
           </div>
         </div>
@@ -145,3 +236,4 @@ const VerifiedEditorBadge = ({ user, profile, kycStatus, completionPercent }) =>
 };
 
 export default VerifiedEditorBadge;
+
