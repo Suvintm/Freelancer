@@ -1,6 +1,7 @@
 import asyncHandler from "express-async-handler";
 import EditorLocation from "../models/EditorLocation.js";
 import User from "../models/User.js";
+import { Profile } from "../models/Profile.js";
 import {
   roundCoordinates,
   calculateDistance,
@@ -200,9 +201,10 @@ export const getNearbyEditors = asyncHandler(async (req, res) => {
     query: JSON.stringify(query, null, 2),
   });
 
+  // First get locations with just user ID
   const locations = await EditorLocation.find(query).populate({
     path: "userId",
-    select: "name profilePhoto suvixScore availability rating completedOrders skills badges",
+    select: "name profilePicture suvixScore availability isVerified",
   });
 
   console.log(`📍 Found ${locations.length} location records from database`);
@@ -220,11 +222,40 @@ export const getNearbyEditors = asyncHandler(async (req, res) => {
     });
   }
 
-  // Filter out invalid/deleted users and apply additional filters
+  // Get user IDs for profile and user lookup
+  const userIds = locations
+    .filter((loc) => loc.userId)
+    .map((loc) => loc.userId._id);
+
+  // Fetch profiles for all these users
+  const profiles = await Profile.find({ user: { $in: userIds } })
+    .select("user skills ratingStats");
+  
+  // ✅ Also fetch Users directly to get profilePicture (populate might not include it)
+  const users = await User.find({ _id: { $in: userIds } })
+    .select("_id name profilePicture isVerified suvixScore availability");
+  
+  // Create maps for quick lookup
+  const profileMap = {};
+  profiles.forEach((profile) => {
+    profileMap[profile.user.toString()] = profile;
+  });
+
+  const userMap = {};
+  users.forEach((user) => {
+    userMap[user._id.toString()] = user;
+  });
+
+
+  // Build editor list with combined data
   let editors = locations
-    .filter((loc) => loc.userId) // Has valid user
+    .filter((loc) => loc.userId)
     .map((loc) => {
-      const user = loc.userId;
+      const populatedUser = loc.userId;
+      const profile = profileMap[populatedUser._id.toString()] || {};
+      // ✅ Use direct user query result to get profilePicture
+      const directUser = userMap[populatedUser._id.toString()] || {};
+      
       // ✅ Extract coordinates from GeoJSON format
       const [editorLng, editorLat] = loc.location.approxCoordinates.coordinates;
       
@@ -233,25 +264,36 @@ export const getNearbyEditors = asyncHandler(async (req, res) => {
         { lat: editorLat, lng: editorLng }
       );
 
+      // 🔍 DEBUG: Log profile picture from both sources
+      console.log(`📸 Editor ${populatedUser.name}:`, {
+        populatedProfilePic: populatedUser.profilePicture,
+        directProfilePic: directUser.profilePicture,
+        userId: populatedUser._id,
+      });
+
+      // Use direct query result as it's more reliable
+      const profilePicture = directUser.profilePicture || populatedUser.profilePicture || null;
+
       return {
-        _id: user._id,
-        name: user.name,
-        profilePhoto: user.profilePhoto,
-        skills: user.skills || [],
-        suvixScore: user.suvixScore || 0,
-        availability: user.availability || "unknown",
-        rating: user.rating || 0,
-        completedOrders: user.completedOrders || 0,
-        badges: user.badges || [],
+        _id: populatedUser._id,
+        name: populatedUser.name,
+        profilePicture: profilePicture,
+        skills: profile.skills || [],
+        suvixScore: directUser.suvixScore?.total || 0,
+        availability: directUser.availability?.status || "unknown",
+        rating: profile.ratingStats?.averageRating || 0,
+        isVerified: directUser.isVerified || false,
         approxLocation: {
           city: loc.location.city,
           state: loc.location.state,
-          distance: parseFloat(distance.toFixed(1)), // km, rounded to 1 decimal
-          lat: editorLat, // ✅ Send lat/lng for map
-          lng: editorLng, // ✅ Send lat/lng for map
+          distance: parseFloat(distance.toFixed(1)),
+          lat: editorLat,
+          lng: editorLng,
         },
       };
     });
+
+
 
   // Apply skill filter
   if (skills) {

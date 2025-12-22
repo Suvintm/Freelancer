@@ -1,10 +1,17 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaMapMarkerAlt, FaLock, FaShieldAlt, FaTimes } from "react-icons/fa";
-import { HiOutlineMapPin } from "react-icons/hi2";
+import { 
+  HiOutlineMapPin, 
+  HiOutlineShieldCheck, 
+  HiOutlineLockClosed, 
+  HiOutlineXMark,
+  HiOutlineLightBulb
+} from "react-icons/hi2";
+import { useTheme } from "../context/ThemeContext";
 
 const LocationConsentModal = ({ isOpen, onClose, onAccept, onSkip }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const { isDark } = useTheme();
 
   const handleAccept = async () => {
     setIsLoading(true);
@@ -26,102 +33,146 @@ const LocationConsentModal = ({ isOpen, onClose, onAccept, onSkip }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            className={`fixed inset-0 z-50 ${isDark ? 'bg-black/70' : 'bg-black/40'} backdrop-blur-sm`}
             onClick={onSkip}
           />
 
           {/* Modal */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ duration: 0.2 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
           >
-            <div className="bg-[#0f1115] border border-emerald-500/20 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
-              {/* Header */}
-              <div className="bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border-b border-white/5 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-blue-500/20 flex items-center justify-center">
-                      <HiOutlineMapPin className="text-2xl text-emerald-400" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-white">Discover Local Editors</h2>
-                      <p className="text-xs text-gray-500">Privacy-first location service</p>
-                    </div>
+            <div className={`rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden ${
+              isDark 
+                ? 'bg-black border border-green-900/40' 
+                : 'bg-white border border-gray-200'
+            }`}>
+              {/* Header - Compact */}
+              <div className={`px-5 py-4 flex items-center justify-between border-b ${
+                isDark ? 'border-green-900/30' : 'border-gray-100'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+                    isDark ? 'bg-green-500/15' : 'bg-green-50'
+                  }`}>
+                    <HiOutlineMapPin className={`text-lg ${isDark ? 'text-green-400' : 'text-green-600'}`} />
                   </div>
-                  <button
-                    onClick={onSkip}
-                    className="text-gray-500 hover:text-white transition-colors p-2 hover:bg-white/5 rounded-lg"
-                  >
-                    <FaTimes />
-                  </button>
+                  <div>
+                    <h2 className={`text-base font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      Find Local Editors
+                    </h2>
+                    <p className={`text-xs ${isDark ? 'text-green-500/70' : 'text-gray-500'}`}>
+                      Privacy-first location
+                    </p>
+                  </div>
                 </div>
+                <button
+                  onClick={onSkip}
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    isDark 
+                      ? 'text-gray-500 hover:text-white hover:bg-green-900/30' 
+                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <HiOutlineXMark className="text-lg" />
+                </button>
               </div>
 
-              {/* Content */}
-              <div className="p-6 space-y-4">
-                <p className="text-gray-300 text-sm leading-relaxed">
-                  Allow location access to find trusted editors near you.
+              {/* Content - Compact */}
+              <div className="px-5 py-4 space-y-3">
+                <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Allow location to find trusted editors near you.
                 </p>
 
-                {/* Privacy Features */}
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3 p-3 bg-emerald-500/5 rounded-lg border border-emerald-500/10">
-                    <FaShieldAlt className="text-emerald-400 mt-0.5 flex-shrink-0" />
+                {/* Privacy Features - Compact Grid */}
+                <div className="space-y-2">
+                  {/* Feature 1 */}
+                  <div className={`flex items-center gap-2.5 p-2.5 rounded-lg ${
+                    isDark ? 'bg-green-950/40 border border-green-900/30' : 'bg-green-50/50 border border-green-100'
+                  }`}>
+                    <HiOutlineShieldCheck className={`text-base flex-shrink-0 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
                     <div>
-                      <p className="text-sm text-white font-medium">Your exact location is never shared</p>
-                      <p className="text-xs text-gray-500 mt-1">We only show your approximate region</p>
+                      <p className={`text-xs font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        Exact location never shared
+                      </p>
+                      <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                        Only approximate region
+                      </p>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-3 p-3 bg-blue-500/5 rounded-lg border border-blue-500/10">
-                    <FaMapMarkerAlt className="text-blue-400 mt-0.5 flex-shrink-0" />
+                  {/* Feature 2 */}
+                  <div className={`flex items-center gap-2.5 p-2.5 rounded-lg ${
+                    isDark ? 'bg-green-950/40 border border-green-900/30' : 'bg-green-50/50 border border-green-100'
+                  }`}>
+                    <HiOutlineMapPin className={`text-base flex-shrink-0 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
                     <div>
-                      <p className="text-sm text-white font-medium">Editors see only city-level location</p>
-                      <p className="text-xs text-gray-500 mt-1">Privacy-first design with rounded coordinates</p>
+                      <p className={`text-xs font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        City-level only
+                      </p>
+                      <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                        Rounded coordinates
+                      </p>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-3 p-3 bg-purple-500/5 rounded-lg border border-purple-500/10">
-                    <FaLock className="text-purple-400 mt-0.5 flex-shrink-0" />
+                  {/* Feature 3 */}
+                  <div className={`flex items-center gap-2.5 p-2.5 rounded-lg ${
+                    isDark ? 'bg-green-950/40 border border-green-900/30' : 'bg-green-50/50 border border-green-100'
+                  }`}>
+                    <HiOutlineLockClosed className={`text-base flex-shrink-0 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
                     <div>
-                      <p className="text-sm text-white font-medium">You can revoke anytime</p>
-                      <p className="text-xs text-gray-500 mt-1">Full control over your location permissions</p>
+                      <p className={`text-xs font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        Revoke anytime
+                      </p>
+                      <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                        Full control
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Disclaimer */}
-                <div className="bg-amber-500/5 border border-amber-500/10 rounded-lg p-3">
-                  <p className="text-xs text-amber-300">
-                    💡 This is a one-time permission request. Your location is used only for finding nearby editors and is never stored on our servers.
+                {/* Disclaimer - Compact */}
+                <div className={`flex items-start gap-2 p-2.5 rounded-lg ${
+                  isDark ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-amber-50 border border-amber-100'
+                }`}>
+                  <HiOutlineLightBulb className={`text-sm flex-shrink-0 mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
+                  <p className={`text-[10px] leading-relaxed ${isDark ? 'text-amber-300/80' : 'text-amber-700'}`}>
+                    One-time request. Location is never stored.
                   </p>
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="p-6 pt-0 flex gap-3">
+              {/* Actions - Compact */}
+              <div className={`px-5 py-4 flex gap-2 border-t ${
+                isDark ? 'border-green-900/30 bg-green-950/20' : 'border-gray-100 bg-gray-50/50'
+              }`}>
                 <button
                   onClick={onSkip}
-                  className="flex-1 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white font-medium transition-all"
+                  className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
+                    isDark 
+                      ? 'bg-green-950/50 border border-green-900/40 text-gray-400 hover:text-white hover:bg-green-900/50' 
+                      : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
+                  }`}
                 >
                   Skip
                 </button>
                 <button
                   onClick={handleAccept}
                   disabled={isLoading}
-                  className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 px-3 py-2.5 rounded-lg bg-green-500 hover:bg-green-600 text-white text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                 >
                   {isLoading ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Getting Location...</span>
+                      <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Getting...</span>
                     </>
                   ) : (
                     <>
-                      <FaMapMarkerAlt />
+                      <HiOutlineMapPin className="text-sm" />
                       <span>Allow Location</span>
                     </>
                   )}
