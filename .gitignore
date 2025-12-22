@@ -87,3 +87,6 @@ cloudinary_temp/
 
 # Vite
 *.local
+
+# Confidential / Private Documents
+PRICING_AND_COSTS.md

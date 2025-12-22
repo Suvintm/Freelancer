@@ -26,7 +26,7 @@ import {
   FaPlay,
   FaClock,
 } from "react-icons/fa";
-import { HiCheckBadge } from "react-icons/hi2";
+import { HiCheckBadge, HiOutlineTrophy, HiOutlineLockClosed, HiOutlineLockOpen } from "react-icons/hi2";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate, useParams } from "react-router-dom";
@@ -70,6 +70,7 @@ const PublicEditorProfile = () => {
   const [showRatingsModal, setShowRatingsModal] = useState(false);
   const [suvixScore, setSuvixScore] = useState(null);
   const [showKYCModal, setShowKYCModal] = useState(false);
+  const [earnedBadges, setEarnedBadges] = useState([]);
 
   const navigate = useNavigate();
 
@@ -106,6 +107,23 @@ const PublicEditorProfile = () => {
       }
     };
     fetchSuvixScore();
+  }, [backendURL, userId, user?._id]);
+
+  // Fetch Earned Badges
+  useEffect(() => {
+    const fetchEarnedBadges = async () => {
+      try {
+        const targetId = userId || user?._id;
+        if (!targetId) return;
+        const res = await axios.get(`${backendURL}/api/badges/user/${targetId}`);
+        if (res.data.success) {
+          setEarnedBadges(res.data.badges || []);
+        }
+      } catch (error) {
+        console.error("Error fetching badges:", error);
+      }
+    };
+    fetchEarnedBadges();
   }, [backendURL, userId, user?._id]);
 
   // Load Razorpay script
@@ -286,6 +304,7 @@ const PublicEditorProfile = () => {
     { id: "portfolio", label: "Portfolio", icon: FaImages },
     { id: "about", label: "About", icon: FaUser },
     { id: "gigs", label: "Gigs", icon: FaShoppingCart },
+    { id: "achievements", label: "Achievements", icon: HiOutlineTrophy },
   ];
 
   // Real ratings from profile ratingStats
@@ -736,6 +755,62 @@ const PublicEditorProfile = () => {
                       <FaShoppingCart className="text-zinc-600 text-lg" />
                     </div>
                     <p className="text-xs text-zinc-500">No gigs available</p>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* ACHIEVEMENTS TAB */}
+            {activeTab === "achievements" && (
+              <motion.div
+                key="achievements"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5"
+              >
+                <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                  <HiOutlineTrophy className="text-amber-500" />
+                  Earned Badges ({earnedBadges.length})
+                </h3>
+                
+                {earnedBadges.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {earnedBadges.map((badge) => (
+                      <div
+                        key={badge.id}
+                        className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-center"
+                      >
+                        <div 
+                          className="w-12 h-12 rounded-full mx-auto mb-2 flex items-center justify-center"
+                          style={{ 
+                            backgroundColor: `${badge.color}20`,
+                            border: `2px solid ${badge.color}`,
+                          }}
+                        >
+                          <HiOutlineTrophy className="w-5 h-5" style={{ color: badge.color }} />
+                        </div>
+                        <div className="flex items-center justify-center gap-1 mb-1">
+                          <HiOutlineLockOpen className="w-3 h-3 text-emerald-400" />
+                          <span className="text-xs font-semibold text-white">{badge.name}</span>
+                        </div>
+                        <p className="text-[10px] text-zinc-500 line-clamp-2">{badge.description}</p>
+                        {badge.earnedAt && (
+                          <p className="text-[9px] text-zinc-600 mt-1">
+                            {new Date(badge.earnedAt).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-10">
+                    <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-zinc-900 flex items-center justify-center">
+                      <HiOutlineLockClosed className="text-zinc-600 text-lg" />
+                    </div>
+                    <p className="text-xs text-zinc-500">No badges earned yet</p>
+                    <p className="text-[10px] text-zinc-600 mt-1">Keep working to unlock achievements!</p>
                   </div>
                 )}
               </motion.div>

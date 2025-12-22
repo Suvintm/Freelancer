@@ -186,6 +186,10 @@ app.use("/api/client-kyc", clientKYCRoutes);
 app.use("/api/refunds", refundRoutes);
 app.use("/api/location", locationRoutes);
 
+// Badge/Achievement Routes
+import badgeRoutes from "./routes/badgeRoutes.js";
+app.use("/api/badges", badgeRoutes);
+
 // Public maintenance status check (no auth required)
 import { SiteSettings } from "./models/SiteSettings.js";
 app.get("/api/maintenance-status", async (req, res) => {

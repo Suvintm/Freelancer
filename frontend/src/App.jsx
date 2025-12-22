@@ -49,6 +49,7 @@ import ClientKYCPage from "./pages/ClientKYCPage.jsx";
 import LegalCenterPage from "./pages/LegalCenterPage.jsx";
 import LocalEditorsNetworkPage from "./pages/LocalEditorsNetworkPage.jsx";
 import LocationSettingsPage from "./pages/LocationSettingsPage.jsx";
+import AchievementsPage from "./pages/AchievementsPage.jsx";
 
 import { TermsAndConditions, PrivacyPolicy, ContentProtectionPolicy, EditorCodeOfConduct } from "./pages/LegalPages";
 
@@ -241,6 +242,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["editor"]}>
               <SuvixScorePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/achievements"
+          element={
+            <ProtectedRoute allowedRoles={["editor"]}>
+              <AchievementsPage />
             </ProtectedRoute>
           }
         />

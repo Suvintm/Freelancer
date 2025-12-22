@@ -38,6 +38,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: "/reels-analytics", icon: FaChartLine, label: "Reels Analytics" },
     { path: "/profile-insights", icon: HiEye, label: "Profile Insights" },
     { path: "/suvix-score", icon: FaTrophy, label: "Suvix Score" },
+    { path: "/achievements", icon: FaTrophy, label: "Achievements", isNew: true },
     { path: "/payments", icon: FaWallet, label: "Payments" },
     { path: "/kyc-details", icon: FaUniversity, label: "KYC Details" },
     { path: "/location-settings", icon: FaBriefcase, label: "Location Settings" },
