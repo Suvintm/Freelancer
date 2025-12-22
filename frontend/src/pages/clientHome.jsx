@@ -30,6 +30,7 @@ import {
   HiOutlineBuildingOffice2,
   HiOutlineDevicePhoneMobile,
   HiOutlineMegaphone,
+  HiOutlineMapPin,
 } from "react-icons/hi2";
 import { FaUsers, FaBriefcase, FaPlayCircle } from "react-icons/fa";
 import { PiHeartFill } from "react-icons/pi";
@@ -213,6 +214,63 @@ const ClientHome = () => {
             </motion.div>
           ))}
         </div>
+
+        {/* ===== EDITORS NEAR YOU - NEW FEATURE CARD ===== */}
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          onClick={() => navigate('/editors-near-you')}
+          className="relative mb-5 cursor-pointer group overflow-hidden"
+        >
+          {/* Animated gradient background */}
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 via-teal-500 to-cyan-500 rounded-2xl" />
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/0 via-white/10 to-emerald-600/0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" 
+            style={{ animation: 'shimmer 2s infinite' }} 
+          />
+          
+          {/* Decorative circles */}
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
+          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-cyan-400/20 rounded-full blur-2xl" />
+          
+          {/* Content */}
+          <div className="relative px-5 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {/* Animated Icon */}
+              <div className="relative">
+                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/30">
+                  <HiOutlineMapPin className="w-7 h-7 text-white" />
+                </div>
+                {/* Pulsing ring */}
+                <div className="absolute inset-0 rounded-xl border-2 border-white/50 animate-ping" style={{ animationDuration: '2s' }} />
+              </div>
+              
+              {/* Text */}
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-lg font-bold text-white" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                    Editors Near You
+                  </h3>
+                  {/* NEW Badge */}
+                  <span className="px-2 py-0.5 bg-amber-400 text-amber-900 text-[10px] font-bold rounded-full uppercase tracking-wider animate-pulse">
+                    NEW
+                  </span>
+                </div>
+                <p className="text-white/80 text-sm">
+                  Find trusted video editors in your area • Map view
+                </p>
+              </div>
+            </div>
+            
+            {/* Arrow */}
+            <div className="flex items-center gap-2">
+              <span className="hidden sm:block text-white/70 text-sm font-medium">Explore</span>
+              <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/30 group-hover:bg-white/30 transition-all group-hover:scale-110">
+                <HiOutlineArrowRight className="w-5 h-5 text-white group-hover:translate-x-0.5 transition-transform" />
+              </div>
+            </div>
+          </div>
+        </motion.div>
 
         {/* ===== MAIN GRID ===== */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-5">

@@ -21,8 +21,8 @@ router
   .patch(authorize("editor"), updateLocationSettings)
   .delete(authorize("editor"), deleteLocationSettings);
 
-// Client-only route (with rate limiting to prevent scraping)
-router.get("/nearby", authorize("client"), locationSearchLimiter, getNearbyEditors);
+// Client and Editor route (both can view nearby editors)
+router.get("/nearby", authorize("client", "editor"), locationSearchLimiter, getNearbyEditors);
 
 // Consent logging (any authenticated user)
 router.post("/consent", logLocationConsent);

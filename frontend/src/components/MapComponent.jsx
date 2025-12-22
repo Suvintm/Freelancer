@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, Circle, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { 
@@ -258,6 +258,7 @@ const getOffsetIndex = (editor, allEditors, index) => {
 
 const MapComponent = ({ center, zoom = 12, markers = [], onMarkerClick, selectedEditor }) => {
   const [mapLayer, setMapLayer] = useState('street');
+  const [searchRadius, setSearchRadius] = useState(5); // km - for display circle
   const { isDark } = useTheme();
   const navigate = useNavigate();
 
@@ -275,9 +276,27 @@ const MapComponent = ({ center, zoom = 12, markers = [], onMarkerClick, selected
     if (onMarkerClick) onMarkerClick(editor);
   };
 
-  // Calculate midpoint for distance label
-  const getMidpoint = (lat1, lng1, lat2, lng2) => {
-    return [(lat1 + lat2) / 2, (lng1 + lng2) / 2];
+  // Randomize editor position within a region for privacy
+  // Each editor gets a consistent random offset based on their ID
+  const getRandomizedPosition = (editor, index) => {
+    const baseLat = center.lat;
+    const baseLng = center.lng;
+    
+    // Use editor ID to generate consistent random offset
+    const seed = editor._id ? 
+      editor._id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : 
+      index * 1234;
+    
+    // Generate pseudo-random angle and distance
+    const angle = ((seed * 137.508) % 360) * (Math.PI / 180); // Golden angle in radians
+    const distanceRatio = 0.3 + ((seed % 100) / 100) * 0.5; // 30-80% of radius
+    const distance = searchRadius * distanceRatio;
+    
+    // Convert km to lat/lng offset (approximate)
+    const latOffset = (distance / 111) * Math.cos(angle);
+    const lngOffset = (distance / (111 * Math.cos(baseLat * Math.PI / 180))) * Math.sin(angle);
+    
+    return [baseLat + latOffset, baseLng + lngOffset];
   };
 
   return (
@@ -298,43 +317,19 @@ const MapComponent = ({ center, zoom = 12, markers = [], onMarkerClick, selected
         {/* Map Controls */}
         <MapControls isDark={isDark} />
         
-        {/* Navigation Paths to ALL editors (Green dashed lines) */}
-        {markers.map((editor) => {
-          const editorLat = editor.approxLocation?.lat;
-          const editorLng = editor.approxLocation?.lng;
-          
-          if (!editorLat || !editorLng) return null;
-
-          const pathPositions = [
-            [center.lat, center.lng],
-            [editorLat, editorLng]
-          ];
-
-          const midpoint = getMidpoint(center.lat, center.lng, editorLat, editorLng);
-
-          return (
-            <div key={`path-${editor._id}`}>
-              {/* Green Route Line */}
-              <Polyline
-                positions={pathPositions}
-                pathOptions={{
-                  color: '#10B981',
-                  weight: 3,
-                  opacity: 0.6,
-                  dashArray: '8, 8',
-                  lineCap: 'round',
-                }}
-              />
-              
-              {/* Distance Label at Midpoint */}
-              <Marker
-                position={midpoint}
-                icon={createDistanceIcon(editor.approxLocation?.distance || '?')}
-                interactive={false}
-              />
-            </div>
-          );
-        })}
+        {/* Search Radius Circle - Visual region indicator */}
+        <Circle
+          center={[center.lat, center.lng]}
+          radius={searchRadius * 1000} // Convert km to meters
+          pathOptions={{
+            color: '#10B981',
+            weight: 2,
+            opacity: 0.6,
+            fillColor: '#10B981',
+            fillOpacity: 0.08,
+            dashArray: '5, 5',
+          }}
+        />
         
         {/* User's current location marker (GREEN with "You" badge) */}
         <Marker 
@@ -347,21 +342,20 @@ const MapComponent = ({ center, zoom = 12, markers = [], onMarkerClick, selected
           </Popup>
         </Marker>
         
-        {/* Editor markers with offset for overlapping (Snapchat-style) */}
+        {/* Editor markers at RANDOMIZED positions within region (for privacy) */}
         {markers.map((editor, index) => {
-          const offsetIndex = getOffsetIndex(editor, markers, index);
           const photoUrl = editor.profilePicture && editor.profilePicture.trim() !== ''
             ? editor.profilePicture
             : 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
           
+          // Get randomized position within the search radius
+          const randomizedPos = getRandomizedPosition(editor, index);
+          
           return (
             <Marker 
               key={editor._id}
-              position={[
-                editor.approxLocation?.lat || center.lat, 
-                editor.approxLocation?.lng || center.lng
-              ]}
-              icon={createEditorMarkerIcon(editor, offsetIndex)}
+              position={randomizedPos}
+              icon={createEditorMarkerIcon(editor, 0)} // No offset needed with random positions
               zIndexOffset={500 + index}
               eventHandlers={{
                 click: () => handleEditorClick(editor)
@@ -400,7 +394,7 @@ const MapComponent = ({ center, zoom = 12, markers = [], onMarkerClick, selected
                       <p style={{ fontWeight: '600', color: isDark ? '#fff' : '#111827', fontSize: '13px', margin: 0 }}>{editor.name}</p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
                         <span style={{ color: '#F59E0B', fontSize: '11px' }}>★ {editor.rating?.toFixed(1) || 'N/A'}</span>
-                        <span style={{ color: '#10B981', fontSize: '11px', fontWeight: '500' }}>{editor.approxLocation?.distance}km</span>
+                        <span style={{ color: '#10B981', fontSize: '11px', fontWeight: '500' }}>In this area</span>
                       </div>
                     </div>
                   </div>
@@ -453,6 +447,55 @@ const MapComponent = ({ center, zoom = 12, markers = [], onMarkerClick, selected
           );
         })}
       </MapContainer>
+
+      {/* Radius Control */}
+      <div className={`absolute top-6 right-6 z-[1000] rounded-xl shadow-2xl p-3 ${
+        isDark ? 'bg-black border border-green-900/50' : 'bg-white border border-gray-200'
+      }`}>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-3">
+            <span className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              Search Area
+            </span>
+            <span className={`text-sm font-bold ${isDark ? 'text-green-400' : 'text-green-600'}`}>
+              {searchRadius} km
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSearchRadius(prev => Math.max(1, prev - 1))}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold ${
+                isDark 
+                  ? 'bg-green-950/50 text-green-400 hover:bg-green-900/50' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              -
+            </button>
+            <input
+              type="range"
+              min="1"
+              max="25"
+              value={searchRadius}
+              onChange={(e) => setSearchRadius(parseInt(e.target.value))}
+              className="flex-1 h-2 rounded-lg appearance-none cursor-pointer accent-green-500"
+              style={{
+                background: `linear-gradient(to right, #10B981 0%, #10B981 ${(searchRadius / 25) * 100}%, ${isDark ? '#0a0a0a' : '#e5e7eb'} ${(searchRadius / 25) * 100}%, ${isDark ? '#0a0a0a' : '#e5e7eb'} 100%)`
+              }}
+            />
+            <button
+              onClick={() => setSearchRadius(prev => Math.min(25, prev + 1))}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold ${
+                isDark 
+                  ? 'bg-green-950/50 text-green-400 hover:bg-green-900/50' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              +
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Map Layer Switcher */}
       <div className={`absolute bottom-6 right-6 z-[1000] rounded-xl shadow-2xl p-2 ${

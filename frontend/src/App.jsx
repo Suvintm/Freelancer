@@ -149,7 +149,7 @@ function App() {
         <Route
           path="/editors-near-you"
           element={
-            <ProtectedRoute allowedRoles={["client"]}>
+            <ProtectedRoute allowedRoles={["client", "editor"]}>
               <LocalEditorsNetworkPage />
             </ProtectedRoute>
           }

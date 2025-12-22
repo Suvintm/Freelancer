@@ -43,12 +43,8 @@ const LocalEditorsNetworkPage = () => {
     sortBy: 'distance'
   });
 
-  useEffect(() => {
-    if (user?.role !== "client") {
-      toast.error("This feature is only available for clients");
-      navigate("/");
-    }
-  }, [user, navigate]);
+  // Allow both clients and editors to view nearby editors
+  // No role restriction needed - this feature is for everyone
 
   useEffect(() => {
     if (!userLocation) {

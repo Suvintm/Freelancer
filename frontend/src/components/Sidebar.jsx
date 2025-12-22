@@ -12,6 +12,7 @@ import {
   FaChartLine,
   FaHome,
   FaTrophy,
+  FaMapMarkerAlt,
 } from "react-icons/fa";
 import { HiOutlineSun, HiOutlineMoon, HiEye } from "react-icons/hi2";
 import { motion, AnimatePresence } from "framer-motion";
@@ -40,6 +41,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: "/payments", icon: FaWallet, label: "Payments" },
     { path: "/kyc-details", icon: FaUniversity, label: "KYC Details" },
     { path: "/location-settings", icon: FaBriefcase, label: "Location Settings" },
+    { path: "/editors-near-you", icon: FaMapMarkerAlt, label: "Editors Near You", isNew: true },
     { path: "/editor-profile", icon: FaUserTie, label: "Profile" },
     { path: "/chats", icon: FaEnvelope, label: "Messages", badge: totalUnread },
     { path: "/legal-center", icon: FaBriefcase, label: "Legal & Terms" },
@@ -103,7 +105,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         {/* Navigation Items */}
         <nav className="flex-1 px-3 py-2 flex flex-col gap-1 overflow-y-auto">
-          {navItems.map(({ path, icon: Icon, label, badge }) => {
+          {navItems.map(({ path, icon: Icon, label, badge, isNew }) => {
             const isActive = location.pathname === path;
 
             return (
@@ -131,6 +133,13 @@ const Sidebar = ({ isOpen, onClose }) => {
                 {/* Icon + Text */}
                 <Icon className={`text-base ${isActive ? "text-emerald-500" : "text-gray-500 light:text-slate-400 group-hover:text-gray-300 light:group-hover:text-slate-600"}`} />
                 <span>{label}</span>
+
+                {/* NEW Badge for new features */}
+                {isNew && (
+                  <span className="ml-auto px-1.5 py-0.5 text-[9px] font-bold bg-amber-400 text-amber-900 rounded-full animate-pulse">
+                    NEW
+                  </span>
+                )}
 
                 {/* 🆕 Badge for unread count */}
                 {badge > 0 && (
