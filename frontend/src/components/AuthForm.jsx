@@ -1,6 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { FaPlus, FaTimes, FaGlobe } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 
@@ -272,6 +272,20 @@ const AuthForm = () => {
             required
             className="p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition"
           />
+          
+          {/* Forgot Password Link - Only show on login */}
+          {isLogin && (
+            <div className="text-right -mt-1">
+              <Link
+                to="/forgot-password"
+                onClick={() => setShowAuth(false)}
+                className="text-sm text-green-500 hover:text-green-600 hover:underline"
+              >
+                Forgot Password?
+              </Link>
+            </div>
+          )}
+          
           <button
             type="submit"
             disabled={loading}

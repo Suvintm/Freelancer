@@ -5,6 +5,8 @@ import {
   logout,
   updateProfilePicture,
   getCurrentUser,
+  forgotPassword,
+  resetPassword,
 } from "../controllers/authcontroller.js";
 import { upload } from "../middleware/upload.js";
 import protect from "../middleware/authMiddleware.js";
@@ -29,6 +31,14 @@ router.post("/login", authLimiter, loginValidator, login);
 
 // Logout - protected
 router.post("/logout", protect, logout);
+
+// ============ PASSWORD RESET ============
+
+// Forgot Password - Request reset email
+router.post("/forgot-password", authLimiter, forgotPassword);
+
+// Reset Password - Set new password with token
+router.post("/reset-password/:token", resetPassword);
 
 // ============ PROFILE PICTURE ============
 

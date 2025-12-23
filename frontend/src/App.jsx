@@ -50,6 +50,8 @@ import LegalCenterPage from "./pages/LegalCenterPage.jsx";
 import LocalEditorsNetworkPage from "./pages/LocalEditorsNetworkPage.jsx";
 import LocationSettingsPage from "./pages/LocationSettingsPage.jsx";
 import AchievementsPage from "./pages/AchievementsPage.jsx";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
+import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
 
 import { TermsAndConditions, PrivacyPolicy, ContentProtectionPolicy, EditorCodeOfConduct } from "./pages/LegalPages";
 
@@ -76,6 +78,10 @@ function App() {
         {/* OAuth Routes (Public) */}
         <Route path="/oauth-success" element={<OAuthSuccess />} />
         <Route path="/select-role" element={<SelectRole />} />
+
+        {/* Password Reset Routes (Public) */}
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
 
         {/* Banned & Maintenance Pages (Public) */}
         <Route path="/banned" element={<BannedPage />} />
