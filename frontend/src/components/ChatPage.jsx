@@ -30,6 +30,8 @@ import {
   FaFolder,
   FaFilm,
   FaImage,
+  FaExclamationTriangle,
+  FaCalendarPlus,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
@@ -667,6 +669,11 @@ const ChatPage = () => {
   const [pendingDriveLink, setPendingDriveLink] = useState(null);
   const [isAcceptingPolicy, setIsAcceptingPolicy] = useState(false);
 
+  // --- Deadline Extension State ---
+  const [showDeadlineWarning, setShowDeadlineWarning] = useState(false);
+  const [deadlineExtInfo, setDeadlineExtInfo] = useState(null);
+  const [extendingDeadline, setExtendingDeadline] = useState(false);
+
   // Handle Drive Link Click
   const handleDriveLinkClick = async (url, title = "Files") => {
     // If not editor, just open the link directly
@@ -754,6 +761,57 @@ const ChatPage = () => {
     };
     if (orderId) fetchData();
   }, [orderId, backendURL, user?.token]);
+
+  // --- Check Deadline Status ---
+  useEffect(() => {
+    const checkDeadlineStatus = async () => {
+      if (!orderId || !order || !["accepted", "in_progress"].includes(order.status)) return;
+      
+      try {
+        const token = user?.token;
+        const res = await axios.get(`${backendURL}/api/orders/${orderId}/deadline-status`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setDeadlineExtInfo(res.data.deadline);
+        setShowDeadlineWarning(res.data.deadline?.showWarning && res.data.deadline?.canExtend);
+      } catch (err) {
+        console.error("Failed to check deadline status", err);
+      }
+    };
+    
+    checkDeadlineStatus();
+    // Check every minute
+    const interval = setInterval(checkDeadlineStatus, 60000);
+    return () => clearInterval(interval);
+  }, [orderId, order?.status, backendURL, user?.token]);
+
+  // --- Handle Extend Deadline ---
+  const handleExtendDeadline = async (extraDays) => {
+    if (extendingDeadline) return;
+    setExtendingDeadline(true);
+    
+    try {
+      const token = user?.token;
+      const res = await axios.post(`${backendURL}/api/orders/${orderId}/extend-deadline`, 
+        { extraDays },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Update local order state
+      setOrder(prev => ({
+        ...prev,
+        deadline: res.data.order.deadline,
+        deadlineExtensionCount: res.data.order.deadlineExtensionCount,
+      }));
+      
+      setShowDeadlineWarning(false);
+      toast.success(`Deadline extended by ${extraDays} day(s)!`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to extend deadline");
+    } finally {
+      setExtendingDeadline(false);
+    }
+  };
 
   // --- Socket Listeners ---
   useEffect(() => {
@@ -1484,6 +1542,67 @@ const ChatPage = () => {
         <ChatInfoTabs order={order} messages={messages} userRole={user?.role} orderId={orderId} onLinkClick={handleDriveLinkClick} />
       </header>
 
+      {/* Deadline Warning Banner - Show to clients when deadline is approaching */}
+      <AnimatePresence>
+        {showDeadlineWarning && user?.role === "client" && deadlineExtInfo && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-[120px] left-0 right-0 z-40 px-4"
+          >
+            <div className="max-w-4xl mx-auto">
+              <div className={`rounded-xl p-3 border backdrop-blur-md ${
+                deadlineExtInfo.status === "critical" 
+                  ? "bg-red-500/10 border-red-500/30" 
+                  : "bg-amber-500/10 border-amber-500/30"
+              }`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 flex-1">
+                    <FaExclamationTriangle className={`text-sm ${
+                      deadlineExtInfo.status === "critical" ? "text-red-400" : "text-amber-400"
+                    }`} />
+                    <span className={`text-xs font-medium ${
+                      deadlineExtInfo.status === "critical" ? "text-red-400" : "text-amber-400"
+                    }`}>
+                      {deadlineExtInfo.warningMessage}
+                    </span>
+                    {deadlineExtInfo.extensionsRemaining > 0 && (
+                      <span className="text-[10px] text-gray-500">
+                        ({deadlineExtInfo.extensionsRemaining} extension{deadlineExtInfo.extensionsRemaining > 1 ? 's' : ''} left)
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {[1, 2, 3].map((days) => (
+                      <button
+                        key={days}
+                        onClick={() => handleExtendDeadline(days)}
+                        disabled={extendingDeadline}
+                        className={`px-2 py-1 text-[10px] font-medium rounded-lg transition-colors ${
+                          extendingDeadline 
+                            ? "bg-gray-600 text-gray-400 cursor-not-allowed" 
+                            : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30"
+                        }`}
+                      >
+                        <FaCalendarPlus className="inline mr-0.5 text-[8px]" />
+                        +{days}d
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setShowDeadlineWarning(false)}
+                      className="p-1 rounded-lg hover:bg-white/10"
+                    >
+                      <FaTimes className="text-gray-500 text-xs" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
 
       {/* 2. Messages Area (Textured Background) - with padding for fixed header/footer */}
       <div 
@@ -1814,7 +1933,7 @@ const ChatPage = () => {
 
 
 
-      {/* 3. Input Area (Fixed Bottom) - OR Disabled state for completed/awaiting_payment orders */}
+      {/* 3. Input Area (Fixed Bottom) - OR Disabled state for completed/awaiting_payment/overdue orders */}
       {order?.status === "completed" ? (
         /* Completed Order - Disabled Chat Footer */
         <footer className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md px-4 py-4 pb-6 z-50 border-t border-white/10" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
@@ -1825,6 +1944,34 @@ const ChatPage = () => {
                 <span className="font-semibold">Order Completed</span>
               </div>
               <p className="text-gray-400 text-sm">This chat is now closed. No further messages can be sent.</p>
+            </div>
+          </div>
+        </footer>
+      ) : order?.isOverdue || order?.chatDisabled ? (
+        /* Overdue/Refunded Order - Disabled Chat Footer */
+        <footer className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md px-4 py-4 pb-6 z-50 border-t border-red-500/30" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
+          <div className="max-w-4xl mx-auto text-center">
+            <div className={`border rounded-2xl p-4 ${order?.overdueRefunded ? 'bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30' : 'bg-gradient-to-r from-amber-500/10 to-red-500/10 border-amber-500/30'}`}>
+              <div className={`flex items-center justify-center gap-2 mb-1 ${order?.overdueRefunded ? 'text-red-400' : 'text-amber-400'}`}>
+                {order?.overdueRefunded ? (
+                  <>
+                    <FaExclamationTriangle className="text-sm" />
+                    <span className="font-semibold">💸 Order Refunded</span>
+                  </>
+                ) : (
+                  <>
+                    <FaLock className="text-sm" />
+                    <span className="font-semibold">⚠️ Order Overdue - Chat Disabled</span>
+                  </>
+                )}
+              </div>
+              <p className="text-zinc-400 text-sm">
+                {order?.overdueRefunded 
+                  ? `₹${order?.amount?.toLocaleString()} has been refunded to the client. This order is now closed.`
+                  : order?.graceEndsAt 
+                    ? `Deadline passed. Refund will be processed in ${Math.max(0, Math.ceil((new Date(order.graceEndsAt) - new Date()) / (1000 * 60 * 60)))} hours if work is not submitted.`
+                    : "The deadline has passed. Chat is disabled."}
+              </p>
             </div>
           </div>
         </footer>

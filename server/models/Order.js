@@ -253,6 +253,54 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+
+    // ⏰ Overdue & Deadline Extension System
+    isOverdue: {
+      type: Boolean,
+      default: false,
+    },
+    overdueAt: {
+      type: Date,
+    },
+    // Grace period: 24 hours after deadline before auto-refund
+    graceEndsAt: {
+      type: Date,
+    },
+    overdueRefunded: {
+      type: Boolean,
+      default: false,
+    },
+    overdueRefundedAt: {
+      type: Date,
+    },
+    
+    // Deadline Extension (max 3 times, 1-7 days each)
+    deadlineExtensionCount: {
+      type: Number,
+      default: 0,
+      max: 3,
+    },
+    deadlineExtensionHistory: [{
+      originalDeadline: Date,
+      newDeadline: Date,
+      extendedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+      extendedAt: Date,
+      extraDays: Number,
+    }],
+    
+    // Chat disabled when overdue
+    chatDisabled: {
+      type: Boolean,
+      default: false,
+    },
+    chatDisabledReason: {
+      type: String,
+      enum: ["none", "overdue", "refunded", "completed", "cancelled"],
+      default: "none",
+    },
   },
   { timestamps: true }
 );

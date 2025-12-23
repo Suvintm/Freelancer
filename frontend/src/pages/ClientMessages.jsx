@@ -1,58 +1,40 @@
-/**
- * Client Messages Page - Professional Corporate Design
- * Chat list with advanced loading animation and Brief type support
- */
-import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+// ClientMessages.jsx - Professional Corporate UI with Advanced Loading Animation
+import React, { useState, useEffect } from "react";
 import {
   HiChatAlt2,
   HiSearch,
+  HiInbox,
+  HiClock,
+  HiCurrencyRupee,
+  HiChevronRight,
+  HiExclamation,
+  HiCheckCircle,
   HiShoppingCart,
   HiMail,
-  HiChevronRight,
-  HiCurrencyRupee,
-  HiClock,
-  HiRefresh,
-  HiInbox,
   HiClipboardList,
-  HiCheckCircle,
-  HiExclamation,
 } from "react-icons/hi";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { useAppContext } from "../context/AppContext";
-import { useSocket } from "../context/SocketContext";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { useAppContext } from "../context/AppContext";
+import { useSocket } from "../context/SocketContext";
 import ClientSidebar from "../components/ClientSidebar.jsx";
 import ClientNavbar from "../components/ClientNavbar.jsx";
 
+// Status Configuration
 const STATUS_CONFIG = {
-  accepted: { 
-    label: "Accepted", 
-    color: "text-emerald-400", 
-    bg: "bg-emerald-500/10", 
-    border: "border-emerald-500/20" 
-  },
-  in_progress: { 
-    label: "In Progress", 
-    color: "text-amber-400", 
-    bg: "bg-amber-500/10", 
-    border: "border-amber-500/20" 
-  },
-  submitted: { 
-    label: "Submitted", 
-    color: "text-purple-400", 
-    bg: "bg-purple-500/10", 
-    border: "border-purple-500/20" 
-  },
-  completed: { 
-    label: "Completed", 
-    color: "text-emerald-400", 
-    bg: "bg-emerald-500/10", 
-    border: "border-emerald-500/20" 
-  },
+  new: { label: "New", color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
+  accepted: { label: "Accepted", color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+  in_progress: { label: "In Progress", color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+  submitted: { label: "Submitted", color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20" },
+  completed: { label: "Completed", color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+  rejected: { label: "Rejected", color: "text-red-400", bg: "bg-red-500/10", border: "border-red-500/20" },
+  cancelled: { label: "Cancelled", color: "text-gray-400", bg: "bg-gray-500/10", border: "border-gray-500/20" },
+  disputed: { label: "Disputed", color: "text-orange-400", bg: "bg-orange-500/10", border: "border-orange-500/20" },
 };
 
+// Order Type Configuration
 const ORDER_TYPE_CONFIG = {
   gig: {
     label: "Gig",
@@ -153,169 +135,140 @@ const DottedSpinner = () => {
       
       {/* Inner pulsing circle */}
       <motion.div
-        className="absolute inset-4 rounded-full bg-emerald-500/20 border border-emerald-500/30"
-        animate={{
-          scale: [1, 1.1, 1],
-          opacity: [0.5, 0.8, 0.5],
-        }}
-        transition={{
-          duration: 1.5,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-      />
-      
-      {/* Center icon */}
-      <motion.div
         className="absolute inset-0 flex items-center justify-center"
-        animate={{ scale: [0.9, 1, 0.9] }}
+        animate={{ scale: [1, 1.1, 1] }}
         transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
       >
-        <HiChatAlt2 className="text-emerald-400 text-lg" />
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 flex items-center justify-center">
+          <HiChatAlt2 className="text-emerald-400 text-sm" />
+        </div>
       </motion.div>
     </div>
   );
 };
 
+// Format date helper
+const formatDate = (date) => {
+  if (!date) return "";
+  const d = new Date(date);
+  const now = new Date();
+  const diff = now - d;
+  
+  if (diff < 60000) return "Just now";
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
+  
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+};
+
 const ClientMessages = () => {
   const navigate = useNavigate();
-  const { user, backendURL } = useAppContext();
+  const { backendURL, user } = useAppContext();
   const socketContext = useSocket();
   const { onlineUsers = [] } = socketContext || {};
-
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [unreadCounts, setUnreadCounts] = useState({});
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const fetchChats = useCallback(async () => {
-    try {
-      setLoading(true);
-      const token = user?.token;
-
-      const res = await axios.get(`${backendURL}/api/orders`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      // Filter only orders with active chats (accepted+)
-      const activeChats = (res.data.orders || []).filter(order => 
-        ["accepted", "in_progress", "submitted", "completed"].includes(order.status)
-      );
-
-      // Fetch unread counts from dedicated endpoint
-      let unreadCounts = {};
+  // Fetch orders with chat capability
+  useEffect(() => {
+    const fetchChats = async () => {
       try {
-        const unreadRes = await axios.get(`${backendURL}/api/messages/unread-per-order`, {
-          headers: { Authorization: `Bearer ${token}` },
+        const token = user?.token;
+        const [ordersRes, unreadRes] = await Promise.all([
+          axios.get(`${backendURL}/api/orders`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          axios.get(`${backendURL}/api/messages/unread-per-order`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+        
+        // Filter orders that can have chats
+        const chatOrders = ordersRes.data.orders.filter(order => 
+          ["accepted", "in_progress", "submitted", "completed"].includes(order.status)
+        );
+        
+        // Get last message for each order
+        const chatsWithMessages = await Promise.all(
+          chatOrders.map(async (order) => {
+            try {
+              const msgRes = await axios.get(`${backendURL}/api/messages/${order._id}?limit=1`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              return {
+                ...order,
+                lastMessage: msgRes.data.messages?.[0] || null,
+                unreadCount: unreadRes.data.unreadCounts?.[order._id] || 0,
+              };
+            } catch {
+              return { ...order, lastMessage: null, unreadCount: 0 };
+            }
+          })
+        );
+        
+        // Sort by last message date
+        chatsWithMessages.sort((a, b) => {
+          const aDate = a.lastMessage?.createdAt || a.createdAt;
+          const bDate = b.lastMessage?.createdAt || b.createdAt;
+          return new Date(bDate) - new Date(aDate);
         });
-        unreadCounts = unreadRes.data.unreadCounts || {};
+        
+        setChats(chatsWithMessages);
+        setUnreadCounts(unreadRes.data.unreadCounts || {});
       } catch (err) {
-        console.error("Failed to fetch unread counts:", err);
+        console.error(err);
+        toast.error("Failed to load messages");
+      } finally {
+        setLoading(false);
       }
-
-      // Fetch only the last message for each chat
-      const chatsWithMessages = await Promise.all(
-        activeChats.map(async (chat) => {
-          try {
-            const msgRes = await axios.get(`${backendURL}/api/messages/${chat._id}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            const messages = msgRes.data.messages || [];
-            
-            return {
-              ...chat,
-              lastMessage: messages.length > 0 ? messages[messages.length - 1] : null,
-              unreadCount: unreadCounts[chat._id] || 0,
-            };
-          } catch {
-            return { ...chat, lastMessage: null, unreadCount: unreadCounts[chat._id] || 0 };
-          }
-        })
-      );
-
-      // Sort by latest message time
-      chatsWithMessages.sort((a, b) => {
-        const aTime = a.lastMessage?.createdAt || a.updatedAt;
-        const bTime = b.lastMessage?.createdAt || b.updatedAt;
-        return new Date(bTime) - new Date(aTime);
-      });
-
-      setChats(chatsWithMessages);
-    } catch (err) {
-      toast.error("Failed to load chats");
-    } finally {
-      setLoading(false);
-    }
+    };
+    
+    if (user?.token) fetchChats();
   }, [backendURL, user?.token]);
 
-  useEffect(() => {
-    if (user?.token) {
-      fetchChats();
-    }
-  }, [user?.token, fetchChats]);
-
-  const formatDate = (date) => {
-    const d = new Date(date);
-    const now = new Date();
-    const diff = now - d;
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(hours / 24);
-
-    if (hours < 1) return "Just now";
-    if (hours < 24) return `${hours}h ago`;
-    if (days === 1) return "Yesterday";
-    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-  };
-
   // Filter chats by search
-  const filteredChats = chats.filter(chat => {
-    const searchLower = search.toLowerCase();
-    return (
-      chat.title?.toLowerCase().includes(searchLower) ||
-      chat.editor?.name?.toLowerCase().includes(searchLower) ||
-      chat.orderNumber?.toString().includes(searchLower)
-    );
-  });
+  const filteredChats = chats.filter(chat => 
+    chat.editor?.name?.toLowerCase().includes(search.toLowerCase()) ||
+    chat.title?.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#030303] light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-300" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div 
+      className="min-h-screen flex flex-col md:flex-row bg-[#09090B] light:bg-[#FAFAFA] text-white light:text-zinc-900"
+      style={{ fontFamily: "'Manrope', sans-serif" }}
+    >
       <ClientSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <ClientNavbar onMenuClick={() => setSidebarOpen(true)} />
-
-      <main className="flex-1 px-4 md:px-6 py-5 md:ml-64 md:mt-20">
+      
+      <main className="flex-1 px-4 md:px-6 py-4 pt-18 md:pt-4 md:ml-64 md:mt-16 overflow-x-hidden overflow-y-auto pb-24">
+        
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-              <HiChatAlt2 className="text-emerald-400 text-lg" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-white light:text-slate-900">Messages</h1>
-              <p className="text-gray-500 text-[10px]">{chats.length} active conversations</p>
-            </div>
+        <div className="mb-5">
+          <div className="flex items-center gap-2 mb-1">
+            <HiChatAlt2 className="text-emerald-400 text-xl" />
+            <h1 className="text-xl font-bold text-white light:text-slate-900" style={{ fontFamily: "'Outfit', sans-serif" }}>Messages</h1>
           </div>
-          <button
-            onClick={() => fetchChats()}
-            disabled={loading}
-            className="p-2 rounded-lg bg-[#0A0A0C] light:bg-white border border-[#1a1a1f] light:border-slate-200 text-gray-400 hover:text-white light:hover:text-slate-900 transition-colors disabled:opacity-50"
-          >
-            <HiRefresh className={`text-sm ${loading ? "animate-spin" : ""}`} />
-          </button>
+          <p className="text-zinc-500 text-sm">Chat with your editors</p>
         </div>
-
-        {/* Search */}
+        
+        {/* Search Bar */}
         <div className="relative mb-5">
-          <HiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" />
+          <HiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
           <input
             type="text"
+            placeholder="Search chats..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by editor name or project..."
-            className="w-full bg-[#0A0A0C] light:bg-white border border-[#1a1a1f] light:border-slate-200 rounded-lg pl-9 pr-4 py-2.5 text-xs text-white light:text-slate-900 placeholder:text-gray-600 focus:border-[#2a2a30] outline-none transition-all"
+            className="w-full bg-zinc-900/60 light:bg-white border border-zinc-800/60 light:border-zinc-200 rounded-xl pl-10 pr-4 py-3 text-white light:text-slate-900 text-sm focus:outline-none focus:border-emerald-500/50 transition-all"
           />
         </div>
-
-        {/* Loading State with Advanced Animation */}
+        
+        {/* Chats List */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <DottedSpinner />
@@ -370,7 +323,7 @@ const ClientMessages = () => {
             )}
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <AnimatePresence>
               {filteredChats.map((chat, index) => {
                 const statusConfig = STATUS_CONFIG[chat.status] || STATUS_CONFIG.in_progress;
@@ -387,8 +340,9 @@ const ClientMessages = () => {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ delay: index * 0.03 }}
+                    whileHover={{ scale: 1.01, y: -2 }}
                     onClick={() => navigate(`/chat/${chat._id}`)}
-                    className="bg-[#0A0A0C] light:bg-white border border-[#1a1a1f] light:border-slate-200 rounded-xl p-3 cursor-pointer hover:border-[#2a2a30] light:hover:border-slate-300 transition-all group"
+                    className="bg-zinc-900/60 light:bg-white border border-zinc-800/60 light:border-zinc-200 rounded-2xl p-4 cursor-pointer hover:border-emerald-500/30 light:hover:border-emerald-300 transition-all group shadow-lg shadow-black/10 light:shadow-zinc-200/50 hover:shadow-xl hover:shadow-emerald-500/5"
                   >
                     <div className="flex items-center gap-3">
                       {/* Editor Avatar with Online & Unread */}
@@ -396,10 +350,10 @@ const ClientMessages = () => {
                         <img
                           src={chat.editor?.profilePicture || "/default-avatar.png"}
                           alt={chat.editor?.name}
-                          className="w-10 h-10 rounded-lg object-cover"
+                          className="w-12 h-12 rounded-xl object-cover border-2 border-zinc-700 light:border-zinc-200 group-hover:border-emerald-500/50 transition-all"
                         />
                         {/* Online indicator */}
-                        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0A0A0C] light:border-white ${isOnline ? 'bg-emerald-500' : 'bg-gray-500'}`} />
+                        <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-zinc-900 light:border-white ${isOnline ? 'bg-emerald-500' : 'bg-zinc-500'}`} />
                         
                         {/* Unread Badge */}
                         {chat.unreadCount > 0 && (
@@ -440,8 +394,16 @@ const ClientMessages = () => {
                             {formatDate(chat.lastMessage?.createdAt || chat.createdAt)}
                           </span>
                           
-                          {/* Deadline Indicator */}
-                          {deadlineStatus && chat.status !== "completed" && (
+                          {/* Deadline Indicator or Overdue/Refunded Tags */}
+                          {chat.overdueRefunded ? (
+                            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
+                              💸 Overdue - Refunded
+                            </span>
+                          ) : chat.isOverdue ? (
+                            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse">
+                              ⚠️ Overdue
+                            </span>
+                          ) : deadlineStatus && chat.status !== "completed" && (
                             <span className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-medium ${deadlineStatus.color}`}>
                               <HiExclamation className="text-[8px]" />
                               {deadlineStatus.text}

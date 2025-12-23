@@ -322,6 +322,18 @@ const ClientOrders = () => {
                             <StatusIcon className="text-[9px]" />
                             {statusConfig.label}
                           </span>
+                          
+                          {/* Overdue / Refunded Tag */}
+                          {order.overdueRefunded && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
+                              💸 Refunded
+                            </span>
+                          )}
+                          {order.isOverdue && !order.overdueRefunded && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse">
+                              ⚠️ Overdue
+                            </span>
+                          )}
                         </div>
 
                         {/* Editor Name */}

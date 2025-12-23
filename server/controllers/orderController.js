@@ -665,3 +665,337 @@ export const getOrderStats = asyncHandler(async (req, res) => {
     stats: formattedStats,
   });
 });
+
+// ============ EXTEND ORDER DEADLINE (Client Only) ============
+export const extendDeadline = asyncHandler(async (req, res) => {
+  const { extraDays } = req.body;
+  const order = await Order.findById(req.params.id)
+    .populate("editor", "name")
+    .populate("client", "name");
+
+  if (!order) {
+    throw new ApiError(404, "Order not found");
+  }
+
+  // Only client can extend deadline
+  if (order.client._id.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "Only the client can extend the deadline");
+  }
+
+  // Validate extraDays
+  if (!extraDays || extraDays < 1 || extraDays > 7) {
+    throw new ApiError(400, "Extension must be between 1-7 days");
+  }
+
+  // Cannot extend if already overdue and refunded
+  if (order.overdueRefunded) {
+    throw new ApiError(400, "Cannot extend deadline - order has been refunded");
+  }
+
+  // Cannot extend if order is in wrong status
+  if (!["accepted", "in_progress"].includes(order.status)) {
+    throw new ApiError(400, `Cannot extend deadline in ${order.status} status`);
+  }
+
+  // Max 3 extensions allowed
+  if (order.deadlineExtensionCount >= 3) {
+    throw new ApiError(400, "Maximum 3 deadline extensions allowed");
+  }
+
+  // Store original deadline
+  const originalDeadline = new Date(order.deadline);
+  
+  // Calculate new deadline
+  const newDeadline = new Date(order.deadline.getTime() + extraDays * 24 * 60 * 60 * 1000);
+
+  // Update order
+  order.deadline = newDeadline;
+  order.deadlineExtensionCount += 1;
+  order.isOverdue = false; // Reset overdue if it was approaching
+  order.graceEndsAt = null;
+  order.deadlineExtensionHistory.push({
+    originalDeadline,
+    newDeadline,
+    extendedBy: req.user._id,
+    extendedAt: new Date(),
+    extraDays,
+  });
+
+  await order.save();
+
+  // Create system message in chat
+  await Message.create({
+    order: order._id,
+    sender: req.user._id,
+    type: "system",
+    content: `📅 Deadline Extended! Client added ${extraDays} day(s). New deadline: ${newDeadline.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`,
+    systemAction: "deadline_extended",
+    metadata: {
+      originalDeadline,
+      newDeadline,
+      extraDays,
+      extensionNumber: order.deadlineExtensionCount,
+    },
+  });
+
+  // Notify editor
+  await createNotification({
+    recipient: order.editor._id,
+    type: "info",
+    title: "📅 Deadline Extended",
+    message: `${req.user.name} extended the deadline by ${extraDays} day(s) for "${order.title}"`,
+    link: `/chat/${order._id}`,
+  });
+
+  logger.info(`Deadline extended: ${order.orderNumber}, +${extraDays} days, New: ${newDeadline}`);
+
+  res.status(200).json({
+    success: true,
+    message: `Deadline extended by ${extraDays} day(s)`,
+    order: {
+      _id: order._id,
+      deadline: order.deadline,
+      deadlineExtensionCount: order.deadlineExtensionCount,
+      extensionsRemaining: 3 - order.deadlineExtensionCount,
+    },
+  });
+});
+
+// ============ CHECK & PROCESS OVERDUE ORDERS ============
+export const checkOverdueOrders = asyncHandler(async (req, res) => {
+  const now = new Date();
+  
+  // Find orders that are past deadline but not yet marked overdue
+  const overdueOrders = await Order.find({
+    deadline: { $lt: now },
+    status: { $in: ["accepted", "in_progress"] },
+    isOverdue: false,
+    overdueRefunded: false,
+  }).populate("client", "name email").populate("editor", "name email");
+
+  const results = [];
+
+  for (const order of overdueOrders) {
+    // Mark as overdue and set grace period (24 hours)
+    order.isOverdue = true;
+    order.overdueAt = now;
+    order.graceEndsAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    order.chatDisabled = true;
+    order.chatDisabledReason = "overdue";
+    
+    await order.save();
+
+    // Create system message
+    await Message.create({
+      order: order._id,
+      sender: null, // System message
+      type: "system",
+      content: `⚠️ Order is OVERDUE! The deadline has passed. Chat is disabled. A refund will be processed in 24 hours if work is not submitted.`,
+      systemAction: "order_overdue",
+    });
+
+    // Notify both parties
+    await createNotification({
+      recipient: order.client._id,
+      type: "warning",
+      title: "⚠️ Order Overdue",
+      message: `"${order.title}" has passed its deadline. Refund will be processed in 24 hours.`,
+      link: `/chat/${order._id}`,
+    });
+
+    await createNotification({
+      recipient: order.editor._id,
+      type: "error",
+      title: "⚠️ Order Overdue - Submit Now!",
+      message: `"${order.title}" is overdue! Submit your work within 24 hours or client will be refunded.`,
+      link: `/chat/${order._id}`,
+    });
+
+    results.push({ orderId: order._id, orderNumber: order.orderNumber, status: "marked_overdue" });
+    logger.warn(`Order marked overdue: ${order.orderNumber}`);
+  }
+
+  res.status(200).json({
+    success: true,
+    message: `Processed ${overdueOrders.length} overdue orders`,
+    results,
+  });
+});
+
+// ============ PROCESS OVERDUE REFUNDS (After Grace Period) ============
+export const processOverdueRefunds = asyncHandler(async (req, res) => {
+  const now = new Date();
+  
+  // Find orders where grace period has ended
+  const ordersToRefund = await Order.find({
+    isOverdue: true,
+    graceEndsAt: { $lt: now },
+    overdueRefunded: false,
+    status: { $in: ["accepted", "in_progress"] },
+    escrowStatus: "held",
+  }).populate("client", "name email").populate("editor", "name email");
+
+  const results = [];
+
+  for (const order of ordersToRefund) {
+    try {
+      // Process Razorpay refund
+      let refundResult = null;
+      if (order.razorpayPaymentId) {
+        const Razorpay = (await import("razorpay")).default;
+        const razorpay = new Razorpay({
+          key_id: process.env.RAZORPAY_KEY_ID,
+          key_secret: process.env.RAZORPAY_KEY_SECRET,
+        });
+
+        refundResult = await razorpay.payments.refund(order.razorpayPaymentId, {
+          amount: order.amount * 100, // Full refund in paise
+          speed: "normal",
+          notes: {
+            reason: "order_overdue",
+            orderId: order._id.toString(),
+            orderNumber: order.orderNumber,
+          },
+        });
+
+        order.refundId = refundResult.id;
+        logger.info(`Razorpay refund initiated: ${refundResult.id} for order ${order.orderNumber}`);
+      }
+
+      // Update order status
+      order.overdueRefunded = true;
+      order.overdueRefundedAt = now;
+      order.refundAmount = order.amount;
+      order.refundedAt = now;
+      order.refundReason = "order_overdue";
+      order.paymentStatus = "refunded";
+      order.escrowStatus = "refunded";
+      order.status = "cancelled";
+      order.cancelledAt = now;
+      order.cancellationReason = "Order overdue - automatic refund";
+      order.chatDisabledReason = "refunded";
+      
+      await order.save();
+
+      // Create system message
+      await Message.create({
+        order: order._id,
+        sender: null,
+        type: "system",
+        content: `💸 REFUND PROCESSED: ₹${order.amount} has been refunded to the client due to overdue order. This order is now closed.`,
+        systemAction: "order_refunded",
+        metadata: {
+          refundAmount: order.amount,
+          refundId: order.refundId,
+          reason: "overdue",
+        },
+      });
+
+      // Notify client
+      await createNotification({
+        recipient: order.client._id,
+        type: "success",
+        title: "💸 Refund Processed",
+        message: `₹${order.amount} has been refunded for "${order.title}" (Order Overdue)`,
+        link: `/client-orders`,
+      });
+
+      // Notify editor
+      await createNotification({
+        recipient: order.editor._id,
+        type: "error",
+        title: "❌ Order Cancelled - Overdue",
+        message: `"${order.title}" was cancelled and refunded due to missed deadline.`,
+        link: `/my-orders`,
+      });
+
+      results.push({ 
+        orderId: order._id, 
+        orderNumber: order.orderNumber, 
+        status: "refunded",
+        refundId: order.refundId,
+        amount: order.amount,
+      });
+      
+      logger.info(`Overdue refund processed: ${order.orderNumber}, Amount: ₹${order.amount}`);
+    } catch (error) {
+      logger.error(`Refund failed for ${order.orderNumber}: ${error.message}`);
+      results.push({ 
+        orderId: order._id, 
+        orderNumber: order.orderNumber, 
+        status: "failed",
+        error: error.message,
+      });
+    }
+  }
+
+  res.status(200).json({
+    success: true,
+    message: `Processed ${ordersToRefund.length} overdue refunds`,
+    results,
+  });
+});
+
+// ============ GET ORDER DEADLINE STATUS ============
+export const getDeadlineStatus = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id);
+
+  if (!order) {
+    throw new ApiError(404, "Order not found");
+  }
+
+  const now = new Date();
+  const deadline = new Date(order.deadline);
+  const hoursRemaining = (deadline - now) / (1000 * 60 * 60);
+  const daysRemaining = Math.ceil(hoursRemaining / 24);
+
+  let status = "normal";
+  let canExtend = false;
+  let showWarning = false;
+  let warningMessage = "";
+
+  // Determine deadline status
+  if (order.isOverdue && order.overdueRefunded) {
+    status = "refunded";
+    warningMessage = `Order refunded on ${order.overdueRefundedAt?.toLocaleDateString("en-IN")}`;
+  } else if (order.isOverdue) {
+    status = "overdue";
+    const graceHoursLeft = order.graceEndsAt ? Math.max(0, (new Date(order.graceEndsAt) - now) / (1000 * 60 * 60)) : 0;
+    warningMessage = `Order is overdue! ${graceHoursLeft > 0 ? `Refund in ${Math.ceil(graceHoursLeft)} hours` : "Refund processing..."}`;
+  } else if (hoursRemaining <= 0) {
+    status = "overdue";
+    showWarning = true;
+    warningMessage = "Deadline has passed!";
+  } else if (hoursRemaining <= 24) {
+    status = "critical";
+    showWarning = true;
+    canExtend = order.deadlineExtensionCount < 3 && ["accepted", "in_progress"].includes(order.status);
+    warningMessage = `⚠️ Less than ${Math.ceil(hoursRemaining)} hours remaining!`;
+  } else if (daysRemaining <= 2) {
+    status = "warning";
+    showWarning = true;
+    canExtend = order.deadlineExtensionCount < 3 && ["accepted", "in_progress"].includes(order.status);
+    warningMessage = `${daysRemaining} day(s) remaining until deadline`;
+  }
+
+  res.status(200).json({
+    success: true,
+    deadline: {
+      date: order.deadline,
+      hoursRemaining: Math.max(0, hoursRemaining),
+      daysRemaining: Math.max(0, daysRemaining),
+      status,
+      isOverdue: order.isOverdue,
+      overdueRefunded: order.overdueRefunded,
+      chatDisabled: order.chatDisabled,
+      chatDisabledReason: order.chatDisabledReason,
+      canExtend,
+      extensionsUsed: order.deadlineExtensionCount,
+      extensionsRemaining: 3 - order.deadlineExtensionCount,
+      showWarning,
+      warningMessage,
+      graceEndsAt: order.graceEndsAt,
+    },
+  });
+});
+
