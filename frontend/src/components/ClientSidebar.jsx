@@ -15,6 +15,8 @@ import {
   FaCreditCard,
   FaShieldAlt,
   FaMapMarkerAlt,
+  FaPlus,
+  FaShoppingCart,
 } from "react-icons/fa";
 import { HiOutlineSun, HiOutlineMoon } from "react-icons/hi2";
 import { motion, AnimatePresence } from "framer-motion";
@@ -88,9 +90,11 @@ const ClientSidebar = ({ isOpen, onClose }) => {
 
   const navItems = [
     { path: "/client-home", icon: FaHome, label: "Dashboard" },
+    { path: "/my-briefs", icon: FaClipboardList, label: "My Briefs", isNew: true },
+    { path: "/create-brief", icon: FaPlus, label: "Post Brief" },
     { path: "/explore-editors", icon: FaUserTie, label: "Explore Editors" },
     { path: "/editors-near-you", icon: FaMapMarkerAlt, label: "Editors Near You" },
-    { path: "/client-orders", icon: FaClipboardList, label: "My Orders", badge: newOrdersCount },
+    { path: "/client-orders", icon: FaShoppingCart, label: "My Orders", badge: newOrdersCount },
     { path: "/payments", icon: FaCreditCard, label: "Payments" },
     { path: "/client-messages", icon: FaEnvelope, label: "Messages", badge: displayUnread },
     { path: "/client-kyc", icon: FaShieldAlt, label: "KYC Verification", kycBadge: getKycBadge() },

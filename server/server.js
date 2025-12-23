@@ -43,6 +43,8 @@ import paymentGatewayRoutes from "./routes/paymentGatewayRoutes.js";
 import adminPaymentRoutes from "./routes/adminPaymentRoutes.js";
 import storageRoutes from "./routes/storageRoutes.js";
 import bannerRoutes from "./routes/bannerRoutes.js";
+import briefRoutes from "./routes/briefRoutes.js";
+import proposalRoutes from "./routes/proposalRoutes.js";
 import ratingRoutes from "./routes/ratingRoutes.js";
 import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 import profileInsightsRoutes from "./routes/profileInsightsRoutes.js";
@@ -72,6 +74,12 @@ if (process.env.GOOGLE_CLIENT_ID) {
 import { app, server } from "./socket.js";
 
 // ============ SECURITY MIDDLEWARE ============
+
+// Trust proxy for production (Render, Vercel, etc.)
+// This is required for express-rate-limit to work correctly behind a reverse proxy
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
 
 // Helmet - Security headers
 app.use(helmet({
@@ -177,6 +185,10 @@ app.use("/api/editor/analytics", editorAnalyticsRoutes);
 app.use("/api/storage", storageRoutes);
 app.use("/api/client/analytics", clientAnalyticsRoutes);
 app.use("/api/banners", bannerRoutes);
+
+// Open Briefs Feature Routes
+app.use("/api/briefs", briefRoutes);
+app.use("/api/proposals", proposalRoutes);
 app.use("/api/ratings", ratingRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
 app.use("/api/profile-insights", profileInsightsRoutes);

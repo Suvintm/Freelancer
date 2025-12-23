@@ -20,7 +20,7 @@ const orderSchema = new mongoose.Schema(
     // Order Type
     type: {
       type: String,
-      enum: ["gig", "request"],
+      enum: ["gig", "request", "brief"],
       required: true,
     },
 
@@ -28,6 +28,12 @@ const orderSchema = new mongoose.Schema(
     gig: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Gig",
+    },
+
+    // Reference to brief (if order is from Open Briefs)
+    brief: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Brief",
     },
 
     // Parties involved

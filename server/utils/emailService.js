@@ -4,15 +4,18 @@ import logger from "./logger.js";
 
 /**
  * Email Service for SuviX
- * Supports both Resend (production) and Gmail SMTP (fallback)
+ * Uses Resend for production (recommended) or Gmail SMTP for local dev
+ * 
+ * IMPORTANT: Cloud providers (Render, Vercel, Railway) block SMTP ports (465, 587)
+ * Always use Resend API for production deployments!
  */
 
-// Check which email provider to use
-const isResendConfigured = () => {
-  return process.env.RESEND_API_KEY && process.env.EMAIL_FROM && process.env.EMAIL_FROM.includes('@mail.suvix.com');
+// Check if Resend is configured (preferred for production)
+const useResend = () => {
+  return !!process.env.RESEND_API_KEY;
 };
 
-// Create SMTP transporter
+// Create SMTP transporter (for local development only)
 const createSmtpTransporter = () => {
   const host = process.env.SMTP_HOST || "smtp.gmail.com";
   const port = parseInt(process.env.SMTP_PORT) || 465;
@@ -36,16 +39,21 @@ const createSmtpTransporter = () => {
 
 /**
  * Send an email
+ * Prioritizes Resend API (works on all cloud providers)
+ * Falls back to SMTP only for local development
  */
 export const sendEmail = async ({ to, subject, html, text }) => {
   try {
-    // Use Resend if domain is verified and configured
-    if (isResendConfigured()) {
-      logger.info(`Sending email to ${to} via Resend...`);
+    // Use Resend if API key is configured (required for production)
+    if (useResend()) {
+      logger.info(`Sending email to ${to} via Resend API...`);
       const resend = new Resend(process.env.RESEND_API_KEY);
       
+      // Use custom domain if verified, otherwise use Resend's testing domain
+      const fromEmail = process.env.EMAIL_FROM || "SuviX <onboarding@resend.dev>";
+      
       const { data, error } = await resend.emails.send({
-        from: process.env.EMAIL_FROM,
+        from: fromEmail,
         to: [to],
         subject,
         html,
@@ -53,6 +61,7 @@ export const sendEmail = async ({ to, subject, html, text }) => {
       });
 
       if (error) {
+        logger.error(`Resend API error:`, error.message);
         throw new Error(error.message);
       }
 
@@ -60,8 +69,9 @@ export const sendEmail = async ({ to, subject, html, text }) => {
       return { success: true, messageId: data.id };
     }
 
-    // Fallback to Gmail SMTP
+    // Fallback to Gmail SMTP (for local development only)
     logger.info(`Sending email to ${to} via Gmail SMTP...`);
+    logger.warn(`⚠️ SMTP may not work on cloud providers. Consider using RESEND_API_KEY.`);
     const transporter = createSmtpTransporter();
 
     const mailOptions = {

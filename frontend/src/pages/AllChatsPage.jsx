@@ -15,6 +15,7 @@ import {
   FaExclamationCircle,
   FaHourglassHalf,
   FaCreditCard,
+  FaClipboardList,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
@@ -41,6 +42,7 @@ const TABS = [
   { id: "all", label: "All", icon: FaComments },
   { id: "gigs", label: "Gigs", icon: FaShoppingCart },
   { id: "requested", label: "Requested", icon: FaEnvelope },
+  { id: "briefs", label: "Briefs", icon: FaClipboardList },
 ];
 
 // Calculate deadline status
@@ -187,6 +189,8 @@ const ChatsPage = () => {
       filtered = filtered.filter(chat => chat.type === "gig");
     } else if (activeTab === "requested") {
       filtered = filtered.filter(chat => chat.type === "request");
+    } else if (activeTab === "briefs") {
+      filtered = filtered.filter(chat => chat.type === "brief");
     }
 
     // Filter by search
@@ -210,6 +214,7 @@ const ChatsPage = () => {
   // Count chats by tab
   const gigCount = chats.filter(c => c.type === "gig").length;
   const requestCount = chats.filter(c => c.type === "request").length;
+  const briefCount = chats.filter(c => c.type === "brief").length;
 
   // Shimmer skeleton component
   const ShimmerCard = () => (
@@ -274,7 +279,7 @@ const ChatsPage = () => {
         <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
           {TABS.map(tab => {
             const isActive = activeTab === tab.id;
-            const count = tab.id === "all" ? chats.length : tab.id === "gigs" ? gigCount : requestCount;
+            const count = tab.id === "all" ? chats.length : tab.id === "gigs" ? gigCount : tab.id === "briefs" ? briefCount : requestCount;
             
             return (
               <button
@@ -384,9 +389,11 @@ const ChatsPage = () => {
                           <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
                             chat.type === "gig" 
                               ? "bg-purple-500/20 text-purple-400"
+                              : chat.type === "brief"
+                              ? "bg-blue-500/20 text-blue-400"
                               : "bg-cyan-500/20 text-cyan-400"
                           }`}>
-                            {chat.type === "gig" ? "Gig" : "Request"}
+                            {chat.type === "gig" ? "Gig" : chat.type === "brief" ? "Brief" : "Request"}
                           </span>
 
                           {/* Payment Status for Request Orders */}

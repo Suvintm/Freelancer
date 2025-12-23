@@ -53,6 +53,14 @@ import AchievementsPage from "./pages/AchievementsPage.jsx";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
 import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
 
+// Open Briefs Pages
+import OpenBriefsPage from "./pages/OpenBriefsPage.jsx";
+import BriefDetailPage from "./pages/BriefDetailPage.jsx";
+import CreateBriefPage from "./pages/CreateBriefPage.jsx";
+import MyBriefsPage from "./pages/MyBriefsPage.jsx";
+import ManageBriefPage from "./pages/ManageBriefPage.jsx";
+import MyProposalsPage from "./pages/MyProposalsPage.jsx";
+
 import { TermsAndConditions, PrivacyPolicy, ContentProtectionPolicy, EditorCodeOfConduct } from "./pages/LegalPages";
 
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
@@ -162,7 +170,58 @@ function App() {
           }
         />
 
+        {/* Client - Open Briefs Routes */}
+        <Route
+          path="/create-brief"
+          element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <CreateBriefPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-briefs"
+          element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <MyBriefsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manage-brief/:id"
+          element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <ManageBriefPage />
+            </ProtectedRoute>
+          }
+        />
+
         {/* ============ EDITOR ROUTES ============ */}
+        {/* Editor - Open Briefs Routes */}
+        <Route
+          path="/briefs"
+          element={
+            <ProtectedRoute allowedRoles={["editor"]}>
+              <OpenBriefsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/brief/:id"
+          element={
+            <ProtectedRoute allowedRoles={["editor", "client"]}>
+              <BriefDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-proposals"
+          element={
+            <ProtectedRoute allowedRoles={["editor"]}>
+              <MyProposalsPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/editor-home"
           element={
