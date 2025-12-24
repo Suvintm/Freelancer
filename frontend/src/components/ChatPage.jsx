@@ -1949,32 +1949,49 @@ const ChatPage = () => {
         </footer>
       ) : order?.isOverdue || order?.chatDisabled ? (
         /* Overdue/Refunded Order - Disabled Chat Footer */
-        <footer className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md px-4 py-4 pb-6 z-50 border-t border-red-500/30" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
-          <div className="max-w-4xl mx-auto text-center">
-            <div className={`border rounded-2xl p-4 ${order?.overdueRefunded ? 'bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30' : 'bg-gradient-to-r from-amber-500/10 to-red-500/10 border-amber-500/30'}`}>
-              <div className={`flex items-center justify-center gap-2 mb-1 ${order?.overdueRefunded ? 'text-red-400' : 'text-amber-400'}`}>
-                {order?.overdueRefunded ? (
-                  <>
-                    <FaExclamationTriangle className="text-sm" />
-                    <span className="font-semibold">💸 Order Refunded</span>
-                  </>
-                ) : (
-                  <>
-                    <FaLock className="text-sm" />
-                    <span className="font-semibold">⚠️ Order Overdue - Chat Disabled</span>
-                  </>
-                )}
+        (() => {
+          const isClient = user?.role === "client";
+          const isRefunded = order?.overdueRefunded;
+          // Green for clients (they got refund), Red for editors (they lost payment)
+          const refundedColor = isClient 
+            ? 'bg-gradient-to-r from-emerald-500/10 to-green-500/10 border-emerald-500/30' 
+            : 'bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30';
+          const refundedTextColor = isClient ? 'text-emerald-400' : 'text-red-400';
+          const borderColor = isRefunded 
+            ? (isClient ? 'border-emerald-500/30' : 'border-red-500/30') 
+            : 'border-amber-500/30';
+          
+          return (
+            <footer className={`fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md px-4 py-4 pb-6 z-50 border-t ${borderColor}`} style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
+              <div className="max-w-4xl mx-auto text-center">
+                <div className={`border rounded-2xl p-4 ${isRefunded ? refundedColor : 'bg-gradient-to-r from-amber-500/10 to-red-500/10 border-amber-500/30'}`}>
+                  <div className={`flex items-center justify-center gap-2 mb-1 ${isRefunded ? refundedTextColor : 'text-amber-400'}`}>
+                    {isRefunded ? (
+                      <>
+                        {isClient ? <FaCheckDouble className="text-sm" /> : <FaExclamationTriangle className="text-sm" />}
+                        <span className="font-semibold">{isClient ? '💸 Order Refunded' : '💸 Payment Refunded'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaLock className="text-sm" />
+                        <span className="font-semibold">⚠️ Order Overdue - Chat Disabled</span>
+                      </>
+                    )}
+                  </div>
+                  <p className="text-zinc-400 text-sm">
+                    {isRefunded 
+                      ? (isClient 
+                          ? `₹${order?.amount?.toLocaleString()} has been refunded to you. This order is now closed.`
+                          : `₹${order?.amount?.toLocaleString()} has been refunded to the client due to missed deadline.`)
+                      : order?.graceEndsAt 
+                        ? `Deadline passed. Refund will be processed in ${Math.max(0, Math.ceil((new Date(order.graceEndsAt) - new Date()) / (1000 * 60 * 60)))} hours if work is not submitted.`
+                        : "The deadline has passed. Chat is disabled."}
+                  </p>
+                </div>
               </div>
-              <p className="text-zinc-400 text-sm">
-                {order?.overdueRefunded 
-                  ? `₹${order?.amount?.toLocaleString()} has been refunded to the client. This order is now closed.`
-                  : order?.graceEndsAt 
-                    ? `Deadline passed. Refund will be processed in ${Math.max(0, Math.ceil((new Date(order.graceEndsAt) - new Date()) / (1000 * 60 * 60)))} hours if work is not submitted.`
-                    : "The deadline has passed. Chat is disabled."}
-              </p>
-            </div>
-          </div>
-        </footer>
+            </footer>
+          );
+        })()
       ) : order?.status === "awaiting_payment" ? (
         /* Awaiting Payment - Locked Chat Footer */
         <footer className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md px-4 py-4 pb-6 z-50 border-t border-orange-500/30" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>

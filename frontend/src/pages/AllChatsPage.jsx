@@ -455,7 +455,15 @@ const ChatsPage = () => {
                           )}
                           
                           {/* Deadline Indicator */}
-                          {deadlineStatus && !["completed", "cancelled", "rejected", "new", "awaiting_payment"].includes(chat.status) && (
+                          {chat.overdueRefunded ? (
+                            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
+                              💸 Refunded
+                            </span>
+                          ) : chat.isOverdue ? (
+                            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse">
+                              ⚠️ Overdue
+                            </span>
+                          ) : deadlineStatus && !["completed", "cancelled", "rejected", "new", "awaiting_payment"].includes(chat.status) && (
                             <span className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-medium ${deadlineStatus.color}`}>
                               <FaCircle className="text-[3px]" />
                               {deadlineStatus.text}

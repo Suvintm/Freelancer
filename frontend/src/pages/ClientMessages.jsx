@@ -396,8 +396,8 @@ const ClientMessages = () => {
                           
                           {/* Deadline Indicator or Overdue/Refunded Tags */}
                           {chat.overdueRefunded ? (
-                            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
-                              💸 Overdue - Refunded
+                            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                              💸 Refunded
                             </span>
                           ) : chat.isOverdue ? (
                             <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse">
