@@ -4,7 +4,9 @@
 
 import { Order } from "../models/Order.js";
 import { Message } from "../models/Message.js";
+import FinalOutput from "../models/FinalOutput.js";
 import { createNotification } from "../controllers/notificationController.js";
+import { deleteFromCloudinary } from "../utils/cloudinaryStorage.js";
 import logger from "../utils/logger.js";
 
 /**
@@ -248,6 +250,72 @@ export const processOverdueRefunds = async () => {
 };
 
 /**
+ * Cleanup expired final outputs - delete original files from R2 but keep thumbnails
+ * This saves storage costs by removing large files after the 24-hour download window
+ */
+export const cleanupExpiredFinalOutputs = async () => {
+  try {
+    const now = new Date();
+
+    // Find expired but not yet cleaned up outputs
+    const expiredOutputs = await FinalOutput.find({
+      expiresAt: { $lt: now },
+      isExpired: false,
+      originalDeleted: false,
+      status: { $in: ["approved", "downloaded"] },
+    });
+
+    if (expiredOutputs.length === 0) {
+      return { cleaned: 0 };
+    }
+
+    logger.info(`Found ${expiredOutputs.length} expired final outputs to clean up`);
+
+    let cleanedCount = 0;
+    const errors = [];
+
+    for (const output of expiredOutputs) {
+      try {
+        // Determine resource type for Cloudinary
+        const resourceType = output.type === "photo" ? "image" : "video";
+        
+        // Delete original file from Cloudinary (large file)
+        if (output.r2Key) {
+          const deleted = await deleteFromCloudinary(output.r2Key, resourceType);
+          if (deleted) {
+            logger.info(`Deleted original file: ${output.r2Key}`);
+          }
+        }
+
+        // Delete preview if exists (medium file)
+        if (output.previewKey) {
+          await deleteFromCloudinary(output.previewKey, resourceType);
+        }
+
+        // Keep thumbnail for records (small file - not deleted)
+        // thumbnailKey is preserved
+
+        // Mark as cleaned
+        output.isExpired = true;
+        output.originalDeleted = true;
+        output.status = "expired";
+        await output.save();
+
+        cleanedCount++;
+      } catch (error) {
+        errors.push({ id: output._id, error: error.message });
+        logger.error(`Failed to cleanup output ${output._id}: ${error.message}`);
+      }
+    }
+
+    return { cleaned: cleanedCount, total: expiredOutputs.length, errors: errors.length > 0 ? errors : undefined };
+  } catch (error) {
+    logger.error("Error cleaning up expired final outputs:", error);
+    return { cleaned: 0, error: error.message };
+  }
+};
+
+/**
  * Start the scheduled jobs
  * Runs every hour to check for expired orders and overdue orders
  */
@@ -271,6 +339,13 @@ export const startScheduledJobs = () => {
     }
   });
 
+  // Cleanup expired final outputs on startup
+  cleanupExpiredFinalOutputs().then(result => {
+    if (result.cleaned > 0) {
+      logger.info(`Startup: Cleaned up ${result.cleaned} expired final outputs`);
+    }
+  });
+
   // Run every hour
   const HOUR_MS = 60 * 60 * 1000;
   setInterval(async () => {
@@ -289,11 +364,17 @@ export const startScheduledJobs = () => {
       if (refundResult.refunded > 0) {
         logger.info(`Scheduled: Refunded ${refundResult.refunded} overdue orders`);
       }
+
+      // Cleanup expired final outputs (delete original files from R2)
+      const cleanupResult = await cleanupExpiredFinalOutputs();
+      if (cleanupResult.cleaned > 0) {
+        logger.info(`Scheduled: Cleaned up ${cleanupResult.cleaned} expired final outputs from R2`);
+      }
     } catch (error) {
       logger.error("Scheduled job error:", error);
     }
   }, HOUR_MS);
 
-  logger.info("✅ Scheduled jobs started (checking expired orders, overdue orders, and refunds every hour)");
+  logger.info("✅ Scheduled jobs started (checking expired orders, overdue orders, refunds, and final output cleanup every hour)");
 };
 

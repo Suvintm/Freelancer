@@ -202,6 +202,10 @@ app.use("/api/location", locationRoutes);
 import badgeRoutes from "./routes/badgeRoutes.js";
 app.use("/api/badges", badgeRoutes);
 
+// Final Output Routes (Cloudflare R2)
+import finalOutputRoutes from "./routes/finalOutputRoutes.js";
+app.use("/api/final-output", finalOutputRoutes);
+
 // Public maintenance status check (no auth required)
 import { SiteSettings } from "./models/SiteSettings.js";
 app.get("/api/maintenance-status", async (req, res) => {
