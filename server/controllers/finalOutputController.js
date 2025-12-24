@@ -9,8 +9,8 @@
 
 import asyncHandler from "express-async-handler";
 import FinalOutput from "../models/FinalOutput.js";
-import Order from "../models/Order.js";
-import Message from "../models/Message.js";
+import {Order } from "../models/Order.js";
+import {Message} from "../models/Message.js";
 import { createNotification } from "./notificationController.js";
 import {
   generatePublicId,
