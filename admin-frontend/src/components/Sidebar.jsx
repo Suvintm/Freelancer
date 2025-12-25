@@ -18,6 +18,7 @@ import {
   FaImage,
   FaCrown,
   FaUserCheck,
+  FaServer,
 } from "react-icons/fa";
 import { useAdmin } from "../context/AdminContext";
 
@@ -44,6 +45,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: "/subscriptions", icon: FaCrown, label: "Subscriptions" },
     { to: "/activity", icon: FaHistory, label: "Activity Logs" },
     { to: "/storage", icon: FaDatabase, label: "Storage Manager" },
+    { to: "/service-analytics", icon: FaServer, label: "Service Analytics" },
     ...(isSuperAdmin ? [{ to: "/settings", icon: FaCog, label: "Settings" }] : []),
   ];
 

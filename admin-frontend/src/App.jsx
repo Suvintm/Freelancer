@@ -20,6 +20,7 @@ import StorageManager from "./pages/StorageManager";
 import Banners from "./pages/Banners";
 import SubscriptionPlans from "./pages/SubscriptionPlans";
 import KYCRequestDetail from "./pages/KYCRequestDetail";
+import ServiceAnalytics from "./pages/ServiceAnalytics";
 
 // Components
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -67,6 +68,7 @@ function App() {
           <Route path="/subscriptions" element={<SubscriptionPlans />} />
           <Route path="/activity" element={<Activity />} />
           <Route path="/storage" element={<StorageManager />} />
+          <Route path="/service-analytics" element={<ServiceAnalytics />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
 

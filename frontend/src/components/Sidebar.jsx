@@ -102,8 +102,8 @@ const Sidebar = ({ isOpen, onClose }) => {
 
 
         {/* Status Selector - Only visible for Editors (handled inside component) */}
-        <div className="px-5 py-2">
-            <AvailabilitySelector />
+        <div className="px-5 py-2 flex items-center light:text-green-500 gap-1 dark:text-white text-[10px] justify-center ">
+            <AvailabilitySelector /> Change Status
         </div>
 
         {/* Navigation Items */}

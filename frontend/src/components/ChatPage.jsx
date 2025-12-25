@@ -1798,7 +1798,7 @@ const ChatPage = () => {
                         {/* 🎬 Final Delivery Card */}
                         {msg.type === "final_delivery" && msg.finalDelivery && (
                           <FinalDeliveryCard
-                            delivery={msg.finalDelivery}
+                            delivery={{ ...msg.finalDelivery, orderId: orderId || msg.order }}
                             isClient={user?.role === "client"}
                             onPreview={() => handlePreviewDelivery(msg.finalDelivery)}
                             onAccept={() => {

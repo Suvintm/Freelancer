@@ -178,26 +178,24 @@ const EditorHome = () => {
         <LegalBanner />
 
         {/* ============ MAIN TABS ============ */}
-        <div className="flex justify-center mb-6">
-          <div className="inline-flex p-1 bg-[#0a0a0c] light:bg-white rounded-2xl shadow-sm border border-white/10 light:border-slate-200">
+        <div className="flex justify-center mb-4">
+          <div className="inline-flex p-0.5 bg-[#111118] light:bg-white rounded-xl shadow-sm border border-white/[0.06] light:border-slate-200">
             {mainTabs.map((tab) => {
               const isActive = mainTab === tab.id;
               return (
-                <motion.button
+                <button
                   key={tab.id}
                   onClick={() => setMainTab(tab.id)}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className={`relative px-6 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2
+                  className={`relative px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2
                     ${isActive 
-                      ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" 
-                      : "text-gray-400 light:text-slate-600 hover:bg-white/5 light:hover:bg-slate-50"
+                      ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20" 
+                      : "text-zinc-400 light:text-slate-600 hover:text-zinc-200 light:hover:text-slate-900"
                     }
                   `}
                 >
-                  <tab.icon className="text-sm" />
+                  <tab.icon className="text-xs" />
                   {tab.label}
-                </motion.button>
+                </button>
               );
             })}
           </div>
@@ -214,7 +212,7 @@ const EditorHome = () => {
               transition={{ duration: 0.3 }}
             >
               {/* Profile & Storage Cards */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
                 {/* Left: Profile Status */}
                 <div className="min-w-0">
                   {completionPercent >= 80 ? (
@@ -234,38 +232,38 @@ const EditorHome = () => {
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`bg-[#0a0a0c] light:bg-white rounded-2xl p-4 sm:p-5 border shadow-sm transition-all ${
+                    className={`bg-[#111118] light:bg-white rounded-2xl p-4 border shadow-sm transition-all h-full ${
                       storageData.isFull 
-                        ? 'border-red-500/30 light:border-red-200' 
+                        ? 'border-red-500/20 light:border-red-200' 
                         : storageData.isLowStorage 
-                          ? 'border-amber-500/30 light:border-amber-200'
-                          : 'border-white/10 light:border-slate-200'
+                          ? 'border-amber-500/20 light:border-amber-200'
+                          : 'border-white/[0.06] light:border-slate-200'
                     }`}
                   >
                     {/* Storage Header */}
                     <div className="flex items-center gap-3 mb-3">
-                      <div className={`p-2.5 rounded-xl ${
-                        storageData.isFull ? 'bg-red-500/10 light:bg-red-50' : storageData.isLowStorage ? 'bg-amber-500/10 light:bg-amber-50' : 'bg-blue-500/10 light:bg-blue-50'
+                      <div className={`p-2 rounded-xl ${
+                        storageData.isFull ? 'bg-red-500/10 light:bg-red-50' : storageData.isLowStorage ? 'bg-amber-500/10 light:bg-amber-50' : 'bg-indigo-500/10 light:bg-indigo-50'
                       }`}>
-                        <FaDatabase className={`text-lg ${
-                          storageData.isFull ? 'text-red-500' : storageData.isLowStorage ? 'text-amber-500' : 'text-blue-500'
+                        <FaDatabase className={`text-base ${
+                          storageData.isFull ? 'text-red-400' : storageData.isLowStorage ? 'text-amber-400' : 'text-indigo-400'
                         }`} />
                       </div>
                       
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-white light:text-slate-900 text-sm">Cloud Storage</h3>
-                          <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ${
-                            storageData.plan === 'free' ? 'bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600' :
+                          <h3 className="font-semibold text-zinc-100 light:text-slate-900 text-sm">Cloud Storage</h3>
+                          <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full uppercase ${
+                            storageData.plan === 'free' ? 'bg-zinc-800 light:bg-slate-100 text-zinc-400 light:text-slate-600' :
                             storageData.plan === 'pro' ? 'bg-purple-500/20 light:bg-purple-100 text-purple-400 light:text-purple-600' :
-                            'bg-blue-500/20 light:bg-blue-100 text-blue-400 light:text-blue-600'
+                            'bg-indigo-500/20 light:bg-indigo-100 text-indigo-400 light:text-indigo-600'
                           }`}>
                             {storageData.plan}
                           </span>
                         </div>
                         
                         {/* Progress Bar */}
-                        <div className="h-2 bg-white/10 light:bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-white/[0.06] light:bg-slate-100 rounded-full overflow-hidden">
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${Math.min(storageData.usedPercent, 100)}%` }}
@@ -273,7 +271,7 @@ const EditorHome = () => {
                             className={`h-full rounded-full ${
                               storageData.isFull ? 'bg-gradient-to-r from-red-500 to-rose-400' :
                               storageData.isLowStorage ? 'bg-gradient-to-r from-amber-500 to-orange-400' :
-                              'bg-gradient-to-r from-blue-500 to-emerald-500'
+                              'bg-gradient-to-r from-indigo-500 to-purple-500'
                             }`}
                           />
                         </div>
@@ -288,9 +286,9 @@ const EditorHome = () => {
                         </button>
                         <button
                           onClick={() => navigate('/storage-plans')}
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 text-white hover:bg-emerald-600 transition-all flex items-center gap-1"
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-500 text-white hover:bg-indigo-600 transition-all flex items-center gap-1"
                         >
-                          <FaCloudUploadAlt className="text-xs" /> Upgrade
+                          <FaCloudUploadAlt className="text-[10px]" /> Upgrade
                         </button>
                       </div>
                     </div>
@@ -352,46 +350,37 @@ const EditorHome = () => {
                 )}
               </div>
 
-              {/* ===== EDITORS NEAR YOU - NEW FEATURE CARD ===== */}
+              {/* ===== EDITORS NEAR YOU - COMPACT BANNER ===== */}
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
+                transition={{ delay: 0.1 }}
                 onClick={() => navigate('/editors-near-you')}
-                className="relative mb-6 cursor-pointer group overflow-hidden rounded-2xl"
+                className="relative mb-4 cursor-pointer group overflow-hidden rounded-xl"
               >
-                {/* Animated gradient background */}
-                <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-purple-500 to-fuchsia-500" />
-                <div className="absolute inset-0 bg-gradient-to-r from-violet-600/0 via-white/10 to-violet-600/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
-                {/* Decorative circles */}
-                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
-                <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-fuchsia-400/20 rounded-full blur-2xl" />
+                {/* Gradient background */}
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-500 to-indigo-600" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 
                 {/* Content */}
-                <div className="relative px-5 py-4 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    {/* Animated Icon */}
-                    <div className="relative">
-                      <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/30">
-                        <HiOutlineMapPin className="w-7 h-7 text-white" />
-                      </div>
-                      {/* Pulsing ring */}
-                      <div className="absolute inset-0 rounded-xl border-2 border-white/50 animate-ping" style={{ animationDuration: '2s' }} />
+                <div className="relative px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {/* Icon */}
+                    <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center border border-white/20">
+                      <HiOutlineMapPin className="w-5 h-5 text-white" />
                     </div>
                     
                     {/* Text */}
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-lg font-bold text-white" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-semibold text-white">
                           Editors Near You
                         </h3>
-                        {/* NEW Badge */}
-                        <span className="px-2 py-0.5 bg-amber-400 text-amber-900 text-[10px] font-bold rounded-full uppercase tracking-wider animate-pulse">
+                        <span className="px-1.5 py-0.5 bg-amber-400 text-amber-900 text-[8px] font-bold rounded-full uppercase">
                           NEW
                         </span>
                       </div>
-                      <p className="text-white/80 text-sm">
+                      <p className="text-white/70 text-xs">
                         Connect with other editors in your area • Map view
                       </p>
                     </div>
@@ -399,9 +388,9 @@ const EditorHome = () => {
                   
                   {/* Arrow */}
                   <div className="flex items-center gap-2">
-                    <span className="hidden sm:block text-white/70 text-sm font-medium">Explore</span>
-                    <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/30 group-hover:bg-white/30 transition-all group-hover:scale-110">
-                      <HiOutlineArrowRight className="w-5 h-5 text-white group-hover:translate-x-0.5 transition-transform" />
+                    <span className="hidden sm:block text-white/70 text-xs font-medium">Explore</span>
+                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-all">
+                      <HiOutlineArrowRight className="w-4 h-4 text-white" />
                     </div>
                   </div>
                 </div>
@@ -551,21 +540,21 @@ const EditorHome = () => {
               )}
 
               {/* Explore Tabs */}
-              <div className="flex items-center justify-center mb-6">
-                <div className="inline-flex p-1 bg-[#0a0a0c] light:bg-white border border-white/10 light:border-slate-200 rounded-2xl shadow-sm">
+              <div className="flex items-center justify-center mb-4">
+                <div className="inline-flex p-0.5 bg-[#111118] light:bg-white border border-white/[0.06] light:border-slate-200 rounded-xl shadow-sm">
                   {exploreTabs.map((tab) => {
                     const isActive = exploreTab === tab.id;
                     return (
                       <button
                         key={tab.id}
                         onClick={() => tab.id === "reels" ? navigate("/reels") : setExploreTab(tab.id)}
-                        className={`relative px-5 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${
+                        className={`relative px-4 py-2 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
                           isActive
-                            ? "text-white bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg"
-                            : "text-gray-400 light:text-slate-600 hover:text-white light:hover:text-slate-900 hover:bg-white/5 light:hover:bg-slate-50"
+                            ? "text-white bg-gradient-to-r from-indigo-500 to-purple-500 shadow-md"
+                            : "text-zinc-400 light:text-slate-600 hover:text-zinc-200 light:hover:text-slate-900"
                         }`}
                       >
-                        <tab.icon size={14} />
+                        <tab.icon size={12} />
                         {tab.label}
                       </button>
                     );
@@ -574,15 +563,15 @@ const EditorHome = () => {
               </div>
 
               {/* Explore Content */}
-              <div className="bg-[#0a0a0c] light:bg-white border border-white/10 light:border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm">
-                <div className="text-center mb-6">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 light:bg-emerald-50 text-emerald-400 light:text-emerald-600 text-xs font-semibold rounded-full mb-3">
-                    <HiOutlineSparkles /> {exploreTab === "editors" ? "Discover Talent" : "Browse Services"}
+              <div className="bg-[#111118] light:bg-white border border-white/[0.06] light:border-slate-200 rounded-xl p-4 md:p-5 shadow-sm">
+                <div className="text-center mb-4">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-500/10 light:bg-indigo-50 text-indigo-400 light:text-indigo-600 text-[10px] font-semibold rounded-full mb-2">
+                    <HiOutlineSparkles className="text-xs" /> {exploreTab === "editors" ? "Discover Talent" : "Browse Services"}
                   </div>
-                  <h2 className="text-xl font-bold text-white light:text-slate-900 mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                  <h2 className="text-lg font-bold text-zinc-100 light:text-slate-900 mb-0.5">
                     {exploreTab === "editors" ? "Explore Other Editors" : "Browse Available Gigs"}
                   </h2>
-                  <p className="text-gray-500 light:text-slate-500 text-sm">
+                  <p className="text-zinc-500 light:text-slate-500 text-xs">
                     {exploreTab === "editors" 
                       ? "See what other editors are offering and get inspired"
                       : "Find services that complement your skills"
@@ -636,9 +625,9 @@ const EditorHome = () => {
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           whileHover={{ scale: 1.1 }}
-          className="fixed bottom-6 right-6 z-[200] w-14 h-14 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/30 border-2 border-[#0a0a0c] light:border-white"
+          className="fixed bottom-6 right-6 z-[200] w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 border-2 border-[#0a0a0c] light:border-white"
         >
-          <img src={reelIcon} alt="reels" className="w-6 h-6 object-contain" />
+          <img src={reelIcon} alt="reels" className="w-5 h-5 object-contain" />
         </motion.button>
       </main>
 

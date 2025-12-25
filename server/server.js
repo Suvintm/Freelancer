@@ -52,6 +52,7 @@ import suvixScoreRoutes from "./routes/suvixScoreRoutes.js";
 import clientKYCRoutes from "./routes/clientKYCRoutes.js";
 import refundRoutes from "./routes/refundRoutes.js";
 import locationRoutes from "./routes/locationRoutes.js";
+import adminAnalyticsRoutes from "./routes/adminAnalyticsRoutes.js";
 
 // Scheduled Jobs
 import { startScheduledJobs } from "./jobs/scheduledJobs.js";
@@ -197,6 +198,7 @@ console.log("✅ Mounting Client KYC Routes at /api/client-kyc");
 app.use("/api/client-kyc", clientKYCRoutes);
 app.use("/api/refunds", refundRoutes);
 app.use("/api/location", locationRoutes);
+app.use("/api/admin/analytics", adminAnalyticsRoutes);
 
 // Badge/Achievement Routes
 import badgeRoutes from "./routes/badgeRoutes.js";

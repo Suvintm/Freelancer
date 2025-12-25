@@ -40,6 +40,7 @@ import PaymentSuccess from "./pages/PaymentSuccess.jsx";
 import RequestPaymentSuccess from "./pages/RequestPaymentSuccess.jsx";
 import KYCDetailsPage from "./pages/KYCDetailsPage.jsx";
 import StoragePlans from "./pages/StoragePlans.jsx";
+import DownloadPage from "./pages/DownloadPage.jsx";
 
 // Subscription Pages
 import SubscriptionPlansPage from "./pages/SubscriptionPlansPage.jsx";
@@ -95,6 +96,16 @@ function App() {
         <Route path="/banned" element={<BannedPage />} />
         <Route path="/maintenance" element={<MaintenancePage />} />
         <Route path="/request-payment-success" element={<RequestPaymentSuccess />} />
+
+        {/* Download Page (Protected) */}
+        <Route
+          path="/download/:id"
+          element={
+            <ProtectedRoute allowedRoles={["client", "editor"]}>
+              <DownloadPage />
+            </ProtectedRoute>
+          }
+        />
 
         {/* ============ CLIENT ROUTES ============ */}
         <Route
