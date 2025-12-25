@@ -258,8 +258,9 @@ export const getMyOrders = asyncHandler(async (req, res) => {
   let query = {};
   if (role === "editor") {
     query.editor = userId;
-    // Editors should not see orders that haven't been paid yet
-    query.status = { $ne: "pending_payment" };
+    // Editors should not see orders until they accept them
+    // Exclude: pending_payment (not paid) and new (not yet accepted)
+    query.status = { $nin: ["pending_payment", "new"] };
   } else {
     query.client = userId;
   }

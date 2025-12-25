@@ -107,11 +107,16 @@ const ChatsPage = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Include all relevant statuses
-      const relevantStatuses = ["new", "awaiting_payment", "accepted", "in_progress", "submitted", "completed"];
-      const activeChats = (res.data.orders || []).filter(order => 
-        relevantStatuses.includes(order.status)
-      );
+      // Include relevant statuses - filter based on user role
+      const relevantStatuses = ["awaiting_payment", "accepted", "in_progress", "submitted", "completed"];
+      
+      // For clients, also include "new" status (they can see pending orders)
+      // For editors, "new" status orders should appear in Orders page, not Chat
+      const activeChats = (res.data.orders || []).filter(order => {
+        // Clients can see all their orders including "new" (awaiting editor acceptance)
+        if (user.role === "client" && order.status === "new") return true;
+        return relevantStatuses.includes(order.status);
+      });
 
       // 🆕 Fetch unread counts from dedicated endpoint (doesn't mark as seen)
       let unreadCounts = {};
