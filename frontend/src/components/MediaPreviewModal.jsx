@@ -62,8 +62,9 @@ const MediaPreviewModal = ({ isOpen, onClose, media }) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[1000] flex items-center justify-center"
+          className="fixed inset-0 z-[1000] flex items-center justify-center no-copy"
           onClick={onClose}
+          onContextMenu={(e) => e.preventDefault()}
         >
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/95 backdrop-blur-sm" />
@@ -109,10 +110,12 @@ const MediaPreviewModal = ({ isOpen, onClose, media }) => {
               <motion.img
                 src={media.url}
                 alt={media.name}
-                className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+                className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl select-none no-copy"
                 initial={{ scale: 0.8 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", damping: 25 }}
+                draggable="false"
+                onContextMenu={(e) => e.preventDefault()}
               />
             )}
 
@@ -122,16 +125,16 @@ const MediaPreviewModal = ({ isOpen, onClose, media }) => {
                 <video
                   ref={(ref) => setVideoRef(ref)}
                   src={media.url}
-                  className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+                  className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl select-none no-copy"
                   muted={isMuted}
                   loop
                   playsInline
                   onClick={handleVideoToggle}
                   onPlay={() => setIsPlaying(true)}
                   onPause={() => setIsPlaying(false)}
-                  controlsList={media.allowDownload === false ? "nodownload noplaybackrate" : undefined}
-                  disablePictureInPicture={media.allowDownload === false}
-                  onContextMenu={(e) => media.allowDownload === false && e.preventDefault()}
+                  controlsList="nodownload noplaybackrate"
+                  disablePictureInPicture={true}
+                  onContextMenu={(e) => e.preventDefault()}
                 />
 
                 {/* Video Controls Overlay */}

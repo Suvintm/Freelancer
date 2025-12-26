@@ -69,8 +69,9 @@ const WatermarkPreviewModal = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/95 z-[100] flex flex-col"
+          className="fixed inset-0 bg-black/95 z-[100] flex flex-col no-copy"
           onClick={onClose}
+          onContextMenu={(e) => e.preventDefault()}
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-white/10" onClick={(e) => e.stopPropagation()}>
@@ -100,7 +101,7 @@ const WatermarkPreviewModal = ({
                   <video
                     ref={videoRef}
                     src={preview.watermarkedUrl}
-                    className="w-full max-h-[70vh] rounded-lg"
+                    className="w-full max-h-[70vh] rounded-lg no-copy"
                     onTimeUpdate={handleTimeUpdate}
                     onEnded={() => setIsPlaying(false)}
                     controlsList="nodownload"
@@ -152,7 +153,7 @@ const WatermarkPreviewModal = ({
                 <img
                   src={preview.watermarkedUrl}
                   alt="Preview"
-                  className="w-full max-h-[70vh] object-contain rounded-lg"
+                  className="w-full max-h-[70vh] object-contain rounded-lg no-copy"
                   onContextMenu={(e) => e.preventDefault()}
                   draggable={false}
                 />

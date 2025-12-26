@@ -115,20 +115,20 @@ const MediaCard = ({ msg, isMe, onClick }) => {
         <img 
           src={msg.mediaUrl} 
           alt="media" 
-          className={`w-full h-auto max-h-[350px] object-cover rounded-2xl transition-all duration-500 ${!loaded && !isMe ? "blur-md scale-105" : ""}`}
+          className={`w-full h-auto max-h-[350px] object-cover rounded-2xl no-copy transition-all duration-500 ${!loaded && !isMe ? "blur-md scale-105" : ""}`}
           onLoad={() => setLoaded(true)}
-          draggable={msg.allowDownload}
-          onContextMenu={(e) => !msg.allowDownload && e.preventDefault()}
+          draggable="false"
+          onContextMenu={(e) => e.preventDefault()}
         />
       ) : (
         <div className="relative w-full">
           <video 
             src={msg.mediaUrl} 
-            className={`w-full h-auto max-h-[350px] object-cover rounded-2xl transition-all duration-500 ${!loaded && !isMe ? "blur-md scale-105" : ""}`}
+            className={`w-full h-auto max-h-[350px] object-cover rounded-2xl no-copy transition-all duration-500 ${!loaded && !isMe ? "blur-md scale-105" : ""}`}
             onLoadedData={() => setLoaded(true)}
-            controlsList={!msg.allowDownload ? "nodownload noplaybackrate" : undefined}
-            disablePictureInPicture={!msg.allowDownload}
-            onContextMenu={(e) => !msg.allowDownload && e.preventDefault()}
+            controlsList="nodownload noplaybackrate"
+            disablePictureInPicture={true}
+            onContextMenu={(e) => e.preventDefault()}
           />
           {/* Play button overlay */}
           {(loaded || isMe) && (
@@ -1428,7 +1428,10 @@ const ChatPage = () => {
   const deadlineStatus = getDeadlineStatus();
 
   return (
-    <div className="flex flex-col h-screen bg-white text-[#262626] font-sans overflow-hidden">
+    <div 
+      className="flex flex-col h-screen bg-white text-[#262626] font-sans overflow-hidden no-copy"
+      onContextMenu={(e) => e.preventDefault()}
+    >
       
       {/* 1. Fixed Header - Instagram DM Style */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-[#DBDBDB]">
@@ -1933,7 +1936,8 @@ const ChatPage = () => {
 
       {/* 2. Messages Area (Textured Background) - with padding for fixed header/footer */}
       <div 
-        className="flex-1 overflow-y-auto overflow-x-hidden p-4 pt-40 pb-32 space-y-2 relative scroll-smooth"
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 pt-40 pb-32 space-y-2 relative scroll-smooth no-copy"
+        onContextMenu={(e) => e.preventDefault()}
         style={{
           backgroundImage: `url(${chattexture})`,
           backgroundSize: "cover", // Or "300px" based on texture type
@@ -1979,7 +1983,8 @@ const ChatPage = () => {
                         setReplyingTo(msg);
                       }
                     }}
-                    className={`relative max-w-[75%] md:max-w-[60%] flex items-center gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}
+                    className={`relative max-w-[75%] md:max-w-[60%] flex items-center gap-2 no-copy ${isMe ? "flex-row-reverse" : "flex-row"}`}
+                    onContextMenu={(e) => e.preventDefault()}
                   >
                   {/* Reply indicator (shows on drag) */}
                   <motion.div 

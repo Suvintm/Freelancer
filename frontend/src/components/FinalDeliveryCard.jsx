@@ -134,7 +134,8 @@ const FinalDeliveryCard = ({
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-[240px]"
+        className="w-full max-w-[240px] no-copy"
+        onContextMenu={(e) => e.preventDefault()}
       >
         {/* Reel Media - No border, no background, natural aspect */}
         <div 
@@ -158,8 +159,10 @@ const FinalDeliveryCard = ({
               <img
                 src={delivery.thumbnailUrl}
                 alt="Preview"
-                className={`w-full h-auto rounded-xl ${imageLoaded ? "block" : "hidden"}`}
+                className={`w-full h-auto rounded-xl no-copy ${imageLoaded ? "block" : "hidden"}`}
                 onLoad={() => setImageLoaded(true)}
+                draggable="false"
+                onContextMenu={(e) => e.preventDefault()}
               />
             </>
           ) : (
@@ -259,8 +262,9 @@ const FinalDeliveryCard = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black z-[9999] flex flex-col"
+              className="fixed inset-0 bg-black z-[9999] flex flex-col no-copy"
               style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+              onContextMenu={(e) => e.preventDefault()}
             >
             {/* Header */}
             <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 z-20 bg-gradient-to-b from-black/80 to-transparent">
@@ -285,20 +289,24 @@ const FinalDeliveryCard = ({
                 <video
                   ref={videoRef}
                   src={videoUrl}
-                  className="max-w-full max-h-full object-contain rounded-lg"
+                  className="max-w-full max-h-full object-contain rounded-lg select-none no-copy"
                   onClick={(e) => e.stopPropagation()}
                   onPlay={() => setIsPlaying(true)}
                   onPause={() => setIsPlaying(false)}
                   muted={isMuted}
                   playsInline
                   loop
+                  onContextMenu={(e) => e.preventDefault()}
+                  controlsList="nodownload"
                 />
               ) : delivery.thumbnailUrl || videoUrl ? (
                 <img 
                   src={videoUrl || delivery.thumbnailUrl} 
                   alt="Preview" 
-                  className="max-w-full max-h-full object-contain rounded-lg"
+                  className="max-w-full max-h-full object-contain rounded-lg select-none no-copy"
                   onClick={(e) => e.stopPropagation()}
+                  draggable="false"
+                  onContextMenu={(e) => e.preventDefault()}
                 />
               ) : (
                 <FaFilm className="text-6xl text-zinc-700" />

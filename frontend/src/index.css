@@ -130,3 +130,11 @@ input:-webkit-autofill:active {
     caret-color: white !important;
     transition: background-color 5000s ease-in-out 0s;
 }
+
+/* Protection for media assets */
+.no-copy {
+  user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+}
+
