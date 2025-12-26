@@ -32,6 +32,9 @@ import {
   FaImage,
   FaExclamationTriangle,
   FaCalendarPlus,
+  FaCreditCard,
+  FaClipboardList,
+  FaReceipt,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
@@ -632,6 +635,7 @@ const ChatPage = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [typingUsers, setTypingUsers] = useState([]);
   const [showMediaMenu, setShowMediaMenu] = useState(false);
   const [previewMedia, setPreviewMedia] = useState(null);
@@ -663,6 +667,10 @@ const ChatPage = () => {
   
   // --- Media Gallery State ---
   const [showMediaGallery, setShowMediaGallery] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showProjectDetails, setShowProjectDetails] = useState(false);
+  const [showFootageLinks, setShowFootageLinks] = useState(false);
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
 
   // --- Legal / Content Access State ---
   const [accessModalOpen, setAccessModalOpen] = useState(false);
@@ -1197,10 +1205,11 @@ const ChatPage = () => {
     }
   };
 
-  // Upload final delivery (Editor)
+  // Upload final delivery (Editor) - with progress tracking
   const handleUploadFinalDelivery = async (file) => {
     if (!file) return;
     setUploading(true);
+    setUploadProgress(0);
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -1209,6 +1218,10 @@ const ChatPage = () => {
         headers: { 
           Authorization: `Bearer ${user?.token}`,
           "Content-Type": "multipart/form-data"
+        },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(percentCompleted);
         }
       });
       
@@ -1218,6 +1231,7 @@ const ChatPage = () => {
       toast.error(err.response?.data?.message || "Failed to upload final delivery");
     } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -1414,34 +1428,35 @@ const ChatPage = () => {
   const deadlineStatus = getDeadlineStatus();
 
   return (
-    <div className="flex flex-col h-screen bg-[#09090B] light:bg-[#FAFAFA] text-white light:text-zinc-900 font-sans overflow-hidden">
+    <div className="flex flex-col h-screen bg-white text-[#262626] font-sans overflow-hidden">
       
-      {/* 1. Fixed Header (Glassmorphism) - STICKY */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#09090B]/95 light:bg-white/95 backdrop-blur-md border-b border-white/10 light:border-zinc-200">
-        <div className="flex items-center gap-4 px-4 py-3">
-          <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-white/10 light:hover:bg-zinc-100 transition">
-            <FaArrowLeft className="text-white light:text-zinc-700 text-lg" />
+      {/* 1. Fixed Header - Instagram DM Style */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-[#DBDBDB]">
+        <div className="flex items-center gap-3 px-4 py-3">
+          {/* Back Arrow */}
+          <button onClick={() => navigate(-1)} className="p-1 -ml-1 hover:opacity-70 transition">
+            <FaArrowLeft className="text-[#262626] text-lg" />
           </button>
 
-          {/* User Info */}
+          {/* Profile + Name/Username */}
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="relative">
-              <div className="w-10 h-10 rounded-full p-[2px] bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-500">
+              <div className="w-10 h-10 rounded-full p-[2px] bg-gradient-to-tr from-[#feda75] via-[#fa7e1e] via-[#d62976] via-[#962fbf] to-[#4f5bd5]">
                 <img 
                   src={otherParty?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
                   alt="Profile"
-                  className="w-full h-full rounded-full object-cover border-2 border-[#09090B] light:border-white"
+                  className="w-full h-full rounded-full object-cover border-2 border-white"
                 />
               </div>
-              {isOnline && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#09090B] light:border-white"></div>}
+              {isOnline && <div className="absolute bottom-0 right-0 w-3 h-3 bg-[#00a400] rounded-full border-2 border-white"></div>}
             </div>
-            <div className="flex flex-col justify-center">
-              <span className="font-semibold text-sm truncate leading-tight light:text-zinc-900">{otherParty?.name || "Unknown User"}</span>
+            <div className="flex flex-col justify-center min-w-0">
+              <span className="font-semibold text-[15px] text-[#262626] truncate leading-tight">{otherParty?.name || "Unknown User"}</span>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] text-gray-400 light:text-zinc-500 leading-tight">
+                <span className="text-[13px] text-[#8e8e8e] leading-tight">
                   {isOnline ? "Active now" : "Offline"}
                 </span>
-                {/* Deadline Badge */}
+                {/* Deadline Badge - Preserved */}
                 {deadlineStatus && order?.status !== "completed" && (
                   <span className={`text-[9px] px-2 py-0.5 rounded border ${deadlineStatus.color} ${deadlineStatus.urgent ? 'animate-pulse' : ''}`}>
                     {deadlineStatus.text}
@@ -1451,46 +1466,361 @@ const ChatPage = () => {
             </div>
           </div>
 
-          {/* Feature Buttons */}
-          <div className="flex items-center gap-1">
-            {/* Media Gallery Toggle */}
+          {/* Action Icons - Compact Style */}
+          <div className="flex items-center">
+            {/* Project Details - Opens popup modal (Clipboard/Document Icon) */}
             <button 
-              onClick={() => setShowMediaGallery(true)}
-              className="p-2 rounded-full transition hover:bg-white/10 light:hover:bg-zinc-100 text-gray-400 light:text-zinc-500"
-              title="View all media"
+              onClick={() => setShowProjectDetails(!showProjectDetails)}
+              className={`p-2 rounded-full transition ${showProjectDetails ? 'bg-zinc-100' : 'hover:bg-zinc-50'}`}
+              title="Project details"
             >
-              <FaImage className="text-sm" />
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#262626" className="w-[18px] h-[18px]">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
+              </svg>
             </button>
             
-            {/* Search Toggle */}
+            {/* Google Drive - Opens footage links popup for all users */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowFootageLinks(!showFootageLinks)}
+                className={`p-2 rounded-full transition ${showFootageLinks ? 'bg-zinc-100' : 'hover:bg-zinc-50'}`}
+                title="Footage links"
+              >
+                {/* Google Drive Official Logo - Small */}
+                <svg viewBox="0 0 87.3 78" className="w-[17px] h-[17px]">
+                  <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+                  <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+                  <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+                  <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+                  <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+                  <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+                </svg>
+              </button>
+              
+              {/* Footage Links Popup */}
+              <AnimatePresence>
+                {showFootageLinks && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    className="absolute right-0 top-full mt-2 bg-white border border-[#DBDBDB] rounded-xl shadow-lg w-72 p-4 z-[100]"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-semibold text-[#262626] text-[14px]">Footage Links</h4>
+                      <button onClick={() => setShowFootageLinks(false)} className="p-1 hover:bg-zinc-100 rounded-full">
+                        <FaTimes className="text-[#8e8e8e] text-xs" />
+                      </button>
+                    </div>
+                    
+                    {/* Drive Links from messages */}
+                    {(() => {
+                      const driveLinks = messages?.filter(msg => msg.type === "drive_link" && msg.externalLink) || [];
+                      
+                      if (driveLinks.length === 0) {
+                        return (
+                          <div className="text-center py-4">
+                            <div className="w-12 h-12 mx-auto mb-2 bg-zinc-100 rounded-full flex items-center justify-center">
+                              <FaFolder className="text-zinc-400 text-lg" />
+                            </div>
+                            <p className="text-[13px] text-[#8e8e8e]">No footage links shared yet</p>
+                            {user?.role === "client" && (
+                              <button 
+                                onClick={() => { setShowFootageLinks(false); setShowDriveLinkModal(true); }}
+                                className="mt-3 px-4 py-2 bg-gradient-to-r from-[#0066da] to-[#00ac47] text-white text-[12px] font-medium rounded-lg hover:opacity-90 transition"
+                              >
+                                + Share Footage Link
+                              </button>
+                            )}
+                          </div>
+                        );
+                      }
+                      
+                      return (
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {driveLinks.map((msg, idx) => {
+                            const link = msg.externalLink;
+                            return (
+                              <div key={msg._id || idx} className="flex items-center gap-2 p-2 bg-zinc-50 rounded-lg hover:bg-zinc-100 transition">
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0066da] to-[#00ac47] flex items-center justify-center shrink-0">
+                                  <FaFolder className="text-white text-xs" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[12px] font-medium text-[#262626] truncate">{link.title || "Raw Footage"}</p>
+                                  <p className="text-[10px] text-[#8e8e8e]">{new Date(msg.createdAt).toLocaleDateString()}</p>
+                                </div>
+                                <button 
+                                  onClick={() => handleDriveLinkClick(link.url, link.title)}
+                                  className="px-2 py-1 bg-[#0066da] text-white text-[10px] font-medium rounded hover:bg-[#0052b4] transition"
+                                >
+                                  Open
+                                </button>
+                              </div>
+                            );
+                          })}
+                          {user?.role === "client" && (
+                            <button 
+                              onClick={() => { setShowFootageLinks(false); setShowDriveLinkModal(true); }}
+                              className="w-full mt-2 py-2 border border-dashed border-zinc-300 text-[12px] text-[#8e8e8e] rounded-lg hover:bg-zinc-50 transition"
+                            >
+                              + Add More
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            
+            {/* Search */}
             <button 
               onClick={() => setShowSearch(!showSearch)}
-              className={`p-2 rounded-full transition ${showSearch ? 'bg-purple-500/30 text-purple-400' : 'hover:bg-white/10 light:hover:bg-zinc-100 text-gray-400 light:text-zinc-500'}`}
+              className={`p-2 rounded-full transition ${showSearch ? 'bg-zinc-100' : 'hover:bg-zinc-50'}`}
+              title="Search messages"
             >
-              <FaSearch className="text-sm" />
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#262626" className="w-[17px] h-[17px]">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+              </svg>
             </button>
             
-            {/* Checklist Toggle */}
-            <button 
-              onClick={() => setShowChecklist(!showChecklist)}
-              className={`p-2 rounded-full transition ${showChecklist ? 'bg-purple-500/30 text-purple-400' : 'hover:bg-white/10 light:hover:bg-zinc-100 text-gray-400 light:text-zinc-500'}`}
-            >
-              <FaList className="text-sm" />
-            </button>
+            {/* 3-Dot Menu */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowMoreMenu(!showMoreMenu)}
+                className="p-2 hover:bg-zinc-50 rounded-full transition"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#262626" className="w-[18px] h-[18px]">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z" />
+                </svg>
+              </button>
+              
+              {/* More Menu Popup */}
+              <AnimatePresence>
+                {showMoreMenu && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95, y: 5 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 5 }}
+                    className="absolute right-0 top-full mt-2 bg-white border border-[#DBDBDB] rounded-xl shadow-lg w-52 p-2 z-[100]"
+                  >
+                    {/* Media Gallery */}
+                    <button 
+                      onClick={() => { setShowMediaGallery(true); setShowMoreMenu(false); }}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-[#FAFAFA] rounded-lg text-[14px] text-[#262626]"
+                    >
+                      <FaImage className="text-[#8e8e8e]" /> View all media
+                    </button>
+                    
+                    {/* Task Checklist */}
+                    <button 
+                      onClick={() => { setShowChecklist(!showChecklist); setShowMoreMenu(false); }}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-[#FAFAFA] rounded-lg text-[14px] text-[#262626]"
+                    >
+                      <FaList className="text-[#8e8e8e]" /> Task checklist
+                    </button>
+                    
+                    {/* Starred Messages */}
+                    <button 
+                      onClick={() => setShowMoreMenu(false)}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-[#FAFAFA] rounded-lg text-[14px] text-[#262626]"
+                    >
+                      <FaStar className="text-[#8e8e8e]" /> Starred messages
+                    </button>
+                    
+                    {/* Quick Replies */}
+                    <button 
+                      onClick={() => { setShowQuickReplies(true); loadQuickReplies(); setShowMoreMenu(false); }}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-[#FAFAFA] rounded-lg text-[14px] text-[#262626]"
+                    >
+                      <FaBolt className="text-[#8e8e8e]" /> Quick replies
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
 
-        {/* Search Bar (Expandable) */}
+        {/* Project Details Popup Modal - Full Version with Progress Bars & Receipt */}
+        <AnimatePresence>
+          {showProjectDetails && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="absolute right-4 top-16 bg-white border border-[#DBDBDB] rounded-2xl shadow-xl w-80 max-h-[70vh] overflow-y-auto z-[100]"
+            >
+              {/* Header */}
+              <div className="sticky top-0 bg-white border-b border-[#EFEFEF] p-4 flex items-center justify-between">
+                <h3 className="font-semibold text-[#262626]">Project Details</h3>
+                <button 
+                  onClick={() => setShowProjectDetails(false)} 
+                  className="p-1.5 hover:bg-zinc-100 rounded-full transition"
+                >
+                  <FaTimes className="text-[#8e8e8e] text-sm" />
+                </button>
+              </div>
+              
+              <div className="p-4 space-y-4">
+                {/* Payment Status Progress Bar */}
+                <div className="bg-[#FAFAFA] rounded-xl p-4 border border-[#EFEFEF]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="p-1.5 rounded-lg bg-amber-100">
+                      <FaCreditCard className="text-amber-500 w-3.5 h-3.5" />
+                    </div>
+                    <h4 className="text-[13px] font-semibold text-[#262626]">Payment Status</h4>
+                  </div>
+                  <div className="space-y-2.5 pl-1">
+                    {[
+                      { key: "pending", label: "Payment Pending" },
+                      { key: "escrow", label: "In Escrow" },
+                      { key: "released", label: "Payment Released" },
+                    ].map((stage, index) => {
+                      const paymentStageIndex = order?.paymentStatus === "released" ? 2 : 
+                        (order?.paymentStatus === "escrow" || order?.paymentStatus === "paid") ? 1 : 0;
+                      const isActive = index <= paymentStageIndex;
+                      const isCurrent = index === paymentStageIndex;
+                      return (
+                        <div key={stage.key} className="flex items-center gap-3 relative">
+                          {index < 2 && (
+                            <div className={`absolute left-[7px] top-4 w-0.5 h-3.5 ${
+                              index < paymentStageIndex ? "bg-emerald-500" : "bg-zinc-200"
+                            }`} />
+                          )}
+                          <div className={`w-4 h-4 rounded-full flex items-center justify-center z-10 shrink-0 ${
+                            isActive ? "bg-emerald-500" : "bg-zinc-200"
+                          }`}>
+                            {isActive && <FaCheck className="text-white text-[8px]" />}
+                          </div>
+                          <span className={`text-[12px] font-medium ${
+                            isCurrent ? "text-emerald-600" : isActive ? "text-[#262626]" : "text-[#8e8e8e]"
+                          }`}>{stage.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Work Status Progress Bar */}
+                <div className="bg-[#FAFAFA] rounded-xl p-4 border border-[#EFEFEF]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="p-1.5 rounded-lg bg-blue-100">
+                      <FaClipboardList className="text-blue-500 w-3.5 h-3.5" />
+                    </div>
+                    <h4 className="text-[13px] font-semibold text-[#262626]">Work Status</h4>
+                  </div>
+                  <div className="space-y-2.5 pl-1">
+                    {[
+                      { key: "accepted", label: "Order Accepted" },
+                      { key: "in_progress", label: "In Progress" },
+                      { key: "submitted", label: "Work Submitted" },
+                      { key: "completed", label: "Completed" },
+                    ].map((stage, index) => {
+                      const statusMap = { accepted: 0, in_progress: 1, submitted: 2, completed: 3 };
+                      const workStageIndex = statusMap[order?.status] || 0;
+                      const isActive = index <= workStageIndex;
+                      const isCurrent = index === workStageIndex;
+                      return (
+                        <div key={stage.key} className="flex items-center gap-3 relative">
+                          {index < 3 && (
+                            <div className={`absolute left-[7px] top-4 w-0.5 h-3.5 ${
+                              index < workStageIndex ? "bg-blue-500" : "bg-zinc-200"
+                            }`} />
+                          )}
+                          <div className={`w-4 h-4 rounded-full flex items-center justify-center z-10 shrink-0 ${
+                            isActive ? "bg-blue-500" : "bg-zinc-200"
+                          }`}>
+                            {isActive && <FaCheck className="text-white text-[8px]" />}
+                          </div>
+                          <span className={`text-[12px] font-medium ${
+                            isCurrent ? "text-blue-600" : isActive ? "text-[#262626]" : "text-[#8e8e8e]"
+                          }`}>{stage.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Order Receipt */}
+                <div className="bg-[#FAFAFA] rounded-xl p-4 border border-[#EFEFEF]">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-1.5 rounded-lg bg-emerald-100">
+                      <FaReceipt className="text-emerald-500 w-3.5 h-3.5" />
+                    </div>
+                    <h4 className="text-[13px] font-semibold text-[#262626]">Order Receipt</h4>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[12px] text-[#8e8e8e]">Order Amount</span>
+                      <span className="text-[13px] text-[#262626] font-semibold">
+                        ₹{(order?.amount || order?.totalAmount || 0).toLocaleString("en-IN")}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-[12px] text-[#8e8e8e]">Platform Fee (5%)</span>
+                      <span className="text-[12px] text-red-500 font-medium">
+                        - ₹{Math.round((order?.amount || order?.totalAmount || 0) * 0.05).toLocaleString("en-IN")}
+                      </span>
+                    </div>
+
+                    <div className="border-t border-[#EFEFEF] my-2" />
+
+                    <div className="flex items-center justify-between bg-emerald-50 rounded-lg p-2.5 -mx-1">
+                      <span className="text-[12px] text-[#262626] font-semibold">
+                        {user?.role === "editor" ? "You Receive" : "Editor Receives"}
+                      </span>
+                      <span className="text-emerald-600 font-bold text-[14px]">
+                        ₹{(order?.editorEarning || Math.round((order?.amount || order?.totalAmount || 0) * 0.95)).toLocaleString("en-IN")}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-[#EFEFEF] space-y-2 text-[11px]">
+                      <div className="flex justify-between">
+                        <span className="text-[#8e8e8e]">Order ID</span>
+                        <span className="text-[#262626] font-mono">{order?.orderNumber || orderId?.slice(-8).toUpperCase()}</span>
+                      </div>
+                      {order?.deadline && (
+                        <div className="flex justify-between">
+                          <span className="text-[#8e8e8e]">Deadline</span>
+                          <span className="text-amber-600 font-medium">
+                            {new Date(order.deadline).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                          </span>
+                        </div>
+                      )}
+                      {order?.type && (
+                        <div className="flex justify-between">
+                          <span className="text-[#8e8e8e]">Type</span>
+                          <span className="text-[#262626] capitalize">{order.type}</span>
+                        </div>
+                      )}
+                      {order?.createdAt && (
+                        <div className="flex justify-between">
+                          <span className="text-[#8e8e8e]">Created</span>
+                          <span className="text-[#262626]">{new Date(order.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {/* Search Bar (Expandable) - Preserved */}
         <AnimatePresence>
           {showSearch && (
             <motion.div 
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="px-4 pb-3 overflow-hidden"
+              className="px-4 pb-3 overflow-hidden border-t border-[#DBDBDB]"
             >
-              <div className="flex items-center gap-2 bg-zinc-800/50 light:bg-zinc-100 rounded-xl px-3 py-2">
-                <FaSearch className="text-gray-500" />
+              <div className="flex items-center gap-2 bg-[#EFEFEF] rounded-xl px-3 py-2 mt-2">
+                <FaSearch className="text-[#8e8e8e]" />
                 <input
                   type="text"
                   placeholder="Search messages..."
@@ -1499,11 +1829,11 @@ const ChatPage = () => {
                     setSearchQuery(e.target.value);
                     handleSearch(e.target.value);
                   }}
-                  className="flex-1 bg-transparent text-white light:text-zinc-900 text-sm focus:outline-none placeholder-gray-500 light:placeholder-zinc-400"
+                  className="flex-1 bg-transparent text-[#262626] text-sm focus:outline-none placeholder-[#8e8e8e]"
                 />
                 {searchQuery && (
                   <button onClick={() => { setSearchQuery(""); setSearchResults([]); }}>
-                    <FaTimes className="text-gray-500 text-xs" />
+                    <FaTimes className="text-[#8e8e8e] text-xs" />
                   </button>
                 )}
               </div>
@@ -1524,10 +1854,10 @@ const ChatPage = () => {
                           setTimeout(() => el.removeChild(highlight), 2000);
                         }
                       }}
-                      className="w-full text-left p-2 rounded-lg hover:bg-white/5 flex items-center gap-2 text-xs"
+                      className="w-full text-left p-2 rounded-lg hover:bg-[#EFEFEF] flex items-center gap-2 text-xs"
                     >
-                      <span className="text-gray-400 truncate flex-1">{msg.content}</span>
-                      <span className="text-gray-600 text-[10px] whitespace-nowrap">
+                      <span className="text-[#262626] truncate flex-1">{msg.content}</span>
+                      <span className="text-[#8e8e8e] text-[10px] whitespace-nowrap">
                         {new Date(msg.createdAt).toLocaleDateString()}
                       </span>
                     </button>
@@ -1538,7 +1868,7 @@ const ChatPage = () => {
           )}
         </AnimatePresence>
         
-        {/* Unified Info Tabs */}
+        {/* Unified Info Tabs - Preserved but styled for light theme */}
         <ChatInfoTabs order={order} messages={messages} userRole={user?.role} orderId={orderId} onLinkClick={handleDriveLinkClick} />
       </header>
 
@@ -1614,8 +1944,8 @@ const ChatPage = () => {
           backgroundAttachment: "fixed" 
         }}
       >
-        {/* Dark overlay for readability */}
-        <div className="fixed inset-0 bg-black/70 light:bg-white/70 pointer-events-none z-0" />
+        {/* Light overlay for readability */}
+        <div className="fixed inset-0 bg-white/95 pointer-events-none z-0" />
 
         <div className="relative z-10 flex flex-col gap-1 pb-4">
           {messages.map((msg, i) => {
@@ -1719,15 +2049,15 @@ const ChatPage = () => {
                         </div>
                     )}
 
-                  {/* Message Bubble - Gradient for ME, Dark Grey for THEM */}
+                  {/* Message Bubble - Clean Style: Dark for ME, Light gray for THEM */}
                   <div 
-                    className={`relative px-4 py-2 overflow-hidden ${
+                    className={`relative px-4 py-2.5 overflow-hidden ${
                         msg.isDeleted 
-                            ? "bg-[#1a1a1a] text-gray-500 rounded-[20px] border border-white/5 italic" 
+                            ? "bg-[#EFEFEF] text-[#8e8e8e] rounded-[22px] italic" 
                             : isMe 
-                            ? "bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-[20px] rounded-br-sm" 
-                            : "bg-[#262626] text-white rounded-[20px] rounded-bl-sm border border-white/5"
-                    } shadow-sm backdrop-blur-sm`}
+                            ? "bg-zinc-800 text-white rounded-[22px] rounded-br-[4px]" 
+                            : "bg-[#EFEFEF] text-[#262626] rounded-[22px] rounded-bl-[4px]"
+                    } shadow-sm`}
                     onDoubleClick={() => !msg.isDeleted && setReplyingTo(msg)}
                   >
                         {/* Deleted Message */}
@@ -1865,26 +2195,26 @@ const ChatPage = () => {
                         {/* Star */}
                         <button 
                           onClick={() => handleToggleStar(msg._id)} 
-                          className={`p-1.5 rounded-full transition ${msg.starredBy?.includes(user?._id) ? 'bg-yellow-500/30 text-yellow-400' : 'bg-white/10 hover:bg-white/20 text-gray-300'}`}
+                          className={`p-1.5 rounded-full transition shadow-sm ${msg.starredBy?.includes(user?._id) ? 'bg-yellow-100 text-yellow-500' : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-500'}`}
                         >
                           {msg.starredBy?.includes(user?._id) ? <FaStar className="text-xs" /> : <FaRegStar className="text-xs" />}
                         </button>
                         
                         {/* Reply */}
-                        <button onClick={() => setReplyingTo(msg)} className="p-1.5 bg-white/10 rounded-full hover:bg-white/20 text-gray-300">
+                        <button onClick={() => setReplyingTo(msg)} className="p-1.5 bg-zinc-100 rounded-full hover:bg-zinc-200 text-zinc-500 shadow-sm">
                             <FaReply className="text-xs" />
                         </button>
                         
                         {/* Edit (only for own text messages within 5 mins) */}
                         {isMe && msg.type === "text" && (Date.now() - new Date(msg.createdAt).getTime() < 5 * 60 * 1000) && (
-                          <button onClick={() => setEditingMessage(msg)} className="p-1.5 bg-blue-500/20 rounded-full hover:bg-blue-500/40 text-blue-400">
+                          <button onClick={() => setEditingMessage(msg)} className="p-1.5 bg-blue-100 rounded-full hover:bg-blue-200 text-blue-500 shadow-sm">
                               <FaEdit className="text-xs" />
                           </button>
                         )}
                         
                         {/* Delete - 🆕 Hidden for completed/cancelled/disputed orders */}
                         {isMe && !["completed", "cancelled", "disputed"].includes(order?.status) && (
-                          <button onClick={() => handleDeleteMessage(msg._id)} className="p-1.5 bg-red-500/20 rounded-full hover:bg-red-500/40 text-red-400">
+                          <button onClick={() => handleDeleteMessage(msg._id)} className="p-1.5 bg-red-100 rounded-full hover:bg-red-200 text-red-500 shadow-sm">
                               <FaTrash className="text-xs" />
                           </button>
                         )}
@@ -2027,8 +2357,8 @@ const ChatPage = () => {
           </div>
         </footer>
       ) : (
-        /* Normal Chat Footer */
-        <footer className="fixed bottom-0 left-0 right-0 bg-[#09090B]/95 light:bg-white/95 backdrop-blur-md px-4 py-3 pb-6 z-50 border-t border-white/10 light:border-zinc-200" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
+        /* Normal Chat Footer - Instagram DM Style */
+        <footer className="fixed bottom-0 left-0 right-0 bg-white px-4 py-3 pb-6 z-50 border-t border-[#DBDBDB]" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
          {/* Reply Preview Context */}
          <AnimatePresence>
             {replyingTo && (
@@ -2036,78 +2366,142 @@ const ChatPage = () => {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="flex items-center justify-between bg-zinc-800 light:bg-zinc-100 border-l-4 border-purple-500 p-3 rounded-t-xl mb-2"
+                    className="flex items-center justify-between bg-[#EFEFEF] border-l-4 border-[#C13584] p-3 rounded-t-xl mb-2"
                 >
                     <div className="overflow-hidden">
-                        <p className="text-xs text-purple-400 font-bold">Replying to {replyingTo.sender?.name || "User"}</p>
-                        <p className="text-sm text-gray-400 truncate">{replyingTo.content || "Media"}</p>
+                        <p className="text-xs text-[#C13584] font-bold">Replying to {replyingTo.sender?.name || "User"}</p>
+                        <p className="text-sm text-[#8e8e8e] truncate">{replyingTo.content || "Media"}</p>
                     </div>
-                    <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-white/10 rounded-full"><FaTimes /></button>
+                    <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-black/5 rounded-full text-[#262626]"><FaTimes /></button>
                 </motion.div>
             )}
          </AnimatePresence>
          
          <div className="flex items-end gap-2 max-w-4xl mx-auto">
-             {/* Media Menu */}
-             <div className="relative">
-                 <button 
-                    onClick={() => setShowMediaMenu(!showMediaMenu)}
-                    className="p-3 text-white light:text-zinc-700 bg-zinc-800 light:bg-zinc-100 rounded-full hover:bg-zinc-700 light:hover:bg-zinc-200 transition"
-                 >
-                    <FaPaperclip />
-                 </button>
-                 {/* Popup Menu */}
-                 <AnimatePresence>
-                     {showMediaMenu && (
-                         <motion.div 
-                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                            className="absolute bottom-14 left-0 bg-zinc-800 light:bg-white border border-white/10 light:border-zinc-200 rounded-xl shadow-2xl p-2 w-40 flex flex-col gap-1 z-[60]"
-                        >
-                             <button onClick={() => imageInputRef.current.click()} className="flex items-center gap-3 p-2 hover:bg-white/10 light:hover:bg-zinc-100 rounded-lg text-sm"><FaCamera className="text-pink-500" /> Photo</button>
-                             <button onClick={() => videoInputRef.current.click()} className="flex items-center gap-3 p-2 hover:bg-white/10 light:hover:bg-zinc-100 rounded-lg text-sm"><FaVideo className="text-blue-500" /> Video</button>
-                             <button onClick={() => docInputRef.current.click()} className="flex items-center gap-3 p-2 hover:bg-white/10 light:hover:bg-zinc-100 rounded-lg text-sm"><FaFileAlt className="text-yellow-500" /> Document</button>
-                             
-                             {/* Share Raw Footage - Client Only */}
-                             {user?.role === "client" && (
-                               <button 
-                                 onClick={() => { setShowDriveLinkModal(true); setShowMediaMenu(false); }} 
-                                 className="flex items-center gap-3 p-2 hover:bg-white/10 rounded-lg text-sm border-t border-white/10 mt-1 pt-2"
-                               >
-                                 <FaFolder className="text-green-500" /> Share Footage
-                               </button>
-                             )}
-                             
-                             {/* Send Final Output - Editor Only */}
-                             {user?.role === "editor" && (
-                               <button 
-                                 onClick={() => { finalDeliveryInputRef.current?.click(); setShowMediaMenu(false); }} 
-                                 className="flex items-center gap-3 p-2 hover:bg-white/10 rounded-lg text-sm border-t border-white/10 mt-1 pt-2 text-yellow-400"
-                               >
-                                 <FaFilm className="text-yellow-500" /> Send Final Output
-                               </button>
-                             )}
-                         </motion.div>
-                     )}
-                 </AnimatePresence>
-             </div>
-
-             {/* Quick Replies Button */}
+             {/* Instagram Camera Button - Gradient */}
              <button 
-               onClick={() => { setShowQuickReplies(!showQuickReplies); loadQuickReplies(); }}
-               className={`p-3 rounded-full transition ${showQuickReplies ? 'bg-purple-500/30 text-purple-400' : 'hover:bg-white/10 text-gray-400'}`}
+                onClick={() => setShowMediaMenu(!showMediaMenu)}
+                className="w-11 h-11 rounded-full bg-gradient-to-tr from-[#feda75] via-[#fa7e1e] via-[#d62976] via-[#962fbf] to-[#4f5bd5] flex items-center justify-center hover:scale-105 transition-transform"
              >
-               <FaBolt className="text-lg" />
+                <FaCamera className="text-white text-lg" />
              </button>
              
-             {/* Voice Message Button */}
-             <button 
-               onClick={() => setIsRecordingVoice(true)}
-               className="p-3 rounded-full hover:bg-white/10 text-gray-400 transition"
-             >
-               <FaMicrophone className="text-lg" />
-             </button>
+             {/* Popup Menu */}
+             <AnimatePresence>
+                 {showMediaMenu && (
+                     <motion.div 
+                        initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                        className="absolute bottom-20 left-4 bg-white border border-[#DBDBDB] rounded-xl shadow-lg p-2 w-44 flex flex-col gap-1 z-[60]"
+                    >
+                         <button onClick={() => imageInputRef.current.click()} className="flex items-center gap-3 p-2.5 hover:bg-[#FAFAFA] rounded-lg text-[14px] text-[#262626]"><FaCamera className="text-[#E1306C]" /> Photo</button>
+                         <button onClick={() => videoInputRef.current.click()} className="flex items-center gap-3 p-2.5 hover:bg-[#FAFAFA] rounded-lg text-[14px] text-[#262626]"><FaVideo className="text-[#0095F6]" /> Video</button>
+                         <button onClick={() => docInputRef.current.click()} className="flex items-center gap-3 p-2.5 hover:bg-[#FAFAFA] rounded-lg text-[14px] text-[#262626]"><FaFileAlt className="text-[#FDCB5C]" /> Document</button>
+                         
+                         {/* Share Raw Footage - Client Only */}
+                         {user?.role === "client" && (
+                           <button 
+                             onClick={() => { setShowDriveLinkModal(true); setShowMediaMenu(false); }} 
+                             className="flex items-center gap-3 p-2.5 hover:bg-[#FAFAFA] rounded-lg text-[14px] text-[#262626] border-t border-[#DBDBDB] mt-1 pt-2"
+                           >
+                             <FaFolder className="text-[#4AAE54]" /> Share Footage
+                           </button>
+                         )}
+                         
+                         {/* Send Final Output - Editor Only */}
+                         {user?.role === "editor" && (
+                           <button 
+                             onClick={() => { finalDeliveryInputRef.current?.click(); setShowMediaMenu(false); }} 
+                             className="flex items-center gap-3 p-2.5 hover:bg-[#FAFAFA] rounded-lg text-[14px] text-[#C13584] border-t border-[#DBDBDB] mt-1 pt-2"
+                           >
+                             <FaFilm className="text-[#C13584]" /> Send Final Output
+                           </button>
+                         )}
+                     </motion.div>
+                 )}
+             </AnimatePresence>
+
+             {/* Text Input or Voice Recorder */}
+             {isRecordingVoice ? (
+               <div className="flex-1">
+                 <VoiceRecorder 
+                   onSend={handleSendVoice} 
+                   onCancel={() => setIsRecordingVoice(false)} 
+                 />
+               </div>
+             ) : (
+               <div className="flex-1 flex items-center gap-2 bg-white rounded-[24px] px-4 py-2 border border-[#DBDBDB] focus-within:border-[#C13584] transition">
+                   <textarea
+                      value={newMessage}
+                      onChange={(e) => { setNewMessage(e.target.value); startTyping(orderId); }}
+                      onBlur={() => stopTyping(orderId)}
+                      onKeyDown={(e) => { if(e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
+                      placeholder="Message..."
+                      rows={1}
+                      className="flex-1 bg-transparent text-[#262626] outline-none placeholder:text-[#8e8e8e] resize-none max-h-32 py-1 scrollbar-hide text-[15px]" 
+                   />
+                   {/* Right side - Attachment clip icon + mic when no text */}
+                   {!newMessage.trim() && (
+                     <>
+                       {/* Single Attachment Clip - Opens options menu */}
+                       <div className="relative">
+                         <button 
+                           onClick={() => setShowAttachmentMenu(!showAttachmentMenu)} 
+                           className={`p-1.5 rounded-full transition ${showAttachmentMenu ? 'bg-zinc-100' : 'hover:bg-zinc-50'} text-[#262626]`}
+                         >
+                           <FaPaperclip className="text-lg" />
+                         </button>
+                         
+                         {/* Attachment Options Popup */}
+                         <AnimatePresence>
+                           {showAttachmentMenu && (
+                             <motion.div
+                               initial={{ opacity: 0, y: 5, scale: 0.95 }}
+                               animate={{ opacity: 1, y: 0, scale: 1 }}
+                               exit={{ opacity: 0, y: 5, scale: 0.95 }}
+                               className="absolute bottom-10 right-0 bg-white border border-[#DBDBDB] rounded-xl shadow-lg p-2 w-48 z-[60]"
+                             >
+                               {/* Send Normal File */}
+                               <button 
+                                 onClick={() => { docInputRef.current?.click(); setShowAttachmentMenu(false); }}
+                                 className="w-full flex items-center gap-3 p-2.5 hover:bg-zinc-50 rounded-lg text-[13px] text-[#262626]"
+                               >
+                                 <FaFileAlt className="text-zinc-500" /> Send File
+                               </button>
+                               
+                               {/* Send Final Output - Editor Only */}
+                               {user?.role === "editor" && (
+                                 <button 
+                                   onClick={() => { finalDeliveryInputRef.current?.click(); setShowAttachmentMenu(false); }}
+                                   className="w-full flex items-center gap-3 p-2.5 hover:bg-zinc-50 rounded-lg text-[13px] text-[#C13584] border-t border-zinc-100"
+                                 >
+                                   <FaFilm className="text-[#C13584]" /> Send Final Output
+                                 </button>
+                               )}
+                               
+                               {/* Share Drive Link - Client Only */}
+                               {user?.role === "client" && (
+                                 <button 
+                                   onClick={() => { setShowDriveLinkModal(true); setShowAttachmentMenu(false); }}
+                                   className="w-full flex items-center gap-3 p-2.5 hover:bg-zinc-50 rounded-lg text-[13px] text-[#0066da] border-t border-zinc-100"
+                                 >
+                                   <FaFolder className="text-[#0066da]" /> Share Drive Link
+                                 </button>
+                               )}
+                             </motion.div>
+                           )}
+                         </AnimatePresence>
+                       </div>
+                       
+                       {/* Voice Message */}
+                       <button onClick={() => setIsRecordingVoice(true)} className="p-1 hover:opacity-70 text-[#262626]">
+                         <FaMicrophone className="text-lg" />
+                       </button>
+                     </>
+                   )}
+               </div>
+             )}
              
              {/* Quick Replies Popup */}
              <AnimatePresence>
@@ -2122,39 +2516,17 @@ const ChatPage = () => {
                  />
                )}
              </AnimatePresence>
-             
-             {/* Text Input or Voice Recorder */}
-             {isRecordingVoice ? (
-               <div className="flex-1">
-                 <VoiceRecorder 
-                   onSend={handleSendVoice} 
-                   onCancel={() => setIsRecordingVoice(false)} 
-                 />
-               </div>
-             ) : (
-               <div className="flex-1 bg-[#262626] rounded-[24px] px-4 py-2 border border-white/5 focus-within:border-purple-500/50 transition">
-                   <textarea
-                      value={newMessage}
-                      onChange={(e) => { setNewMessage(e.target.value); startTyping(orderId); }}
-                      onBlur={() => stopTyping(orderId)}
-                      onKeyDown={(e) => { if(e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-                      placeholder="Message..."
-                      rows={1}
-                      className="w-full bg-transparent text-white outline-none placeholder:text-gray-500 resize-none max-h-32 py-1 scrollbar-hide text-[15px]" 
-                   />
-               </div>
-             )}
 
-             {/* Send Button */}
-             <button 
-                onClick={handleSendMessage}
-                disabled={(!newMessage.trim() && !uploading) || isRecordingVoice}
-                className={`p-3 rounded-full transition-all duration-200 transform hover:scale-105 ${
-                    newMessage.trim() && !isRecordingVoice ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-lg shadow-purple-500/30" : "bg-[#262626] text-gray-500"
-                }`}
-             >
-                {sending ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <FaPaperPlane />}
-             </button>
+             {/* Send Button - Only show when there's text */}
+             {newMessage.trim() && (
+               <button 
+                  onClick={handleSendMessage}
+                  disabled={!newMessage.trim() || isRecordingVoice}
+                  className="text-[#0095F6] font-semibold text-[15px] hover:text-[#00376B] transition"
+               >
+                  {sending ? <div className="w-5 h-5 border-2 border-[#0095F6]/30 border-t-[#0095F6] rounded-full animate-spin" /> : "Send"}
+               </button>
+             )}
          </div>
 
          {/* Hidden Inputs */}
@@ -2312,6 +2684,101 @@ const ChatPage = () => {
         accept="video/*,image/*"
         className="hidden"
       />
+
+      {/* 🎬 Final Delivery Upload Progress Overlay */}
+      <AnimatePresence>
+        {uploading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200] flex items-center justify-center"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="flex flex-col items-center"
+            >
+              {/* Circular Progress */}
+              <div className="relative w-32 h-32">
+                {/* Background Circle (Dashed) */}
+                <svg className="w-32 h-32 -rotate-90">
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="56"
+                    strokeWidth="8"
+                    stroke="#333"
+                    fill="transparent"
+                    strokeDasharray="8 4"
+                    className="opacity-30"
+                  />
+                  {/* Progress Circle */}
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="56"
+                    strokeWidth="8"
+                    stroke="url(#uploadGradient)"
+                    fill="transparent"
+                    strokeLinecap="round"
+                    strokeDasharray={`${2 * Math.PI * 56}`}
+                    strokeDashoffset={`${2 * Math.PI * 56 * (1 - uploadProgress / 100)}`}
+                    className="transition-all duration-300 ease-out"
+                  />
+                  <defs>
+                    <linearGradient id="uploadGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#833AB4" />
+                      <stop offset="50%" stopColor="#C13584" />
+                      <stop offset="100%" stopColor="#E1306C" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                
+                {/* Percentage Text */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center">
+                    <span className="text-3xl font-bold text-white">{uploadProgress}</span>
+                    <span className="text-xl text-white/70">%</span>
+                  </div>
+                </div>
+                
+                {/* Rotating Dot Animation */}
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0"
+                >
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-3 bg-gradient-to-r from-[#833AB4] to-[#C13584] rounded-full shadow-lg shadow-purple-500/50" />
+                </motion.div>
+              </div>
+              
+              {/* Upload Status Text */}
+              <motion.div
+                initial={{ y: 10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="mt-6 text-center"
+              >
+                <p className="text-white font-semibold text-lg">Uploading Final Output</p>
+                <p className="text-white/60 text-sm mt-1">
+                  {uploadProgress < 100 ? "Please wait..." : "Processing..."}
+                </p>
+              </motion.div>
+              
+              {/* Film Icon */}
+              <motion.div
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                className="mt-4"
+              >
+                <FaFilm className="text-3xl text-purple-400/60" />
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* �📋 Checklist Panel (Sliding) */}
       <AnimatePresence>

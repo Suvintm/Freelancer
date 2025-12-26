@@ -34,6 +34,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const navItems = [
     { path: "/editor-home", icon: FaHome, label: "Dashboard" },
     { path: "/briefs", icon: FaClipboardList, label: "Open Briefs", isNew: true },
+    { path: "/my-applications", icon: FaBriefcase, label: "My Applications", isNew: true },
     { path: "/my-proposals", icon: FaBriefcase, label: "My Proposals" },
     { path: "/my-gigs", icon: FaShoppingCart, label: "My Gigs" },
     { path: "/my-orders", icon: FaCheckCircle, label: "My Orders" },

@@ -34,6 +34,7 @@ import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
 import ExploreEditor from "../components/ExploreEditor.jsx";
 import ExploreGigs from "../components/ExploreGigs.jsx";
+import ExploreJobs from "../components/ExploreJobs.jsx";
 import EditorKYCForm from "../components/EditorKYCForm.jsx";
 import ProfileCompletionBanner from "../components/ProfileCompletionBanner.jsx";
 import VerifiedEditorBadge from "../components/VerifiedEditorBadge.jsx";
@@ -147,6 +148,7 @@ const EditorHome = () => {
   const exploreTabs = [
     { id: "editors", label: "Explore Editors", icon: FaUsers },
     { id: "gigs", label: "Explore Gigs", icon: FaBriefcase },
+    { id: "jobs", label: "Find Jobs", icon: FaClipboardList },
     { id: "reels", label: "Reels", icon: FaPlayCircle },
   ];
 
@@ -598,6 +600,16 @@ const EditorHome = () => {
                       exit={{ opacity: 0, y: -10 }}
                     >
                       <ExploreGigs />
+                    </motion.div>
+                  )}
+                  {exploreTab === "jobs" && (
+                    <motion.div
+                      key="jobs"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                    >
+                      <ExploreJobs />
                     </motion.div>
                   )}
                 </AnimatePresence>

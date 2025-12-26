@@ -62,6 +62,13 @@ import MyBriefsPage from "./pages/MyBriefsPage.jsx";
 import ManageBriefPage from "./pages/ManageBriefPage.jsx";
 import MyProposalsPage from "./pages/MyProposalsPage.jsx";
 
+// Job Portal Pages
+import JobDetailsPage from "./pages/JobDetailsPage.jsx";
+import PostJobPage from "./pages/PostJobPage.jsx";
+import MyJobsPage from "./pages/MyJobsPage.jsx";
+import JobApplicantsPage from "./pages/JobApplicantsPage.jsx";
+import MyApplicationsPage from "./pages/MyApplicationsPage.jsx";
+
 import { TermsAndConditions, PrivacyPolicy, ContentProtectionPolicy, EditorCodeOfConduct } from "./pages/LegalPages";
 
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
@@ -230,6 +237,48 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["editor"]}>
               <MyProposalsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Job Portal Routes */}
+        <Route
+          path="/jobs/:id"
+          element={
+            <ProtectedRoute allowedRoles={["editor", "client"]}>
+              <JobDetailsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/post-job"
+          element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <PostJobPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-jobs"
+          element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <MyJobsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-jobs/:id/applicants"
+          element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <JobApplicantsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-applications"
+          element={
+            <ProtectedRoute allowedRoles={["editor"]}>
+              <MyApplicationsPage />
             </ProtectedRoute>
           }
         />

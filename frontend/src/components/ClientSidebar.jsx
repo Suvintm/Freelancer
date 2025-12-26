@@ -17,6 +17,7 @@ import {
   FaMapMarkerAlt,
   FaPlus,
   FaShoppingCart,
+  FaBriefcase,
 } from "react-icons/fa";
 import { HiOutlineSun, HiOutlineMoon } from "react-icons/hi2";
 import { motion, AnimatePresence } from "framer-motion";
@@ -92,6 +93,8 @@ const ClientSidebar = ({ isOpen, onClose }) => {
     { path: "/client-home", icon: FaHome, label: "Dashboard" },
     { path: "/my-briefs", icon: FaClipboardList, label: "My Briefs", isNew: true },
     { path: "/create-brief", icon: FaPlus, label: "Post Brief" },
+    { path: "/post-job", icon: FaBriefcase, label: "Post Job", isNew: true },
+    { path: "/my-jobs", icon: FaClipboardList, label: "My Jobs" },
     { path: "/explore-editors", icon: FaUserTie, label: "Explore Editors" },
     { path: "/editors-near-you", icon: FaMapMarkerAlt, label: "Editors Near You" },
     { path: "/client-orders", icon: FaShoppingCart, label: "My Orders", badge: newOrdersCount },
@@ -153,7 +156,7 @@ const ClientSidebar = ({ isOpen, onClose }) => {
 
         {/* Navigation Items */}
         <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">
-          {navItems.map(({ path, icon: Icon, label, badge, kycBadge }) => {
+          {navItems.map(({ path, icon: Icon, label, badge, kycBadge, isNew }) => {
             const isActive = location.pathname === path;
 
             return (
@@ -181,6 +184,13 @@ const ClientSidebar = ({ isOpen, onClose }) => {
                 {/* Icon + Text */}
                 <Icon className={`text-base ${isActive ? "text-emerald-500" : "text-gray-500 light:text-slate-400 group-hover:text-gray-300 light:group-hover:text-slate-600"}`} />
                 <span>{label}</span>
+
+                {/* NEW Badge for new features */}
+                {isNew && (
+                  <span className="ml-auto px-1.5 py-0.5 text-[9px] font-bold bg-amber-400 text-amber-900 rounded-full animate-pulse">
+                    NEW
+                  </span>
+                )}
 
                 {/* Badge (Numeric) */}
                 {badge > 0 && (
