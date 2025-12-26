@@ -1867,9 +1867,6 @@ const ChatPage = () => {
             </motion.div>
           )}
         </AnimatePresence>
-        
-        {/* Unified Info Tabs - Preserved but styled for light theme */}
-        <ChatInfoTabs order={order} messages={messages} userRole={user?.role} orderId={orderId} onLinkClick={handleDriveLinkClick} />
       </header>
 
       {/* Deadline Warning Banner - Show to clients when deadline is approaching */}
@@ -2378,12 +2375,24 @@ const ChatPage = () => {
          </AnimatePresence>
          
          <div className="flex items-end gap-2 max-w-4xl mx-auto">
-             {/* Instagram Camera Button - Gradient */}
+             {/* Sender Profile Image with Gradient Border */}
              <button 
                 onClick={() => setShowMediaMenu(!showMediaMenu)}
-                className="w-11 h-11 rounded-full bg-gradient-to-tr from-[#feda75] via-[#fa7e1e] via-[#d62976] via-[#962fbf] to-[#4f5bd5] flex items-center justify-center hover:scale-105 transition-transform"
+                className="w-11 h-11 rounded-full bg-gradient-to-tr from-[#feda75] via-[#fa7e1e] via-[#d62976] via-[#962fbf] to-[#4f5bd5] p-[2px] hover:scale-105 transition-transform"
              >
-                <FaCamera className="text-white text-lg" />
+                <div className="w-full h-full rounded-full overflow-hidden bg-white">
+                  {user?.profileImage ? (
+                    <img 
+                      src={user.profileImage} 
+                      alt={user.name} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-black from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm">
+                      {user?.name?.charAt(0)?.toUpperCase() || "U"}
+                    </div>
+                  )}
+                </div>
              </button>
              
              {/* Popup Menu */}
