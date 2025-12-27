@@ -16,6 +16,7 @@ import ReelsAnalytics from "./pages/ReelsAnalytics.jsx";
 import NotificationsPage from "./pages/NotificationsPage.jsx";
 import ChatsPage from "./pages/AllChatsPage.jsx";
 import Chatbox from "./components/ChatPage.jsx";
+ 
 
 // Gig & Order Pages
 import CreateGig from "./pages/CreateGig.jsx";
@@ -126,9 +127,11 @@ function App() {
   return (
     <>
       <AnimatePresence>
-        {showSplash && <SplashScreen />}
+        {/* {showSplash && <SplashScreen key="splash" />} */}
       </AnimatePresence>
       <ToastContainer />
+       
+
       <Routes>
         {/* Legal Routes */}
         <Route path="/legal-center" element={<LegalCenterPage />} />

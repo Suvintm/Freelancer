@@ -37,25 +37,56 @@ const SplashScreen = () => {
           />
         </motion.div>
 
-        {/* Text Animation */}
+        {/* Text Animation - Letter by Letter */}
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.8 }}
           className="flex flex-col items-center"
         >
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tighter text-white mb-2">
-            Suvi<span className="text-emerald-500">X</span>
-          </h1>
+          <div className="flex overflow-hidden">
+            {"Suvi".split("").map((letter, i) => (
+              <motion.span
+                key={i}
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ 
+                  duration: 0.8, 
+                  delay: 0.8 + (i * 0.1),
+                  ease: [0.16, 1, 0.3, 1] 
+                }}
+                className="text-5xl md:text-6xl font-bold tracking-tighter text-white"
+              >
+                {letter}
+              </motion.span>
+            ))}
+            <motion.span
+              initial={{ opacity: 0, scale: 0.5, rotate: -20 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              transition={{ 
+                duration: 0.6, 
+                delay: 1.3,
+                type: "spring",
+                stiffness: 200
+              }}
+              className="text-5xl md:text-6xl font-bold tracking-tighter text-emerald-500 ml-1"
+            >
+              X
+            </motion.span>
+          </div>
+          
           <motion.div 
-            initial={{ width: 0 }}
-            animate={{ width: "100%" }}
-            transition={{ duration: 1, delay: 1.2, ease: "easeInOut" }}
-            className="h-[2px] bg-gradient-to-r from-transparent via-emerald-500 to-transparent"
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: "100%", opacity: 1 }}
+            transition={{ duration: 1.2, delay: 1.6, ease: "easeOut" }}
+            className="h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent mt-3"
           />
-          <p className="mt-4 text-zinc-500 text-sm md:text-base font-medium tracking-[0.2em] uppercase">
+          
+          <motion.p 
+            initial={{ opacity: 0, letterSpacing: "0.1em" }}
+            animate={{ opacity: 1, letterSpacing: "0.25em" }}
+            transition={{ duration: 1, delay: 1.8 }}
+            className="mt-5 text-zinc-500 text-[10px] md:text-xs font-semibold uppercase pointer-events-none"
+          >
             Video Editing Redefined
-          </p>
+          </motion.p>
         </motion.div>
       </div>
 
