@@ -21,8 +21,6 @@ const OAuthSuccess = () => {
         if (token) {
             // Decode token to get user info (basic decode, not verification)
             try {
-                const payload = JSON.parse(atob(token.split(".")[1]));
-
                 // Fetch user details
                 fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/me`, {
                     headers: { Authorization: `Bearer ${token}` },

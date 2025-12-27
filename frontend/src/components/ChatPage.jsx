@@ -205,7 +205,7 @@ const VoiceRecorder = ({ onSend, onCancel }) => {
       timerRef.current = setInterval(() => {
         setDuration(d => d + 1);
       }, 1000);
-    } catch (err) {
+    } catch (_) {
       toast.error("Microphone access denied");
     }
   };
@@ -606,9 +606,8 @@ import ContentAccessModal from "./ContentAccessModal";
 const ChatPage = () => {
   const navigate = useNavigate();
   const { orderId } = useParams();
-  const { user, backendURL, refreshUser } = useAppContext();
+  const { user, backendURL } = useAppContext();
   const socketContext = useSocket();
-  const popAudio = useRef(new Audio(POP_SOUND));
 
   // --- Socket & Context Destructuring ---
   const {
@@ -642,7 +641,6 @@ const ChatPage = () => {
   const [replyingTo, setReplyingTo] = useState(null);
   const [pendingFile, setPendingFile] = useState(null);
   const [allowDownload, setAllowDownload] = useState(false);
-  const [deleteMenuMsg, setDeleteMenuMsg] = useState(null);
 
   // --- New Feature States ---
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
@@ -683,7 +681,7 @@ const ChatPage = () => {
   const [extendingDeadline, setExtendingDeadline] = useState(false);
 
   // Handle Drive Link Click
-  const handleDriveLinkClick = async (url, title = "Files") => {
+  const handleDriveLinkClick = async (url) => {
     // If not editor, just open the link directly
     if (user?.role !== "editor") {
         window.open(url, "_blank");

@@ -53,7 +53,7 @@ const PaymentsPage = () => {
         { headers: { Authorization: `Bearer ${user?.token}` } }
       );
       setPayments(data.payments);
-    } catch (err) {
+    } catch (_) {
       toast.error("Failed to load payments");
     }
   };

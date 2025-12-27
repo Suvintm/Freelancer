@@ -103,7 +103,7 @@ const OpenBriefsPage = () => {
       setBriefs(res.data.briefs || []);
       setTotalPages(res.data.pagination?.pages || 1);
       setTotal(res.data.pagination?.total || 0);
-    } catch (error) {
+    } catch (_) {
       toast.error("Failed to load briefs");
     } finally {
       setLoading(false);

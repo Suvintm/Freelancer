@@ -179,7 +179,6 @@ const KYCRequestDetail = () => {
         bankName: data.bankDetails?.bankName,
         panNumber: data.bankDetails?.panNumber,
         gstin: data.bankDetails?.gstin,
-        gstin: data.bankDetails?.gstin,
         address: data.bankDetails?.address || {},
       };
 
