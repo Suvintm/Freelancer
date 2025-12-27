@@ -81,6 +81,27 @@ const FinalDeliveryCard = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
 
+  const aspectRatio = delivery?.aspectRatio || getAspectRatio(delivery?.width, delivery?.height);
+
+  // Timer
+  useEffect(() => {
+    const targetDate = expiresAt || delivery?.expiresAt;
+    if (!targetDate || isExpired || !showTimer) {
+      setTimeLeft(null);
+      return;
+    }
+
+    const updateTimer = () => {
+      const diff = new Date(targetDate) - new Date();
+      if (diff <= 0) { setTimeLeft(null); return; }
+      setTimeLeft({ hours: Math.floor(diff / 3600000), mins: Math.floor((diff % 3600000) / 60000) });
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 60000);
+    return () => clearInterval(interval);
+  }, [expiresAt, delivery?.expiresAt, isExpired, showTimer]);
+
   if (!delivery) return null;
 
   // Robust video detection - check mimeType OR file extension
@@ -99,27 +120,6 @@ const FinalDeliveryCard = ({
   const isCompleted = delivery.status === "downloaded";
   const isExpired = delivery.status === "expired" || delivery.isExpired;
   const isPending = delivery.status === "pending" || delivery.status === "previewed";
-  
-  const aspectRatio = delivery.aspectRatio || getAspectRatio(delivery.width, delivery.height);
-
-  // Timer
-  useEffect(() => {
-    const targetDate = expiresAt || delivery.expiresAt;
-    if (!targetDate || isExpired || !showTimer) {
-      setTimeLeft(null);
-      return;
-    }
-
-    const updateTimer = () => {
-      const diff = new Date(targetDate) - new Date();
-      if (diff <= 0) { setTimeLeft(null); return; }
-      setTimeLeft({ hours: Math.floor(diff / 3600000), mins: Math.floor((diff % 3600000) / 60000) });
-    };
-
-    updateTimer();
-    const interval = setInterval(updateTimer, 60000);
-    return () => clearInterval(interval);
-  }, [expiresAt, delivery.expiresAt, isExpired, showTimer]);
 
   const handleAcceptAndDownload = () => {
     const orderId = delivery.orderId || delivery.order?._id || delivery.order;

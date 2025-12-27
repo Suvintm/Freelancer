@@ -70,8 +70,9 @@ const NotificationsPage = () => {
     try {
       await axios.put(`${backendURL}/api/notifications/read/${id}`);
       setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
-      fetchNotifications?.();
-    } catch (error) {}
+    } catch (error) {
+      console.error("markAsRead error", error);
+    }
   };
 
   const markAllAsRead = async () => {
@@ -80,7 +81,9 @@ const NotificationsPage = () => {
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       fetchNotifications?.();
       toast.success("All marked as read");
-    } catch (error) {}
+    } catch (error) {
+      console.error("markAllAsRead error", error);
+    }
   };
 
   const deleteNotification = async (id) => {
@@ -89,7 +92,9 @@ const NotificationsPage = () => {
       setNotifications(prev => prev.filter(n => n._id !== id));
       if (selectedNotification?._id === id) setSelectedNotification(null);
       toast.success("Deleted");
-    } catch (error) {}
+    } catch (error) {
+      console.error("deleteNotification error", error);
+    }
   };
 
   const clearAll = async () => {
@@ -98,7 +103,9 @@ const NotificationsPage = () => {
       await Promise.all(notifications.map(n => axios.delete(`${backendURL}/api/notifications/${n._id}`)));
       setNotifications([]);
       toast.success("All notifications cleared");
-    } catch (error) {}
+    } catch (error) {
+      console.error("clearAll error", error);
+    }
   };
 
   // Group by time

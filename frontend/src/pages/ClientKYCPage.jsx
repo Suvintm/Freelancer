@@ -26,6 +26,7 @@ const ClientKYCPage = () => {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
   const [existingKYC, setExistingKYC] = useState(null);
+  const [status, setStatus] = useState("not_started");
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -87,6 +88,7 @@ const ClientKYCPage = () => {
           phone: res.data.kyc.phone || '',
           preferredRefundMethod: res.data.kyc.preferredRefundMethod || 'original_payment',
         }));
+        setStatus(res.data.kyc.status || 'not_started');
       }
     } catch (err) {
       console.error('Failed to fetch KYC:', err);
@@ -188,9 +190,9 @@ const ClientKYCPage = () => {
         if (setUser) {
           setUser(prev => ({ ...prev, clientKycStatus: 'pending' }));
         }
-        // Update new status and kycData states
+        // Update new status and existingKYC states
         setStatus('pending');
-        setKycData({
+        setExistingKYC({
            status: 'pending',
            submittedAt: new Date(),
            ...formData
@@ -640,24 +642,24 @@ const ClientKYCPage = () => {
               <div className="kyc-page__verified-details">
                 <div className="kyc-page__verified-item">
                   <FaUser />
-                  <span>{kycData?.fullName}</span>
+                  <span>{existingKYC?.fullName}</span>
                 </div>
-                {kycData?.displayAccountInfo?.bankAccount && (
+                {existingKYC?.displayAccountInfo?.bankAccount && (
                   <div className="kyc-page__verified-item">
                     <FaUniversity />
-                    <span>{kycData.displayAccountInfo.bankAccount}</span>
+                    <span>{existingKYC.displayAccountInfo.bankAccount}</span>
                   </div>
                 )}
-                {kycData?.displayAccountInfo?.upi && (
+                {existingKYC?.displayAccountInfo?.upi && (
                    <div className="kyc-page__verified-item">
                     <FaCreditCard />
-                     <span>{kycData.displayAccountInfo.upi}</span>
+                     <span>{existingKYC.displayAccountInfo.upi}</span>
                    </div>
                 )}
               </div>
 
               <p className="text-sm text-gray-500">
-                Verified on {new Date(kycData?.verifiedAt).toLocaleDateString()}
+                Verified on {new Date(existingKYC?.verifiedAt).toLocaleDateString()}
               </p>
             </div>
           ) : status === "pending" || status === "under_review" ? (
@@ -696,9 +698,9 @@ const ClientKYCPage = () => {
               </div>
               <h1>Verification Failed</h1>
               
-              {kycData?.rejectionReason && (
+              {existingKYC?.rejectionReason && (
                 <div className="kyc-page__rejected-reason">
-                  <strong>Reason:</strong> {kycData.rejectionReason}
+                  <strong>Reason:</strong> {existingKYC.rejectionReason}
                 </div>
               )}
               

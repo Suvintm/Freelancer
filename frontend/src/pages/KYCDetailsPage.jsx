@@ -43,7 +43,6 @@ const KYCDetailsPage = () => {
     accountNumber: '',
     confirmAccountNumber: '',
     ifscCode: '',
-    ifscCode: '',
     panNumber: '',
     street: '',
     city: '',
@@ -76,7 +75,7 @@ const KYCDetailsPage = () => {
           setFormData(prev => ({
             ...prev,
             accountHolderName: res.data.bankDetails.accountHolderName || '',
-            bankName: res.data.bankDetails.bankName || '',
+            // bankName: res.data.bankDetails.bankName || '', // Removed duplicate key as per instruction
             ifscCode: res.data.bankDetails.ifscCode || '',
           }));
           if (res.data.bankDetails.bankName) {

@@ -641,6 +641,7 @@ const ChatPage = () => {
   const [replyingTo, setReplyingTo] = useState(null);
   const [pendingFile, setPendingFile] = useState(null);
   const [allowDownload, setAllowDownload] = useState(false);
+  const [deleteMenuMsg, setDeleteMenuMsg] = useState(null);
 
   // --- New Feature States ---
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
@@ -747,26 +748,41 @@ const ChatPage = () => {
     }
   };
 
-  // --- Fetch Data ---
+  // --- Fetch Data Helpers ---
+  const fetchOrder = useCallback(async () => {
+    if (!orderId) return;
+    try {
+      const token = user?.token;
+      const { data } = await axios.get(`${backendURL}/api/orders/${orderId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setOrder(data.order);
+    } catch (err) {
+      console.error("fetchOrder error", err);
+    }
+  }, [backendURL, orderId, user?.token]);
+
+  const fetchMessages = useCallback(async () => {
+    if (!orderId) return;
+    try {
+      const token = user?.token;
+      const { data } = await axios.get(`${backendURL}/api/messages/${orderId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMessages(data.messages || []);
+    } catch (err) {
+      console.error("fetchMessages error", err);
+    }
+  }, [backendURL, orderId, user?.token]);
+
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        const token = user?.token;
-        const [orderRes, msgRes] = await Promise.all([
-          axios.get(`${backendURL}/api/orders/${orderId}`, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`${backendURL}/api/messages/${orderId}`, { headers: { Authorization: `Bearer ${token}` } })
-        ]);
-        setOrder(orderRes.data.order);
-        setMessages(msgRes.data.messages || []);
-      } catch (err) {
-        console.error(err);
-        toast.error("Failed to load chat data.");
-      } finally {
-        setLoading(false);
-      }
+      setLoading(true);
+      await Promise.all([fetchOrder(), fetchMessages()]);
+      setLoading(false);
     };
-    if (orderId) fetchData();
-  }, [orderId, backendURL, user?.token]);
+    fetchData();
+  }, [fetchOrder, fetchMessages]);
 
   // --- Check Deadline Status ---
   useEffect(() => {

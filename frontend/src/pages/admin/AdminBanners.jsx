@@ -429,6 +429,7 @@ const AdminBanners = () => {
                 </motion.div>
               </Reorder.Item>
             ))}
+          </Reorder.Group>
         )}
       {/* Create/Edit Modal */}
       <AnimatePresence>
