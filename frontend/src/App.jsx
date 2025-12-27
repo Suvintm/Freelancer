@@ -1,4 +1,7 @@
+import React, { useState, useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
+import SplashScreen from "./components/SplashScreen.jsx";
 import Homepage from "./pages/Homepage.jsx";
 import ClientHome from "./pages/clientHome.jsx";
 import EditorHome from "./pages/EditorHome.jsx";
@@ -77,8 +80,36 @@ import "react-toastify/dist/ReactToastify.css";
 import { ToastContainer } from "react-toastify";
 
 function App() {
+  const [showSplash, setShowSplash] = useState(false);
+
+  useEffect(() => {
+    const SPLASH_COOLDOWN = 30 * 60 * 1000; // 30 minutes
+    const now = Date.now();
+    const lastSessionSplash = sessionStorage.getItem('splashShown');
+    const lastGlobalSplash = localStorage.getItem('lastSplashTime');
+
+    // Show if:
+    // 1. Never shown in this session
+    // 2. OR more than 30 mins since any last splash across tabs
+    if (!lastSessionSplash || !lastGlobalSplash || (now - parseInt(lastGlobalSplash) > SPLASH_COOLDOWN)) {
+      setShowSplash(true);
+      sessionStorage.setItem('splashShown', 'true');
+      localStorage.setItem('lastSplashTime', now.toString());
+      
+      // Auto-hide after animation
+      const timer = setTimeout(() => {
+        setShowSplash(false);
+      }, 3500); // 3.5s (2.5s animate + 1s buffer)
+      
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   return (
     <>
+      <AnimatePresence>
+        {showSplash && <SplashScreen />}
+      </AnimatePresence>
       <ToastContainer />
       <Routes>
         {/* Legal Routes */}
