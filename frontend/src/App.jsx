@@ -84,25 +84,43 @@ function App() {
 
   useEffect(() => {
     const SPLASH_COOLDOWN = 30 * 60 * 1000; // 30 minutes
+    const RE_ENTRY_THRESHOLD = 10 * 1000; // 10 seconds (Testing)
+    
+    const triggerSplash = () => {
+      setShowSplash(true);
+      localStorage.setItem('lastSplashTime', Date.now().toString());
+      setTimeout(() => setShowSplash(false), 3500);
+    };
+
+    // 1. Initial Load Logic
     const now = Date.now();
     const lastSessionSplash = sessionStorage.getItem('splashShown');
     const lastGlobalSplash = localStorage.getItem('lastSplashTime');
 
-    // Show if:
-    // 1. Never shown in this session
-    // 2. OR more than 30 mins since any last splash across tabs
     if (!lastSessionSplash || !lastGlobalSplash || (now - parseInt(lastGlobalSplash) > SPLASH_COOLDOWN)) {
-      setShowSplash(true);
+      triggerSplash();
       sessionStorage.setItem('splashShown', 'true');
-      localStorage.setItem('lastSplashTime', now.toString());
-      
-      // Auto-hide after animation
-      const timer = setTimeout(() => {
-        setShowSplash(false);
-      }, 3500); // 3.5s (2.5s animate + 1s buffer)
-      
-      return () => clearTimeout(timer);
     }
+
+    // 2. Visibility Change Logic (Re-entry after 2 mins)
+    const handleVisibilityChange = () => {
+      const currentTime = Date.now();
+      if (document.hidden) {
+        localStorage.setItem('lastHiddenTime', currentTime.toString());
+      } else {
+        const lastHidden = localStorage.getItem('lastHiddenTime');
+        if (lastHidden && (currentTime - parseInt(lastHidden) > RE_ENTRY_THRESHOLD)) {
+          triggerSplash();
+        }
+        // Reset hidden time once retrieved/checked
+        localStorage.removeItem('lastHiddenTime');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   return (
