@@ -27,6 +27,11 @@ const CompletedOrderReceipt = ({ order }) => {
   const daysBeforeDeadline = Math.ceil((deadlineDate - completedDate) / (1000 * 60 * 60 * 24));
   const wasOnTime = daysBeforeDeadline >= 0;
 
+  // Calculate platform fee percentage
+  const orderAmount = order.amount || 0;
+  const platformFee = order.platformFee || 0;
+  const feePercent = orderAmount > 0 ? Math.round((platformFee / orderAmount) * 100) : 10;
+
   // Format dates
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString("en-IN", {
@@ -184,7 +189,7 @@ const CompletedOrderReceipt = ({ order }) => {
                   <span className="text-white font-medium">₹{order.amount?.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Platform Fee (10%)</span>
+                  <span className="text-gray-400">Platform Fee ({feePercent}%)</span>
                   <span className="text-red-400">-₹{order.platformFee?.toLocaleString()}</span>
                 </div>
                 <div className="border-t border-white/10 pt-3 flex items-center justify-between">

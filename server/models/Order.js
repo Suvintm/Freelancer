@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { SiteSettings } from "./SiteSettings.js";
 
 // Generate unique order number
 const generateOrderNumber = () => {
@@ -306,10 +307,19 @@ const orderSchema = new mongoose.Schema(
 );
 
 // Calculate platform fee and editor earning before save
-orderSchema.pre("save", function (next) {
+orderSchema.pre("save", async function (next) {
   if (this.isModified("amount")) {
-    this.platformFee = Math.round(this.amount * 0.10); // 10% platform fee
-    this.editorEarning = this.amount - this.platformFee;
+    try {
+      const settings = await SiteSettings.getSettings();
+      const feePercent = settings.platformFee || 10;
+      this.platformFee = Math.round(this.amount * (feePercent / 100));
+      this.editorEarning = this.amount - this.platformFee;
+    } catch (error) {
+      console.error("Error in Order pre-save platform fee calculation:", error);
+      // Fallback to 10% if settings fetch fails
+      this.platformFee = Math.round(this.amount * 0.10);
+      this.editorEarning = this.amount - this.platformFee;
+    }
   }
   next();
 });

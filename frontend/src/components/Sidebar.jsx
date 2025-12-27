@@ -29,6 +29,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   // 🆕 Get real-time unread count from socket context
   const socketContext = useSocket();
   const totalUnread = socketContext?.totalUnread || 0;
+  const newOrdersCount = socketContext?.newOrdersCount || 0;
 
   // 🆕 Move navItems inside component to access totalUnread
   const navItems = [
@@ -37,7 +38,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: "/my-applications", icon: FaBriefcase, label: "My Applications", isNew: true },
     { path: "/my-proposals", icon: FaBriefcase, label: "My Proposals" },
     { path: "/my-gigs", icon: FaShoppingCart, label: "My Gigs" },
-    { path: "/my-orders", icon: FaCheckCircle, label: "My Orders" },
+    { path: "/my-orders", icon: FaCheckCircle, label: "My Orders", badge: newOrdersCount },
     { path: "/reels-analytics", icon: FaChartLine, label: "Reels Analytics" },
     { path: "/profile-insights", icon: HiEye, label: "Profile Insights" },
     { path: "/suvix-score", icon: FaTrophy, label: "Suvix Score" },

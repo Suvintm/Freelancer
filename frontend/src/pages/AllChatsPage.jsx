@@ -27,7 +27,7 @@ import EditorNavbar from "../components/EditorNavbar.jsx";
 
 // Status configuration for different order states
 const STATUS_CONFIG = {
-  new: { label: "New Request", color: "text-amber-400", bg: "bg-amber-500/20" },
+  new: { label: "NEW ORDER", color: "text-red-400", bg: "bg-red-500/20" },
   awaiting_payment: { label: "Awaiting Payment", color: "text-orange-400", bg: "bg-orange-500/20" },
   accepted: { label: "Accepted", color: "text-green-400", bg: "bg-green-500/20" },
   in_progress: { label: "In Progress", color: "text-yellow-400", bg: "bg-yellow-500/20" },
@@ -97,12 +97,60 @@ const ChatsPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Real-time updates via Socket
+  useEffect(() => {
+    const socket = socketContext?.socket;
+    if (!socket) return;
+
+    const handleNewMessage = (message) => {
+      setChats(prevChats => {
+        const orderId = message.orderId || message.order;
+        const chatIndex = prevChats.findIndex(c => c._id === orderId);
+        
+        if (chatIndex === -1) {
+          // If chat not in current list, we might need a full fetch or just ignore
+          // since it might be a status that shouldn't be here yet
+          return prevChats;
+        }
+
+        const updatedChats = [...prevChats];
+        const chat = { ...updatedChats[chatIndex] };
+
+        // Update latest message info
+        chat.latestMessage = {
+          content: message.content,
+          type: message.type,
+          createdAt: message.createdAt,
+          sender: message.sender
+        };
+        chat.lastActivityAt = message.createdAt;
+        
+        // Update unread count if not from current user
+        if (message.sender?._id !== user?._id) {
+          chat.unreadCount = (chat.unreadCount || 0) + 1;
+        }
+
+        updatedChats[chatIndex] = chat;
+
+        // Re-sort by activity
+        return updatedChats.sort((a, b) => {
+          const aTime = a.lastActivityAt || a.createdAt;
+          const bTime = b.lastActivityAt || b.createdAt;
+          return new Date(bTime) - new Date(aTime);
+        });
+      });
+    };
+
+    socket.on("message:new", handleNewMessage);
+    return () => socket.off("message:new", handleNewMessage);
+  }, [socketContext, user?._id]);
+
   const fetchChats = async () => {
     try {
       setLoading(true);
       const token = user?.token;
 
-      // Fetch all orders (including new and awaiting_payment)
+      // Fetch all orders with aggregated latestMessage
       const res = await axios.get(`${backendURL}/api/orders`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -110,15 +158,14 @@ const ChatsPage = () => {
       // Include relevant statuses - filter based on user role
       const relevantStatuses = ["awaiting_payment", "accepted", "in_progress", "submitted", "completed"];
       
-      // For clients, also include "new" status (they can see pending orders)
-      // For editors, "new" status orders should appear in Orders page, not Chat
+      // For clients, also include "new" status
+      // For editors, "new" status orders now appear in both places
       const activeChats = (res.data.orders || []).filter(order => {
-        // Clients can see all their orders including "new" (awaiting editor acceptance)
-        if (user.role === "client" && order.status === "new") return true;
+        if (order.status === "new") return true;
         return relevantStatuses.includes(order.status);
       });
 
-      // 🆕 Fetch unread counts from dedicated endpoint (doesn't mark as seen)
+      // 🆕 Fetch unread counts from dedicated endpoint
       let unreadCounts = {};
       try {
         const unreadRes = await axios.get(`${backendURL}/api/messages/unread-per-order`, {
@@ -129,26 +176,18 @@ const ChatsPage = () => {
         console.error("Failed to fetch unread counts:", err);
       }
 
-      // Fetch only the last message for each chat (without counting unread there)
-      const chatsWithMessages = await Promise.all(
-        activeChats.map(async (chat) => {
-          try {
-            const msgRes = await axios.get(`${backendURL}/api/messages/${chat._id}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            const messages = msgRes.data.messages || [];
-            
-            return {
-              ...chat,
-              lastMessage: messages.length > 0 ? messages[messages.length - 1] : null,
-              // 🆕 Use unread count from dedicated endpoint
-              unreadCount: unreadCounts[chat._id] || 0,
-            };
-          } catch {
-            return { ...chat, lastMessage: null, unreadCount: unreadCounts[chat._id] || 0 };
-          }
-        })
-      );
+      // Map chats with unread counts (messages are already included in order from backend)
+      const chatsWithMessages = activeChats.map(chat => ({
+        ...chat,
+        unreadCount: unreadCounts[chat._id] || 0,
+      }));
+
+      // Sort by activity
+      chatsWithMessages.sort((a, b) => {
+        const aTime = a.lastActivityAt || a.createdAt;
+        const bTime = b.lastActivityAt || b.createdAt;
+        return new Date(bTime) - new Date(aTime);
+      });
 
       // Sort by latest message time or creation date
       chatsWithMessages.sort((a, b) => {

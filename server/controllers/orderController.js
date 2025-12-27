@@ -5,6 +5,7 @@ import User from "../models/User.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import { createNotification } from "./notificationController.js";
 import { releasePayment } from "./paymentGatewayController.js";
+import { SiteSettings } from "../models/SiteSettings.js";
 import logger from "../utils/logger.js";
 
 // ============ CREATE ORDER FROM GIG ============
@@ -91,8 +92,9 @@ export const createRequestPaymentOrder = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Editor not found");
   }
 
-  // Calculate platform fee (10%)
-  const platformFeePercent = 10;
+  // Calculate platform fee
+  const settings = await SiteSettings.getSettings();
+  const platformFeePercent = settings.platformFee || 10;
   const platformFee = Math.round(amount * (platformFeePercent / 100));
   const editorEarning = amount - platformFee;
 
@@ -255,30 +257,142 @@ export const getMyOrders = asyncHandler(async (req, res) => {
   const userId = req.user._id;
   const role = req.user.role;
 
-  let query = {};
+  const mongoose = (await import("mongoose")).default;
+
+  // Build match query
+  let matchQuery = {};
   if (role === "editor") {
-    query.editor = userId;
-    // Editors should not see orders until they accept them
-    // Exclude: pending_payment (not paid) and new (not yet accepted)
-    query.status = { $nin: ["pending_payment", "new"] };
+    matchQuery.editor = new mongoose.Types.ObjectId(userId);
+    // Editors can now see "new" orders (sent but not yet accepted)
+    // Exclude only: pending_payment (not yet paid)
+    matchQuery.status = { $nin: ["pending_payment"] };
   } else {
-    query.client = userId;
+    matchQuery.client = new mongoose.Types.ObjectId(userId);
   }
 
   // Status filter
   if (req.query.status && req.query.status !== "all") {
-    query.status = req.query.status;
+    matchQuery.status = req.query.status;
   }
 
-  const orders = await Order.find(query)
-    .populate("client", "name profilePicture")
-    .populate("editor", "name profilePicture")
-    .populate("gig", "title thumbnail")
-    .sort({ createdAt: -1 });
+  // Use aggregation to join latest message and sort by activity
+  const orders = await Order.aggregate([
+    { $match: matchQuery },
+    // Join messages for this order
+    {
+      $lookup: {
+        from: "messages",
+        let: { orderId: "$_id" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$order", "$$orderId"] } } },
+          { $sort: { createdAt: -1 } },
+          { $limit: 1 },
+          // Join sender info
+          {
+            $lookup: {
+              from: "users",
+              localField: "sender",
+              foreignField: "_id",
+              as: "senderInfo"
+            }
+          },
+          { $unwind: { path: "$senderInfo", preserveNullAndEmptyArrays: true } },
+          {
+            $project: {
+              content: 1,
+              type: 1,
+              createdAt: 1,
+              sender: {
+                _id: "$senderInfo._id",
+                name: "$senderInfo.name"
+              }
+            }
+          }
+        ],
+        as: "latestMessage"
+      }
+    },
+    { $unwind: { path: "$latestMessage", preserveNullAndEmptyArrays: true } },
+    // Join client info
+    {
+      $lookup: {
+        from: "users",
+        localField: "client",
+        foreignField: "_id",
+        as: "client"
+      }
+    },
+    { $unwind: "$client" },
+    // Join editor info
+    {
+      $lookup: {
+        from: "users",
+        localField: "editor",
+        foreignField: "_id",
+        as: "editor"
+      }
+    },
+    { $unwind: "$editor" },
+    // Join gig info (optional)
+    {
+      $lookup: {
+        from: "gigs",
+        localField: "gig",
+        foreignField: "_id",
+        as: "gig"
+      }
+    },
+    { $unwind: { path: "$gig", preserveNullAndEmptyArrays: true } },
+    // Calculate lastActivityAt
+    {
+      $addFields: {
+        lastActivityAt: {
+          $max: [
+            "$createdAt",
+            "$updatedAt",
+            { $ifNull: ["$latestMessage.createdAt", "$createdAt"] }
+          ]
+        }
+      }
+    },
+    // Project final fields
+    {
+      $project: {
+        "client.password": 0,
+        "client.email": 0,
+        "editor.password": 0,
+        "editor.email": 0,
+        "client.id": 0,
+        "editor.id": 0
+      }
+    },
+    // Sort by activity
+    { $sort: { lastActivityAt: -1 } }
+  ]);
 
   res.status(200).json({
     success: true,
     orders,
+  });
+});
+
+// ============ GET NEW ORDERS COUNT ============
+export const getNewOrdersCount = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const role = req.user.role;
+
+  if (role !== "editor") {
+    return res.status(200).json({ success: true, count: 0 });
+  }
+
+  const count = await Order.countDocuments({
+    editor: userId,
+    status: "new",
+  });
+
+  res.status(200).json({
+    success: true,
+    count,
   });
 });
 
@@ -657,9 +771,20 @@ export const getOrderStats = asyncHandler(async (req, res) => {
   stats.forEach((s) => {
     formattedStats[s._id] = s.count;
     if (s._id === "completed" && role === "editor") {
-      formattedStats.totalEarnings = s.totalAmount * 0.9; // After platform fee
+      // Use the pre-calculated aggregate totalAmount (which is sum of order.amount)
+      // For precision, we should ideally sum editorEarning, but this is okay for a quick fix 
+      // if we fetch the current setting
     }
   });
+
+  // Calculate total earnings more accurately if editor
+  if (role === "editor") {
+    const earningsPool = await Order.aggregate([
+      { $match: { editor: userId, status: "completed" } },
+      { $group: { _id: null, total: { $sum: "$editorEarning" } } }
+    ]);
+    formattedStats.totalEarnings = earningsPool.length > 0 ? earningsPool[0].total : 0;
+  }
 
   res.status(200).json({
     success: true,

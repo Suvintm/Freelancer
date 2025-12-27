@@ -1,6 +1,7 @@
 // SocketContext.jsx - Production-ready WebSocket context with improved reliability
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { io } from "socket.io-client";
+import axios from "axios";
 import { useAppContext } from "./AppContext";
 import { toast } from "react-toastify";
 
@@ -18,6 +19,7 @@ export const SocketProvider = ({ children }) => {
   const [totalUnread, setTotalUnread] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [newOrdersCount, setNewOrdersCount] = useState(0);
   
   const typingTimeoutRef = useRef({});
   const messageQueueRef = useRef([]);
@@ -209,6 +211,18 @@ export const SocketProvider = ({ children }) => {
       toast.info(notification.message, { position: "top-right", autoClose: 4000 });
     });
 
+    // New Order events (for editor badge)
+    newSocket.on("order:new", (order) => {
+      console.log("📦 New order received:", order);
+      if (user?.role === "editor") {
+        setNewOrdersCount((prev) => prev + 1);
+        toast.info(`New Order: ${order.title}`, {
+          position: "top-right",
+          autoClose: 5000,
+        });
+      }
+    });
+
     // Read receipts
     newSocket.on("message:read", ({ orderId, readBy }) => {
       console.log("✓✓ Message read:", orderId, "by", readBy);
@@ -266,7 +280,27 @@ export const SocketProvider = ({ children }) => {
       newSocket.emit("user:offline", { userId: user._id });
       newSocket.disconnect();
     };
-  }, [user?.token, user?._id, backendURL]);
+  }, [user?.token, user?._id, backendURL, user?.role]);
+
+  // Fetch initial counts
+  useEffect(() => {
+    if (!user?.token || user?.role !== "editor") return;
+
+    const fetchInitialCounts = async () => {
+      try {
+        const res = await axios.get(`${backendURL}/api/orders/new-count`, {
+          headers: { Authorization: `Bearer ${user.token}` },
+        });
+        if (res.data.success) {
+          setNewOrdersCount(res.data.count);
+        }
+      } catch (err) {
+        console.error("Failed to fetch initial new orders count:", err);
+      }
+    };
+
+    fetchInitialCounts();
+  }, [user?.token, user?.role, backendURL]);
 
   // Join a chat room
   const joinRoom = useCallback((orderId) => {
@@ -375,6 +409,10 @@ export const SocketProvider = ({ children }) => {
     return unreadCounts[orderId] || 0;
   }, [unreadCounts]);
 
+  const resetNewOrdersCount = useCallback(() => {
+    setNewOrdersCount(0);
+  }, []);
+
   const value = {
     socket: socketRef.current,
     connectionState,
@@ -384,6 +422,7 @@ export const SocketProvider = ({ children }) => {
     totalUnread,
     notifications,
     unreadNotifications,
+    newOrdersCount,
     joinRoom,
     leaveRoom,
     sendMessage,
@@ -391,6 +430,7 @@ export const SocketProvider = ({ children }) => {
     stopTyping,
     markAsRead,
     markNotificationsRead,
+    resetNewOrdersCount,
     isUserOnline,
     getTypingUsers,
     getUnreadCount,

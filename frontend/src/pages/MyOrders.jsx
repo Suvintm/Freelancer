@@ -13,8 +13,11 @@ import {
   FaShoppingCart,
   FaEnvelope,
   FaCalendarAlt,
+  FaCircle,
+  FaBell,
 } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
+import { useSocket } from "../context/SocketContext";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
@@ -22,7 +25,7 @@ import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
 
 const STATUS_CONFIG = {
-  new: { label: "New", color: "text-blue-400", bg: "bg-blue-500/20", icon: FaClock },
+  new: { label: "New", color: "text-red-400", bg: "bg-red-500/20", icon: FaClock },
   accepted: { label: "Accepted", color: "text-green-400", bg: "bg-green-500/20", icon: FaCheck },
   in_progress: { label: "In Progress", color: "text-yellow-400", bg: "bg-yellow-500/20", icon: FaClock },
   submitted: { label: "Submitted", color: "text-purple-400", bg: "bg-purple-500/20", icon: FaCheck },
@@ -53,15 +56,33 @@ const OrderCard = ({ order, user, onAccept, onReject, onNavigate, accepting, rej
   };
 
   // Calculate payment breakdown
-  const platformFee = order.platformFee || Math.round(order.amount * 0.1);
-  const editorEarning = order.editorEarning || order.amount - platformFee;
+  const orderAmount = order.amount || 0;
+  const platformFee = order.platformFee || 0;
+  const editorEarning = order.editorEarning || orderAmount - platformFee;
+  const feePercent = orderAmount > 0 ? Math.round((platformFee / orderAmount) * 100) : 10;
 
   const handleCardClick = () => {
     if (canAcceptReject) {
       setExpanded(!expanded);
-    } else if (order.status !== "rejected" && order.status !== "new") {
+    } else {
       onNavigate(order._id);
     }
+  };
+
+  const formatRelativeTime = (date) => {
+    if (!date) return "";
+    const d = new Date(date);
+    const now = new Date();
+    const diff = now - d;
+    const mins = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(mins / 60);
+    const days = Math.floor(hours / 24);
+
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days === 1) return "Yesterday";
+    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
   };
 
   return (
@@ -140,10 +161,42 @@ const OrderCard = ({ order, user, onAccept, onReject, onNavigate, accepting, rej
           </div>
 
           {/* Arrow for non-new orders */}
-          {!canAcceptReject && order.status !== "rejected" && order.status !== "new" && (
-            <FaChevronRight className="text-gray-500" />
+          {!canAcceptReject && (
+            <div className="flex flex-col items-end gap-2">
+              <FaChevronRight className="text-gray-500" />
+              {order.latestMessage && (
+                <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                  {formatRelativeTime(order.latestMessage.createdAt)}
+                </span>
+              )}
+            </div>
           )}
         </div>
+
+        {/* Latest Message Snippet */}
+        {order.latestMessage && !expanded && (
+          <div className="mt-3 py-2 px-3 bg-[#0a0c0f] rounded-xl border border-white/5 flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+            <p className="text-[11px] text-gray-400 truncate flex-1">
+              <span className="text-gray-500 mr-1">
+                {order.latestMessage.sender?._id === user?._id ? "You:" : "Client:"}
+              </span>
+              {order.latestMessage.type === "text" 
+                ? order.latestMessage.content 
+                : `Sent a ${order.latestMessage.type}`}
+            </p>
+          </div>
+        )}
+
+        {/* Action Badge for New Orders */}
+        {isNewOrder && isEditor && (
+          <div className="mt-4 flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-xl">
+            <FaBell className="text-red-400 text-xs animate-bounce" />
+            <span className="text-[11px] font-bold text-red-500 uppercase tracking-wider">
+              New Order - Action Required
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Expanded Details for New Orders */}
@@ -183,7 +236,7 @@ const OrderCard = ({ order, user, onAccept, onReject, onNavigate, accepting, rej
                 </div>
                 
                 <div className="flex justify-between items-center">
-                  <span className="text-orange-300 text-sm">Platform Fee (10%)</span>
+                  <span className="text-orange-300 text-sm">Platform Fee ({feePercent}%)</span>
                   <span className="text-orange-400 font-bold">-₹{platformFee}</span>
                 </div>
                 
@@ -237,12 +290,51 @@ const MyOrders = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [acceptingId, setAcceptingId] = useState(null);
   const [rejectingId, setRejectingId] = useState(null);
+  const { socket, resetNewOrdersCount } = useSocket();
 
   // Count new orders for badge
   const newOrdersCount = orders.filter(o => o.status === "new").length;
 
+  // Real-time updates via Socket
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewMessage = (message) => {
+      setOrders(prevOrders => {
+        const orderIndex = prevOrders.findIndex(o => o._id === (message.orderId || message.order));
+        if (orderIndex === -1) return prevOrders;
+
+        const updatedOrders = [...prevOrders];
+        const order = { ...updatedOrders[orderIndex] };
+
+        // Update latest message and activity
+        order.latestMessage = {
+          content: message.content,
+          type: message.type,
+          createdAt: message.createdAt,
+          sender: message.sender
+        };
+        order.lastActivityAt = message.createdAt;
+
+        updatedOrders[orderIndex] = order;
+
+        // Re-sort by activity
+        return updatedOrders.sort((a, b) => new Date(b.lastActivityAt) - new Date(a.lastActivityAt));
+      });
+    };
+
+    socket.on("message:new", handleNewMessage);
+    return () => {
+      socket.off("message:new", handleNewMessage);
+    };
+  }, [socket]);
+
+
   useEffect(() => {
     fetchOrders();
+    if (statusFilter === "all" && resetNewOrdersCount) {
+      resetNewOrdersCount();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 

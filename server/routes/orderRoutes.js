@@ -15,6 +15,7 @@ import {
   checkOverdueOrders,
   processOverdueRefunds,
   getDeadlineStatus,
+  getNewOrdersCount,
 } from "../controllers/orderController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 
@@ -32,6 +33,7 @@ router.post("/request/create-payment", requireClientKYC, createRequestPaymentOrd
 router.post("/request/verify-payment", verifyRequestPayment);
 
 // Get orders - stats must come before /:id
+router.get("/new-count", getNewOrdersCount);
 router.get("/stats", getOrderStats);
 router.get("/", getMyOrders);
 

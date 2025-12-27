@@ -94,8 +94,11 @@ const ChatInfoTabs = ({ order, messages, userRole, orderId, onLinkClick }) => {
   const paymentStage = getPaymentStageIndex();
   const workStage = getWorkStageIndex();
   const orderAmount = order?.amount || 0;
-  const platformFee = order?.platformFee || Math.round(orderAmount * 0.05);
+  const platformFee = order?.platformFee || 0;
   const editorEarning = order?.editorEarning || orderAmount - platformFee;
+  
+  // Calculate percentage for display
+  const feePercent = orderAmount > 0 ? Math.round((platformFee / orderAmount) * 100) : 10;
 
   const toggleTab = (tab) => {
     setActiveTab(activeTab === tab ? null : tab);
@@ -257,7 +260,7 @@ const ChatInfoTabs = ({ order, messages, userRole, orderId, onLinkClick }) => {
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <span className="text-zinc-400 light:text-zinc-500 text-sm">Platform Fee (5%)</span>
+                        <span className="text-zinc-400 light:text-zinc-500 text-sm">Platform Fee ({feePercent}%)</span>
                         <span className="text-red-400 font-medium flex items-center gap-1">
                           - <FaRupeeSign className="text-xs" />
                           {platformFee.toLocaleString("en-IN")}

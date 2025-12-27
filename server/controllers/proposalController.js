@@ -10,6 +10,7 @@ import { Payment } from "../models/Payment.js";
 import User from "../models/User.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import { createNotification } from "./notificationController.js";
+import { SiteSettings } from "../models/SiteSettings.js";
 import logger from "../utils/logger.js";
 
 // ============ SUBMIT PROPOSAL ============
@@ -242,8 +243,10 @@ export const acceptProposal = asyncHandler(async (req, res) => {
   const deadline = new Date();
   deadline.setDate(deadline.getDate() + finalDeliveryDays);
 
-  // Calculate platform fee (10%)
-  const platformFee = Math.round(finalPrice * 0.10);
+  // Calculate platform fee
+  const settings = await SiteSettings.getSettings();
+  const feePercent = settings.platformFee || 10;
+  const platformFee = Math.round(finalPrice * (feePercent / 100));
   const editorEarning = finalPrice - platformFee;
 
   // Create Razorpay order
@@ -362,7 +365,9 @@ export const verifyAcceptancePayment = asyncHandler(async (req, res) => {
 
   try {
     // 1. Create Order
-    const platformFee = Math.round(proposal.agreedPrice * 0.10);
+    const settings = await SiteSettings.getSettings();
+    const feePercent = settings.platformFee || 10;
+    const platformFee = Math.round(proposal.agreedPrice * (feePercent / 100));
     const editorEarning = proposal.agreedPrice - platformFee;
     const orderDescription = brief.description?.substring(0, 1990) || brief.title;
 
