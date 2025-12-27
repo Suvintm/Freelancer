@@ -28,6 +28,10 @@ export const createOrderFromGig = asyncHandler(async (req, res) => {
     throw new ApiError(400, "You cannot order your own gig");
   }
 
+  // Get current platform fee percentage for snapshotting
+  const settings = await SiteSettings.getSettings();
+  const platformFeePercentage = settings.platformFee || 10;
+
   // Create order with pending_payment status
   // Order will only be visible to editor after successful payment
   const order = await Order.create({
@@ -39,6 +43,7 @@ export const createOrderFromGig = asyncHandler(async (req, res) => {
     description: description || gig.description,
     deadline: new Date(deadline),
     amount: gig.price,
+    platformFeePercentage, // SNAPSHOT the current fee
     status: "pending_payment", // Hidden from editor until payment
     paymentStatus: "pending",
   });
@@ -141,6 +146,7 @@ export const createRequestPaymentOrder = asyncHandler(async (req, res) => {
     description: description.trim(),
     deadline: new Date(deadline),
     amount: Number(amount),
+    platformFeePercentage: platformFeePercent, // SNAPSHOT the current fee
     platformFee,
     editorEarning,
     status: "pending_payment",

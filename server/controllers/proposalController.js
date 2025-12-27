@@ -312,6 +312,7 @@ export const acceptProposal = asyncHandler(async (req, res) => {
     },
     fees: {
       total: finalPrice,
+      platformFeePercentage: feePercent,
       platformFee,
       editorEarning,
     },
@@ -380,6 +381,7 @@ export const verifyAcceptancePayment = asyncHandler(async (req, res) => {
       description: orderDescription,
       deadline: proposal.agreedDeadline,
       amount: proposal.agreedPrice,
+      platformFeePercentage: feePercent,
       platformFee,
       editorEarning,
       paymentStatus: "escrow",

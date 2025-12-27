@@ -79,6 +79,10 @@ const orderSchema = new mongoose.Schema(
       type: String,
       default: "INR",
     },
+    platformFeePercentage: {
+      type: Number,
+      default: 0,
+    },
     platformFee: {
       type: Number,
       default: 0,
@@ -308,19 +312,25 @@ const orderSchema = new mongoose.Schema(
 
 // Calculate platform fee and editor earning before save
 orderSchema.pre("save", async function (next) {
-  if (this.isModified("amount")) {
+  // If platformFeePercentage is not set, fetch it from SiteSettings and initial calculation
+  if (!this.platformFeePercentage || this.platformFeePercentage === 0) {
     try {
-      const settings = await SiteSettings.getSettings();
-      const feePercent = settings.platformFee || 10;
-      this.platformFee = Math.round(this.amount * (feePercent / 100));
-      this.editorEarning = this.amount - this.platformFee;
+      const settings = (await import("./SiteSettings.js")).SiteSettings.getSettings();
+      const resolvedSettings = await settings;
+      this.platformFeePercentage = resolvedSettings.platformFee || 10;
     } catch (error) {
-      console.error("Error in Order pre-save platform fee calculation:", error);
-      // Fallback to 10% if settings fetch fails
-      this.platformFee = Math.round(this.amount * 0.10);
-      this.editorEarning = this.amount - this.platformFee;
+      console.error("Error fetching SiteSettings in Order pre-save:", error);
+      this.platformFeePercentage = 10; // Fallback
     }
   }
+
+  // Always recalculate platformFee and editorEarning based on the SNAPSHOTTED percentage
+  // if the amount changed or they are not yet calculated
+  if (this.isModified("amount") || !this.platformFee || !this.editorEarning) {
+    this.platformFee = Math.round(this.amount * (this.platformFeePercentage / 100));
+    this.editorEarning = this.amount - this.platformFee;
+  }
+  
   next();
 });
 

@@ -288,9 +288,9 @@ const PaymentDetailModal = ({ isOpen, onClose, paymentId, isEditor }) => {
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-gray-400">Platform Fee ({
-                              receipt.payment.amount > 0 
+                              receipt.payment.platformFeePercentage || (receipt.payment.amount > 0 
                                 ? Math.round((receipt.payment.platformFee / receipt.payment.amount) * 100) 
-                                : 10
+                                : 10)
                             }%)</span>
                             <span className="text-red-400">-₹{receipt.payment.platformFee?.toLocaleString()}</span>
                           </div>

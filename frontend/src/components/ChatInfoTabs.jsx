@@ -96,9 +96,8 @@ const ChatInfoTabs = ({ order, messages, userRole, orderId, onLinkClick }) => {
   const orderAmount = order?.amount || 0;
   const platformFee = order?.platformFee || 0;
   const editorEarning = order?.editorEarning || orderAmount - platformFee;
-  
   // Calculate percentage for display
-  const feePercent = orderAmount > 0 ? Math.round((platformFee / orderAmount) * 100) : 10;
+  const feePercent = order.platformFeePercentage || (orderAmount > 0 ? Math.round((platformFee / orderAmount) * 100) : 10);
 
   const toggleTab = (tab) => {
     setActiveTab(activeTab === tab ? null : tab);

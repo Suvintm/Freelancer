@@ -59,7 +59,7 @@ const OrderCard = ({ order, user, onAccept, onReject, onNavigate, accepting, rej
   const orderAmount = order.amount || 0;
   const platformFee = order.platformFee || 0;
   const editorEarning = order.editorEarning || orderAmount - platformFee;
-  const feePercent = orderAmount > 0 ? Math.round((platformFee / orderAmount) * 100) : 10;
+  const feePercent = order.platformFeePercentage || (orderAmount > 0 ? Math.round((platformFee / orderAmount) * 100) : 10);
 
   const handleCardClick = () => {
     if (canAcceptReject) {

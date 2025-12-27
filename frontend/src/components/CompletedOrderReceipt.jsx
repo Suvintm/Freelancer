@@ -30,7 +30,7 @@ const CompletedOrderReceipt = ({ order }) => {
   // Calculate platform fee percentage
   const orderAmount = order.amount || 0;
   const platformFee = order.platformFee || 0;
-  const feePercent = orderAmount > 0 ? Math.round((platformFee / orderAmount) * 100) : 10;
+  const feePercent = order.platformFeePercentage || (orderAmount > 0 ? Math.round((platformFee / orderAmount) * 100) : 10);
 
   // Format dates
   const formatDate = (date) => {
