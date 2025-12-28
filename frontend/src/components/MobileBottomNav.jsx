@@ -48,7 +48,7 @@ const MobileBottomNav = () => {
     {
       id: "explore",
       label: "Explore",
-      path: isClient ? "/explore-editors" : "/briefs",
+      path: isClient ? "/explore-editors" : "/explore-editors",
       activeIcon: HiMagnifyingGlass,
       inactiveIcon: HiOutlineMagnifyingGlass,
     },

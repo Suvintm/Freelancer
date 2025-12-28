@@ -632,7 +632,7 @@ const EditorHome = () => {
         </AnimatePresence>
 
         {/* Floating Reels Button */}
-        <motion.button
+        {/* <motion.button
           onClick={() => navigate("/reels")}
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
@@ -640,7 +640,7 @@ const EditorHome = () => {
           className="fixed bottom-6 right-6 z-[200] w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 border-2 border-[#0a0a0c] light:border-white"
         >
           <img src={reelIcon} alt="reels" className="w-5 h-5 object-contain" />
-        </motion.button>
+        </motion.button> */}
       </main>
 
       {/* KYC Form Modal */}

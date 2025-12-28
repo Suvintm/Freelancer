@@ -227,7 +227,7 @@ function App() {
         <Route
           path="/explore-editors"
           element={
-            <ProtectedRoute allowedRoles={["client"]}>
+            <ProtectedRoute allowedRoles={["client","editor"]}>
               <ExploreEditorsPage />
             </ProtectedRoute>
           }
