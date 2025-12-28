@@ -73,6 +73,7 @@ import PostJobPage from "./pages/PostJobPage.jsx";
 import MyJobsPage from "./pages/MyJobsPage.jsx";
 import JobApplicantsPage from "./pages/JobApplicantsPage.jsx";
 import MyApplicationsPage from "./pages/MyApplicationsPage.jsx";
+import JobsPage from "./pages/JobsPage.jsx";
 
 import { TermsAndConditions, PrivacyPolicy, ContentProtectionPolicy, EditorCodeOfConduct } from "./pages/LegalPages";
 
@@ -295,6 +296,14 @@ function App() {
         />
 
         {/* Job Portal Routes */}
+        <Route
+          path="/jobs"
+          element={
+            <ProtectedRoute allowedRoles={["editor", "client"]}>
+              <JobsPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/jobs/:id"
           element={

@@ -16,7 +16,11 @@ import {
   HiChatBubbleLeftRight,
   HiOutlineChatBubbleLeftRight,
   HiUser,
-  HiOutlineUser
+  HiOutlineUser,
+  HiMapPin,
+  HiOutlineMapPin,
+  HiBriefcase,
+  HiOutlineBriefcase
 } from "react-icons/hi2";
 import { 
   IoPlayCircle, 
@@ -51,9 +55,16 @@ const MobileBottomNav = () => {
     {
       id: "explore",
       label: "Explore",
-      path: isClient ? "/explore-editors" : "/explore-editors",
+      path: "/explore-editors",
       activeIcon: HiMagnifyingGlass,
       inactiveIcon: HiOutlineMagnifyingGlass,
+    },
+    {
+      id: "nearby",
+      label: "Nearby",
+      path: "/editors-near-you",
+      activeIcon: HiMapPin,
+      inactiveIcon: HiOutlineMapPin,
     },
     {
       id: "reels",
@@ -62,6 +73,13 @@ const MobileBottomNav = () => {
       activeIcon: IoPlayCircle,
       inactiveIcon: IoPlayCircleOutline,
       isCenter: true,
+    },
+    {
+      id: "jobs",
+      label: "Jobs",
+      path: "/jobs",
+      activeIcon: HiBriefcase,
+      inactiveIcon: HiOutlineBriefcase,
     },
     {
       id: "messages",
@@ -103,7 +121,7 @@ const MobileBottomNav = () => {
         }}
       >
         {/* Navigation Content */}
-        <div className="relative flex items-end justify-around pt-2 pb-1 px-4">
+        <div className="relative flex items-end justify-between pt-2 pb-1 px-2">
           {navItems.map((item) => {
             const active = isActive(item.path);
             const Icon = active ? item.activeIcon : item.inactiveIcon;
@@ -115,14 +133,14 @@ const MobileBottomNav = () => {
                   key={item.id}
                   onClick={() => navigate(item.path)}
                   whileTap={{ scale: 0.95 }}
-                  className="relative flex flex-col items-center -mt-5"
+                  className="relative flex flex-col items-center -mt-4"
                   style={{ marginBottom: "-2px" }}
                 >
                   {/* Floating Circle Button */}
                   <motion.div
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className={`flex items-center justify-center w-12 h-12 rounded-full shadow-lg ${
+                    className={`flex items-center justify-center w-11 h-11 rounded-full shadow-lg ${
                       active
                         ? "bg-emerald-500"
                         : isDark 
@@ -135,7 +153,7 @@ const MobileBottomNav = () => {
                         : "0 4px 16px rgba(16, 185, 129, 0.3)"
                     }}
                   >
-                    <Icon className="text-white text-xl" />
+                    <Icon className="text-white text-lg" />
                   </motion.div>
                 </motion.button>
               );
@@ -147,10 +165,10 @@ const MobileBottomNav = () => {
                 key={item.id}
                 onClick={() => navigate(item.path)}
                 whileTap={{ scale: 0.95 }}
-                className="flex flex-col items-center justify-center py-1 px-3 min-w-[56px]"
+                className="flex flex-col items-center justify-center py-1 px-1 min-w-[42px]"
               >
                 <Icon
-                  className={`text-xl mb-0.5 transition-colors duration-200 ${
+                  className={`text-lg mb-0.5 transition-colors duration-200 ${
                     active
                       ? "text-emerald-500"
                       : isDark 
@@ -159,7 +177,7 @@ const MobileBottomNav = () => {
                   }`}
                 />
                 <span
-                  className={`text-[10px] font-medium transition-colors duration-200 ${
+                  className={`text-[9px] font-medium transition-colors duration-200 ${
                     active
                       ? "text-emerald-500"
                       : isDark 
