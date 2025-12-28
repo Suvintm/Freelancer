@@ -434,6 +434,51 @@ const ExploreEditors = () => {
           })}
         </div>
       </div>
+      {/* ============== BROWSE BY SPECIALTY - ZEPTO STYLE WITH IMAGES ============== */}
+      <div className="mb-4">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-5 h-5 bg-violet-500/15 rounded-md flex items-center justify-center">
+            <HiLightningBolt className="text-violet-400 text-[10px]" />
+          </div>
+          <h2 className="text-xs font-bold text-white light:text-slate-900">Browse by Specialty</h2>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {[
+            { label: "YouTube", image: "/youtube_category_1766945669722.png" },
+            { label: "Wedding", image: "/wedding_category_1766945653582.png" },
+            { label: "Reels", image: "/reels_category_1766945684333.png" },
+            { label: "Color", image: "/color_category_1766945743508.png" },
+            { label: "Podcast", image: "/podcast_category_1766945699811.png" },
+            { label: "VFX", image: "/vfx_category_1766945726102.png" },
+            { label: "Cinematic", image: "/cinematic_category_1766945761051.png" },
+            { label: "Ads", image: "/ads_category_1766945776646.png" },
+          ].map((specialty, idx) => (
+            <motion.button
+              key={specialty.label}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: idx * 0.03 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => toggleSkillFilter(specialty.label)}
+              className={`relative rounded-xl overflow-hidden transition-all aspect-square ${
+                filters.skills.includes(specialty.label)
+                  ? "ring-2 ring-violet-500 ring-offset-1 ring-offset-[#0a0a0c]"
+                  : "hover:scale-105"
+              }`}
+            >
+              <img 
+                src={specialty.image} 
+                alt={specialty.label}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+              <div className="absolute bottom-1 left-0 right-0 text-center">
+                <span className="text-[9px] font-bold text-white drop-shadow-md">{specialty.label}</span>
+              </div>
+            </motion.button>
+          ))}
+        </div>
+      </div>
 
       {/* ============== FEATURED EDITORS CAROUSEL ============== */}
       {!loading && editors.length > 0 && (
@@ -534,51 +579,7 @@ const ExploreEditors = () => {
         </div>
       )}
 
-      {/* ============== BROWSE BY SPECIALTY - ZEPTO STYLE WITH IMAGES ============== */}
-      <div className="mb-4">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-5 h-5 bg-violet-500/15 rounded-md flex items-center justify-center">
-            <HiLightningBolt className="text-violet-400 text-[10px]" />
-          </div>
-          <h2 className="text-xs font-bold text-white light:text-slate-900">Browse by Specialty</h2>
-        </div>
-        <div className="grid grid-cols-4 gap-2">
-          {[
-            { label: "YouTube", image: "/youtube_category_1766945669722.png" },
-            { label: "Wedding", image: "/wedding_category_1766945653582.png" },
-            { label: "Reels", image: "/reels_category_1766945684333.png" },
-            { label: "Color", image: "/color_category_1766945743508.png" },
-            { label: "Podcast", image: "/podcast_category_1766945699811.png" },
-            { label: "VFX", image: "/vfx_category_1766945726102.png" },
-            { label: "Cinematic", image: "/cinematic_category_1766945761051.png" },
-            { label: "Ads", image: "/ads_category_1766945776646.png" },
-          ].map((specialty, idx) => (
-            <motion.button
-              key={specialty.label}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: idx * 0.03 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => toggleSkillFilter(specialty.label)}
-              className={`relative rounded-xl overflow-hidden transition-all aspect-square ${
-                filters.skills.includes(specialty.label)
-                  ? "ring-2 ring-violet-500 ring-offset-1 ring-offset-[#0a0a0c]"
-                  : "hover:scale-105"
-              }`}
-            >
-              <img 
-                src={specialty.image} 
-                alt={specialty.label}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-              <div className="absolute bottom-1 left-0 right-0 text-center">
-                <span className="text-[9px] font-bold text-white drop-shadow-md">{specialty.label}</span>
-              </div>
-            </motion.button>
-          ))}
-        </div>
-      </div>
+       
 
       {/* Filter Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
