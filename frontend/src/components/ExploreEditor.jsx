@@ -72,7 +72,23 @@ const ExploreEditors = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const searchInputRef = useRef(null);
+
+  // Hero Banner Images for auto-transition
+  const heroBanners = [
+    "/hero_banner_1_1766946342128.png",
+    "/hero_banner_2_1766946358435.png",
+    "/hero_banner_3_1766946374802.png"
+  ];
+
+  // Auto-transition banner every 4 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentBannerIndex((prev) => (prev + 1) % heroBanners.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, pages: 1 });
   const [filterOptions, setFilterOptions] = useState({ skills: [], languages: [], countries: [], experience: [] });
@@ -224,73 +240,105 @@ const ExploreEditors = () => {
   }
 
   return (
-    <div className="min-h-[50vh] px-1" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-[50vh] px-3 py-2" style={{ fontFamily: "'Inter', sans-serif" }}>
       
-      {/* ============== HERO SECTION - ZEPTO STYLE ============== */}
+      {/* ============== HERO BANNER WITH IMAGE SLIDESHOW ============== */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-4"
+        className="mb-4 relative overflow-hidden rounded-2xl"
       >
-        <div className="bg-gradient-to-br from-violet-600/20 via-purple-500/15 to-fuchsia-500/10 light:from-violet-100 light:via-purple-50 light:to-fuchsia-50 rounded-xl p-4 border border-violet-500/20 light:border-violet-200">
-          <div className="text-center mb-4">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-violet-500/20 light:bg-violet-100 rounded-full mb-2">
-              <HiVideoCamera className="text-violet-400 light:text-violet-600 text-xs" />
-              <span className="text-violet-400 light:text-violet-600 text-[10px] font-bold uppercase tracking-wide">Discover Talent</span>
+        {/* Background Image Slideshow */}
+        <div className="relative h-44 md:h-52">
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={currentBannerIndex}
+              src={heroBanners[currentBannerIndex]}
+              alt="Hero Banner"
+              initial={{ opacity: 0, scale: 1.1 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.8, ease: "easeInOut" }}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          </AnimatePresence>
+          
+          {/* Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-violet-900/30" />
+          
+          {/* Banner Content */}
+          <div className="absolute inset-0 flex flex-col justify-end p-4">
+            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-violet-500/30 backdrop-blur-sm rounded-full mb-2 w-fit">
+              <HiVideoCamera className="text-white text-[10px]" />
+              <span className="text-white text-[9px] font-semibold uppercase tracking-wide">Discover Talent</span>
             </div>
-            <h1 className="text-lg font-bold text-white light:text-slate-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            <h1 className="text-xl font-bold text-white mb-0.5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               Find Your Perfect Editor
             </h1>
-            <p className="text-gray-500 light:text-slate-500 text-xs mt-0.5">
-              Connect with skilled professionals
+            <p className="text-white/70 text-xs">
+              Connect with {pagination.total || 0}+ skilled professionals
             </p>
           </div>
           
-          {/* Stats Grid - Compact */}
-          <div className="grid grid-cols-4 gap-1.5">
+          {/* Banner Indicators */}
+          <div className="absolute bottom-3 right-4 flex gap-1">
+            {heroBanners.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentBannerIndex(idx)}
+                className={`w-1.5 h-1.5 rounded-full transition-all ${
+                  idx === currentBannerIndex 
+                    ? "bg-white w-4" 
+                    : "bg-white/40 hover:bg-white/60"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+        
+        {/* Stats Strip */}
+        <div className="bg-[#0a0a0c] light:bg-white border-t border-white/10 light:border-slate-100 p-3">
+          <div className="grid grid-cols-4 gap-2">
             {[
-              { value: `${pagination.total || 0}+`, label: "Editors", icon: HiUserGroup, color: "text-violet-400", bg: "bg-violet-500/15" },
-              { value: "850+", label: "Projects", icon: HiVideoCamera, color: "text-purple-400", bg: "bg-purple-500/15" },
-              { value: "4.8", label: "Rating", icon: FaStar, color: "text-amber-400", bg: "bg-amber-500/15" },
-              { value: "98%", label: "Success", icon: HiCheckCircle, color: "text-emerald-400", bg: "bg-emerald-500/15" },
+              { value: `${pagination.total || 0}+`, label: "Editors", icon: HiUserGroup, color: "text-violet-400" },
+              { value: "850+", label: "Projects", icon: HiVideoCamera, color: "text-purple-400" },
+              { value: "4.8", label: "Rating", icon: FaStar, color: "text-amber-400" },
+              { value: "98%", label: "Success", icon: HiCheckCircle, color: "text-emerald-400" },
             ].map((stat, idx) => (
-              <motion.div 
-                key={idx} 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: idx * 0.05 }}
-                className="text-center p-2 bg-white/5 light:bg-white rounded-lg"
-              >
-                <div className={`w-6 h-6 ${stat.bg} rounded-md flex items-center justify-center mx-auto mb-1`}>
+              <div key={idx} className="text-center">
+                <div className="flex items-center justify-center gap-1 mb-0.5">
                   <stat.icon className={`${stat.color} text-[10px]`} />
+                  <span className="text-xs font-bold text-white light:text-slate-900">{stat.value}</span>
                 </div>
-                <div className="text-sm font-bold text-white light:text-slate-900">{stat.value}</div>
                 <div className="text-[8px] text-gray-500 light:text-slate-500">{stat.label}</div>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
       </motion.div>
 
-      {/* ============== SEARCH BAR - COMPACT ============== */}
+      {/* ============== PROFESSIONAL SEARCH BAR ============== */}
       <div className="mb-4">
         <div className="relative">
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-violet-500/10 light:bg-violet-50 rounded-lg flex items-center justify-center">
-            <FaSearch className="text-violet-500 text-xs" />
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-violet-400">
+            <FaSearch className="text-sm" />
           </div>
           <input
             ref={searchInputRef}
             type="text"
-            placeholder="Search by name, skills, languages..."
+            placeholder="Search editors, skills..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => setShowSuggestions(true)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-            className="w-full py-4 pl-16 pr-12 bg-white/5 light:bg-white border border-white/10 light:border-slate-200 rounded-2xl text-white light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 light:focus:border-emerald-300 transition-all text-base shadow-lg shadow-black/5 light:shadow-slate-200/50"
+            className="w-full py-3 pl-10 pr-10 bg-white/5 light:bg-slate-50 border border-white/10 light:border-slate-200 rounded-full text-white light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/40 transition-all text-sm"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery("")} className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/10 light:bg-slate-100 rounded-full flex items-center justify-center text-gray-400 light:text-slate-500 hover:bg-white/20 light:hover:bg-slate-200 transition">
-              <FaTimes className="text-xs" />
+            <button 
+              onClick={() => setSearchQuery("")} 
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white/10 light:bg-slate-200 rounded-full flex items-center justify-center text-gray-400 hover:bg-white/20 transition"
+            >
+              <FaTimes className="text-[10px]" />
             </button>
           )}
 
@@ -339,24 +387,28 @@ const ExploreEditors = () => {
       </div>
 
       {/* ============== CATEGORY PILLS (Horizontal Scroll) ============== */}
-      <div className="mb-5 -mx-1">
-        <div className="flex gap-2 overflow-x-auto pb-2 px-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+      <div className="mb-4 relative">
+        {/* Gradient Fade Edges */}
+        <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-[#0a0a0c] light:from-white to-transparent z-10 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[#0a0a0c] light:from-white to-transparent z-10 pointer-events-none" />
+        
+        <div className="flex gap-2 overflow-x-auto pb-1 px-1 scrollbar-hide snap-x" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {[
-            { id: "all", label: "All", Icon: HiSparkles, color: "text-emerald-500" },
-            { id: "wedding", label: "Wedding", Icon: FaRing, color: "text-pink-500", hot: true },
-            { id: "reels", label: "Reels", Icon: FaPlay, color: "text-purple-500" },
-            { id: "youtube", label: "YouTube", Icon: FaYoutube, color: "text-red-500" },
-            { id: "podcast", label: "Podcast", Icon: FaMicrophone, color: "text-blue-500" },
-            { id: "vfx", label: "VFX", Icon: FaMagic, color: "text-cyan-500" },
-            { id: "color", label: "Color", Icon: FaPalette, color: "text-amber-500" },
-            { id: "cinematic", label: "Cinematic", Icon: FaFilm, color: "text-violet-500" },
-            { id: "ads", label: "Ads", Icon: FaTv, color: "text-orange-500" },
+            { id: "all", label: "All", Icon: HiSparkles, color: "text-violet-400", activeColor: "from-violet-500 to-purple-500" },
+            { id: "wedding", label: "Wedding", Icon: FaRing, color: "text-pink-400", activeColor: "from-pink-500 to-rose-500", hot: true },
+            { id: "reels", label: "Reels", Icon: FaPlay, color: "text-purple-400", activeColor: "from-purple-500 to-fuchsia-500" },
+            { id: "youtube", label: "YouTube", Icon: FaYoutube, color: "text-red-400", activeColor: "from-red-500 to-orange-500" },
+            { id: "podcast", label: "Podcast", Icon: FaMicrophone, color: "text-blue-400", activeColor: "from-blue-500 to-cyan-500" },
+            { id: "vfx", label: "VFX", Icon: FaMagic, color: "text-cyan-400", activeColor: "from-cyan-500 to-teal-500" },
+            { id: "color", label: "Color", Icon: FaPalette, color: "text-amber-400", activeColor: "from-amber-500 to-orange-500" },
+            { id: "cinematic", label: "Cinematic", Icon: FaFilm, color: "text-emerald-400", activeColor: "from-emerald-500 to-green-500" },
           ].map((category) => {
             const isActive = filters.skills.includes(category.label) || (category.id === "all" && filters.skills.length === 0);
             return (
               <motion.button
                 key={category.id}
                 whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.02 }}
                 onClick={() => {
                   if (category.id === "all") {
                     setFilters(prev => ({ ...prev, skills: [] }));
@@ -364,17 +416,17 @@ const ExploreEditors = () => {
                     toggleSkillFilter(category.label);
                   }
                 }}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`snap-start flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all ${
                   isActive
-                    ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
-                    : "bg-white/5 light:bg-white text-gray-400 light:text-slate-600 border border-white/10 light:border-slate-200 hover:border-emerald-500/30"
+                    ? `bg-gradient-to-r ${category.activeColor} text-white shadow-lg`
+                    : "bg-white/5 light:bg-white text-gray-400 light:text-slate-600 border border-white/10 light:border-slate-200 hover:bg-white/10"
                 }`}
               >
-                <category.Icon className={`text-xs ${isActive ? "text-white" : category.color}`} />
+                <category.Icon className={`text-[10px] ${isActive ? "text-white" : category.color}`} />
                 {category.label}
                 {category.hot && !isActive && (
-                  <span className="px-1 py-0.5 bg-orange-500 text-white text-[8px] rounded font-bold flex items-center gap-0.5">
-                    <FaFire className="text-[7px]" />
+                  <span className="px-1 py-0.5 bg-orange-500 text-white text-[7px] rounded font-bold">
+                    <FaFire className="text-[6px]" />
                   </span>
                 )}
               </motion.button>
