@@ -51,16 +51,28 @@ const bannerSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    
+    // Which page this banner belongs to
+    page: {
+      type: String,
+      enum: ["explore", "gigs", "jobs", "home", "all"],
+      default: "all",
+    },
+    
     order: {
       type: Number,
       default: 0, // Lower = first
     },
     
-    // Enhanced features
+    // Enhanced features - Badge as custom text
     badge: {
       type: String,
-      enum: ["none", "new", "hot", "sale", "limited", "featured"],
-      default: "none",
+      default: "", // e.g., "🔥 HOT OPPORTUNITIES"
+    },
+    badgeType: {
+      type: String,
+      enum: ["none", "new", "hot", "sale", "limited", "featured", "custom"],
+      default: "custom",
     },
     priority: {
       type: String,

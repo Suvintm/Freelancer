@@ -149,6 +149,7 @@ const JobsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentSlide, setCurrentSlide] = useState(0);
   const [stats, setStats] = useState({ jobs: 0, avgBudget: 0, successRate: 98 });
+  const [heroBanners, setHeroBanners] = useState(HERO_SLIDES); // Use API banners or fallback to defaults
 
   const isEditor = user?.role === "editor";
   const slideInterval = useRef(null);
@@ -156,10 +157,36 @@ const JobsPage = () => {
   // Auto-slide hero
   useEffect(() => {
     slideInterval.current = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+      setCurrentSlide((prev) => (prev + 1) % heroBanners.length);
     }, 4000);
     return () => clearInterval(slideInterval.current);
-  }, []);
+  }, [heroBanners.length]);
+
+  // Fetch banners from API
+  useEffect(() => {
+    const fetchBanners = async () => {
+      try {
+        const res = await axios.get(`${backendURL}/api/banners?page=jobs`);
+        if (res.data.banners && res.data.banners.length > 0) {
+          // Map API banners to our format
+          const apiBanners = res.data.banners.map((b) => ({
+            badge: b.badge || "",
+            title: b.title,
+            subtitle: b.description || "",
+            image: b.mediaUrl,
+            overlayType: b.overlayType,
+            overlayOpacity: b.overlayOpacity,
+            gradientFrom: b.gradientFrom,
+            gradientTo: b.gradientTo,
+          }));
+          setHeroBanners(apiBanners);
+        }
+      } catch (err) {
+        console.log("Using default banners");
+      }
+    };
+    fetchBanners();
+  }, [backendURL]);
 
   useEffect(() => {
     fetchJobs();
@@ -267,28 +294,39 @@ const JobsPage = () => {
             >
               {/* Background Image */}
               <img 
-                src={HERO_SLIDES[currentSlide].image} 
-                alt={HERO_SLIDES[currentSlide].title}
+                src={heroBanners[currentSlide]?.image} 
+                alt={heroBanners[currentSlide]?.title}
                 className="absolute inset-0 w-full h-full object-cover"
               />
-              {/* Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-transparent" />
+              {/* Dynamic Gradient Overlay */}
+              <div 
+                className="absolute inset-0"
+                style={{
+                  background: heroBanners[currentSlide]?.overlayType === "gradient"
+                    ? `linear-gradient(to right, ${heroBanners[currentSlide]?.gradientFrom || '#000'}cc, ${heroBanners[currentSlide]?.gradientTo || '#000'}80, transparent)`
+                    : heroBanners[currentSlide]?.overlayType === "solid"
+                    ? `rgba(0,0,0,${(heroBanners[currentSlide]?.overlayOpacity || 70) / 100})`
+                    : "linear-gradient(to right, rgba(0,0,0,0.8), rgba(0,0,0,0.6), transparent)"
+                }}
+              />
               
               <div className="relative h-full p-5 flex flex-col justify-center">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-2 bg-violet-500/80 backdrop-blur-sm rounded-full text-white text-[9px] font-bold w-fit">
-                  {HERO_SLIDES[currentSlide].badge}
-                </span>
+                {heroBanners[currentSlide]?.badge && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-2 bg-violet-500/80 backdrop-blur-sm rounded-full text-white text-[9px] font-bold w-fit">
+                    {heroBanners[currentSlide].badge}
+                  </span>
+                )}
                 <h2 className="text-xl font-bold text-white mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                  {HERO_SLIDES[currentSlide].title}
+                  {heroBanners[currentSlide]?.title}
                 </h2>
-                <p className="text-white/80 text-xs max-w-[70%]">{HERO_SLIDES[currentSlide].subtitle}</p>
+                <p className="text-white/80 text-xs max-w-[70%]">{heroBanners[currentSlide]?.subtitle}</p>
               </div>
             </motion.div>
           </AnimatePresence>
           
           {/* Pagination Dots */}
           <div className="absolute bottom-3 right-4 flex gap-1.5">
-            {HERO_SLIDES.map((_, idx) => (
+            {heroBanners.map((_, idx) => (
               <button
                 key={idx}
                 onClick={() => setCurrentSlide(idx)}

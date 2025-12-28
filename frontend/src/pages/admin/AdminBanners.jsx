@@ -56,6 +56,13 @@ const AdminBanners = () => {
     isActive: true,
     startDate: "",
     endDate: "",
+    // New fields
+    page: "all",
+    badge: "",
+    overlayType: "gradient",
+    overlayOpacity: 70,
+    gradientFrom: "#6366f1",
+    gradientTo: "#8b5cf6",
   });
 
   // Fetch banners
@@ -229,6 +236,12 @@ const AdminBanners = () => {
       isActive: true,
       startDate: "",
       endDate: "",
+      page: "all",
+      badge: "",
+      overlayType: "gradient",
+      overlayOpacity: 70,
+      gradientFrom: "#6366f1",
+      gradientTo: "#8b5cf6",
     });
     setEditingBanner(null);
   };
@@ -248,6 +261,12 @@ const AdminBanners = () => {
       isActive: banner.isActive,
       startDate: banner.startDate ? banner.startDate.split("T")[0] : "",
       endDate: banner.endDate ? banner.endDate.split("T")[0] : "",
+      page: banner.page || "all",
+      badge: banner.badge || "",
+      overlayType: banner.overlayType || "gradient",
+      overlayOpacity: banner.overlayOpacity || 70,
+      gradientFrom: banner.gradientFrom || "#6366f1",
+      gradientTo: banner.gradientTo || "#8b5cf6",
     });
     setShowModal(true);
   };
@@ -538,6 +557,115 @@ const AdminBanners = () => {
                     rows={2}
                     maxLength={300}
                   />
+                </div>
+
+                {/* Page Selection & Badge */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Show On Page *
+                    </label>
+                    <select
+                      value={formData.page}
+                      onChange={(e) => setFormData((p) => ({ ...p, page: e.target.value }))}
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+                    >
+                      <option value="all">All Pages</option>
+                      <option value="explore">Explore Editors</option>
+                      <option value="gigs">Gigs</option>
+                      <option value="jobs">Jobs</option>
+                      <option value="home">Home</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Badge Text
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.badge}
+                      onChange={(e) => setFormData((p) => ({ ...p, badge: e.target.value }))}
+                      placeholder="🔥 HOT OPPORTUNITIES"
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+                      maxLength={50}
+                    />
+                  </div>
+                </div>
+
+                {/* Overlay Settings */}
+                <div className="p-4 bg-zinc-800/50 rounded-xl border border-zinc-700">
+                  <h4 className="text-sm font-medium text-white mb-4">Overlay Settings</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-2">
+                        Overlay Type
+                      </label>
+                      <select
+                        value={formData.overlayType}
+                        onChange={(e) => setFormData((p) => ({ ...p, overlayType: e.target.value }))}
+                        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+                      >
+                        <option value="gradient">Gradient</option>
+                        <option value="solid">Solid Color</option>
+                        <option value="none">No Overlay</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-2">
+                        Opacity: {formData.overlayOpacity}%
+                      </label>
+                      <input
+                        type="range"
+                        min="30"
+                        max="90"
+                        value={formData.overlayOpacity}
+                        onChange={(e) => setFormData((p) => ({ ...p, overlayOpacity: parseInt(e.target.value) }))}
+                        className="w-full accent-emerald-500"
+                      />
+                    </div>
+                  </div>
+                  {formData.overlayType === "gradient" && (
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-400 mb-2">
+                          Gradient From
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={formData.gradientFrom}
+                            onChange={(e) => setFormData((p) => ({ ...p, gradientFrom: e.target.value }))}
+                            className="w-10 h-10 rounded-lg cursor-pointer border-0"
+                          />
+                          <input
+                            type="text"
+                            value={formData.gradientFrom}
+                            onChange={(e) => setFormData((p) => ({ ...p, gradientFrom: e.target.value }))}
+                            className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-400 mb-2">
+                          Gradient To
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={formData.gradientTo}
+                            onChange={(e) => setFormData((p) => ({ ...p, gradientTo: e.target.value }))}
+                            className="w-10 h-10 rounded-lg cursor-pointer border-0"
+                          />
+                          <input
+                            type="text"
+                            value={formData.gradientTo}
+                            onChange={(e) => setFormData((p) => ({ ...p, gradientTo: e.target.value }))}
+                            className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Link */}

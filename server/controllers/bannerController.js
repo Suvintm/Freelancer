@@ -39,8 +39,10 @@ export const uploadBannerMedia = asyncHandler(async (req, res) => {
 // ============ PUBLIC: GET ACTIVE BANNERS ============
 export const getBanners = asyncHandler(async (req, res) => {
   const now = new Date();
+  const { page } = req.query; // Optional page filter
   
-  const banners = await Banner.find({
+  // Build query
+  const query = {
     isActive: true,
     $and: [
       {
@@ -58,7 +60,17 @@ export const getBanners = asyncHandler(async (req, res) => {
         ],
       },
     ],
-  })
+  };
+  
+  // Filter by page if specified
+  if (page && page !== 'all') {
+    query.$or = [
+      { page: page },
+      { page: 'all' }, // Include banners marked for all pages
+    ];
+  }
+  
+  const banners = await Banner.find(query)
     .sort({ order: 1, createdAt: -1 })
     .select("-createdBy -__v");
 
@@ -107,7 +119,7 @@ export const createBanner = asyncHandler(async (req, res) => {
   const order = (maxOrder?.order || 0) + 1;
 
   // Extract new fields from body
-  const { badge, priority, gradientFrom, gradientTo, textPosition, loopVideo } = req.body;
+  const { badge, badgeType, priority, gradientFrom, gradientTo, textPosition, loopVideo, page } = req.body;
 
   const banner = await Banner.create({
     title,
@@ -128,6 +140,8 @@ export const createBanner = asyncHandler(async (req, res) => {
     gradientTo,
     textPosition,
     loopVideo,
+    page: page || 'all',
+    badgeType: badgeType || 'custom',
     createdBy: req.user?._id || req.admin?._id,
   });
 
@@ -162,9 +176,11 @@ export const updateBanner = asyncHandler(async (req, res) => {
     "linkText",
     "linkTarget",
     "isActive",
+    "page",
     "startDate",
     "endDate",
     "badge",
+    "badgeType",
     "priority",
     "gradientFrom",
     "gradientTo",
