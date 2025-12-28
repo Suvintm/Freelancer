@@ -1662,6 +1662,18 @@ const ChatPage = () => {
           </div>
         </div>
 
+        {/* Invisible Backdrop to Close All Dropdown Menus */}
+        {(showFootageLinks || showMoreMenu || showSearch) && (
+          <div 
+            className="fixed inset-0 z-[50]" 
+            onClick={() => {
+              setShowFootageLinks(false);
+              setShowMoreMenu(false);
+              setShowSearch(false);
+            }}
+          />
+        )}
+
         {/* Project Details Popup Modal - Full Version with Progress Bars & Receipt */}
         <AnimatePresence>
           {showProjectDetails && (
@@ -2387,6 +2399,17 @@ const ChatPage = () => {
         </footer>
       ) : (
         /* Normal Chat Footer - Instagram DM Style */
+        <>
+        {/* Backdrop for footer popups */}
+        {(showMediaMenu || showAttachmentMenu) && (
+          <div 
+            className="fixed inset-0 z-[45]" 
+            onClick={() => {
+              setShowMediaMenu(false);
+              setShowAttachmentMenu(false);
+            }}
+          />
+        )}
         <footer className={`fixed bottom-0 left-0 right-0 px-4 py-3 pb-6 z-50 ${theme === 'dark' ? 'bg-[#0a0a0c] border-t border-white/10' : 'bg-white border-t border-[#DBDBDB]'}`} style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
          {/* Reply Preview Context */}
          <AnimatePresence>
@@ -2575,6 +2598,7 @@ const ChatPage = () => {
          <input type="file" ref={videoInputRef} className="hidden" accept="video/*" onChange={handleFileSelect} />
          <input type="file" ref={docInputRef} className="hidden" accept="*" onChange={handleFileSelect} />
         </footer>
+        </>
       )}
 
       {/* Pending File Preview Modal */}
