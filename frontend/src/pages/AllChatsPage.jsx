@@ -309,15 +309,76 @@ const ChatsPage = () => {
         <div className="flex items-center gap-4 mb-5">
           <button
             onClick={() => navigate(-1)}
-            className="p-2.5 rounded-lg bg-zinc-900 light:bg-white border border-zinc-800 light:border-slate-200 hover:bg-zinc-800 light:hover:bg-slate-100 transition-all light:shadow-sm"
+            className="p-2.5 rounded-xl bg-[#0d0d12] light:bg-white border border-white/[0.06] light:border-slate-200 hover:bg-white/5 light:hover:bg-slate-100 transition-all"
           >
-            <FaArrowLeft className="text-sm light:text-slate-600" />
+            <FaArrowLeft className="text-sm text-zinc-400 light:text-slate-600" />
           </button>
-          <div>
-            <h1 className="text-xl font-semibold text-white light:text-slate-900">Messages</h1>
-            <p className="text-zinc-500 light:text-slate-500 text-xs">{chats.length} conversations</p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-violet-500/20 to-purple-500/10 rounded-xl flex items-center justify-center">
+              <FaComments className="text-violet-400" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white light:text-slate-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Messages</h1>
+              <p className="text-zinc-500 light:text-slate-500 text-xs">{chats.length} conversations</p>
+            </div>
           </div>
         </div>
+
+        {/* Story Strip - Instagram Style (Unique Clients) */}
+        {chats.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-5"
+          >
+            <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-hide snap-x">
+              {(() => {
+                const uniqueClients = [];
+                const seenIds = new Set();
+                chats.forEach(chat => {
+                  const otherParty = user?.role === "editor" ? chat.client : chat.editor;
+                  if (otherParty?._id && !seenIds.has(otherParty._id)) {
+                    seenIds.add(otherParty._id);
+                    uniqueClients.push({
+                      ...otherParty,
+                      chatId: chat._id,
+                      isOnline: onlineUsers.includes(otherParty._id),
+                      hasUnread: chat.unreadCount > 0
+                    });
+                  }
+                });
+                return uniqueClients.slice(0, 10).map((person, idx) => (
+                  <motion.button
+                    key={person._id}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: idx * 0.05 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => navigate(`/chat/${person.chatId}`)}
+                    className="flex flex-col items-center gap-1.5 snap-start flex-shrink-0"
+                  >
+                    <div className={`relative p-0.5 rounded-full ${person.hasUnread ? 'bg-gradient-to-br from-violet-500 to-purple-500' : 'bg-gradient-to-br from-zinc-600 to-zinc-700'}`}>
+                      <div className="p-0.5 bg-[#09090B] rounded-full">
+                        <img 
+                          src={person.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
+                          alt={person.name}
+                          className="w-14 h-14 rounded-full object-cover"
+                        />
+                      </div>
+                      {person.isOnline && (
+                        <span className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 rounded-full border-2 border-[#09090B]" />
+                      )}
+                    </div>
+                    <span className="text-[10px] text-zinc-400 font-medium max-w-[60px] truncate">
+                      {person.name?.split(" ")[0]}
+                    </span>
+                  </motion.button>
+                ));
+              })()}
+            </div>
+          </motion.div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
@@ -326,54 +387,56 @@ const ChatsPage = () => {
             const count = tab.id === "all" ? chats.length : tab.id === "gigs" ? gigCount : tab.id === "briefs" ? briefCount : requestCount;
             
             return (
-              <button
+              <motion.button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                whileHover={{ scale: isActive ? 1 : 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                   isActive 
-                    ? "bg-white light:bg-slate-900 text-black light:text-white" 
-                    : "bg-zinc-900 light:bg-white border border-zinc-800 light:border-slate-200 text-zinc-400 light:text-slate-600 hover:text-white light:hover:text-slate-900 hover:border-zinc-600 light:hover:border-slate-300"
+                    ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg shadow-violet-500/25" 
+                    : "bg-[#0d0d12] light:bg-white border border-white/[0.06] light:border-slate-200 text-zinc-400 light:text-slate-600 hover:text-white light:hover:text-slate-900 hover:bg-white/5"
                 }`}
               >
                 <tab.icon className="text-xs" />
                 {tab.label}
-                <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] ${
-                  isActive ? "bg-black/10 light:bg-white/20" : "bg-zinc-800 light:bg-slate-100"
+                <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
+                  isActive ? "bg-white/20" : "bg-white/5 light:bg-slate-100"
                 }`}>
                   {count}
                 </span>
-              </button>
+              </motion.button>
             );
           })}
         </div>
 
         {/* Search */}
         <div className="relative mb-5">
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 light:text-slate-400 text-sm" />
+          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 light:text-slate-400 text-sm" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search chats..."
-            className="w-full bg-zinc-900 light:bg-white border border-zinc-800 light:border-slate-200 rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder:text-zinc-600 light:placeholder:text-slate-400 focus:border-zinc-600 light:focus:border-slate-400 outline-none transition-all light:text-slate-900 light:shadow-sm"
+            className="w-full bg-[#0d0d12] light:bg-white border border-white/[0.06] light:border-slate-200 rounded-full pl-11 pr-4 py-3 text-sm placeholder:text-zinc-600 light:placeholder:text-slate-400 focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 outline-none transition-all light:text-slate-900"
           />
         </div>
 
         {/* Chat List */}
         {filteredChats.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <div className="w-16 h-16 bg-zinc-900 light:bg-slate-100 rounded-full flex items-center justify-center mb-4">
-              <FaComments className="text-2xl text-zinc-600 light:text-slate-400" />
+            <div className="w-16 h-16 bg-gradient-to-br from-violet-500/10 to-purple-500/5 rounded-2xl flex items-center justify-center mb-4">
+              <FaComments className="text-2xl text-violet-400" />
             </div>
-            <h3 className="text-sm font-medium text-zinc-400 light:text-slate-600 mb-1">
+            <h3 className="text-sm font-bold text-white light:text-slate-900 mb-1">
               {search ? "No chats found" : "No chats yet"}
             </h3>
-            <p className="text-xs text-zinc-600 light:text-slate-500">
+            <p className="text-xs text-zinc-500 light:text-slate-500">
               {search ? "Try a different search" : activeTab === "requested" ? "No request orders" : "Accept orders to start chatting!"}
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <AnimatePresence>
               {filteredChats.map((chat, index) => {
                 const otherParty = getOtherParty(chat);
@@ -394,14 +457,18 @@ const ChatsPage = () => {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ delay: index * 0.02 }}
+                    whileHover={{ scale: 1.01, y: -2 }}
                     onClick={() => navigate(`/chat/${chat._id}`)}
-                    className={`bg-zinc-950 light:bg-white border rounded-xl p-3.5 cursor-pointer hover:border-zinc-600 light:hover:border-slate-300 transition-all group light:shadow-sm ${
+                    className={`relative overflow-hidden bg-[#0d0d12] light:bg-white border rounded-2xl p-4 cursor-pointer hover:border-violet-500/30 light:hover:border-violet-300 transition-all group ${
                       isAwaitingPayment ? "border-orange-500/30" : 
                       isNewRequest ? "border-amber-500/30" :
-                      "border-zinc-800 light:border-slate-200"
+                      "border-white/[0.06] light:border-slate-200"
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    {/* Hover glow */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-violet-500/0 to-purple-500/0 group-hover:from-violet-500/5 group-hover:to-purple-500/5 transition-all duration-300" />
+                    
+                    <div className="relative flex items-center gap-3">
                       {/* Avatar */}
                       <div className="relative flex-shrink-0">
                         <img
@@ -425,7 +492,7 @@ const ChatsPage = () => {
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
-                          <h3 className="font-medium text-white light:text-slate-900 text-sm truncate group-hover:text-blue-400 transition-colors">
+                          <h3 className="font-medium text-white light:text-slate-900 text-sm truncate group-hover:text-violet-400 transition-colors">
                             {otherParty?.name}
                           </h3>
                           
@@ -521,7 +588,7 @@ const ChatsPage = () => {
                         <span className={`text-[10px] px-2 py-1 rounded-lg font-medium ${statusConfig.bg} ${statusConfig.color}`}>
                           {statusConfig.label}
                         </span>
-                        <FaChevronRight className="text-zinc-600 light:text-slate-400 text-[10px] group-hover:text-blue-400 transition-colors" />
+                        <FaChevronRight className="text-zinc-600 light:text-slate-400 text-[10px] group-hover:text-violet-400 transition-colors" />
                       </div>
                     </div>
                   </motion.div>

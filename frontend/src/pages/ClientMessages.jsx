@@ -112,7 +112,7 @@ const DottedSpinner = () => {
           return (
             <motion.div
               key={i}
-              className="absolute w-2 h-2 rounded-full bg-emerald-500"
+              className="absolute w-2 h-2 rounded-full bg-violet-500"
               style={{
                 left: "50%",
                 top: "50%",
@@ -139,8 +139,8 @@ const DottedSpinner = () => {
         animate={{ scale: [1, 1.1, 1] }}
         transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
       >
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 flex items-center justify-center">
-          <HiChatAlt2 className="text-emerald-400 text-sm" />
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500/20 to-purple-600/10 flex items-center justify-center">
+          <HiChatAlt2 className="text-violet-400 text-sm" />
         </div>
       </motion.div>
     </div>
@@ -249,22 +249,83 @@ const ClientMessages = () => {
         
         {/* Header */}
         <div className="mb-5">
-          <div className="flex items-center gap-2 mb-1">
-            <HiChatAlt2 className="text-emerald-400 text-xl" />
-            <h1 className="text-xl font-bold text-white light:text-slate-900" style={{ fontFamily: "'Outfit', sans-serif" }}>Messages</h1>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-10 h-10 bg-gradient-to-br from-violet-500/20 to-purple-500/10 rounded-xl flex items-center justify-center">
+              <HiChatAlt2 className="text-violet-400 text-lg" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white light:text-slate-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Messages</h1>
+              <p className="text-zinc-500 text-xs">{chats.length} conversations</p>
+            </div>
           </div>
-          <p className="text-zinc-500 text-sm">Chat with your editors</p>
         </div>
+        
+        {/* Story Strip - Instagram Style */}
+        {chats.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-5"
+          >
+            <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-hide snap-x">
+              {/* Get unique editors */}
+              {(() => {
+                const uniqueEditors = [];
+                const seenIds = new Set();
+                chats.forEach(chat => {
+                  if (chat.editor?._id && !seenIds.has(chat.editor._id)) {
+                    seenIds.add(chat.editor._id);
+                    uniqueEditors.push({
+                      ...chat.editor,
+                      chatId: chat._id,
+                      isOnline: onlineUsers.includes(chat.editor._id),
+                      hasUnread: chat.unreadCount > 0
+                    });
+                  }
+                });
+                return uniqueEditors.slice(0, 10).map((editor, idx) => (
+                  <motion.button
+                    key={editor._id}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: idx * 0.05 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => navigate(`/chat/${editor.chatId}`)}
+                    className="flex flex-col items-center gap-1.5 snap-start flex-shrink-0"
+                  >
+                    <div className={`relative p-0.5 rounded-full ${editor.hasUnread ? 'bg-gradient-to-br from-violet-500 to-purple-500' : 'bg-gradient-to-br from-zinc-600 to-zinc-700'}`}>
+                      <div className="p-0.5 bg-[#09090B] rounded-full">
+                        <img 
+                          src={editor.profilePicture || "/default-avatar.png"} 
+                          alt={editor.name}
+                          className="w-14 h-14 rounded-full object-cover"
+                        />
+                      </div>
+                      {/* Online indicator */}
+                      {editor.isOnline && (
+                        <span className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 rounded-full border-2 border-[#09090B]" />
+                      )}
+                    </div>
+                    <span className="text-[10px] text-zinc-400 font-medium max-w-[60px] truncate">
+                      {editor.name?.split(" ")[0]}
+                    </span>
+                  </motion.button>
+                ));
+              })()}
+            </div>
+          </motion.div>
+        )}
         
         {/* Search Bar */}
         <div className="relative mb-5">
-          <HiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+          <HiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
           <input
             type="text"
             placeholder="Search chats..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-zinc-900/60 light:bg-white border border-zinc-800/60 light:border-zinc-200 rounded-xl pl-10 pr-4 py-3 text-white light:text-slate-900 text-sm focus:outline-none focus:border-emerald-500/50 transition-all"
+            className="w-full bg-[#0d0d12] light:bg-white border border-white/[0.06] light:border-zinc-200 rounded-full pl-11 pr-4 py-3 text-white light:text-slate-900 text-sm focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all"
           />
         </div>
         
@@ -302,20 +363,20 @@ const ClientMessages = () => {
           </div>
         ) : filteredChats.length === 0 ? (
           <div className="text-center py-16">
-            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[#0A0A0C] light:bg-slate-100 flex items-center justify-center">
-              <HiInbox className="text-2xl text-gray-500" />
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-violet-500/10 to-purple-500/5 flex items-center justify-center">
+              <HiInbox className="text-2xl text-violet-400" />
             </div>
-            <h3 className="text-sm font-medium text-white light:text-slate-900 mb-1">
+            <h3 className="text-sm font-bold text-white light:text-slate-900 mb-1">
               {search ? "No chats found" : "No Active Chats"}
             </h3>
-            <p className="text-gray-500 text-xs mb-4">
+            <p className="text-zinc-500 text-xs mb-4">
               {search ? "Try a different search" : "Chats appear when an editor accepts your order"}
             </p>
             {!search && (
               <div className="flex flex-wrap justify-center gap-2">
                 <button
                   onClick={() => navigate("/client-home")}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-white text-xs font-medium transition-colors"
+                  className="px-5 py-2.5 bg-gradient-to-r from-violet-500 to-purple-500 hover:opacity-90 rounded-xl text-white text-xs font-semibold transition-all shadow-lg shadow-violet-500/25"
                 >
                   Browse Editors
                 </button>
@@ -342,9 +403,12 @@ const ClientMessages = () => {
                     transition={{ delay: index * 0.03 }}
                     whileHover={{ scale: 1.01, y: -2 }}
                     onClick={() => navigate(`/chat/${chat._id}`)}
-                    className="bg-zinc-900/60 light:bg-white border border-zinc-800/60 light:border-zinc-200 rounded-2xl p-4 cursor-pointer hover:border-emerald-500/30 light:hover:border-emerald-300 transition-all group shadow-lg shadow-black/10 light:shadow-zinc-200/50 hover:shadow-xl hover:shadow-emerald-500/5"
+                    className="relative overflow-hidden bg-[#0d0d12] light:bg-white border border-white/[0.06] light:border-zinc-200 rounded-2xl p-4 cursor-pointer hover:border-violet-500/30 light:hover:border-violet-300 transition-all group"
                   >
-                    <div className="flex items-center gap-3">
+                    {/* Hover glow */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-violet-500/0 to-purple-500/0 group-hover:from-violet-500/5 group-hover:to-purple-500/5 transition-all duration-300" />
+                    
+                    <div className="relative flex items-center gap-3">
                       {/* Editor Avatar with Online & Unread */}
                       <div className="relative flex-shrink-0">
                         <img
@@ -370,7 +434,7 @@ const ClientMessages = () => {
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-0.5">
-                          <h3 className={`text-xs font-medium truncate group-hover:text-emerald-400 transition-colors ${chat.unreadCount > 0 ? 'text-white light:text-slate-900' : 'text-gray-400 light:text-slate-600'}`}>
+                          <h3 className={`text-xs font-medium truncate group-hover:text-violet-400 transition-colors ${chat.unreadCount > 0 ? 'text-white light:text-slate-900' : 'text-gray-400 light:text-slate-600'}`}>
                             {chat.editor?.name}
                           </h3>
                           {/* Type Tag */}
@@ -386,7 +450,7 @@ const ClientMessages = () => {
                         </p>
                         
                         <div className="flex flex-wrap items-center gap-2 text-[9px]">
-                          <span className="flex items-center gap-0.5 text-emerald-400 font-medium">
+                          <span className="flex items-center gap-0.5 text-violet-400 font-medium">
                             <HiCurrencyRupee className="text-[9px]" /> {chat.amount?.toLocaleString()}
                           </span>
                           <span className="flex items-center gap-0.5 text-gray-600">
@@ -417,7 +481,7 @@ const ClientMessages = () => {
                         <span className={`text-[9px] px-1.5 py-0.5 rounded border ${statusConfig.bg} ${statusConfig.color} ${statusConfig.border}`}>
                           {statusConfig.label}
                         </span>
-                        <HiChevronRight className="text-gray-600 text-sm group-hover:text-emerald-400 transition-colors" />
+                        <HiChevronRight className="text-gray-600 text-sm group-hover:text-violet-400 transition-colors" />
                       </div>
                     </div>
                   </motion.div>
