@@ -32,6 +32,9 @@ const MobileBottomNav = () => {
   // Don't render if not logged in
   if (!user) return null;
 
+  // Don't render on chat pages (individual chat view)
+  if (location.pathname.startsWith("/chat/")) return null;
+
   const isClient = user?.role === "client";
   const isEditor = user?.role === "editor";
   const isDark = theme === "dark";

@@ -40,6 +40,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 import { useSocket } from "../context/SocketContext";
+import { useTheme } from "../context/ThemeContext";
 import MediaPreviewModal from "./MediaPreviewModal";
 import ChatInfoTabs from "./ChatInfoTabs";
 import FinalDeliveryCard from "./FinalDeliveryCard";
@@ -608,6 +609,7 @@ const ChatPage = () => {
   const { orderId } = useParams();
   const { user, backendURL } = useAppContext();
   const socketContext = useSocket();
+  const { theme } = useTheme();
 
   // --- Socket & Context Destructuring ---
   const {
@@ -1443,16 +1445,16 @@ const ChatPage = () => {
 
   return (
     <div 
-      className="flex flex-col h-screen bg-white text-[#262626] font-sans overflow-hidden no-copy"
+      className={`flex flex-col h-screen font-sans overflow-hidden no-copy ${theme === 'dark' ? 'bg-[#0a0a0c] text-white' : 'bg-white text-[#262626]'}`}
       onContextMenu={(e) => e.preventDefault()}
     >
       
       {/* 1. Fixed Header - Instagram DM Style */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-[#DBDBDB]">
+      <header className={`fixed top-0 left-0 right-0 z-50 ${theme === 'dark' ? 'bg-[#0a0a0c] border-b border-white/10' : 'bg-white border-b border-[#DBDBDB]'}`}>
         <div className="flex items-center gap-3 px-4 py-3">
           {/* Back Arrow */}
           <button onClick={() => navigate(-1)} className="p-1 -ml-1 hover:opacity-70 transition">
-            <FaArrowLeft className="text-[#262626] text-lg" />
+            <FaArrowLeft className={`text-lg ${theme === 'dark' ? 'text-white' : 'text-[#262626]'}`} />
           </button>
 
           {/* Profile + Name/Username */}
@@ -1462,15 +1464,15 @@ const ChatPage = () => {
                 <img 
                   src={otherParty?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
                   alt="Profile"
-                  className="w-full h-full rounded-full object-cover border-2 border-white"
+                  className={`w-full h-full rounded-full object-cover border-2 ${theme === 'dark' ? 'border-[#0a0a0c]' : 'border-white'}`}
                 />
               </div>
-              {isOnline && <div className="absolute bottom-0 right-0 w-3 h-3 bg-[#00a400] rounded-full border-2 border-white"></div>}
+              {isOnline && <div className={`absolute bottom-0 right-0 w-3 h-3 bg-[#00a400] rounded-full border-2 ${theme === 'dark' ? 'border-[#0a0a0c]' : 'border-white'}`}></div>}
             </div>
             <div className="flex flex-col justify-center min-w-0">
-              <span className="font-semibold text-[15px] text-[#262626] truncate leading-tight">{otherParty?.name || "Unknown User"}</span>
+              <span className={`font-semibold text-[15px] truncate leading-tight ${theme === 'dark' ? 'text-white' : 'text-[#262626]'}`}>{otherParty?.name || "Unknown User"}</span>
               <div className="flex items-center gap-2">
-                <span className="text-[13px] text-[#8e8e8e] leading-tight">
+                <span className={`text-[13px] leading-tight ${theme === 'dark' ? 'text-gray-400' : 'text-[#8e8e8e]'}`}>
                   {isOnline ? "Active now" : "Offline"}
                 </span>
                 {/* Deadline Badge - Preserved */}
@@ -1484,14 +1486,14 @@ const ChatPage = () => {
           </div>
 
           {/* Action Icons - Compact Style */}
-          <div className="flex items-center">
+          <div className="flex items-center gap-1 md:gap-2">
             {/* Project Details - Opens popup modal (Clipboard/Document Icon) */}
             <button 
               onClick={() => setShowProjectDetails(!showProjectDetails)}
-              className={`p-2 rounded-full transition ${showProjectDetails ? 'bg-zinc-100' : 'hover:bg-zinc-50'}`}
+              className={`p-2 rounded-full transition ${theme === 'dark' ? (showProjectDetails ? 'bg-white/10' : 'hover:bg-white/10') : (showProjectDetails ? 'bg-zinc-50' : 'hover:bg-zinc-50')}`}
               title="Project details"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#262626" className="w-[18px] h-[18px]">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-[18px] h-[18px] ${theme === 'dark' ? 'text-white' : 'text-[#262626]'}`}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
               </svg>
             </button>
@@ -1500,7 +1502,7 @@ const ChatPage = () => {
             <div className="relative">
               <button 
                 onClick={() => setShowFootageLinks(!showFootageLinks)}
-                className={`p-2 rounded-full transition ${showFootageLinks ? 'bg-zinc-100' : 'hover:bg-zinc-50'}`}
+                className={`p-2 rounded-full transition ${theme === 'dark' ? (showFootageLinks ? 'bg-white/10' : 'hover:bg-white/10') : (showFootageLinks ? 'bg-zinc-50' : 'hover:bg-zinc-50')}`}
                 title="Footage links"
               >
                 {/* Google Drive Official Logo - Small */}
@@ -1521,11 +1523,11 @@ const ChatPage = () => {
                     initial={{ opacity: 0, y: -5 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -5 }}
-                    className="absolute right-0 top-full mt-2 bg-white border border-[#DBDBDB] rounded-xl shadow-lg w-72 p-4 z-[100]"
+                    className={`absolute right-0 top-full mt-2 rounded-xl shadow-lg w-72 p-4 z-[100] ${theme === 'dark' ? 'bg-[#1a1a1a] border border-white/10' : 'bg-white border border-[#DBDBDB]'}`}
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-[#262626] text-[14px]">Footage Links</h4>
-                      <button onClick={() => setShowFootageLinks(false)} className="p-1 hover:bg-zinc-100 rounded-full">
+                      <h4 className={`font-semibold text-[14px] ${theme === 'dark' ? 'text-white' : 'text-[#262626]'}`}>Footage Links</h4>
+                      <button onClick={() => setShowFootageLinks(false)} className={`p-1 rounded-full ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-zinc-100'}`}>
                         <FaTimes className="text-[#8e8e8e] text-xs" />
                       </button>
                     </div>
@@ -1594,10 +1596,10 @@ const ChatPage = () => {
             {/* Search */}
             <button 
               onClick={() => setShowSearch(!showSearch)}
-              className={`p-2 rounded-full transition ${showSearch ? 'bg-zinc-100' : 'hover:bg-zinc-50'}`}
+              className={`p-2 rounded-full transition ${theme === 'dark' ? (showSearch ? 'bg-white/10' : 'hover:bg-white/10') : (showSearch ? 'bg-zinc-100' : 'hover:bg-zinc-50')}`}
               title="Search messages"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#262626" className="w-[17px] h-[17px]">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-[17px] h-[17px] ${theme === 'dark' ? 'text-white' : 'text-[#262626]'}`}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
               </svg>
             </button>
@@ -1606,9 +1608,9 @@ const ChatPage = () => {
             <div className="relative">
               <button 
                 onClick={() => setShowMoreMenu(!showMoreMenu)}
-                className="p-2 hover:bg-zinc-50 rounded-full transition"
+                className={`p-2 rounded-full transition ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-zinc-50'}`}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#262626" className="w-[18px] h-[18px]">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-[18px] h-[18px] ${theme === 'dark' ? 'text-white' : 'text-[#262626]'}`}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z" />
                 </svg>
               </button>
@@ -1620,38 +1622,38 @@ const ChatPage = () => {
                     initial={{ opacity: 0, scale: 0.95, y: 5 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 5 }}
-                    className="absolute right-0 top-full mt-2 bg-white border border-[#DBDBDB] rounded-xl shadow-lg w-52 p-2 z-[100]"
+                    className={`absolute right-0 top-full mt-2 rounded-xl shadow-lg w-52 p-2 z-[100] ${theme === 'dark' ? 'bg-[#1a1a1a] border border-white/10' : 'bg-white border border-[#DBDBDB]'}`}
                   >
                     {/* Media Gallery */}
                     <button 
                       onClick={() => { setShowMediaGallery(true); setShowMoreMenu(false); }}
-                      className="w-full flex items-center gap-3 p-3 hover:bg-[#FAFAFA] rounded-lg text-[14px] text-[#262626]"
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg text-[14px] ${theme === 'dark' ? 'hover:bg-white/10 text-white' : 'hover:bg-[#FAFAFA] text-[#262626]'}`}
                     >
-                      <FaImage className="text-[#8e8e8e]" /> View all media
+                      <FaImage className={`${theme === 'dark' ? 'text-gray-400' : 'text-[#8e8e8e]'}`} /> View all media
                     </button>
                     
                     {/* Task Checklist */}
                     <button 
                       onClick={() => { setShowChecklist(!showChecklist); setShowMoreMenu(false); }}
-                      className="w-full flex items-center gap-3 p-3 hover:bg-[#FAFAFA] rounded-lg text-[14px] text-[#262626]"
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg text-[14px] ${theme === 'dark' ? 'hover:bg-white/10 text-white' : 'hover:bg-[#FAFAFA] text-[#262626]'}`}
                     >
-                      <FaList className="text-[#8e8e8e]" /> Task checklist
+                      <FaList className={`${theme === 'dark' ? 'text-gray-400' : 'text-[#8e8e8e]'}`} /> Task checklist
                     </button>
                     
                     {/* Starred Messages */}
                     <button 
                       onClick={() => setShowMoreMenu(false)}
-                      className="w-full flex items-center gap-3 p-3 hover:bg-[#FAFAFA] rounded-lg text-[14px] text-[#262626]"
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg text-[14px] ${theme === 'dark' ? 'hover:bg-white/10 text-white' : 'hover:bg-[#FAFAFA] text-[#262626]'}`}
                     >
-                      <FaStar className="text-[#8e8e8e]" /> Starred messages
+                      <FaStar className={`${theme === 'dark' ? 'text-gray-400' : 'text-[#8e8e8e]'}`} /> Starred messages
                     </button>
                     
                     {/* Quick Replies */}
                     <button 
                       onClick={() => { setShowQuickReplies(true); loadQuickReplies(); setShowMoreMenu(false); }}
-                      className="w-full flex items-center gap-3 p-3 hover:bg-[#FAFAFA] rounded-lg text-[14px] text-[#262626]"
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg text-[14px] ${theme === 'dark' ? 'hover:bg-white/10 text-white' : 'hover:bg-[#FAFAFA] text-[#262626]'}`}
                     >
-                      <FaBolt className="text-[#8e8e8e]" /> Quick replies
+                      <FaBolt className={`${theme === 'dark' ? 'text-gray-400' : 'text-[#8e8e8e]'}`} /> Quick replies
                     </button>
                   </motion.div>
                 )}
@@ -1663,31 +1665,41 @@ const ChatPage = () => {
         {/* Project Details Popup Modal - Full Version with Progress Bars & Receipt */}
         <AnimatePresence>
           {showProjectDetails && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="absolute right-4 top-16 bg-white border border-[#DBDBDB] rounded-2xl shadow-xl w-80 max-h-[70vh] overflow-y-auto z-[100]"
-            >
-              {/* Header */}
-              <div className="sticky top-0 bg-white border-b border-[#EFEFEF] p-4 flex items-center justify-between">
-                <h3 className="font-semibold text-[#262626]">Project Details</h3>
-                <button 
-                  onClick={() => setShowProjectDetails(false)} 
-                  className="p-1.5 hover:bg-zinc-100 rounded-full transition"
-                >
-                  <FaTimes className="text-[#8e8e8e] text-sm" />
-                </button>
-              </div>
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100]"
+                onClick={() => setShowProjectDetails(false)}
+              />
+              {/* Modal */}
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-sm rounded-2xl shadow-xl max-h-[80vh] overflow-y-auto z-[101] ${theme === 'dark' ? 'bg-[#1a1a1a] border border-white/10' : 'bg-white border border-[#DBDBDB]'}`}
+              >
+                {/* Header */}
+                <div className={`sticky top-0 p-4 flex items-center justify-between ${theme === 'dark' ? 'bg-[#1a1a1a] border-b border-white/10' : 'bg-white border-b border-[#EFEFEF]'}`}>
+                  <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#262626]'}`}>Project Details</h3>
+                  <button 
+                    onClick={() => setShowProjectDetails(false)} 
+                    className={`p-1.5 rounded-full transition ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-zinc-100'}`}
+                  >
+                    <FaTimes className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-[#8e8e8e]'}`} />
+                  </button>
+                </div>
               
-              <div className="p-4 space-y-4">
+                <div className="p-4 space-y-4">
                 {/* Payment Status Progress Bar */}
-                <div className="bg-[#FAFAFA] rounded-xl p-4 border border-[#EFEFEF]">
+                <div className={`rounded-xl p-4 border ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-[#FAFAFA] border-[#EFEFEF]'}`}>
                   <div className="flex items-center gap-2 mb-3">
                     <div className="p-1.5 rounded-lg bg-amber-100">
                       <FaCreditCard className="text-amber-500 w-3.5 h-3.5" />
                     </div>
-                    <h4 className="text-[13px] font-semibold text-[#262626]">Payment Status</h4>
+                    <h4 className={`text-[13px] font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#262626]'}`}>Payment Status</h4>
                   </div>
                   <div className="space-y-2.5 pl-1">
                     {[
@@ -1703,16 +1715,16 @@ const ChatPage = () => {
                         <div key={stage.key} className="flex items-center gap-3 relative">
                           {index < 2 && (
                             <div className={`absolute left-[7px] top-4 w-0.5 h-3.5 ${
-                              index < paymentStageIndex ? "bg-emerald-500" : "bg-zinc-200"
+                              index < paymentStageIndex ? "bg-emerald-500" : theme === 'dark' ? "bg-zinc-700" : "bg-zinc-200"
                             }`} />
                           )}
                           <div className={`w-4 h-4 rounded-full flex items-center justify-center z-10 shrink-0 ${
-                            isActive ? "bg-emerald-500" : "bg-zinc-200"
+                            isActive ? "bg-emerald-500" : theme === 'dark' ? "bg-zinc-700" : "bg-zinc-200"
                           }`}>
                             {isActive && <FaCheck className="text-white text-[8px]" />}
                           </div>
                           <span className={`text-[12px] font-medium ${
-                            isCurrent ? "text-emerald-600" : isActive ? "text-[#262626]" : "text-[#8e8e8e]"
+                            isCurrent ? "text-emerald-500" : isActive ? (theme === 'dark' ? 'text-white' : 'text-[#262626]') : (theme === 'dark' ? 'text-gray-500' : 'text-[#8e8e8e]')
                           }`}>{stage.label}</span>
                         </div>
                       );
@@ -1721,12 +1733,12 @@ const ChatPage = () => {
                 </div>
 
                 {/* Work Status Progress Bar */}
-                <div className="bg-[#FAFAFA] rounded-xl p-4 border border-[#EFEFEF]">
+                <div className={`rounded-xl p-4 border ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-[#FAFAFA] border-[#EFEFEF]'}`}>
                   <div className="flex items-center gap-2 mb-3">
                     <div className="p-1.5 rounded-lg bg-blue-100">
                       <FaClipboardList className="text-blue-500 w-3.5 h-3.5" />
                     </div>
-                    <h4 className="text-[13px] font-semibold text-[#262626]">Work Status</h4>
+                    <h4 className={`text-[13px] font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#262626]'}`}>Work Status</h4>
                   </div>
                   <div className="space-y-2.5 pl-1">
                     {[
@@ -1743,16 +1755,16 @@ const ChatPage = () => {
                         <div key={stage.key} className="flex items-center gap-3 relative">
                           {index < 3 && (
                             <div className={`absolute left-[7px] top-4 w-0.5 h-3.5 ${
-                              index < workStageIndex ? "bg-blue-500" : "bg-zinc-200"
+                              index < workStageIndex ? "bg-blue-500" : theme === 'dark' ? "bg-zinc-700" : "bg-zinc-200"
                             }`} />
                           )}
                           <div className={`w-4 h-4 rounded-full flex items-center justify-center z-10 shrink-0 ${
-                            isActive ? "bg-blue-500" : "bg-zinc-200"
+                            isActive ? "bg-blue-500" : theme === 'dark' ? "bg-zinc-700" : "bg-zinc-200"
                           }`}>
                             {isActive && <FaCheck className="text-white text-[8px]" />}
                           </div>
                           <span className={`text-[12px] font-medium ${
-                            isCurrent ? "text-blue-600" : isActive ? "text-[#262626]" : "text-[#8e8e8e]"
+                            isCurrent ? "text-blue-500" : isActive ? (theme === 'dark' ? 'text-white' : 'text-[#262626]') : (theme === 'dark' ? 'text-gray-500' : 'text-[#8e8e8e]')
                           }`}>{stage.label}</span>
                         </div>
                       );
@@ -1761,63 +1773,63 @@ const ChatPage = () => {
                 </div>
 
                 {/* Order Receipt */}
-                <div className="bg-[#FAFAFA] rounded-xl p-4 border border-[#EFEFEF]">
+                <div className={`rounded-xl p-4 border ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-[#FAFAFA] border-[#EFEFEF]'}`}>
                   <div className="flex items-center gap-2 mb-4">
                     <div className="p-1.5 rounded-lg bg-emerald-100">
                       <FaReceipt className="text-emerald-500 w-3.5 h-3.5" />
                     </div>
-                    <h4 className="text-[13px] font-semibold text-[#262626]">Order Receipt</h4>
+                    <h4 className={`text-[13px] font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#262626]'}`}>Order Receipt</h4>
                   </div>
 
                   <div className="space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[12px] text-[#8e8e8e]">Order Amount</span>
-                      <span className="text-[13px] text-[#262626] font-semibold">
+                      <span className={`text-[12px] ${theme === 'dark' ? 'text-gray-400' : 'text-[#8e8e8e]'}`}>Order Amount</span>
+                      <span className={`text-[13px] font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#262626]'}`}>
                         ₹{(order?.amount || order?.totalAmount || 0).toLocaleString("en-IN")}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="text-[12px] text-[#8e8e8e]">Platform Fee (5%)</span>
+                      <span className={`text-[12px] ${theme === 'dark' ? 'text-gray-400' : 'text-[#8e8e8e]'}`}>Platform Fee (5%)</span>
                       <span className="text-[12px] text-red-500 font-medium">
                         - ₹{Math.round((order?.amount || order?.totalAmount || 0) * 0.05).toLocaleString("en-IN")}
                       </span>
                     </div>
 
-                    <div className="border-t border-[#EFEFEF] my-2" />
+                    <div className={`border-t my-2 ${theme === 'dark' ? 'border-white/10' : 'border-[#EFEFEF]'}`} />
 
-                    <div className="flex items-center justify-between bg-emerald-50 rounded-lg p-2.5 -mx-1">
-                      <span className="text-[12px] text-[#262626] font-semibold">
+                    <div className={`flex items-center justify-between rounded-lg p-2.5 -mx-1 ${theme === 'dark' ? 'bg-emerald-500/10' : 'bg-emerald-50'}`}>
+                      <span className={`text-[12px] font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#262626]'}`}>
                         {user?.role === "editor" ? "You Receive" : "Editor Receives"}
                       </span>
-                      <span className="text-emerald-600 font-bold text-[14px]">
+                      <span className="text-emerald-500 font-bold text-[14px]">
                         ₹{(order?.editorEarning || Math.round((order?.amount || order?.totalAmount || 0) * 0.95)).toLocaleString("en-IN")}
                       </span>
                     </div>
 
-                    <div className="mt-3 pt-3 border-t border-[#EFEFEF] space-y-2 text-[11px]">
+                    <div className={`mt-3 pt-3 border-t space-y-2 text-[11px] ${theme === 'dark' ? 'border-white/10' : 'border-[#EFEFEF]'}`}>
                       <div className="flex justify-between">
-                        <span className="text-[#8e8e8e]">Order ID</span>
-                        <span className="text-[#262626] font-mono">{order?.orderNumber || orderId?.slice(-8).toUpperCase()}</span>
+                        <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-[#8e8e8e]'}`}>Order ID</span>
+                        <span className={`font-mono ${theme === 'dark' ? 'text-white' : 'text-[#262626]'}`}>{order?.orderNumber || orderId?.slice(-8).toUpperCase()}</span>
                       </div>
                       {order?.deadline && (
                         <div className="flex justify-between">
-                          <span className="text-[#8e8e8e]">Deadline</span>
-                          <span className="text-amber-600 font-medium">
+                          <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-[#8e8e8e]'}`}>Deadline</span>
+                          <span className="text-amber-500 font-medium">
                             {new Date(order.deadline).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                           </span>
                         </div>
                       )}
                       {order?.type && (
                         <div className="flex justify-between">
-                          <span className="text-[#8e8e8e]">Type</span>
-                          <span className="text-[#262626] capitalize">{order.type}</span>
+                          <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-[#8e8e8e]'}`}>Type</span>
+                          <span className={`capitalize ${theme === 'dark' ? 'text-white' : 'text-[#262626]'}`}>{order.type}</span>
                         </div>
                       )}
                       {order?.createdAt && (
                         <div className="flex justify-between">
-                          <span className="text-[#8e8e8e]">Created</span>
-                          <span className="text-[#262626]">{new Date(order.createdAt).toLocaleDateString()}</span>
+                          <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-[#8e8e8e]'}`}>Created</span>
+                          <span className={`${theme === 'dark' ? 'text-white' : 'text-[#262626]'}`}>{new Date(order.createdAt).toLocaleDateString()}</span>
                         </div>
                       )}
                     </div>
@@ -1825,6 +1837,7 @@ const ChatPage = () => {
                 </div>
               </div>
             </motion.div>
+            </>
           )}
         </AnimatePresence>
         {/* Search Bar (Expandable) - Preserved */}
@@ -1960,7 +1973,7 @@ const ChatPage = () => {
         }}
       >
         {/* Light overlay for readability */}
-        <div className="fixed inset-0 bg-white/95 pointer-events-none z-0" />
+        <div className={`fixed inset-0 pointer-events-none z-0 ${theme === 'dark' ? 'bg-[#0a0a0c]/95' : 'bg-white/95'}`} />
 
         <div className="relative z-10 flex flex-col gap-1 pb-4">
           {messages.map((msg, i) => {
@@ -2374,7 +2387,7 @@ const ChatPage = () => {
         </footer>
       ) : (
         /* Normal Chat Footer - Instagram DM Style */
-        <footer className="fixed bottom-0 left-0 right-0 bg-white px-4 py-3 pb-6 z-50 border-t border-[#DBDBDB]" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
+        <footer className={`fixed bottom-0 left-0 right-0 px-4 py-3 pb-6 z-50 ${theme === 'dark' ? 'bg-[#0a0a0c] border-t border-white/10' : 'bg-white border-t border-[#DBDBDB]'}`} style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
          {/* Reply Preview Context */}
          <AnimatePresence>
             {replyingTo && (
@@ -2382,13 +2395,13 @@ const ChatPage = () => {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="flex items-center justify-between bg-[#EFEFEF] border-l-4 border-[#C13584] p-3 rounded-t-xl mb-2"
+                    className={`flex items-center justify-between border-l-4 border-[#C13584] p-3 rounded-t-xl mb-2 ${theme === 'dark' ? 'bg-white/10' : 'bg-[#EFEFEF]'}`}
                 >
                     <div className="overflow-hidden">
                         <p className="text-xs text-[#C13584] font-bold">Replying to {replyingTo.sender?.name || "User"}</p>
-                        <p className="text-sm text-[#8e8e8e] truncate">{replyingTo.content || "Media"}</p>
+                        <p className={`text-sm truncate ${theme === 'dark' ? 'text-gray-400' : 'text-[#8e8e8e]'}`}>{replyingTo.content || "Media"}</p>
                     </div>
-                    <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-black/5 rounded-full text-[#262626]"><FaTimes /></button>
+                    <button onClick={() => setReplyingTo(null)} className={`p-1 rounded-full ${theme === 'dark' ? 'hover:bg-white/10 text-white' : 'hover:bg-black/5 text-[#262626]'}`}><FaTimes /></button>
                 </motion.div>
             )}
          </AnimatePresence>
@@ -2421,11 +2434,11 @@ const ChatPage = () => {
                         initial={{ opacity: 0, scale: 0.9, y: 10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                        className="absolute bottom-20 left-4 bg-white border border-[#DBDBDB] rounded-xl shadow-lg p-2 w-44 flex flex-col gap-1 z-[60]"
+                        className={`absolute bottom-20 left-4 rounded-xl shadow-lg p-2 w-44 flex flex-col gap-1 z-[60] ${theme === 'dark' ? 'bg-[#1a1a1a] border border-white/10' : 'bg-white border border-[#DBDBDB]'}`}
                     >
-                         <button onClick={() => imageInputRef.current.click()} className="flex items-center gap-3 p-2.5 hover:bg-[#FAFAFA] rounded-lg text-[14px] text-[#262626]"><FaCamera className="text-[#E1306C]" /> Photo</button>
-                         <button onClick={() => videoInputRef.current.click()} className="flex items-center gap-3 p-2.5 hover:bg-[#FAFAFA] rounded-lg text-[14px] text-[#262626]"><FaVideo className="text-[#0095F6]" /> Video</button>
-                         <button onClick={() => docInputRef.current.click()} className="flex items-center gap-3 p-2.5 hover:bg-[#FAFAFA] rounded-lg text-[14px] text-[#262626]"><FaFileAlt className="text-[#FDCB5C]" /> Document</button>
+                         <button onClick={() => imageInputRef.current.click()} className={`flex items-center gap-3 p-2.5 rounded-lg text-[14px] ${theme === 'dark' ? 'hover:bg-white/10 text-white' : 'hover:bg-[#FAFAFA] text-[#262626]'}`}><FaCamera className="text-[#E1306C]" /> Photo</button>
+                         <button onClick={() => videoInputRef.current.click()} className={`flex items-center gap-3 p-2.5 rounded-lg text-[14px] ${theme === 'dark' ? 'hover:bg-white/10 text-white' : 'hover:bg-[#FAFAFA] text-[#262626]'}`}><FaVideo className="text-[#0095F6]" /> Video</button>
+                         <button onClick={() => docInputRef.current.click()} className={`flex items-center gap-3 p-2.5 rounded-lg text-[14px] ${theme === 'dark' ? 'hover:bg-white/10 text-white' : 'hover:bg-[#FAFAFA] text-[#262626]'}`}><FaFileAlt className="text-[#FDCB5C]" /> Document</button>
                          
                          {/* Share Raw Footage - Client Only */}
                          {user?.role === "client" && (
@@ -2459,7 +2472,7 @@ const ChatPage = () => {
                  />
                </div>
              ) : (
-               <div className="flex-1 flex items-center gap-2 bg-white rounded-[24px] px-4 py-2 border border-[#DBDBDB] focus-within:border-[#C13584] transition">
+               <div className={`flex-1 flex items-center gap-2 rounded-[24px] px-4 py-2 border focus-within:border-[#C13584] transition ${theme === 'dark' ? 'bg-white/10 border-white/20' : 'bg-white border-[#DBDBDB]'}`}>
                    <textarea
                       value={newMessage}
                       onChange={(e) => { setNewMessage(e.target.value); startTyping(orderId); }}
@@ -2467,7 +2480,7 @@ const ChatPage = () => {
                       onKeyDown={(e) => { if(e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
                       placeholder="Message..."
                       rows={1}
-                      className="flex-1 bg-transparent text-[#262626] outline-none placeholder:text-[#8e8e8e] resize-none max-h-32 py-1 scrollbar-hide text-[15px]" 
+                      className={`flex-1 bg-transparent outline-none resize-none max-h-32 py-1 scrollbar-hide text-[15px] ${theme === 'dark' ? 'text-white placeholder:text-gray-400' : 'text-[#262626] placeholder:text-[#8e8e8e]'}`} 
                    />
                    {/* Right side - Attachment clip icon + mic when no text */}
                    {!newMessage.trim() && (
@@ -2476,7 +2489,7 @@ const ChatPage = () => {
                        <div className="relative">
                          <button 
                            onClick={() => setShowAttachmentMenu(!showAttachmentMenu)} 
-                           className={`p-1.5 rounded-full transition ${showAttachmentMenu ? 'bg-zinc-100' : 'hover:bg-zinc-50'} text-[#262626]`}
+                           className={`p-1.5 rounded-full transition ${theme === 'dark' ? (showAttachmentMenu ? 'bg-white text-black' : 'bg-white/90 hover:bg-white text-black') : (showAttachmentMenu ? 'bg-zinc-100' : 'hover:bg-zinc-50') + ' text-[#262626]'}`}
                          >
                            <FaPaperclip className="text-lg" />
                          </button>
@@ -2523,7 +2536,7 @@ const ChatPage = () => {
                        </div>
                        
                        {/* Voice Message */}
-                       <button onClick={() => setIsRecordingVoice(true)} className="p-1 hover:opacity-70 text-[#262626]">
+                       <button onClick={() => setIsRecordingVoice(true)} className={`p-1.5 rounded-full transition ${theme === 'dark' ? 'bg-white/90 hover:bg-white text-black' : 'hover:opacity-70 text-[#262626]'}`}>
                          <FaMicrophone className="text-lg" />
                        </button>
                      </>

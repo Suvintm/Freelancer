@@ -83,6 +83,23 @@ const FinalDeliveryCard = ({
 
   const aspectRatio = delivery?.aspectRatio || getAspectRatio(delivery?.width, delivery?.height);
 
+  // Robust video detection - check mimeType OR file extension
+  const videoExtensions = ['.mp4', '.mov', '.avi', '.webm', '.mkv', '.m4v'];
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+  const fileName = delivery?.fileName || delivery?.originalName || '';
+  const fileExt = fileName.toLowerCase().slice(fileName.lastIndexOf('.'));
+  
+  const isVideo = delivery?.mimeType?.startsWith("video/") || videoExtensions.includes(fileExt);
+  const isImage = delivery?.mimeType?.startsWith("image/") || imageExtensions.includes(fileExt);
+  
+  // Get video/image URL - check multiple possible fields
+  const videoUrl = delivery?.previewUrl || delivery?.watermarkedUrl || delivery?.fileUrl || delivery?.url;
+  
+  const statusConfig = STATUS_CONFIG[delivery?.status] || STATUS_CONFIG.pending;
+  const isCompleted = delivery?.status === "downloaded";
+  const isExpired = delivery?.status === "expired" || delivery?.isExpired;
+  const isPending = delivery?.status === "pending" || delivery?.status === "previewed";
+
   // Timer
   useEffect(() => {
     const targetDate = expiresAt || delivery?.expiresAt;
@@ -103,23 +120,6 @@ const FinalDeliveryCard = ({
   }, [expiresAt, delivery?.expiresAt, isExpired, showTimer]);
 
   if (!delivery) return null;
-
-  // Robust video detection - check mimeType OR file extension
-  const videoExtensions = ['.mp4', '.mov', '.avi', '.webm', '.mkv', '.m4v'];
-  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
-  const fileName = delivery.fileName || delivery.originalName || '';
-  const fileExt = fileName.toLowerCase().slice(fileName.lastIndexOf('.'));
-  
-  const isVideo = delivery.mimeType?.startsWith("video/") || videoExtensions.includes(fileExt);
-  const isImage = delivery.mimeType?.startsWith("image/") || imageExtensions.includes(fileExt);
-  
-  // Get video/image URL - check multiple possible fields
-  const videoUrl = delivery.previewUrl || delivery.watermarkedUrl || delivery.fileUrl || delivery.url;
-  
-  const statusConfig = STATUS_CONFIG[delivery.status] || STATUS_CONFIG.pending;
-  const isCompleted = delivery.status === "downloaded";
-  const isExpired = delivery.status === "expired" || delivery.isExpired;
-  const isPending = delivery.status === "pending" || delivery.status === "previewed";
 
   const handleAcceptAndDownload = () => {
     const orderId = delivery.orderId || delivery.order?._id || delivery.order;
