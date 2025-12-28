@@ -29,6 +29,7 @@ import {
   FaRing,
   FaPlay,
   FaFire,
+  FaShoppingBag,
 } from "react-icons/fa";
 import { 
   HiSparkles, 
@@ -44,6 +45,7 @@ import EmptyState from "./EmptyState.jsx";
 import { motion, AnimatePresence } from "framer-motion";
 import SuvixScoreBadge from "./SuvixScoreBadge.jsx";
 import { toast } from "react-toastify";
+import ExploreGigs from "./ExploreGigs.jsx";
 
 /**
  * ExploreEditors - Professional Design
@@ -73,6 +75,7 @@ const ExploreEditors = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState("editors"); // "editors" or "gigs"
   const searchInputRef = useRef(null);
 
   // Hero Banner Images for auto-transition
@@ -241,6 +244,57 @@ const ExploreEditors = () => {
 
   return (
     <div className="min-h-[50vh] px-3 py-2" style={{ fontFamily: "'Inter', sans-serif" }}>
+      
+      {/* ============== TAB SWITCHER ============== */}
+      <div className="flex justify-center mb-4">
+        <div className="flex p-1 bg-white/5 light:bg-slate-100 rounded-full">
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setActiveTab("editors")}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+              activeTab === "editors"
+                ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg"
+                : "text-gray-400 light:text-slate-600 hover:text-white light:hover:text-slate-900"
+            }`}
+          >
+            <FaUsers className="text-[10px]" />
+            Editors
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setActiveTab("gigs")}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+              activeTab === "gigs"
+                ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg"
+                : "text-gray-400 light:text-slate-600 hover:text-white light:hover:text-slate-900"
+            }`}
+          >
+            <FaShoppingBag className="text-[10px]" />
+            Gigs
+          </motion.button>
+        </div>
+      </div>
+
+      {/* ============== TAB CONTENT ============== */}
+      <AnimatePresence mode="wait">
+        {activeTab === "gigs" ? (
+          <motion.div
+            key="gigs"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ExploreGigs />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="editors"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.2 }}
+          >
       
       {/* ============== HERO BANNER WITH IMAGE SLIDESHOW ============== */}
       <motion.div 
@@ -774,6 +828,10 @@ const ExploreEditors = () => {
           )}
         </>
       )}
+
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -14,7 +14,9 @@ import {
   FaPlay,
   FaLock,
   FaArrowRight,
+  FaFire,
 } from "react-icons/fa";
+import { HiSparkles, HiVideoCamera, HiLightningBolt, HiCheckCircle, HiUserGroup } from "react-icons/hi";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -46,6 +48,25 @@ const ExploreGigs = () => {
   const [sortBy, setSortBy] = useState("newest");
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState({ min: "", max: "" });
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
+
+  // Hero Banner Images for auto-transition
+  const gigBanners = [
+    "/gig_banner_1_1766948855701.png",
+    "/gig_banner_2_1766948871936.png",
+    "/gig_banner_3_1766948889355.png"
+  ];
+
+  // Gig category images
+  const gigCategoryImages = {
+    Wedding: "/gig_wedding_1766948915760.png",
+    YouTube: "/gig_youtube_1766948931151.png",
+    Corporate: "/gig_corporate_1766948947570.png",
+    "Social Media": "/gig_social_1766948962774.png",
+    "Music Video": "/gig_music_1766948988595.png",
+    Birthday: "/gig_birthday_1766949004406.png",
+    Documentary: "/gig_documentary_1766949021115.png",
+  };
 
   const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, pages: 1 });
 
@@ -56,6 +77,14 @@ const ExploreGigs = () => {
   const [showPayment, setShowPayment] = useState(false);
   const [createdOrder, setCreatedOrder] = useState(null);
   const [showKYCModal, setShowKYCModal] = useState(false);
+
+  // Auto-transition banner every 4 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentBannerIndex((prev) => (prev + 1) % gigBanners.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const texts = ["Discovering amazing gigs...", "Finding talented editors...", "Loading creative services..."];
@@ -138,60 +167,240 @@ const ExploreGigs = () => {
 
   return (
     <div className="min-h-[50vh]" style={{ fontFamily: "'Inter', sans-serif" }}>
-      {/* Search & Category Bar */}
-      <div className="flex flex-col lg:flex-row gap-4 mb-6">
-        <div className="relative flex-1 max-w-xl">
-          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 light:text-slate-400" />
+      
+      {/* ============== HERO BANNER WITH IMAGE SLIDESHOW ============== */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-4 relative overflow-hidden rounded-2xl"
+      >
+        {/* Background Image Slideshow */}
+        <div className="relative h-44 md:h-52">
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={currentBannerIndex}
+              src={gigBanners[currentBannerIndex]}
+              alt="Gig Banner"
+              initial={{ opacity: 0, scale: 1.1 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.8, ease: "easeInOut" }}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          </AnimatePresence>
+          
+          {/* Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-violet-900/30" />
+          
+          {/* Banner Content */}
+          <div className="absolute inset-0 flex flex-col justify-end p-4">
+            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-violet-500/30 backdrop-blur-sm rounded-full mb-2 w-fit">
+              <FaShoppingCart className="text-white text-[10px]" />
+              <span className="text-white text-[9px] font-semibold uppercase tracking-wide">Gig Marketplace</span>
+            </div>
+            <h1 className="text-xl font-bold text-white mb-0.5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              Browse Creative Services
+            </h1>
+            <p className="text-white/70 text-xs">
+              {pagination.total || 0}+ professional gigs available
+            </p>
+          </div>
+          
+          {/* Banner Indicators */}
+          <div className="absolute bottom-3 right-4 flex gap-1">
+            {gigBanners.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentBannerIndex(idx)}
+                className={`w-1.5 h-1.5 rounded-full transition-all ${
+                  idx === currentBannerIndex 
+                    ? "bg-white w-4" 
+                    : "bg-white/40 hover:bg-white/60"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+        
+        {/* Stats Strip */}
+        <div className="bg-[#0a0a0c] light:bg-white border-t border-white/10 light:border-slate-100 p-3">
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { value: `${pagination.total || 0}+`, label: "Gigs", icon: FaShoppingCart, color: "text-violet-400" },
+              { value: "500+", label: "Orders", icon: HiCheckCircle, color: "text-purple-400" },
+              { value: "4.9", label: "Rating", icon: FaStar, color: "text-amber-400" },
+              { value: "99%", label: "Success", icon: HiLightningBolt, color: "text-emerald-400" },
+            ].map((stat, idx) => (
+              <div key={idx} className="text-center">
+                <div className="flex items-center justify-center gap-1 mb-0.5">
+                  <stat.icon className={`${stat.color} text-[10px]`} />
+                  <span className="text-xs font-bold text-white light:text-slate-900">{stat.value}</span>
+                </div>
+                <div className="text-[8px] text-gray-500 light:text-slate-500">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ============== BROWSE BY CATEGORY - WITH IMAGES ============== */}
+      <div className="mb-4">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-5 h-5 bg-violet-500/15 rounded-md flex items-center justify-center">
+            <HiLightningBolt className="text-violet-400 text-[10px]" />
+          </div>
+          <h2 className="text-xs font-bold text-white light:text-slate-900">Browse by Category</h2>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {[
+            { id: "Wedding", label: "Wedding" },
+            { id: "YouTube", label: "YouTube" },
+            { id: "Corporate", label: "Corporate" },
+            { id: "Social Media", label: "Social" },
+            { id: "Music Video", label: "Music" },
+            { id: "Birthday", label: "Birthday" },
+            { id: "Documentary", label: "Documentary" },
+          ].filter(cat => gigCategoryImages[cat.id]).map((category, idx) => (
+            <motion.button
+              key={category.id}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: idx * 0.03 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setSelectedCategory(category.id)}
+              className={`relative rounded-xl overflow-hidden transition-all aspect-square ${
+                selectedCategory === category.id
+                  ? "ring-2 ring-violet-500 ring-offset-1 ring-offset-[#0a0a0c]"
+                  : "hover:scale-105"
+              }`}
+            >
+              <img 
+                src={gigCategoryImages[category.id]} 
+                alt={category.label}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+              <div className="absolute bottom-1 left-0 right-0 text-center">
+                <span className="text-[9px] font-bold text-white drop-shadow-md">{category.label}</span>
+              </div>
+            </motion.button>
+          ))}
+        </div>
+      </div>
+
+      {/* ============== FEATURED GIGS CAROUSEL ============== */}
+      {!loading && gigs.length > 0 && (
+        <div className="mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-5 h-5 bg-amber-500/15 rounded-md flex items-center justify-center">
+              <FaStar className="text-amber-400 text-[10px]" />
+            </div>
+            <h2 className="text-xs font-bold text-white light:text-slate-900">Featured Gigs</h2>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x" style={{ scrollbarWidth: 'none' }}>
+            {gigs.slice(0, 5).map((gig, idx) => (
+              <motion.div
+                key={gig._id}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                className="snap-start flex-shrink-0 w-48 bg-[#0a0a0c] light:bg-white border border-white/10 light:border-slate-200 rounded-xl overflow-hidden hover:border-violet-500/30 transition-all group"
+              >
+                <div className="relative h-24 bg-white/5 overflow-hidden">
+                  <img 
+                    src={gig.thumbnail || DEFAULT_GIG_BANNER} 
+                    alt={gig.title} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
+                  />
+                  <span className="absolute top-2 left-2 px-1.5 py-0.5 bg-black/70 backdrop-blur-sm rounded text-[8px] font-medium text-white">{gig.category}</span>
+                </div>
+                <div className="p-2.5">
+                  <h4 className="text-[11px] font-semibold text-white light:text-slate-900 line-clamp-2 mb-1.5 group-hover:text-violet-400 transition-colors">{gig.title}</h4>
+                  <div className="flex items-center justify-between">
+                    <span className="text-violet-400 font-bold text-sm">₹{gig.price}</span>
+                    <span className="text-[9px] text-gray-500 flex items-center gap-0.5"><FaClock className="text-[8px]" /> {gig.deliveryDays}d</span>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ============== PROFESSIONAL SEARCH BAR ============== */}
+      <div className="mb-4">
+        <div className="relative">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-violet-400">
+            <FaSearch className="text-sm" />
+          </div>
           <input
             type="text"
             placeholder="Search gigs..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white/5 light:bg-slate-50 border border-white/10 light:border-slate-200 rounded-xl py-3 pl-12 pr-4 text-sm text-white light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/50 light:focus:border-emerald-300 transition-all"
+            className="w-full py-3 pl-10 pr-10 bg-white/5 light:bg-slate-50 border border-white/10 light:border-slate-200 rounded-full text-white light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/40 transition-all text-sm"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 light:text-slate-400 hover:text-gray-300 light:hover:text-slate-600">
-              <FaTimes />
+            <button 
+              onClick={() => setSearchQuery("")} 
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white/10 light:bg-slate-200 rounded-full flex items-center justify-center text-gray-400 hover:bg-white/20 transition"
+            >
+              <FaTimes className="text-[10px]" />
             </button>
           )}
         </div>
+      </div>
 
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-          {CATEGORIES.slice(0, 6).map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                selectedCategory === cat
-                  ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25"
-                  : "bg-white/5 light:bg-white border border-white/10 light:border-slate-200 text-gray-400 light:text-slate-600 hover:bg-white/10 light:hover:bg-slate-50"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-          <button
+      {/* ============== CATEGORY PILLS (Horizontal Scroll) ============== */}
+      <div className="mb-4 relative">
+        {/* Gradient Fade Edges */}
+        <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-[#0a0a0c] light:from-white to-transparent z-10 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[#0a0a0c] light:from-white to-transparent z-10 pointer-events-none" />
+        
+        <div className="flex gap-2 overflow-x-auto pb-1 px-1 scrollbar-hide snap-x" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          {[
+            { id: "All", label: "All", icon: HiSparkles, activeColor: "from-violet-500 to-purple-500" },
+            { id: "Wedding", label: "Wedding", icon: FaStar, activeColor: "from-pink-500 to-rose-500", hot: true },
+            { id: "YouTube", label: "YouTube", icon: FaPlay, activeColor: "from-red-500 to-orange-500" },
+            { id: "Social Media", label: "Social", icon: HiVideoCamera, activeColor: "from-purple-500 to-fuchsia-500" },
+            { id: "Corporate", label: "Corporate", icon: HiLightningBolt, activeColor: "from-blue-500 to-cyan-500" },
+            { id: "Music Video", label: "Music", icon: FaPlay, activeColor: "from-emerald-500 to-green-500" },
+          ].map((category) => {
+            const isActive = selectedCategory === category.id;
+            return (
+              <motion.button
+                key={category.id}
+                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.02 }}
+                onClick={() => setSelectedCategory(category.id)}
+                className={`snap-start flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all ${
+                  isActive
+                    ? `bg-gradient-to-r ${category.activeColor} text-white shadow-lg`
+                    : "bg-white/5 light:bg-white text-gray-400 light:text-slate-600 border border-white/10 light:border-slate-200 hover:bg-white/10"
+                }`}
+              >
+                <category.icon className={`text-[10px] ${isActive ? "text-white" : "text-violet-400"}`} />
+                {category.label}
+                {category.hot && !isActive && (
+                  <span className="px-1 py-0.5 bg-orange-500 text-white text-[7px] rounded font-bold">
+                    <FaFire className="text-[6px]" />
+                  </span>
+                )}
+              </motion.button>
+            );
+          })}
+          <motion.button
+            whileTap={{ scale: 0.95 }}
             onClick={() => setShowFilters(!showFilters)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
+            className={`snap-start flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all ${
               showFilters
-                ? "bg-emerald-500/10 light:bg-emerald-50 text-emerald-400 light:text-emerald-700 border border-emerald-500/30 light:border-emerald-200"
-                : "bg-white/5 light:bg-white border border-white/10 light:border-slate-200 text-gray-400 light:text-slate-600 hover:bg-white/10 light:hover:bg-slate-50"
+                ? "bg-violet-500/20 text-violet-400 border border-violet-500/30"
+                : "bg-white/5 light:bg-white text-gray-400 light:text-slate-600 border border-white/10 light:border-slate-200 hover:bg-white/10"
             }`}
           >
-            <FaFilter className="text-xs" /> More
-          </button>
+            <FaFilter className="text-[10px]" /> More
+          </motion.button>
         </div>
-
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-          className="bg-white/5 light:bg-white border border-white/10 light:border-slate-200 rounded-xl py-2.5 px-4 text-sm text-gray-300 light:text-slate-700 focus:outline-none cursor-pointer"
-        >
-          <option value="newest">Newest</option>
-          <option value="price_low">Price: Low to High</option>
-          <option value="price_high">Price: High to Low</option>
-          <option value="popular">Most Popular</option>
-        </select>
       </div>
 
       {/* Expanded Filters */}
@@ -266,20 +475,20 @@ const ExploreGigs = () => {
                   <span className="text-sm text-gray-400 light:text-slate-600">{gig.editor?.name}</span>
                 </div>
 
-                <h3 className="font-semibold text-white light:text-slate-900 mb-2 line-clamp-2 group-hover:text-emerald-400 light:group-hover:text-emerald-600 transition-colors" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{gig.title}</h3>
+                <h3 className="font-semibold text-white light:text-slate-900 mb-2 line-clamp-2 group-hover:text-violet-400 light:group-hover:text-violet-600 transition-colors" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{gig.title}</h3>
 
                 <div className="flex items-center gap-3 text-xs text-gray-500 light:text-slate-500 mb-4">
-                  <span className="flex items-center gap-1"><FaClock className="text-gray-600 light:text-slate-400" /> {gig.deliveryDays} days</span>
+                  <span className="flex items-center gap-1"><FaClock className="text-violet-400" /> {gig.deliveryDays} days</span>
                   {gig.rating > 0 && <span className="flex items-center gap-1 text-amber-500"><FaStar /> {gig.rating.toFixed(1)}</span>}
                 </div>
 
                 <div className="flex items-center justify-between pt-3 border-t border-white/10 light:border-slate-100">
-                  <div className="flex items-center gap-1 text-emerald-400 light:text-emerald-600 font-bold">
+                  <div className="flex items-center gap-1 text-violet-400 light:text-violet-600 font-bold">
                     <FaRupeeSign className="text-sm" />
                     <span className="text-xl">{gig.price}</span>
                   </div>
-                  <button onClick={() => openOrderModal(gig)} className="px-4 py-2 bg-white/5 light:bg-slate-900 text-gray-300 light:text-white rounded-xl text-sm font-semibold hover:bg-emerald-500 hover:text-white transition-all flex items-center gap-1.5 border border-white/10 light:border-transparent hover:border-transparent">
-                    Order <FaArrowRight className="text-xs" />
+                  <button onClick={() => openOrderModal(gig)} className="px-4 py-2 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-full text-xs font-semibold hover:opacity-90 transition-all flex items-center gap-1.5 shadow-lg shadow-violet-500/25">
+                    Order <FaArrowRight className="text-[10px]" />
                   </button>
                 </div>
               </div>
