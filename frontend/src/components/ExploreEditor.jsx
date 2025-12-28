@@ -19,7 +19,25 @@ import {
   FaArrowRight,
   FaRegHeart,
   FaHeart,
+  FaYoutube,
+  FaVideo,
+  FaMicrophone,
+  FaMagic,
+  FaFilm,
+  FaTv,
+  FaPalette,
+  FaRing,
+  FaPlay,
+  FaFire,
 } from "react-icons/fa";
+import { 
+  HiSparkles, 
+  HiTrendingUp, 
+  HiCheckCircle, 
+  HiUserGroup,
+  HiVideoCamera,
+  HiLightningBolt,
+} from "react-icons/hi";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
 import EmptyState from "./EmptyState.jsx";
@@ -206,11 +224,60 @@ const ExploreEditors = () => {
   }
 
   return (
-    <div className="min-h-[50vh]" style={{ fontFamily: "'Inter', sans-serif" }}>
-      {/* Search Bar */}
-      <div className="mb-6">
-        <div className="relative max-w-2xl mx-auto">
-          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 light:text-slate-400" />
+    <div className="min-h-[50vh] px-1" style={{ fontFamily: "'Inter', sans-serif" }}>
+      
+      {/* ============== HERO SECTION - ZEPTO STYLE ============== */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-4"
+      >
+        <div className="bg-gradient-to-br from-violet-600/20 via-purple-500/15 to-fuchsia-500/10 light:from-violet-100 light:via-purple-50 light:to-fuchsia-50 rounded-xl p-4 border border-violet-500/20 light:border-violet-200">
+          <div className="text-center mb-4">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-violet-500/20 light:bg-violet-100 rounded-full mb-2">
+              <HiVideoCamera className="text-violet-400 light:text-violet-600 text-xs" />
+              <span className="text-violet-400 light:text-violet-600 text-[10px] font-bold uppercase tracking-wide">Discover Talent</span>
+            </div>
+            <h1 className="text-lg font-bold text-white light:text-slate-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              Find Your Perfect Editor
+            </h1>
+            <p className="text-gray-500 light:text-slate-500 text-xs mt-0.5">
+              Connect with skilled professionals
+            </p>
+          </div>
+          
+          {/* Stats Grid - Compact */}
+          <div className="grid grid-cols-4 gap-1.5">
+            {[
+              { value: `${pagination.total || 0}+`, label: "Editors", icon: HiUserGroup, color: "text-violet-400", bg: "bg-violet-500/15" },
+              { value: "850+", label: "Projects", icon: HiVideoCamera, color: "text-purple-400", bg: "bg-purple-500/15" },
+              { value: "4.8", label: "Rating", icon: FaStar, color: "text-amber-400", bg: "bg-amber-500/15" },
+              { value: "98%", label: "Success", icon: HiCheckCircle, color: "text-emerald-400", bg: "bg-emerald-500/15" },
+            ].map((stat, idx) => (
+              <motion.div 
+                key={idx} 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: idx * 0.05 }}
+                className="text-center p-2 bg-white/5 light:bg-white rounded-lg"
+              >
+                <div className={`w-6 h-6 ${stat.bg} rounded-md flex items-center justify-center mx-auto mb-1`}>
+                  <stat.icon className={`${stat.color} text-[10px]`} />
+                </div>
+                <div className="text-sm font-bold text-white light:text-slate-900">{stat.value}</div>
+                <div className="text-[8px] text-gray-500 light:text-slate-500">{stat.label}</div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ============== SEARCH BAR - COMPACT ============== */}
+      <div className="mb-4">
+        <div className="relative">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-violet-500/10 light:bg-violet-50 rounded-lg flex items-center justify-center">
+            <FaSearch className="text-violet-500 text-xs" />
+          </div>
           <input
             ref={searchInputRef}
             type="text"
@@ -219,34 +286,245 @@ const ExploreEditors = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => setShowSuggestions(true)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-            className="w-full py-3.5 pl-12 pr-12 bg-white/5 light:bg-slate-50 border border-white/10 light:border-slate-200 rounded-xl text-white light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/50 light:focus:border-emerald-300 transition-all"
+            className="w-full py-4 pl-16 pr-12 bg-white/5 light:bg-white border border-white/10 light:border-slate-200 rounded-2xl text-white light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 light:focus:border-emerald-300 transition-all text-base shadow-lg shadow-black/5 light:shadow-slate-200/50"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 light:text-slate-400 hover:text-gray-300 light:hover:text-slate-600">
-              <FaTimes />
+            <button onClick={() => setSearchQuery("")} className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/10 light:bg-slate-100 rounded-full flex items-center justify-center text-gray-400 light:text-slate-500 hover:bg-white/20 light:hover:bg-slate-200 transition">
+              <FaTimes className="text-xs" />
             </button>
           )}
 
+          {/* Search Suggestions Dropdown */}
           <AnimatePresence>
-            {showSuggestions && recentSearches.length > 0 && !searchQuery && (
+            {showSuggestions && !searchQuery && (
               <motion.div
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
-                className="absolute top-full left-0 right-0 mt-2 bg-[#0a0a0c] light:bg-white rounded-xl shadow-xl border border-white/10 light:border-slate-200 py-2 z-20 overflow-hidden"
+                className="absolute top-full left-0 right-0 mt-2 bg-[#0a0a0c] light:bg-white rounded-2xl shadow-2xl border border-white/10 light:border-slate-200 py-3 z-20 overflow-hidden"
               >
-                <div className="px-4 py-2 text-xs text-gray-500 light:text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                  <FaHistory /> Recent Searches
+                {/* Recent Searches */}
+                {recentSearches.length > 0 && (
+                  <div className="mb-3">
+                    <div className="px-4 py-2 text-xs text-gray-500 light:text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                      <FaHistory className="text-[10px]" /> Recent
+                    </div>
+                    <div className="flex flex-wrap gap-2 px-4">
+                      {recentSearches.slice(0, 3).map((search, idx) => (
+                        <button key={idx} onClick={() => setSearchQuery(search)} className="px-3 py-1.5 bg-white/5 light:bg-slate-50 hover:bg-white/10 light:hover:bg-slate-100 text-gray-300 light:text-slate-700 rounded-full text-xs font-medium transition border border-white/10 light:border-slate-200">
+                          {search}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Popular Suggestions */}
+                <div>
+                  <div className="px-4 py-2 text-xs text-gray-500 light:text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                    🔥 Popular
+                  </div>
+                  <div className="flex flex-wrap gap-2 px-4">
+                    {["Wedding", "Reels", "YouTube", "Color Grading", "VFX", "Podcast"].map((suggestion, idx) => (
+                      <button key={idx} onClick={() => setSearchQuery(suggestion)} className="px-3 py-1.5 bg-emerald-500/10 light:bg-emerald-50 hover:bg-emerald-500/20 light:hover:bg-emerald-100 text-emerald-400 light:text-emerald-700 rounded-full text-xs font-medium transition border border-emerald-500/20 light:border-emerald-200">
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                {recentSearches.map((search, idx) => (
-                  <button key={idx} onClick={() => setSearchQuery(search)} className="w-full px-4 py-2.5 text-left text-gray-300 light:text-slate-700 hover:bg-white/5 light:hover:bg-slate-50 flex items-center gap-3 text-sm">
-                    <FaSearch className="text-gray-500 light:text-slate-400 text-xs" />
-                    {search}
-                  </button>
-                ))}
               </motion.div>
             )}
           </AnimatePresence>
+        </div>
+      </div>
+
+      {/* ============== CATEGORY PILLS (Horizontal Scroll) ============== */}
+      <div className="mb-5 -mx-1">
+        <div className="flex gap-2 overflow-x-auto pb-2 px-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          {[
+            { id: "all", label: "All", Icon: HiSparkles, color: "text-emerald-500" },
+            { id: "wedding", label: "Wedding", Icon: FaRing, color: "text-pink-500", hot: true },
+            { id: "reels", label: "Reels", Icon: FaPlay, color: "text-purple-500" },
+            { id: "youtube", label: "YouTube", Icon: FaYoutube, color: "text-red-500" },
+            { id: "podcast", label: "Podcast", Icon: FaMicrophone, color: "text-blue-500" },
+            { id: "vfx", label: "VFX", Icon: FaMagic, color: "text-cyan-500" },
+            { id: "color", label: "Color", Icon: FaPalette, color: "text-amber-500" },
+            { id: "cinematic", label: "Cinematic", Icon: FaFilm, color: "text-violet-500" },
+            { id: "ads", label: "Ads", Icon: FaTv, color: "text-orange-500" },
+          ].map((category) => {
+            const isActive = filters.skills.includes(category.label) || (category.id === "all" && filters.skills.length === 0);
+            return (
+              <motion.button
+                key={category.id}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  if (category.id === "all") {
+                    setFilters(prev => ({ ...prev, skills: [] }));
+                  } else {
+                    toggleSkillFilter(category.label);
+                  }
+                }}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  isActive
+                    ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
+                    : "bg-white/5 light:bg-white text-gray-400 light:text-slate-600 border border-white/10 light:border-slate-200 hover:border-emerald-500/30"
+                }`}
+              >
+                <category.Icon className={`text-xs ${isActive ? "text-white" : category.color}`} />
+                {category.label}
+                {category.hot && !isActive && (
+                  <span className="px-1 py-0.5 bg-orange-500 text-white text-[8px] rounded font-bold flex items-center gap-0.5">
+                    <FaFire className="text-[7px]" />
+                  </span>
+                )}
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ============== FEATURED EDITORS CAROUSEL ============== */}
+      {!loading && editors.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-amber-500/10 rounded-lg flex items-center justify-center">
+                <FaStar className="text-amber-500 text-xs" />
+              </div>
+              <h2 className="text-sm font-bold text-white light:text-slate-900">Featured Editors</h2>
+            </div>
+            <button className="text-xs text-emerald-500 hover:text-emerald-400 font-medium flex items-center gap-1">
+              See all <FaArrowRight className="text-[8px]" />
+            </button>
+          </div>
+          <div className="-mx-4 px-4">
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {editors.slice(0, 6).map((editor) => {
+                const hasRatings = editor.ratingStats && editor.ratingStats.totalReviews > 0;
+                const rating = hasRatings ? editor.ratingStats.averageRating?.toFixed(1) : "N/A";
+                const isSaved = savedEditors.includes(editor.user?._id);
+                return (
+                  <motion.div
+                    key={editor._id}
+                    onClick={() => navigate(`/public-profile/${editor.user?._id}`)}
+                    className="flex-shrink-0 w-40 bg-white/5 light:bg-white rounded-2xl border border-white/10 light:border-slate-200 overflow-hidden cursor-pointer hover:border-emerald-500/30 light:hover:border-emerald-200 transition-all group"
+                    whileHover={{ y: -4 }}
+                  >
+                    {/* Cover Image / Gradient */}
+                    <div className="h-16 bg-gradient-to-br from-emerald-500/20 via-teal-500/20 to-cyan-500/20 relative">
+                      {/* Save Button */}
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); toggleFavorite(e, editor.user?._id); }}
+                        className="absolute top-2 right-2 w-6 h-6 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center"
+                      >
+                        {isSaved ? <FaHeart className="text-pink-500 text-xs" /> : <FaRegHeart className="text-white/70 text-xs" />}
+                      </button>
+                    </div>
+                    
+                    <div className="p-3 pt-0 -mt-6 text-center">
+                      {/* Avatar */}
+                      <img 
+                        src={editor.user?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
+                        alt={editor.user?.name}
+                        className="w-12 h-12 rounded-full border-2 border-[#0a0a0c] light:border-white mx-auto object-cover"
+                      />
+                      <h4 className="font-semibold text-white light:text-slate-900 text-sm mt-2 truncate">{editor.user?.name}</h4>
+                      <p className="text-gray-500 light:text-slate-500 text-xs truncate">{editor.skills?.slice(0, 1).join(", ") || "Video Editor"}</p>
+                      
+                      <div className="flex items-center justify-center gap-1 mt-2">
+                        <FaStar className="text-amber-400 text-xs" />
+                        <span className="text-white light:text-slate-900 text-xs font-medium">{rating}</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============== ONLINE NOW STRIP ============== */}
+      {!loading && editors.filter(e => e.user?.availability?.status !== 'busy').length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-6 h-6 bg-emerald-500/10 rounded-lg flex items-center justify-center">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+            </div>
+            <h2 className="text-sm font-bold text-white light:text-slate-900">Online Now</h2>
+            <span className="text-[10px] text-gray-500 light:text-slate-500 bg-white/5 light:bg-slate-100 px-1.5 py-0.5 rounded">
+              {editors.filter(e => e.user?.availability?.status !== 'busy').length}
+            </span>
+          </div>
+          <div className="-mx-4 px-4">
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {editors.filter(e => e.user?.availability?.status !== 'busy').slice(0, 10).map((editor) => (
+                <motion.div
+                  key={editor._id}
+                  onClick={() => navigate(`/public-profile/${editor.user?._id}`)}
+                  className="flex-shrink-0 flex flex-col items-center cursor-pointer"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <div className="relative">
+                    <img 
+                      src={editor.user?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
+                      alt={editor.user?.name}
+                      className="w-14 h-14 rounded-full border-2 border-emerald-500/30 light:border-emerald-200 object-cover"
+                    />
+                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-[#0a0a0c] light:border-white" />
+                  </div>
+                  <span className="text-[10px] text-gray-400 light:text-slate-600 mt-1.5 w-14 text-center truncate font-medium">{editor.user?.name?.split(' ')[0]}</span>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============== BROWSE BY SPECIALTY - ZEPTO STYLE WITH IMAGES ============== */}
+      <div className="mb-4">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-5 h-5 bg-violet-500/15 rounded-md flex items-center justify-center">
+            <HiLightningBolt className="text-violet-400 text-[10px]" />
+          </div>
+          <h2 className="text-xs font-bold text-white light:text-slate-900">Browse by Specialty</h2>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {[
+            { label: "YouTube", image: "/youtube_category_1766945669722.png" },
+            { label: "Wedding", image: "/wedding_category_1766945653582.png" },
+            { label: "Reels", image: "/reels_category_1766945684333.png" },
+            { label: "Color", image: "/color_category_1766945743508.png" },
+            { label: "Podcast", image: "/podcast_category_1766945699811.png" },
+            { label: "VFX", image: "/vfx_category_1766945726102.png" },
+            { label: "Cinematic", image: "/cinematic_category_1766945761051.png" },
+            { label: "Ads", image: "/ads_category_1766945776646.png" },
+          ].map((specialty, idx) => (
+            <motion.button
+              key={specialty.label}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: idx * 0.03 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => toggleSkillFilter(specialty.label)}
+              className={`relative rounded-xl overflow-hidden transition-all aspect-square ${
+                filters.skills.includes(specialty.label)
+                  ? "ring-2 ring-violet-500 ring-offset-1 ring-offset-[#0a0a0c]"
+                  : "hover:scale-105"
+              }`}
+            >
+              <img 
+                src={specialty.image} 
+                alt={specialty.label}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+              <div className="absolute bottom-1 left-0 right-0 text-center">
+                <span className="text-[9px] font-bold text-white drop-shadow-md">{specialty.label}</span>
+              </div>
+            </motion.button>
+          ))}
         </div>
       </div>
 
@@ -361,6 +639,19 @@ const ExploreEditors = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ============== ALL EDITORS SECTION ============== */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 bg-blue-500/10 rounded-lg flex items-center justify-center">
+            <FaUsers className="text-blue-500 text-xs" />
+          </div>
+          <h2 className="text-sm font-bold text-white light:text-slate-900">All Editors</h2>
+        </div>
+        <span className="text-[10px] text-gray-500 light:text-slate-500 bg-white/5 light:bg-slate-100 px-2 py-1 rounded">
+          {editors.length} of {pagination.total}
+        </span>
+      </div>
 
       {/* Results Grid */}
       {loading ? (
