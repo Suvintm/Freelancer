@@ -33,7 +33,7 @@ import {
   HiOutlineDocumentCheck,
   HiOutlineChatBubbleOvalLeft,
 } from "react-icons/hi2";
-import { FaUsers, FaBriefcase, FaPlayCircle } from "react-icons/fa";
+import { FaUsers, FaBriefcase, FaPlayCircle, FaArrowRight } from "react-icons/fa";
 import { PiHeartFill } from "react-icons/pi";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
@@ -493,13 +493,41 @@ const ClientHome = () => {
 
             <AnimatePresence mode="wait">
               {activeTab === "editors" && (
-                <motion.div key="editors" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <ExploreEditor />
+                <motion.div key="editors" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative">
+                  {/* Content with max-height and overflow hidden */}
+                  <div className="max-h-[400px] overflow-hidden relative">
+                    <ExploreEditor />
+                  </div>
+                  {/* Gradient Fade Overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#111118] via-[#111118]/90 to-transparent pointer-events-none light:from-white light:via-white/90" />
+                  {/* See More Button - overlaid on fade */}
+                  <div className="absolute bottom-4 left-0 right-0 flex justify-center z-10">
+                    <button 
+                      onClick={() => navigate('/explore-editors')}
+                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-500 text-white text-sm font-semibold rounded-full hover:opacity-90 transition-all shadow-lg shadow-violet-500/25"
+                    >
+                      See More Editors <FaArrowRight className="text-xs" />
+                    </button>
+                  </div>
                 </motion.div>
               )}
               {activeTab === "gigs" && (
-                <motion.div key="gigs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <ExploreGigs />
+                <motion.div key="gigs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative">
+                  {/* Content with max-height and overflow hidden */}
+                  <div className="max-h-[400px] overflow-hidden relative">
+                    <ExploreGigs />
+                  </div>
+                  {/* Gradient Fade Overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#111118] via-[#111118]/90 to-transparent pointer-events-none light:from-white light:via-white/90" />
+                  {/* See More Button - overlaid on fade */}
+                  <div className="absolute bottom-4 left-0 right-0 flex justify-center z-10">
+                    <button 
+                      onClick={() => navigate('/explore-editors?tab=gigs')}
+                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-500 text-white text-sm font-semibold rounded-full hover:opacity-90 transition-all shadow-lg shadow-violet-500/25"
+                    >
+                      See More Gigs <FaArrowRight className="text-xs" />
+                    </button>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

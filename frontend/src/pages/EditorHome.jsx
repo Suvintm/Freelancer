@@ -588,8 +588,23 @@ const EditorHome = () => {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
+                      className="relative"
                     >
-                      <ExploreEditor />
+                      {/* Content with max-height and overflow hidden */}
+                      <div className="max-h-[400px] overflow-hidden relative">
+                        <ExploreEditor />
+                      </div>
+                      {/* Gradient Fade Overlay */}
+                      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#111118] via-[#111118]/90 to-transparent pointer-events-none light:from-white light:via-white/90" />
+                      {/* See More Button - overlaid on fade */}
+                      <div className="absolute bottom-4 left-0 right-0 flex justify-center z-10">
+                        <button 
+                          onClick={() => navigate('/explore-editors')}
+                          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-500 text-white text-sm font-semibold rounded-full hover:opacity-90 transition-all shadow-lg shadow-violet-500/25"
+                        >
+                          See More Editors <FaArrowRight className="text-xs" />
+                        </button>
+                      </div>
                     </motion.div>
                   )}
                   {exploreTab === "gigs" && (
@@ -598,8 +613,23 @@ const EditorHome = () => {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
+                      className="relative"
                     >
-                      <ExploreGigs />
+                      {/* Content with max-height and overflow hidden */}
+                      <div className="max-h-[400px] overflow-hidden relative">
+                        <ExploreGigs />
+                      </div>
+                      {/* Gradient Fade Overlay */}
+                      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#111118] via-[#111118]/90 to-transparent pointer-events-none light:from-white light:via-white/90" />
+                      {/* See More Button - overlaid on fade */}
+                      <div className="absolute bottom-4 left-0 right-0 flex justify-center z-10">
+                        <button 
+                          onClick={() => navigate('/explore-editors?tab=gigs')}
+                          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-500 text-white text-sm font-semibold rounded-full hover:opacity-90 transition-all shadow-lg shadow-violet-500/25"
+                        >
+                          See More Gigs <FaArrowRight className="text-xs" />
+                        </button>
+                      </div>
                     </motion.div>
                   )}
                   {exploreTab === "jobs" && (
@@ -608,8 +638,23 @@ const EditorHome = () => {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
+                      className="relative"
                     >
-                      <ExploreJobs />
+                      {/* Content with max-height and overflow hidden */}
+                      <div className="max-h-[400px] overflow-hidden relative">
+                        <ExploreJobs />
+                      </div>
+                      {/* Gradient Fade Overlay */}
+                      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#111118] via-[#111118]/90 to-transparent pointer-events-none light:from-white light:via-white/90" />
+                      {/* See More Button - overlaid on fade */}
+                      <div className="absolute bottom-4 left-0 right-0 flex justify-center z-10">
+                        <button 
+                          onClick={() => navigate('/explore-jobs')}
+                          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-500 text-white text-sm font-semibold rounded-full hover:opacity-90 transition-all shadow-lg shadow-violet-500/25"
+                        >
+                          See More Jobs <FaArrowRight className="text-xs" />
+                        </button>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>

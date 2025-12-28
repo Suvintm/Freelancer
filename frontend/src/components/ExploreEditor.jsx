@@ -40,7 +40,7 @@ import {
   HiLightningBolt,
 } from "react-icons/hi";
 import { useAppContext } from "../context/AppContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import EmptyState from "./EmptyState.jsx";
 import { motion, AnimatePresence } from "framer-motion";
 import SuvixScoreBadge from "./SuvixScoreBadge.jsx";
@@ -67,6 +67,7 @@ const getTierColor = (tier) => {
 
 const ExploreEditors = () => {
   const { backendURL, user } = useAppContext();
+  const [searchParams] = useSearchParams();
   const [editors, setEditors] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -75,7 +76,7 @@ const ExploreEditors = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState("editors"); // "editors" or "gigs"
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "editors"); // "editors" or "gigs"
   const searchInputRef = useRef(null);
 
   // Hero Banner Images for auto-transition
