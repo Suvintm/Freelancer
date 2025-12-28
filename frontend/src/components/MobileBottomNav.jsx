@@ -100,7 +100,7 @@ const MobileBottomNav = () => {
         }}
       >
         {/* Navigation Content */}
-        <div className="relative flex items-end justify-around pt-3 pb-2 px-4">
+        <div className="relative flex items-end justify-around pt-2 pb-1 px-4">
           {navItems.map((item) => {
             const active = isActive(item.path);
             const Icon = active ? item.activeIcon : item.inactiveIcon;
@@ -112,14 +112,14 @@ const MobileBottomNav = () => {
                   key={item.id}
                   onClick={() => navigate(item.path)}
                   whileTap={{ scale: 0.95 }}
-                  className="relative flex flex-col items-center -mt-6"
-                  style={{ marginBottom: "-4px" }}
+                  className="relative flex flex-col items-center -mt-5"
+                  style={{ marginBottom: "-2px" }}
                 >
                   {/* Floating Circle Button */}
                   <motion.div
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className={`flex items-center justify-center w-14 h-14 rounded-full shadow-lg ${
+                    className={`flex items-center justify-center w-12 h-12 rounded-full shadow-lg ${
                       active
                         ? "bg-emerald-500"
                         : isDark 
@@ -132,7 +132,7 @@ const MobileBottomNav = () => {
                         : "0 4px 16px rgba(16, 185, 129, 0.3)"
                     }}
                   >
-                    <Icon className="text-white text-2xl" />
+                    <Icon className="text-white text-xl" />
                   </motion.div>
                 </motion.button>
               );
@@ -144,10 +144,10 @@ const MobileBottomNav = () => {
                 key={item.id}
                 onClick={() => navigate(item.path)}
                 whileTap={{ scale: 0.95 }}
-                className="flex flex-col items-center justify-center py-1 px-3 min-w-[60px]"
+                className="flex flex-col items-center justify-center py-1 px-3 min-w-[56px]"
               >
                 <Icon
-                  className={`text-2xl mb-1 transition-colors duration-200 ${
+                  className={`text-xl mb-0.5 transition-colors duration-200 ${
                     active
                       ? "text-emerald-500"
                       : isDark 
@@ -156,7 +156,7 @@ const MobileBottomNav = () => {
                   }`}
                 />
                 <span
-                  className={`text-[11px] font-medium transition-colors duration-200 ${
+                  className={`text-[10px] font-medium transition-colors duration-200 ${
                     active
                       ? "text-emerald-500"
                       : isDark 
@@ -172,9 +172,9 @@ const MobileBottomNav = () => {
         </div>
 
         {/* iOS Home Indicator */}
-        <div className="flex justify-center pb-2">
+        <div className="flex justify-center pb-1">
           <div 
-            className={`w-32 h-1 rounded-full ${
+            className={`w-28 h-1 rounded-full ${
               isDark ? "bg-gray-600" : "bg-gray-300"
             }`}
           />
