@@ -181,23 +181,25 @@ const EditorHome = () => {
 
         {/* ============ MAIN TABS ============ */}
         <div className="flex justify-center mb-4">
-          <div className="inline-flex p-0.5 bg-[#111118] light:bg-white rounded-xl shadow-sm border border-white/[0.06] light:border-slate-200">
+          <div className="inline-flex p-1 bg-[#0d0d12] light:bg-white rounded-2xl shadow-lg border border-white/[0.06] light:border-slate-200">
             {mainTabs.map((tab) => {
               const isActive = mainTab === tab.id;
               return (
-                <button
+                <motion.button
                   key={tab.id}
                   onClick={() => setMainTab(tab.id)}
-                  className={`relative px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2
+                  whileHover={{ scale: isActive ? 1 : 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className={`relative px-6 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2
                     ${isActive 
-                      ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20" 
-                      : "text-zinc-400 light:text-slate-600 hover:text-zinc-200 light:hover:text-slate-900"
+                      ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg shadow-violet-500/25" 
+                      : "text-zinc-400 light:text-slate-500 hover:text-white light:hover:text-slate-900 hover:bg-white/5"
                     }
                   `}
                 >
-                  <tab.icon className="text-xs" />
+                  <tab.icon className="text-sm" />
                   {tab.label}
-                </button>
+                </motion.button>
               );
             })}
           </div>
@@ -234,38 +236,39 @@ const EditorHome = () => {
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`bg-[#111118] light:bg-white rounded-2xl p-4 border shadow-sm transition-all h-full ${
+                    whileHover={{ scale: 1.01 }}
+                    className={`bg-[#0d0d12] light:bg-white rounded-2xl p-4 border shadow-lg transition-all h-full ${
                       storageData.isFull 
-                        ? 'border-red-500/20 light:border-red-200' 
+                        ? 'border-red-500/30 light:border-red-200' 
                         : storageData.isLowStorage 
-                          ? 'border-amber-500/20 light:border-amber-200'
+                          ? 'border-amber-500/30 light:border-amber-200'
                           : 'border-white/[0.06] light:border-slate-200'
                     }`}
                   >
                     {/* Storage Header */}
                     <div className="flex items-center gap-3 mb-3">
-                      <div className={`p-2 rounded-xl ${
-                        storageData.isFull ? 'bg-red-500/10 light:bg-red-50' : storageData.isLowStorage ? 'bg-amber-500/10 light:bg-amber-50' : 'bg-indigo-500/10 light:bg-indigo-50'
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                        storageData.isFull ? 'bg-gradient-to-br from-red-500/20 to-rose-500/10' : storageData.isLowStorage ? 'bg-gradient-to-br from-amber-500/20 to-orange-500/10' : 'bg-gradient-to-br from-violet-500/20 to-purple-500/10'
                       }`}>
-                        <FaDatabase className={`text-base ${
-                          storageData.isFull ? 'text-red-400' : storageData.isLowStorage ? 'text-amber-400' : 'text-indigo-400'
+                        <FaDatabase className={`text-lg ${
+                          storageData.isFull ? 'text-red-400' : storageData.isLowStorage ? 'text-amber-400' : 'text-violet-400'
                         }`} />
                       </div>
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-zinc-100 light:text-slate-900 text-sm">Cloud Storage</h3>
-                          <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full uppercase ${
+                          <h3 className="font-bold text-white light:text-slate-900 text-sm">Cloud Storage</h3>
+                          <span className={`px-2 py-0.5 text-[9px] font-bold rounded-full uppercase ${
                             storageData.plan === 'free' ? 'bg-zinc-800 light:bg-slate-100 text-zinc-400 light:text-slate-600' :
-                            storageData.plan === 'pro' ? 'bg-purple-500/20 light:bg-purple-100 text-purple-400 light:text-purple-600' :
-                            'bg-indigo-500/20 light:bg-indigo-100 text-indigo-400 light:text-indigo-600'
+                            storageData.plan === 'pro' ? 'bg-violet-500/20 light:bg-violet-100 text-violet-400 light:text-violet-600' :
+                            'bg-purple-500/20 light:bg-purple-100 text-purple-400 light:text-purple-600'
                           }`}>
                             {storageData.plan}
                           </span>
                         </div>
                         
                         {/* Progress Bar */}
-                        <div className="h-1.5 bg-white/[0.06] light:bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-2 bg-white/[0.06] light:bg-slate-100 rounded-full overflow-hidden">
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${Math.min(storageData.usedPercent, 100)}%` }}
@@ -273,7 +276,7 @@ const EditorHome = () => {
                             className={`h-full rounded-full ${
                               storageData.isFull ? 'bg-gradient-to-r from-red-500 to-rose-400' :
                               storageData.isLowStorage ? 'bg-gradient-to-r from-amber-500 to-orange-400' :
-                              'bg-gradient-to-r from-indigo-500 to-purple-500'
+                              'bg-gradient-to-r from-violet-500 to-purple-500'
                             }`}
                           />
                         </div>
@@ -547,30 +550,32 @@ const EditorHome = () => {
                   {exploreTabs.map((tab) => {
                     const isActive = exploreTab === tab.id;
                     return (
-                      <button
+                      <motion.button
                         key={tab.id}
                         onClick={() => tab.id === "reels" ? navigate("/reels") : setExploreTab(tab.id)}
-                        className={`relative px-4 py-2 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                        whileHover={{ scale: isActive ? 1 : 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        className={`relative px-4 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
                           isActive
-                            ? "text-white bg-gradient-to-r from-indigo-500 to-purple-500 shadow-md"
-                            : "text-zinc-400 light:text-slate-600 hover:text-zinc-200 light:hover:text-slate-900"
+                            ? "text-white bg-gradient-to-r from-violet-500 to-purple-500 shadow-lg shadow-violet-500/25"
+                            : "text-zinc-400 light:text-slate-500 hover:text-white light:hover:text-slate-900 hover:bg-white/5"
                         }`}
                       >
-                        <tab.icon size={12} />
+                        <tab.icon size={13} />
                         {tab.label}
-                      </button>
+                      </motion.button>
                     );
                   })}
                 </div>
               </div>
 
               {/* Explore Content */}
-              <div className="bg-[#111118] light:bg-white border border-white/[0.06] light:border-slate-200 rounded-xl p-4 md:p-5 shadow-sm">
+              <div className="bg-[#0d0d12] light:bg-white border border-white/[0.06] light:border-slate-200 rounded-2xl p-4 md:p-5 shadow-lg">
                 <div className="text-center mb-4">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-500/10 light:bg-indigo-50 text-indigo-400 light:text-indigo-600 text-[10px] font-semibold rounded-full mb-2">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-500/10 to-purple-500/10 light:from-violet-50 light:to-purple-50 text-violet-400 light:text-violet-600 text-[10px] font-semibold rounded-full mb-2 border border-violet-500/20">
                     <HiOutlineSparkles className="text-xs" /> {exploreTab === "editors" ? "Discover Talent" : "Browse Services"}
                   </div>
-                  <h2 className="text-lg font-bold text-zinc-100 light:text-slate-900 mb-0.5">
+                  <h2 className="text-lg font-bold text-white light:text-slate-900 mb-0.5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                     {exploreTab === "editors" ? "Explore Other Editors" : "Browse Available Gigs"}
                   </h2>
                   <p className="text-zinc-500 light:text-slate-500 text-xs">
