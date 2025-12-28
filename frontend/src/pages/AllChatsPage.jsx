@@ -176,23 +176,17 @@ const ChatsPage = () => {
         console.error("Failed to fetch unread counts:", err);
       }
 
-      // Map chats with unread counts (messages are already included in order from backend)
+      // Map chats with unread counts and fix field name (API returns latestMessage, we use lastMessage)
       const chatsWithMessages = activeChats.map(chat => ({
         ...chat,
+        lastMessage: chat.latestMessage || null, // Map latestMessage to lastMessage
         unreadCount: unreadCounts[chat._id] || 0,
       }));
 
-      // Sort by activity
-      chatsWithMessages.sort((a, b) => {
-        const aTime = a.lastActivityAt || a.createdAt;
-        const bTime = b.lastActivityAt || b.createdAt;
-        return new Date(bTime) - new Date(aTime);
-      });
-
       // Sort by latest message time or creation date
       chatsWithMessages.sort((a, b) => {
-        const aTime = a.lastMessage?.createdAt || a.updatedAt;
-        const bTime = b.lastMessage?.createdAt || b.updatedAt;
+        const aTime = a.lastMessage?.createdAt || a.lastActivityAt || a.updatedAt;
+        const bTime = b.lastMessage?.createdAt || b.lastActivityAt || b.updatedAt;
         return new Date(bTime) - new Date(aTime);
       });
 
@@ -211,6 +205,37 @@ const ChatsPage = () => {
     return order.editor;
   };
 
+  // WhatsApp-style timestamp formatting
+  const formatMessageTime = (date) => {
+    if (!date) return "";
+    const d = new Date(date);
+    const now = new Date();
+    const diff = now - d;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    // Same day - show time
+    if (d.toDateString() === now.toDateString()) {
+      return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+    }
+    
+    // Yesterday
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) {
+      return "Yesterday";
+    }
+    
+    // Within last 7 days - show day name
+    if (days < 7) {
+      return d.toLocaleDateString("en-IN", { weekday: "short" });
+    }
+    
+    // Older - show date
+    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  };
+
+  // Legacy format for other uses
   const formatDate = (date) => {
     const d = new Date(date);
     const now = new Date();
@@ -491,10 +516,19 @@ const ChatsPage = () => {
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <h3 className="font-medium text-white light:text-slate-900 text-sm truncate group-hover:text-violet-400 transition-colors">
+                        {/* Row 1: Name + Timestamp */}
+                        <div className="flex items-center justify-between mb-0.5">
+                          <h3 className={`font-semibold text-sm truncate group-hover:text-violet-400 transition-colors ${chat.unreadCount > 0 ? 'text-white light:text-slate-900' : 'text-zinc-300 light:text-slate-700'}`}>
                             {otherParty?.name}
                           </h3>
+                          {/* WhatsApp-style Timestamp */}
+                          <span className={`text-[10px] flex-shrink-0 ml-2 ${chat.unreadCount > 0 ? 'text-violet-400 font-semibold' : 'text-zinc-500'}`}>
+                            {formatMessageTime(chat.lastMessage?.createdAt || chat.lastActivityAt || chat.updatedAt)}
+                          </span>
+                        </div>
+                        
+                        {/* Row 2: Type tag + payment status */}
+                        <div className="flex items-center gap-1.5 mb-1">
                           
                           {/* Type Tag */}
                           <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
@@ -541,29 +575,27 @@ const ChatsPage = () => {
                             Payment required to start
                           </p>
                         ) : chat.lastMessage ? (
-                          <p className="text-[11px] text-zinc-500 light:text-slate-500 truncate">
+                          <p className={`text-[11px] truncate ${chat.unreadCount > 0 ? 'text-white light:text-slate-800 font-medium' : 'text-zinc-500 light:text-slate-500'}`}>
+                            {/* Add "You:" prefix if current user sent the message */}
+                            {chat.lastMessage.sender?._id === user?._id && <span className="text-zinc-400">You: </span>}
                             {chat.lastMessage.type === "image" ? "📷 Photo" :
                              chat.lastMessage.type === "video" ? "🎥 Video" :
                              chat.lastMessage.type === "file" ? "📎 File" :
+                             chat.lastMessage.type === "system" ? "📢 " + (chat.lastMessage.content?.substring(0, 35) || "System message") :
                              chat.lastMessage.type === "payment_request" ? "💳 Payment Request" :
-                             chat.lastMessage.content?.length > 40 
-                               ? `${chat.lastMessage.content.substring(0, 40)}...` 
+                             chat.lastMessage.content?.length > 35 
+                               ? `${chat.lastMessage.content.substring(0, 35)}...` 
                                : chat.lastMessage.content || "New message"}
                           </p>
                         ) : (
                           <p className="text-[11px] text-zinc-600 light:text-slate-400 italic">No messages yet</p>
                         )}
                         
-                        <div className="flex items-center gap-2 mt-1 text-[9px] text-zinc-600 light:text-slate-500">
-                          <span className="flex items-center gap-0.5 text-emerald-400 light:text-emerald-500">
-                            <FaRupeeSign className="text-[7px]" /> {chat.amount}
+                        {/* Row 4: Amount + Deadline info */}
+                        <div className="flex items-center gap-2 mt-1.5 text-[9px] text-zinc-600 light:text-slate-500">
+                          <span className="flex items-center gap-0.5 text-violet-400 font-medium">
+                            <FaRupeeSign className="text-[7px]" /> {chat.amount?.toLocaleString()}
                           </span>
-                          {chat.lastMessage && (
-                            <span className="flex items-center gap-0.5">
-                              <FaClock className="text-[7px]" />
-                              {formatDate(chat.lastMessage.createdAt)}
-                            </span>
-                          )}
                           
                           {/* Deadline Indicator */}
                           {chat.overdueRefunded ? (

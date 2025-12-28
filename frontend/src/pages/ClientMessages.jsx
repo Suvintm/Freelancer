@@ -162,6 +162,35 @@ const formatDate = (date) => {
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 };
 
+// WhatsApp-style timestamp formatting
+const formatMessageTime = (date) => {
+  if (!date) return "";
+  const d = new Date(date);
+  const now = new Date();
+  const diff = now - d;
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+  // Same day - show time
+  if (d.toDateString() === now.toDateString()) {
+    return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+  }
+  
+  // Yesterday
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) {
+    return "Yesterday";
+  }
+  
+  // Within last 7 days - show day name
+  if (days < 7) {
+    return d.toLocaleDateString("en-IN", { weekday: "short" });
+  }
+  
+  // Older - show date
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+};
+
 const ClientMessages = () => {
   const navigate = useNavigate();
   const { backendURL, user } = useAppContext();
@@ -433,29 +462,41 @@ const ClientMessages = () => {
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <h3 className={`text-xs font-medium truncate group-hover:text-violet-400 transition-colors ${chat.unreadCount > 0 ? 'text-white light:text-slate-900' : 'text-gray-400 light:text-slate-600'}`}>
+                        {/* Row 1: Name + Timestamp */}
+                        <div className="flex items-center justify-between mb-0.5">
+                          <h3 className={`text-sm font-semibold truncate group-hover:text-violet-400 transition-colors ${chat.unreadCount > 0 ? 'text-white light:text-slate-900' : 'text-zinc-300 light:text-slate-600'}`}>
                             {chat.editor?.name}
                           </h3>
-                          {/* Type Tag */}
+                          {/* WhatsApp-style Timestamp */}
+                          <span className={`text-[10px] flex-shrink-0 ml-2 ${chat.unreadCount > 0 ? 'text-violet-400 font-semibold' : 'text-zinc-500'}`}>
+                            {formatMessageTime(chat.lastMessage?.createdAt || chat.updatedAt)}
+                          </span>
+                        </div>
+                        
+                        {/* Row 2: Type Tag */}
+                        <div className="flex items-center gap-1.5 mb-1">
                           <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-medium border ${typeConfig.bg} ${typeConfig.color} ${typeConfig.border}`}>
                             <TypeIcon className="text-[8px]" />
                             {typeConfig.label}
                           </span>
                         </div>
                         
-                        {/* Last Message Preview */}
-                        <p className={`text-[11px] truncate mb-1 ${chat.unreadCount > 0 ? 'text-white light:text-slate-800 font-medium' : 'text-gray-500'}`}>
-                          {lastMsgContent.length > 40 ? lastMsgContent.substring(0, 40) + "..." : lastMsgContent}
+                        {/* Row 3: Last Message Preview */}
+                        <p className={`text-[11px] truncate mb-1.5 ${chat.unreadCount > 0 ? 'text-white light:text-slate-800 font-medium' : 'text-zinc-500'}`}>
+                          {/* Add "You:" prefix if current user sent the message */}
+                          {chat.lastMessage?.sender?._id === user?._id && <span className="text-zinc-400">You: </span>}
+                          {chat.lastMessage?.type === "image" ? "📷 Photo" :
+                           chat.lastMessage?.type === "video" ? "🎥 Video" :
+                           chat.lastMessage?.type === "file" ? "📎 File" :
+                           chat.lastMessage?.type === "system" ? "📢 " + (chat.lastMessage?.content?.substring(0, 30) || "System") :
+                           chat.lastMessage?.type === "payment_request" ? "💳 Payment Request" :
+                           lastMsgContent.length > 35 ? lastMsgContent.substring(0, 35) + "..." : lastMsgContent}
                         </p>
                         
+                        {/* Row 4: Amount + Deadline */}
                         <div className="flex flex-wrap items-center gap-2 text-[9px]">
                           <span className="flex items-center gap-0.5 text-violet-400 font-medium">
                             <HiCurrencyRupee className="text-[9px]" /> {chat.amount?.toLocaleString()}
-                          </span>
-                          <span className="flex items-center gap-0.5 text-gray-600">
-                            <HiClock className="text-[9px]" />
-                            {formatDate(chat.lastMessage?.createdAt || chat.createdAt)}
                           </span>
                           
                           {/* Deadline Indicator or Overdue/Refunded Tags */}
