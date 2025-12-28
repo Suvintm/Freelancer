@@ -16,6 +16,7 @@ import ReelsAnalytics from "./pages/ReelsAnalytics.jsx";
 import NotificationsPage from "./pages/NotificationsPage.jsx";
 import ChatsPage from "./pages/AllChatsPage.jsx";
 import Chatbox from "./components/ChatPage.jsx";
+import MobileBottomNav from "./components/MobileBottomNav.jsx";
  
 
 // Gig & Order Pages
@@ -557,6 +558,9 @@ function App() {
           }
         />
       </Routes>
+
+      {/* Mobile Bottom Navigation - Only visible on mobile devices */}
+      <MobileBottomNav />
     </>
   );
 }
