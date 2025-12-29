@@ -79,47 +79,20 @@ const ExploreEditors = () => {
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "editors"); // "editors" or "gigs"
   const searchInputRef = useRef(null);
 
-  // Default Hero Banner Images (fallback)
-  const defaultBanners = [
-    { image: "/hero_banner_1_1766946342128.png", title: "Find Expert Video Editors", subtitle: "Connect with top-rated professionals" },
-    { image: "/hero_banner_2_1766946358435.png", title: "Quality Work Guaranteed", subtitle: "Verified editors ready to help" },
-    { image: "/hero_banner_3_1766946374802.png", title: "Hire with Confidence", subtitle: "Reviews and ratings you can trust" }
+  // Hero Banner Images for auto-transition
+  const heroBanners = [
+    "/hero_banner_1_1766946342128.png",
+    "/hero_banner_2_1766946358435.png",
+    "/hero_banner_3_1766946374802.png"
   ];
 
-  // Dynamic banner state
-  const [heroBanners, setHeroBanners] = useState(defaultBanners);
-  const [bannerSettings, setBannerSettings] = useState(null);
-
-  // Fetch banners from API
-  useEffect(() => {
-    const fetchBanners = async () => {
-      try {
-        const res = await axios.get(`${backendURL}/api/internal-banners/editors`);
-        if (res.data.banner && res.data.banner.slides?.length > 0) {
-          const apiSlides = res.data.banner.slides.map((s) => ({
-            image: s.mediaUrl,
-            title: s.title,
-            subtitle: s.subtitle || "",
-            badge: s.badge || "",
-            mediaType: s.mediaType,
-          }));
-          setHeroBanners(apiSlides);
-          setBannerSettings(res.data.banner.settings);
-        }
-      } catch (err) {
-        console.log("Using default banners");
-      }
-    };
-    fetchBanners();
-  }, [backendURL]);
-
-  // Auto-transition banner
+  // Auto-transition banner every 4 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentBannerIndex((prev) => (prev + 1) % heroBanners.length);
-    }, bannerSettings?.autoAdvanceDelay || 4000);
+    }, 4000);
     return () => clearInterval(interval);
-  }, [heroBanners.length, bannerSettings?.autoAdvanceDelay]);
+  }, []);
 
   const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, pages: 1 });
   const [filterOptions, setFilterOptions] = useState({ skills: [], languages: [], countries: [], experience: [] });

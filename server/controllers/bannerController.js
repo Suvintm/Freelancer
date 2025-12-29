@@ -63,21 +63,11 @@ export const getBanners = asyncHandler(async (req, res) => {
   };
   
   // Filter by page if specified
-  // IMPORTANT: If a specific page is requested, ONLY show banners for that page
-  // Don't include 'all' banners on specific pages - 'all' is for the main entry page
-  if (page) {
-    if (page === 'home' || page === 'main') {
-      // Main entry page shows 'all' and 'home' banners (legacy support)
-      query.$or = [
-        { page: { $exists: false } },
-        { page: null },
-        { page: 'all' },
-        { page: 'home' },
-      ];
-    } else {
-      // Specific pages (jobs, explore, gigs) only show their own banners
-      query.page = page;
-    }
+  if (page && page !== 'all') {
+    query.$or = [
+      { page: page },
+      { page: 'all' }, // Include banners marked for all pages
+    ];
   }
   
   const banners = await Banner.find(query)
