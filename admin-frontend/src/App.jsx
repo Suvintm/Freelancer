@@ -18,6 +18,7 @@ import KYCManagement from "./pages/KYCManagement";
 import ClientKYCRequests from "./pages/ClientKYCRequests";
 import StorageManager from "./pages/StorageManager";
 import Banners from "./pages/Banners";
+import InternalBanners from "./pages/InternalBanners";
 import SubscriptionPlans from "./pages/SubscriptionPlans";
 import KYCRequestDetail from "./pages/KYCRequestDetail";
 import ServiceAnalytics from "./pages/ServiceAnalytics";
@@ -65,6 +66,7 @@ function App() {
           <Route path="/orders" element={<Orders />} />
           <Route path="/gigs" element={<Gigs />} />
           <Route path="/banners" element={<Banners />} />
+          <Route path="/internal-banners" element={<InternalBanners />} />
           <Route path="/subscriptions" element={<SubscriptionPlans />} />
           <Route path="/activity" element={<Activity />} />
           <Route path="/storage" element={<StorageManager />} />

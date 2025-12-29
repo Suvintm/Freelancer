@@ -54,6 +54,7 @@ import refundRoutes from "./routes/refundRoutes.js";
 import locationRoutes from "./routes/locationRoutes.js";
 import adminAnalyticsRoutes from "./routes/adminAnalyticsRoutes.js";
 import jobRoutes from "./routes/jobRoutes.js";
+import internalBannerRoutes from "./routes/internalBannerRoutes.js";
 
 // Scheduled Jobs
 import { startScheduledJobs } from "./jobs/scheduledJobs.js";
@@ -201,6 +202,7 @@ app.use("/api/refunds", refundRoutes);
 app.use("/api/location", locationRoutes);
 app.use("/api/admin/analytics", adminAnalyticsRoutes);
 app.use("/api/jobs", jobRoutes);
+app.use("/api/internal-banners", internalBannerRoutes);
 
 // Badge/Achievement Routes
 import badgeRoutes from "./routes/badgeRoutes.js";

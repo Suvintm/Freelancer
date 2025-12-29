@@ -154,32 +154,34 @@ const JobsPage = () => {
   const isEditor = user?.role === "editor";
   const slideInterval = useRef(null);
 
+  // Banner settings state (must be declared before useEffect that uses it)
+  const [bannerSettings, setBannerSettings] = useState(null);
+
   // Auto-slide hero
   useEffect(() => {
     slideInterval.current = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroBanners.length);
-    }, 4000);
+    }, bannerSettings?.autoAdvanceDelay || 4000);
     return () => clearInterval(slideInterval.current);
-  }, [heroBanners.length]);
+  }, [heroBanners.length, bannerSettings?.autoAdvanceDelay]);
 
-  // Fetch banners from API
+  // Fetch banners from Internal Banners API
   useEffect(() => {
     const fetchBanners = async () => {
       try {
-        const res = await axios.get(`${backendURL}/api/banners?page=jobs`);
-        if (res.data.banners && res.data.banners.length > 0) {
-          // Map API banners to our format
-          const apiBanners = res.data.banners.map((b) => ({
-            badge: b.badge || "",
-            title: b.title,
-            subtitle: b.description || "",
-            image: b.mediaUrl,
-            overlayType: b.overlayType,
-            overlayOpacity: b.overlayOpacity,
-            gradientFrom: b.gradientFrom,
-            gradientTo: b.gradientTo,
+        const res = await axios.get(`${backendURL}/api/internal-banners/jobs`);
+        if (res.data.banner && res.data.banner.slides?.length > 0) {
+          // Map API slides to our format
+          const apiSlides = res.data.banner.slides.map((s) => ({
+            badge: s.badge || "",
+            title: s.title,
+            subtitle: s.subtitle || "",
+            image: s.mediaUrl,
+            mediaType: s.mediaType,
+            link: s.link,
           }));
-          setHeroBanners(apiBanners);
+          setHeroBanners(apiSlides);
+          setBannerSettings(res.data.banner.settings);
         }
       } catch (err) {
         console.log("Using default banners");
@@ -282,7 +284,16 @@ const JobsPage = () => {
         </div>
 
         {/* Hero Banner Carousel with Images */}
-        <div className="relative mb-5 rounded-2xl overflow-hidden h-[180px]">
+        <div 
+          className={`relative mb-5 overflow-hidden ${
+            bannerSettings?.borderRadius === "none" ? "rounded-none" :
+            bannerSettings?.borderRadius === "sm" ? "rounded-sm" :
+            bannerSettings?.borderRadius === "md" ? "rounded-md" :
+            bannerSettings?.borderRadius === "lg" ? "rounded-lg" :
+            bannerSettings?.borderRadius === "xl" ? "rounded-xl" : "rounded-2xl"
+          }`}
+          style={{ height: `${bannerSettings?.bannerHeight || 180}px` }}
+        >
           <AnimatePresence mode="wait">
             <motion.div
               key={currentSlide}
@@ -292,50 +303,97 @@ const JobsPage = () => {
               transition={{ duration: 0.5 }}
               className="absolute inset-0"
             >
-              {/* Background Image */}
-              <img 
-                src={heroBanners[currentSlide]?.image} 
-                alt={heroBanners[currentSlide]?.title}
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-              {/* Dynamic Gradient Overlay */}
-              <div 
-                className="absolute inset-0"
-                style={{
-                  background: heroBanners[currentSlide]?.overlayType === "gradient"
-                    ? `linear-gradient(to right, ${heroBanners[currentSlide]?.gradientFrom || '#000'}cc, ${heroBanners[currentSlide]?.gradientTo || '#000'}80, transparent)`
-                    : heroBanners[currentSlide]?.overlayType === "solid"
-                    ? `rgba(0,0,0,${(heroBanners[currentSlide]?.overlayOpacity || 70) / 100})`
-                    : "linear-gradient(to right, rgba(0,0,0,0.8), rgba(0,0,0,0.6), transparent)"
-                }}
-              />
+              {/* Background Media */}
+              {heroBanners[currentSlide]?.mediaType === "video" ? (
+                <video 
+                  src={heroBanners[currentSlide]?.image} 
+                  className="absolute inset-0 w-full h-full object-cover"
+                  autoPlay
+                  loop
+                  muted
+                />
+              ) : (
+                <img 
+                  src={heroBanners[currentSlide]?.image} 
+                  alt={heroBanners[currentSlide]?.title}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              )}
+              {/* Dynamic Overlay from Settings */}
+              {bannerSettings?.overlayType !== "none" && (
+                <div 
+                  className="absolute inset-0"
+                  style={{
+                    background: bannerSettings?.overlayType === "gradient"
+                      ? `linear-gradient(${(bannerSettings?.gradientDirection || "to-right").replace("to-", "to ")}, ${bannerSettings?.gradientFrom || '#000'}${Math.round((bannerSettings?.overlayOpacity || 70) * 2.55).toString(16).padStart(2, "0")}, ${bannerSettings?.gradientTo || '#000'}80, transparent)`
+                      : `rgba(0,0,0,${(bannerSettings?.overlayOpacity || 70) / 100})`
+                  }}
+                />
+              )}
+              {!bannerSettings && (
+                <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-transparent" />
+              )}
               
-              <div className="relative h-full p-5 flex flex-col justify-center">
-                {heroBanners[currentSlide]?.badge && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-2 bg-violet-500/80 backdrop-blur-sm rounded-full text-white text-[9px] font-bold w-fit">
+              <div 
+                className={`relative h-full p-5 flex flex-col justify-center ${
+                  bannerSettings?.textPosition === "center" ? "items-center text-center" :
+                  bannerSettings?.textPosition === "right" ? "items-end text-right" : ""
+                }`}
+                style={{ fontFamily: bannerSettings?.fontFamily || "'Plus Jakarta Sans', sans-serif" }}
+              >
+                {(bannerSettings?.showBadge !== false) && heroBanners[currentSlide]?.badge && (
+                  <span 
+                    className="inline-flex items-center gap-1 px-2 py-0.5 mb-2 backdrop-blur-sm rounded-full text-[9px] font-bold w-fit"
+                    style={{
+                      backgroundColor: (bannerSettings?.badgeBgColor || "#8b5cf6") + "cc",
+                      color: bannerSettings?.badgeTextColor || "#ffffff",
+                    }}
+                  >
                     {heroBanners[currentSlide].badge}
                   </span>
                 )}
-                <h2 className="text-xl font-bold text-white mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                <h2 
+                  className={`font-bold mb-1 ${
+                    bannerSettings?.titleSize === "sm" ? "text-sm" :
+                    bannerSettings?.titleSize === "md" ? "text-base" :
+                    bannerSettings?.titleSize === "lg" ? "text-lg" :
+                    bannerSettings?.titleSize === "2xl" ? "text-2xl" : "text-xl"
+                  }`}
+                  style={{ 
+                    color: bannerSettings?.textColor || "#ffffff",
+                    textShadow: bannerSettings?.textShadow !== false ? "0 2px 4px rgba(0,0,0,0.5)" : "none",
+                  }}
+                >
                   {heroBanners[currentSlide]?.title}
                 </h2>
-                <p className="text-white/80 text-xs max-w-[70%]">{heroBanners[currentSlide]?.subtitle}</p>
+                <p 
+                  className={`max-w-[70%] ${
+                    bannerSettings?.subtitleSize === "xs" ? "text-xs" :
+                    bannerSettings?.subtitleSize === "sm" ? "text-sm" :
+                    bannerSettings?.subtitleSize === "md" ? "text-base" : "text-xs"
+                  }`}
+                  style={{ color: (bannerSettings?.textColor || "#ffffff") + "cc" }}
+                >
+                  {heroBanners[currentSlide]?.subtitle}
+                </p>
               </div>
             </motion.div>
           </AnimatePresence>
           
           {/* Pagination Dots */}
-          <div className="absolute bottom-3 right-4 flex gap-1.5">
-            {heroBanners.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentSlide(idx)}
-                className={`h-1.5 rounded-full transition-all ${
-                  idx === currentSlide ? "bg-white w-4" : "bg-white/40 w-1.5"
-                }`}
-              />
-            ))}
-          </div>
+          {(bannerSettings?.showDots !== false) && heroBanners.length > 1 && (
+            <div className="absolute bottom-3 right-4 flex gap-1.5">
+              {heroBanners.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentSlide(idx)}
+                  className={`h-1.5 rounded-full transition-all ${
+                    idx === currentSlide ? "bg-white w-4" : "bg-white/40 w-1.5"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Stats Row */}
