@@ -174,7 +174,6 @@ const orderSchema = new mongoose.Schema(
       type: Date,
     },
 
-    // Order Status
     status: {
       type: String,
       enum: [
@@ -188,6 +187,7 @@ const orderSchema = new mongoose.Schema(
         "rejected",      // Editor rejected
         "cancelled",     // Order cancelled
         "disputed",      // Under dispute
+        "expired",       // Deadline passed without editor acceptance - auto refunded
       ],
       default: "new",
     },

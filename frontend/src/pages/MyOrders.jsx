@@ -28,6 +28,7 @@ import {
   HiOutlinePaperAirplane,
   HiOutlineArchiveBox,
   HiOutlineBanknotes,
+  HiLockClosed,
 } from "react-icons/hi2";
 import { FaShoppingCart, FaEnvelope, FaRupeeSign, FaRegImage, FaVideo, FaFile } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
@@ -99,6 +100,13 @@ const STATUS_CONFIG = {
     border: "border-orange-500/30",
     icon: HiOutlineExclamationTriangle 
   },
+  expired: { 
+    label: "Expired", 
+    color: "text-gray-400", 
+    bg: "bg-gray-500/15", 
+    border: "border-gray-500/30",
+    icon: HiOutlineClock 
+  },
 };
 
 // Filter options with icons from HeroIcons
@@ -106,7 +114,7 @@ const FILTER_OPTIONS = [
   { value: "all", label: "All", icon: HiOutlineInboxStack },
   { value: "new", label: "New", icon: HiOutlineBell },
   { value: "accepted", label: "Accepted", icon: HiOutlineCheck },
-  { value: "in_progress", label: "In Progress", icon: HiOutlineClock },
+  { value: "in_progress", label: "Progress", icon: HiOutlineClock },
   { value: "submitted", label: "Submitted", icon: HiOutlinePaperAirplane },
   { value: "completed", label: "Completed", icon: HiOutlineCheckBadge },
 ];
@@ -120,6 +128,9 @@ const OrderCard = ({ order, user, onAccept, onReject, onNavigate, accepting, rej
   const statusConfig = STATUS_CONFIG[order.status] || STATUS_CONFIG.new;
   const StatusIcon = statusConfig.icon;
   const otherParty = isEditor ? order.client : order.editor;
+  
+  // Check if deadline has passed for new orders
+  const isOrderExpired = isNewOrder && new Date(order.deadline) < new Date();
 
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString("en-IN", {
@@ -270,16 +281,28 @@ const OrderCard = ({ order, user, onAccept, onReject, onNavigate, accepting, rej
           </div>
         )}
 
-        {/* Action Required Badge */}
+        {/* Action Required Badge OR Expired Badge */}
         {isNewOrder && isEditor && !expanded && (
-          <div className={`mt-3 flex items-center gap-2 px-3 py-2 rounded-lg ${
-            isDark ? "bg-rose-500/10" : "bg-rose-50"
-          }`}>
-            <HiOutlineBell className="text-rose-400 text-sm" />
-            <span className="text-[10px] font-bold text-rose-500 uppercase tracking-wider">
-              Action Required
-            </span>
-          </div>
+          isOrderExpired ? (
+            <div className={`mt-3 flex items-center justify-between gap-2 px-3 py-2 rounded-lg ${isDark ? "bg-gray-500/10" : "bg-gray-100"}`}>
+              <div className="flex items-center gap-2">
+                <HiLockClosed className="text-gray-400 text-sm" />
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                  Deadline Expired
+                </span>
+              </div>
+              <span className="text-[9px] px-2 py-0.5 bg-red-500/20 text-red-400 rounded font-bold">EXPIRED</span>
+            </div>
+          ) : (
+            <div className={`mt-3 flex items-center gap-2 px-3 py-2 rounded-lg ${
+              isDark ? "bg-rose-500/10" : "bg-rose-50"
+            }`}>
+              <HiOutlineBell className="text-rose-400 text-sm" />
+              <span className="text-[10px] font-bold text-rose-500 uppercase tracking-wider">
+                Action Required
+              </span>
+            </div>
+          )
         )}
       </div>
 
@@ -303,18 +326,52 @@ const OrderCard = ({ order, user, onAccept, onReject, onNavigate, accepting, rej
                 </p>
               </div>
 
-              {/* Deadline */}
-              <div className={`p-3 rounded-xl flex items-center gap-3 ${
-                isDark ? "bg-orange-500/10 border border-orange-500/20" : "bg-orange-50 border border-orange-200"
-              }`}>
-                <div className="w-9 h-9 rounded-lg bg-orange-500/20 flex items-center justify-center">
-                  <HiOutlineCalendarDays className="text-orange-400" />
-                </div>
-                <div>
-                  <p className="text-[9px] text-orange-400/80 uppercase tracking-wider">Deadline</p>
-                  <p className="text-orange-400 font-bold text-sm">{formatDate(order.deadline)}</p>
-                </div>
-              </div>
+              {/* Deadline with Countdown */}
+              {(() => {
+                const now = new Date();
+                const deadline = new Date(order.deadline);
+                const diffMs = deadline - now;
+                const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                const isExpired = daysRemaining < 0;
+                const isUrgent = daysRemaining <= 1 && daysRemaining >= 0;
+                const isWarning = daysRemaining > 1 && daysRemaining <= 3;
+                
+                const bgColor = isExpired 
+                  ? (isDark ? "bg-red-500/10 border-red-500/30" : "bg-red-50 border-red-200")
+                  : isUrgent 
+                    ? (isDark ? "bg-red-500/10 border-red-500/30" : "bg-red-50 border-red-200")
+                    : isWarning 
+                      ? (isDark ? "bg-orange-500/10 border-orange-500/20" : "bg-orange-50 border-orange-200")
+                      : (isDark ? "bg-emerald-500/10 border-emerald-500/20" : "bg-emerald-50 border-emerald-200");
+                
+                const textColor = isExpired || isUrgent ? "text-red-400" : isWarning ? "text-orange-400" : "text-emerald-400";
+                const iconBg = isExpired || isUrgent ? "bg-red-500/20" : isWarning ? "bg-orange-500/20" : "bg-emerald-500/20";
+                
+                return (
+                  <div className={`p-3 rounded-xl flex items-center justify-between border ${bgColor}`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-lg ${iconBg} flex items-center justify-center`}>
+                        <HiOutlineCalendarDays className={textColor} />
+                      </div>
+                      <div>
+                        <p className={`text-[9px] ${textColor} opacity-80 uppercase tracking-wider`}>Deadline</p>
+                        <p className={`${textColor} font-bold text-sm`}>{formatDate(order.deadline)}</p>
+                      </div>
+                    </div>
+                    <div className={`px-2.5 py-1 rounded-lg ${isExpired || isUrgent ? "bg-red-500/20" : isWarning ? "bg-orange-500/20" : "bg-emerald-500/20"}`}>
+                      {isExpired ? (
+                        <span className="text-red-400 text-[10px] font-bold uppercase">Expired</span>
+                      ) : daysRemaining === 0 ? (
+                        <span className="text-red-400 text-[10px] font-bold">Last Day!</span>
+                      ) : daysRemaining === 1 ? (
+                        <span className="text-red-400 text-[10px] font-bold">1 day left</span>
+                      ) : (
+                        <span className={`${textColor} text-[10px] font-bold`}>{daysRemaining} days left</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Payment Breakdown */}
               <div className={`p-3 rounded-xl space-y-2 ${
@@ -340,32 +397,57 @@ const OrderCard = ({ order, user, onAccept, onReject, onNavigate, accepting, rej
                 </div>
               </div>
 
-              {/* Action Buttons */}
+              {/* Action Buttons - Locked if expired */}
               <div className="flex gap-2 pt-1">
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onReject(order._id);
-                  }}
-                  disabled={rejecting}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/15 text-red-400 font-medium text-sm disabled:opacity-50"
-                >
-                  <HiOutlineXMark />
-                  {rejecting ? "..." : "Decline"}
-                </motion.button>
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAccept(order._id);
-                  }}
-                  disabled={accepting}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-500 text-white font-semibold text-sm shadow-lg shadow-emerald-500/25 disabled:opacity-50"
-                >
-                  <HiOutlineCheck />
-                  {accepting ? "..." : "Accept"}
-                </motion.button>
+                {isOrderExpired ? (
+                  <>
+                    <div className="flex-1 relative">
+                      <div className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-500/10 text-gray-400 font-medium text-sm opacity-50">
+                        <HiOutlineXMark />
+                        Decline
+                      </div>
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
+                        <HiLockClosed className="text-white text-lg" />
+                      </div>
+                    </div>
+                    <div className="flex-1 relative">
+                      <div className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-500/20 text-gray-400 font-semibold text-sm opacity-50">
+                        <HiOutlineCheck />
+                        Accept
+                      </div>
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
+                        <HiLockClosed className="text-white text-lg" />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onReject(order._id);
+                      }}
+                      disabled={rejecting}
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/15 text-red-400 font-medium text-sm disabled:opacity-50"
+                    >
+                      <HiOutlineXMark />
+                      {rejecting ? "..." : "Decline"}
+                    </motion.button>
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAccept(order._id);
+                      }}
+                      disabled={accepting}
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-500 text-white font-semibold text-sm disabled:opacity-50"
+                    >
+                      <HiOutlineCheck />
+                      {accepting ? "..." : "Accept"}
+                    </motion.button>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>
@@ -532,7 +614,7 @@ const MyOrders = () => {
             className={`p-2 rounded-xl ${
               isDark 
                 ? "bg-[#0d0d12] border border-white/[0.08]" 
-                : "bg-white border border-slate-200 shadow-sm"
+                : "bg-white border border-slate-200"
             }`}
           >
             <HiArrowLeft className={`text-lg ${isDark ? "text-white" : "text-slate-600"}`} />
@@ -563,7 +645,7 @@ const MyOrders = () => {
 
         {/* Quick Stats */}
         <div className={`grid grid-cols-4 gap-2 mb-4 p-3 rounded-xl ${
-          isDark ? "bg-[#0d0d12] border border-white/[0.08]" : "bg-white border border-slate-200 shadow-sm"
+          isDark ? "bg-[#0d0d12] border border-white/[0.08]" : "bg-white border border-slate-200"
         }`}>
           {[
             { icon: HiOutlineInboxStack, value: orders.length, label: "Total", color: "text-violet-400" },
@@ -600,34 +682,37 @@ const MyOrders = () => {
         {/* Filters + Sort */}
         <div className="flex items-center gap-2 mb-4">
           {/* Filter Pills */}
-          <div className="flex-1 flex gap-1.5 overflow-x-auto scrollbar-hide">
+          <div className="flex-1 flex gap-2 overflow-x-auto scrollbar-hide pb-1">
             {FILTER_OPTIONS.map((filter) => {
               const count = filter.value === "all" 
                 ? orders.length 
                 : orders.filter(o => o.status === filter.value).length;
               const FilterIcon = filter.icon;
+              const isActive = statusFilter === filter.value;
               return (
                 <motion.button
                   key={filter.value}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setStatusFilter(filter.value)}
-                  className={`flex items-center gap-1 px-3 py-2 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all ${
-                    statusFilter === filter.value
-                      ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg shadow-violet-500/25"
+                  className={`flex flex-col items-center justify-center min-w-[52px] px-2 py-2 rounded-xl text-[10px] font-medium transition-all ${
+                    isActive
+                      ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white"
                       : isDark 
                         ? "bg-[#0d0d12] border border-white/[0.08] text-zinc-400"
-                        : "bg-white border border-slate-200 text-slate-600"
+                        : "bg-white border border-slate-200 text-slate-500"
                   }`}
                 >
-                  <FilterIcon className="text-xs" />
-                  <span className="hidden sm:inline">{filter.label}</span>
-                  {count > 0 && statusFilter !== filter.value && (
-                    <span className={`text-[9px] px-1 rounded ${
-                      isDark ? "bg-white/10" : "bg-slate-100"
-                    }`}>
-                      {count}
-                    </span>
-                  )}
+                  <div className="relative">
+                    <FilterIcon className="text-base mb-0.5" />
+                    {count > 0 && !isActive && (
+                      <span className={`absolute -top-1 -right-1.5 min-w-[14px] h-[14px] flex items-center justify-center text-[8px] font-bold rounded-full ${
+                        isDark ? "bg-violet-500 text-white" : "bg-violet-500 text-white"
+                      }`}>
+                        {count}
+                      </span>
+                    )}
+                  </div>
+                  <span className="leading-tight">{filter.label}</span>
                 </motion.button>
               );
             })}
@@ -641,7 +726,7 @@ const MyOrders = () => {
               className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium ${
                 isDark 
                   ? "bg-[#0d0d12] border border-white/[0.08] text-zinc-400"
-                  : "bg-white border border-slate-200 text-slate-600 shadow-sm"
+                  : "bg-white border border-slate-200 text-slate-600"
               }`}
             >
               <HiOutlineFunnel className="text-sm" />
@@ -656,7 +741,7 @@ const MyOrders = () => {
                     initial={{ opacity: 0, y: 5, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 5, scale: 0.95 }}
-                    className={`absolute right-0 top-full mt-1 py-1 rounded-xl shadow-xl z-50 min-w-[120px] ${
+                    className={`absolute right-0 top-full mt-1 py-1 rounded-xl z-50 min-w-[120px] ${
                       isDark ? "bg-[#111319] border border-white/[0.08]" : "bg-white border border-slate-200"
                     }`}
                   >

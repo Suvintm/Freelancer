@@ -258,10 +258,84 @@ export const verifyRequestPayment = asyncHandler(async (req, res) => {
   });
 });
 
+// ============ AUTO-EXPIRE NEW ORDERS (Deadline Passed) ============
+// This function runs automatically when fetching orders
+const autoExpireNewOrders = async (userId, role) => {
+  try {
+    const now = new Date();
+    
+    // Find new orders where deadline has passed
+    const query = {
+      status: "new",
+      deadline: { $lt: now },
+    };
+    
+    // Only check orders for this user
+    if (role === "editor") {
+      query.editor = userId;
+    } else {
+      query.client = userId;
+    }
+    
+    const expiredOrders = await Order.find(query)
+      .populate("client", "name")
+      .populate("editor", "name");
+    
+    for (const order of expiredOrders) {
+      // Update order status to expired
+      order.status = "expired";
+      order.paymentStatus = "refunded";
+      order.refundAmount = order.amount;
+      order.refundedAt = now;
+      order.refundReason = "Editor did not accept before deadline";
+      order.cancelledAt = now;
+      
+      await order.save();
+      
+      // Create system message
+      await Message.create({
+        order: order._id,
+        sender: order.client._id,
+        type: "system",
+        content: `⏰ Order expired - Editor did not respond before deadline. Amount of ₹${order.amount} will be refunded to client.`,
+        systemAction: "order_expired",
+      });
+      
+      // Notify client about refund
+      await createNotification({
+        recipient: order.client._id,
+        type: "info",
+        title: "Order Expired - Refund Initiated",
+        message: `Your order "${order.title}" expired as the editor didn't respond. ₹${order.amount} will be refunded.`,
+        link: `/chat/${order._id}`,
+      });
+      
+      // Notify editor about missed opportunity
+      await createNotification({
+        recipient: order.editor._id,
+        type: "warning",
+        title: "Order Expired",
+        message: `You missed the deadline to accept "${order.title}". The order has been cancelled.`,
+        link: `/orders`,
+      });
+      
+      logger.info(`Order ${order.orderNumber} auto-expired and refunded`);
+    }
+    
+    return expiredOrders.length;
+  } catch (error) {
+    logger.error("Error in autoExpireNewOrders:", error);
+    return 0;
+  }
+};
+
 // ============ GET MY ORDERS ============
 export const getMyOrders = asyncHandler(async (req, res) => {
   const userId = req.user._id;
   const role = req.user.role;
+
+  // Auto-expire any new orders past deadline
+  await autoExpireNewOrders(userId, role);
 
   const mongoose = (await import("mongoose")).default;
 
