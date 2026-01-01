@@ -258,6 +258,155 @@ export const verifyRequestPayment = asyncHandler(async (req, res) => {
   });
 });
 
+// ============ PROCESS OVERDUE IN-PROGRESS ORDERS (INTERNAL) ============
+// Runs when fetching orders to detect and handle overdue situations
+const processOverdueOrders = async (userId, role) => {
+  try {
+    const now = new Date();
+    const GRACE_HOURS = 24;
+    
+    // Build query for this user's orders
+    const baseQuery = {
+      status: { $in: ["accepted", "in_progress"] },
+      deadline: { $lt: now },
+      overdueRefunded: { $ne: true },
+    };
+    
+    if (role === "editor") {
+      baseQuery.editor = userId;
+    } else {
+      baseQuery.client = userId;
+    }
+    
+    const overdueOrders = await Order.find(baseQuery)
+      .populate("client", "name")
+      .populate("editor", "name");
+    
+    for (const order of overdueOrders) {
+      // Step 1: Mark as overdue and set grace period (if not already)
+      if (!order.isOverdue) {
+        order.isOverdue = true;
+        order.overdueAt = now;
+        order.graceEndsAt = new Date(order.deadline.getTime() + GRACE_HOURS * 60 * 60 * 1000);
+        await order.save();
+        
+        // Notify editor about overdue
+        await createNotification({
+          recipient: order.editor._id,
+          type: "warning",
+          title: "⏰ Order Overdue!",
+          message: `"${order.title}" is past deadline. Submit within 24h or client will be refunded.`,
+          link: `/chat/${order._id}`,
+        });
+        
+        // Notify client
+        await createNotification({
+          recipient: order.client._id,
+          type: "info",
+          title: "Order Overdue",
+          message: `"${order.title}" is past deadline. Editor has 24h grace period to submit.`,
+          link: `/chat/${order._id}`,
+        });
+        
+        // Create system message
+        await Message.create({
+          order: order._id,
+          sender: order.client._id,
+          type: "system",
+          content: `⏰ Order deadline has passed. Editor has 24 hours to submit or the order will be refunded.`,
+          systemAction: "order_overdue",
+        });
+        
+        logger.info(`Order ${order.orderNumber} marked as overdue`);
+        continue;
+      }
+      
+      // Step 2: Check if grace period has ended
+      if (order.graceEndsAt && now > order.graceEndsAt) {
+        // Count file messages from editor to detect work
+        const editorFileCount = await Message.countDocuments({
+          order: order._id,
+          sender: order.editor._id,
+          type: { $in: ["image", "video", "file"] },
+        });
+        
+        if (editorFileCount === 0) {
+          // No work shared - auto refund 100%
+          order.status = "cancelled";
+          order.paymentStatus = "refunded";
+          order.refundAmount = order.amount;
+          order.refundedAt = now;
+          order.refundReason = "Editor did not deliver within grace period";
+          order.overdueRefunded = true;
+          order.overdueRefundedAt = now;
+          order.chatDisabled = true;
+          order.chatDisabledReason = "refunded";
+          order.cancelledAt = now;
+          
+          await order.save();
+          
+          // System message
+          await Message.create({
+            order: order._id,
+            sender: order.client._id,
+            type: "system",
+            content: `🔒 Order cancelled - Editor did not deliver. ₹${order.amount} refunded to client.`,
+            systemAction: "order_refunded",
+          });
+          
+          // Notify client
+          await createNotification({
+            recipient: order.client._id,
+            type: "success",
+            title: "Order Refunded",
+            message: `₹${order.amount} refunded for "${order.title}" as editor didn't deliver.`,
+            link: `/chat/${order._id}`,
+          });
+          
+          // Notify editor
+          await createNotification({
+            recipient: order.editor._id,
+            type: "error",
+            title: "Order Cancelled - No Delivery",
+            message: `"${order.title}" cancelled & refunded. This affects your rating.`,
+            link: `/orders`,
+          });
+          
+          logger.info(`Order ${order.orderNumber} auto-refunded - no work delivered`);
+        } else {
+          // Work was shared - mark for client decision
+          if (!order.pendingClientDecision) {
+            order.pendingClientDecision = true;
+            await order.save();
+            
+            // Notify client to decide
+            await createNotification({
+              recipient: order.client._id,
+              type: "warning",
+              title: "Action Required: Overdue Order",
+              message: `Editor shared files for "${order.title}" but deadline passed. Choose to continue or request refund.`,
+              link: `/chat/${order._id}`,
+            });
+            
+            await Message.create({
+              order: order._id,
+              sender: order.client._id,
+              type: "system",
+              content: `⚠️ Grace period ended. Editor shared ${editorFileCount} file(s). Client must decide: Accept delivery or request refund.`,
+              systemAction: "client_decision_required",
+            });
+          }
+        }
+      }
+    }
+    
+    return overdueOrders.length;
+  } catch (error) {
+    logger.error("Error in checkOverdueOrders:", error);
+    return 0;
+  }
+};
+
 // ============ AUTO-EXPIRE NEW ORDERS (Deadline Passed) ============
 // This function runs automatically when fetching orders
 const autoExpireNewOrders = async (userId, role) => {
@@ -336,6 +485,9 @@ export const getMyOrders = asyncHandler(async (req, res) => {
 
   // Auto-expire any new orders past deadline
   await autoExpireNewOrders(userId, role);
+  
+  // Check for overdue in-progress orders
+  await processOverdueOrders(userId, role);
 
   const mongoose = (await import("mongoose")).default;
 

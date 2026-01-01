@@ -278,6 +278,11 @@ const orderSchema = new mongoose.Schema(
     overdueRefundedAt: {
       type: Date,
     },
+    // When editor shared work but deadline/grace passed - client must decide
+    pendingClientDecision: {
+      type: Boolean,
+      default: false,
+    },
     
     // Deadline Extension (max 3 times, 1-7 days each)
     deadlineExtensionCount: {

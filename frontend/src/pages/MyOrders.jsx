@@ -123,6 +123,7 @@ const FILTER_OPTIONS = [
 const OrderCard = ({ order, user, onAccept, onReject, onNavigate, accepting, rejecting, isDark }) => {
   const [expanded, setExpanded] = useState(false);
   const isNewOrder = order.status === "new";
+  const isInProgress = order.status === "in_progress" || order.status === "accepted";
   const isEditor = user?.role === "editor";
   const canAcceptReject = isNewOrder && isEditor;
   const statusConfig = STATUS_CONFIG[order.status] || STATUS_CONFIG.new;
@@ -131,6 +132,53 @@ const OrderCard = ({ order, user, onAccept, onReject, onNavigate, accepting, rej
   
   // Check if deadline has passed for new orders
   const isOrderExpired = isNewOrder && new Date(order.deadline) < new Date();
+  
+  // Check if order is overdue (in-progress but past deadline)
+  const isOverdue = order.isOverdue || (isInProgress && new Date(order.deadline) < new Date());
+  
+  // Live countdown timer for grace period
+  const [graceCountdown, setGraceCountdown] = useState("");
+  
+  useEffect(() => {
+    if (!order.graceEndsAt || !isOverdue) return;
+    
+    const updateCountdown = () => {
+      const now = new Date();
+      const graceEnd = new Date(order.graceEndsAt);
+      const diffMs = graceEnd - now;
+      
+      if (diffMs <= 0) {
+        setGraceCountdown("00:00:00");
+        return;
+      }
+      
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      const secs = Math.floor((diffMs % (1000 * 60)) / 1000);
+      
+      setGraceCountdown(
+        `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+      );
+    };
+    
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    
+    return () => clearInterval(interval);
+  }, [order.graceEndsAt, isOverdue]);
+  
+  // Grace period countdown (for static display)
+  const getGraceTimeRemaining = () => {
+    if (!order.graceEndsAt) return null;
+    const now = new Date();
+    const graceEnd = new Date(order.graceEndsAt);
+    const diffMs = graceEnd - now;
+    if (diffMs <= 0) return "Expired";
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    if (hours > 0) return `${hours}h left`;
+    return `${mins}m left`;
+  };
 
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString("en-IN", {
@@ -281,7 +329,7 @@ const OrderCard = ({ order, user, onAccept, onReject, onNavigate, accepting, rej
           </div>
         )}
 
-        {/* Action Required Badge OR Expired Badge */}
+        {/* Action Required / Expired / Overdue Badge */}
         {isNewOrder && isEditor && !expanded && (
           isOrderExpired ? (
             <div className={`mt-3 flex items-center justify-between gap-2 px-3 py-2 rounded-lg ${isDark ? "bg-gray-500/10" : "bg-gray-100"}`}>
@@ -303,6 +351,43 @@ const OrderCard = ({ order, user, onAccept, onReject, onNavigate, accepting, rej
               </span>
             </div>
           )
+        )}
+        
+        {/* OVERDUE Badge for in-progress orders with live countdown */}
+        {isOverdue && !isNewOrder && (
+          <div className={`mt-3 flex items-center justify-between gap-2 px-3 py-2 rounded-lg ${isDark ? "bg-amber-500/10" : "bg-amber-50"}`}>
+            <div className="flex items-center gap-2">
+              <HiOutlineClock className="text-amber-400 text-sm animate-pulse" />
+              <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wider">
+                Overdue
+              </span>
+            </div>
+            {graceCountdown && (
+              <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg ${
+                graceCountdown === "00:00:00" 
+                  ? "bg-red-500/20" 
+                  : "bg-amber-500/20"
+              }`}>
+                <span className={`text-[11px] font-mono font-bold ${
+                  graceCountdown === "00:00:00" ? "text-red-400" : "text-amber-400"
+                }`}>
+                  ⏱ {graceCountdown}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Client Decision Required Badge */}
+        {order.pendingClientDecision && !isEditor && (
+          <div className={`mt-3 flex items-center justify-between gap-2 px-3 py-2 rounded-lg ${isDark ? "bg-violet-500/10" : "bg-violet-50"}`}>
+            <div className="flex items-center gap-2">
+              <HiOutlineExclamationTriangle className="text-violet-400 text-sm" />
+              <span className="text-[10px] font-bold text-violet-500 uppercase tracking-wider">
+                Your Decision Needed
+              </span>
+            </div>
+          </div>
         )}
       </div>
 

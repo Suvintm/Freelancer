@@ -683,6 +683,41 @@ const ChatPage = () => {
   const [deadlineExtInfo, setDeadlineExtInfo] = useState(null);
   const [extendingDeadline, setExtendingDeadline] = useState(false);
 
+  // --- Overdue Countdown Timer State ---
+  const [graceCountdown, setGraceCountdown] = useState("");
+  
+  // Live countdown effect for overdue orders
+  useEffect(() => {
+    if (!order?.graceEndsAt || !order?.isOverdue) {
+      setGraceCountdown("");
+      return;
+    }
+    
+    const updateCountdown = () => {
+      const now = new Date();
+      const graceEnd = new Date(order.graceEndsAt);
+      const diffMs = graceEnd - now;
+      
+      if (diffMs <= 0) {
+        setGraceCountdown("00:00:00");
+        return;
+      }
+      
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      const secs = Math.floor((diffMs % (1000 * 60)) / 1000);
+      
+      setGraceCountdown(
+        `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+      );
+    };
+    
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    
+    return () => clearInterval(interval);
+  }, [order?.graceEndsAt, order?.isOverdue]);
+
   // Handle Drive Link Click
   const handleDriveLinkClick = async (url) => {
     // If not editor, just open the link directly
@@ -1674,6 +1709,46 @@ const ChatPage = () => {
           />
         )}
 
+        {/* 🔴 OVERDUE COUNTDOWN BANNER */}
+        {order?.isOverdue && graceCountdown && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`px-4 py-3 flex items-center justify-between ${
+              theme === 'dark' ? 'bg-amber-500/10 border-b border-amber-500/20' : 'bg-amber-50 border-b border-amber-200'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center animate-pulse ${
+                graceCountdown === "00:00:00" ? "bg-red-500/20" : "bg-amber-500/20"
+              }`}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" 
+                  className={`w-4 h-4 ${graceCountdown === "00:00:00" ? "text-red-400" : "text-amber-400"}`}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+              </div>
+              <div>
+                <p className={`text-xs font-bold uppercase tracking-wider ${
+                  graceCountdown === "00:00:00" ? "text-red-400" : "text-amber-500"
+                }`}>
+                  Order Overdue
+                </p>
+                <p className={`text-[10px] ${theme === 'dark' ? 'text-zinc-400' : 'text-slate-500'}`}>
+                  {graceCountdown === "00:00:00" 
+                    ? "Grace period ended - awaiting refund processing" 
+                    : "Submit work before timer ends to avoid refund"}
+                </p>
+              </div>
+            </div>
+            <div className={`px-3 py-1.5 rounded-lg font-mono text-sm font-bold ${
+              graceCountdown === "00:00:00" 
+                ? "bg-red-500/20 text-red-400" 
+                : "bg-amber-500/20 text-amber-400"
+            }`}>
+              ⏱ {graceCountdown}
+            </div>
+          </motion.div>
+        )}
         {/* Project Details Popup Modal - Full Version with Progress Bars & Receipt */}
         <AnimatePresence>
           {showProjectDetails && (
