@@ -13,8 +13,11 @@ import {
   HiOutlineXCircle,
   HiOutlineArrowPath,
   HiArrowTopRightOnSquare,
+  HiOutlineEnvelope,
+  HiOutlinePhone,
+  HiOutlineSparkles,
 } from "react-icons/hi2";
-import { FaBolt } from "react-icons/fa";
+import { FaBolt, FaWhatsapp, FaInstagram, FaTwitter, FaLinkedin } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
@@ -170,6 +173,10 @@ const MyApplicationsPage = () => {
               const StatusIcon = status.icon;
               const job = app.job;
               
+              // Fallback for older jobs without explicit clientContact
+              const clientEmail = job?.clientContact?.email || job?.postedBy?.email;
+              const clientPhone = job?.clientContact?.phone || job?.postedBy?.phone;
+              
               return (
                 <motion.div
                   key={app._id}
@@ -281,14 +288,93 @@ const MyApplicationsPage = () => {
                   )}
 
                   {/* Hired - Show client contact */}
+                  {/* Hired - Show client contact */}
                   {app.status === "hired" && app.hiredAt && (
-                    <div className="mt-4 pt-4 border-t border-emerald-500/20 bg-emerald-500/5 -mx-4 -mb-4 px-4 py-3 rounded-b-xl">
-                      <div className="flex items-center justify-between">
+                    <div className="mt-4 pt-4 border-t border-emerald-500/20 bg-emerald-500/5 -mx-4 -mb-4 px-4 py-4 rounded-b-xl">
+                      <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2 text-emerald-400">
                           <HiOutlineCheckCircle className="w-5 h-5" />
-                          <span className="text-sm font-medium">You were hired on {new Date(app.hiredAt).toLocaleDateString()}</span>
+                          <span className="font-bold">You were hired on {new Date(app.hiredAt).toLocaleDateString()}</span>
                         </div>
-                        <p className="text-xs text-zinc-400">Check your email for client contact details</p>
+                      </div>
+
+                      <div className="bg-[#09090B] border border-emerald-500/20 rounded-lg p-3 space-y-2 mb-3">
+                        <p className="text-[10px] text-zinc-500 uppercase font-semibold mb-1">Client Contact Details</p>
+                        
+                        {/* Email */}
+                        {clientEmail && (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-zinc-400 flex items-center gap-2">
+                              <HiOutlineEnvelope className="w-4 h-4" /> Email
+                            </span>
+                            <a href={`mailto:${clientEmail}`} className="text-indigo-400 hover:underline">
+                              {clientEmail}
+                            </a>
+                          </div>
+                        )}
+
+                        {/* Phone */}
+                        {clientPhone && (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-zinc-400 flex items-center gap-2">
+                              <HiOutlinePhone className="w-4 h-4" /> Phone
+                            </span>
+                            <a href={`tel:${clientPhone}`} className="text-white hover:underline">
+                              {clientPhone}
+                            </a>
+                          </div>
+                        )}
+
+                        {/* Social Links Row */}
+                        <div className="flex gap-3 mt-2 pt-2 border-t border-zinc-800">
+                           {job?.clientContact?.whatsapp && (
+                             <a 
+                               href={`https://wa.me/${job.clientContact.whatsapp.replace(/[^0-9]/g, '')}`}
+                               target="_blank"
+                               rel="noreferrer"
+                               className="text-emerald-400 hover:text-emerald-300 text-xs flex items-center gap-1"
+                             >
+                               <FaWhatsapp className="w-3 h-3" /> WhatsApp
+                             </a>
+                           )}
+                           {job?.clientContact?.instagram && (
+                             <a 
+                               href={`https://instagram.com/${job.clientContact.instagram.replace('@', '')}`}
+                               target="_blank"
+                               rel="noreferrer" 
+                               className="text-pink-400 hover:text-pink-300 text-xs flex items-center gap-1"
+                             >
+                               <FaInstagram className="w-3 h-3" /> Instagram
+                             </a>
+                           )}
+                           {job?.clientContact?.twitter && (
+                             <a 
+                               href={`https://twitter.com/${job.clientContact.twitter.replace('@', '')}`}
+                               target="_blank"
+                               rel="noreferrer" 
+                               className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
+                             >
+                               <FaTwitter className="w-3 h-3" /> Twitter
+                             </a>
+                           )}
+                           {job?.clientContact?.linkedin && (
+                             <a 
+                               href={job.clientContact.linkedin}
+                               target="_blank"
+                               rel="noreferrer" 
+                               className="text-blue-500 hover:text-blue-400 text-xs flex items-center gap-1"
+                             >
+                               <FaLinkedin className="w-3 h-3" /> LinkedIn
+                             </a>
+                           )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-2 text-zinc-500">
+                        <HiOutlineSparkles className="w-4 h-4 mt-0.5 text-amber-500" />
+                        <p className="text-xs">
+                          <span className="text-zinc-300 font-medium">Congratulations!</span> You can now contact the client directly using the details above.
+                        </p>
                       </div>
                     </div>
                   )}

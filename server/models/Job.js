@@ -133,6 +133,46 @@ const jobSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    // Client Contact Details (shared with hired editor)
+    clientContact: {
+      email: {
+        type: String,
+        required: true,
+        trim: true,
+        lowercase: true,
+      },
+      phone: {
+        type: String,
+        default: null,
+        trim: true,
+      },
+      whatsapp: {
+        type: String,
+        default: null,
+        trim: true,
+      },
+      instagram: {
+        type: String,
+        default: null,
+        trim: true,
+      },
+      twitter: {
+        type: String,
+        default: null,
+        trim: true,
+      },
+      linkedin: {
+        type: String,
+        default: null,
+        trim: true,
+      },
+      preferredContact: {
+        type: String,
+        enum: ["email", "phone", "whatsapp"],
+        default: "email",
+      },
+    },
   },
   {
     timestamps: true,

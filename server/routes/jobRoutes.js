@@ -19,6 +19,7 @@ import {
   getMyApplications,
   withdrawApplication,
   getJobStats,
+  getPreviousContact,
 } from "../controllers/jobController.js";
 
 const router = express.Router();
@@ -30,6 +31,7 @@ router.get("/", getJobs);                              // List all active jobs
 router.get("/my/posts", protect, getMyJobs);           // My posted jobs (client)
 router.get("/my/stats", protect, getJobStats);         // Job stats (client)
 router.get("/my/applications", protect, getMyApplications); // My applications (editor)
+router.get("/my/previous-contact", protect, getPreviousContact); // Get previous contact for suggestions
 
 // Protected routes - Job management (Clients)
 router.post("/", protect, createJob);                  // Create job
@@ -48,3 +50,4 @@ router.patch("/applications/:applicationId/withdraw", protect, withdrawApplicati
 router.get("/:id", protect, getJob);                   // Get single job
 
 export default router;
+

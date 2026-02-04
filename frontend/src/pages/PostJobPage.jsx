@@ -2,7 +2,7 @@
  * PostJobPage - Form for clients to create job postings
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -14,8 +14,12 @@ import {
   HiOutlineSparkles,
   HiOutlineCheck,
   HiOutlineXMark,
+  HiOutlineEnvelope,
+  HiOutlinePhone,
+  HiOutlineChatBubbleLeftRight,
+  HiOutlineGlobeAlt,
 } from "react-icons/hi2";
-import { FaBolt } from "react-icons/fa";
+import { FaBolt, FaWhatsapp, FaInstagram, FaTwitter, FaLinkedin } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 import ClientSidebar from "../components/ClientSidebar.jsx";
 import ClientNavbar from "../components/ClientNavbar.jsx";
@@ -77,6 +81,8 @@ const PostJobPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [step, setStep] = useState(1);
+  const [previousContactLoaded, setPreviousContactLoaded] = useState(false);
+  const [hasPreviousContact, setHasPreviousContact] = useState(false);
   
   const [formData, setFormData] = useState({
     title: "",
@@ -91,7 +97,54 @@ const PostJobPage = () => {
     applicationDeadline: "",
     isUrgent: false,
     maxApplicants: 50,
+    clientContact: {
+      email: user?.email || "",
+      phone: "",
+      whatsapp: "",
+      instagram: "",
+      twitter: "",
+      linkedin: "",
+      preferredContact: "email",
+    },
   });
+
+  // Fetch previous contact details for suggestions
+  useEffect(() => {
+    const fetchPreviousContact = async () => {
+      try {
+        const res = await axios.get(`${backendURL}/api/jobs/my/previous-contact`, {
+          headers: { Authorization: `Bearer ${user.token}` },
+        });
+        if (res.data.previousContact) {
+          setHasPreviousContact(res.data.hasPreviousContact);
+          // Auto-fill if has previous contact
+          if (res.data.hasPreviousContact) {
+            setFormData(prev => ({
+              ...prev,
+              clientContact: {
+                ...prev.clientContact,
+                ...res.data.previousContact,
+              },
+            }));
+          } else {
+            // Just set email from previous or user
+            setFormData(prev => ({
+              ...prev,
+              clientContact: {
+                ...prev.clientContact,
+                email: res.data.previousContact.email || user.email,
+              },
+            }));
+          }
+        }
+        setPreviousContactLoaded(true);
+      } catch (err) {
+        console.error("Failed to fetch previous contact:", err);
+        setPreviousContactLoaded(true);
+      }
+    };
+    if (user?.token) fetchPreviousContact();
+  }, [backendURL, user]);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -136,6 +189,18 @@ const PostJobPage = () => {
       }
       if (new Date(formData.applicationDeadline) <= new Date()) {
         toast.error("Deadline must be in the future");
+        return false;
+      }
+    }
+    if (step === 3) {
+      if (!formData.clientContact.email) {
+        toast.error("Contact email is required");
+        return false;
+      }
+      // Email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.clientContact.email)) {
+        toast.error("Please enter a valid email address");
         return false;
       }
     }
@@ -197,7 +262,7 @@ const PostJobPage = () => {
 
         {/* Progress Steps */}
         <div className="flex items-center justify-center gap-4 mb-8">
-          {[1, 2, 3].map((s) => (
+          {[1, 2, 3, 4].map((s) => (
             <div key={s} className="flex items-center gap-2">
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -208,10 +273,10 @@ const PostJobPage = () => {
               >
                 {step > s ? <HiOutlineCheck className="w-4 h-4" /> : s}
               </div>
-              <span className={`text-xs ${step >= s ? "text-white" : "text-zinc-500"}`}>
-                {s === 1 ? "Details" : s === 2 ? "Budget & Deadline" : "Review"}
+              <span className={`text-xs hidden sm:inline ${step >= s ? "text-white" : "text-zinc-500"}`}>
+                {s === 1 ? "Details" : s === 2 ? "Budget" : s === 3 ? "Contact" : "Review"}
               </span>
-              {s < 3 && <div className={`w-12 h-0.5 ${step > s ? "bg-indigo-500" : "bg-zinc-800"}`} />}
+              {s < 4 && <div className={`w-8 sm:w-12 h-0.5 ${step > s ? "bg-indigo-500" : "bg-zinc-800"}`} />}
             </div>
           ))}
         </div>
@@ -471,8 +536,158 @@ const PostJobPage = () => {
             </div>
           )}
 
-          {/* Step 3: Review */}
+          {/* Step 3: Contact Details */}
           {step === 3 && (
+            <div className="space-y-6">
+              <div className="bg-[#111118] border border-zinc-800/50 rounded-xl p-6">
+                <h2 className="text-sm font-semibold uppercase text-zinc-500 mb-2">Your Contact Details</h2>
+                <p className="text-xs text-zinc-400 mb-6">
+                  These details will be shared with the editor after you hire them.
+                </p>
+                
+                {hasPreviousContact && (
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 mb-6">
+                    <p className="text-xs text-emerald-400">
+                      <HiOutlineCheck className="w-3 h-3 inline mr-1" />
+                      We've filled your contact details from your previous job posting. Feel free to update them.
+                    </p>
+                  </div>
+                )}
+                
+                <div className="space-y-4">
+                  {/* Email - Required */}
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5 flex items-center gap-1">
+                      <HiOutlineEnvelope className="w-3 h-3" /> Email Address *
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.clientContact.email}
+                      onChange={(e) => handleChange("clientContact", { ...formData.clientContact, email: e.target.value })}
+                      placeholder="your@email.com"
+                      className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  {/* Phone & WhatsApp */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-zinc-400 mb-1.5 flex items-center gap-1">
+                        <HiOutlinePhone className="w-3 h-3" /> Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        value={formData.clientContact.phone}
+                        onChange={(e) => handleChange("clientContact", { ...formData.clientContact, phone: e.target.value })}
+                        placeholder="+91 98765 43210"
+                        className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-zinc-400 mb-1.5 flex items-center gap-1">
+                        <FaWhatsapp className="w-3 h-3 text-emerald-400" /> WhatsApp
+                      </label>
+                      <input
+                        type="tel"
+                        value={formData.clientContact.whatsapp}
+                        onChange={(e) => handleChange("clientContact", { ...formData.clientContact, whatsapp: e.target.value })}
+                        placeholder="+91 98765 43210"
+                        className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Preferred Contact */}
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-2">Preferred Contact Method</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {[
+                        { value: "email", label: "Email", icon: HiOutlineEnvelope },
+                        { value: "phone", label: "Phone", icon: HiOutlinePhone },
+                        { value: "whatsapp", label: "WhatsApp", icon: FaWhatsapp },
+                      ].map((method) => (
+                        <button
+                          key={method.value}
+                          type="button"
+                          onClick={() => handleChange("clientContact", { ...formData.clientContact, preferredContact: method.value })}
+                          className={`px-4 py-2 rounded-lg text-xs font-medium flex items-center gap-2 transition-all ${
+                            formData.clientContact.preferredContact === method.value
+                              ? "bg-indigo-500 text-white"
+                              : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                          }`}
+                        >
+                          <method.icon className="w-3 h-3" />
+                          {method.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Social Links - Optional */}
+                  <div className="pt-4 border-t border-zinc-800/50">
+                    <p className="text-xs text-zinc-500 mb-3">Social Links (Optional)</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center gap-2">
+                        <FaInstagram className="w-4 h-4 text-pink-400" />
+                        <input
+                          type="text"
+                          value={formData.clientContact.instagram}
+                          onChange={(e) => handleChange("clientContact", { ...formData.clientContact, instagram: e.target.value })}
+                          placeholder="instagram_handle"
+                          className="flex-1 px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <FaTwitter className="w-4 h-4 text-blue-400" />
+                        <input
+                          type="text"
+                          value={formData.clientContact.twitter}
+                          onChange={(e) => handleChange("clientContact", { ...formData.clientContact, twitter: e.target.value })}
+                          placeholder="twitter_handle"
+                          className="flex-1 px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <FaLinkedin className="w-4 h-4 text-blue-500" />
+                        <input
+                          type="text"
+                          value={formData.clientContact.linkedin}
+                          onChange={(e) => handleChange("clientContact", { ...formData.clientContact, linkedin: e.target.value })}
+                          placeholder="LinkedIn profile URL"
+                          className="flex-1 px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4">
+                <p className="text-xs text-indigo-400">
+                  <HiOutlineChatBubbleLeftRight className="w-3 h-3 inline mr-1" />
+                  Your contact details are private and only shared after you hire an editor.
+                </p>
+              </div>
+
+              <div className="flex justify-between">
+                <button
+                  onClick={() => setStep(2)}
+                  className="px-6 py-3 bg-zinc-800 rounded-lg text-sm font-semibold hover:bg-zinc-700 transition-all"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={() => validateStep() && setStep(4)}
+                  className="px-6 py-3 bg-indigo-500 rounded-lg text-sm font-semibold hover:bg-indigo-600 transition-all"
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Review */}
+          {step === 4 && (
             <div className="space-y-6">
               <div className="bg-[#111118] border border-zinc-800/50 rounded-xl p-6">
                 <h2 className="text-sm font-semibold uppercase text-zinc-500 mb-4">Review Your Job</h2>
@@ -538,6 +753,29 @@ const PostJobPage = () => {
                       <p className="text-xs font-medium">{formData.maxApplicants}</p>
                     </div>
                   </div>
+
+                  {/* Contact Summary */}
+                  <div className="pt-4 border-t border-zinc-800/50">
+                    <p className="text-xs text-zinc-500 mb-2">Contact (shared after hiring)</p>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <span className="px-2 py-1 bg-zinc-800 rounded flex items-center gap-1">
+                        <HiOutlineEnvelope className="w-3 h-3 text-indigo-400" />
+                        {formData.clientContact.email}
+                      </span>
+                      {formData.clientContact.phone && (
+                        <span className="px-2 py-1 bg-zinc-800 rounded flex items-center gap-1">
+                          <HiOutlinePhone className="w-3 h-3 text-emerald-400" />
+                          {formData.clientContact.phone}
+                        </span>
+                      )}
+                      {formData.clientContact.whatsapp && (
+                        <span className="px-2 py-1 bg-zinc-800 rounded flex items-center gap-1">
+                          <FaWhatsapp className="w-3 h-3 text-emerald-400" />
+                          WhatsApp
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -550,7 +788,7 @@ const PostJobPage = () => {
 
               <div className="flex justify-between">
                 <button
-                  onClick={() => setStep(2)}
+                  onClick={() => setStep(3)}
                   className="px-6 py-3 bg-zinc-800 rounded-lg text-sm font-semibold hover:bg-zinc-700 transition-all"
                 >
                   Back

@@ -21,6 +21,8 @@ import {
   HiSparkles,
   HiBolt,
   HiCurrencyRupee,
+  HiCheck,
+  HiPaperAirplane,
 } from "react-icons/hi2";
 import { FaMapMarkerAlt, FaClock, FaRupeeSign, FaPlay, FaCamera, FaFilm, FaPalette, FaVideo, FaMusic, FaArrowRight } from "react-icons/fa";
 import axios from "axios";
@@ -153,6 +155,7 @@ const JobsPage = () => {
 
   const isEditor = user?.role === "editor";
   const slideInterval = useRef(null);
+  const [appliedJobIds, setAppliedJobIds] = useState(new Set());
 
   // Auto-slide hero
   useEffect(() => {
@@ -209,6 +212,23 @@ const JobsPage = () => {
       setLoading(false);
     }
   };
+
+  // Fetch user's applied jobs
+  useEffect(() => {
+    const fetchMyApplications = async () => {
+      if (!user?.token || user?.role !== "editor") return;
+      try {
+        const res = await axios.get(`${backendURL}/api/jobs/my/applications`, {
+          headers: { Authorization: `Bearer ${user.token}` },
+        });
+        const jobIds = new Set(res.data.applications?.map(app => app.job?._id) || []);
+        setAppliedJobIds(jobIds);
+      } catch (err) {
+        console.error("Failed to fetch applications:", err);
+      }
+    };
+    fetchMyApplications();
+  }, [backendURL, user]);
 
   const getDaysAgo = (date) => {
     const days = Math.floor((Date.now() - new Date(date)) / (1000 * 60 * 60 * 24));
@@ -581,7 +601,27 @@ const JobsPage = () => {
                           </span>
                         )}
                       </div>
-                      <HiChevronRight className={`text-sm ${isDark ? 'text-zinc-600' : 'text-slate-400'} group-hover:text-violet-400 transition-colors`} />
+                      
+                      {/* Apply/Applied Button for Editors */}
+                      {isEditor ? (
+                        appliedJobIds.has(job._id) ? (
+                          <span className="flex items-center gap-1 px-3 py-1 bg-emerald-500/20 text-emerald-400 text-[10px] font-medium rounded-full">
+                            <HiCheck className="w-3 h-3" /> Applied
+                          </span>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/jobs/${job._id}`);
+                            }}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-violet-500 to-purple-500 text-white text-[10px] font-semibold rounded-full hover:shadow-lg hover:shadow-violet-500/25 transition-all"
+                          >
+                            <HiPaperAirplane className="w-3 h-3" /> Apply
+                          </button>
+                        )
+                      ) : (
+                        <HiChevronRight className={`text-sm ${isDark ? 'text-zinc-600' : 'text-slate-400'} group-hover:text-violet-400 transition-colors`} />
+                      )}
                     </div>
                   </div>
                 </motion.div>

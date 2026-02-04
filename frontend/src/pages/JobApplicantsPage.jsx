@@ -345,14 +345,68 @@ const JobApplicantsPage = () => {
                   )}
                   
                   {app.status === "hired" && (
-                    <div className="flex items-center gap-2 text-emerald-400 text-xs">
-                      <HiOutlineCheckCircle className="w-4 h-4" />
-                      <span>Hired on {new Date(app.hiredAt).toLocaleDateString()}</span>
-                      {app.applicant?.phone && (
-                        <span className="flex items-center gap-1 text-zinc-400">
-                          <HiOutlinePhone className="w-3 h-3" /> {app.applicant.phone}
-                        </span>
-                      )}
+                    <div className="mt-4 pt-4 border-t border-emerald-500/20 bg-emerald-500/5 -mx-4 -mb-4 px-4 py-4 rounded-b-xl">
+                      <div className="flex items-center gap-2 text-emerald-400 mb-3">
+                        <HiOutlineCheckCircle className="w-5 h-5" />
+                        <span className="font-bold">Hired on {new Date(app.hiredAt).toLocaleDateString()}</span>
+                      </div>
+                      
+                      <div className="bg-[#09090B] border border-emerald-500/20 rounded-lg p-3 space-y-2 mb-3">
+                        <p className="text-[10px] text-zinc-500 uppercase font-semibold mb-1">Editor Contact Details</p>
+                        
+                        {/* Email */}
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-zinc-400 flex items-center gap-2">
+                            <HiOutlineEnvelope className="w-4 h-4" /> Email
+                          </span>
+                          <a href={`mailto:${app.editorContact?.email || app.applicant?.email}`} className="text-indigo-400 hover:underline">
+                            {app.editorContact?.email || app.applicant?.email}
+                          </a>
+                        </div>
+
+                        {/* Phone */}
+                        {(app.editorContact?.phone || app.applicant?.phone) && (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-zinc-400 flex items-center gap-2">
+                              <HiOutlinePhone className="w-4 h-4" /> Phone
+                            </span>
+                            <a href={`tel:${app.editorContact?.phone || app.applicant?.phone}`} className="text-white hover:underline">
+                              {app.editorContact?.phone || app.applicant?.phone}
+                            </a>
+                          </div>
+                        )}
+
+                        {/* Social Links Row */}
+                        <div className="flex gap-3 mt-2 pt-2 border-t border-zinc-800">
+                           {app.editorContact?.whatsapp && (
+                             <a 
+                               href={`https://wa.me/${app.editorContact.whatsapp.replace(/[^0-9]/g, '')}`}
+                               target="_blank"
+                               rel="noreferrer"
+                               className="text-emerald-400 hover:text-emerald-300 text-xs flex items-center gap-1"
+                             >
+                               WhatsApp
+                             </a>
+                           )}
+                           {app.editorContact?.instagram && (
+                             <a 
+                               href={`https://instagram.com/${app.editorContact.instagram.replace('@', '')}`}
+                               target="_blank"
+                               rel="noreferrer" 
+                               className="text-pink-400 hover:text-pink-300 text-xs flex items-center gap-1"
+                             >
+                               Instagram
+                             </a>
+                           )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-2 text-zinc-500">
+                        <HiOutlineSparkles className="w-4 h-4 mt-0.5 text-amber-500" />
+                        <p className="text-xs">
+                          <span className="text-zinc-300 font-medium">Congratulations!</span> You can now contact {app.applicant?.name} directly using the details above.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>

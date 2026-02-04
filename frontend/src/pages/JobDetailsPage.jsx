@@ -18,8 +18,11 @@ import {
   HiOutlinePaperAirplane,
   HiOutlineSparkles,
   HiOutlineExclamationTriangle,
+  HiOutlineEnvelope,
+  HiOutlinePhone,
+  HiOutlineCheck,
 } from "react-icons/hi2";
-import { FaBolt, FaUsers } from "react-icons/fa";
+import { FaBolt, FaUsers, FaWhatsapp, FaInstagram, FaTwitter, FaLinkedin, FaYoutube, FaGlobe } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
@@ -59,13 +62,50 @@ const JobDetailsPage = () => {
   const [applyData, setApplyData] = useState({
     coverMessage: "",
     expectedRate: "",
+    editorContact: {
+      email: user?.email || "",
+      phone: "",
+      whatsapp: "",
+      instagram: "",
+      youtube: "",
+      twitter: "",
+      linkedin: "",
+      website: "",
+      preferredContact: "email",
+    },
   });
   const [submitting, setSubmitting] = useState(false);
+  const [hasPreviousContact, setHasPreviousContact] = useState(false);
 
   useEffect(() => {
     fetchJob();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Fetch previous contact for editors
+  useEffect(() => {
+    const fetchPreviousContact = async () => {
+      if (user?.role !== "editor" || !user?.token) return;
+      try {
+        const res = await axios.get(`${backendURL}/api/jobs/my/previous-contact`, {
+          headers: { Authorization: `Bearer ${user.token}` },
+        });
+        if (res.data.previousContact) {
+          setHasPreviousContact(res.data.hasPreviousContact);
+          setApplyData(prev => ({
+            ...prev,
+            editorContact: {
+              ...prev.editorContact,
+              ...res.data.previousContact,
+            },
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to fetch previous contact:", err);
+      }
+    };
+    fetchPreviousContact();
+  }, [backendURL, user]);
 
   const fetchJob = async () => {
     try {
@@ -98,6 +138,11 @@ const JobDetailsPage = () => {
 
     if (!applyData.expectedRate) {
       toast.error("Please enter your expected rate");
+      return;
+    }
+
+    if (!applyData.editorContact.email) {
+      toast.error("Contact email is required");
       return;
     }
 
@@ -395,7 +440,7 @@ const JobDetailsPage = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-[#111118] border border-zinc-800 rounded-xl p-6 max-w-md w-full"
+            className="bg-[#111118] border border-zinc-800 rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto"
           >
             <h3 className="text-lg font-bold mb-4">Apply for this Job</h3>
             
@@ -417,9 +462,112 @@ const JobDetailsPage = () => {
                   value={applyData.coverMessage}
                   onChange={(e) => setApplyData({ ...applyData, coverMessage: e.target.value })}
                   placeholder="Why you're a good fit for this job..."
-                  rows={4}
+                  rows={3}
                   className="w-full px-4 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                 />
+              </div>
+
+              {/* Contact Details Section */}
+              <div className="pt-4 border-t border-zinc-800">
+                <p className="text-xs text-zinc-400 mb-3 flex items-center gap-1">
+                  <HiOutlineEnvelope className="w-3 h-3" />
+                  Your Contact Details (shared after hiring)
+                </p>
+                
+                {hasPreviousContact && (
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2 mb-3">
+                    <p className="text-[10px] text-emerald-400">
+                      <HiOutlineCheck className="w-3 h-3 inline mr-1" />
+                      Auto-filled from your previous application
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <input
+                    type="email"
+                    value={applyData.editorContact.email}
+                    onChange={(e) => setApplyData({
+                      ...applyData,
+                      editorContact: { ...applyData.editorContact, email: e.target.value }
+                    })}
+                    placeholder="Email Address *"
+                    className="w-full px-4 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-2">
+                      <HiOutlinePhone className="w-4 h-4 text-zinc-500 flex-shrink-0" />
+                      <input
+                        type="tel"
+                        value={applyData.editorContact.phone}
+                        onChange={(e) => setApplyData({
+                          ...applyData,
+                          editorContact: { ...applyData.editorContact, phone: e.target.value }
+                        })}
+                        placeholder="Phone"
+                        className="flex-1 px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FaWhatsapp className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                      <input
+                        type="tel"
+                        value={applyData.editorContact.whatsapp}
+                        onChange={(e) => setApplyData({
+                          ...applyData,
+                          editorContact: { ...applyData.editorContact, whatsapp: e.target.value }
+                        })}
+                        placeholder="WhatsApp"
+                        className="flex-1 px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Social Links Row */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-2">
+                      <FaInstagram className="w-4 h-4 text-pink-400 flex-shrink-0" />
+                      <input
+                        type="text"
+                        value={applyData.editorContact.instagram}
+                        onChange={(e) => setApplyData({
+                          ...applyData,
+                          editorContact: { ...applyData.editorContact, instagram: e.target.value }
+                        })}
+                        placeholder="Instagram"
+                        className="flex-1 px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FaYoutube className="w-4 h-4 text-red-400 flex-shrink-0" />
+                      <input
+                        type="text"
+                        value={applyData.editorContact.youtube}
+                        onChange={(e) => setApplyData({
+                          ...applyData,
+                          editorContact: { ...applyData.editorContact, youtube: e.target.value }
+                        })}
+                        placeholder="YouTube URL"
+                        className="flex-1 px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <FaGlobe className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                    <input
+                      type="text"
+                      value={applyData.editorContact.website}
+                      onChange={(e) => setApplyData({
+                        ...applyData,
+                        editorContact: { ...applyData.editorContact, website: e.target.value }
+                      })}
+                      placeholder="Portfolio/Website URL"
+                      className="flex-1 px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-3">
@@ -453,3 +601,4 @@ const JobDetailsPage = () => {
 };
 
 export default JobDetailsPage;
+
