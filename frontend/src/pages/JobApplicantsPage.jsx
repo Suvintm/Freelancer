@@ -23,6 +23,7 @@ import ClientSidebar from "../components/ClientSidebar.jsx";
 import ClientNavbar from "../components/ClientNavbar.jsx";
 import axios from "axios";
 import { toast } from "react-toastify";
+import HiringLetterModal from "../components/HiringLetterModal.jsx";
 
 const STATUS_COLORS = {
   applied: "bg-blue-500/10 text-blue-400",
@@ -47,6 +48,7 @@ const JobApplicantsPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [viewLetterApp, setViewLetterApp] = useState(null);
 
   useEffect(() => {
     fetchApplications();
@@ -407,12 +409,32 @@ const JobApplicantsPage = () => {
                           <span className="text-zinc-300 font-medium">Congratulations!</span> You can now contact {app.applicant?.name} directly using the details above.
                         </p>
                       </div>
+
+                      {/* View Letter Button */}
+                      <button
+                        onClick={() => setViewLetterApp(app)}
+                        className="mt-4 w-full py-2 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 hover:from-indigo-500/20 hover:to-purple-500/20 border border-indigo-500/30 rounded-lg text-indigo-400 text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+                      >
+                        <HiArrowTopRightOnSquare className="w-4 h-4" /> View Official Hiring Letter
+                      </button>
                     </div>
                   )}
                 </div>
               </motion.div>
             ))}
           </div>
+        )}
+
+        {/* Hiring Letter Modal */}
+        {viewLetterApp && (
+          <HiringLetterModal
+            isOpen={!!viewLetterApp}
+            onClose={() => setViewLetterApp(null)}
+            job={job}
+            application={viewLetterApp}
+            clientName={user?.name}
+            editorName={viewLetterApp.applicant?.name}
+          />
         )}
       </main>
     </div>

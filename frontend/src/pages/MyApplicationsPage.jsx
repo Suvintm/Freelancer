@@ -23,6 +23,7 @@ import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
 import axios from "axios";
 import { toast } from "react-toastify";
+import HiringLetterModal from "../components/HiringLetterModal.jsx";
 
 const STATUS_CONFIG = {
   applied: { color: "bg-blue-500/10 text-blue-400 border-blue-500/20", label: "Applied", icon: HiOutlineClock },
@@ -43,6 +44,7 @@ const MyApplicationsPage = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [viewLetterApp, setViewLetterApp] = useState(null);
 
   useEffect(() => {
     fetchApplications();
@@ -376,6 +378,14 @@ const MyApplicationsPage = () => {
                           <span className="text-zinc-300 font-medium">Congratulations!</span> You can now contact the client directly using the details above.
                         </p>
                       </div>
+
+                      {/* View Letter Button */}
+                      <button
+                        onClick={() => setViewLetterApp(app)}
+                        className="mt-4 w-full py-2 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 border border-emerald-500/30 rounded-lg text-emerald-400 text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+                      >
+                        <HiArrowTopRightOnSquare className="w-4 h-4" /> View Official Hiring Letter
+                      </button>
                     </div>
                   )}
 
@@ -394,6 +404,18 @@ const MyApplicationsPage = () => {
               );
             })}
           </div>
+        )}
+
+        {/* Hiring Letter Modal */}
+        {viewLetterApp && (
+          <HiringLetterModal
+            isOpen={!!viewLetterApp}
+            onClose={() => setViewLetterApp(null)}
+            job={viewLetterApp.job}
+            application={viewLetterApp}
+            clientName={viewLetterApp.job?.postedBy?.name}
+            editorName={user?.name}
+          />
         )}
       </main>
     </div>
