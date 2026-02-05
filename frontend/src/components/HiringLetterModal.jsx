@@ -178,8 +178,8 @@ const HiringLetterModal = ({ isOpen, onClose, job, application, clientName, edit
                     <div>
                       <span className="block text-xs uppercase font-bold" style={{ color: "#64748b" }}>Agreed Amount</span>
                       <span className="font-semibold text-base md:text-lg" style={{ color: "#059669" }}>
-                        ₹{application.expectedRate?.toLocaleString() || job.budget.min?.toLocaleString()} 
-                        <span className="text-xs font-normal ml-1" style={{ color: "#94a3b8" }}>({job.budget.type})</span>
+                        ₹{application.expectedRate?.toLocaleString() || job.budget?.min?.toLocaleString()} 
+                        <span className="text-xs font-normal ml-1" style={{ color: "#94a3b8" }}>({job.budget?.type})</span>
                       </span>
                     </div>
                   </div>

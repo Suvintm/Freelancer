@@ -170,9 +170,27 @@ export const getJob = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Job not found");
   }
 
-  // Increment view count
-  job.viewCount += 1;
-  await job.save();
+  // Increment view count (Unique views logic)
+  // 1. Not the owner
+  // 2. Not already viewed by this user
+  if (req.user) {
+    const updateResult = await Job.updateOne(
+      { 
+        _id: job._id, 
+        postedBy: { $ne: req.user._id }, 
+        viewedBy: { $ne: req.user._id } 
+      },
+      { 
+        $addToSet: { viewedBy: req.user._id }, 
+        $inc: { viewCount: 1 } 
+      }
+    );
+
+    // Update local count if view was recorded
+    if (updateResult.modifiedCount > 0) {
+      job.viewCount += 1;
+    }
+  }
 
   // Check if current user has applied (if authenticated)
   let hasApplied = false;

@@ -123,6 +123,12 @@ const jobSchema = new mongoose.Schema(
       type: Number,
       default: 100,
     },
+    // Track unique viewers to prevent duplicate/refresh counts
+    viewedBy: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      select: false, // Don't fetch by default to keep query light
+    }],
 
     // Flags
     isUrgent: {
