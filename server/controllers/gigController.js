@@ -236,3 +236,48 @@ export const toggleGigStatus = asyncHandler(async (req, res) => {
     isActive: gig.isActive,
   });
 });
+
+// GET /api/gigs/suggestions
+export const getGigSuggestions = asyncHandler(async (req, res) => {
+  const { query } = req.query;
+  if (!query || query.length < 2) {
+    return res.json({ success: true, suggestions: [] });
+  }
+
+  const searchRegex = new RegExp(query, "i");
+
+  const gigMatches = await Gig.find({
+    isActive: true,
+    isApproved: true,
+    $or: [{ title: searchRegex }, { category: searchRegex }]
+  })
+  .select("title category")
+  .limit(10)
+  .lean();
+
+  // Process matches into unique suggestions
+  const suggestionSet = new Set();
+  const suggestions = [];
+
+  gigMatches.forEach(gig => {
+    // Check Title
+    if (searchRegex.test(gig.title)) {
+        if (!suggestionSet.has(gig.title)) {
+            suggestionSet.add(gig.title);
+            suggestions.push({ type: "gig", text: gig.title, id: gig._id });
+        }
+    }
+    // Check Category
+    if (searchRegex.test(gig.category)) {
+        if (!suggestionSet.has(gig.category)) {
+            suggestionSet.add(gig.category);
+            suggestions.push({ type: "category", text: gig.category });
+        }
+    }
+  });
+
+  res.json({
+    success: true,
+    suggestions: suggestions.slice(0, 8)
+  });
+});

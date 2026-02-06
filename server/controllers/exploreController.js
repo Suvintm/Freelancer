@@ -231,3 +231,56 @@ export const getAllEditors = asyncHandler(async (req, res) => {
     },
   });
 });
+
+// GET /api/explore/suggestions - Fast search for autosuggest
+export const getEditorSuggestions = asyncHandler(async (req, res) => {
+  const { query } = req.query;
+  if (!query || query.length < 2) {
+    return res.json({ success: true, suggestions: [] });
+  }
+
+  // console.log(`[SUGGEST] Fetching suggestions for: ${query}`);
+
+  const searchRegex = new RegExp(query, "i");
+
+  // 1. Find matching Editor Names
+  const userMatches = await User.find({
+    role: "editor",
+    isVerified: true,
+    name: searchRegex,
+    isBanned: { $ne: true }
+  })
+    .select("name")
+    .limit(5)
+    .lean();
+
+  // console.log(`[SUGGEST] Found ${userMatches.length} user matches`);
+
+  // 2. Find matching skills from Profiles (of verified editors)
+  const skillMatches = await Profile.find({
+    skills: searchRegex
+  })
+    .select("skills")
+    .limit(10) 
+    .lean();
+
+  
+  // Extract specific matching skills
+  const matchingSkills = new Set();
+  skillMatches.forEach(p => {
+    p.skills?.forEach(s => {
+      if (searchRegex.test(s)) matchingSkills.add(s);
+    });
+  });
+
+  // Combine results: Names first, then Skills
+  const suggestions = [
+    ...userMatches.map(u => ({ type: "editor", text: u.name, id: u._id })),
+    ...Array.from(matchingSkills).slice(0, 5).map(s => ({ type: "skill", text: s }))
+  ].slice(0, 8); // Limit total suggestions
+
+  res.json({
+    success: true,
+    suggestions
+  });
+});

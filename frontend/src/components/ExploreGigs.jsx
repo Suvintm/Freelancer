@@ -23,6 +23,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 import RazorpayCheckout from "./RazorpayCheckout";
 import KYCRequiredModal from "./KYCRequiredModal";
+import AdvancedSearchBar from "./AdvancedSearchBar";
+import EmptyState from "./EmptyState";
 
 /**
  * ExploreGigs - Professional Design
@@ -49,6 +51,21 @@ const ExploreGigs = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState({ min: "", max: "" });
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
+  const [recentSearches, setRecentSearches] = useState([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("recentGigSearches");
+    if (saved) {
+      try { setRecentSearches(JSON.parse(saved).slice(0, 5)); } catch { setRecentSearches([]); }
+    }
+  }, []);
+
+  const saveToRecentSearches = (query) => {
+    if (!query.trim()) return;
+    const updated = [query, ...recentSearches.filter((s) => s !== query)].slice(0, 5);
+    setRecentSearches(updated);
+    localStorage.setItem("recentGigSearches", JSON.stringify(updated));
+  };
 
   // Hero Banner Images for auto-transition
   const gigBanners = [
@@ -93,9 +110,9 @@ const ExploreGigs = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const fetchGigs = async (page = 1) => {
+  const fetchGigs = async (page = 1, showLoader = true) => {
     try {
-      setLoading(true);
+      if (showLoader) setLoading(true);
       const token = user?.token || JSON.parse(localStorage.getItem("user"))?.token;
       const params = new URLSearchParams({
         page: page.toString(),
@@ -113,12 +130,20 @@ const ExploreGigs = () => {
       console.error(err);
       setError(err.response?.data?.message || "Failed to fetch gigs");
     } finally {
-      setLoading(false);
+      if (showLoader) setLoading(false);
     }
   };
 
   useEffect(() => { fetchGigs(1); }, [backendURL, user]);
-  useEffect(() => { const timer = setTimeout(() => fetchGigs(1), 500); return () => clearTimeout(timer); }, [searchQuery, selectedCategory, sortBy, priceRange]);
+  useEffect(() => { fetchGigs(1); }, [backendURL, user]);
+  useEffect(() => { 
+    const timer = setTimeout(() => {
+      if (searchQuery) saveToRecentSearches(searchQuery);
+      // Suppress full loader for search updates to prevent flashing
+      fetchGigs(1, false);
+    }, 500); 
+    return () => clearTimeout(timer); 
+  }, [searchQuery, selectedCategory, sortBy, priceRange]);
 
   const handleCreateOrder = async () => {
     if (!orderForm.deadline) { toast.error("Please select a deadline"); return; }
@@ -251,7 +276,7 @@ const ExploreGigs = () => {
           </div>
           <h2 className="text-xs font-bold text-white light:text-slate-900">Browse by Category</h2>
         </div>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2">
           {[
             { id: "Wedding", label: "Wedding" },
             { id: "YouTube", label: "YouTube" },
@@ -329,26 +354,14 @@ const ExploreGigs = () => {
 
       {/* ============== PROFESSIONAL SEARCH BAR ============== */}
       <div className="mb-4">
-        <div className="relative">
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-violet-400">
-            <FaSearch className="text-sm" />
-          </div>
-          <input
-            type="text"
-            placeholder="Search gigs..."
+          <AdvancedSearchBar
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full py-3 pl-10 pr-10 bg-white/5 light:bg-slate-50 border border-white/10 light:border-slate-200 rounded-full text-white light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/40 transition-all text-sm"
+            onChange={setSearchQuery}
+            recentSearches={recentSearches} 
+            placeholder="Search creative gigs..."
+            className="w-full"
+            suggestionType="gigs"
           />
-          {searchQuery && (
-            <button 
-              onClick={() => setSearchQuery("")} 
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white/10 light:bg-slate-200 rounded-full flex items-center justify-center text-gray-400 hover:bg-white/20 transition"
-            >
-              <FaTimes className="text-[10px]" />
-            </button>
-          )}
-        </div>
       </div>
 
       {/* ============== CATEGORY PILLS (Horizontal Scroll) ============== */}
@@ -445,11 +458,17 @@ const ExploreGigs = () => {
 
       {/* Gigs Grid */}
       {gigs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-500 light:text-slate-400">
-          <FaShoppingCart className="text-5xl mb-4 opacity-50" />
-          <p className="text-lg font-medium text-gray-300 light:text-slate-600">No gigs found</p>
-          <p className="text-sm">Try adjusting your filters</p>
-        </div>
+        <EmptyState 
+          icon={FaShoppingCart} 
+          title={searchQuery ? `No gigs found for "${searchQuery}"` : "No gigs found"}
+          description={
+            searchQuery 
+            ? "Try checking your spelling or using different keywords" 
+            : "Try adjusting your filters to see more results"
+          }
+          actionLabel={searchQuery || selectedCategory !== "All" ? "Clear Filters" : undefined}
+          onAction={() => { setSearchQuery(""); setSelectedCategory("All"); setPriceRange({ min: "", max: "" }); }}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {gigs.map((gig, index) => (

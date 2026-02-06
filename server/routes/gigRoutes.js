@@ -7,6 +7,7 @@ import {
   updateGig,
   deleteGig,
   toggleGigStatus,
+  getGigSuggestions
 } from "../controllers/gigController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import { roleMiddleware } from "../middleware/roleMiddleware.js";
@@ -15,6 +16,7 @@ import { upload } from "../middleware/upload.js";
 const router = express.Router();
 
 // Public routes
+router.get("/suggestions", getGigSuggestions);
 router.get("/", getAllGigs);
 
 // Protected routes (Editor only) - MUST come before /:id routes!

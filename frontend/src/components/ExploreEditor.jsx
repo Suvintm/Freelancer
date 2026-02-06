@@ -45,7 +45,10 @@ import EmptyState from "./EmptyState.jsx";
 import { motion, AnimatePresence } from "framer-motion";
 import SuvixScoreBadge from "./SuvixScoreBadge.jsx";
 import { toast } from "react-toastify";
+ 
+ 
 import ExploreGigs from "./ExploreGigs.jsx";
+import AdvancedSearchBar from "./AdvancedSearchBar.jsx";
 
 /**
  * ExploreEditors - Professional Design
@@ -374,71 +377,14 @@ const ExploreEditors = () => {
 
       {/* ============== PROFESSIONAL SEARCH BAR ============== */}
       <div className="mb-4">
-        <div className="relative">
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-violet-400">
-            <FaSearch className="text-sm" />
-          </div>
-          <input
-            ref={searchInputRef}
-            type="text"
-            placeholder="Search editors, skills..."
+          <AdvancedSearchBar
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => setShowSuggestions(true)}
-            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-            className="w-full py-3 pl-10 pr-10 bg-white/5 light:bg-slate-50 border border-white/10 light:border-slate-200 rounded-full text-white light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/40 transition-all text-sm"
+            onChange={setSearchQuery}
+            recentSearches={recentSearches}
+            placeholder="Search editors, skills, software..."
+            className="w-full"
+            suggestionType="editors"
           />
-          {searchQuery && (
-            <button 
-              onClick={() => setSearchQuery("")} 
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white/10 light:bg-slate-200 rounded-full flex items-center justify-center text-gray-400 hover:bg-white/20 transition"
-            >
-              <FaTimes className="text-[10px]" />
-            </button>
-          )}
-
-          {/* Search Suggestions Dropdown */}
-          <AnimatePresence>
-            {showSuggestions && !searchQuery && (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                className="absolute top-full left-0 right-0 mt-2 bg-[#0a0a0c] light:bg-white rounded-2xl shadow-2xl border border-white/10 light:border-slate-200 py-3 z-20 overflow-hidden"
-              >
-                {/* Recent Searches */}
-                {recentSearches.length > 0 && (
-                  <div className="mb-3">
-                    <div className="px-4 py-2 text-xs text-gray-500 light:text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                      <FaHistory className="text-[10px]" /> Recent
-                    </div>
-                    <div className="flex flex-wrap gap-2 px-4">
-                      {recentSearches.slice(0, 3).map((search, idx) => (
-                        <button key={idx} onClick={() => setSearchQuery(search)} className="px-3 py-1.5 bg-white/5 light:bg-slate-50 hover:bg-white/10 light:hover:bg-slate-100 text-gray-300 light:text-slate-700 rounded-full text-xs font-medium transition border border-white/10 light:border-slate-200">
-                          {search}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {/* Popular Suggestions */}
-                <div>
-                  <div className="px-4 py-2 text-xs text-gray-500 light:text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                    🔥 Popular
-                  </div>
-                  <div className="flex flex-wrap gap-2 px-4">
-                    {["Wedding", "Reels", "YouTube", "Color Grading", "VFX", "Podcast"].map((suggestion, idx) => (
-                      <button key={idx} onClick={() => setSearchQuery(suggestion)} className="px-3 py-1.5 bg-emerald-500/10 light:bg-emerald-50 hover:bg-emerald-500/20 light:hover:bg-emerald-100 text-emerald-400 light:text-emerald-700 rounded-full text-xs font-medium transition border border-emerald-500/20 light:border-emerald-200">
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
       </div>
 
       {/* ============== CATEGORY PILLS (Horizontal Scroll) ============== */}
@@ -497,7 +443,7 @@ const ExploreEditors = () => {
           </div>
           <h2 className="text-xs font-bold text-white light:text-slate-900">Browse by Specialty</h2>
         </div>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2">
           {[
             { label: "YouTube", image: "/youtube_category_1766945669722.png" },
             { label: "Wedding", image: "/wedding_category_1766945653582.png" },
@@ -777,7 +723,19 @@ const ExploreEditors = () => {
           ))}
         </div>
       ) : editors.length === 0 ? (
-        <EmptyState icon={FaUsers} title="No editors found" description={searchQuery || activeFilterCount > 0 ? "Try adjusting your search or filters" : "No editors have completed their profiles yet"} actionLabel={activeFilterCount > 0 ? "Clear Filters" : undefined} onAction={activeFilterCount > 0 ? clearAllFilters : undefined} />
+        <EmptyState 
+          icon={FaUsers} 
+          title={searchQuery ? `No editors found for "${searchQuery}"` : "No editors found"} 
+          description={
+            searchQuery 
+              ? "Try checking your spelling or using different keywords" 
+              : activeFilterCount > 0 
+                ? "Try adjusting your filters to see more results" 
+                : "No editors have completed their profiles yet"
+          } 
+          actionLabel={activeFilterCount > 0 || searchQuery ? "Clear All" : undefined} 
+          onAction={clearAllFilters} 
+        />
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
