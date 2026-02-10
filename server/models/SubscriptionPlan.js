@@ -31,11 +31,11 @@ const subscriptionPlanSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Plan duration
+    // Plan duration (e.g. "Monthly", "Yearly", "45 Days")
     duration: {
       type: String,
       required: true,
-      enum: ["monthly", "yearly", "lifetime"],
+      trim: true,
     },
 
     // Duration in days (for calculation)

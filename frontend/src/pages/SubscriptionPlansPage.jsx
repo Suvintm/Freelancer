@@ -244,7 +244,13 @@ const SubscriptionPlansPage = () => {
                               isPopular ? "text-amber-400" : "text-zinc-400"
                             }`}
                           />
-                          <h3 className="text-base font-semibold">{plan.duration === "monthly" ? "Monthly" : "Yearly"}</h3>
+                          <h3 className="text-base font-semibold">
+                            {plan.duration === "monthly" || plan.duration === "Monthly" 
+                              ? "Monthly" 
+                              : plan.duration === "yearly" || plan.duration === "Yearly"
+                              ? "Yearly"
+                              : plan.duration}
+                          </h3>
                         </div>
 
                         {/* Pricing */}
@@ -253,7 +259,11 @@ const SubscriptionPlansPage = () => {
                             <FaRupeeSign className="text-sm text-zinc-400" />
                             <span className="text-3xl font-bold">{plan.price}</span>
                             <span className="text-zinc-500 text-sm">
-                              /{plan.duration === "monthly" ? "mo" : "yr"}
+                              {plan.duration === "monthly" || plan.duration === "Monthly" 
+                                ? "/mo" 
+                                : plan.duration === "yearly" || plan.duration === "Yearly"
+                                ? "/yr" 
+                                : `/${plan.duration}`}
                             </span>
                           </div>
                           {plan.discountPercent > 0 && (
@@ -363,7 +373,13 @@ const SubscriptionPlansPage = () => {
                             isPopular ? "text-amber-400" : "text-zinc-400"
                           }`}
                         />
-                        <h3 className="text-lg font-semibold">{plan.duration === "monthly" ? "Monthly" : "Yearly"}</h3>
+                        <h3 className="text-lg font-semibold">
+                          {plan.duration === "monthly" || plan.duration === "Monthly" 
+                            ? "Monthly" 
+                            : plan.duration === "yearly" || plan.duration === "Yearly"
+                            ? "Yearly"
+                            : plan.duration}
+                        </h3>
                       </div>
 
                       {/* Pricing */}
@@ -372,7 +388,11 @@ const SubscriptionPlansPage = () => {
                           <FaRupeeSign className="text-lg text-zinc-400" />
                           <span className="text-4xl font-bold">{plan.price}</span>
                           <span className="text-zinc-500">
-                            /{plan.duration === "monthly" ? "month" : "year"}
+                            {plan.duration === "monthly" || plan.duration === "Monthly" 
+                              ? "/month" 
+                              : plan.duration === "yearly" || plan.duration === "Yearly"
+                              ? "/year" 
+                              : `/${plan.duration}`}
                           </span>
                         </div>
                         {plan.discountPercent > 0 && (

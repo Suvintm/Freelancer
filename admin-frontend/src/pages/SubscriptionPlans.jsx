@@ -24,10 +24,12 @@ import { useAdmin } from "../context/AdminContext";
 import { toast } from "react-toastify";
 
 // Duration options
-const DURATION_OPTIONS = [
-  { value: "monthly", label: "Monthly", days: 30 },
-  { value: "yearly", label: "Yearly", days: 365 },
-  { value: "lifetime", label: "Lifetime", days: 36500 },
+// Duration units and multipliers
+const DURATION_UNITS = [
+  { value: "days", label: "Days", multiplier: 1 },
+  { value: "weeks", label: "Weeks", multiplier: 7 },
+  { value: "months", label: "Months", multiplier: 30 },
+  { value: "years", label: "Years", multiplier: 365 },
 ];
 
 // Feature options (what the plan unlocks)
@@ -52,8 +54,10 @@ const SubscriptionPlans = () => {
     name: "",
     slug: "",
     feature: "profile_insights",
-    duration: "monthly",
-    durationDays: 30,
+    duration: "Monthly", // Calculated string
+    durationValue: 1,    // UI state
+    durationUnit: "months", // UI state
+    durationDays: 30, // Calculated days
     price: 0,
     originalPrice: 0,
     currency: "INR",
@@ -107,13 +111,27 @@ const SubscriptionPlans = () => {
       return;
     }
 
-    // Update duration days when duration changes
-    if (name === "duration") {
-      const durationOpt = DURATION_OPTIONS.find((d) => d.value === value);
+    // Duration logic
+    if (name === "durationValue" || name === "durationUnit") {
+      let dVal = name === "durationValue" ? parseInt(value) || 1 : formData.durationValue;
+      let dUnit = name === "durationUnit" ? value : formData.durationUnit;
+      
+      const unitData = DURATION_UNITS.find(u => u.value === dUnit);
+      const days = dVal * (unitData?.multiplier || 1);
+      
+      // Formatting duration string (e.g. "30 Days", "1 Month")
+      let dString = `${dVal} ${dUnit.charAt(0).toUpperCase() + dUnit.slice(1)}`;
+      if (dVal === 1) dString = dString.slice(0, -1); // Singularize (Months -> Month)
+
+      // Backward compatibility / Standard naming preference
+      if (dVal === 1 && dUnit === "months") dString = "Monthly";
+      if (dVal === 1 && dUnit === "years") dString = "Yearly";
+
       setFormData((prev) => ({
         ...prev,
-        duration: value,
-        durationDays: durationOpt?.days || 30,
+        [name]: value,
+        duration: dString,
+        durationDays: days
       }));
       return;
     }
@@ -152,12 +170,26 @@ const SubscriptionPlans = () => {
   // Open modal for create/edit
   const openModal = (plan = null) => {
     if (plan) {
+      // Parse duration for editing
+      let initialVal = 1;
+      let initialUnit = "months";
+      
+      // Attempt to reverse-engineer value/unit from days or existing duration string
+      if (plan.durationDays) {
+         if (plan.durationDays % 365 === 0) { initialVal = plan.durationDays / 365; initialUnit = "years"; }
+         else if (plan.durationDays % 30 === 0) { initialVal = plan.durationDays / 30; initialUnit = "months"; }
+         else if (plan.durationDays % 7 === 0) { initialVal = plan.durationDays / 7; initialUnit = "weeks"; }
+         else { initialVal = plan.durationDays; initialUnit = "days"; }
+      }
+
       setEditingPlan(plan);
       setFormData({
         name: plan.name || "",
         slug: plan.slug || "",
         feature: plan.feature || "profile_insights",
-        duration: plan.duration || "monthly",
+        duration: plan.duration || "Monthly",
+        durationValue: initialVal,
+        durationUnit: initialUnit,
         durationDays: plan.durationDays || 30,
         price: plan.price || 0,
         originalPrice: plan.originalPrice || 0,
@@ -176,7 +208,9 @@ const SubscriptionPlans = () => {
         name: "",
         slug: "",
         feature: "profile_insights",
-        duration: "monthly",
+        duration: "Monthly",
+        durationValue: 1,
+        durationUnit: "months",
         durationDays: 30,
         price: 0,
         originalPrice: 0,
@@ -466,20 +500,34 @@ const SubscriptionPlans = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-zinc-300 mb-2">
-                    Duration
+                    Duration Setup
                   </label>
-                  <select
-                    name="duration"
-                    value={formData.duration}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                  >
-                    {DURATION_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label} ({opt.days} days)
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      name="durationValue"
+                      value={formData.durationValue}
+                      onChange={handleChange}
+                      min="1"
+                      className="w-24 px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                    />
+                    <select
+                      name="durationUnit"
+                      value={formData.durationUnit}
+                      onChange={handleChange}
+                      className="flex-1 px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                    >
+                      {DURATION_UNITS.map((u) => (
+                        <option key={u.value} value={u.value}>
+                          {u.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="text-xs text-zinc-500 mt-1 flex justify-between">
+                     <span>Result: <span className="text-emerald-400 font-bold">{formData.duration}</span></span>
+                     <span>Total: {formData.durationDays} days</span>
+                  </div>
                 </div>
               </div>
 
