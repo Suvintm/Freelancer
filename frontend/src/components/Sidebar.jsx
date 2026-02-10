@@ -37,6 +37,7 @@ import {
   HiOutlineSparkles,
   HiOutlineRectangleStack,
   HiOutlineVideoCamera,
+  HiOutlineStar,
 } from "react-icons/hi2";
 import { FaTimes } from "react-icons/fa";
 
@@ -93,6 +94,15 @@ const Sidebar = ({ isOpen, onClose }) => {
         { path: "/profile-insights", icon: HiOutlineEye, label: "Profile Insights" },
         { path: "/suvix-score", icon: HiOutlineSparkles, label: "Suvix Score" },
         { path: "/achievements", icon: HiOutlineTrophy, label: "Achievements" },
+      ],
+    },
+    {
+      id: "perfect",
+      label: "Perfect",
+      icon: HiOutlineStar,
+      type: "group",
+      children: [
+        { path: "/subscription/plans", icon: HiOutlineCreditCard, label: "Subscription Plans" },
       ],
     },
     {
