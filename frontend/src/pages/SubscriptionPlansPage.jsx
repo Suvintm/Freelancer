@@ -144,7 +144,7 @@ const SubscriptionPlansPage = () => {
             toast.success("Subscription activated successfully!");
             navigate("/profile-insights");
           } catch (error) {
-            toast.error("Payment verification failed");
+            toast.error("Payment verification Failed");
           }
         },
         prefill: {
