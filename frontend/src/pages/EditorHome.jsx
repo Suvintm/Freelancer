@@ -34,6 +34,7 @@ import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
 import ExploreEditor from "../components/ExploreEditor.jsx";
 import ExploreGigs from "../components/ExploreGigs.jsx";
+import Loader from "../components/Loader.jsx";
 import ExploreJobs from "../components/ExploreJobs.jsx";
 import EditorKYCForm from "../components/EditorKYCForm.jsx";
 import ProfileCompletionBanner from "../components/ProfileCompletionBanner.jsx";
@@ -110,6 +111,19 @@ const EditorHome = () => {
     fetchProfileData();
   }, [backendURL, user?.token]);
 
+  // Loading State with Minimum Delay
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+
+
   // Fetch storage status
   useEffect(() => {
     const fetchStorage = async () => {
@@ -151,6 +165,10 @@ const EditorHome = () => {
     { id: "jobs", label: "Find Jobs", icon: FaClipboardList },
     { id: "reels", label: "Reels", icon: FaPlayCircle },
   ];
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200" style={{ fontFamily: "'Inter', sans-serif" }}>

@@ -42,6 +42,7 @@ import ClientSidebar from "../components/ClientSidebar.jsx";
 import ClientNavbar from "../components/ClientNavbar.jsx";
 import ExploreEditor from "../components/ExploreEditor.jsx";
 import ExploreGigs from "../components/ExploreGigs.jsx";
+import Loader from "../components/Loader.jsx";
 import KYCPendingBanner from "../components/KYCPendingBanner.jsx";
 import reelIcon from "../assets/reelicon.png";
 
@@ -112,6 +113,19 @@ const ClientHome = () => {
     fetchData();
   }, [backendURL, user?.token]);
 
+  // Loading State with Minimum Delay
+  const [isPageLoading, setIsPageLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsPageLoading(false);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+
+
   // Categories with professional gradients
   const categories = [
     { name: "Wedding", icon: PiHeartFill, gradient: "from-rose-500 to-pink-600" },
@@ -132,6 +146,10 @@ const ClientHome = () => {
     };
     return styles[status] || { bg: "bg-zinc-500/10", text: "text-zinc-400", label: status };
   };
+
+  if (isPageLoading) {
+    return <Loader />;
+  }
 
   return (
     <div 
