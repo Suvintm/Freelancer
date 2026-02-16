@@ -143,6 +143,8 @@ app.use(passport.session());
 
 // ============ REQUEST LOGGING ============
 
+// ============ REQUEST LOGGING ============
+
 app.use((req, res, next) => {
   logger.info({
     method: req.method,

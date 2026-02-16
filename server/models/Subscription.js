@@ -29,8 +29,8 @@ const subscriptionSchema = new mongoose.Schema(
     },
     planType: {
       type: String,
-      enum: ["monthly", "yearly", "lifetime"],
       required: true,
+      trim: true,
     },
 
     // Which feature this unlocks

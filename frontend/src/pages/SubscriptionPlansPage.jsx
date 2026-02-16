@@ -35,21 +35,60 @@ const SubscriptionPlansPage = () => {
     createOrder,
     verifyPayment,
     checkFeatureSubscription,
+    getSubscription,
+    fetchPlans,
   } = useSubscription();
+
+  const [activeSub, setActiveSub] = useState(null);
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0 });
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [processing, setProcessing] = useState(null);
   const [hasSubscription, setHasSubscription] = useState(false);
   const [trialUsed, setTrialUsed] = useState(false);
 
+  // Force fetch plans on mount to ensure fresh pricing/duration
+  useEffect(() => {
+    fetchPlans(true);
+  }, [fetchPlans]);
+
   useEffect(() => {
     const checkStatus = async () => {
       const hasSub = await checkFeatureSubscription("profile_insights");
       setHasSubscription(hasSub);
       setTrialUsed(hasUsedTrial("profile_insights"));
+      
+      if (hasSub) {
+        const sub = getSubscription("profile_insights");
+        setActiveSub(sub);
+      }
     };
     if (user) checkStatus();
-  }, [user, checkFeatureSubscription, hasUsedTrial]);
+  }, [user, checkFeatureSubscription, hasUsedTrial, getSubscription]);
+
+  // Countdown timer logic
+  useEffect(() => {
+    if (!activeSub?.endDate) return;
+
+    const calculateTimeLeft = () => {
+      const difference = new Date(activeSub.endDate) - new Date();
+      
+      if (difference > 0) {
+        setTimeLeft({
+          days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+          minutes: Math.floor((difference / 1000 / 60) % 60),
+        });
+      } else {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0 });
+      }
+    };
+
+    calculateTimeLeft();
+    const timer = setInterval(calculateTimeLeft, 60000); // Update every minute
+
+    return () => clearInterval(timer);
+  }, [activeSub]);
 
   // Filter plans for profile_insights feature
   const profileInsightsPlans = plans.filter(
@@ -164,25 +203,57 @@ const SubscriptionPlansPage = () => {
             </p>
           </motion.div>
 
-          {/* Already Subscribed Banner */}
-          {hasSubscription && (
+          {/* Active Subscription Card */}
+          {hasSubscription && activeSub && (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="mb-8 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-center"
+              className="mb-12 relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-zinc-900/50"
             >
-              <HiCheck className="text-2xl text-emerald-400 mx-auto mb-2" />
-              <p className="text-emerald-400 font-medium">
-                You have an active subscription!
-              </p>
-              <button
-                onClick={() => navigate("/profile-insights")}
-                className="mt-2 text-sm text-emerald-400 underline"
-              >
-                View your profile insights →
-              </button>
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
+              <div className="p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+                
+                {/* Left: Plan Details */}
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-emerald-500/10 rounded-full">
+                    <HiShieldCheck className="text-3xl text-emerald-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white mb-1">
+                      Current Plan: {activeSub.planName || "Premium"} <span className="text-base font-normal text-zinc-400">({activeSub.planType || "Monthly"})</span>
+                    </h3>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-400">
+                      <span>Started: {new Date(activeSub.startDate).toLocaleDateString()}</span>
+                      <span className="hidden md:inline">•</span>
+                      <span>Expires: {new Date(activeSub.endDate).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: Countdown */}
+                <div className="flex items-center gap-6 bg-black/40 px-6 py-4 rounded-xl border border-white/5">
+                  <div className="text-center">
+                    <span className="block text-2xl font-bold text-emerald-400">{timeLeft.days}</span>
+                    <span className="text-xs text-zinc-500 uppercase tracking-wider">Days</span>
+                  </div>
+                  <div className="text-2xl font-bold text-zinc-700">:</div>
+                  <div className="text-center">
+                    <span className="block text-2xl font-bold text-emerald-400">{timeLeft.hours}</span>
+                    <span className="text-xs text-zinc-500 uppercase tracking-wider">Hours</span>
+                  </div>
+                  <div className="text-2xl font-bold text-zinc-700">:</div>
+                  <div className="text-center">
+                    <span className="block text-2xl font-bold text-emerald-400">{timeLeft.minutes}</span>
+                    <span className="text-xs text-zinc-500 uppercase tracking-wider">Mins</span>
+                  </div>
+                </div>
+
+              </div>
             </motion.div>
           )}
+
+          {/* Already Subscribed Banner (Original - simplified/removed since we have the card) */}
+          {/* Removed old banner in favor of the detailed card above */}
 
           {/* Plans - Mobile Carousel / Desktop Grid */}
           {loading ? (

@@ -8,6 +8,7 @@ import crypto from "crypto";
 import { Subscription } from "../models/Subscription.js";
 import { SubscriptionPlan } from "../models/SubscriptionPlan.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
+import { createNotification } from "./notificationController.js";
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -144,9 +145,9 @@ export const createOrder = asyncHandler(async (req, res) => {
 
   // Create Razorpay order
   const options = {
-    amount: plan.price * 100, // Amount in paise
+    amount: Math.round(plan.price * 100), // Ensure integer
     currency: plan.currency,
-    receipt: `sub_${req.user._id}_${Date.now()}`,
+    receipt: `sub_${req.user._id.toString().slice(-10)}_${Date.now()}`,
     notes: {
       userId: req.user._id.toString(),
       planId: plan._id.toString(),
@@ -154,39 +155,64 @@ export const createOrder = asyncHandler(async (req, res) => {
     },
   };
 
-  const order = await razorpay.orders.create(options);
+  try {
+    const order = await razorpay.orders.create(options);
 
-  // Create pending subscription
-  const endDate = new Date();
-  endDate.setDate(endDate.getDate() + plan.durationDays);
+    // Create pending subscription
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + plan.durationDays);
 
-  const subscription = await Subscription.create({
-    user: req.user._id,
-    plan: plan._id,
-    planName: plan.name,
-    planType: plan.duration,
-    feature: plan.feature,
-    status: "payment_pending",
-    startDate: new Date(),
-    endDate,
-    amount: plan.price,
-    currency: plan.currency,
-    razorpayOrderId: order.id,
-  });
+    const subscription = await Subscription.create({
+      user: req.user._id,
+      plan: plan._id,
+      planName: plan.name,
+      planType: plan.duration,
+      feature: plan.feature,
+      status: "payment_pending",
+      startDate: new Date(),
+      endDate,
+      amount: plan.price,
+      currency: plan.currency,
+      razorpayOrderId: order.id,
+    });
 
-  res.status(200).json({
-    success: true,
-    orderId: order.id,
-    amount: order.amount,
-    currency: order.currency,
-    subscriptionId: subscription._id,
-    keyId: process.env.RAZORPAY_KEY_ID,
-    plan: {
-      name: plan.name,
-      duration: plan.duration,
-      features: plan.features,
-    },
-  });
+    res.status(200).json({
+      success: true,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      subscriptionId: subscription._id,
+      keyId: process.env.RAZORPAY_KEY_ID,
+      plan: {
+        name: plan.name,
+        duration: plan.duration,
+        features: plan.features,
+      },
+    });
+  } catch (error) {
+    // Handle Razorpay specific errors
+    if (error.error && error.error.description) {
+      return res.status(400).json({
+        success: false,
+        message: `Payment Error: ${error.error.description}`,
+      });
+    }
+
+    // Handle Mongoose validation errors
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(", "),
+      });
+    }
+
+    // Default error
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Failed to initiate subscription",
+    });
+  }
 });
 
 // ============ VERIFY PAYMENT ============
@@ -241,6 +267,15 @@ export const verifyPayment = asyncHandler(async (req, res) => {
   }
 
   await subscription.save();
+
+  // Send notification
+  await createNotification({
+    recipient: subscription.user,
+    type: "success",
+    title: "Subscription Activated",
+    message: `You have successfully upgraded to the ${plan.name} plan! Enjoy ${plan.duration} of premium features.`,
+    link: "/subscription/plans",
+  });
 
   res.status(200).json({
     success: true,

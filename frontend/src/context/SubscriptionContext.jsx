@@ -60,11 +60,17 @@ export const SubscriptionProvider = ({ children }) => {
   const hasFetchedSubs = useRef(false);
   const pendingRequests = useRef({});
 
+  // Track plans state with ref to avoid dependency cycles
+  const plansRef = useRef(plans);
+  useEffect(() => {
+    plansRef.current = plans;
+  }, [plans]);
+
   // Fetch available plans (with caching)
   const fetchPlans = useCallback(async (force = false) => {
     // Check cache first
-    if (!force && plans.length > 0) {
-      return plans;
+    if (!force && plansRef.current.length > 0) {
+      return plansRef.current;
     }
 
     // Check localStorage cache
@@ -102,7 +108,7 @@ export const SubscriptionProvider = ({ children }) => {
     } finally {
       delete pendingRequests.current.plans;
     }
-  }, [plans]);
+  }, []);
 
   // Fetch user's subscriptions (with caching)
   const fetchSubscriptions = useCallback(async (force = false) => {
@@ -221,13 +227,18 @@ export const SubscriptionProvider = ({ children }) => {
   const createOrder = useCallback(async (planId) => {
     if (!user?.token) throw new Error("Not authenticated");
 
-    const res = await axios.post(
-      `${API_BASE}/api/subscriptions/create-order`,
-      { planId },
-      { headers: { Authorization: `Bearer ${user.token}` } }
-    );
-
-    return res.data;
+    console.log("Creating order for plan:", planId);
+    try {
+      const res = await axios.post(
+        `${API_BASE}/api/subscriptions/create-order`,
+        { planId },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      return res.data;
+    } catch (error) {
+      console.error("Create order failed:", error.response?.data || error.message);
+      throw error;
+    }
   }, [user?.token]);
 
   // Verify payment
