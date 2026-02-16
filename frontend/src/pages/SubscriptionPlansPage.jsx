@@ -159,7 +159,7 @@ const SubscriptionPlansPage = () => {
       const razorpay = new window.Razorpay(options);
       razorpay.open();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to create order");
+      toast.error(error.response?.data?.message || "Failed to create Order");
     } finally {
       setProcessing(null);
     }
