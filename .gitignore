@@ -90,3 +90,16 @@ cloudinary_temp/
 
 # Confidential / Private Documents
 PRICING_AND_COSTS.md
+
+# ─── Java Payment Microservice ────────────────────────────────────────────────
+# Secrets file — NEVER commit this! Use Render env vars in production
+payment-service/.env
+
+# Maven build artifacts
+payment-service/target/
+payment-service/build-error.txt
+
+# Java IDE metadata
+*.class
+*.jar
+!*-sources.jar
