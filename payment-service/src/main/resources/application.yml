@@ -1,67 +1,19 @@
-server:
-  port: ${SERVER_PORT}
+# ============================================================
+# BASE CONFIG — shared across all profiles
+# Profile-specific config in:
+#   application-local.yml  → local dev (Docker Kafka)
+#   application-cloud.yml  → production (Upstash Kafka)
+#
+# To run locally:  mvn spring-boot:run -Dspring-boot.run.profiles=local
+# On Render:       set SPRING_PROFILES_ACTIVE=cloud
+# ============================================================
 
 spring:
   application:
     name: payment-service
 
-  # ==================== MONGODB ====================
-  data:
-    mongodb:
-      uri: ${MONGODB_URI}
-      database: ${MONGODB_DB}
-
-  # ==================== KAFKA (Confluent Cloud) ====================
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
-    properties:
-      security.protocol: ${KAFKA_SECURITY_PROTOCOL}
-      sasl.mechanism: PLAIN
-      sasl.jaas.config: >
-        org.apache.kafka.common.security.plain.PlainLoginModule required
-        username="${KAFKA_API_KEY}"
-        password="${KAFKA_API_SECRET}";
-
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer
-      acks: all
-      retries: 3
-      properties:
-        enable.idempotence: true
-
-    consumer:
-      group-id: payment-service-group
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      enable-auto-commit: false
-
-# ==================== RAZORPAY ====================
-razorpay:
-  key-id: ${RAZORPAY_KEY_ID}
-  key-secret: ${RAZORPAY_KEY_SECRET}
-  webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
-
-# ==================== SERVICE SECURITY ====================
-service:
-  secret: ${SERVICE_SECRET}
-
-# ==================== ACTUATOR (Health Check for Render) ====================
 management:
   endpoints:
     web:
       exposure:
         include: health,info
-  endpoint:
-    health:
-      show-details: always
-
-# ==================== LOGGING ====================
-logging:
-  level:
-    com.suvix: DEBUG
-    org.springframework.kafka: INFO
-    org.springframework.data.mongodb: INFO
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

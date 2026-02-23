@@ -103,3 +103,7 @@ payment-service/build-error.txt
 *.class
 *.jar
 !*-sources.jar
+
+#docs
+.docs
+/docs
