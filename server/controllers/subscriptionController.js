@@ -9,6 +9,7 @@ import { Subscription } from "../models/Subscription.js";
 import { SubscriptionPlan } from "../models/SubscriptionPlan.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { createNotification } from "./notificationController.js";
+import { withCache, deleteCache, CacheKey, TTL } from "../utils/cache.js";
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -19,20 +20,15 @@ const razorpay = new Razorpay({
 // ============ GET ALL PLANS ============
 export const getPlans = asyncHandler(async (req, res) => {
   const { feature } = req.query;
+  const cacheKey = CacheKey.subscriptionPlans(feature || "all");
 
-  const query = { isActive: true };
-  if (feature) {
-    query.feature = feature;
-  }
-
-  const plans = await SubscriptionPlan.find(query)
-    .sort({ sortOrder: 1 })
-    .lean();
-
-  res.status(200).json({
-    success: true,
-    plans,
+  const plans = await withCache(cacheKey, TTL.SUBSCRIPTION_PLANS, async () => {
+    const query = { isActive: true };
+    if (feature) query.feature = feature;
+    return SubscriptionPlan.find(query).sort({ sortOrder: 1 }).lean();
   });
+
+  res.status(200).json({ success: true, plans });
 });
 
 // ============ GET MY SUBSCRIPTIONS ============
@@ -343,6 +339,12 @@ export const upsertPlan = async (req, res) => {
     }
 
     console.log("Plan saved:", plan);
+
+    // Invalidate plans cache
+    await deleteCache([
+      CacheKey.subscriptionPlans("all"),
+      CacheKey.subscriptionPlans(plan.feature || "all"),
+    ]);
 
     res.status(200).json({
       success: true,

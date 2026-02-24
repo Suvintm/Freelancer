@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { ApiError } from "./errorHandler.js";
 import logger from "../utils/logger.js";
+import { getCache, setCache, deleteCache, CacheKey, TTL } from "../utils/cache.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -35,15 +36,26 @@ const protect = async (req, res, next) => {
       throw new ApiError(401, "Token verification failed");
     }
 
-    // Get user from database
-    const user = await User.findById(decoded.id).select("-password");
+    // Get user — check Redis cache first (5 min TTL)
+    const cacheKey = CacheKey.userProfile(decoded.id);
+    let user = await getCache(cacheKey);
+
+    if (user) {
+      // Cache hit — parse if string (Upstash may return object or string)
+      if (typeof user === "string") user = JSON.parse(user);
+    } else {
+      // Cache miss — fetch from MongoDB and cache
+      user = await User.findById(decoded.id).select("-password").lean();
+      if (user) await setCache(cacheKey, user, TTL.USER_PROFILE);
+    }
 
     if (!user) {
       throw new ApiError(401, "User not found");
     }
 
-    // Check if user is banned
+    // Check if user is banned — NEVER serve cached banned users
     if (user.isBanned) {
+      await deleteCache(cacheKey); // Force fresh check next time
       return res.status(403).json({
         success: false,
         isBanned: true,

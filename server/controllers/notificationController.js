@@ -1,6 +1,7 @@
 import { Notification } from "../models/Notification.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import { io, getReceiverSocketId } from "../socket.js";
+import { withCache, deleteCache, CacheKey, TTL } from "../utils/cache.js";
 
 // ============ GET NOTIFICATIONS ============
 export const getNotifications = asyncHandler(async (req, res) => {
@@ -8,14 +9,19 @@ export const getNotifications = asyncHandler(async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const [notifications, total, unreadCount] = await Promise.all([
+    const [notifications, total] = await Promise.all([
         Notification.find({ recipient: req.user._id })
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit),
         Notification.countDocuments({ recipient: req.user._id }),
-        Notification.countDocuments({ recipient: req.user._id, isRead: false }),
     ]);
+
+    const unreadCount = await withCache(
+        CacheKey.notificationCount(req.user._id),
+        TTL.NOTIFICATION_COUNT,
+        () => Notification.countDocuments({ recipient: req.user._id, isRead: false })
+    );
 
     res.status(200).json({
         success: true,
@@ -39,6 +45,7 @@ export const markAsRead = asyncHandler(async (req, res) => {
             { recipient: req.user._id, isRead: false },
             { isRead: true }
         );
+        await deleteCache(CacheKey.notificationCount(req.user._id));
     } else {
         const notification = await Notification.findOneAndUpdate(
             { _id: id, recipient: req.user._id },
@@ -49,6 +56,7 @@ export const markAsRead = asyncHandler(async (req, res) => {
         if (!notification) {
             throw new ApiError(404, "Notification not found");
         }
+        await deleteCache(CacheKey.notificationCount(req.user._id));
     }
 
     res.status(200).json({
@@ -68,6 +76,10 @@ export const deleteNotification = asyncHandler(async (req, res) => {
 
     if (!notification) {
         throw new ApiError(404, "Notification not found");
+    }
+
+    if (!notification.isRead) {
+        await deleteCache(CacheKey.notificationCount(req.user._id));
     }
 
     res.status(200).json({
@@ -92,6 +104,9 @@ export const createNotification = async ({ recipient, type, title, message, link
         if (receiverSocketId) {
             io.to(receiverSocketId).emit("newNotification", notification);
         }
+
+        // Invalidate unread count cache
+        await deleteCache(CacheKey.notificationCount(recipient.toString()));
 
         return notification;
     } catch (error) {

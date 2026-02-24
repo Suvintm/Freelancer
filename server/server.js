@@ -93,10 +93,54 @@ if (process.env.NODE_ENV === "production") {
   app.set("trust proxy", 1);
 }
 
-// Helmet - Security headers
+// Helmet - Security Headers + Content Security Policy
+// CSP is only enforced in production to avoid breaking dev hot-reload
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
+
+  // ── Content Security Policy ──────────────────────────────────────────────
+  // Restricts where the browser can load scripts, images, fonts, etc. from.
+  // This is the primary defence against XSS attacks.
+  contentSecurityPolicy: process.env.NODE_ENV === "production" ? {
+    directives: {
+      defaultSrc:     ["'self'"],
+
+      // Scripts: self + Razorpay checkout (payment popup)
+      scriptSrc:      ["'self'", "https://checkout.razorpay.com"],
+
+      // Styles: self + inline styles (needed for Razorpay popup)
+      styleSrc:       ["'self'", "'unsafe-inline'"],
+
+      // Images: self + Cloudinary CDN + data URIs (base64 previews)
+      imgSrc:         ["'self'", "data:", "https://res.cloudinary.com", "https://lh3.googleusercontent.com"],
+
+      // Fonts: self only (we use system/Google-imported fonts)
+      fontSrc:        ["'self'", "data:"],
+
+      // API and WebSocket connections
+      connectSrc:     [
+        "'self'",
+        process.env.FRONTEND_URL,
+        process.env.ADMIN_URL,
+        "wss:",   // Allow WebSocket upgrades (Socket.io)
+        "ws:",
+      ].filter(Boolean),
+
+      // iFrames: self + Razorpay (payment iFrame)
+      frameSrc:       ["'self'", "https://api.razorpay.com"],
+
+      // Forms: self + Google OAuth redirect
+      formAction:     ["'self'", "https://accounts.google.com"],
+
+      // Block all plugins (Flash, etc.)
+      objectSrc:      ["'none'"],
+
+      // Upgrade all HTTP requests to HTTPS in production
+      upgradeInsecureRequests: [],
+    },
+  } : false,  // Disabled in development
 }));
+
 
 // CORS configuration
 const allowedOrigins = [
