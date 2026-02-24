@@ -12,10 +12,11 @@ export const generalLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Strict rate limiter for auth endpoints - 5 attempts per 15 minutes
+// Strict rate limiter for auth endpoints
+// ⚠️  Phase 3: switch this store to Redis so limits survive server restarts
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // Relaxed for testing
+  max: 10, // 10 attempts per 15 min (was 20 — tightened for production)
   message: {
     success: false,
     message: "Too many login attempts, please try again after 15 minutes.",
@@ -25,10 +26,10 @@ export const authLimiter = rateLimit({
   skipSuccessfulRequests: true, // Don't count successful logins
 });
 
-// Registration limiter - 3 attempts per hour
+// Registration limiter - 5 accounts per hour per IP
 export const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 20,
+  max: 5, // 5 registrations per hour (was 20 — tightened for production)
   message: {
     success: false,
     message: "Too many registration attempts, please try again after an hour.",

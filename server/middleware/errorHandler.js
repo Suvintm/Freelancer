@@ -24,18 +24,41 @@ export const errorHandler = (err, req, res, next) => {
     // Default to 500 if no status code
     statusCode = statusCode || 500;
 
+    // ── MongoDB duplicate key error (e.g. email already exists) ──
+    if (err.code === 11000) {
+        statusCode = 409;
+        const field = Object.keys(err.keyValue || {})[0] || "field";
+        message = `An account with this ${field} already exists.`;
+    }
+
+    // ── Mongoose validation error ──
+    if (err.name === "ValidationError") {
+        statusCode = 400;
+        message = Object.values(err.errors).map((e) => e.message).join(", ");
+    }
+
+    // ── JWT errors ──
+    if (err.name === "JsonWebTokenError") {
+        statusCode = 401;
+        message = "Invalid token. Please log in again.";
+    }
+    if (err.name === "TokenExpiredError") {
+        statusCode = 401;
+        message = "Your session has expired. Please log in again.";
+    }
+
     // Log error details (but don't expose to client)
     logger.error({
         message: err.message,
-        stack: err.stack,
+        stack: process.env.NODE_ENV !== "production" ? err.stack : undefined,
         url: req.originalUrl,
         method: req.method,
         ip: req.ip,
         user: req.user?.id || "anonymous",
     });
 
-    // In production, don't leak error details
-    if (process.env.NODE_ENV === "production" && !err.isOperational) {
+    // In production, don't leak internal error details for unhandled errors
+    if (process.env.NODE_ENV === "production" && !err.isOperational && !err.code && err.name !== "ValidationError") {
         message = "Something went wrong. Please try again later.";
     }
 

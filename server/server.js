@@ -4,6 +4,9 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
+import mongoSanitize from "express-mongo-sanitize";
+import hpp from "hpp";
+import compression from "compression";
 import session from "express-session";
 
 // IMPORTANT: Load env variables FIRST before any other imports that use them
@@ -117,10 +120,27 @@ app.use(
 // Rate limiter (general)
 app.use(generalLimiter);
 
-// ============ BODY PARSING ============
+// Response compression (must be before routes)
+app.use(compression());
 
-app.use(express.json({ limit: "100mb" }));
-app.use(express.urlencoded({ extended: true, limit: "100mb" }));
+// ============ BODY PARSING ============
+// ⚠️ 10mb limit — prevents DoS via oversized payloads
+// File uploads stream directly to Cloudinary — not limited here
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// ============ SECURITY: INPUT SANITIZATION ============
+
+// Prevent MongoDB NoSQL injection — strips $ and . from user input
+app.use(mongoSanitize({
+  replaceWith: "_",        // replace malicious chars instead of just removing
+  onSanitize: ({ req, key }) => {
+    logger.warn(`[SECURITY] Sanitized NoSQL injection attempt on field: ${key} — IP: ${req.ip}`);
+  },
+}));
+
+// Prevent HTTP Parameter Pollution — keeps only the last value of duplicate params
+app.use(hpp());
 
 // ============ SESSION (for OAuth) ============
 

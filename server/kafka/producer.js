@@ -10,17 +10,27 @@
 
 import { Kafka, logLevel } from 'kafkajs';
 
-const kafka = new Kafka({
+const kafkaConfig = {
   clientId: 'core-api',
-  brokers: [process.env.KAFKA_BROKER],
-  ssl: true,
-  sasl: {
-    mechanism: 'plain',
+  brokers: [process.env.KAFKA_BROKER || 'localhost:9092'],
+  logLevel: logLevel.WARN,
+};
+
+// Enable SSL if KAFKA_SSL is 'true'
+if (process.env.KAFKA_SSL === 'true') {
+  kafkaConfig.ssl = true;
+}
+
+// Enable SASL if mechanism is provided
+if (process.env.KAFKA_SASL_MECHANISM) {
+  kafkaConfig.sasl = {
+    mechanism: process.env.KAFKA_SASL_MECHANISM.toLowerCase(),
     username: process.env.KAFKA_API_KEY,
     password: process.env.KAFKA_API_SECRET,
-  },
-  logLevel: logLevel.WARN,  // Reduce noise in production logs
-});
+  };
+}
+
+const kafka = new Kafka(kafkaConfig);
 
 const producer = kafka.producer({
   allowAutoTopicCreation: false,  // Topics must be pre-created in Confluent Cloud
