@@ -1,9 +1,38 @@
-import rateLimit from "express-rate-limit";
+/**
+ * Rate Limiter Middleware — Phase 3 (Redis-backed via Upstash)
+ *
+ * Stores all counters in Redis so they survive server restarts.
+ * Without Redis, limits reset every time Render restarts the container,
+ * which allows brute-force bypasses.
+ *
+ * Falls back gracefully if Redis is unreachable (uses memory store).
+ */
 
-// General API rate limiter - 1000 requests per 15 minutes
+import rateLimit from "express-rate-limit";
+import { Redis } from "@upstash/redis";
+import { RedisStore } from "rate-limit-redis";
+
+// Connect to Upstash Redis via REST API
+const redis = new Redis({
+  url: process.env.REDIS_URL,
+  token: process.env.REDIS_TOKEN,
+});
+
+/**
+ * Build a RedisStore for express-rate-limit using Upstash REST client.
+ * If Redis is unavailable, rate-limit falls back to in-memory (safe degradation).
+ */
+const makeRedisStore = (prefix) =>
+  new RedisStore({
+    sendCommand: (...args) => redis.call(...args),
+    prefix,
+  });
+
+// ─── General API limiter: 1000 req / 5 min ────────────────────────────────
 export const generalLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes
+  windowMs: 5 * 60 * 1000,
   max: 1000,
+  store: makeRedisStore("rl:general:"),
   message: {
     success: false,
     message: "Too many requests, please try again after 5 minutes.",
@@ -12,24 +41,26 @@ export const generalLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Strict rate limiter for auth endpoints
-// ⚠️  Phase 3: switch this store to Redis so limits survive server restarts
+// ─── Auth limiter: 10 login attempts / 15 min ─────────────────────────────
+// ⚠️  Phase 3: Redis-backed — survives server restarts
 export const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 attempts per 15 min (was 20 — tightened for production)
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  store: makeRedisStore("rl:auth:"),
   message: {
     success: false,
     message: "Too many login attempts, please try again after 15 minutes.",
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true, // Don't count successful logins
+  skipSuccessfulRequests: true, // Don't penalise successful logins
 });
 
-// Registration limiter - 5 accounts per hour per IP
+// ─── Register limiter: 5 signups / hour per IP ────────────────────────────
 export const registerLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // 5 registrations per hour (was 20 — tightened for production)
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  store: makeRedisStore("rl:register:"),
   message: {
     success: false,
     message: "Too many registration attempts, please try again after an hour.",
@@ -38,10 +69,11 @@ export const registerLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// File upload limiter - 10 uploads per hour
+// ─── File upload limiter: 100 uploads / hour ──────────────────────────────
 export const uploadLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
+  windowMs: 60 * 60 * 1000,
   max: 100,
+  store: makeRedisStore("rl:upload:"),
   message: {
     success: false,
     message: "Too many uploads, please try again after an hour.",
@@ -49,16 +81,19 @@ export const uploadLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-// Explore limiter - 200 requests per minute
+
+// ─── Explore limiter: 200 req / min ───────────────────────────────────────
 export const exploreLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 200, // 200 requests per minute (safe)
+  windowMs: 60 * 1000,
+  max: 200,
+  store: makeRedisStore("rl:explore:"),
 });
 
-// Location search limiter - 10 requests per minute (prevent scraping)
+// ─── Location search limiter: 10 searches / min ───────────────────────────
 export const locationSearchLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 10, // 10 searches per minute
+  windowMs: 60 * 1000,
+  max: 10,
+  store: makeRedisStore("rl:location:"),
   message: {
     success: false,
     message: "Too many location searches, please try again in a minute.",
@@ -66,3 +101,6 @@ export const locationSearchLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Export the redis client so server.js can health-check it on startup
+export { redis };

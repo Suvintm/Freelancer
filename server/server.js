@@ -16,7 +16,7 @@ dotenv.config();
 import logger from "./utils/logger.js";
 
 // Middleware
-import { generalLimiter } from "./middleware/rateLimiter.js";
+import { generalLimiter, redis } from "./middleware/rateLimiter.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 
 // Passport - must be imported AFTER dotenv.config()
@@ -62,12 +62,19 @@ import jobRoutes from "./routes/jobRoutes.js";
 import { startScheduledJobs } from "./jobs/scheduledJobs.js";
 
 // Validate required environment variables
-const requiredEnvVars = ["MONGO_URI", "JWT_SECRET", "CLOUDINARY_CLOUD_NAME"];
+const requiredEnvVars = ["MONGO_URI", "JWT_SECRET", "CLOUDINARY_CLOUD_NAME", "REDIS_URL", "REDIS_TOKEN"];
 const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
 if (missingEnvVars.length > 0) {
   logger.error(`Missing required environment variables: ${missingEnvVars.join(", ")}`);
   process.exit(1);
 }
+
+// Redis connectivity check (non-fatal — app still starts if Redis is slow)
+redis.ping().then(() => {
+  logger.info("[Redis] Connected to Upstash Redis ✅");
+}).catch((err) => {
+  logger.error("[Redis] Could not connect to Upstash Redis — rate limits will use memory fallback", err.message);
+});
 
 // Log OAuth status
 if (process.env.GOOGLE_CLIENT_ID) {
