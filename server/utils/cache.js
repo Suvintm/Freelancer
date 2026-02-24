@@ -1,7 +1,7 @@
 /**
- * Redis Cache Utility
+ * Redis Cache Utility (ioredis version)
  *
- * Thin wrapper around @upstash/redis providing:
+ * Thin wrapper around ioredis providing:
  * - getCache / setCache / deleteCache helpers
  * - Automatic JSON serialization/deserialization
  * - Silent failure (never crashes the app if Redis is down)
@@ -38,9 +38,10 @@ export const CacheKey = {
 export const getCache = async (key) => {
   try {
     const data = await redis.get(key);
-    return data ?? null;
+    if (!data) return null;
+    return JSON.parse(data);
   } catch (err) {
-    logger.warn(`[Cache] GET failed for key "${key}": ${err.message}`);
+    logger.warn(`[Cache] GET/PARSE failed for key "${key}": ${err.message}`);
     return null;
   }
 };
@@ -51,11 +52,12 @@ export const getCache = async (key) => {
  */
 export const setCache = async (key, value, ttlSeconds) => {
   try {
-    await redis.set(key, JSON.stringify(value), { ex: ttlSeconds });
+    await redis.set(key, JSON.stringify(value), "EX", ttlSeconds);
   } catch (err) {
     logger.warn(`[Cache] SET failed for key "${key}": ${err.message}`);
   }
 };
+
 
 /**
  * Delete one or more cache keys.
