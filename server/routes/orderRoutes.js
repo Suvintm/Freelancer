@@ -18,8 +18,8 @@ import {
   getNewOrdersCount,
 } from "../controllers/orderController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
-
 import { requireClientKYC } from "../middleware/kycCheckMiddleware.js";
+import { createGigOrderValidator, disputeValidator, extendDeadlineValidator } from "../middleware/validators.js";
 
 const router = express.Router();
 
@@ -28,7 +28,7 @@ router.use(authMiddleware);
 
 // ========== SPECIFIC ROUTES FIRST (before /:id) ==========
 // Create orders - REQUIRE KYC
-router.post("/gig", requireClientKYC, createOrderFromGig);
+router.post("/gig", requireClientKYC, createGigOrderValidator, createOrderFromGig);
 router.post("/request/create-payment", requireClientKYC, createRequestPaymentOrder);
 router.post("/request/verify-payment", verifyRequestPayment);
 
@@ -51,7 +51,7 @@ router.patch("/:id/accept", acceptOrder);
 router.patch("/:id/reject", rejectOrder);
 router.patch("/:id/submit", submitWork);
 router.patch("/:id/complete", completeOrder);
-router.patch("/:id/dispute", raiseDispute);
-router.post("/:id/extend-deadline", extendDeadline);
+router.patch("/:id/dispute", disputeValidator, raiseDispute);
+router.post("/:id/extend-deadline", extendDeadlineValidator, extendDeadline);
 
 export default router;

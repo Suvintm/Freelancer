@@ -17,6 +17,7 @@ import {
   upsertPlan,
   getAllSubscriptions,
 } from "../controllers/subscriptionController.js";
+import { createSubscriptionOrderValidator, verifySubscriptionPaymentValidator } from "../middleware/validators.js";
 
 const router = express.Router();
 
@@ -41,10 +42,10 @@ router.get("/check/:feature", checkSubscriptionStatus);
 router.post("/start-trial", startTrial);
 
 // Create Razorpay order for subscription
-router.post("/create-order", createOrder);
+router.post("/create-order", createSubscriptionOrderValidator, createOrder);
 
 // Verify payment and activate subscription
-router.post("/verify-payment", verifyPayment);
+router.post("/verify-payment", verifySubscriptionPaymentValidator, verifyPayment);
 
 // Cancel subscription
 router.post("/cancel/:id", cancelSubscription);

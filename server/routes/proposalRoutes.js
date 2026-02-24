@@ -15,6 +15,7 @@ import {
   withdrawProposal,
   getProposalStats,
 } from "../controllers/proposalController.js";
+import { proposalValidator } from "../middleware/validators.js";
 
 const router = express.Router();
 
@@ -23,7 +24,7 @@ router.use(generalLimiter);
 
 // ============ EDITOR ROUTES ============
 // Submit proposal
-router.post("/", protect, submitProposal);
+router.post("/", protect, proposalValidator, submitProposal);
 
 // Get my proposals (editor)
 router.get("/my", protect, getMyProposals);
