@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
-import mongoSanitize from "express-mongo-sanitize";
+import mongoSanitize from "@exortek/express-mongo-sanitize";
 import hpp from "hpp";
 import compression from "compression";
 import session from "express-session";
@@ -184,9 +184,9 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Prevent MongoDB NoSQL injection — strips $ and . from user input
 app.use(mongoSanitize({
-  replaceWith: "_",        // replace malicious chars instead of just removing
+  replaceWith: "_",
   onSanitize: ({ req, key }) => {
-    logger.warn(`[SECURITY] Sanitized NoSQL injection attempt on field: ${key} — IP: ${req.ip}`);
+    logger.warn(`[SECURITY] Sanitized potential NoSQL injection at field: "${key}" from IP: ${req.ip}`);
   },
 }));
 
