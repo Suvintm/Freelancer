@@ -11,8 +11,8 @@ import fs from "fs";
 
 // ============ GET PROFILE ============
 export const getProfile = asyncHandler(async (req, res) => {
-  const userId = req.params.userId || req.user?.id;
-  const viewerId = req.user?._id?.toString() || req.user?.id;
+  const userId = req.params.userId || req.user?._id || req.user?.id;
+  const viewerId = req.user?._id?.toString() || req.user?._id || req.user?.id;
 
   let profile = await Profile.findOne({ user: userId })
     .populate("user", "name email role profilePicture kycStatus")
@@ -32,7 +32,7 @@ export const getProfile = asyncHandler(async (req, res) => {
     // Record detailed visit (async, don't wait)
     ProfileVisit.recordVisit({
       profileOwner: userId,
-      visitor: viewer._id,
+      visitor: viewer._id || viewer.id,
       visitorName: viewer.name || "Anonymous",
       visitorPicture: viewer.profilePicture || "",
       visitorRole: viewer.role || "guest",

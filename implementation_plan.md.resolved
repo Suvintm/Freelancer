@@ -1,0 +1,43 @@
+# Java Microservices Integration Plan
+
+## Goal Description
+Integrate Java Spring Boot microservices into the existing MERN stack "Freelancer" application to elevate it to a production-grade, high-performance system. The goal is to leverage Java's strengths (multithreading, enterprise integration, strong typing) for specific components like Analytics, Payments, or Notifications without disrupting the core functionality.
+
+## Architecture Overview
+We will adopt the **Strangler Fig Pattern**. We will not rewrite the entire application. Instead, we will gradually extract specific modules from the Express/Node.js monolith and rebuild them as independent Java Spring Boot microservices.
+
+**Current:**
+`Frontend (React)` -> `Backend (Node/Express)` -> `MongoDB`
+
+**Proposed:**
+`Frontend` -> `API Gateway` -> `Node Backend` (Core) & `Java Service` (Analytics/Payments) -> `MongoDB`
+
+## Proposed Changes
+
+### 1. New Directory Structure
+We will create a `microservices` directory alongside `server` and `frontend`.
+- `microservices/analytics-service`: Java Spring Boot application.
+- `microservices/api-gateway`: (Optional) Spring Cloud Gateway or Nginx config.
+
+### 2. Candidate Services for Migration
+Based on the codebase analysis:
+- **Analytics Service**: The `adminAnalyticsController`, `editorAnalyticsController`, and `clientAnalyticsController` involve complex data aggregation. Java's Stream API and efficient processing make it ideal for this.
+- **Notification Service**: Decoupling email/socket notifications into a dedicated service ensures the main server isn't blocked by I/O.
+- **Payment Service**: Financial transactions benefit from Java's strong precision and ACID compliance patterns.
+
+### 3. Technology Stack for Java Services
+- **Framework**: Spring Boot 3.2+
+- **Build Tool**: Maven (standard for enterprise) or Gradle.
+- **Database**: MongoDB (connecting to the existing cluster).
+- **Communication**: REST APIs (initially) or RabbitMQ (for async messaging).
+
+## Verification Plan
+
+### Automated Tests
+- **JUnit 5**: Unit testing for Java services.
+- **Mockito**: Mocking dependencies.
+- **Integration Tests**: `@SpringBootTest` to verify MongoDB connections.
+
+### Manual Verification
+- **Endpoint Testing**: Use Postman to verify that the new Java endpoints return the exact same JSON structure as the old Node.js endpoints.
+- **Parallel Run**: Run both Node and Java services, compare outputs for critical analytics data.

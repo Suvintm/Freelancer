@@ -54,7 +54,7 @@ export const errorHandler = (err, req, res, next) => {
         url: req.originalUrl,
         method: req.method,
         ip: req.ip,
-        user: req.user?.id || "anonymous",
+        user: req.user?._id || req.user?.id || "anonymous",
     });
 
     // In production, don't leak internal error details for unhandled errors

@@ -38,7 +38,7 @@ export const proxyToPaymentService = async (req, res, method, path) => {
       url: `/api/v1${path}`,
       headers: {
         // Forward authenticated user info — Java uses these instead of JWT
-        'X-User-Id':   req.user?.id   || req.admin?.id,
+        'X-User-Id':   req.user?._id   || req.user?.id || req.admin?._id || req.admin?.id,
         'X-User-Role': req.user?.role || 'admin',
       },
     };
