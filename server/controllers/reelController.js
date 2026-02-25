@@ -1,6 +1,7 @@
 import { Reel } from "../models/Reel.js";
 import { Comment } from "../models/Comment.js";
 import { Portfolio } from "../models/Portfolio.js";
+import { ReelInteraction } from "../models/ReelInteraction.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
 import { createNotification } from "./notificationController.js";
@@ -452,4 +453,36 @@ export const getMyReelsAnalytics = asyncHandler(async (req, res) => {
         },
         reels: formattedReels,
     });
+});
+
+// ============ TRACK WATCH TIME ============
+export const trackWatchTime = asyncHandler(async (req, res) => {
+    const { id: reelId } = req.params;
+    const { seconds, watchPercent } = req.body;
+    const userId = req.user._id;
+
+    if (!seconds || seconds <= 0) {
+        return res.status(400).json({ success: false, message: "Invalid watch time" });
+    }
+
+    // Update or create interaction record
+    await ReelInteraction.findOneAndUpdate(
+        { user: userId, reel: reelId },
+        { 
+            $set: { 
+                watchPercent: watchPercent || 0,
+                watched: true,
+                updatedAt: new Date()
+            },
+            $inc: { watchTimeSeconds: seconds }
+        },
+        { upsert: true, new: true }
+    );
+
+    // Also update reel's total watch time stat
+    await Reel.findByIdAndUpdate(reelId, {
+        $inc: { watchTimeSeconds: seconds }
+    });
+
+    res.status(200).json({ success: true });
 });

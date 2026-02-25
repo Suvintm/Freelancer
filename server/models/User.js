@@ -205,6 +205,16 @@ const userSchema = new mongoose.Schema(
       ref: "User",
     }],
 
+    // ==================== SOCIAL & REELS ====================
+    followers: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    }],
+    following: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    }],
+
     // ==================== CLIENT KYC & WALLET ====================
     
     // Client KYC Status (separate from editor KYC)

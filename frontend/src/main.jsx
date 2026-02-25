@@ -5,19 +5,22 @@ import { AppProvider } from "./context/AppContext";
 import { SocketProvider } from "./context/SocketContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { SubscriptionProvider } from "./context/SubscriptionContext";
+import { ReelsProvider } from "./context/ReelsContext";
 import { BrowserRouter } from "react-router-dom";
-import "./index.css"; // 👈 ensure global styles are imported
+import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <ThemeProvider>
     <AppProvider>
-      <BrowserRouter>
-        <SocketProvider>
-          <SubscriptionProvider>
-            <App />
-          </SubscriptionProvider>
-        </SocketProvider>
-      </BrowserRouter>
+      <ReelsProvider>
+        <BrowserRouter>
+          <SocketProvider>
+            <SubscriptionProvider>
+              <App />
+            </SubscriptionProvider>
+          </SocketProvider>
+        </BrowserRouter>
+      </ReelsProvider>
     </AppProvider>
   </ThemeProvider>
 );

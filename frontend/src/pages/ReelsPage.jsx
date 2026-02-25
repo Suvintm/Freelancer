@@ -1,19 +1,37 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaArrowLeft, FaSpinner } from "react-icons/fa";
+import { BiRefresh } from "react-icons/bi";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
+import { useReelsContext } from "../context/ReelsContext";
 import ReelCard from "../components/ReelCard";
+import ReelSkeleton from "../components/ReelSkeleton";
 import CommentSection from "../components/CommentSection";
+import useReelObserver from "../hooks/useReelObserver";
 import logo from "../assets/logo.png";
 
 const ReelsPage = () => {
-    const { backendURL } = useAppContext();
+    const { backendURL, user } = useAppContext();
+    const {
+        feedCache,
+        activeIndexCache,
+        pageCache,
+        isCacheValid,
+        updateCache,
+        appendToCache,
+        invalidateCache,
+        savePosition,
+        globalMuted,
+        setGlobalMuted,
+    } = useReelsContext();
     const navigate = useNavigate();
 
     const [reels, setReels] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [activeReelIndex, setActiveReelIndex] = useState(0);
@@ -22,201 +40,273 @@ const ReelsPage = () => {
 
     const containerRef = useRef(null);
     const observerRef = useRef(null);
+    const viewedReelsRef = useRef(new Set());
 
-    // ----------------------------
+    // ─────────────────────────────────────────────────────────────
     // FETCH REELS
-    // ----------------------------
-    const fetchReels = async (pageNum = 1, loadMore = false) => {
+    // ─────────────────────────────────────────────────────────────
+    const fetchReels = useCallback(async (pageNum = 1, loadMore = false) => {
         try {
-            const excludeIds = loadMore ? reels.map(r => r._id).join(",") : "";
+            const excludeIds = loadMore
+                ? feedCache.current.map((r) => r._id).join(",")
+                : "";
 
             const { data } = await axios.get(
                 `${backendURL}/api/reels/feed?page=${pageNum}&limit=5&exclude=${excludeIds}`
             );
 
             if (loadMore) {
-                // APPEND new random reels below (infinite scroll)
-                setReels(prev => [...prev, ...data.reels]);
+                const combined = [...feedCache.current, ...data.reels];
+                setReels(combined);
+                appendToCache(combined, pageNum);
             } else {
                 setReels(data.reels);
+                updateCache(data.reels, pageNum);
             }
 
             setHasMore(data.pagination.hasMore);
-            setLoading(false);
-
         } catch (err) {
-            console.error("Error fetching reels:", err);
+            console.error("[Reels] Fetch error:", err.message);
+        } finally {
             setLoading(false);
+            setLoadingMore(false);
+            setRefreshing(false);
         }
-    };
+    }, [backendURL]);
 
+    // ─────────────────────────────────────────────────────────────
+    // ON MOUNT — restore from cache if valid, else fresh fetch
+    // ─────────────────────────────────────────────────────────────
     useEffect(() => {
-        fetchReels(1, false);
+        if (isCacheValid()) {
+            setReels(feedCache.current);
+            setPage(pageCache.current);
+            setLoading(false);
+
+            // Restore scroll position to where the user was
+            const savedIndex = activeIndexCache.current;
+            setTimeout(() => {
+                const el = document.getElementById(`reel-${savedIndex}`);
+                el?.scrollIntoView({ behavior: "instant", block: "start" });
+                setActiveReelIndex(savedIndex);
+            }, 50);
+        } else {
+            fetchReels(1, false);
+        }
     }, []);
 
-    // ----------------------------
-    // INFINITE LOOP — NEVER ENDS
-    // ----------------------------
-    const loadMoreReels = async () => {
-        if (loading) return; // Prevent multiple simultaneous loads
-        
+    // ─────────────────────────────────────────────────────────────
+    // TRACK VIEW ON ACTIVE REEL CHANGE
+    // ─────────────────────────────────────────────────────────────
+    useEffect(() => {
+        const reel = reels[activeReelIndex];
+        if (!reel) return;
+        if (viewedReelsRef.current.has(reel._id)) return;
+
+        viewedReelsRef.current.add(reel._id);
+        axios.post(`${backendURL}/api/reels/${reel._id}/view`).catch(() => {});
+    }, [activeReelIndex, reels, backendURL]);
+
+    // ─────────────────────────────────────────────────────────────
+    // PER-REEL INTERSECTION OBSERVER — accurate active detection
+    // ─────────────────────────────────────────────────────────────
+    useReelObserver(reels.length, (index) => {
+        setActiveReelIndex(index);
+        savePosition(index);
+    });
+
+    // ─────────────────────────────────────────────────────────────
+    // INFINITE SCROLL — last reel observer
+    // ─────────────────────────────────────────────────────────────
+    const lastReelRef = useCallback(
+        (node) => {
+            if (loadingMore || loading) return;
+            if (observerRef.current) observerRef.current.disconnect();
+
+            observerRef.current = new IntersectionObserver(
+                ([entry]) => {
+                    if (entry.isIntersecting) {
+                        loadMore();
+                    }
+                },
+                { threshold: 0.5 }
+            );
+
+            if (node) observerRef.current.observe(node);
+        },
+        [loadingMore, loading, hasMore, page, reels]
+    );
+
+    const loadMore = async () => {
+        if (loadingMore) return;
+        setLoadingMore(true);
+
         if (!hasMore) {
-            // No more reels → reset and fetch fresh random batch
-            console.log('[REELS] Reached end, fetching fresh random batch...');
-            viewedReelsRef.current.clear(); // Reset viewed tracking
-            setPage(1);
-            await fetchReels(1, true); // Append fresh random reels
+            // Cycle reels — fetch fresh batch
+            viewedReelsRef.current.clear();
+            await fetchReels(1, true);
             return;
         }
 
-        console.log(`[REELS] Loading more reels, page: ${page + 1}`);
-        setPage(prev => prev + 1);
-        await fetchReels(page + 1, true);
+        const nextPage = page + 1;
+        setPage(nextPage);
+        await fetchReels(nextPage, true);
     };
 
-    // ----------------------------
-    // OBSERVER FOR LAST REEL
-    // ----------------------------
-    const lastReelRef = useCallback(
-        (node) => {
-            if (loading) return;
-            if (typeof window === "undefined") return;
+    // ─────────────────────────────────────────────────────────────
+    // PULL-TO-REFRESH
+    // ─────────────────────────────────────────────────────────────
+    const touchStartY = useRef(0);
+    const isPulling = useRef(false);
 
-            if (observerRef.current) observerRef.current.disconnect();
-
-            if ("IntersectionObserver" in window) {
-                observerRef.current = new IntersectionObserver(
-                    (entries) => {
-                        if (entries[0].isIntersecting) {
-                            loadMoreReels();
-                        }
-                    },
-                    { threshold: 0.5 }
-                );
-
-                if (node) observerRef.current.observe(node);
-            }
-        },
-        [loading, hasMore, page, reels]
-    );
-
-    // ----------------------------
-    // ACTIVE REEL DETECTOR
-    // ----------------------------
-    const viewedReelsRef = useRef(new Set()); // Track which reels have been viewed
-    
-    const handleScroll = () => {
-        if (!containerRef.current) return;
-
-        const index = Math.round(
-            containerRef.current.scrollTop / containerRef.current.clientHeight
-        );
-
-        if (index !== activeReelIndex) {
-            setActiveReelIndex(index);
-        }
-
-        // Track view for current reel if not already viewed
-        const currentReel = reels[index];
-        if (currentReel && !viewedReelsRef.current.has(currentReel._id)) {
-            viewedReelsRef.current.add(currentReel._id);
-            axios.post(`${backendURL}/api/reels/${currentReel._id}/view`)
-                .then(res => console.log('View tracked:', res.data))
-                .catch(err => console.log('View tracking failed:', err.response?.data || err.message));
-        }
+    const handleTouchStart = (e) => {
+        touchStartY.current = e.touches[0].clientY;
+        isPulling.current = containerRef.current?.scrollTop === 0;
     };
 
-    // Track view for the FIRST reel when page loads
-    useEffect(() => {
-        if (reels.length > 0 && !viewedReelsRef.current.has(reels[0]._id)) {
-            viewedReelsRef.current.add(reels[0]._id);
-            axios.post(`${backendURL}/api/reels/${reels[0]._id}/view`)
-                .then(res => console.log('First reel view tracked:', res.data))
-                .catch(err => console.log('First reel view tracking failed:', err.response?.data || err.message));
-        }
-    }, [reels, backendURL]);
+    const handleTouchEnd = (e) => {
+        if (!isPulling.current) return;
+        const delta = e.changedTouches[0].clientY - touchStartY.current;
 
+        if (delta > 90) {
+            handleRefresh();
+        }
+        isPulling.current = false;
+    };
+
+    const handleRefresh = async () => {
+        if (refreshing) return;
+        setRefreshing(true);
+        invalidateCache();
+        viewedReelsRef.current.clear();
+        setPage(1);
+        setActiveReelIndex(0);
+        await fetchReels(1, false);
+
+        // Scroll back to top
+        containerRef.current?.scrollTo({ top: 0, behavior: "instant" });
+    };
+
+    // ─────────────────────────────────────────────────────────────
+    // COMMENTS
+    // ─────────────────────────────────────────────────────────────
     const handleCommentClick = (reelId) => {
         setActiveReelId(reelId);
         setShowComments(true);
     };
 
     const handleCommentAdded = (newCount) => {
-        setReels(prev =>
-            prev.map(r =>
+        setReels((prev) =>
+            prev.map((r) =>
                 r._id === activeReelId ? { ...r, commentsCount: newCount } : r
             )
         );
     };
 
+    // ─────────────────────────────────────────────────────────────
+    // RENDER
+    // ─────────────────────────────────────────────────────────────
     return (
         <div className="fixed inset-0 bg-black z-50 flex flex-col">
 
-            {/* HEADER */}
-            <div className="absolute top-0 left-0 right-0 px-4 py-4 z-40 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent">
+            {/* ── HEADER ── */}
+            <div className="absolute top-0 left-0 right-0 px-4 py-4 z-40 flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
                 <button
                     onClick={() => navigate(-1)}
-                    className="w-10 h-10 bg-white/15 backdrop-blur-xl rounded-full flex items-center justify-center text-white hover:bg-white/25 transition shadow-lg"
+                    className="w-10 h-10 bg-white/15 backdrop-blur-xl rounded-full flex items-center justify-center text-white hover:bg-white/25 transition shadow-lg pointer-events-auto"
                 >
                     <FaArrowLeft className="text-lg" />
                 </button>
 
-                <div className="flex items-center gap-2 pointer-events-none">
-                    <img src={logo} className="w-8 h-8 rounded-xl opacity-90" />
+                <div className="flex items-center gap-2">
+                    <img src={logo} className="w-8 h-8 rounded-xl opacity-90" alt="SuviX" />
                     <span className="text-white font-semibold text-lg tracking-wide drop-shadow-lg">
                         SuviX Reels
                     </span>
                 </div>
 
-                <div className="w-10" />
+                {/* Refresh button */}
+                <button
+                    onClick={handleRefresh}
+                    className="w-10 h-10 bg-white/15 backdrop-blur-xl rounded-full flex items-center justify-center text-white hover:bg-white/25 transition shadow-lg pointer-events-auto"
+                    title="Refresh reels"
+                >
+                    <BiRefresh className={`text-xl ${refreshing ? "animate-spin" : ""}`} />
+                </button>
             </div>
 
-            {/* REELS FEED */}
+            {/* ── PULL-TO-REFRESH INDICATOR ── */}
+            <AnimatePresence>
+                {refreshing && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="absolute top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+                    >
+                        <div className="bg-white/20 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 shadow-xl">
+                            <FaSpinner className="text-white animate-spin text-sm" />
+                            <span className="text-white text-xs font-semibold">
+                                Loading fresh reels...
+                            </span>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ── FEED ── */}
             <div
                 ref={containerRef}
-                onScroll={handleScroll}
-                className="
-                    flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide
-                    scroll-smooth touch-pan-y
-                "
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+                className="flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide touch-pan-y"
             >
-                {reels.map((reel, index) => (
+                {/* Skeleton — shown only on first load */}
+                {loading && (
+                    <>
+                        <ReelSkeleton />
+                        <ReelSkeleton />
+                    </>
+                )}
+
+                {/* Reel cards */}
+                {!loading && reels.map((reel, index) => (
                     <div
-                        key={reel._id + index}
+                        key={reel._id}
+                        id={`reel-${index}`}
                         ref={index === reels.length - 1 ? lastReelRef : null}
-                        className="w-full h-screen snap-start relative"
+                        className="w-full h-screen snap-start relative flex-shrink-0"
                     >
                         <ReelCard
                             reel={reel}
                             isActive={index === activeReelIndex}
                             onCommentClick={handleCommentClick}
+                            globalMuted={globalMuted}
+                            setGlobalMuted={setGlobalMuted}
                         />
-
-                        <div className="absolute bottom-6 left-6 flex items-center gap-2 opacity-80 select-none">
-                            <img src={logo} className="w-7 h-7 rounded-lg shadow-md opacity-90" />
-                            <span className="text-white/90 font-semibold tracking-wide text-sm">
-                                SuviX
-                            </span>
-                        </div>
                     </div>
                 ))}
 
-                {/* LOADER */}
-                {loading && (
-                    <div className="w-full h-screen flex items-center justify-center bg-black">
-                        <FaSpinner className="text-white text-4xl animate-spin" />
+                {/* Loading more spinner (bottom) */}
+                {loadingMore && (
+                    <div className="w-full h-24 flex items-center justify-center bg-black">
+                        <FaSpinner className="text-white text-2xl animate-spin" />
                     </div>
                 )}
 
-                {/* EMPTY */}
+                {/* Empty state */}
                 {!loading && reels.length === 0 && (
-                    <div className="w-full h-screen flex flex-col items-center justify-center text-white">
-                        <p className="text-lg font-medium">No reels found</p>
+                    <div className="w-full h-screen flex flex-col items-center justify-center text-white gap-4">
+                        <span className="text-5xl">🎬</span>
+                        <p className="text-lg font-semibold">No reels yet</p>
+                        <p className="text-sm text-white/60">
+                            Editors haven't published any reels yet.
+                        </p>
                     </div>
                 )}
             </div>
 
-            {/* COMMENTS DRAWER */}
+            {/* ── COMMENTS DRAWER ── */}
             <AnimatePresence>
                 {showComments && (
                     <>
@@ -227,7 +317,6 @@ const ReelsPage = () => {
                             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55]"
                             onClick={() => setShowComments(false)}
                         />
-
                         <CommentSection
                             reelId={activeReelId}
                             onClose={() => setShowComments(false)}

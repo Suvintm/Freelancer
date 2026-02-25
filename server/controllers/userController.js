@@ -104,3 +104,55 @@ export const updateAvailability = asyncHandler(async (req, res) => {
     message: `Status updated to ${status === 'small_only' ? 'Small Projects Only' : status}`
   });
 });
+
+// @desc    Toggle follow user
+// @route   POST /api/user/follow/:editorId
+// @access  Private
+export const toggleFollow = asyncHandler(async (req, res) => {
+  const followerId = req.user._id;
+  const { editorId } = req.params;
+
+  if (followerId.toString() === editorId.toString()) {
+    res.status(400);
+    throw new Error("You cannot follow yourself");
+  }
+
+  const [follower, editor] = await Promise.all([
+    User.findById(followerId),
+    User.findById(editorId)
+  ]);
+
+  if (!editor) {
+    res.status(404);
+    throw new Error("User to follow not found");
+  }
+
+  const isFollowing = follower.following.includes(editorId);
+
+  if (isFollowing) {
+    // Unfollow
+    follower.following = follower.following.filter(id => id.toString() !== editorId.toString());
+    editor.followers = editor.followers.filter(id => id.toString() !== followerId.toString());
+    await Promise.all([follower.save(), editor.save()]);
+    res.status(200).json({ success: true, message: "Unfollowed successfully", isFollowing: false });
+  } else {
+    // Follow
+    follower.following.push(editorId);
+    editor.followers.push(followerId);
+    await Promise.all([follower.save(), editor.save()]);
+    res.status(200).json({ success: true, message: "Followed successfully", isFollowing: true });
+  }
+});
+
+// @desc    Get follow status
+// @route   GET /api/user/follow/status/:editorId
+// @access  Private
+export const getFollowStatus = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const { editorId } = req.params;
+
+  const user = await User.findById(userId);
+  const isFollowing = user.following.includes(editorId);
+
+  res.status(200).json({ success: true, isFollowing });
+});

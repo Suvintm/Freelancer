@@ -11,6 +11,7 @@ import {
     getReelsByEditor,
     checkPublished,
     getMyReelsAnalytics,
+    trackWatchTime,
 } from "../controllers/reelController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 
@@ -52,5 +53,8 @@ router.post("/:id/comments", addComment);
 
 // Get my reels analytics (for editor dashboard)
 router.get("/analytics/my-reels", getMyReelsAnalytics);
+
+// Track watch time
+router.post("/:id/watch-time", trackWatchTime);
 
 export default router;
