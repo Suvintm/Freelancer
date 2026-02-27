@@ -198,12 +198,12 @@ const EditorHome = () => {
       <main className="flex-1 px-1 md:px-8 py-2 lg:pt-20 md:pt-4 md:ml-64 md:mt-16">
         
         {/* Premium Banner at the Top - Responsive with Side Margins */}
-        <div className="px-3 md:px-8 mb-8 max-w-7xl mx-auto">
+        <div className="px-3 md:px-8 mb-2 md:mb-8 max-w-7xl mx-auto">
           <UnifiedBannerSlider />
         </div>
 
         {/* Simple & Professional Tabbed Navigation - Enhanced for Light Theme */}
-        <div className="flex justify-center mb-4 md:mb-6">
+        <div className="flex justify-center mb-2 md:mb-4">
           <div className="flex items-center gap-1 bg-white/5 light:bg-zinc-100 border border-white/10 light:border-zinc-200 p-1 rounded-2xl w-fit backdrop-blur-xl shadow-sm">
             {[
               { id: 'home', label: 'Home', icon: HiOutlineSparkles },

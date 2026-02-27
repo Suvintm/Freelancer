@@ -181,12 +181,12 @@ const ClientHome = () => {
       <main className="flex-1 px-0 py-2 pt-16 md:pt-4 md:ml-64 md:mt-16 overflow-x-hidden">
         
         {/* Premium Banner at the Top - Responsive with Side Margins */}
-        <div className="px-3 md:px-8 mb-8 max-w-7xl mx-auto">
+        <div className="px-3 md:px-8 mb-2 md:mb-8 max-w-7xl mx-auto">
           <UnifiedBannerSlider />
         </div>
         
         {/* Simple & Professional Tabbed Navigation - Enhanced for Light Theme */}
-        <div className="px-4 mb-4 md:mb-8 flex justify-center">
+        <div className="px-4 mb-2 md:mb-6 flex justify-center">
           <div className="flex items-center gap-1 bg-white/5 light:bg-zinc-100 border border-white/10 light:border-zinc-200 p-1 rounded-2xl w-fit backdrop-blur-xl shadow-sm">
             {[
               { id: 'home', label: 'Discover', icon: HiOutlineSparkles },

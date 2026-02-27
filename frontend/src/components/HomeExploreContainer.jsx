@@ -22,17 +22,17 @@ const HomeExploreContainer = ({ searchQuery, setSearchQuery, recentSearches, act
     const { user } = useAppContext();
 
     return (
-        <div className="w-full max-w-7xl mx-auto space-y-4 md:space-y-8 pb-12">
+        <div className="w-full max-w-7xl mx-auto space-y-2 md:space-y-8 pb-12">
             
             {/* Banner moved to parent level for better layout flow */}
 
             {/* Notifications Section - Dynamic & Floating */}
-            <div className="px-4 space-y-3">
+            <div className="px-4 space-y-1.5">
                 <KYCPendingBanner />
                 <ProfileCompletionBanner />
             </div>
 
-            <div className="px-4 pt-2">
+            <div className="px-4 pt-1">
                 <div className="max-w-3xl mx-auto">
                     <AdvancedSearchBar
                         value={searchQuery}
@@ -55,10 +55,6 @@ const HomeExploreContainer = ({ searchQuery, setSearchQuery, recentSearches, act
                 <EditorsNearYouPreview />
             </div>
 
-            {/* Top Categories Navigation - Right after search for filtering */}
-            <div className="px-4">
-                <CategoryStrip onSelect={(skill) => setSearchQuery(skill)} />
-            </div>
 
             {/* Discovery Section: Suggested Reels */}
             <div className="px-4">
@@ -101,39 +97,6 @@ const HomeExploreContainer = ({ searchQuery, setSearchQuery, recentSearches, act
     );
 };
 
-const CategoryStrip = ({ onSelect }) => {
-    const categories = [
-        { id: "all", label: "All", Icon: HiSparkles, color: "text-violet-400", activeColor: "from-violet-500 to-purple-500" },
-        { id: "wedding", label: "Wedding", Icon: FaRing, color: "text-pink-400", activeColor: "from-pink-500 to-rose-500", hot: true },
-        { id: "reels", label: "Reels", Icon: FaPlay, color: "text-purple-400", activeColor: "from-purple-500 to-fuchsia-500" },
-        { id: "youtube", label: "YouTube", Icon: FaYoutube, color: "text-red-400", activeColor: "from-red-500 to-orange-500" },
-        { id: "podcast", label: "Podcast", Icon: FaMicrophone, color: "text-blue-400", activeColor: "from-blue-500 to-cyan-500" },
-        { id: "vfx", label: "VFX", Icon: FaMagic, color: "text-cyan-400", activeColor: "from-cyan-500 to-teal-500" },
-        { id: "color", label: "Color", Icon: FaPalette, color: "text-amber-400", activeColor: "from-amber-500 to-orange-500" },
-        { id: "cinematic", label: "Cinematic", Icon: FaFilm, color: "text-emerald-400", activeColor: "from-emerald-500 to-green-500" },
-    ];
-
-    return (
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
-            {categories.map((cat) => (
-                <motion.button
-                    key={cat.id}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => onSelect(cat.id === "all" ? "" : cat.label)}
-                    className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-semibold text-gray-400 hover:text-white hover:border-white/20 transition-all whitespace-nowrap"
-                >
-                    <cat.Icon className={cat.color} />
-                    {cat.label}
-                    {cat.hot && (
-                        <span className="flex items-center justify-center w-3 h-3 bg-orange-500 rounded-full text-[8px] text-white">
-                            <FaFire />
-                        </span>
-                    )}
-                </motion.button>
-            ))}
-        </div>
-    );
-};
 
 const SpecialtyBrowse = ({ onSelect }) => {
     const specialties = [
