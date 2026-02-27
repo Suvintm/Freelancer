@@ -221,7 +221,7 @@ const UnifiedBannerSlider = () => {
                             />
                         )}
                         {/* Simplified Gradient: Only Bottom to Top */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                     </div>
 
                     {/* Content Layer */}
