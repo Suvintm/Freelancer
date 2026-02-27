@@ -19,35 +19,23 @@ import { toast } from "react-toastify";
 import logo from "../assets/logo.png";
 
 /**
- * ReelCard — Production-grade reel card component.
- *
- * Key improvements vs original:
- *  - object-cover (fills frame like Instagram, no black bars)
- *  - Controls auto-hide after 2.5s (tap to show)
- *  - Global mute persists across all reels via props
- *  - Progress bar height 2px (thin, non-intrusive)
- *  - Watch-time tracking on scroll-away
- *  - Follow button with live state
+ * ReelCard — Minimalist Professional UI.
+ * Tightened overlay, refined typography, and sleek follow button.
  */
 const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted }) => {
     const { user, backendURL } = useAppContext();
 
-    // ✅ Repair mangled URLs from backend sanitization (dots -> underscores & slashes -> underscores)
+    // ✅ Repair mangled URLs from backend sanitization
     const repairUrl = (url) => {
         if (!url || typeof url !== "string") return url;
         if (!url.includes("cloudinary") && !url.includes("res_") && !url.includes("_com")) return url;
       
         let fixed = url;
-        
-        // 1. Restore Protocol
         fixed = fixed.replace(/^(https?):?\/*_+/gi, "$1://");
-        
-        // 2. Restore Domain Dots
         fixed = fixed.replace(/_+res_+cloudinary_+com/g, "res.cloudinary.com")
                      .replace(/res_cloudinary_com/g, "res.cloudinary.com")
                      .replace(/cloudinary_com/g, "cloudinary.com");
     
-        // 3. Fix the "Slash Mangler" in path
         if (fixed.includes("res.cloudinary.com")) {
             fixed = fixed.replace(/res\.cloudinary\.com_+/g, "res.cloudinary.com/");
             fixed = fixed.replace(/image_upload_+/g, "image/upload/")
@@ -55,15 +43,10 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
                          .replace(/raw_upload_+/g, "raw/upload/");
             fixed = fixed.replace(/([\/_]?v\d+)_+/g, "$1/"); 
             fixed = fixed.replace(/(res\.cloudinary\.com\/[^\/_]+)_+(image|video|raw|authenticated)_*/g, "$1/$2/");
-            fixed = fixed.replace(/advertisements_images_+/g, "advertisements/images/")
-                         .replace(/advertisements_videos_+/g, "advertisements/videos/")
-                         .replace(/advertisements_gallery_+/g, "advertisements/gallery/");
-            fixed = fixed.replace(/_+(upload|image|video|v\d+)_+/g, "/$1/");
             fixed = fixed.replace(/_([a-z0-9\-_]+\.(webp|jpg|jpeg|png|mp4|mov|m4v|json))/gi, "/$1");
             fixed = fixed.replace(/([^:])\/\/+/g, "$1/");
         }
     
-        // 4. Restore Extension Dots
         fixed = fixed.replace(/_jpg([/_?#]|$)/gi, ".jpg$1")
                      .replace(/_jpeg([/_?#]|$)/gi, ".jpeg$1")
                      .replace(/_png([/_?#]|$)/gi, ".png$1")
@@ -73,46 +56,27 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
         return fixed;
     };
 
-    // ── State ──
-    const [isLiked, setIsLiked] = useState(
-        user ? reel.likes?.includes(user._id) : false
-    );
+    const [isLiked, setIsLiked] = useState(user ? reel.likes?.includes(user._id) : false);
     const [likesCount, setLikesCount] = useState(reel.likesCount || 0);
     const [isPlaying, setIsPlaying] = useState(false);
     const [progress, setProgress] = useState(0);
     const [showHeartAnimation, setShowHeartAnimation] = useState(false);
-    const [showControls, setShowControls] = useState(false);  // Auto-hide controls
-    const [showSwipeHint, setShowSwipeHint] = useState(false);
     const [isFollowing, setIsFollowing] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
 
-    // ── Refs ──
     const videoRef = useRef(null);
-    const scrubRef = useRef(null);
-    const controlTimerRef = useRef(null);
     const progressTimerRef = useRef(null);
     const watchStartRef = useRef(null);
 
-    // ─────────────────────────────────────────────────────────────
-    // CHECK IF FOLLOWING (on mount)
-    // ─────────────────────────────────────────────────────────────
     useEffect(() => {
         if (!user || user._id === reel.editor?._id) return;
-
-        axios
-            .get(`${backendURL}/api/users/follow/status/${reel.editor?._id}`, {
-                headers: { Authorization: `Bearer ${user.token}` },
-            })
-            .then((res) => setIsFollowing(res.data.isFollowing))
-            .catch(() => {});
+        axios.get(`${backendURL}/api/users/follow/status/${reel.editor?._id}`, {
+            headers: { Authorization: `Bearer ${user.token}` },
+        }).then((res) => setIsFollowing(res.data.isFollowing)).catch(() => {});
     }, [user, reel.editor?._id, backendURL]);
 
-    // ─────────────────────────────────────────────────────────────
-    // PLAY / PAUSE based on isActive
-    // ─────────────────────────────────────────────────────────────
     useEffect(() => {
         if (!videoRef.current || reel.mediaType !== "video") return;
-
         if (isActive) {
             videoRef.current.muted = globalMuted;
             videoRef.current.play().then(() => {
@@ -120,7 +84,6 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
                 watchStartRef.current = Date.now();
             }).catch(() => setIsPlaying(false));
         } else {
-            // Track watch time before pausing
             sendWatchTime();
             videoRef.current.pause();
             videoRef.current.currentTime = 0;
@@ -129,165 +92,55 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
         }
     }, [isActive]);
 
-    // Sync mute changes
     useEffect(() => {
-        if (videoRef.current) {
-            videoRef.current.muted = globalMuted;
-        }
+        if (videoRef.current) videoRef.current.muted = globalMuted;
     }, [globalMuted]);
 
-    // ─────────────────────────────────────────────────────────────
-    // PROGRESS TRACKER
-    // ─────────────────────────────────────────────────────────────
     useEffect(() => {
         if (!isActive) return;
-
         progressTimerRef.current = setInterval(() => {
             if (videoRef.current?.duration) {
-                setProgress(
-                    (videoRef.current.currentTime / videoRef.current.duration) * 100
-                );
+                setProgress((videoRef.current.currentTime / videoRef.current.duration) * 100);
             }
         }, 100);
-
         return () => clearInterval(progressTimerRef.current);
     }, [isActive]);
 
-    // ─────────────────────────────────────────────────────────────
-    // SWIPE HINT — once per session
-    // ─────────────────────────────────────────────────────────────
-    useEffect(() => {
-        if (!isActive) return;
-        const shown = sessionStorage.getItem("swipeHintShown");
-        if (!shown) {
-            setShowSwipeHint(true);
-            sessionStorage.setItem("swipeHintShown", "true");
-            setTimeout(() => setShowSwipeHint(false), 2000);
-        }
-    }, [isActive]);
-
-    // ─────────────────────────────────────────────────────────────
-    // TRACK WATCH TIME
-    // ─────────────────────────────────────────────────────────────
     const sendWatchTime = useCallback(() => {
         if (!watchStartRef.current || !user) return;
         const elapsed = Math.round((Date.now() - watchStartRef.current) / 1000);
         if (elapsed < 1) return;
-
-        const pct = videoRef.current?.duration
-            ? Math.round((videoRef.current.currentTime / videoRef.current.duration) * 100)
-            : 0;
-
-        axios
-            .post(
-                `${backendURL}/api/reels/${reel._id}/watch-time`,
-                { seconds: elapsed, watchPercent: pct },
-                { headers: { Authorization: `Bearer ${user.token}` } }
-            )
-            .catch(() => {});
-
+        const pct = videoRef.current?.duration ? Math.round((videoRef.current.currentTime / videoRef.current.duration) * 100) : 0;
+        axios.post(`${backendURL}/api/reels/${reel._id}/watch-time`, { seconds: elapsed, watchPercent: pct }, { headers: { Authorization: `Bearer ${user.token}` } }).catch(() => {});
         watchStartRef.current = null;
     }, [user, reel._id, backendURL]);
 
-    // Send watch time when component unmounts
     useEffect(() => () => sendWatchTime(), [sendWatchTime]);
 
-    // ─────────────────────────────────────────────────────────────
-    // CONTROLS AUTO-HIDE
-    // ─────────────────────────────────────────────────────────────
-    const showControlsTemporarily = () => {
-        setShowControls(true);
-        clearTimeout(controlTimerRef.current);
-        controlTimerRef.current = setTimeout(() => setShowControls(false), 2500);
-    };
-
-    // ─────────────────────────────────────────────────────────────
-    // TAP to play/pause + show controls
-    // ─────────────────────────────────────────────────────────────
-    const handleVideoTap = () => {
-        if (!videoRef.current) return;
-        if (isPlaying) {
-            videoRef.current.pause();
-        } else {
-            videoRef.current.play();
-        }
-        setIsPlaying(!isPlaying);
-        showControlsTemporarily();
-    };
-
-    // ─────────────────────────────────────────────────────────────
-    // LIKE
-    // ─────────────────────────────────────────────────────────────
     const handleLike = async () => {
         if (!user) return toast.error("Please login to like");
         const newIsLiked = !isLiked;
         setIsLiked(newIsLiked);
-        setLikesCount((prev) => (newIsLiked ? prev + 1 : prev - 1));
-        if (newIsLiked) triggerHeartAnimation();
-
+        setLikesCount(prev => newIsLiked ? prev + 1 : prev - 1);
+        if (newIsLiked) setShowHeartAnimation(true);
+        setTimeout(() => setShowHeartAnimation(false), 900);
         try {
-            await axios.post(
-                `${backendURL}/api/reels/${reel._id}/like`,
-                {},
-                { headers: { Authorization: `Bearer ${user.token}` } }
-            );
+            await axios.post(`${backendURL}/api/reels/${reel._id}/like`, {}, { headers: { Authorization: `Bearer ${user.token}` } });
         } catch {
             setIsLiked(!newIsLiked);
-            setLikesCount((prev) => (!newIsLiked ? prev + 1 : prev - 1));
+            setLikesCount(prev => !newIsLiked ? prev + 1 : prev - 1);
         }
     };
 
-    const triggerHeartAnimation = () => {
-        setShowHeartAnimation(true);
-        setTimeout(() => setShowHeartAnimation(false), 900);
-    };
-
-    // ─────────────────────────────────────────────────────────────
-    // DOUBLE TAP → Like
-    // ─────────────────────────────────────────────────────────────
-    const lastTapRef = useRef(0);
-    const handleTap = (e) => {
-        const now = Date.now();
-        if (now - lastTapRef.current < 300) {
-            // Double-tap
-            e.stopPropagation();
-            if (!isLiked) handleLike();
-            else triggerHeartAnimation();
-        } else {
-            handleVideoTap();
-        }
-        lastTapRef.current = now;
-    };
-
-    // ─────────────────────────────────────────────────────────────
-    // SCRUB (only when controls visible)
-    // ─────────────────────────────────────────────────────────────
-    const handleScrub = (e) => {
-        if (!videoRef.current || !scrubRef.current) return;
-        const rect = scrubRef.current.getBoundingClientRect();
-        const percent = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
-        videoRef.current.currentTime = percent * videoRef.current.duration;
-        setProgress(percent * 100);
-    };
-
-    // ─────────────────────────────────────────────────────────────
-    // FOLLOW / UNFOLLOW
-    // ─────────────────────────────────────────────────────────────
     const handleFollow = async (e) => {
-        e.preventDefault();
+        e.preventDefault(); e.stopPropagation();
         if (!user) return toast.error("Please login to follow");
         if (followLoading) return;
-
         setFollowLoading(true);
         const newFollowing = !isFollowing;
         setIsFollowing(newFollowing);
-
         try {
-            await axios.post(
-                `${backendURL}/api/users/follow/${reel.editor?._id}`,
-                {},
-                { headers: { Authorization: `Bearer ${user.token}` } }
-            );
+            await axios.post(`${backendURL}/api/users/follow/${reel.editor?._id}`, {}, { headers: { Authorization: `Bearer ${user.token}` } });
         } catch {
             setIsFollowing(!newFollowing);
             toast.error("Failed to update follow status");
@@ -296,261 +149,119 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
         }
     };
 
-    // ─────────────────────────────────────────────────────────────
-    // SHARE
-    // ─────────────────────────────────────────────────────────────
-    const handleShare = () => {
-        const url = `${window.location.origin}/reels?id=${reel._id}`;
-        if (navigator.share) {
-            navigator.share({ title: reel.title, url });
-        } else if (navigator.clipboard) {
-            navigator.clipboard.writeText(url);
-            toast.success("Link copied!");
-        }
-    };
-
-    // ─────────────────────────────────────────────────────────────
-    // Don't render card if no reel data
-    // ─────────────────────────────────────────────────────────────
     if (!reel) return null;
-
     const isOwnReel = user?._id === reel.editor?._id;
 
-    // ─────────────────────────────────────────────────────────────
-    // RENDER
-    // ─────────────────────────────────────────────────────────────
     return (
-        <div className="w-full h-full flex items-center justify-center bg-black relative">
+        <div className="w-full h-full bg-black relative flex items-center justify-center overflow-hidden">
+            <div className="absolute inset-0 cursor-pointer" onClick={() => { if (videoRef.current) isPlaying ? videoRef.current.pause() : videoRef.current.play(); setIsPlaying(!isPlaying); }}>
+                {reel.mediaType === "video" ? (
+                    <video ref={videoRef} src={repairUrl(reel.mediaUrl)} className="w-full h-full object-cover" loop playsInline muted={globalMuted} />
+                ) : (
+                    <img src={repairUrl(reel.mediaUrl)} className="w-full h-full object-cover" alt="" />
+                )}
+            </div>
 
-            {/* ── DESKTOP: 9:16 centered container ── */}
-            <div
-                className="
-                    relative aspect-[9/16] w-full h-full
-                    md:max-w-[min(420px,85vw)] md:h-auto
-                    bg-black rounded-none md:rounded-2xl
-                    md:shadow-[0_0_60px_rgba(0,0,0,0.8)]
-                    overflow-hidden
-                "
-            >
-                {/* ── MEDIA ── */}
-                <div
-                    className="absolute inset-0 cursor-pointer select-none"
-                    onClick={handleTap}
-                >
-                    {/* VIDEO */}
-                    {reel.mediaType === "video" && (
-                        <video
-                            ref={videoRef}
-                            src={repairUrl(reel.mediaUrl)}
-                            className="w-full h-full object-cover bg-black"
-                            loop
-                            playsInline
-                            muted={globalMuted}
-                            preload="metadata"
-                        />
-                    )}
+            <AnimatePresence>
+                {!isPlaying && isActive && reel.mediaType === "video" && (
+                    <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="absolute inset-0 flex items-center justify-center pointer-events-none z-50">
+                        <div className="w-14 h-14 bg-black/30 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10">
+                            <FaPlay className="text-white text-xl ml-1" />
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
-                    {/* IMAGE */}
-                    {reel.mediaType === "image" && (
-                        <img
-                            src={repairUrl(reel.mediaUrl)}
-                            alt={reel.title}
-                            className="w-full h-full object-cover bg-black"
-                        />
-                    )}
+            {/* ── SIDEBAR (Polished & Small) ── */}
+            <div className="absolute right-3 bottom-24 z-40 flex flex-col items-center gap-5">
+                {[
+                    { icon: isLiked ? <FaHeart className="text-red-500" /> : <FaRegHeart />, count: likesCount, action: handleLike },
+                    { icon: <FaComment />, count: reel.commentsCount || 0, action: () => onCommentClick(reel._id) },
+                    { icon: <FaEye />, count: reel.viewsCount || 0, disabled: true },
+                    { icon: <FaShare />, action: () => { const url = `${window.location.origin}/reels?id=${reel._id}`; if(navigator.share) navigator.share({url}); else {navigator.clipboard.writeText(url); toast.success("Copied!");} } }
+                ].map((item, idx) => (
+                    <div key={idx} className="flex flex-col items-center gap-1">
+                        <motion.button
+                            whileTap={{ scale: 0.8 }}
+                            onClick={(e) => { e.stopPropagation(); !item.disabled && item.action(); }}
+                            className={`w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white text-lg ${item.disabled ? "opacity-50" : "shadow-lg"}`}
+                        >
+                            {item.icon}
+                        </motion.button>
+                        {item.count !== undefined && <span className="text-[10px] font-bold text-white drop-shadow-md">{item.count}</span>}
+                    </div>
+                ))}
+                
+                {reel.mediaType === "video" && (
+                    <motion.button
+                        whileTap={{ scale: 0.8 }}
+                        onClick={(e) => { e.stopPropagation(); setGlobalMuted(!globalMuted); }}
+                        className="w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white"
+                    >
+                        {globalMuted ? <FaVolumeMute size={16} /> : <FaVolumeUp size={16} />}
+                    </motion.button>
+                )}
+            </div>
 
-                    {/* Paused indicator */}
-                    <AnimatePresence>
-                        {!isPlaying && isActive && reel.mediaType === "video" && (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.7 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.7 }}
-                                transition={{ duration: 0.2 }}
-                                className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                            >
-                                <div className="w-20 h-20 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center">
-                                    <FaPlay className="text-white text-3xl ml-1" />
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+            {/* ── BOTTOM INFO (Tight & Minimal) ── */}
+            <div className="absolute bottom-0 inset-x-0 z-40 pointer-events-none">
+                <div className="absolute bottom-0 inset-x-0 h-64 bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-32" />
 
-                    {/* Heart double-tap animation */}
-                    <AnimatePresence>
-                        {showHeartAnimation && (
-                            <motion.div
-                                initial={{ scale: 0.4, opacity: 0 }}
-                                animate={{ scale: 1.3, opacity: 1 }}
-                                exit={{ scale: 0.8, opacity: 0 }}
-                                transition={{ duration: 0.45 }}
-                                className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                            >
-                                <FaHeart className="text-white text-7xl drop-shadow-2xl" />
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
-
-                {/* ── GRADIENTS ── */}
-                <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
-                <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
-
-                {/* ── RIGHT ACTION BAR ── */}
-                <div className="absolute z-10 right-3 bottom-28 flex flex-col items-center gap-5">
-
-                    {/* Profile pic + follow button */}
-                    <div className="relative">
-                        <Link to={`/public-profile/${reel.editor?._id}`}>
-                            <div className="w-11 h-11 rounded-full border-2 border-white overflow-hidden shadow-lg">
-                                <img
-                                    src={repairUrl(reel.editor?.profilePicture)}
-                                    alt={reel.editor?.name}
-                                    className="w-full h-full object-cover"
-                                />
+                <div className="relative px-5 pb-6 pointer-events-auto">
+                    {/* USER HUB */}
+                    <div className="flex items-center gap-3 mb-3">
+                        <Link to={`/public-profile/${reel.editor?._id}`} onClick={(e) => e.stopPropagation()}>
+                            <div className="w-10 h-10 rounded-full border-[1.5px] border-white overflow-hidden shadow-lg p-[1px] bg-white/10">
+                                <img src={repairUrl(reel.editor?.profilePicture)} className="w-full h-full rounded-full object-cover" alt="" />
                             </div>
                         </Link>
-                        {/* Follow pill */}
-                        {!isOwnReel && (
-                            <button
-                                onClick={handleFollow}
-                                className={`
-                                    absolute -bottom-2 left-1/2 -translate-x-1/2
-                                    w-5 h-5 rounded-full flex items-center justify-center
-                                    text-white text-[9px] shadow-md transition-colors duration-300
-                                    ${isFollowing ? "bg-green-500" : "bg-red-500"}
-                                `}
-                            >
-                                {isFollowing ? <FaCheck /> : <FaUserPlus />}
-                            </button>
-                        )}
-                    </div>
-
-                    {/* Like */}
-                    <motion.button
-                        whileTap={{ scale: 0.82 }}
-                        onClick={handleLike}
-                        className="flex flex-col items-center text-white"
-                    >
-                        <div className="w-11 h-11 bg-white/15 backdrop-blur-md rounded-full flex items-center justify-center">
-                            {isLiked ? (
-                                <FaHeart className="text-red-500 text-xl" />
-                            ) : (
-                                <FaRegHeart className="text-white text-xl" />
-                            )}
-                        </div>
-                        <span className="text-xs mt-1 font-medium">{likesCount}</span>
-                    </motion.button>
-
-                    {/* Comment */}
-                    <motion.button
-                        whileTap={{ scale: 0.82 }}
-                        onClick={() => onCommentClick(reel._id)}
-                        className="flex flex-col items-center text-white"
-                    >
-                        <div className="w-11 h-11 bg-white/15 backdrop-blur-md rounded-full flex items-center justify-center">
-                            <FaComment className="text-white text-[17px]" />
-                        </div>
-                        <span className="text-xs mt-1 font-medium">{reel.commentsCount || 0}</span>
-                    </motion.button>
-
-                    {/* View count */}
-                    <div className="flex flex-col items-center text-white">
-                        <div className="w-11 h-11 bg-white/15 backdrop-blur-md rounded-full flex items-center justify-center">
-                            <FaEye className="text-white text-[17px]" />
-                        </div>
-                        <span className="text-xs mt-1 font-medium">{reel.viewsCount || 0}</span>
-                    </div>
-
-                    {/* Share */}
-                    <motion.button
-                        whileTap={{ scale: 0.85 }}
-                        onClick={handleShare}
-                        className="w-11 h-11 bg-white/15 backdrop-blur-md rounded-full flex items-center justify-center"
-                    >
-                        <FaShare className="text-white text-[17px]" />
-                    </motion.button>
-
-                    {/* Mute — global, persists across reels */}
-                    {reel.mediaType === "video" && (
-                        <motion.button
-                            whileTap={{ scale: 0.85 }}
-                            onClick={() => setGlobalMuted((m) => !m)}
-                            className="w-11 h-11 bg-white/15 backdrop-blur-md rounded-full flex items-center justify-center"
-                        >
-                            {globalMuted ? (
-                                <FaVolumeMute className="text-white text-[17px]" />
-                            ) : (
-                                <FaVolumeUp className="text-white text-[17px]" />
-                            )}
-                        </motion.button>
-                    )}
-                </div>
-
-                {/* ── BOTTOM INFO ── */}
-                <div className="absolute bottom-10 left-4 right-16 z-10 text-white">
-                    <div className="flex items-center gap-2 mb-1.5">
-                        <span className="font-bold text-[15px] leading-tight">
-                            {reel.editor?.name}
-                        </span>
-                        <span className="px-2 py-0.5 bg-white/20 text-[9px] rounded border border-white/30 tracking-wide">
-                            EDITOR
-                        </span>
-                    </div>
-                    <p className="text-[13px] font-semibold leading-snug">
-                        {reel.title}
-                    </p>
-                    {reel.description && (
-                        <p className="text-[12px] text-white/75 mt-0.5 line-clamp-2 leading-snug">
-                            {reel.description}
-                        </p>
-                    )}
-                </div>
-
-                {/* ── WATERMARK ── */}
-                <div className="absolute bottom-3 right-3 flex items-center gap-1 opacity-80 pointer-events-none z-10">
-                    <img src={logo} className="w-5 h-5 rounded-md" alt="SuviX" />
-                    <span className="text-white font-bold text-[10px] tracking-widest">
-                        SuviX
-                    </span>
-                </div>
-
-                {/* ── PROGRESS BAR — thin, always visible ── */}
-                {reel.mediaType === "video" && (
-                    <div
-                        ref={scrubRef}
-                        onClick={handleScrub}
-                        className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/20 cursor-pointer z-20"
-                    >
-                        <motion.div
-                            style={{ width: `${progress}%` }}
-                            className="h-full bg-white rounded-r-full transition-none"
-                        />
-                    </div>
-                )}
-
-                {/* ── SWIPE HINT ── */}
-                <AnimatePresence>
-                    {showSwipeHint && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 10 }}
-                            transition={{ duration: 0.3 }}
-                            className="absolute bottom-20 left-4 z-20 pointer-events-none"
-                        >
-                            <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
-                                <span className="text-white text-xs font-semibold">
-                                    Swipe up for next
-                                </span>
-                                <svg className="h-3 w-3 text-white rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                                </svg>
+                        <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-2">
+                                <Link to={`/public-profile/${reel.editor?._id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-white text-[14px] tracking-tight hover:underline">
+                                    {reel.editor?.name}
+                                </Link>
+                                <span className="px-1.5 py-0.5 bg-white/20 text-[8px] font-bold rounded border border-white/10 text-white/90">EDITOR</span>
                             </div>
-                        </motion.div>
+                            
+                            {!isOwnReel && (
+                                <button
+                                    onClick={handleFollow}
+                                    className="w-fit h-6 px-3 bg-transparent border border-white/40 rounded-full flex items-center justify-center text-white text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all hover:bg-white/10"
+                                >
+                                    {isFollowing ? "Following" : "Follow"}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* CONTENT */}
+                    <div className="max-w-[85%] mb-3">
+                        <h2 className="text-xl font-bold text-white leading-tight mb-0.5">{reel.title}</h2>
+                        <p className="text-[12px] font-medium text-white/70 leading-relaxed line-clamp-2">{reel.description}</p>
+                    </div>
+
+                    {/* PROGRESS */}
+                    {reel.mediaType === "video" && (
+                        <div className="w-full h-[2px] bg-white/10 rounded-full overflow-hidden">
+                            <motion.div style={{ width: `${progress}%` }} className="h-full bg-white shadow-[0_0_5px_rgba(255,255,255,0.7)]" />
+                        </div>
                     )}
-                </AnimatePresence>
+                </div>
             </div>
+
+            {/* WATERMARK */}
+            <div className="absolute bottom-3 right-4 flex items-center gap-1 opacity-20 pointer-events-none grayscale invert scale-75 origin-right">
+                <img src={logo} className="w-4 h-4" alt="" />
+                <span className="text-white font-black text-[8px] tracking-widest uppercase">SuviX</span>
+            </div>
+
+            <AnimatePresence>
+                {showHeartAnimation && (
+                    <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1.1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }} className="absolute inset-0 flex items-center justify-center pointer-events-none z-[60]">
+                        <FaHeart className="text-white text-7xl drop-shadow-2xl opacity-60" />
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
