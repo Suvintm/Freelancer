@@ -47,6 +47,7 @@ import KYCPendingBanner from "../components/KYCPendingBanner.jsx";
 import HomeExploreContainer from "../components/HomeExploreContainer.jsx";
 import ClientDashboard from "../components/ClientDashboard.jsx";
 import UnifiedBannerSlider from "../components/UnifiedBannerSlider.jsx";
+import PullToRefresh from "../components/PullToRefresh.jsx";
 import reelIcon from "../assets/reelicon.png";
 
 const ClientHome = () => {
@@ -76,9 +77,20 @@ const ClientHome = () => {
     }, 100);
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => window.location.reload(), 300);
+    setLoading(true);
+    try {
+      const token = user?.token;
+      if (!token) return;
+      const ordersRes = await axios.get(`${backendURL}/api/orders`, { headers: { Authorization: `Bearer ${token}` } });
+      const orders = ordersRes.data.orders || [];
+      const activeOrders = orders.filter(o => ["new","accepted","in_progress","submitted"].includes(o.status));
+      setStats({ totalOrders: orders.length, activeOrders: activeOrders.length, completedOrders: orders.filter(o => o.status === "completed").length, totalSpent: orders.filter(o => o.status === "completed").reduce((s,o) => s+(o.amount||0), 0) });
+      setActiveProjects(activeOrders.slice(0,5));
+      const editorsRes = await axios.get(`${backendURL}/api/explore/editors?limit=6&sortBy=popular`, { headers: { Authorization: `Bearer ${token}` } });
+      setFeaturedEditors(editorsRes.data.editors?.slice(0,6) || []);
+    } catch(err) { console.error(err); } finally { setLoading(false); setIsRefreshing(false); }
   };
 
   useEffect(() => {
@@ -165,21 +177,10 @@ const ClientHome = () => {
       <ClientSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <ClientNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-      {/* Refresh Button */}
-      <motion.button
-        onClick={handleRefresh}
-        disabled={isRefreshing}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        className="fixed top-20 right-4 z-50 p-2 rounded-lg bg-zinc-900/90 light:bg-white/90 backdrop-blur border border-zinc-800 light:border-zinc-200"
-      >
-        <motion.div animate={isRefreshing ? { rotate: 360 } : {}} transition={isRefreshing ? { repeat: Infinity, duration: 0.8 } : {}}>
-          <HiOutlineArrowPath className="text-indigo-400 w-4 h-4" />
-        </motion.div>
-      </motion.button>
+      {/* Old floating refresh button removed — replaced by pull-to-refresh */}
 
       <main className="flex-1 px-0 md:ml-64 md:mt-16 overflow-x-hidden">
-        
+        <PullToRefresh onRefresh={handleRefresh}>
         {/* Premium Banner at the Top - Responsive with Side Margins */}
         <div className="px-3 md:px-8 mb-1.5 md:mb-4 max-w-7xl mx-auto">
           <UnifiedBannerSlider />
@@ -250,7 +251,7 @@ const ClientHome = () => {
         </AnimatePresence>
 
 
-
+        </PullToRefresh>
       </main>
     </div>
   );
