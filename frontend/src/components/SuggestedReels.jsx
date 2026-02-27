@@ -204,17 +204,15 @@ const ReelThumbnail = ({ reel, index }) => {
             onMouseEnter={handleMouseEnter}
             onMouseLeave={() => setIsHovered(false)}
             onClick={() => navigate(`/reels?id=${reel._id}`)}
-            className="flex-shrink-0 w-40 md:w-48 h-72 md:h-80 bg-[#0a0a0c] rounded-[2rem] overflow-hidden relative cursor-pointer border border-white/5 hover:border-purple-500 transition-all snap-start group shadow-2xl shadow-black/40 hover:shadow-purple-500/20"
+            className="flex-shrink-0 w-40 md:w-48 h-72 md:h-80 bg-[#0a0a0c] rounded-[2rem] overflow-hidden relative cursor-pointer transition-all snap-start group shadow-2xl shadow-black/40"
         >
-            {/* Visual Accents (Glow) */}
-            <div className="absolute inset-0 bg-gradient-to-b from-purple-600/0 to-purple-600/0 group-hover:to-purple-500/10 transition-all duration-500" />
             
             {/* Video/Image Content */}
             {reel.mediaType === "video" ? (
                 <video
                     ref={videoRef}
                     src={reel.mediaUrl}
-                    className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-500 group-hover:scale-110 no-copy"
+                    className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110 no-copy"
                     muted
                     loop
                     playsInline
@@ -227,7 +225,7 @@ const ReelThumbnail = ({ reel, index }) => {
                 <img
                     src={reel.mediaUrl}
                     alt={reel.title}
-                    className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-500 group-hover:scale-110 no-copy"
+                    className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110 no-copy"
                     onContextMenu={(e) => e.preventDefault()}
                     onDoubleClick={(e) => e.preventDefault()}
                 />
@@ -246,8 +244,8 @@ const ReelThumbnail = ({ reel, index }) => {
                 </span>
             </div>
 
-            {/* Glassmorphic Metadata Overlay - More Integrated */}
-            <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+            {/* Metadata Overlay - Clean without gradient */}
+            <div className="absolute inset-x-0 bottom-0 p-4 translate-y-4 group-hover:translate-y-0 transition-all duration-500 z-30">
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                         <div className="relative">
@@ -258,10 +256,10 @@ const ReelThumbnail = ({ reel, index }) => {
                             />
                             <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full border border-black ring-1 ring-emerald-500/50" />
                         </div>
-                        <span className="text-[10px] text-white font-bold tracking-tight truncate max-w-[80px]">{reel.editor?.name}</span>
+                        <span className="text-[10px] text-white font-bold tracking-tight truncate max-w-[80px] drop-shadow-md">{reel.editor?.name}</span>
                     </div>
                 </div>
-                <h3 className="text-[11px] font-bold text-white/90 line-clamp-2 leading-tight group-hover:text-white transition-colors">
+                <h3 className="text-[11px] font-bold text-white line-clamp-2 leading-tight drop-shadow-md transition-colors">
                     {reel.title}
                 </h3>
                 <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-all duration-500 delay-100">
