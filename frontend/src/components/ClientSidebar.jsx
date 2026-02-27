@@ -151,6 +151,7 @@ const ClientSidebar = ({ isOpen, onClose }) => {
       children: [
         { path: "/client-profile", icon: HiOutlineUser, label: "My Profile" },
         { path: "/client-kyc", icon: HiOutlineShieldCheck, label: "KYC Verification", kycBadge: getKycBadge() },
+
       ],
     },
     {

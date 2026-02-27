@@ -52,7 +52,9 @@ import SubscriptionPlansPage from "./pages/SubscriptionPlansPage.jsx";
 import ProfileInsightsPage from "./pages/ProfileInsightsPage.jsx";
 import SuvixScorePage from "./pages/SuvixScorePage.jsx";
 import ClientKYCPage from "./pages/ClientKYCPage.jsx";
+
 import LegalCenterPage from "./pages/LegalCenterPage.jsx";
+
 import LocalEditorsNetworkPage from "./pages/LocalEditorsNetworkPage.jsx";
 import LocationSettingsPage from "./pages/LocationSettingsPage.jsx";
 import AchievementsPage from "./pages/AchievementsPage.jsx";
@@ -74,6 +76,7 @@ import MyJobsPage from "./pages/MyJobsPage.jsx";
 import JobApplicantsPage from "./pages/JobApplicantsPage.jsx";
 import MyApplicationsPage from "./pages/MyApplicationsPage.jsx";
 import JobsPage from "./pages/JobsPage.jsx";
+import AdDetailsPage from "./pages/AdDetailsPage.jsx";
 
 import { TermsAndConditions, PrivacyPolicy, ContentProtectionPolicy, EditorCodeOfConduct } from "./pages/LegalPages";
 
@@ -295,6 +298,8 @@ function App() {
           }
         />
 
+        <Route path="/ad-details/:id" element={<AdDetailsPage />} />
+
         {/* Job Portal Routes */}
         <Route
           path="/jobs"
@@ -469,7 +474,10 @@ function App() {
           }
         />
 
+
+
         {/* ============ SHARED ROUTES ============ */}
+
         {/* Public Profile */}
         <Route
           path="/public-profile/:userId"

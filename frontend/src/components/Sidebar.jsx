@@ -112,6 +112,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       type: "group",
       children: [
         { path: "/kyc-details", icon: HiOutlineBuildingLibrary, label: "KYC Details" },
+
         { path: "/payments", icon: HiOutlineCreditCard, label: "Payments" },
         { path: "/location-settings", icon: HiOutlineMapPin, label: "Location Settings" },
         { path: "/legal-center", icon: HiOutlineDocumentText, label: "Legal & Terms" },

@@ -40,6 +40,9 @@ import {
   Cell
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
+import VerifiedEditorBadge from './VerifiedEditorBadge';
+import CloudStorageCard from './CloudStorageCard';
+import EditorLiveStatus from './EditorLiveStatus';
 
 // Sample data for charts
 const earningsData = [
@@ -128,6 +131,23 @@ const EditorDashboard = ({ user, stats }) => {
           {currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
         </div>
       </motion.div>
+
+      {/* Verification & Status Bar - NEW */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-1">
+            <VerifiedEditorBadge 
+                user={user} 
+                kycStatus={user?.isVerified ? 'verified' : 'pending'} 
+                completionPercent={85} 
+            />
+        </div>
+        <div className="lg:col-span-1">
+            <CloudStorageCard />
+        </div>
+        <div className="lg:col-span-1">
+            <EditorLiveStatus isLive={true} />
+        </div>
+      </div>
 
       {/* Quick Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

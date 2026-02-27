@@ -1,5 +1,5 @@
 import Navbar from "../components/Navbar";
-import PromoBanner from "../components/PromoBanner";
+import UnifiedBannerSlider from "../components/UnifiedBannerSlider";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthForm from "../components/AuthForm";
@@ -193,9 +193,15 @@ const Homepage = () => {
               )}
 
               {user && (
-                <button onClick={handleGoWorkspace} className="group inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-3 rounded-full font-semibold shadow-lg shadow-emerald-500/25 transition-all hover:scale-105">
-                  Enter Workspace <FaArrowRight className="text-[6px] group-hover:translate-x-1 transition-transform" />
-                </button>
+                <div className="bg-white/40 backdrop-blur-xl border border-white/40 rounded-[2rem] p-8 shadow-2xl relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl -z-10" />
+                  <p className="text-xl font-bold text-slate-800 mb-6 leading-tight">
+                    Continue where you left off. Your workspace, messages, and earnings are ready.
+                  </p>
+                  <button onClick={handleGoWorkspace} className="group inline-flex items-center gap-3 bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-full font-bold shadow-lg shadow-emerald-500/25 transition-all hover:scale-105">
+                    Enter Workspace <FaArrowRight className="text-xs group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </div>
               )}
 
               {!user && (
@@ -216,9 +222,9 @@ const Homepage = () => {
 
             {/* Banner - Shows second/below on mobile, second on desktop */}
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.2 }} className="relative order-2 lg:order-2">
-              {/* Dynamic Promotional Banner - Admin Controlled */}
-              <div className="relative bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200/80">
-                <PromoBanner />
+              {/* Premium Multi-Level Banner Experience */}
+              <div className="relative rounded-[2.5rem] overflow-hidden shadow-2xl border border-slate-200/50">
+                <UnifiedBannerSlider />
               </div>
               <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 3, repeat: Infinity }} className="absolute -top-4 -right-4 bg-white rounded-2xl shadow-xl p-4 border border-slate-100 hidden lg:flex items-center gap-3">
                 <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center"><FaCheckCircle className="text-emerald-500" /></div>

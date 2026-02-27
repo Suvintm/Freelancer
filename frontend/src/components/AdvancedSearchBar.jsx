@@ -94,10 +94,10 @@ const AdvancedSearchBar = ({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setTimeout(() => setIsFocused(false), 200)}
           placeholder={placeholder}
-          className={`w-full py-3.5 pl-12 pr-20 bg-white/5 light:bg-white border rounded-2xl text-white light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400 focus:outline-none transition-all ${
+          className={`w-full py-2.5 md:py-3.5 pl-10 md:pl-12 pr-16 md:pr-20 bg-white/5 backdrop-blur-md border rounded-2xl text-sm md:text-base text-white placeholder:text-gray-500 focus:outline-none transition-all duration-300 ${
             isFocused
-              ? "border-violet-500/50 light:border-violet-500 ring-4 ring-violet-500/10 bg-[#0a0a0c] light:bg-white"
-              : "border-white/10 light:border-slate-200"
+              ? "border-violet-500/40 ring-4 ring-violet-500/5 bg-black/40"
+              : "border-white/5 hover:border-white/10"
           }`}
         />
 

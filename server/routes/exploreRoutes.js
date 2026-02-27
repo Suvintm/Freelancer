@@ -1,12 +1,14 @@
 // routes/exploreRoutes.js
 import express from "express";
 import { getAllEditors, getEditorSuggestions } from "../controllers/exploreController.js";
-import protect from "../middleware/authMiddleware.js";
+import { getAllGigs } from "../controllers/gigController.js"; // Added gig import
+import { optionalAuth } from "../middleware/authMiddleware.js"; // Use optionalAuth for public access
 import { exploreLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 
 router.get("/suggestions", exploreLimiter, getEditorSuggestions);
-router.get("/editors", protect, getAllEditors, exploreLimiter);
+router.get("/editors", optionalAuth, getAllEditors, exploreLimiter);
+router.get("/gigs", optionalAuth, getAllGigs, exploreLimiter); // Added gigs endpoint
 
 export default router;
