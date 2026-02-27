@@ -86,7 +86,7 @@ const UnifiedExplorePreview = () => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: idx * 0.05 }}
                         whileHover={{ y: -8, scale: 1.02 }}
-                        onClick={() => navigate(type === 'editor' ? `/editor/${item._id}` : `/explore-editors?tab=gigs`)}
+                        onClick={() => navigate(type === 'editor' ? `/editor/${item.user?._id || item.user || item._id}` : `/explore-editors?tab=gigs`)}
                         className={`bg-[#0f0f15]/80 backdrop-blur-xl border border-white/[0.06] rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden cursor-pointer group hover:border-violet-500/30 transition-all shadow-2xl relative ${
                             type === 'editor' 
                                 ? 'flex flex-col items-center p-5 min-h-[320px] lg:min-h-[360px]' 
