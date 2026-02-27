@@ -203,7 +203,7 @@ const EditorHome = () => {
         </div>
 
         {/* Simple & Professional Tabbed Navigation - Enhanced for Light Theme */}
-        <div className="flex justify-center mb-6">
+        <div className="flex justify-center mb-4 md:mb-6">
           <div className="flex items-center gap-1 bg-white/5 light:bg-zinc-100 border border-white/10 light:border-zinc-200 p-1 rounded-2xl w-fit backdrop-blur-xl shadow-sm">
             {[
               { id: 'home', label: 'Home', icon: HiOutlineSparkles },

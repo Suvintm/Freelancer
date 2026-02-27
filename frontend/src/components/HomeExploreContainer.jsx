@@ -22,7 +22,7 @@ const HomeExploreContainer = ({ searchQuery, setSearchQuery, recentSearches, act
     const { user } = useAppContext();
 
     return (
-        <div className="w-full max-w-7xl mx-auto space-y-8 pb-12">
+        <div className="w-full max-w-7xl mx-auto space-y-4 md:space-y-8 pb-12">
             
             {/* Banner moved to parent level for better layout flow */}
 
@@ -32,18 +32,27 @@ const HomeExploreContainer = ({ searchQuery, setSearchQuery, recentSearches, act
                 <ProfileCompletionBanner />
             </div>
 
-            {/* SEARCH FIRST - ZEpto Style (Non-Sticky as requested) */}
             <div className="px-4 pt-2">
                 <div className="max-w-3xl mx-auto">
                     <AdvancedSearchBar
                         value={searchQuery}
                         onChange={setSearchQuery}
+                        onSearch={(term) => {
+                          console.log("Searching for:", term);
+                          // Implement actual search routing here if needed
+                        }}
                         recentSearches={recentSearches}
                         placeholder="What are you looking for today?"
-                        className="w-full shadow-2xl"
+                        className="w-full"
                         suggestionType="editors"
+                        variant="pill"
                     />
                 </div>
+            </div>
+
+            {/* NEARBY EXPERTS - Redesigned & Repositioned */}
+            <div className="px-4">
+                <EditorsNearYouPreview />
             </div>
 
             {/* Top Categories Navigation - Right after search for filtering */}
@@ -51,12 +60,9 @@ const HomeExploreContainer = ({ searchQuery, setSearchQuery, recentSearches, act
                 <CategoryStrip onSelect={(skill) => setSearchQuery(skill)} />
             </div>
 
-            {/* Discovery Section: Suggested Reels + Editors Near You */}
-            <div className="px-4 space-y-8">
+            {/* Discovery Section: Suggested Reels */}
+            <div className="px-4">
                 <SuggestedReels />
-                <div className="py-6 bg-[#0a0a0c]/40 backdrop-blur-sm rounded-[2.5rem] border border-white/5 px-4">
-                    <EditorsNearYouPreview />
-                </div>
             </div>
 
             {/* Specialized Browse Section (Zepto Style Grid) */}

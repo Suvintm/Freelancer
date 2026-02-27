@@ -11,7 +11,8 @@ const AdvancedSearchBar = ({
   recentSearches = [], 
   onSearch, 
   suggestionType, // "editors" or "gigs"
-  className = "" 
+  className = "",
+  variant = "default" // "default" or "pill"
 }) => {
   const { backendURL } = useAppContext();
   const [isFocused, setIsFocused] = useState(false);
@@ -71,19 +72,23 @@ const AdvancedSearchBar = ({
   };
 
   return (
-    <div className={`relative z-30 ${className}`}>
+    <div className={`relative z-30 ${className} flex items-center justify-center`}>
       {/* Search Input Container */}
       <div 
-        className={`relative flex items-center w-full transition-all duration-300 ${
+        className={`relative flex items-center w-[80%] transition-all duration-300 ${
+          variant === 'pill' ? 'rounded-full' : ''
+        } ${
           isFocused 
-            ? "scale-[1.01] shadow-xl shadow-violet-500/10" 
+            ? variant === 'pill' ? "scale-[1.01] shadow-2xl shadow-black/10" : "scale-[1.01] shadow-xl shadow-violet-500/10" 
             : "hover:bg-white/5"
         }`}
       >
-        <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${
-          isFocused ? "text-violet-400" : "text-gray-400"
+        <div className={`absolute left-5 md:left-6 top-1/2 -translate-y-1/2 transition-colors ${
+          isFocused 
+            ? variant === 'pill' ? "text-orange-500" : "text-violet-400" 
+            : "text-gray-400"
         }`}>
-          <FaSearch />
+          <FaSearch className={variant === 'pill' ? "text-lg" : "text-base"} />
         </div>
 
         <input
@@ -93,23 +98,29 @@ const AdvancedSearchBar = ({
           onChange={(e) => onChange(e.target.value)}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && onSearch) {
+              onSearch(value);
+            }
+          }}
           placeholder={placeholder}
-          className={`w-full py-2.5 md:py-3.5 pl-10 md:pl-12 pr-16 md:pr-20 bg-white/5 backdrop-blur-md border rounded-2xl text-sm md:text-base text-white placeholder:text-gray-500 focus:outline-none transition-all duration-300 ${
-            isFocused
-              ? "border-violet-500/40 ring-4 ring-violet-500/5 bg-black/40"
-              : "border-white/5 hover:border-white/10"
+          className={`w-full py-2.5 md:py-3 pl-11 md:pl-14 pr-20 md:pr-24 transition-all duration-300 focus:outline-none ${
+            variant === 'pill'
+              ? `rounded-full text-sm md:text-base text-zinc-800 placeholder:text-zinc-400 border-2 ${
+                  isFocused 
+                    ? "bg-white border-orange-500 ring-4 ring-orange-500/10" 
+                    : "bg-white border-zinc-200 light:border-zinc-300"
+                }`
+              : `bg-white/5 backdrop-blur-md border rounded-2xl text-sm md:text-base text-white placeholder:text-gray-500 ${
+                  isFocused
+                    ? "border-violet-500/40 ring-4 ring-violet-500/5 bg-black/40"
+                    : "border-white/5 hover:border-white/10"
+                }`
           }`}
         />
 
         {/* Right Actions */}
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-          {/* Keyboard Shortcut Hint */}
-          {!value && !isFocused && (
-            <div className="hidden md:flex items-center gap-1 px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[10px] text-gray-500 font-mono">
-              <span>⌘</span><span>K</span>
-            </div>
-          )}
-
+        <div className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
           {/* Clear Button */}
           {value && (
             <motion.button
@@ -117,10 +128,31 @@ const AdvancedSearchBar = ({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
               onClick={handleClear}
-              className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-gray-400 hover:text-white transition-colors"
+              className={`p-1.5 rounded-full transition-colors ${
+                variant === 'pill' ? "bg-gray-100 hover:bg-gray-200 text-gray-400" : "bg-white/10 hover:bg-white/20 text-gray-400"
+              }`}
             >
               <FaTimes className="text-xs" />
             </motion.button>
+          )}
+
+          {/* GO Button for Pill Variant */}
+          {variant === 'pill' && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => onSearch && onSearch(value)}
+              className="w-8 h-8 rounded-full bg-[#FF4500] flex items-center justify-center text-white text-[10px] md:text-xs font-black shadow-lg shadow-orange-500/20 tracking-tighter"
+            >
+              GO
+            </motion.button>
+          )}
+
+          {/* Keyboard Shortcut Hint (Hidden in Pill Variant) */}
+          {!value && !isFocused && variant !== 'pill' && (
+            <div className="hidden md:flex items-center gap-1 px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[10px] text-gray-500 font-mono">
+              <span>⌘</span><span>K</span>
+            </div>
           )}
         </div>
       </div>
