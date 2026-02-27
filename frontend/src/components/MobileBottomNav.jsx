@@ -5,7 +5,7 @@
  */
 
 import { useNavigate, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAppContext } from "../context/AppContext";
 import { useTheme } from "../context/ThemeContext";
 import { 
@@ -23,8 +23,8 @@ import {
   HiOutlineBriefcase
 } from "react-icons/hi2";
 import { 
-  IoPlayCircle, 
-  IoPlayCircleOutline 
+  IoPlay, 
+  IoPlayOutline 
 } from "react-icons/io5";
 
 const MobileBottomNav = () => {
@@ -36,11 +36,10 @@ const MobileBottomNav = () => {
   // Don't render if not logged in
   if (!user) return null;
 
-  // Don't render on chat pages (individual chat view)
-  if (location.pathname.startsWith("/chat/")) return null;
+  // Don't render on chat pages (individual chat view) OR Reels scrolling page
+  const hidePaths = ["/chat/", "/reels"];
+  if (hidePaths.some(path => location.pathname.startsWith(path) || location.pathname === path)) return null;
 
-  const isClient = user?.role === "client";
-  const isEditor = user?.role === "editor";
   const isDark = theme === "dark";
 
   // Define navigation items based on user role
@@ -48,7 +47,7 @@ const MobileBottomNav = () => {
     {
       id: "home",
       label: "Home",
-      path: isClient ? "/client-home" : isEditor ? "/editor-home" : "/",
+      path: user?.role === "client" ? "/client-home" : user?.role === "editor" ? "/editor-home" : "/",
       activeIcon: HiHome,
       inactiveIcon: HiOutlineHome,
     },
@@ -70,8 +69,8 @@ const MobileBottomNav = () => {
       id: "reels",
       label: "Reels",
       path: "/reels",
-      activeIcon: IoPlayCircle,
-      inactiveIcon: IoPlayCircleOutline,
+      activeIcon: IoPlay,
+      inactiveIcon: IoPlay, // Solid for center button
       isCenter: true,
     },
     {
@@ -91,71 +90,67 @@ const MobileBottomNav = () => {
     {
       id: "profile",
       label: "Profile",
-      path: isClient ? "/client-profile" : "/editor-profile",
+      path: user?.role === "client" ? "/client-profile" : "/editor-profile",
       activeIcon: HiUser,
       inactiveIcon: HiOutlineUser,
     },
   ];
 
-  const isActive = (path) => location.pathname === path;
-
   return (
     <motion.nav
       initial={{ y: 100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="md:hidden fixed bottom-0 left-0 right-0 z-50"
+      exit={{ y: 100, opacity: 0 }}
+      className="md:hidden fixed bottom-6 left-6 right-6 z-50 h-[60px]"
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
-      {/* Main Navigation Container */}
+      {/* Premium Glass Container */}
       <div 
-        className={`relative mx-0 rounded-t-3xl shadow-2xl ${
+        className={`relative h-full w-full rounded-[2rem] overflow-visible backdrop-blur-3xl border ${
           isDark 
-            ? "bg-[#0f0f12] border-t border-white/10" 
-            : "bg-white border-t border-gray-100"
-        }`}
-        style={{
-          boxShadow: isDark 
-            ? "0 -8px 32px rgba(0, 0, 0, 0.5)" 
-            : "0 -8px 32px rgba(0, 0, 0, 0.08)"
-        }}
+            ? "bg-zinc-900/90 border-white/[0.05]" 
+            : "bg-white/95 border-zinc-200/40"
+        } shadow-[0_12px_40px_rgba(0,0,0,0.2)] ${isDark ? 'shadow-black/60' : 'shadow-zinc-300/40'}`}
       >
-        {/* Navigation Content */}
-        <div className="relative flex items-end justify-between pt-2 pb-1 px-2">
+        <div className="flex items-center justify-around h-full px-2 relative">
           {navItems.map((item) => {
-            const active = isActive(item.path);
+            const active = location.pathname === item.path;
             const Icon = active ? item.activeIcon : item.inactiveIcon;
 
-            // Center floating button (Reels)
+            // Center floating button (Reels) - Sharp Black/White Design
             if (item.isCenter) {
               return (
-                <motion.button
-                  key={item.id}
-                  onClick={() => navigate(item.path)}
-                  whileTap={{ scale: 0.95 }}
-                  className="relative flex flex-col items-center -mt-4"
-                  style={{ marginBottom: "-2px" }}
-                >
-                  {/* Floating Circle Button */}
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className={`flex items-center justify-center w-11 h-11 rounded-full shadow-lg ${
-                      active
-                        ? "bg-emerald-500"
-                        : isDark 
-                          ? "bg-emerald-600" 
-                          : "bg-emerald-500"
-                    }`}
-                    style={{
-                      boxShadow: active 
-                        ? "0 4px 20px rgba(16, 185, 129, 0.4)" 
-                        : "0 4px 16px rgba(16, 185, 129, 0.3)"
-                    }}
-                  >
-                    <Icon className="text-white text-lg" />
-                  </motion.div>
-                </motion.button>
+                <div key={item.id} className="relative flex flex-col items-center">
+                  <div className="relative w-12 h-12 -mt-10">
+                    <motion.button
+                      onClick={() => navigate(item.path)}
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      className={`absolute inset-0 flex items-center justify-center rounded-2xl shadow-xl transition-all duration-300 ring-2 ${
+                        active 
+                          ? "bg-black ring-emerald-500/50" 
+                          : "bg-black ring-white/10"
+                      }`}
+                    >
+                      <Icon className="text-white text-xl relative z-10" />
+                      
+                      {/* Pulsing Active Indicator (Subtle) */}
+                      {active && (
+                        <motion.div 
+                          layoutId="centerGlow"
+                          className="absolute -inset-1 rounded-2xl bg-emerald-500/20 blur-md -z-10"
+                          animate={{ opacity: [0.5, 0.8, 0.5] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        />
+                      )}
+                    </motion.button>
+                  </div>
+                  <span className={`mt-1 text-[9px] font-black tracking-widest uppercase transition-colors duration-300 ${
+                    active ? 'text-emerald-500' : isDark ? 'text-white/40' : 'text-black/40'
+                  }`}>
+                    {item.label}
+                  </span>
+                </div>
               );
             }
 
@@ -164,41 +159,62 @@ const MobileBottomNav = () => {
               <motion.button
                 key={item.id}
                 onClick={() => navigate(item.path)}
-                whileTap={{ scale: 0.95 }}
-                className="flex flex-col items-center justify-center py-1 px-1 min-w-[42px]"
+                className="relative flex flex-col items-center justify-center min-w-[44px] h-full group"
+                whileTap={{ scale: 0.9 }}
               >
-                <Icon
-                  className={`text-lg mb-0.5 transition-colors duration-200 ${
-                    active
-                      ? "text-emerald-500"
-                      : isDark 
-                        ? "text-gray-400" 
-                        : "text-gray-600"
-                  }`}
-                />
-                <span
-                  className={`text-[9px] font-medium transition-colors duration-200 ${
-                    active
-                      ? "text-emerald-500"
-                      : isDark 
-                        ? "text-gray-400" 
-                        : "text-gray-600"
-                  }`}
-                >
-                  {item.label}
-                </span>
+                {/* Icon Container with Highlight */}
+                <div className="relative p-2 rounded-2xl">
+                  {/* Active Indicator Background - Only for Icon */}
+                  {active && (
+                    <motion.div
+                      layoutId="navTab"
+                      className={`absolute inset-0 rounded-2xl -z-10 ${
+                        isDark ? 'bg-white/5' : 'bg-emerald-50'
+                      }`}
+                      transition={{ type: "spring", bounce: 0.25, duration: 0.5 }}
+                    />
+                  )}
+
+                  <motion.div
+                    animate={{ 
+                      y: active ? -1 : 0,
+                      scale: active ? 1.1 : 1
+                    }}
+                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                    className={`${
+                      active 
+                        ? "text-emerald-500" 
+                        : isDark ? "text-white" : "text-black"
+                    }`}
+                  >
+                    <Icon className="text-[1.3rem]" />
+                  </motion.div>
+                </div>
+
+                <AnimatePresence>
+                  {active && (
+                    <motion.span
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="text-[8px] font-black tracking-widest uppercase text-emerald-500 absolute -bottom-1"
+                    >
+                      {item.label}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+
+                {/* Micro active dot */}
+                {active && (
+                  <motion.div 
+                    layoutId="activeDot"
+                    className="absolute -bottom-2 w-1 h-1 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"
+                    transition={{ type: "spring", bounce: 0.5, duration: 0.6 }}
+                  />
+                )}
               </motion.button>
             );
           })}
-        </div>
-
-        {/* iOS Home Indicator */}
-        <div className="flex justify-center pb-1">
-          <div 
-            className={`w-28 h-1 rounded-full ${
-              isDark ? "bg-gray-600" : "bg-gray-300"
-            }`}
-          />
         </div>
       </div>
     </motion.nav>
