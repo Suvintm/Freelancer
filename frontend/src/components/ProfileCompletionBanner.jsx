@@ -102,17 +102,17 @@ const ProfileCompletionBanner = () => {
 
   return (
     <motion.div
-      className="m-4 rounded-2xl overflow-hidden bg-[#0a0a0c] light:bg-white border border-white/5 light:border-slate-200"
+      className="m-0 rounded-xl overflow-hidden bg-[#0a0a0c] light:bg-white border border-white/5 light:border-slate-200"
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
       {/* Glass Container */}
-      <div className="flex items-center justify-between p-5 gap-6 bg-gradient-to-b from-white/[0.02] light:from-slate-50/50 to-transparent flex-wrap">
+      <div className="flex items-center justify-between p-3 md:p-4 gap-4 bg-gradient-to-b from-white/[0.02] light:from-slate-50/50 to-transparent flex-wrap">
         {/* Left: Progress Circle + Info */}
         <div className="flex items-center gap-5">
           {/* Circular Progress */}
-          <div className="relative w-[72px] h-[72px] flex-shrink-0">
+          <div className="relative w-[56px] h-[56px] flex-shrink-0">
             <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
               <circle 
                 className="fill-none stroke-white/[0.06] light:stroke-slate-200" 
@@ -131,38 +131,38 @@ const ProfileCompletionBanner = () => {
               />
             </svg>
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-baseline gap-[1px]">
-              <span className="text-2xl font-bold text-gray-200 light:text-slate-900 tabular-nums">{percent}</span>
-              <span className="text-[0.7rem] font-semibold text-gray-500 light:text-slate-500">%</span>
+              <span className="text-xl font-bold text-gray-200 light:text-slate-900 tabular-nums">{percent}</span>
+              <span className="text-[0.6rem] font-semibold text-gray-500 light:text-slate-500">%</span>
             </div>
           </div>
 
           {/* Info */}
-          <div className="flex flex-col gap-1">
-            <h3 className="text-base font-semibold text-gray-100 light:text-slate-900 tracking-tight">Profile Completion</h3>
-            <p className="text-[0.8rem] text-gray-500 light:text-slate-500 font-medium">
+          <div className="flex flex-col">
+            <h3 className="text-sm font-semibold text-gray-100 light:text-slate-900 tracking-tight">Profile Completion</h3>
+            <p className="text-[0.7rem] text-gray-500 light:text-slate-500 font-medium">
               {requiredComplete} of {requiredCount} required
             </p>
-            <p className="text-xs text-gray-400 light:text-slate-400">{completionData?.message}</p>
+            <p className="text-[10px] text-gray-400 light:text-slate-400">{completionData?.message}</p>
           </div>
         </div>
 
         {/* Right: Actions */}
         <div className="flex gap-2 flex-shrink-0">
           <button 
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-transparent border border-white/10 light:border-slate-200 rounded-lg text-gray-400 light:text-slate-600 text-[0.8rem] font-medium cursor-pointer transition-all hover:bg-white/[0.03] light:hover:bg-slate-50 hover:text-gray-300 light:hover:text-slate-900"
+            className="flex items-center gap-1 px-3 py-1.5 bg-transparent border border-white/10 light:border-slate-200 rounded-lg text-gray-400 light:text-slate-600 text-[0.7rem] font-medium cursor-pointer transition-all hover:bg-white/[0.03] light:hover:bg-slate-50"
             onClick={() => setShowChecklist(!showChecklist)}
           >
             <span>Checklist</span>
             <FaChevronDown 
-              className={`text-[0.65rem] transition-transform duration-200 ${showChecklist ? 'rotate-180' : ''}`}
+              className={`text-[0.6rem] transition-transform duration-200 ${showChecklist ? 'rotate-180' : ''}`}
             />
           </button>
           <button 
-            className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-green-400/20 to-green-500 light:from-emerald-500 light:to-emerald-600 border border-white/[0.08] light:border-transparent rounded-lg text-gray-200 light:text-white text-[0.8rem] font-semibold cursor-pointer transition-all hover:bg-[#222225] light:hover:from-emerald-600 light:hover:to-emerald-700"
+            className="flex items-center gap-1 px-4 py-1.5 bg-gradient-to-r from-green-400/20 to-green-500 light:from-emerald-500 light:to-emerald-600 border border-white/[0.08] light:border-transparent rounded-lg text-gray-200 light:text-white text-[0.75rem] font-semibold cursor-pointer transition-all hover:bg-[#222225]"
             onClick={() => navigate('/editor-profile-update')}
           >
             <span>Complete</span>
-            <FaArrowRight className="text-[0.7rem]" />
+            <FaArrowRight className="text-[0.65rem]" />
           </button>
         </div>
       </div>

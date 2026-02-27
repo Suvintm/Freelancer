@@ -58,6 +58,7 @@ import LegalCenterPage from "./pages/LegalCenterPage.jsx";
 import LocalEditorsNetworkPage from "./pages/LocalEditorsNetworkPage.jsx";
 import LocationSettingsPage from "./pages/LocationSettingsPage.jsx";
 import AchievementsPage from "./pages/AchievementsPage.jsx";
+import FollowSuggestionsPage from "./pages/FollowSuggestionsPage.jsx";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
 import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
 
@@ -233,6 +234,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["client","editor"]}>
               <ExploreEditorsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/follow-suggestions"
+          element={
+            <ProtectedRoute allowedRoles={["client", "editor"]}>
+              <FollowSuggestionsPage />
             </ProtectedRoute>
           }
         />

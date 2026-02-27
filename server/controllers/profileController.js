@@ -15,7 +15,7 @@ export const getProfile = asyncHandler(async (req, res) => {
   const viewerId = req.user?._id?.toString() || req.user?._id || req.user?.id;
 
   let profile = await Profile.findOne({ user: userId })
-    .populate("user", "name email role profilePicture kycStatus")
+    .populate("user", "name email role profilePicture kycStatus followers following suvixId followSettings")
     .lean();
 
   if (!profile) {
@@ -86,7 +86,8 @@ export const updateProfile = asyncHandler(async (req, res) => {
     socialLinks,
     hourlyRate,
     availability,
-    responseTime
+    responseTime,
+    followSettings
   } = req.body;
 
   const profile = await Profile.findOne({ user: req.user._id });
@@ -155,6 +156,13 @@ export const updateProfile = asyncHandler(async (req, res) => {
     profile.responseTime = responseTime;
   }
 
+  // Update followSettings (Manual Approval)
+  if (followSettings !== undefined) {
+    await User.findByIdAndUpdate(req.user._id, { 
+      'followSettings.manualApproval': followSettings.manualApproval 
+    });
+  }
+
   // Handle certifications upload
   if (req.files?.certifications?.length > 0) {
     const uploadedCerts = [];
@@ -211,7 +219,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
 
   // Return populated profile
   const populatedProfile = await Profile.findOne({ user: req.user._id })
-    .populate("user", "name email role profileCompleted profilePicture")
+    .populate("user", "name email role profileCompleted profilePicture followSettings")
     .populate("portfolio");
 
   logger.info(`Profile updated for user: ${req.user._id}`);

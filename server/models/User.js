@@ -214,6 +214,12 @@ const userSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     }],
+    followSettings: {
+      manualApproval: {
+        type: Boolean,
+        default: false,
+      },
+    },
 
     // ==================== CLIENT KYC & WALLET ====================
     

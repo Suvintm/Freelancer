@@ -178,15 +178,15 @@ const ClientHome = () => {
         </motion.div>
       </motion.button>
 
-      <main className="flex-1 px-0 py-2 pt-16 md:pt-4 md:ml-64 md:mt-16 overflow-x-hidden">
+      <main className="flex-1 px-0 md:ml-64 md:mt-16 overflow-x-hidden">
         
         {/* Premium Banner at the Top - Responsive with Side Margins */}
-        <div className="px-3 md:px-8 mb-2 md:mb-8 max-w-7xl mx-auto">
+        <div className="px-3 md:px-8 mb-1.5 md:mb-4 max-w-7xl mx-auto">
           <UnifiedBannerSlider />
         </div>
         
         {/* Simple & Professional Tabbed Navigation - Enhanced for Light Theme */}
-        <div className="px-4 mb-2 md:mb-6 flex justify-center">
+        <div className="px-4 mb-1.5 md:mb-4 flex justify-center">
           <div className="flex items-center gap-1 bg-white/5 light:bg-zinc-100 border border-white/10 light:border-zinc-200 p-1 rounded-2xl w-fit backdrop-blur-xl shadow-sm">
             {[
               { id: 'home', label: 'Discover', icon: HiOutlineSparkles },
@@ -251,30 +251,6 @@ const ClientHome = () => {
 
 
 
-        {/* Floating Actions (Enhanced) */}
-        <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-3">
-          <motion.button
-            onClick={() => navigate("/client-messages")}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className="w-14 h-14 rounded-2xl bg-[#111118] border border-white/10 flex items-center justify-center shadow-2xl relative"
-          >
-            <HiOutlineChatBubbleLeftRight className="w-6 h-6 text-emerald-400" />
-            {totalUnread > 0 && (
-              <span className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-4 border-[#09090B]">
-                {totalUnread}
-              </span>
-            )}
-          </motion.button>
-          <motion.button
-            onClick={() => navigate("/reels")}
-            whileHover={{ scale: 1.1, rotate: -5 }}
-            whileTap={{ scale: 0.9 }}
-            className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-2xl"
-          >
-            <img src={reelIcon} alt="reels" className="w-6 h-6" />
-          </motion.button>
-        </div>
       </main>
     </div>
   );

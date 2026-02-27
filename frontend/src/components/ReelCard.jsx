@@ -140,7 +140,7 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
         const newFollowing = !isFollowing;
         setIsFollowing(newFollowing);
         try {
-            await axios.post(`${backendURL}/api/users/follow/${reel.editor?._id}`, {}, { headers: { Authorization: `Bearer ${user.token}` } });
+            await axios.post(`${backendURL}/api/user/follow/${reel.editor?._id}`, {}, { headers: { Authorization: `Bearer ${user.token}` } });
         } catch {
             setIsFollowing(!newFollowing);
             toast.error("Failed to update follow status");
@@ -226,7 +226,7 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
                             {!isOwnReel && (
                                 <button
                                     onClick={handleFollow}
-                                    className="w-fit h-6 px-3 bg-transparent border border-white/40 rounded-full flex items-center justify-center text-white text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all hover:bg-white/10"
+                                    className="w-fit h-6 px-4 bg-transparent border border-white rounded-full flex items-center justify-center text-white text-[10px] font-bold uppercase tracking-wider active:scale-95 transition-all hover:bg-white/20 shadow-lg"
                                 >
                                     {isFollowing ? "Following" : "Follow"}
                                 </button>

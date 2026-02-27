@@ -1,6 +1,6 @@
 import express from "express";
 import protect  from "../middleware/authMiddleware.js";
-import { toggleSavedEditor, getSavedEditors, updateAvailability, toggleFollow, getFollowStatus } from "../controllers/userController.js";
+import { toggleSavedEditor, getSavedEditors, updateAvailability, toggleFollow, getFollowStatus, getUserSuggestions, handleFollowRequest } from "../controllers/userController.js";
 import { acceptContentPolicy, logContentAccess } from "../controllers/legalController.js";
 
 const router = express.Router();
@@ -19,6 +19,8 @@ router.route("/availability").put(updateAvailability);
 // Social / Follow system
 router.route("/follow/:editorId").post(toggleFollow);
 router.route("/follow/status/:editorId").get(getFollowStatus);
+router.route("/suggestions").get(getUserSuggestions);
+router.route("/follow-request/:requestId/:status").post(handleFollowRequest);
 
 // Legal & Compliance
 router.route("/legal/accept-policy").post(acceptContentPolicy);

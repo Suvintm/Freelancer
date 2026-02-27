@@ -108,6 +108,18 @@ const NotificationsPage = () => {
     }
   };
 
+  const onHandleFollowRequest = async (requestId, followRequestId, status) => {
+    try {
+      await axios.post(`${backendURL}/api/user/follow-request/${followRequestId}/${status}`);
+      toast.success(`Follow request ${status}`);
+      // Mark notification as read or delete it after action
+      await axios.put(`${backendURL}/api/notifications/read/${requestId}`);
+      loadNotifications();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to handle request");
+    }
+  };
+
   // Group by time
   const groupByTime = (notifs) => {
     const now = new Date();
@@ -143,11 +155,15 @@ const NotificationsPage = () => {
       return { icon: HiOutlineUserCircle, color: "text-cyan-500", bg: "bg-cyan-500/10" };
     if (title.includes("complete") || title.includes("success")) 
       return { icon: HiOutlineDocumentCheck, color: "text-green-500", bg: "bg-green-500/10" };
+    if (type === "follow")
+      return { icon: HiOutlineUserCircle, color: "text-blue-400", bg: "bg-blue-400/10" };
 
     switch (type) {
       case "success": return { icon: HiOutlineCheckCircle, color: "text-green-500", bg: "bg-green-500/10" };
       case "warning": return { icon: HiOutlineExclamationTriangle, color: "text-amber-500", bg: "bg-amber-500/10" };
       case "error": return { icon: HiOutlineXCircle, color: "text-red-500", bg: "bg-red-500/10" };
+      case "follow_request": return { icon: HiOutlineUserCircle, color: "text-violet-400", bg: "bg-violet-400/10" };
+      case "follow_accept": return { icon: HiOutlineCheckCircle, color: "text-emerald-500", bg: "bg-emerald-500/10" };
       default: return { icon: HiOutlineInformationCircle, color: "text-blue-500", bg: "bg-blue-500/10" };
     }
   };
@@ -197,9 +213,17 @@ const NotificationsPage = () => {
         )}
 
         <div className="flex gap-4 p-4 pl-5">
-          {/* Icon with glow for unread */}
+          {/* Icon/Avatar with glow for unread */}
           <div className={`relative p-3 rounded-xl ${!notification.isRead ? "bg-emerald-500/20 light:bg-emerald-100" : bg} shrink-0`}>
-            <Icon className={`w-5 h-5 ${!notification.isRead ? "text-emerald-400 light:text-emerald-600" : color}`} />
+            {notification.sender && notification.type === "follow" ? (
+              <img 
+                src={notification.sender.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} 
+                alt={notification.sender.name}
+                className="w-5 h-5 rounded-full object-cover"
+              />
+            ) : (
+              <Icon className={`w-5 h-5 ${!notification.isRead ? "text-emerald-400 light:text-emerald-600" : color}`} />
+            )}
             {!notification.isRead && (
               <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-zinc-900 light:border-white animate-pulse" />
             )}
@@ -226,6 +250,30 @@ const NotificationsPage = () => {
               {notification.message}
             </p>
             
+            {/* Interactive Buttons for Follow Requests */}
+            {notification.type === "follow_request" && !notification.isRead && (
+              <div className="flex items-center gap-2 mt-3">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onHandleFollowRequest(notification._id, notification.sender?._id, "accepted");
+                  }}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg transition-all"
+                >
+                  Accept
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onHandleFollowRequest(notification._id, notification.sender?._id, "rejected");
+                  }}
+                  className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-bold rounded-lg transition-all"
+                >
+                  Decline
+                </button>
+              </div>
+            )}
+
             {/* Bottom info */}
             <div className="flex items-center gap-3 mt-2">
               {notification.isRead ? (

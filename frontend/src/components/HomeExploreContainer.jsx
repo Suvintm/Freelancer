@@ -16,23 +16,24 @@ import KYCPendingBanner from "./KYCPendingBanner";
 import ProfileCompletionBanner from "./ProfileCompletionBanner";
 import EditorsNearYouPreview from "./EditorsNearYouPreview";
 import UnifiedExplorePreview from "./UnifiedExplorePreview";
+import FollowSuggestions from "./FollowSuggestions";
 import { useAppContext } from "../context/AppContext";
 
 const HomeExploreContainer = ({ searchQuery, setSearchQuery, recentSearches, activeTab, setActiveTab }) => {
     const { user } = useAppContext();
 
     return (
-        <div className="w-full max-w-7xl mx-auto space-y-2 md:space-y-8 pb-12">
+        <div className="w-full max-w-7xl mx-auto space-y-1.5 md:space-y-4 pb-12">
             
             {/* Banner moved to parent level for better layout flow */}
 
             {/* Notifications Section - Dynamic & Floating */}
-            <div className="px-4 space-y-1.5">
+            <div className="px-4 space-y-1">
                 <KYCPendingBanner />
                 <ProfileCompletionBanner />
             </div>
 
-            <div className="px-4 pt-1">
+            <div className="px-4 pb-4">
                 <div className="max-w-3xl mx-auto">
                     <AdvancedSearchBar
                         value={searchQuery}
@@ -59,6 +60,11 @@ const HomeExploreContainer = ({ searchQuery, setSearchQuery, recentSearches, act
             {/* Discovery Section: Suggested Reels */}
             <div className="px-4">
                 <SuggestedReels />
+            </div>
+
+            {/* User Discovery - Follow Suggestions */}
+            <div className="px-4">
+                <FollowSuggestions />
             </div>
 
             {/* Specialized Browse Section (Zepto Style Grid) */}

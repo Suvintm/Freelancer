@@ -1,6 +1,8 @@
 import User from "../models/User.js";
+import FollowRequest from "../models/FollowRequest.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
+import { createNotification } from "./notificationController.js";
 
 // @desc    Toggle saved editor (save/unsave)
 // @route   POST /api/user/saved-editors/:editorId
@@ -136,10 +138,51 @@ export const toggleFollow = asyncHandler(async (req, res) => {
     await Promise.all([follower.save(), editor.save()]);
     res.status(200).json({ success: true, message: "Unfollowed successfully", isFollowing: false });
   } else {
-    // Follow
+    // Check if user has manual approval enabled
+    if (editor.followSettings?.manualApproval) {
+      // Create follow request
+      const existingRequest = await FollowRequest.findOne({ sender: followerId, receiver: editorId });
+      if (existingRequest) {
+        if (existingRequest.status === 'pending') {
+          res.status(400);
+          throw new Error("Follow request already pending");
+        }
+        // If they were rejected before, they can try again (resets status to pending)
+        existingRequest.status = 'pending';
+        await existingRequest.save();
+      } else {
+        await FollowRequest.create({ sender: followerId, receiver: editorId });
+      }
+
+      // Send interactive notification
+      await createNotification({
+        recipient: editorId,
+        type: "follow_request",
+        title: "Follow Request",
+        message: `${follower.name} wants to follow you`,
+        link: `/notifications`, // Deep link to notifications where they can approve
+        sender: followerId,
+        metaData: { requestId: editorId } // Using editorId as placeholder or we could fetch actual ID
+      });
+
+      return res.status(200).json({ success: true, message: "Follow request sent", isPending: true });
+    }
+
+    // Auto Follow
     follower.following.push(editorId);
     editor.followers.push(followerId);
     await Promise.all([follower.save(), editor.save()]);
+
+    // Send notification to the followed user (editorId)
+    await createNotification({
+      recipient: editorId,
+      type: "follow",
+      title: "New Follower",
+      message: `${follower.name} started following you`,
+      link: `/public-profile/${followerId}`,
+      sender: followerId,
+    });
+
     res.status(200).json({ success: true, message: "Followed successfully", isFollowing: true });
   }
 });
@@ -151,8 +194,86 @@ export const getFollowStatus = asyncHandler(async (req, res) => {
   const userId = req.user._id;
   const { editorId } = req.params;
 
-  const user = await User.findById(userId);
-  const isFollowing = user.following.includes(editorId);
+  const [user, request] = await Promise.all([
+    User.findById(userId),
+    FollowRequest.findOne({ sender: userId, receiver: editorId, status: 'pending' })
+  ]);
 
-  res.status(200).json({ success: true, isFollowing });
+  const isFollowing = user.following.includes(editorId);
+  const isPending = !!request;
+
+  res.status(200).json({ success: true, isFollowing, isPending });
+});
+
+// @desc    Get user suggestions
+// @route   GET /api/user/suggestions
+// @access  Private
+export const getUserSuggestions = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const { limit = 3 } = req.query;
+
+  const user = await User.findById(userId);
+  const excludeIds = [userId, ...user.following];
+
+  // Fetch random users not in following list
+  const suggestions = await User.aggregate([
+    { $match: { _id: { $nin: excludeIds }, isBanned: false } },
+    { $sample: { size: parseInt(limit) } },
+    { $project: { name: 1, profilePicture: 1, role: 1, country: 1 } }
+  ]);
+
+  res.status(200).json({ success: true, suggestions });
+});
+
+// @desc    Handle follow request (accept/reject)
+// @route   POST /api/user/follow-request/:requestId/:status
+// @access  Private
+export const handleFollowRequest = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const { requestId, status } = req.params; // status: 'accepted' or 'rejected'
+
+  const followRequest = await FollowRequest.findById(requestId);
+
+  if (!followRequest || followRequest.receiver.toString() !== userId.toString()) {
+    res.status(404);
+    throw new Error("Follow request not found");
+  }
+
+  if (status === 'accepted') {
+    const [sender, receiver] = await Promise.all([
+      User.findById(followRequest.sender),
+      User.findById(followRequest.receiver)
+    ]);
+
+    // Update follow lists
+    if (!sender.following.includes(receiver._id)) {
+      sender.following.push(receiver._id);
+    }
+    if (!receiver.followers.includes(sender._id)) {
+      receiver.followers.push(sender._id);
+    }
+
+    await Promise.all([sender.save(), receiver.save()]);
+    
+    // Update request status
+    followRequest.status = 'accepted';
+    await followRequest.save();
+
+    // Notify sender they are now following
+    await createNotification({
+      recipient: sender._id,
+      type: "follow_accept",
+      title: "Request Accepted",
+      message: `${receiver.name} accepted your follow request`,
+      link: `/public-profile/${receiver._id}`,
+      sender: receiver._id
+    });
+
+    res.status(200).json({ success: true, message: "Request accepted" });
+  } else {
+    // Rejected
+    followRequest.status = 'rejected';
+    await followRequest.save();
+    res.status(200).json({ success: true, message: "Request rejected" });
+  }
 });

@@ -125,6 +125,49 @@ const PublicEditorProfile = () => {
     };
     fetchEarnedBadges();
   }, [backendURL, userId, user?._id]);
+  
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+
+  useEffect(() => {
+    if (profile?.user?.followers && user?._id) {
+      setIsFollowing(profile.user.followers.includes(user._id));
+    }
+  }, [profile, user?._id]);
+
+  const handleFollowToggle = async () => {
+    if (!user) {
+      toast.error("Please login to follow");
+      return;
+    }
+    if (isOwner) return;
+
+    try {
+      setFollowLoading(true);
+      const res = await axios.post(`${backendURL}/api/user/follow/${userData._id}`, {}, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      
+      if (res.data.success) {
+        setIsFollowing(res.data.isFollowing);
+        // Optimistically update follower count in local state
+        setProfile(prev => ({
+          ...prev,
+          user: {
+            ...prev.user,
+            followers: res.data.isFollowing 
+              ? [...(prev.user.followers || []), user._id]
+              : (prev.user.followers || []).filter(id => id !== user._id)
+          }
+        }));
+        toast.success(res.data.message);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to toggle follow");
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   // Load Razorpay script
   const loadRazorpayScript = () => {
@@ -313,9 +356,10 @@ const PublicEditorProfile = () => {
   const reviewCount = hasRatings ? profile.ratingStats.totalReviews : 0;
 
   const statsData = [
+    { label: "Followers", value: userData?.followers?.length || "0", icon: FaUser, color: "#10B981" },
+    { label: "Following", value: userData?.following?.length || "0", icon: FaUser, color: "#6B7280" },
     { label: "Rating", value: displayRating, count: reviewCount > 0 ? `(${reviewCount})` : "", icon: FaStar, color: hasRatings ? "#F59E0B" : "#6B7280", clickable: true },
     { label: "Projects", value: profile?.projectsCompleted || "0", icon: FaBriefcase, color: "#6B7280" },
-    { label: "Views", value: "1.2K", icon: FaEye, color: "#6B7280" },
   ];
 
   return (
@@ -430,26 +474,48 @@ const PublicEditorProfile = () => {
                     </div>
                   </div>
 
-                  {/* Contact Button (for clients only) */}
-                  {!isOwner && user?.role === "client" && (
-                    <button
-                      onClick={() => {
-                      if (user?.role === "client" && user?.clientKycStatus !== "verified") {
-                        setShowKYCModal(true);
-                      } else {
-                        setRequestModalOpen(true);
-                      }
-                    }}
-                      className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-500 transition-colors"
-                    >
-                      <FaPaperPlane className="text-xs" />
-                      Contact
-                    </button>
+                  {/* Actions (Contact & Follow) */}
+                  {!isOwner && (
+                    <div className="hidden md:flex items-center gap-3">
+                      <button
+                        onClick={handleFollowToggle}
+                        disabled={followLoading}
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                          isFollowing 
+                            ? "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700" 
+                            : "bg-white text-black hover:bg-zinc-200"
+                        }`}
+                      >
+                        {followLoading ? (
+                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        ) : isFollowing ? (
+                          "Following"
+                        ) : (
+                          "Follow"
+                        )}
+                      </button>
+
+                      {user?.role === "client" && (
+                        <button
+                          onClick={() => {
+                            if (user?.role === "client" && user?.clientKycStatus !== "verified") {
+                              setShowKYCModal(true);
+                            } else {
+                              setRequestModalOpen(true);
+                            }
+                          }}
+                          className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-500 transition-colors"
+                        >
+                          <FaPaperPlane className="text-xs" />
+                          Contact
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
 
                 {/* Stats Row */}
-                <div className="grid grid-cols-3 gap-2 md:gap-4 mt-5 pt-5 border-t border-zinc-800/50">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mt-5 pt-5 border-t border-zinc-800/50">
                   {statsData.map((stat) => (
                     <div 
                       key={stat.label} 
@@ -466,21 +532,43 @@ const PublicEditorProfile = () => {
                   ))}
                 </div>
 
-                {/* Mobile Contact Button */}
-                {!isOwner && user?.role === "client" && (
-                  <button
-                    onClick={() => {
-                      if (user?.role === "client" && user?.clientKycStatus !== "verified") {
-                        setShowKYCModal(true);
-                      } else {
-                        setRequestModalOpen(true);
-                      }
-                    }}
-                    className="md:hidden w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg"
-                  >
-                    <FaPaperPlane className="text-xs" />
-                    Contact Editor
-                  </button>
+                {/* Mobile Actions */}
+                {!isOwner && (
+                  <div className="md:hidden flex flex-col gap-2 mt-4">
+                    <button
+                      onClick={handleFollowToggle}
+                      disabled={followLoading}
+                      className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                        isFollowing 
+                          ? "bg-zinc-800 text-white border border-zinc-700" 
+                          : "bg-white text-black"
+                      }`}
+                    >
+                      {followLoading ? (
+                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      ) : isFollowing ? (
+                        "Following"
+                      ) : (
+                        "Follow"
+                      )}
+                    </button>
+
+                    {user?.role === "client" && (
+                      <button
+                        onClick={() => {
+                          if (user?.role === "client" && user?.clientKycStatus !== "verified") {
+                            setShowKYCModal(true);
+                          } else {
+                            setRequestModalOpen(true);
+                          }
+                        }}
+                        className="md:hidden w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg"
+                      >
+                        <FaPaperPlane className="text-xs" />
+                        Contact Editor
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

@@ -189,6 +189,8 @@ const EditorProfile = () => {
   };
 
   const statsData = [
+    { label: "Followers", value: userData?.followers?.length || "0", icon: FaUser, color: "#10B981" },
+    { label: "Following", value: userData?.following?.length || "0", icon: FaUser, color: "#6B7280" },
     { label: "Rating", value: displayRating, count: reviewCount > 0 ? `(${reviewCount})` : "", icon: FaStar, color: hasRatings ? "#F59E0B" : "#6B7280", clickable: true, onClick: () => setShowRatingsModal(true) },
     { label: "Projects", value: analytics?.completedOrders || 0, icon: FaBriefcase, color: "#6B7280" },
     { 
@@ -434,7 +436,7 @@ const EditorProfile = () => {
                 </div>
 
                 {/* Stats Row */}
-                <div className="grid grid-cols-4 gap-2 md:gap-4 mt-5 pt-5 border-t border-zinc-800/50">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-4 mt-5 pt-5 border-t border-zinc-800/50">
                   {statsData.map((stat) => (
                     <div 
                       key={stat.label} 

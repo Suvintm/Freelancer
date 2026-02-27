@@ -11,6 +11,7 @@ export const getNotifications = asyncHandler(async (req, res) => {
 
     const [notifications, total] = await Promise.all([
         Notification.find({ recipient: req.user._id })
+            .populate("sender", "name profilePicture role")
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit),
@@ -90,7 +91,7 @@ export const deleteNotification = asyncHandler(async (req, res) => {
 
 // ============ INTERNAL: CREATE NOTIFICATION ============
 // This function is for internal use by other controllers
-export const createNotification = async ({ recipient, type, title, message, link }) => {
+export const createNotification = async ({ recipient, type, title, message, link, sender = null, metaData = {} }) => {
     try {
         const notification = await Notification.create({
             recipient,
@@ -98,11 +99,19 @@ export const createNotification = async ({ recipient, type, title, message, link
             title,
             message,
             link,
+            sender,
+            metaData,
         });
 
         const receiverSocketId = getReceiverSocketId(recipient.toString());
         if (receiverSocketId) {
-            io.to(receiverSocketId).emit("newNotification", notification);
+            // Populate sender before emitting if needed
+            let populatedNotification = notification;
+            if (sender) {
+                await notification.populate("sender", "name profilePicture");
+                populatedNotification = notification.toObject();
+            }
+            io.to(receiverSocketId).emit("newNotification", populatedNotification);
         }
 
         // Invalidate unread count cache

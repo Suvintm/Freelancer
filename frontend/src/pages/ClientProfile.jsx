@@ -44,6 +44,10 @@ const ClientProfile = () => {
     name: user?.name || "",
     email: user?.email || "",
   });
+  const [privacySettings, setPrivacySettings] = useState({
+    manualApproval: user?.followSettings?.manualApproval || false,
+  });
+  const [updatingPrivacy, setUpdatingPrivacy] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -343,6 +347,45 @@ const ClientProfile = () => {
                     <FaLock className="text-gray-400" />
                     <span className="flex-1 text-left text-white text-sm">Change Password</span>
                   </button>
+                </div>
+              </div>
+
+              {/* Privacy Settings */}
+              <div className="bg-[#111319] border border-[#262A3B] rounded-2xl p-5">
+                <h3 className="text-lg font-semibold text-white mb-4">Privacy Settings</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-[#0a0c0f]">
+                    <div>
+                      <p className="text-white text-sm font-medium">Manual Follow Approval</p>
+                      <p className="text-gray-500 text-[11px]">When enabled, you must approve follow requests</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (updatingPrivacy) return;
+                        setUpdatingPrivacy(true);
+                        const newValue = !privacySettings.manualApproval;
+                        try {
+                          await axios.put(`${backendURL}/api/profile`, {
+                            followSettings: { manualApproval: newValue }
+                          }, {
+                            headers: { Authorization: `Bearer ${user.token}` }
+                          });
+                          setPrivacySettings({ manualApproval: newValue });
+                          toast.success(`Follow approval set to ${newValue ? 'Manual' : 'Automatic'}`);
+                        } catch (err) {
+                          toast.error("Failed to update privacy settings");
+                        } finally {
+                          setUpdatingPrivacy(false);
+                        }
+                      }}
+                      className={`w-12 h-6 rounded-full transition-all relative ${privacySettings.manualApproval ? 'bg-emerald-500' : 'bg-gray-700'}`}
+                    >
+                      <motion.div 
+                        animate={{ x: privacySettings.manualApproval ? 26 : 2 }}
+                        className="absolute top-1 left-0 w-4 h-4 bg-white rounded-full shadow-sm"
+                      />
+                    </button>
+                  </div>
                 </div>
               </div>
 

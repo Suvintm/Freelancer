@@ -10,8 +10,17 @@ const notificationSchema = new mongoose.Schema(
         },
         type: {
             type: String,
-            enum: ["info", "success", "warning", "error"],
+            enum: ["info", "success", "warning", "error", "follow"],
             default: "info",
+        },
+        sender: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
+        metaData: {
+            type: mongoose.Schema.Types.Mixed,
+            default: {},
         },
         title: {
             type: String,

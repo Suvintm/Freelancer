@@ -34,6 +34,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
     languages: [],
     certifications: [],
     existingCertifications: [],
+    manualApproval: user?.followSettings?.manualApproval || false,
   });
 
   useEffect(() => {
@@ -59,6 +60,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
         languages: p?.languages?.filter(Boolean) || [],
         existingCertifications:
           p?.certifications?.filter((c) => c?.image) || [],
+        manualApproval: p?.user?.followSettings?.manualApproval || false,
       }));
     } catch (err) {
       console.error("Error fetching profile:", err);
@@ -200,6 +202,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
       formPayload.append("country", formData.country);
       formPayload.append("skills", formData.skills.join(","));
       formPayload.append("languages", formData.languages.join(","));
+      formPayload.append("followSettings[manualApproval]", formData.manualApproval);
 
       formData.certifications.forEach((file) => {
         formPayload.append("certifications", file);
@@ -672,6 +675,25 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
             );
           })}
         </div>
+      </div>
+
+
+      {/* Manual Follow Approval */}
+      <div className="bg-[#0B1220] border border-white/10 rounded-2xl p-4 flex items-center justify-between">
+        <div>
+          <h4 className="text-white font-medium">Manual Follow Approval</h4>
+          <p className="text-[11px] text-gray-500">Enable this to manually approve/reject each follow request.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setFormData({ ...formData, manualApproval: !formData.manualApproval })}
+          className={`w-12 h-6 rounded-full transition-all relative ${formData.manualApproval ? 'bg-emerald-500' : 'bg-gray-700'}`}
+        >
+          <motion.div 
+            animate={{ x: formData.manualApproval ? 26 : 2 }}
+            className="absolute top-1 left-0 w-4 h-4 bg-white rounded-full shadow-sm"
+          />
+        </button>
       </div>
 
       {/* Submit */}

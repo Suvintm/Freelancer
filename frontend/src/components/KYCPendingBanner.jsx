@@ -49,22 +49,22 @@ const KYCPendingBanner = () => {
   const Icon = content.icon;
 
   return (
-    <div className="w-full px-4 mt-6 mb-2">
+    <div className="w-full">
        <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`w-full rounded-2xl p-4 md:p-6 bg-gradient-to-r ${content.bgColor} shadow-xl relative overflow-hidden`}
+        className={`w-full rounded-xl p-3 md:p-4 bg-gradient-to-r ${content.bgColor} shadow-lg relative overflow-hidden`}
       >
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
         
         <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-start gap-4">
-                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-                    <Icon className="text-2xl text-white" />
+                <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                    <Icon className="text-xl text-white" />
                 </div>
                 <div>
-                    <h3 className="text-lg font-bold text-white mb-1">{content.title}</h3>
-                    <p className="text-white/90 text-sm max-w-xl leading-relaxed">
+                    <h3 className="text-[13px] md:text-sm font-bold text-white mb-0.5">{content.title}</h3>
+                    <p className="text-white/90 text-[11px] max-w-xl leading-relaxed">
                         {content.message}
                     </p>
                 </div>
@@ -72,10 +72,10 @@ const KYCPendingBanner = () => {
 
             <button 
                 onClick={() => navigate("/client-kyc")}
-                className="group flex items-center gap-2 px-6 py-2.5 bg-white text-gray-900 font-bold rounded-xl hover:bg-white/90 transition-all shadow-lg whitespace-nowrap"
+                className="group flex items-center gap-2 px-4 py-1.5 bg-white text-gray-900 text-xs font-bold rounded-lg hover:bg-white/90 transition-all shadow-md whitespace-nowrap"
             >
                 {content.action}
-                <FaArrowRight className="text-sm group-hover:translate-x-1 transition-transform" />
+                <FaArrowRight className="text-[10px] group-hover:translate-x-1 transition-transform" />
             </button>
         </div>
       </motion.div>
