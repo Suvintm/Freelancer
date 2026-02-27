@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
-import { FaPlay, FaEye, FaArrowRight } from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+    HiPlay, 
+    HiOutlineEye, 
+    HiChevronLeft, 
+    HiChevronRight,
+    HiSparkles,
+    HiFire,
+    HiOutlineArrowRight
+} from "react-icons/hi2";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
@@ -10,12 +18,13 @@ const SuggestedReels = () => {
     const navigate = useNavigate();
     const [reels, setReels] = useState([]);
     const [loading, setLoading] = useState(true);
+    const scrollRef = useRef(null);
+    const [showControls, setShowControls] = useState(false);
 
     useEffect(() => {
         const fetchSuggestedReels = async () => {
             try {
-                // Fetch a small batch of reels for the horizontal row
-                const { data } = await axios.get(`${backendURL}/api/reels/feed?page=1&limit=10`);
+                const { data } = await axios.get(`${backendURL}/api/reels/feed?page=1&limit=12`);
                 setReels(data.reels || []);
             } catch (err) {
                 console.error("Failed to fetch suggested reels:", err);
@@ -26,53 +35,117 @@ const SuggestedReels = () => {
         fetchSuggestedReels();
     }, [backendURL]);
 
+    const scroll = (direction) => {
+        if (scrollRef.current) {
+            const { scrollLeft, clientWidth } = scrollRef.current;
+            const scrollTo = direction === 'left' ? scrollLeft - clientWidth * 0.8 : scrollLeft + clientWidth * 0.8;
+            scrollRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
+        }
+    };
+
     if (loading) {
         return (
-            <div className="flex gap-4 overflow-hidden py-4">
-                {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="flex-shrink-0 w-36 h-64 bg-white/5 rounded-2xl animate-pulse" />
-                ))}
+            <div className="space-y-4 py-4">
+                <div className="flex items-center justify-between px-1">
+                    <div className="h-6 w-32 bg-white/5 rounded-lg animate-pulse" />
+                    <div className="h-4 w-16 bg-white/5 rounded-lg animate-pulse" />
+                </div>
+                <div className="flex gap-4 overflow-hidden">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                        <div key={i} className="flex-shrink-0 w-40 md:w-48 h-72 md:h-80 bg-white/5 rounded-2xl animate-pulse relative overflow-hidden">
+                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     }
 
-    if (reels.length === 0) return null;
+    if (reels.length === 0) return (
+        <div className="py-12 flex flex-col items-center justify-center text-center opacity-40">
+            <HiSparkles className="text-4xl mb-3 text-purple-500" />
+            <h3 className="font-bold text-white uppercase tracking-widest text-[10px]">No Reels Found</h3>
+        </div>
+    );
 
     return (
-        <div className="mb-8">
+        <div 
+            className="group/main relative mb-8"
+            onMouseEnter={() => setShowControls(true)}
+            onMouseLeave={() => setShowControls(false)}
+        >
             <div className="flex items-center justify-between mb-4 px-1">
-                <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-purple-500/10 rounded-lg flex items-center justify-center">
-                        <FaPlay className="text-purple-500 text-[10px]" />
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                        <HiPlay className="text-white text-base" />
+                        <h2 className="text-[11px] font-black text-white light:text-slate-900 tracking-[0.15em] uppercase">Suggested Reels</h2>
                     </div>
-                    <h2 className="text-sm font-bold text-white light:text-slate-900">Suggested Reels</h2>
+                    <div className="flex items-center gap-1.5 opacity-40 ml-5">
+                         <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                         <span className="text-[9px] font-bold uppercase tracking-wider">Live Feed</span>
+                    </div>
                 </div>
                 <button 
                     onClick={() => navigate("/reels")}
-                    className="text-xs text-purple-400 hover:text-purple-300 font-medium flex items-center gap-1 transition-colors"
+                    className="group/btn flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 transition-all"
                 >
-                    View all <FaArrowRight className="text-[8px]" />
+                    <span className="text-[9px] font-black text-zinc-400 group-hover/btn:text-white uppercase tracking-widest">Explore All</span>
+                    <HiOutlineArrowRight className="text-xs text-zinc-500 group-hover/btn:text-white transition-colors" />
                 </button>
             </div>
 
             <div className="relative">
+                {/* Desktop Controls */}
+                <AnimatePresence>
+                    {showControls && (
+                        <>
+                            <motion.button
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -10 }}
+                                onClick={() => scroll('left')}
+                                className="hidden md:flex absolute -left-4 top-1/2 -translate-y-1/2 z-40 w-12 h-12 items-center justify-center rounded-full bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/10 hover:border-purple-500/40 text-white shadow-2xl transition-all"
+                            >
+                                <HiChevronLeft className="text-xl" />
+                            </motion.button>
+                            <motion.button
+                                initial={{ opacity: 0, x: 10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 10 }}
+                                onClick={() => scroll('right')}
+                                className="hidden md:flex absolute -right-4 top-1/2 -translate-y-1/2 z-40 w-12 h-12 items-center justify-center rounded-full bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/10 hover:border-purple-500/40 text-white shadow-2xl transition-all"
+                            >
+                                <HiChevronRight className="text-xl" />
+                            </motion.button>
+                        </>
+                    )}
+                </AnimatePresence>
+
                 {/* Horizontal Scroll Area */}
-                <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide snap-x px-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                <div 
+                    ref={scrollRef}
+                    className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide snap-x px-1" 
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
                     {reels.map((reel, idx) => (
                         <ReelThumbnail key={reel._id} reel={reel} index={idx} />
                     ))}
                     
-                    {/* View More Card */}
+                    {/* View More Premium Card */}
                     <motion.div
-                        whileHover={{ scale: 1.02 }}
+                        whileHover={{ y: -8, scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => navigate("/reels")}
-                        className="flex-shrink-0 w-36 h-64 bg-white/5 border border-white/10 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-white/10 transition-all snap-start"
+                        className="flex-shrink-0 w-40 md:w-48 h-72 md:h-80 rounded-3xl relative overflow-hidden cursor-pointer group snap-start"
                     >
-                        <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center mb-2">
-                            <FaArrowRight className="text-purple-400" />
+                        <div className="absolute inset-0 bg-[#0d0d12] border border-white/5 group-hover:border-purple-500/30 transition-colors bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-40" />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 backdrop-blur-xl border border-white/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-2xl shadow-purple-500/10">
+                                <HiOutlineArrowRight className="text-2xl text-purple-400" />
+                            </div>
+                            <h3 className="text-sm font-black text-white uppercase tracking-widest leading-tight">View<br/>Entire Feed</h3>
+                            <p className="text-[9px] text-zinc-500 font-bold mt-2 uppercase tracking-tighter">Discover 100+<br/>New Stories</p>
                         </div>
-                        <span className="text-xs font-semibold text-white">View More</span>
                     </motion.div>
                 </div>
             </div>
@@ -83,36 +156,65 @@ const SuggestedReels = () => {
 const ReelThumbnail = ({ reel, index }) => {
     const navigate = useNavigate();
     const [isHovered, setIsHovered] = useState(false);
+    const [isVisible, setIsVisible] = useState(false);
     const videoRef = useRef(null);
+    const containerRef = useRef(null);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                setIsVisible(entry.isIntersecting);
+            },
+            { threshold: 0.6 }
+        );
+
+        if (containerRef.current) {
+            observer.observe(containerRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, []);
 
     useEffect(() => {
         if (videoRef.current) {
-            if (isHovered) {
+            if (isVisible || isHovered) {
                 videoRef.current.play().catch(() => {});
             } else {
                 videoRef.current.pause();
                 videoRef.current.currentTime = 0;
             }
         }
-    }, [isHovered]);
+    }, [isVisible, isHovered]);
+
+    const handleMouseEnter = () => {
+        setIsHovered(true);
+        if (videoRef.current) {
+            videoRef.current.currentTime = 0;
+            videoRef.current.play().catch(() => {});
+        }
+    };
 
     return (
         <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.05 }}
-            whileHover={{ y: -4 }}
-            onMouseEnter={() => setIsHovered(true)}
+            ref={containerRef}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.08, type: "spring", damping: 20 }}
+            whileHover={{ y: -8, scale: 1.05 }}
+            onMouseEnter={handleMouseEnter}
             onMouseLeave={() => setIsHovered(false)}
             onClick={() => navigate(`/reels?id=${reel._id}`)}
-            className="flex-shrink-0 w-36 h-64 bg-[#0a0a0c] rounded-2xl overflow-hidden relative cursor-pointer border border-white/5 hover:border-purple-500/30 transition-all snap-start group"
+            className="flex-shrink-0 w-40 md:w-48 h-72 md:h-80 bg-[#0a0a0c] rounded-[2rem] overflow-hidden relative cursor-pointer border border-white/5 hover:border-purple-500 transition-all snap-start group shadow-2xl shadow-black/40 hover:shadow-purple-500/20"
         >
-            {/* Video Preview */}
+            {/* Visual Accents (Glow) */}
+            <div className="absolute inset-0 bg-gradient-to-b from-purple-600/0 to-purple-600/0 group-hover:to-purple-500/10 transition-all duration-500" />
+            
+            {/* Video/Image Content */}
             {reel.mediaType === "video" ? (
                 <video
                     ref={videoRef}
                     src={reel.mediaUrl}
-                    className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
+                    className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-500 group-hover:scale-110"
                     muted
                     loop
                     playsInline
@@ -121,35 +223,63 @@ const ReelThumbnail = ({ reel, index }) => {
                 <img
                     src={reel.mediaUrl}
                     alt={reel.title}
-                    className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
+                    className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-500 group-hover:scale-110"
                 />
             )}
 
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-3">
-                <div className="flex items-center gap-1 mb-1">
-                    <FaEye className="text-[10px] text-white/70" />
-                    <span className="text-[9px] font-medium text-white/70">{reel.viewsCount || 0}</span>
-                </div>
-                <p className="text-[10px] font-semibold text-white line-clamp-2 leading-tight">
-                    {reel.title}
-                </p>
-                <div className="mt-2 flex items-center gap-1.5">
-                    <img 
-                        src={reel.editor?.profilePicture} 
-                        alt={reel.editor?.name}
-                        className="w-4 h-4 rounded-full border border-white/20"
-                    />
-                    <span className="text-[8px] text-white/80 truncate font-medium">{reel.editor?.name}</span>
-                </div>
+            {/* Premium Badges */}
+            <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5">
+                <span className="px-2 py-0.5 rounded-md bg-white/10 backdrop-blur-md border border-white/10 text-white text-[7px] font-black uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-all duration-300">
+                   Trending
+                </span>
             </div>
 
-            {/* Play Icon (when not hovered) */}
-            {!isHovered && reel.mediaType === "video" && (
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-black/40 backdrop-blur-sm rounded-full flex items-center justify-center">
-                    <FaPlay className="text-white text-[10px] ml-0.5" />
+            {/* Glassmorphic Metadata Overlay - More Integrated */}
+            <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        <div className="relative">
+                            <img 
+                                src={reel.editor?.profilePicture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop'} 
+                                alt={reel.editor?.name}
+                                className="w-6 h-6 rounded-full border border-white/20 object-cover"
+                            />
+                            <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full border border-black ring-1 ring-emerald-500/50" />
+                        </div>
+                        <span className="text-[10px] text-white font-bold tracking-tight truncate max-w-[80px]">{reel.editor?.name}</span>
+                    </div>
                 </div>
-            )}
+                <h3 className="text-[11px] font-bold text-white/90 line-clamp-2 leading-tight group-hover:text-white transition-colors">
+                    {reel.title}
+                </h3>
+                <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-all duration-500 delay-100">
+                    <div className="flex items-center gap-1">
+                        <HiOutlineEye className="text-[10px] text-zinc-400" />
+                        <span className="text-[9px] font-bold text-zinc-400">{reel.viewsCount || '4.2k'}</span>
+                    </div>
+                    <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
+                        <HiPlay className="text-[10px] text-white" />
+                    </div>
+                </div>
+            </div>
+            {/* Floating Play Indicator (Centrally Magnetic) */}
+            <AnimatePresence>
+                {(!isHovered && !isVisible) && reel.mediaType === "video" && (
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.5 }}
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10"
+                    >
+                        <motion.div
+                            animate={{ scale: [1, 1.2, 1] }}
+                            transition={{ repeat: Infinity, duration: 2 }}
+                        >
+                            <HiPlay className="text-white text-xs ml-0.5" />
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 };
