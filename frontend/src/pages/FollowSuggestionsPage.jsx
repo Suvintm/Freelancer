@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaUserPlus, FaCheck, FaChevronLeft, FaSearch, FaFilter } from "react-icons/fa";
+import { FaUserPlus, FaCheck, FaChevronLeft, FaSearch, FaFilter, FaUsers } from "react-icons/fa";
 import { MdVerified } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { toast } from "react-toastify";
 import ClientNavbar from "../components/ClientNavbar";
+import AdvancedSearchBar from "../components/AdvancedSearchBar";
+import DiscoverCategories from "../components/DiscoverCategories";
 
 const FollowSuggestionsPage = () => {
     const { user, backendURL } = useAppContext();
@@ -14,6 +16,7 @@ const FollowSuggestionsPage = () => {
     const [suggestions, setSuggestions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [followStates, setFollowStates] = useState({});
+    const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
         const fetchSuggestions = async () => {
@@ -81,35 +84,44 @@ const FollowSuggestionsPage = () => {
         <div className="min-h-screen bg-[#09090b] text-white flex flex-col">
             <ClientNavbar />
             
-            <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-24 md:px-8">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-                    <div className="flex items-center gap-4">
-                        <button 
-                            onClick={() => navigate(-1)}
-                            className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
-                        >
-                            <FaChevronLeft className="text-sm" />
-                        </button>
-                        <div>
-                            <h1 className="text-2xl font-black tracking-tight">Discover People</h1>
-                            <p className="text-sm text-gray-500 font-medium">Find and connect with talented creators on SuviX</p>
+            <main className="flex-1 w-full max-w-5xl mx-auto px-4 pt-10 pb-24 md:px-8">
+                {/* Header & Search */}
+                <div className="flex flex-col gap-6 mb-10">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <button 
+                                onClick={() => navigate(-1)}
+                                className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors border border-white/5"
+                            >
+                                <FaChevronLeft className="text-[10px]" />
+                            </button>
+                            <div className="flex items-center gap-2">
+                                <FaUsers className="text-indigo-400 text-sm" />
+                                <h1 className="text-sm font-black tracking-widest uppercase">Discover</h1>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <div className="relative flex-1 md:w-64">
-                            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm" />
-                            <input 
-                                type="text"
-                                placeholder="Search usernames..."
-                                className="w-full bg-white/5 border border-white/10 rounded-2xl py-2.5 pl-11 pr-4 text-sm focus:border-indigo-500 outline-none transition-all placeholder:text-gray-600"
-                            />
-                        </div>
-                        <button className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors border border-white/10">
-                            <FaFilter className="text-xs text-gray-400" />
-                        </button>
+                    <div className="w-full">
+                        <AdvancedSearchBar 
+                            variant="pill"
+                            suggestionType="users"
+                            value={searchQuery}
+                            onChange={setSearchQuery}
+                            onSearch={(val) => setSearchQuery(val)}
+                            placeholder="Search people..."
+                            className="!w-full"
+                        />
                     </div>
+                </div>
+
+                {/* Discovery Categories */}
+                {!loading && <DiscoverCategories />}
+
+                {/* Main Grid Header */}
+                <div className="flex items-center gap-3 mb-6 px-2">
+                    <div className="w-1.5 h-6 bg-indigo-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
+                    <h2 className="text-sm font-black text-white uppercase tracking-widest">Recommended for You</h2>
                 </div>
 
                 {loading ? (

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { FaSearch, FaTimes, FaHistory, FaFire, FaLightbulb } from "react-icons/fa";
 import { AnimatePresence, motion } from "framer-motion";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 
 const AdvancedSearchBar = ({ 
@@ -10,12 +11,14 @@ const AdvancedSearchBar = ({
   placeholder = "Search...", 
   recentSearches = [], 
   onSearch, 
-  suggestionType, // "editors" or "gigs"
+  suggestionType, // "editors", "gigs", or "users"
   className = "",
   variant = "default" // "default" or "pill"
 }) => {
   const { backendURL } = useAppContext();
+  const navigate = useNavigate();
   const [isFocused, setIsFocused] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [apiSuggestions, setApiSuggestions] = useState([]);
   const inputRef = useRef(null);
   const debounceTimer = useRef(null);
@@ -42,17 +45,21 @@ const AdvancedSearchBar = ({
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
     debounceTimer.current = setTimeout(async () => {
+      setLoading(true);
       try {
-        const endpoint = suggestionType === "editors" 
+        const endpoint = suggestionType === "users"
+          ? `${backendURL}/api/user/search`
+          : suggestionType === "editors" 
           ? `${backendURL}/api/explore/suggestions` 
           : `${backendURL}/api/gigs/suggestions`;
         
         const res = await axios.get(`${endpoint}?query=${value}`);
         if (res.data.success) {
-          setApiSuggestions(res.data.suggestions || []);
+          const results = suggestionType === "users" ? res.data.users : res.data.suggestions;
+          setApiSuggestions(results || []);
         }
-      } catch (err) {
-        console.error("Failed to fetch suggestions", err);
+      } finally {
+        setLoading(false);
       }
     }, 300);
 
@@ -165,27 +172,40 @@ const AdvancedSearchBar = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.98 }}
             transition={{ duration: 0.2 }}
-            className="absolute top-full left-0 right-0 mt-3 bg-[#121216] light:bg-white border border-white/10 light:border-slate-200 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-3xl"
+            className={`absolute top-full left-0 right-0 z-50 mt-3 bg-[#121216] light:bg-white border border-white/10 light:border-slate-200 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-3xl mx-auto ${variant === 'pill' ? 'w-[80%]' : 'w-full'}`}
           >
             {/* Live API Suggestions */}
             {apiSuggestions.length > 0 && (
               <div className="p-2 border-b border-white/5 light:border-slate-100">
                 <div className="px-3 py-2 text-[10px] font-semibold text-emerald-500 light:text-emerald-600 uppercase tracking-widest flex items-center gap-2">
-                  <FaLightbulb /> Suggestions
+                  <FaLightbulb /> {loading ? "Searching..." : "Suggestions"}
+                  {loading && <div className="ml-auto w-3 h-3 border border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />}
                 </div>
                 <div className="flex flex-col gap-1 px-1">
                   {apiSuggestions.map((item, idx) => (
                     <button
                       key={idx}
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => handleSuggestionClick(item.text)}
+                      onClick={() => {
+                        if (suggestionType === "users") {
+                          navigate(item.role === 'editor' ? `/editor/${item._id}` : `/public-profile/${item._id}`);
+                        } else {
+                          handleSuggestionClick(item.text);
+                        }
+                      }}
                       className="px-3 py-2 rounded-lg hover:bg-white/5 light:hover:bg-slate-50 text-sm text-gray-300 light:text-slate-700 text-left transition-colors flex items-center gap-2"
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full ${item.type === 'skill' || item.type === 'category' ? 'bg-blue-400' : 'bg-emerald-400'}`} />
+                      {suggestionType === "users" && item.profilePicture ? (
+                        <img src={item.profilePicture} className="w-6 h-6 rounded-full object-cover mr-1" alt="" />
+                      ) : (
+                        <span className={`w-1.5 h-1.5 rounded-full ${item.type === 'skill' || item.type === 'category' ? 'bg-blue-400' : 'bg-emerald-400'}`} />
+                      )}
+                      
                       <span dangerouslySetInnerHTML={{ 
-                        __html: item.text.replace(new RegExp(`(${value})`, 'gi'), '<span class="text-white light:text-black font-semibold">$1</span>') 
+                        __html: (suggestionType === "users" ? item.name : item.text).replace(new RegExp(`(${value})`, 'gi'), '<span class="text-white light:text-black font-semibold">$1</span>') 
                       }} />
-                      {item.type && <span className="text-[10px] text-gray-600 light:text-slate-400 ml-auto uppercase bg-white/5 light:bg-slate-100 px-1.5 py-0.5 rounded">{item.type}</span>}
+                      
+                      {item.role && <span className="text-[10px] text-gray-600 light:text-slate-400 ml-auto uppercase bg-white/5 light:bg-slate-100 px-1.5 py-0.5 rounded">{item.role}</span>}
                     </button>
                   ))}
                 </div>

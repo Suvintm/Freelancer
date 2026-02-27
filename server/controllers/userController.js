@@ -210,17 +210,39 @@ export const getFollowStatus = asyncHandler(async (req, res) => {
 // @access  Private
 export const getUserSuggestions = asyncHandler(async (req, res) => {
   const userId = req.user._id;
-  const { limit = 3 } = req.query;
+  const { limit = 3, type = "suggested" } = req.query;
 
   const user = await User.findById(userId);
   const excludeIds = [userId, ...user.following];
 
-  // Fetch random users not in following list
-  const suggestions = await User.aggregate([
-    { $match: { _id: { $nin: excludeIds }, isBanned: false } },
-    { $sample: { size: parseInt(limit) } },
-    { $project: { name: 1, profilePicture: 1, role: 1, country: 1 } }
-  ]);
+  let matchQuery = { _id: { $nin: excludeIds }, isBanned: false };
+  let sortQuery = { createdAt: -1 };
+
+  if (type === "trending") {
+    // Trending based on followers count or suvixScore
+    sortQuery = { "suvixScore.total": -1, "followers.length": -1 };
+  } else if (type === "nearby") {
+    // Nearby based on country
+    matchQuery.country = user.country;
+  } else if (type === "new") {
+    sortQuery = { createdAt: -1 };
+  } else {
+    // Default shuffled suggestions
+    return res.status(200).json({ 
+      success: true, 
+      suggestions: await User.aggregate([
+        { $match: matchQuery },
+        { $sample: { size: parseInt(limit) } },
+        { $project: { name: 1, profilePicture: 1, role: 1, country: 1 } }
+      ])
+    });
+  }
+
+  const suggestions = await User.find(matchQuery)
+    .sort(sortQuery)
+    .limit(parseInt(limit))
+    .select("name profilePicture role country")
+    .lean();
 
   res.status(200).json({ success: true, suggestions });
 });
@@ -276,4 +298,25 @@ export const handleFollowRequest = asyncHandler(async (req, res) => {
     await followRequest.save();
     res.status(200).json({ success: true, message: "Request rejected" });
   }
+});
+// @desc    Search users by name
+// @route   GET /api/user/search
+// @access  Private
+export const searchUsers = asyncHandler(async (req, res) => {
+  const { query } = req.query;
+  if (!query) {
+    return res.json({ success: true, users: [] });
+  }
+
+  const searchRegex = new RegExp(query, "i");
+
+  const users = await User.find({
+    name: searchRegex,
+    isBanned: { $ne: true }
+  })
+    .select("name profilePicture role country")
+    .limit(8)
+    .lean();
+
+  res.status(200).json({ success: true, users });
 });
