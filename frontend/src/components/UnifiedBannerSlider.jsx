@@ -10,40 +10,126 @@ import {
     HiOutlineVideoCamera,
     HiArrowRight,
     HiSpeakerWave,
-    HiSpeakerXMark
+    HiSpeakerXMark,
+    HiOutlineSparkles
 } from "react-icons/hi2";
-import { FaPlay, FaAd, FaInstagram, FaGlobe, FaChevronRight } from "react-icons/fa";
+import { FaPlay, FaAd, FaInstagram, FaGlobe, FaChevronRight, FaPause, FaVolumeMute, FaVolumeUp, FaChevronLeft } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 import axios from "axios";
+
+// ✅ Repair mangled URLs from backend sanitization (dots -> underscores & slashes -> underscores)
+const repairUrl = (url) => {
+    if (!url || typeof url !== "string") return url;
+    if (!url.includes("cloudinary") && !url.includes("res_") && !url.includes("_com")) return url;
+  
+    let fixed = url;
+    
+    // 1. Restore Protocol
+    fixed = fixed.replace(/^(https?):?\/*_+/gi, "$1://");
+    
+    // 2. Restore Domain Dots
+    fixed = fixed.replace(/_+res_+cloudinary_+com/g, "res.cloudinary.com")
+                 .replace(/res_cloudinary_com/g, "res.cloudinary.com")
+                 .replace(/cloudinary_com/g, "cloudinary.com");
+
+    // 3. Fix the "Slash Mangler" in path
+    if (fixed.includes("res.cloudinary.com")) {
+        // Restore domain slash
+        fixed = fixed.replace(/res\.cloudinary\.com_+/g, "res.cloudinary.com/");
+        
+        // Fix common keywords
+        fixed = fixed.replace(/image_upload_+/g, "image/upload/")
+                     .replace(/video_upload_+/g, "video/upload/")
+                     .replace(/raw_upload_+/g, "raw/upload/");
+
+        // Fix version slash (matches /v123_ or _v123_ or v123_)
+        fixed = fixed.replace(/([\/_]?v\d+)_+/g, "$1/"); 
+        
+        // Fix cloud name slash (e.g. /cloudname_image/)
+        fixed = fixed.replace(/(res\.cloudinary\.com\/[^\/_]+)_+(image|video|raw|authenticated)_*/g, "$1/$2/");
+        
+        // Fix folder slashes
+        fixed = fixed.replace(/advertisements_images_+/g, "advertisements/images/")
+                     .replace(/advertisements_videos_+/g, "advertisements/videos/")
+                     .replace(/advertisements_gallery_+/g, "advertisements/gallery/");
+        
+        // Catch-all keywords
+        fixed = fixed.replace(/_+(upload|image|video|v\d+)_+/g, "/$1/");
+
+        // Restore slashes before the final filename
+        fixed = fixed.replace(/_([a-z0-9]+\.(webp|jpg|jpeg|png|mp4|mov|m4v|json))/gi, "/$1");
+        
+        // Flatten double slashes
+        fixed = fixed.replace(/([^:])\/\/+/g, "$1/");
+    }
+
+    // 4. Restore Extension Dots
+    fixed = fixed.replace(/_jpg([/_?#]|$)/gi, ".jpg$1")
+                 .replace(/_jpeg([/_?#]|$)/gi, ".jpeg$1")
+                 .replace(/_png([/_?#]|$)/gi, ".png$1")
+                 .replace(/_mp4([/_?#]|$)/gi, ".mp4$1")
+                 .replace(/_webp([/_?#]|$)/gi, ".webp$1");
+
+    if (url !== fixed) {
+        console.log(`[URL REPAIR] Fixed: ${url} -> ${fixed}`);
+    }
+
+    return fixed;
+};
 
 const UnifiedBannerSlider = () => {
     const { backendURL } = useAppContext();
     const navigate = useNavigate();
     const [verticalIndex, setVerticalIndex] = useState(0);
-    const [horizontalIndices, setHorizontalIndices] = useState([0, 0, 0]); // Index for each level
-    const [promoBanners, setPromoBanners] = useState([]);
+    const [horizontalIndices, setHorizontalIndices] = useState([0, 0, 0]);
+    const [dbAds, setDbAds] = useState([]);
+    const [showAdsLevel, setShowAdsLevel] = useState(true);
     const [loading, setLoading] = useState(true);
     const [isMuted, setIsMuted] = useState(true);
     const [isHovered, setIsHovered] = useState(false);
 
-    // Fetch dynamic promos for Level 0
-    useEffect(() => {
-        const fetchPromos = async () => {
-            try {
-                const res = await axios.get(`${backendURL}/api/banners`);
-                setPromoBanners(res.data.banners || []);
-            } catch (err) {
-                console.error("Failed to fetch banners", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchPromos();
-    }, [backendURL]);
+    // Fetch active ads for Level 0 from DB + global toggle
+  useEffect(() => {
+    const fetchAds = async () => {
+      try {
+        const [adsRes, settingsRes] = await Promise.all([
+          axios.get(`${backendURL}/api/ads?location=home_banner`),
+          axios.get(`${backendURL}/api/ads/settings`),
+        ]);
+        setDbAds(adsRes.data.ads || []);
+        setShowAdsLevel(settingsRes.data.showSuvixAds !== false);
+      } catch (err) {
+        console.error("Failed to fetch ads", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAds();
+  }, [backendURL]);
 
-    // Level Definitions
-    const levels = [
+    // Build Level 0 from DB ads (only if enabled and ads exist)
+  const adsLevel = showAdsLevel && dbAds.length > 0 ? {
+    id: "advertisements",
+    label: "Ads",
+    color: "text-amber-400",
+    icon: FaAd,
+    items: dbAds.map(ad => ({
+      _id: ad._id,
+      title: ad.title,
+      description: ad.description || ad.tagline || "",
+      mediaUrl: ad.mediaUrl,
+      mediaType: ad.mediaType,
+      link: ad.websiteUrl || `/ad-details/${ad._id}`,
+      linkText: ad.ctaText || "Learn More",
+      badge: ad.badge || "SPONSOR",
+      gradientFrom: "#f59e0b",
+      isExternal: !!ad.websiteUrl,
+    }))
+  } : null;
+
+    // Level Definitions — Level 0 (Ads) only appears when enabled & DB ads exist
+  const baseLevels = [
         {
             id: "promotions",
             label: "Ads",
@@ -137,6 +223,18 @@ const UnifiedBannerSlider = () => {
         }
     ];
 
+  const levels = [
+    ...(adsLevel ? [adsLevel] : []),
+    ...baseLevels,
+  ];
+
+  // If Ads level is hidden and we're on index 0 in a non-ads state, adjust
+  useEffect(() => {
+    if (!adsLevel && verticalIndex === 0 && levels.length > 0) {
+      setVerticalIndex(0);
+    }
+  }, [adsLevel]);
+
     const currentLevel = levels[verticalIndex];
     const horizontalIndex = horizontalIndices[verticalIndex];
     const currentItem = currentLevel.items[horizontalIndex];
@@ -179,10 +277,14 @@ const UnifiedBannerSlider = () => {
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             onClick={() => {
-                if (verticalIndex === 0) {
-                    navigate(`/ad-details/${currentItem._id || currentItem.id}`);
-                }
-            }}
+        if (currentItem.link) {
+          if (currentItem.link.startsWith('http')) {
+            window.open(currentItem.link, '_blank');
+          } else {
+            navigate(currentItem.link);
+          }
+        }
+      }}
         >
             <AnimatePresence mode="wait">
                 <motion.div
@@ -204,8 +306,8 @@ const UnifiedBannerSlider = () => {
                     <div className="absolute inset-0">
                         {currentItem.mediaType === "video" ? (
                             <video 
-                                key={currentItem.mediaUrl}
-                                src={currentItem.mediaUrl}
+                                key={repairUrl(currentItem.mediaUrl)}
+                                src={repairUrl(currentItem.mediaUrl)}
                                 autoPlay
                                 loop
                                 muted={isMuted}
@@ -215,7 +317,7 @@ const UnifiedBannerSlider = () => {
                             />
                         ) : (
                             <img 
-                                src={currentItem.mediaUrl}
+                                src={repairUrl(currentItem.mediaUrl)}
                                 alt=""
                                 className="w-full h-full object-cover"
                             />

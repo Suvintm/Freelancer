@@ -41,7 +41,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: "/client-kyc", icon: FaUserCheck, label: "Client KYC" },
     { to: "/orders", icon: FaShoppingCart, label: "Orders" },
     { to: "/gigs", icon: FaBriefcase, label: "Gigs" },
-    { to: "/banners", icon: FaImage, label: "Banners" },
+    { to: "/advertisements", icon: FaImage, label: "Advertisements" },
     { to: "/subscriptions", icon: FaCrown, label: "Subscriptions" },
     { to: "/activity", icon: FaHistory, label: "Activity Logs" },
     { to: "/storage", icon: FaDatabase, label: "Storage Manager" },

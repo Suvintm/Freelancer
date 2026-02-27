@@ -75,14 +75,37 @@ const AdDetailsPage = () => {
     useEffect(() => {
         const fetchAd = async () => {
             try {
-                // Try fetching from API first
-                // const res = await axios.get(`${backendURL}/api/banners/${id}`);
-                // setAd(res.data.banner);
-                
-                // Fallback to dummy
-                setAd(dummyAds[id] || dummyAds["default-ad-1"]);
+                // Try fetching from the new ads API
+                const res = await axios.get(`${backendURL}/api/ads/${id}`);
+                if (res.data.success && res.data.ad) {
+                    const apiAd = res.data.ad;
+                    // Normalize to the shape AdDetailsPage expects
+                    setAd({
+                        title: apiAd.title,
+                        description: apiAd.description || apiAd.tagline || "",
+                        longDescription: apiAd.longDescription || apiAd.description || "",
+                        mediaUrl: apiAd.mediaUrl,
+                        mediaType: apiAd.mediaType,
+                        links: {
+                            website: apiAd.websiteUrl,
+                            instagram: apiAd.instagramUrl,
+                            facebook: apiAd.facebookUrl,
+                            youtube: apiAd.youtubeUrl,
+                            other: apiAd.otherUrl,
+                        },
+                        tags: [],
+                        gallery: apiAd.galleryImages || [],
+                        category: apiAd.companyName || "Advertisement",
+                        badge: apiAd.badge,
+                        ctaText: apiAd.ctaText,
+                    });
+                } else {
+                    // Fallback to dummy for legacy static IDs
+                    setAd(dummyAds[id] || dummyAds["default-ad-1"]);
+                }
             } catch (err) {
-                setAd(dummyAds["default-ad-1"]);
+                console.error("Failed to fetch ad:", err);
+                setAd(dummyAds[id] || dummyAds["default-ad-1"]);
             } finally {
                 setLoading(false);
             }

@@ -8,6 +8,7 @@ import { useAppContext } from "../context/AppContext";
 import { useReelsContext } from "../context/ReelsContext";
 import ReelCard from "../components/ReelCard";
 import ReelSkeleton from "../components/ReelSkeleton";
+import ReelAdCard from "../components/ReelAdCard";
 import CommentSection from "../components/CommentSection";
 import useReelObserver from "../hooks/useReelObserver";
 import logo from "../assets/logo.png";
@@ -37,6 +38,8 @@ const ReelsPage = () => {
     const [activeReelIndex, setActiveReelIndex] = useState(0);
     const [showComments, setShowComments] = useState(false);
     const [activeReelId, setActiveReelId] = useState(null);
+    const [reelAds, setReelAds] = useState([]);
+    const [skippedAdIndices, setSkippedAdIndices] = useState(new Set());
 
     const containerRef = useRef(null);
     const observerRef = useRef(null);
@@ -57,8 +60,10 @@ const ReelsPage = () => {
 
             if (loadMore) {
                 const combined = [...feedCache.current, ...data.reels];
-                setReels(combined);
-                appendToCache(combined, pageNum);
+                // Deduplicate by _id to prevent duplicate key errors
+                const uniqueReels = Array.from(new Map(combined.map(r => [r._id, r])).values());
+                setReels(uniqueReels);
+                appendToCache(uniqueReels, pageNum);
             } else {
                 setReels(data.reels);
                 updateCache(data.reels, pageNum);
@@ -94,6 +99,17 @@ const ReelsPage = () => {
             fetchReels(1, false);
         }
     }, []);
+
+    // Fetch ads for reels feed
+    useEffect(() => {
+        const fetchReelAds = async () => {
+            try {
+                const res = await axios.get(`${backendURL}/api/ads?location=reels_feed`);
+                setReelAds(res.data.ads || []);
+            } catch {}
+        };
+        fetchReelAds();
+    }, [backendURL]);
 
     // ─────────────────────────────────────────────────────────────
     // TRACK VIEW ON ACTIVE REEL CHANGE
@@ -269,23 +285,42 @@ const ReelsPage = () => {
                     </>
                 )}
 
-                {/* Reel cards */}
-                {!loading && reels.map((reel, index) => (
-                    <div
-                        key={reel._id}
-                        id={`reel-${index}`}
-                        ref={index === reels.length - 1 ? lastReelRef : null}
-                        className="w-full h-screen snap-start relative flex-shrink-0"
-                    >
-                        <ReelCard
-                            reel={reel}
-                            isActive={index === activeReelIndex}
-                            onCommentClick={handleCommentClick}
-                            globalMuted={globalMuted}
-                            setGlobalMuted={setGlobalMuted}
-                        />
-                    </div>
-                ))}
+                {/* Reel cards with ad injection every 5th reel */}
+                {!loading && reels.map((reel, index) => {
+                    // Insert an ad after every 5th reel (index 4, 9, 14...)
+                    const adAfterThis = (index + 1) % 5 === 0 && reelAds.length > 0;
+                    const adForSlot = reelAds[Math.floor(index / 5) % reelAds.length];
+                    const adSlotIndex = `ad-${index}`;
+
+                    return (
+                        <React.Fragment key={reel._id}>
+                            <div
+                                id={`reel-${index}`}
+                                ref={index === reels.length - 1 ? lastReelRef : null}
+                                className="w-full h-screen snap-start relative flex-shrink-0"
+                            >
+                                <ReelCard
+                                    reel={reel}
+                                    isActive={index === activeReelIndex}
+                                    onCommentClick={handleCommentClick}
+                                    globalMuted={globalMuted}
+                                    setGlobalMuted={setGlobalMuted}
+                                />
+                            </div>
+                            {adAfterThis && adForSlot && !skippedAdIndices.has(adSlotIndex) && (
+                                <div
+                                    key={adSlotIndex}
+                                    className="w-full h-screen snap-start relative flex-shrink-0"
+                                >
+                                    <ReelAdCard
+                                        ad={adForSlot}
+                                        onSkip={() => setSkippedAdIndices(prev => new Set([...prev, adSlotIndex]))}
+                                    />
+                                </div>
+                            )}
+                        </React.Fragment>
+                    );
+                })}
 
                 {/* Loading more spinner (bottom) */}
                 {loadingMore && (

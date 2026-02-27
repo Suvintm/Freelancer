@@ -32,6 +32,47 @@ import logo from "../assets/logo.png";
 const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted }) => {
     const { user, backendURL } = useAppContext();
 
+    // ✅ Repair mangled URLs from backend sanitization (dots -> underscores & slashes -> underscores)
+    const repairUrl = (url) => {
+        if (!url || typeof url !== "string") return url;
+        if (!url.includes("cloudinary") && !url.includes("res_") && !url.includes("_com")) return url;
+      
+        let fixed = url;
+        
+        // 1. Restore Protocol
+        fixed = fixed.replace(/^(https?):?\/*_+/gi, "$1://");
+        
+        // 2. Restore Domain Dots
+        fixed = fixed.replace(/_+res_+cloudinary_+com/g, "res.cloudinary.com")
+                     .replace(/res_cloudinary_com/g, "res.cloudinary.com")
+                     .replace(/cloudinary_com/g, "cloudinary.com");
+    
+        // 3. Fix the "Slash Mangler" in path
+        if (fixed.includes("res.cloudinary.com")) {
+            fixed = fixed.replace(/res\.cloudinary\.com_+/g, "res.cloudinary.com/");
+            fixed = fixed.replace(/image_upload_+/g, "image/upload/")
+                         .replace(/video_upload_+/g, "video/upload/")
+                         .replace(/raw_upload_+/g, "raw/upload/");
+            fixed = fixed.replace(/([\/_]?v\d+)_+/g, "$1/"); 
+            fixed = fixed.replace(/(res\.cloudinary\.com\/[^\/_]+)_+(image|video|raw|authenticated)_*/g, "$1/$2/");
+            fixed = fixed.replace(/advertisements_images_+/g, "advertisements/images/")
+                         .replace(/advertisements_videos_+/g, "advertisements/videos/")
+                         .replace(/advertisements_gallery_+/g, "advertisements/gallery/");
+            fixed = fixed.replace(/_+(upload|image|video|v\d+)_+/g, "/$1/");
+            fixed = fixed.replace(/_([a-z0-9\-_]+\.(webp|jpg|jpeg|png|mp4|mov|m4v|json))/gi, "/$1");
+            fixed = fixed.replace(/([^:])\/\/+/g, "$1/");
+        }
+    
+        // 4. Restore Extension Dots
+        fixed = fixed.replace(/_jpg([/_?#]|$)/gi, ".jpg$1")
+                     .replace(/_jpeg([/_?#]|$)/gi, ".jpeg$1")
+                     .replace(/_png([/_?#]|$)/gi, ".png$1")
+                     .replace(/_mp4([/_?#]|$)/gi, ".mp4$1")
+                     .replace(/_webp([/_?#]|$)/gi, ".webp$1");
+    
+        return fixed;
+    };
+
     // ── State ──
     const [isLiked, setIsLiked] = useState(
         user ? reel.likes?.includes(user._id) : false
@@ -300,7 +341,7 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
                     {reel.mediaType === "video" && (
                         <video
                             ref={videoRef}
-                            src={reel.mediaUrl}
+                            src={repairUrl(reel.mediaUrl)}
                             className="w-full h-full object-cover bg-black"
                             loop
                             playsInline
@@ -312,7 +353,7 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
                     {/* IMAGE */}
                     {reel.mediaType === "image" && (
                         <img
-                            src={reel.mediaUrl}
+                            src={repairUrl(reel.mediaUrl)}
                             alt={reel.title}
                             className="w-full h-full object-cover bg-black"
                         />
@@ -363,7 +404,7 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
                         <Link to={`/public-profile/${reel.editor?._id}`}>
                             <div className="w-11 h-11 rounded-full border-2 border-white overflow-hidden shadow-lg">
                                 <img
-                                    src={reel.editor?.profilePicture}
+                                    src={repairUrl(reel.editor?.profilePicture)}
                                     alt={reel.editor?.name}
                                     className="w-full h-full object-cover"
                                 />

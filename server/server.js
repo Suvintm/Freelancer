@@ -45,7 +45,7 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import paymentGatewayRoutes from "./routes/paymentGatewayRoutes.js";
 import adminPaymentRoutes from "./routes/adminPaymentRoutes.js";
 import storageRoutes from "./routes/storageRoutes.js";
-import bannerRoutes from "./routes/bannerRoutes.js";
+import advertisementRoutes from "./routes/advertisementRoutes.js";
 import briefRoutes from "./routes/briefRoutes.js";
 import proposalRoutes from "./routes/proposalRoutes.js";
 import ratingRoutes from "./routes/ratingRoutes.js";
@@ -180,6 +180,12 @@ app.use(compression());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
+// ============ EXEMPTIONS FROM GLOBAL SANITIZATION ============
+// 🚨 IMPORTANT: Advertisement routes are moved ABOVE mongoSanitize to prevent 
+// mangling of Cloudinary and external URLs (which contain dots).
+// These routes handle their own specific validation and security.
+app.use("/api/ads", advertisementRoutes);
+
 // ============ SECURITY: INPUT SANITIZATION ============
 
 // Prevent MongoDB NoSQL injection — strips $ and . from user input
@@ -243,6 +249,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/auth", oauthRoutes); // OAuth routes under /api/auth
 app.use("/api/profile", profileRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/users", userRoutes); // Support plural version for Reels/Follow system
 app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/explore", exploreRoutes);
 app.use("/api/reels", reelRoutes);
@@ -259,7 +266,8 @@ app.use("/api/admin/payment-settings", adminPaymentRoutes);
 app.use("/api/editor/analytics", editorAnalyticsRoutes);
 app.use("/api/storage", storageRoutes);
 app.use("/api/client/analytics", clientAnalyticsRoutes);
-app.use("/api/banners", bannerRoutes);
+app.use("/api/client/analytics", clientAnalyticsRoutes);
+// app.use("/api/ads", advertisementRoutes); // Moved above sanitization block
 
 // Open Briefs Feature Routes
 app.use("/api/briefs", briefRoutes);
