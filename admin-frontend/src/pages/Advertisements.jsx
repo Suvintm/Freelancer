@@ -44,6 +44,7 @@ const INITIAL_FORM = {
   websiteUrl: "", instagramUrl: "", facebookUrl: "", youtubeUrl: "", otherUrl: "",
   ctaText: "Learn More",
   isActive: false,
+  isDefault: false,
   displayLocations: ["home_banner"],
   badge: "SPONSOR",
   startDate: "", endDate: "",
@@ -307,6 +308,7 @@ const Advertisements = () => {
       otherUrl: ad.otherUrl || "",
       ctaText: ad.ctaText || "Learn More",
       isActive: ad.isActive,
+      isDefault: ad.isDefault || false,
       displayLocations: ad.displayLocations || ["home_banner"],
       badge: ad.badge || "SPONSOR",
       startDate: ad.startDate ? ad.startDate.slice(0, 16) : "",
@@ -330,6 +332,7 @@ const Advertisements = () => {
     if (filterStatus === "active") return ad.isActive && ad.approvalStatus === "approved";
     if (filterStatus === "pending") return ad.approvalStatus === "pending";
     if (filterStatus === "inactive") return !ad.isActive;
+    if (filterStatus === "defaults") return ad.isDefault;
     return true;
   });
 
@@ -430,17 +433,17 @@ const Advertisements = () => {
 
       {/* Filter Tabs */}
       <div className="flex gap-2 flex-wrap">
-        {["all", "active", "pending", "inactive"].map((status) => (
+        {["all", "active", "pending", "inactive", "defaults"].map((status) => (
           <button
             key={status}
             onClick={() => setFilterStatus(status)}
             className={`px-4 py-2 rounded-xl font-medium capitalize transition-all text-sm ${
               filterStatus === status
-                ? "bg-blue-600 text-white"
+                ? status === "defaults" ? "bg-amber-500 text-white" : "bg-blue-600 text-white"
                 : "bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
             }`}
           >
-            {status === "all" ? `All (${ads.length})` : status}
+            {status === "all" ? `All (${ads.length})` : status === "defaults" ? `⭐ Defaults` : status}
           </button>
         ))}
       </div>
@@ -485,6 +488,11 @@ const Advertisements = () => {
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="font-semibold text-gray-900 dark:text-white truncate">{ad.title}</h3>
                   {getStatusBadge(ad)}
+                  {ad.isDefault && (
+                    <span className="px-2 py-1 text-[10px] font-bold bg-amber-500/20 text-amber-400 rounded-full">
+                      DEFAULT
+                    </span>
+                  )}
                   <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold text-white ${PRIORITY_OPTIONS.find(p => p.value === ad.priority)?.color || "bg-gray-500"}`}>
                     {ad.priority?.toUpperCase()}
                   </span>
@@ -806,6 +814,21 @@ const Advertisements = () => {
                         <div>
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
                           <input type="datetime-local" value={formData.endDate} onChange={e => setFormData(p => ({...p, endDate: e.target.value}))} className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none" />
+                        </div>
+                      </div>
+
+                      {/* Default Banner Toggle */}
+                      <div className={`rounded-2xl border-2 p-4 flex items-start gap-4 cursor-pointer transition-all ${formData.isDefault ? 'border-amber-400 bg-amber-50 dark:bg-amber-500/10' : 'border-gray-200 dark:border-zinc-700'}`}
+                        onClick={() => setFormData(p => ({...p, isDefault: !p.isDefault}))}
+                      >
+                        <div className={`mt-0.5 w-10 h-6 rounded-full flex items-center transition-all ${formData.isDefault ? 'bg-amber-400 justify-end' : 'bg-gray-300 dark:bg-zinc-600 justify-start'} px-0.5`}>
+                          <div className="w-5 h-5 bg-white rounded-full shadow" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900 dark:text-white text-sm">Default Banner</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            When enabled, this banner will be shown automatically as a fallback whenever there are no live commercial ads active for its location.
+                          </p>
                         </div>
                       </div>
                     </motion.div>

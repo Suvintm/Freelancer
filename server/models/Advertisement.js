@@ -113,6 +113,14 @@ const advertisementSchema = new mongoose.Schema(
       default: "SPONSOR",
       maxlength: 20,
     },
+    // ========== DEFAULT BANNER FLAG ==========
+    // When isDefault is true, this banner is shown as a fallback
+    // when no live commercial advertisements are active for a location.
+    isDefault: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
 
     // ========== SCHEDULING ==========
     startDate: {

@@ -162,7 +162,7 @@ export const getActiveAds = asyncHandler(async (req, res) => {
     query.displayLocations = { $in: [location] };
   }
 
-  const ads = await Advertisement.find(query)
+  let ads = await Advertisement.find(query)
     .sort({ priority: -1, order: 1, createdAt: -1 })
     .select("-adminNotes -advertiserEmail -advertiserPhone -createdBy -__v");
 
@@ -174,8 +174,17 @@ export const getActiveAds = asyncHandler(async (req, res) => {
     }
   }
 
+  // ── FALLBACK: If no live ads found, return default banners ──────────
+  if (ads.length === 0) {
+    const defaultQuery = { isDefault: true };
+    if (location) defaultQuery.displayLocations = { $in: [location] };
+    ads = await Advertisement.find(defaultQuery)
+      .sort({ order: 1, createdAt: -1 })
+      .select("-adminNotes -advertiserEmail -advertiserPhone -createdBy -__v");
+  }
+
   const cleanedAds = ads.map(ad => cleanAd(ad));
-  res.status(200).json({ success: true, count: ads.length, ads: cleanedAds });
+  res.status(200).json({ success: true, count: ads.length, ads: cleanedAds, hasDefaults: ads.some(a => a.isDefault) });
 });
 
 // ============ PUBLIC: GET SINGLE AD ============
@@ -248,7 +257,7 @@ export const createAd = asyncHandler(async (req, res) => {
     title, tagline, description, longDescription,
     mediaType, mediaUrl, thumbnailUrl, galleryImages,
     websiteUrl, instagramUrl, facebookUrl, youtubeUrl, otherUrl, ctaText,
-    isActive, displayLocations, badge,
+    isActive, displayLocations, badge, isDefault,
     startDate, endDate, priority, adminNotes, approvalStatus,
   } = req.body;
 
@@ -267,6 +276,7 @@ export const createAd = asyncHandler(async (req, res) => {
     websiteUrl, instagramUrl, facebookUrl, youtubeUrl, otherUrl,
     ctaText: ctaText || "Learn More",
     isActive: isActive || false,
+    isDefault: isDefault || false,
     displayLocations: displayLocations || ["home_banner"],
     badge: badge || "SPONSOR",
     startDate, endDate,
@@ -302,7 +312,7 @@ export const updateAd = asyncHandler(async (req, res) => {
     "title", "tagline", "description", "longDescription",
     "mediaType", "mediaUrl", "thumbnailUrl", "galleryImages",
     "websiteUrl", "instagramUrl", "facebookUrl", "youtubeUrl", "otherUrl", "ctaText",
-    "isActive", "displayLocations", "badge",
+    "isActive", "isDefault", "displayLocations", "badge",
     "startDate", "endDate", "priority", "order",
     "adminNotes", "approvalStatus",
   ];
