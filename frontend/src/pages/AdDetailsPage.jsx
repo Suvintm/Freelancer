@@ -36,7 +36,7 @@ const AdDetailsPage = () => {
             title: "Premiere Pro Mastery",
             description: "Master the art of storytelling with our comprehensive Adobe Premiere Pro course. From basic cutting to advanced color grading and sound design, we cover it all.",
             longDescription: "Our course is designed by industry professionals with over 10 years of experience in Hollywood and major streaming platforms. You will learn the hidden shortcuts, professional workflows, and technical nuances that separate a hobbyist from a professional editor.\n\nWhat you'll get:\n- 40+ HD Video Tutorials\n- Raw footage for practice\n- Custom LUTs and Sound Packs\n- Direct feedback on your projects\n- Certification upon completion",
-            mediaUrl: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+            mediaUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
             mediaType: "video",
             links: {
                 website: "https://suvix.in/course",
