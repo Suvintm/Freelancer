@@ -30,7 +30,7 @@ const CompactProfileCard = ({ editor, onClose }) => {
 
         <div className="flex items-center gap-3">
           <img
-            src={editor.profilePhoto || "https://via.placeholder.com/56"}
+            src={editor.profilePhoto || "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1974&auto=format&fit=crop"}
             alt={editor.name}
             className="w-14 h-14 rounded-full border-2 border-white dark:border-gray-700 object-cover shadow-md"
           />

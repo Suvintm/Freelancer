@@ -8,7 +8,7 @@ import { exploreLimiter } from "../middleware/rateLimiter.js";
 const router = express.Router();
 
 router.get("/suggestions", exploreLimiter, getEditorSuggestions);
-router.get("/editors", optionalAuth, getAllEditors, exploreLimiter);
-router.get("/gigs", optionalAuth, getAllGigs, exploreLimiter); // Added gigs endpoint
+router.get("/editors", optionalAuth, exploreLimiter, getAllEditors);
+router.get("/gigs", optionalAuth, exploreLimiter, getAllGigs); // Added gigs endpoint
 
 export default router;

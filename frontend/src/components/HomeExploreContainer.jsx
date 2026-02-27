@@ -100,45 +100,63 @@ const HomeExploreContainer = ({ searchQuery, setSearchQuery, recentSearches, act
 
 const SpecialtyBrowse = ({ onSelect }) => {
     const specialties = [
-        { label: "YouTube", image: "/youtube_category_1766945669722.png" },
-        { label: "Wedding", image: "/wedding_category_1766945653582.png" },
-        { label: "Reels", image: "/reels_category_1766945684333.png" },
-        { label: "Color", image: "/color_category_1766945743508.png" },
-        { label: "Podcast", image: "/podcast_category_1766945699811.png" },
-        { label: "VFX", image: "/vfx_category_1766945726102.png" },
-        { label: "Cinematic", image: "/cinematic_category_1766945761051.png" },
-        { label: "Ads", image: "/ads_category_1766945776646.png" },
+        { label: "YouTube", image: "/youtube_category_1766945669722.png", color: "from-red-500/20" },
+        { label: "Wedding", image: "/wedding_category_1766945653582.png", color: "from-pink-500/20" },
+        { label: "Reels", image: "/reels_category_1766945684333.png", color: "from-purple-500/20" },
+        { label: "Color", image: "/color_category_1766945743508.png", color: "from-amber-500/20" },
+        { label: "Podcast", image: "/podcast_category_1766945699811.png", color: "from-blue-500/20" },
+        { label: "VFX", image: "/vfx_category_1766945726102.png", color: "from-cyan-500/20" },
+        { label: "Cinematic", image: "/cinematic_category_1766945761051.png", color: "from-emerald-500/20" },
+        { label: "Ads", image: "/ads_category_1766945776646.png", color: "from-orange-500/20" },
     ];
 
     return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-emerald-500/10 rounded-lg flex items-center justify-center">
-                        <HiSparkles className="text-emerald-500 text-xs" />
+        <div className="space-y-6">
+            <div className="flex items-center justify-between px-1">
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                        <HiSparkles className="text-white text-base" />
+                        <h2 className="text-[11px] font-black text-white tracking-[0.15em] uppercase">Browse by Specialty</h2>
                     </div>
-                    <h2 className="text-sm font-bold text-white uppercase tracking-wider">Browse by Specialty</h2>
+                    <div className="flex items-center gap-1.5 opacity-40 ml-5">
+                         <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                         <span className="text-[9px] font-bold uppercase tracking-wider">Top Categories</span>
+                    </div>
                 </div>
             </div>
             
-            <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-8 gap-3">
+            <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-8 gap-3 lg:gap-4">
                 {specialties.map((item, idx) => (
                     <motion.div
                         key={idx}
-                        whileHover={{ scale: 1.05 }}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: idx * 0.04 }}
+                        whileHover={{ y: -5, scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => onSelect(item.label)}
-                        className="relative aspect-square rounded-2xl overflow-hidden cursor-pointer group"
+                        className="relative aspect-square rounded-[1.5rem] lg:rounded-[2rem] overflow-hidden cursor-pointer group shadow-lg"
                     >
+                        {/* Background Layer with Category Specific Tint */}
+                        <div className={`absolute inset-0 bg-gradient-to-br ${item.color} to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-500`} />
+                        
                         <img 
                             src={item.image} 
                             alt={item.label} 
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-125 brightness-90 group-hover:brightness-110" 
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-                        <div className="absolute bottom-2 left-0 right-0 text-center">
-                            <span className="text-[10px] font-bold text-white uppercase tracking-wide">{item.label}</span>
+                        
+                        {/* Improved Glassmorphic Overlay */}
+                        <div className="absolute inset-x-0 bottom-0 p-2 lg:p-3 bg-gradient-to-t from-black/90 via-black/40 to-transparent">
+                            <div className="text-center">
+                                <span className="text-[8px] lg:text-[10px] font-black text-white uppercase tracking-wider group-hover:text-amber-400 transition-colors">
+                                    {item.label}
+                                </span>
+                            </div>
                         </div>
+
+                        {/* Interactive Border Glow */}
+                        <div className="absolute inset-0 border border-white/0 group-hover:border-white/20 rounded-[1.5rem] lg:rounded-[2rem] transition-all duration-500 pointer-events-none" />
                     </motion.div>
                 ))}
             </div>

@@ -214,19 +214,31 @@ const ReelThumbnail = ({ reel, index }) => {
                 <video
                     ref={videoRef}
                     src={reel.mediaUrl}
-                    className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-500 group-hover:scale-110"
+                    className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-500 group-hover:scale-110 no-copy"
                     muted
                     loop
                     playsInline
+                    onContextMenu={(e) => e.preventDefault()}
+                    onDoubleClick={(e) => e.preventDefault()}
+                    controlsList="nodownload nofullscreen noremoteplayback"
+                    disablePictureInPicture
                 />
             ) : (
                 <img
                     src={reel.mediaUrl}
                     alt={reel.title}
-                    className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-500 group-hover:scale-110"
+                    className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-500 group-hover:scale-110 no-copy"
+                    onContextMenu={(e) => e.preventDefault()}
+                    onDoubleClick={(e) => e.preventDefault()}
                 />
             )}
 
+            {/* Invisible Protection Layer */}
+            <div 
+                className="absolute inset-0 z-20 cursor-pointer" 
+                onContextMenu={(e) => e.preventDefault()}
+                onDoubleClick={(e) => e.preventDefault()}
+            />
             {/* Premium Badges */}
             <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5">
                 <span className="px-2 py-0.5 rounded-md bg-white/10 backdrop-blur-md border border-white/10 text-white text-[7px] font-black uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-all duration-300">

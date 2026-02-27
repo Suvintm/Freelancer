@@ -34,7 +34,7 @@ const MiniProfileCard = ({ editor, onClose }) => {
           {/* Profile Photo */}
           <div className="relative flex-shrink-0">
             <img
-              src={editor.profilePhoto || "https://via.placeholder.com/64"}
+              src={editor.profilePhoto || "https://images.unsplash.com/photo-1544005313-94ddf028fbdb?q=80&w=1974&auto=format&fit=crop"}
               alt={editor.name}
               className="w-16 h-16 rounded-full border-2 border-emerald-500/30 object-cover"
             />
