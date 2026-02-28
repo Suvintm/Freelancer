@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FaArrowLeft, FaSpinner } from "react-icons/fa";
 import { HiOutlineChevronLeft } from "react-icons/hi2";
 import { BiRefresh } from "react-icons/bi";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { useReelsContext } from "../context/ReelsContext";
@@ -32,6 +32,8 @@ const ReelsPage = () => {
         setGlobalMuted,
     } = useReelsContext();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const targetReelId = searchParams.get("id");
 
     const [reels, setReels] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -54,23 +56,39 @@ const ReelsPage = () => {
     // ─────────────────────────────────────────────────────────────
     const fetchReels = useCallback(async (pageNum = 1, loadMore = false) => {
         try {
-            const excludeIds = loadMore
-                ? feedCache.current.map((r) => r._id).join(",")
-                : "";
-
+            const excludeIdsArr = loadMore
+                ? feedCache.current.map((r) => r._id)
+                : (targetReelId ? [targetReelId] : []);
+            
+            const excludeIds = excludeIdsArr.join(",");
+ 
             const { data } = await axios.get(
                 `${backendURL}/api/reels/feed?page=${pageNum}&limit=5&exclude=${excludeIds}`
             );
-
+ 
+            let fetchedReels = data.reels;
+ 
+            // If it's the first page and we have a target ID, fetch that specific reel first
+            if (!loadMore && pageNum === 1 && targetReelId) {
+                try {
+                    const { data: specificReelData } = await axios.get(`${backendURL}/api/reels/${targetReelId}`);
+                    if (specificReelData.reel) {
+                        fetchedReels = [specificReelData.reel, ...fetchedReels];
+                    }
+                } catch (specificErr) {
+                    console.error("[Reels] Error fetching target reel:", specificErr.message);
+                }
+            }
+ 
             if (loadMore) {
-                const combined = [...feedCache.current, ...data.reels];
+                const combined = [...feedCache.current, ...fetchedReels];
                 // Deduplicate by _id to prevent duplicate key errors
                 const uniqueReels = Array.from(new Map(combined.map(r => [r._id, r])).values());
                 setReels(uniqueReels);
                 appendToCache(uniqueReels, pageNum);
             } else {
-                setReels(data.reels);
-                updateCache(data.reels, pageNum);
+                setReels(fetchedReels);
+                updateCache(fetchedReels, pageNum);
             }
 
             setHasMore(data.pagination.hasMore);
@@ -87,7 +105,7 @@ const ReelsPage = () => {
     // ON MOUNT — restore from cache if valid, else fresh fetch
     // ─────────────────────────────────────────────────────────────
     useEffect(() => {
-        if (isCacheValid()) {
+        if (isCacheValid() && !targetReelId) {
             setReels(feedCache.current);
             setPage(pageCache.current);
             setLoading(false);
