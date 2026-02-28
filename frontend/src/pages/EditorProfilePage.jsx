@@ -6,29 +6,33 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  FaArrowRight,
+  FaAward,
+  FaBriefcase,
+  FaCalendarAlt,
+  FaCheck,
+  FaCheckCircle,
+  FaChevronRight,
+  FaCode,
   FaEdit,
   FaEnvelope,
-  FaMapMarkerAlt,
-  FaAward,
-  FaCode,
-  FaBriefcase,
-  FaUser,
-  FaTimes,
-  FaCheckCircle,
+  FaExclamationCircle,
+  FaEye,
+  FaGlobe,
   FaImages,
-  FaChevronRight,
+  FaLock,
+  FaMapMarkerAlt,
+  FaMoneyBillWave,
+  FaRocket,
+  FaShieldAlt,
   FaShoppingCart,
   FaStar,
-  FaGlobe,
-  FaEye,
-  FaMoneyBillWave,
-  FaCalendarAlt,
-  FaRocket,
-  FaLock,
-  FaShieldAlt,
-  FaExclamationCircle,
-  FaArrowRight,
+  FaTimes,
+  FaUser,
+  FaUserFriends,
+  FaUserPlus,
 } from "react-icons/fa";
+import { MdVerified } from "react-icons/md";
 import { HiCheckBadge, HiLockClosed } from "react-icons/hi2";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
@@ -42,6 +46,7 @@ import GigsSection from "../components/GigsSection.jsx";
 import EditorRatingsModal from "../components/EditorRatingsModal.jsx";
 import { useSubscription } from "../context/SubscriptionContext";
 import SuvixScoreCard from "../components/SuvixScoreCard.jsx";
+import SuvixScoreAnalytics from "../components/SuvixScoreAnalytics.jsx";
 import AvailabilitySelector from "../components/AvailabilitySelector.jsx";
 
 
@@ -268,218 +273,194 @@ const EditorProfile = () => {
             </motion.div>
           )}
 
-          {/* ==================== PROFILE HEADER WITH GLASS EFFECT ==================== */}
+          {/* ==================== PROFILE HEADER (HYPER-COMPACT MOBILE OPTIMIZED) ==================== */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative overflow-hidden rounded-2xl mb-4 bg-gradient-to-b from-white via-zinc-950/80 to-white"
+            className="rounded-xl mb-4 bg-black border border-zinc-800/40 p-3 md:p-10"
           >
-            {/* Glass Background */}
-            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] via-white/[0.03] to-transparent" />
-            <div className="absolute inset-0 bg-zinc-950/90 backdrop-blur-sm" />
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-            
-            <div className="relative border border-zinc-800/50 rounded-xl">
-              <div className="p-4 md:p-6">
-                <div className="flex flex-col md:flex-row gap-4 items-center md:items-start">
-                  
-                  {/* Avatar with Progress Ring */}
-                  <div className="relative flex-shrink-0">
-                    {/* SVG Progress Ring */}
-                    <svg
-                      className="absolute -top-1 -left-1"
-                      width={size + 8}
-                      height={size + 8}
-                      style={{ transform: 'rotate(-90deg)' }}
-                    >
-                      {/* Background circle */}
-                      <circle
-                        cx={(size + 8) / 2}
-                        cy={(size + 8) / 2}
-                        r={radius + 4}
-                        fill="none"
-                        stroke="rgba(255,255,255,0.08)"
-                        strokeWidth={strokeWidth}
-                      />
-                      {/* Progress circle */}
-                      <circle
-                        cx={(size + 8) / 2}
-                        cy={(size + 8) / 2}
-                        r={radius + 4}
-                        fill="none"
-                        stroke={progressColor}
-                        strokeWidth={strokeWidth}
-                        strokeLinecap="round"
-                        strokeDasharray={circumference + 25}
-                        strokeDashoffset={strokeDashoffset + 12}
-                        className="transition-all duration-700"
-                      />
-                    </svg>
+            <div className="flex flex-col md:flex-row gap-4 md:gap-14 items-center md:items-start">
+              
+              {/* Desktop Avatar Section (Hidden on Mobile) */}
+              <div className="hidden md:block shrink-0">
+                <div className="relative">
+                  <svg
+                    className="absolute -top-1.5 -left-1.5 w-[116px] h-[116px] -rotate-90 pointer-events-none"
+                    viewBox={`0 0 ${size + 8} ${size + 8}`}
+                  >
+                    <circle cx={(size + 8) / 2} cy={(size + 8) / 2} r={radius + 4} fill="none" stroke="#1a1a1a" strokeWidth={strokeWidth} />
+                    <circle cx={(size + 8) / 2} cy={(size + 8) / 2} r={radius + 4} fill="none" stroke={progressColor} strokeWidth={strokeWidth} strokeLinecap="round" strokeDasharray={circumference + 25} strokeDashoffset={strokeDashoffset + 12} />
+                  </svg>
+                  <div className="relative rounded-full p-[4px] bg-zinc-900 ring-2 ring-black w-[108px] h-[108px]">
+                    <div className="w-full h-full rounded-full overflow-hidden bg-zinc-950">
+                      <img src={userData?.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} alt="Profile" className="w-full h-full object-cover" />
+                    </div>
+                  </div>
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-[10px] font-black text-white shadow-xl z-20 border border-black/40" style={{ backgroundColor: progressColor }}>
+                    {completionPercent}%
+                  </div>
+                </div>
+              </div>
 
-                    {/* Profile Image with White Border */}
-                    <div 
-                      className="relative rounded-full p-[3px] bg-white"
-                      style={{ width: size, height: size }}
-                    >
-                      <div className="w-full h-full rounded-full overflow-hidden bg-zinc-900">
-                        <img
-                          src={userData?.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"}
-                          alt="Profile"
-                          className="w-full h-full object-cover"
-                        />
+              {/* Info & Stats Section */}
+              <div className="flex-1 w-full min-w-0">
+                
+                {/* Mobile Header Split: [Left: Avatar+Name+Edit] | [Right: Followers+Following] */}
+                <div className="flex md:hidden w-full gap-3 items-stretch mb-3">
+                  {/* Left Column (50%): Avatar + Name + Edit (Centered) */}
+                  <div className="w-1/2 flex flex-col items-center gap-1">
+                    <div className="relative shrink-0 mb-1.5">
+                      <svg
+                        className="absolute -top-1 -left-1 w-14 h-14 -rotate-90 pointer-events-none"
+                        viewBox={`0 0 ${size + 8} ${size + 8}`}
+                      >
+                        <circle cx={(size + 8) / 2} cy={(size + 8) / 2} r={radius + 4} fill="none" stroke="#1a1a1a" strokeWidth={strokeWidth + 2} />
+                        <circle cx={(size + 8) / 2} cy={(size + 8) / 2} r={radius + 4} fill="none" stroke={progressColor} strokeWidth={strokeWidth + 2} strokeLinecap="round" strokeDasharray={circumference + 25} strokeDashoffset={strokeDashoffset + 12} />
+                      </svg>
+                      <div className="relative rounded-full p-[2px] bg-zinc-900 ring-1 ring-black w-12 h-12">
+                        <div className="w-full h-full rounded-full overflow-hidden bg-zinc-950">
+                          <img src={userData?.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} alt="Profile" className="w-full h-full object-cover" />
+                        </div>
                       </div>
                     </div>
+                    <div className="w-full text-center">
+                      <h1 className="text-sm font-black text-white tracking-tight flex items-center justify-center gap-1 leading-none mb-1.5 break-all">
+                        {userData?.name || "Your Name"}
+                        {isVerified && <MdVerified className="text-blue-500 text-xs shrink-0" />}
+                      </h1>
+                      <button
+                        onClick={() => navigate("/editor-profile-update")}
+                        className="w-full py-1 bg-white text-black text-[9px] font-black rounded-md uppercase tracking-wide flex items-center justify-center gap-1"
+                      >
+                        <FaEdit size={8} /> EDIT
+                      </button>
+                    </div>
+                  </div>
 
-                    {/* Verified Badge */}
+                  {/* Right Column (50%): Followers + Following (Centered with Icons) */}
+                  <div className="w-1/2 flex flex-col justify-center gap-4 pt-1 border-l border-zinc-900 ml-1 pl-3">
+                    <div className="flex flex-col items-center">
+                      <div className="flex items-center gap-1 mb-0.5">
+                        <FaUserFriends className="text-[7px] text-zinc-600" />
+                        <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Followers</span>
+                      </div>
+                      <span className="text-lg font-black text-white leading-none tracking-tighter">{statsData.find(s => s.label.includes('Followers'))?.value || 0}</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <div className="flex items-center gap-1 mb-0.5">
+                        <FaUserPlus className="text-[7px] text-zinc-600" />
+                        <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Following</span>
+                      </div>
+                      <span className="text-lg font-black text-white leading-none tracking-tighter">{statsData.find(s => s.label.includes('Following'))?.value || 0}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Desktop Name/Edit Row (Hidden on Mobile) */}
+                <div className="hidden md:flex items-center gap-5 mb-6">
+                  <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
+                    {userData?.name || "Your Name"}
+                    {isVerified && <MdVerified className="text-blue-500" />}
+                  </h1>
+                  <button
+                    onClick={() => navigate("/editor-profile-update")}
+                    className="flex items-center gap-2 px-6 py-2 bg-white text-black text-xs font-black rounded-full uppercase tracking-widest hover:bg-zinc-200 transition-all hover:scale-105 active:scale-95"
+                  >
+                    <FaEdit className="text-[12px]" />
+                    Edit Profile
+                  </button>
+                </div>
+
+                {/* Subsidiary Stats Row (Ultra Dense on Mobile) */}
+                <div className="flex justify-between gap-1 mb-3 bg-zinc-950/40 rounded-lg py-2 px-1 border border-zinc-900/30">
+                  {statsData.filter(s => !s.label.includes('Follower') && !s.label.includes('Following')).map((stat) => {
+                    const icons = {
+                      'Rating': <FaStar className="text-[7px] text-amber-500" />,
+                      'Projects': <FaBriefcase className="text-[7px]" />,
+                      'Views': <FaEye className="text-[7px]" />,
+                      'Earnings': <FaMoneyBillWave className="text-[7px] text-green-500" />
+                    };
+                    const label = stat.label.split(' ')[0];
+                    return (
+                      <div key={stat.label} className="flex flex-col items-center flex-1">
+                        <div className="flex items-center gap-0.5 mb-0.5">
+                          {icons[label]}
+                          <span className="hidden xs:inline text-[7px] font-black text-zinc-600 uppercase">{label}</span>
+                        </div>
+                        <div className="text-[10px] md:text-xl font-black text-white">
+                          {stat.locked ? <FaLock className="text-[8px] text-zinc-800" /> : stat.value}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Bio & Professional Indicators (Mobile Compact) */}
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[9px] md:text-base font-black text-zinc-300 uppercase">
+                      {userData?.role === "editor" ? "PRO VIDEO EDITOR" : "CLIENT"}
+                    </span>
+                    {profileData?.experience && (
+                      <span className="px-1.5 py-0.5 bg-zinc-900/50 text-zinc-500 text-[7px] md:text-[10px] font-black rounded border border-zinc-800 uppercase">
+                        {profileData.experience}
+                      </span>
+                    )}
+                  </div>
+
+                  {profileData?.about && (
+                    <div className="max-w-2xl">
+                      <div className="text-[10px] md:text-sm font-medium text-zinc-400 leading-tight flex flex-wrap items-center gap-2">
+                        <span className="md:hidden">
+                          {profileData.about.split(' ').length > 4 
+                            ? (
+                              <>
+                                {profileData.about.split(' ').slice(0, 4).join(' ')}... 
+                                <button onClick={() => setActiveTab("about")} className="text-white font-black ml-1 uppercase text-[8px] mr-2">more</button>
+                              </>
+                            ) : profileData.about
+                          }
+                        </span>
+                        <span className="hidden md:block leading-relaxed">{profileData.about}</span>
+                        
+                        {/* Mobile Integrated Availability (Next to "MORE") */}
+                        <div className="md:hidden inline-block scale-[0.8] origin-left -mt-0.5">
+                          <AvailabilitySelector compact={true} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-zinc-900/40">
                     {isVerified && (
-                      <div className="absolute bottom-1 right-1 w-7 h-7 bg-emerald-600 rounded-full flex items-center justify-center border-2 border-black z-10">
-                        <FaCheckCircle className="text-white text-xs" />
+                      <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/5 text-blue-400 text-[8px] md:text-[10px] font-black rounded-md border border-blue-500/10 uppercase">
+                        <MdVerified className="text-[9px] md:text-[13px]" /> VERIFIED
                       </div>
                     )}
-
-                    {/* Percentage Label */}
-                    <div 
-                      className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded text-[10px] font-bold text-white"
-                      style={{ backgroundColor: progressColor }}
-                    >
-                      {completionPercent}%
-                    </div>
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 text-center md:text-left min-w-0">
-                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-1">
-                      <h1 className="text-xl md:text-2xl font-semibold text-white">
-                        {userData?.name || "Your Name"}
-                      </h1>
-                      {isVerified && (
-                        <>
-                          <HiCheckBadge className="text-emerald-500 text-xl" />
-                          <span className="px-2 py-0.5 bg-emerald-900/50 text-emerald-400 text-[10px] font-medium rounded">
-                            VERIFIED
-                          </span>
-                        </>
-                      )}
-                      {/* Explore Listed Tag - Shows when verified + 80%+ profile */}
-                      {isVerified && completionPercent >= 80 && (
-                        <motion.span 
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="px-2.5 py-1 bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400 text-[10px] font-bold rounded-lg flex items-center gap-1"
-                        >
-                          <FaEye className="text-purple-400 text-[10px]" />
-                          <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-                            EXPLORE LISTED
-                          </span>
-                        </motion.span>
-                      )}
-                    </div>
-
-                    <p className="text-zinc-500 text-sm mb-3">
-                      {userData?.role === "editor" ? "Professional Video Editor" : "Client"} 
-                      {profileData?.experience && ` • ${profileData.experience}`}
-                    </p>
-
-                    {/* Info Tags */}
-                    <div className="flex flex-wrap justify-center md:justify-start gap-2">
-                      {profileData.location?.country && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900/80 border border-zinc-800 rounded text-zinc-400 text-xs">
-                          <FaMapMarkerAlt className="text-[10px]" />
-                          <ReactCountryFlag
-                            countryCode={countryNameToCode[profileData.location.country] || "IN"}
-                            svg
-                            style={{ width: "12px", height: "12px" }}
-                          />
-                          <span>{profileData.location.country}</span>
-                        </div>
-                      )}
-                      {profileData.contactEmail && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900/80 border border-zinc-800 rounded text-zinc-400 text-xs">
-                          <FaEnvelope className="text-[10px]" />
-                          <span className="truncate max-w-[120px] md:max-w-[160px]">{profileData.contactEmail}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900/80 border border-zinc-800 rounded text-zinc-400 text-xs">
-                        <FaCalendarAlt className="text-[10px]" />
-                        <span>Member since 2024</span>
+                    {completionPercent >= 80 && (
+                      <div className="flex items-center gap-1 px-2 py-0.5 bg-purple-500/5 text-purple-400 text-[8px] md:text-[10px] font-black rounded-md border border-purple-500/10 uppercase">
+                        <FaRocket className="text-[9px] md:text-[13px]" /> LISTED
                       </div>
-                      
-                      {/* Legal Badge */}
-                      {userData?.legalAcceptance?.contentPolicyAccepted && (
-                        <div className="group relative flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded cursor-help">
-                          <FaLock className="text-emerald-500 text-[10px]" />
-                          <span className="text-emerald-500 text-xs font-medium">Content Policy Accepted</span>
-                          
-                          {/* Tooltip */}
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-black/95 text-white text-[10px] p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none text-center border border-white/10 z-20 shadow-xl">
-                            This editor has accepted Suvix’s confidentiality and content protection agreement.
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black/95"></div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    )}
                   </div>
 
-                  {/* Edit Button */}
-                  <motion.button
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => navigate("/editor-profile-update")}
-                    className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-white text-black text-sm font-semibold rounded-lg hover:bg-zinc-200 transition-colors"
-                  >
-                    <FaEdit className="text-xs" />
-                    Edit Profile
-                  </motion.button>
-
-                  <div className="hidden md:block">
-                      <AvailabilitySelector />
-                  </div>
-                </div>
-
-                {/* Stats Row */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-4 mt-5 pt-5 border-t border-zinc-800/50">
-                  {statsData.map((stat) => (
-                    <div 
-                      key={stat.label} 
-                      className={`text-center ${stat.clickable ? 'cursor-pointer hover:bg-zinc-800/30 rounded-lg py-2 -my-2 transition-colors' : ''}`}
-                      onClick={() => stat.onClick && stat.onClick()}
-                    >
-                      <div className="flex items-center justify-center gap-1 md:gap-1.5 mb-0.5">
-                        <stat.icon className="text-[10px] md:text-xs" style={{ color: stat.color }} />
-                        {stat.locked ? (
-                          <span className="text-base md:text-lg font-semibold text-zinc-500">—</span>
-                        ) : (
-                          <span className="text-base md:text-lg font-semibold text-white">{stat.value}</span>
-                        )}
-                        {stat.count && <span className="text-xs text-zinc-500">{stat.count}</span>}
+                  {/* Integrated Location Section */}
+                  <div className="flex flex-wrap items-center gap-3 pt-2 mt-2 border-t border-zinc-900/50 text-zinc-500 text-[8px] md:text-[11px] font-black uppercase tracking-tight">
+                    {profileData.location?.country && (
+                      <div className="flex items-center gap-1">
+                        <FaMapMarkerAlt size={7} /> <span>{profileData.location.country}</span>
                       </div>
-                      <p className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-wide">{stat.label}</p>
-                      {stat.tag && (
-                        <span 
-                          className="inline-block mt-1 px-1.5 py-0.5 text-[8px] md:text-[9px] font-bold rounded"
-                          style={{ 
-                            backgroundColor: stat.tagColor + '20', 
-                            color: stat.tagColor 
-                          }}
-                        >
-                          {stat.tag}
-                        </span>
-                      )}
+                    )}
+                    {profileData.contactEmail && (
+                      <div className="flex items-center gap-1">
+                        <FaEnvelope size={7} /> <span className="normal-case truncate max-w-[120px] md:max-w-none">{profileData.contactEmail}</span>
+                      </div>
+                    )}
+                    {/* Availability Selector (Desktop View) */}
+                    <div className="hidden md:block ml-auto">
+                      <AvailabilitySelector compact={true} />
                     </div>
-                  ))}
-                </div>
-
-                {/* Mobile Edit Button */}
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => navigate("/editor-profile-update")}
-                  className="md:hidden w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-black text-sm font-semibold rounded-lg"
-                >
-                  <FaEdit className="text-xs" />
-                  Edit Profile
-                </motion.button>
-
-                <div className="md:hidden w-full mt-3 flex justify-center">
-                    <AvailabilitySelector />
+                  </div>
                 </div>
               </div>
             </div>
@@ -522,10 +503,8 @@ const EditorProfile = () => {
                 transition={{ duration: 0.15 }}
               >
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  
                   {/* Main Content */}
                   <div className="lg:col-span-2 space-y-4">
-                    
                     {/* About Me */}
                     {profileData.about && (
                       <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5">
@@ -622,11 +601,7 @@ const EditorProfile = () => {
 
                   {/* Sidebar */}
                   <div className="space-y-4">
-                    
-                    {/* Suvix Score Card */}
                     <SuvixScoreCard />
-                    
-                    {/* Quick Links */}
                     <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4">
                       <h4 className="text-sm font-semibold text-white mb-3">Quick Links</h4>
                       <div className="space-y-2">
@@ -737,19 +712,6 @@ const EditorProfile = () => {
                 className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5"
               >
                 <GigsSection />
-              </motion.div>
-            )}
-
-            {/* SUVIX SCORE TAB */}
-            {activeTab === "suvix-score" && (
-              <motion.div
-                key="suvix-score"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.15 }}
-              >
-                <SuvixScoreAnalytics />
               </motion.div>
             )}
           </AnimatePresence>
