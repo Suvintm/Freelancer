@@ -142,47 +142,6 @@ const UnifiedBannerSlider = () => {
 
         const base = [
             {
-                id: "promotions",
-                label: "Ads",
-                color: "text-amber-400",
-                icon: FaAd,
-                items: [
-                    {
-                        _id: "ad-001",
-                        title: "Suvix Pro Editing",
-                        description: "High-end cinematic editing for your brand. Get started in minutes.",
-                        mediaUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-                        mediaType: "video",
-                        link: "https://suvix.in",
-                        linkText: "Explore More",
-                        badge: "featured",
-                        gradientFrom: "#f59e0b"
-                    },
-                    {
-                        _id: "ad-002",
-                        title: "Premium Sound Packs",
-                        description: "Unlock 500+ exclusive SFX and cinematic music tracks.",
-                        mediaUrl: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=2070&auto=format&fit=crop",
-                        mediaType: "image",
-                        link: "https://suvix.in/store",
-                        linkText: "Browse Store",
-                        badge: "new",
-                        gradientFrom: "#3b82f6"
-                    },
-                    {
-                        _id: "ad-003",
-                        title: "AI Color Grading",
-                        description: "Professional color grading powered by advanced Suvix AI.",
-                        mediaUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-                        mediaType: "video",
-                        link: "https://instagram.com/suvix_creative",
-                        linkText: "See Results",
-                        badge: "limited",
-                        gradientFrom: "#10b981"
-                    }
-                ]
-            },
-            {
                 id: "editors",
                 label: "Editors",
                 color: "text-violet-400",
@@ -384,9 +343,7 @@ const UnifiedBannerSlider = () => {
                             {/* Badges */}
                             <div className="flex items-center gap-2">
                                 <span className={`px-2 py-0.5 rounded-md bg-white/10 backdrop-blur-md text-[8px] font-bold text-white border border-white/10 flex items-center gap-1.5 uppercase tracking-widest`}>
-                                    {verticalIndex === 0 && <HiOutlineVideoCamera className="text-amber-400 text-[10px]" />}
-                                    {verticalIndex === 1 && <HiSparkles className="text-violet-400 text-[10px]" />}
-                                    {verticalIndex === 2 && <HiBolt className="text-emerald-400 text-[10px]" />}
+                                    {currentLevel.icon && <currentLevel.icon className={`${currentLevel.color} text-[10px]`} />}
                                     {currentItem.badge?.toUpperCase() || currentLevel.label.toUpperCase()}
                                 </span>
                                 {verticalIndex === 0 && (

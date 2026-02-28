@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAppContext } from "../context/AppContext";
 import { useTheme } from "../context/ThemeContext";
 import logo from "../assets/logo.png";
+import RefreshButton from "./RefreshButton";
 
 const ClientNavbar = ({ onMenuClick }) => {
   const navigate = useNavigate();
@@ -73,6 +74,8 @@ const ClientNavbar = ({ onMenuClick }) => {
             <FaSearch className="text-gray-400 light:text-slate-500" />
           </button>
 
+          <RefreshButton className="hidden lg:flex" />
+          
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
@@ -211,6 +214,7 @@ const ClientNavbar = ({ onMenuClick }) => {
 
         {/* RIGHT SIDE ICONS */}
         <div className="flex items-center gap-2">
+          <RefreshButton />
           {/* THEME TOGGLE */}
           <button
             onClick={toggleTheme}

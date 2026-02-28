@@ -189,22 +189,6 @@ const EditorHome = () => {
       
       <RefreshIndicator pullDistance={pullDistance} />
 
-      {/* Refresh Button - Also triggers triggerRefresh */}
-      <motion.button
-        onClick={() => triggerRefresh(true)}
-        disabled={isRefreshing}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        className="fixed top-20 right-4 md:right-8 z-50 p-3 rounded-xl bg-[#0a0a0c] light:bg-white shadow-lg border border-white/10 light:border-slate-200 hover:shadow-xl transition-all"
-        title="Refresh page"
-      >
-        <motion.div
-          animate={isRefreshing ? { rotate: 360 } : { rotate: 0 }}
-          transition={isRefreshing ? { repeat: Infinity, duration: 0.8, ease: "linear" } : { duration: 0.3 }}
-        >
-          <FaSyncAlt className="text-emerald-500 text-sm" />
-        </motion.div>
-      </motion.button>
 
       <main 
         ref={mainContainerRef}

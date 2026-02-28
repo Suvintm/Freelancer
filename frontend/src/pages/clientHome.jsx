@@ -178,18 +178,6 @@ const ClientHome = () => {
       
       <RefreshIndicator pullDistance={pullDistance} />
 
-      {/* Refresh Button - Also triggers triggerRefresh */}
-      <motion.button
-        onClick={() => triggerRefresh(true)}
-        disabled={isRefreshing}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        className="fixed top-20 right-4 z-50 p-2 rounded-lg bg-zinc-900/90 light:bg-white/90 backdrop-blur border border-zinc-800 light:border-zinc-200"
-      >
-        <motion.div animate={isRefreshing ? { rotate: 360 } : {}} transition={isRefreshing ? { repeat: Infinity, duration: 0.8 } : {}}>
-          <HiOutlineArrowPath className="text-indigo-400 w-4 h-4" />
-        </motion.div>
-      </motion.button>
 
       <main 
         ref={mainContainerRef}

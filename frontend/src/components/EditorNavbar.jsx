@@ -6,6 +6,7 @@ import logo from "../assets/logo.png";
 import { HiBell, HiBars3, HiOutlineSun, HiOutlineMoon } from "react-icons/hi2";
 import ProfileCompletionRing from "./ProfileCompletionRing";
 import { motion, AnimatePresence } from "framer-motion";
+import RefreshButton from "./RefreshButton";
 
 const navItems = [
     { path: "/editor-home", label: "Dashboard" },
@@ -44,6 +45,8 @@ const EditorNavbar = ({ onMenuClick }) => {
 
                 {/* RIGHT SECTION */}
                 <div className="flex items-center gap-4">
+                    <RefreshButton className="hidden lg:flex" />
+                    
                     {/* Theme Toggle */}
                     <button
                         onClick={toggleTheme}
@@ -142,6 +145,7 @@ const EditorNavbar = ({ onMenuClick }) => {
 
                 {/* RIGHT SIDE ICONS */}
                 <div className="flex items-center gap-2">
+                    <RefreshButton />
                     {/* THEME TOGGLE */}
                     <button
                         onClick={toggleTheme}
