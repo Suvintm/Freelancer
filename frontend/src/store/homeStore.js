@@ -30,10 +30,12 @@ export const useHomeStore = create((set) => ({
   lastHomeRefresh:   0,      // Timestamp of last auto/manual refresh
   lastManualRefresh: 0,      // Timestamp of last manual pull-to-refresh
   isRefreshing:      false,  // Global refreshing state for UI indicators
+  showCooldownNotice: false, // Show "Wait a moment" when refreshing too fast
 
   setLastHomeRefresh:   (t) => set({ lastHomeRefresh: t }),
   setLastManualRefresh: (t) => set({ lastManualRefresh: t }),
   setIsRefreshing:      (b) => set({ isRefreshing: b }),
+  setShowCooldownNotice:(b) => set({ showCooldownNotice: b }),
 
   // ── Scroll Positions (per page key) ──────────────────────────────────────
   // Map: { pageKey: scrollY }

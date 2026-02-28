@@ -16,7 +16,8 @@ const useRefreshManager = () => {
         lastManualRefresh, 
         setLastHomeRefresh, 
         setLastManualRefresh,
-        setIsRefreshing 
+        setIsRefreshing,
+        setShowCooldownNotice 
     } = useHomeStore();
 
     // ── CORE REFRESH LOGIC ───────────────────────────────────────────────
@@ -26,6 +27,11 @@ const useRefreshManager = () => {
         // 1. Manual Rate Limiting (Cooldown)
         if (isManual && now - lastManualRefresh < MANUAL_COOLDOWN) {
             console.log("[Refresh] Skipping manual refresh: Cooldown active.");
+            
+            // Show "Wait a moment" notice
+            setShowCooldownNotice(true);
+            setTimeout(() => setShowCooldownNotice(false), 2000);
+            
             return false;
         }
 
