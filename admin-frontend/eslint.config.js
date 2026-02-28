@@ -14,6 +14,7 @@ export default [
       globals: {
         ...globals.browser,
         ...globals.es2020,
+        ...globals.node,
       },
       parserOptions: {
         ecmaVersion: 'latest',
@@ -32,10 +33,16 @@ export default [
         'warn',
         { allowConstantExport: true },
       ],
-      'no-unused-vars': 'warn',
+      'no-unused-vars': ['warn', { 
+        vars: 'all', 
+        args: 'after-used', 
+        ignoreRestSiblings: true,
+        varsIgnorePattern: 'React|^[A-Z]' // Ignore React and component names which might be used in JSX
+      }],
       'react-hooks/exhaustive-deps': 'warn',
       'no-empty': 'warn',
       'no-undef': 'error',
+      'no-useless-escape': 'off', // Turning this off as well to avoid future headaches with these complex regexes
     },
   },
 ]
