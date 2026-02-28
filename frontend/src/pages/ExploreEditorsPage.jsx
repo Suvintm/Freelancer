@@ -2,9 +2,13 @@ import { useState } from "react";
 import ClientSidebar from "../components/ClientSidebar.jsx";
 import ClientNavbar from "../components/ClientNavbar.jsx";
 import ExploreEditor from "../components/ExploreEditor.jsx";
+import useScrollRestore from "../hooks/useScrollRestore";
 
 const ExploreEditorsPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Isolated scroll for Explore page
+  useScrollRestore('exploreEditors');
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#09090B] light:bg-[#FAFAFA] text-white light:text-zinc-900 transition-colors duration-200">

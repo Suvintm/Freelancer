@@ -11,29 +11,23 @@ import {
 } from "react-icons/hi2";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { useQuery } from "@tanstack/react-query";
 import { useAppContext } from "../context/AppContext";
 
 const SuggestedReels = () => {
     const { backendURL } = useAppContext();
     const navigate = useNavigate();
-    const [reels, setReels] = useState([]);
-    const [loading, setLoading] = useState(true);
     const scrollRef = useRef(null);
     const [showControls, setShowControls] = useState(false);
 
-    useEffect(() => {
-        const fetchSuggestedReels = async () => {
-            try {
-                const { data } = await axios.get(`${backendURL}/api/reels/feed?page=1&limit=12`);
-                setReels(data.reels || []);
-            } catch (err) {
-                console.error("Failed to fetch suggested reels:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchSuggestedReels();
-    }, [backendURL]);
+    const { data: reels = [], isLoading: loading } = useQuery({
+        queryKey: ['homeData', 'suggested-reels', backendURL],
+        queryFn: async () => {
+            const { data } = await axios.get(`${backendURL}/api/reels/feed?page=1&limit=12`);
+            return data.reels || [];
+        },
+        staleTime: 5 * 60 * 1000, // 5 min cache
+    });
 
     const scroll = (direction) => {
         if (scrollRef.current) {

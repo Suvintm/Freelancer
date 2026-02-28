@@ -4,6 +4,7 @@ import { SiteSettings, getSettings } from "../models/SiteSettings.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
 import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
+import { getCache, setCache, delPattern } from "../config/redisClient.js";
 
 // ✅ Robust Utility to repair URLs mangled by security sanitizers
 // Handles both dot mangling (res_cloudinary_com) and slash mangling (.com_cloudname)
@@ -137,6 +138,13 @@ export const getActiveAds = asyncHandler(async (req, res) => {
   const now = new Date();
   const { location } = req.query; // "home_banner" | "reels_feed" | "explore_page"
 
+  // ── Redis cache check (TTL: 10 min) ──────────────────────────────────
+  const cacheKey = `ads:${location || 'all'}`;
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return res.status(200).json(cached);
+  }
+
   const query = {
     isActive: true,
     approvalStatus: "approved",
@@ -170,7 +178,9 @@ export const getActiveAds = asyncHandler(async (req, res) => {
   if (location === "home_banner") {
     const settings = await getSettings();
     if (!settings.showSuvixAds && ads.length === 0) {
-      return res.status(200).json({ success: true, count: 0, ads: [] });
+      const payload = { success: true, count: 0, ads: [] };
+      await setCache(cacheKey, payload, 300);
+      return res.status(200).json(payload);
     }
   }
 
@@ -184,7 +194,12 @@ export const getActiveAds = asyncHandler(async (req, res) => {
   }
 
   const cleanedAds = ads.map(ad => cleanAd(ad));
-  res.status(200).json({ success: true, count: ads.length, ads: cleanedAds, hasDefaults: ads.some(a => a.isDefault) });
+  const payload = { success: true, count: ads.length, ads: cleanedAds, hasDefaults: ads.some(a => a.isDefault) };
+
+  // Cache for 10 minutes
+  await setCache(cacheKey, payload, 600);
+
+  res.status(200).json(payload);
 });
 
 // ============ PUBLIC: GET SINGLE AD ============
@@ -199,11 +214,13 @@ export const getAdById = asyncHandler(async (req, res) => {
 
 // ============ PUBLIC: GET SITE SETTINGS ============
 export const getSiteSettingsPublic = asyncHandler(async (req, res) => {
+  const cached = await getCache('settings:showSuvixAds');
+  if (cached) return res.status(200).json(cached);
+
   const settings = await getSettings();
-  res.status(200).json({
-    success: true,
-    showSuvixAds: settings.showSuvixAds,
-  });
+  const payload = { success: true, showSuvixAds: settings.showSuvixAds };
+  await setCache('settings:showSuvixAds', payload, 300); // 5 min TTL
+  res.status(200).json(payload);
 });
 
 // ============ PUBLIC: TRACK VIEW ============
@@ -299,6 +316,7 @@ export const createAd = asyncHandler(async (req, res) => {
   await ad.save();
 
   logger.info(`Advertisement created: ${ad.title} by ${ad.advertiserName}`);
+  await delPattern('ads:*'); // Invalidate all ad caches
   res.status(201).json({ success: true, message: "Advertisement created", ad: cleanAd(ad) });
 });
 
@@ -330,6 +348,7 @@ export const updateAd = asyncHandler(async (req, res) => {
 
   await ad.save();
   logger.info(`Advertisement updated: ${ad.title}`);
+  await delPattern('ads:*'); // Invalidate all ad caches
   res.status(200).json({ success: true, message: "Advertisement updated", ad: cleanAd(ad) });
 });
 
@@ -339,6 +358,7 @@ export const deleteAd = asyncHandler(async (req, res) => {
   if (!ad) throw new ApiError(404, "Advertisement not found");
 
   logger.info(`Advertisement deleted: ${ad.title}`);
+  await delPattern('ads:*'); // Invalidate all ad caches
   res.status(200).json({ success: true, message: "Advertisement deleted" });
 });
 
@@ -391,6 +411,8 @@ export const toggleSuvixAds = asyncHandler(async (req, res) => {
     showSuvixAds: settings.showSuvixAds,
     message: `Suvix ads ${showSuvixAds ? "enabled" : "disabled"}`,
   });
+  await delPattern('ads:*');         // Invalidate ad list cache
+  await delPattern('settings:*');    // Invalidate settings cache
 });
 
 // ============ ADMIN: GET SITE SETTINGS ============

@@ -12,6 +12,7 @@ import {
 } from "react-icons/hi2";
 import { FaMapMarkerAlt, FaStar } from "react-icons/fa";
 import axios from "axios";
+import { useQuery } from "@tanstack/react-query";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
 import nearbyBg from "../assets/nearby.png";
@@ -19,31 +20,19 @@ import nearbyBg from "../assets/nearby.png";
 const EditorsNearYouPreview = () => {
     const { user, backendURL } = useAppContext();
     const navigate = useNavigate();
-    const [nearbyEditors, setNearbyEditors] = useState([]);
-    const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchNearby = async () => {
-            try {
-                // Default to Bangalore if no location, or use a sample if mock
-                const params = {
-                    lat: 12.97,
-                    lng: 77.59,
-                    radius: 50
-                };
-                const { data } = await axios.get(`${backendURL}/api/location/nearby`, {
-                    params,
-                    headers: { Authorization: `Bearer ${user?.token}` },
-                });
-                setNearbyEditors(data.editors?.slice(0, 4) || []);
-            } catch (err) {
-                console.error("Failed to fetch nearby editors", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchNearby();
-    }, [backendURL, user?.token]);
+    const { data: nearbyEditors = [], isLoading: loading } = useQuery({
+        queryKey: ['homeData', 'nearby-editors', backendURL, user?.token],
+        queryFn: async () => {
+            const { data } = await axios.get(`${backendURL}/api/location/nearby`, {
+                params: { lat: 12.97, lng: 77.59, radius: 50 },
+                headers: { Authorization: `Bearer ${user?.token}` },
+            });
+            return data.editors?.slice(0, 4) || [];
+        },
+        staleTime: 5 * 60 * 1000, // 5 min cache
+        enabled: !!user?.token,
+    });
 
     if (loading) return (
         <div className="py-2">

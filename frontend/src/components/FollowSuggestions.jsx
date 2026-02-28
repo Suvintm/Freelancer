@@ -4,40 +4,32 @@ import { FaUserPlus, FaCheck, FaChevronRight, FaStar, FaUser } from "react-icons
 import { MdVerified } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { useQuery } from "@tanstack/react-query";
 import { useAppContext } from "../context/AppContext";
 import { toast } from "react-toastify";
 
 const FollowSuggestions = () => {
     const { user, backendURL } = useAppContext();
     const navigate = useNavigate();
-    const [suggestions, setSuggestions] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [followStates, setFollowStates] = useState({}); // { userId: { loading: bool, isFollowing: bool, isPending: bool } }
+    const [followStates, setFollowStates] = useState({});
 
-    useEffect(() => {
-        const fetchSuggestions = async () => {
-            if (!user?.token) return;
-            try {
-                const res = await axios.get(`${backendURL}/api/user/suggestions?limit=10`, {
-                    headers: { Authorization: `Bearer ${user.token}` }
-                });
-                setSuggestions(res.data.suggestions);
-                
-                // Initialize follow states
-                const states = {};
-                res.data.suggestions.forEach(s => {
-                    states[s._id] = { loading: false, isFollowing: false, isPending: false };
-                });
-                setFollowStates(states);
-            } catch (error) {
-                console.error("Failed to fetch suggestions:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchSuggestions();
-    }, [user?.token, backendURL]);
+    const { data: suggestions = [], isLoading: loading } = useQuery({
+        queryKey: ['homeData', 'follow-suggestions', backendURL, user?.token],
+        queryFn: async () => {
+            const res = await axios.get(`${backendURL}/api/user/suggestions?limit=10`, {
+                headers: { Authorization: `Bearer ${user.token}` }
+            });
+            // Init follow states
+            const states = {};
+            (res.data.suggestions || []).forEach(s => {
+                states[s._id] = { loading: false, isFollowing: false, isPending: false };
+            });
+            setFollowStates(states);
+            return res.data.suggestions || [];
+        },
+        staleTime: 5 * 60 * 1000,
+        enabled: !!user?.token,
+    });
 
     const handleFollow = async (e, targetUser) => {
         e.stopPropagation();

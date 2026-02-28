@@ -15,46 +15,32 @@ import {
 } from "react-icons/hi2";
 import { FaStar, FaShoppingBag, FaUsers, FaCheckCircle } from "react-icons/fa";
 import axios from "axios";
+import { useQuery } from "@tanstack/react-query";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
 
 const UnifiedExplorePreview = () => {
-    const { backendURL, user } = useAppContext();
+    const { backendURL } = useAppContext();
     const navigate = useNavigate();
-    const [editors, setEditors] = useState([]);
-    const [gigs, setGigs] = useState([]);
-    const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
+    const { data, isLoading: loading } = useQuery({
+        queryKey: ['homeData', 'unified-explore', backendURL],
+        queryFn: async () => {
+            const [editorsRes, gigsRes] = await Promise.allSettled([
+                axios.get(`${backendURL}/api/explore/editors?limit=8`),
+                axios.get(`${backendURL}/api/explore/gigs?limit=4`)
+            ]);
             
-            // Individual fetch with separate error handling to prevent one failure from killing the entire view
-            const fetchEditors = async () => {
-                try {
-                    const res = await axios.get(`${backendURL}/api/explore/editors?limit=8`);
-                    setEditors(res.data.editors || []);
-                } catch (err) {
-                    console.error("Failed to fetch featured editors", err);
-                    setEditors([]);
-                }
+            return {
+                editors: editorsRes.status === 'fulfilled' ? (editorsRes.value.data.editors || []) : [],
+                gigs: gigsRes.status === 'fulfilled' ? (gigsRes.value.data.gigs || []) : []
             };
+        },
+        staleTime: 5 * 60 * 1000,
+    });
 
-            const fetchGigs = async () => {
-                try {
-                    const res = await axios.get(`${backendURL}/api/explore/gigs?limit=4`);
-                    setGigs(res.data.gigs || []);
-                } catch (err) {
-                    console.error("Failed to fetch elite gigs", err);
-                    setGigs([]);
-                }
-            };
-
-            await Promise.allSettled([fetchEditors(), fetchGigs()]);
-            setLoading(false);
-        };
-        fetchData();
-    }, [backendURL]);
+    const editors = data?.editors || [];
+    const gigs = data?.gigs || [];
 
     const PreviewSection = ({ title, items, type, icon: Icon, color, link, subLabel }) => (
         <div className="space-y-5">
@@ -101,11 +87,15 @@ const UnifiedExplorePreview = () => {
                                 {/* Large Rounded Avatar */}
                                 <div className="relative z-10 mt-2 mb-4">
                                     <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-full p-1 bg-gradient-to-tr from-violet-500 via-purple-500 to-blue-500 shadow-[0_0_20px_rgba(139,92,246,0.3)]">
-                                        <div className="w-full h-full rounded-full overflow-hidden border-2 border-[#0d0d12]">
+                                        <div className="w-full h-full rounded-full overflow-hidden border-2 border-[#0d0d12] bg-zinc-800">
                                             <img 
                                                 src={item.user?.profilePicture || item.profilePicture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop'} 
-                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                                                className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700"
                                                 alt={item.user?.name || item.name}
+                                                loading="lazy"
+                                                decoding="async"
+                                                onLoad={(e) => { e.target.style.opacity = "1"; }}
+                                                style={{ opacity: 0 }}
                                             />
                                         </div>
                                     </div>
@@ -164,11 +154,15 @@ const UnifiedExplorePreview = () => {
                             </>
                         ) : (
                             /* Redesigned Compact Square Gig Cards */
-                            <div className="absolute inset-0">
+                            <div className="absolute inset-0 bg-zinc-800">
                                 <img 
-                                    src={item.thumbnail || item.images?.[0] || 'https://images.unsplash.com/photo-1492724441997-5dc865305da7?q=80&w=2070&auto=format&fit=crop'} 
-                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                                    src={item.thumbnail || item.images?.[0] || 'https://images.unsplash.com/photo-1492724441997-5dc865305da7?q=80&w=2080&auto=format&fit=crop'} 
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700"
                                     alt={item.title}
+                                    loading="lazy"
+                                    decoding="async"
+                                    onLoad={(e) => { e.target.style.opacity = "1"; }}
+                                    style={{ opacity: 0 }}
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
                                 

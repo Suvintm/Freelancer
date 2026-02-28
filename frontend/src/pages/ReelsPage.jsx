@@ -11,9 +11,12 @@ import ReelSkeleton from "../components/ReelSkeleton";
 import ReelAdCard from "../components/ReelAdCard";
 import CommentSection from "../components/CommentSection";
 import useReelObserver from "../hooks/useReelObserver";
+import useScrollRestore from "../hooks/useScrollRestore";
 import logo from "../assets/logo.png";
 
 const ReelsPage = () => {
+    // Isolated scroll for Reels page
+    useScrollRestore('reelsPage');
     const { backendURL, user } = useAppContext();
     const {
         feedCache,

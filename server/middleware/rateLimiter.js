@@ -9,19 +9,8 @@
  */
 
 import rateLimit from "express-rate-limit";
-import Redis from "ioredis";
+import redis from "../config/redisClient.js";
 import { RedisStore } from "rate-limit-redis";
-
-// Connect to Redis via Native Protocol (required for rate-limit Lua scripts)
-// If the URL is the Upstash REST URL (https://...), we convert it to the Redis URI format.
-let redisUri = process.env.REDIS_URL;
-if (redisUri && redisUri.startsWith("https://")) {
-  const host = redisUri.replace("https://", "");
-  const token = process.env.REDIS_TOKEN;
-  redisUri = `rediss://default:${token}@${host}:6379`;
-}
-
-const redis = new Redis(redisUri);
 
 /**
  * Build a RedisStore for express-rate-limit.

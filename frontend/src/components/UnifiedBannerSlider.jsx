@@ -16,6 +16,7 @@ import {
 import { FaPlay, FaAd, FaInstagram, FaGlobe, FaChevronRight, FaPause, FaVolumeMute, FaVolumeUp, FaChevronLeft } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
+import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
 // ✅ Repair mangled URLs from backend sanitization (dots -> underscores & slashes -> underscores)
@@ -83,31 +84,40 @@ const UnifiedBannerSlider = () => {
     const navigate = useNavigate();
     const [verticalIndex, setVerticalIndex] = useState(0);
     const [horizontalIndices, setHorizontalIndices] = useState([0, 0, 0]);
-    const [dbAds, setDbAds] = useState([]);
-    const [showAdsLevel, setShowAdsLevel] = useState(true);
-    const [loading, setLoading] = useState(true);
     const [isMuted, setIsMuted] = useState(true);
     const [isHovered, setIsHovered] = useState(false);
     const [mediaLoaded, setMediaLoaded] = useState(false);
+    const [inView, setInView] = useState(true);
+    const containerRef = useRef(null);
 
-    // Fetch active ads for Level 0 from DB + global toggle
-  useEffect(() => {
-    const fetchAds = async () => {
-      try {
-        const [adsRes, settingsRes] = await Promise.all([
-          axios.get(`${backendURL}/api/ads?location=home_banner`),
-          axios.get(`${backendURL}/api/ads/settings`),
-        ]);
-        setDbAds(adsRes.data.ads || []);
-        setShowAdsLevel(settingsRes.data.showSuvixAds !== false);
-      } catch (err) {
-        console.error("Failed to fetch ads", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAds();
-  }, [backendURL]);
+    // —— Intersection Observer: Pause banners when off-screen ——
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => setInView(entry.isIntersecting),
+            { threshold: 0.2 }
+        );
+        if (containerRef.current) observer.observe(containerRef.current);
+        return () => observer.disconnect();
+    }, []);
+
+    // —— React Query: fetch ads + settings, cache for 10 min ——
+    const { data: adsData, isLoading } = useQuery({
+        queryKey: ['home-ads', backendURL],
+        queryFn: async () => {
+            const [adsRes, settingsRes] = await Promise.all([
+                axios.get(`${backendURL}/api/ads?location=home_banner`),
+                axios.get(`${backendURL}/api/ads/settings`),
+            ]);
+            return {
+                ads: adsRes.data.ads || [],
+                showAds: settingsRes.data.showSuvixAds !== false,
+            };
+        },
+        staleTime: 10 * 60 * 1000, // 10 min — banner ads change rarely
+    });
+
+    const dbAds = adsData?.ads || [];
+    const showAdsLevel = adsData?.showAds ?? true;
 
     // Build Level 0 from DB ads (only if enabled and ads exist)
   const adsLevel = showAdsLevel && dbAds.length > 0 ? {
@@ -260,22 +270,22 @@ const UnifiedBannerSlider = () => {
 
     // Auto-advance Level 0 Ads (Cyclic)
     useEffect(() => {
-        if (verticalIndex !== 0 || isHovered || currentLevel.items.length <= 1) return;
+        if (verticalIndex !== 0 || isHovered || !inView || currentLevel.items.length <= 1) return;
         
         // Timer for images (4s)
         if (currentItem.mediaType === "image") {
             const timeout = setTimeout(() => handleHorizontalChange("next"), 4000);
             return () => clearTimeout(timeout);
         }
-    }, [verticalIndex, isHovered, currentLevel.items.length, horizontalIndex]);
+    }, [verticalIndex, isHovered, inView, currentLevel.items.length, horizontalIndex]);
 
     const handleVideoTimeUpdate = (e) => {
-        if (verticalIndex === 0 && !isHovered && e.target.currentTime >= 4) {
+        if (verticalIndex === 0 && !isHovered && inView && e.target.currentTime >= 4) {
             handleHorizontalChange("next");
         }
     };
 
-    if (loading) {
+    if (isLoading) {
         return (
             <div className="relative h-60 md:h-80 w-full rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/5">
                 {/* Shimmer base */}
@@ -299,6 +309,7 @@ const UnifiedBannerSlider = () => {
 
     return (
         <div 
+            ref={containerRef}
             className={`relative h-60 md:h-80 w-full rounded-[2rem] md:rounded-[2.5rem] overflow-hidden group shadow-2xl border border-white/5 bg-[#0d0d12] ${verticalIndex === 0 ? "cursor-pointer" : "cursor-default"}`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
@@ -338,13 +349,19 @@ const UnifiedBannerSlider = () => {
                             <video 
                                 key={repairUrl(currentItem.mediaUrl)}
                                 src={repairUrl(currentItem.mediaUrl)}
-                                autoPlay
+                                autoPlay={inView}
                                 loop
                                 muted={isMuted}
                                 playsInline
                                 onTimeUpdate={handleVideoTimeUpdate}
                                 onLoadedData={() => setMediaLoaded(true)}
                                 className={`w-full h-full object-cover transition-opacity duration-700 ${mediaLoaded ? 'opacity-100' : 'opacity-0'}`}
+                                ref={(el) => {
+                                    if (el) {
+                                        if (inView) el.play().catch(() => {});
+                                        else el.pause();
+                                    }
+                                }}
                             />
                         ) : (
                             <img 

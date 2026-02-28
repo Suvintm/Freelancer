@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   FaExclamationCircle,
   FaArrowRight,
@@ -45,14 +45,17 @@ import UnifiedBannerSlider from "../components/UnifiedBannerSlider.jsx";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import reelIcon from "../assets/reelicon.png";
-
 import LegalBanner from "../components/LegalBanner.jsx";
+import { useHomeStore } from "../store/homeStore";
+import useScrollRestore from "../hooks/useScrollRestore";
+import useRefreshManager from "../hooks/useRefreshManager";
+import usePullToRefresh from "../hooks/usePullToRefresh";
+import RefreshIndicator from "../components/RefreshIndicator";
 
 const EditorHome = () => {
   const { user, backendURL, refreshUser } = useAppContext();
+  const mainContainerRef = useRef(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [mainTab, setMainTab] = useState("home");
-  const [exploreTab, setExploreTab] = useState("editors");
   const [stats, setStats] = useState({ totalOrders: 0, activeGigs: 0 });
   const [showKYC, setShowKYC] = useState(false);
   const [profileData, setProfileData] = useState(null);
@@ -63,6 +66,19 @@ const EditorHome = () => {
   const [storageExpanded, setStorageExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
+
+  // ── REFRESH SYSTEM ──────────────────────────────────────────────────
+  const { triggerRefresh } = useRefreshManager();
+  const { pullDistance, handleTouchStart, handleTouchEnd } = usePullToRefresh(triggerRefresh, mainContainerRef);
+
+  // Persistent tab state via Zustand — survives navigation
+  const mainTab = useHomeStore((s) => s.editorMainTab);
+  const setMainTab = useHomeStore((s) => s.setEditorMainTab);
+  const exploreTab = useHomeStore((s) => s.editorExploreTab);
+  const setExploreTab = useHomeStore((s) => s.setEditorExploreTab);
+
+  // Scroll position restored per tab to isolate Discover from Dashboard
+  useScrollRestore(`editorHome_${mainTab}`);
 
   // Fetch basic stats
   useEffect(() => {
@@ -177,10 +193,12 @@ const EditorHome = () => {
     <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200" style={{ fontFamily: "'Inter', sans-serif" }}>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
+      
+      <RefreshIndicator pullDistance={pullDistance} />
 
-      {/* Refresh Button */}
+      {/* Refresh Button - Also triggers triggerRefresh */}
       <motion.button
-        onClick={handleRefresh}
+        onClick={() => triggerRefresh(true)}
         disabled={isRefreshing}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
@@ -195,7 +213,13 @@ const EditorHome = () => {
         </motion.div>
       </motion.button>
 
-      <main className="flex-1 px-1 md:px-8 py-2 lg:pt-20 md:pt-4 md:ml-64 md:mt-16">
+      <main 
+        ref={mainContainerRef}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="flex-1 px-1 md:px-8 py-2 lg:pt-20 md:pt-4 md:ml-64 md:mt-16 overflow-y-auto transition-transform duration-75"
+        style={{ transform: `translateY(${pullDistance}px)` }}
+      >
         {/* Premium Banner at the Top - Responsive with Side Margins */}
         <div className="px-3 md:px-8 mb-2 md:mb-8 max-w-7xl mx-auto">
           <UnifiedBannerSlider />
