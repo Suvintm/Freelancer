@@ -68,7 +68,7 @@ const ReelPreviewModal = ({ reel, onClose }) => {
                         <motion.div
                             animate={{ rotate: 360 }}
                             transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                            className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full"
+                            className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full"
                         />
                     </div>
                 )}

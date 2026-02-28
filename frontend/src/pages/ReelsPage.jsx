@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaArrowLeft, FaSpinner } from "react-icons/fa";
+import { HiOutlineChevronLeft } from "react-icons/hi2";
 import { BiRefresh } from "react-icons/bi";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -107,9 +108,20 @@ const ReelsPage = () => {
     useEffect(() => {
         const fetchReelAds = async () => {
             try {
-                const res = await axios.get(`${backendURL}/api/ads?location=reels_feed`);
-                setReelAds(res.data.ads || []);
-            } catch {}
+                // Try fetching specifically for reels_feed
+                let res = await axios.get(`${backendURL}/api/ads?location=reels_feed`);
+                let ads = res.data.ads || [];
+                
+                // FALLBACK: If no reels_feed ads, try fetching home_banner ads just so they see something
+                if (ads.length === 0) {
+                    res = await axios.get(`${backendURL}/api/ads?location=home_banner`);
+                    ads = res.data.ads || [];
+                }
+                
+                setReelAds(ads);
+            } catch (err) {
+                console.error("Ad fetch error:", err);
+            }
         };
         fetchReelAds();
     }, [backendURL]);
@@ -232,9 +244,9 @@ const ReelsPage = () => {
             <div className="absolute top-0 left-0 right-0 px-4 py-4 z-40 flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
                 <button
                     onClick={() => navigate(-1)}
-                    className="w-10 h-10 bg-white/15 backdrop-blur-xl rounded-full flex items-center justify-center text-white hover:bg-white/25 transition shadow-lg pointer-events-auto"
+                    className="w-8 h-8 flex items-center justify-center text-white/70 hover:text-white transition-colors pointer-events-auto"
                 >
-                    <FaArrowLeft className="text-lg" />
+                    <HiOutlineChevronLeft className="text-2xl" />
                 </button>
 
                 <div className="flex items-center gap-2">

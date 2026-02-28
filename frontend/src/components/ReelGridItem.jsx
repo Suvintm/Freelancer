@@ -5,39 +5,44 @@ import { repairUrl } from "../utils/urlHelper.jsx";
 
 const ReelGridItem = ({ reel, onPreviewStart }) => {
     const [isHovered, setIsHovered] = useState(false);
-    const holdTimerRef = useRef(null);
+    const [isHolding, setIsHolding] = useState(false);
+    const videoRef = useRef(null);
     const mediaUrl = repairUrl(reel.mediaUrl);
 
-    // Instagram-style Hold to Preview logic
+    // Interaction Overhaul:
+    // Hold: Play locally
+    // Click: Open Modal
+    
+    useEffect(() => {
+        if (!videoRef.current || reel.mediaType !== "video") return;
+        if (isHolding) {
+            videoRef.current.play().catch(() => {});
+        } else {
+            videoRef.current.pause();
+            videoRef.current.currentTime = 0;
+        }
+    }, [isHolding, reel.mediaType]);
+
     const handleHoldStart = (e) => {
-        // Prevent context menu on mobile
-        // e.preventDefault(); 
-        
-        holdTimerRef.current = setTimeout(() => {
-            onPreviewStart(reel);
-        }, 300); // Trigger preview after 300ms hold
+        setIsHolding(true);
     };
 
     const handleHoldEnd = () => {
-        if (holdTimerRef.current) {
-            clearTimeout(holdTimerRef.current);
-            holdTimerRef.current = null;
-        }
+        setIsHolding(false);
     };
 
-    // Cleanup on unmount
-    useEffect(() => {
-        return () => {
-            if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
-        };
-    }, []);
+    const handleClick = (e) => {
+        // Only trigger click if we weren't "holding" for a long time?
+        // Actually, user wants "Click: open popup".
+        onPreviewStart(reel);
+    };
 
     return (
         <motion.div
             layout
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="relative aspect-[9/16] group cursor-pointer overflow-hidden rounded-xl bg-zinc-900 border border-white/5"
+            className="relative aspect-[9/16] group cursor-pointer overflow-hidden rounded-xl bg-zinc-900"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => {
                 setIsHovered(false);
@@ -47,14 +52,17 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
             onMouseUp={handleHoldEnd}
             onTouchStart={handleHoldStart}
             onTouchEnd={handleHoldEnd}
+            onClick={handleClick}
         >
             {/* Thumbnail */}
             {reel.mediaType === "video" ? (
                 <video 
+                    ref={videoRef}
                     src={mediaUrl} 
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     muted 
                     playsInline
+                    loop
                     crossOrigin="anonymous"
                 />
             ) : (
@@ -67,7 +75,7 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
             )}
 
             {/* Content Overlay */}
-            <div className={`absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-3`}>
+            <div className={`absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-3 ${isHolding ? "opacity-0" : "opacity-100"}`}>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                         <HiHeart className="text-white text-xs opacity-80" />
@@ -77,7 +85,7 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
             </div>
 
             {/* Media Icon & NEW Badge(Top Right) */}
-            <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5">
+            <div className={`absolute top-2 right-2 flex flex-col items-end gap-1.5 transition-opacity duration-300 ${isHolding ? "opacity-0" : "opacity-100"}`}>
                 {/* NEW Badge */}
                 {(() => {
                     const isNew = reel.createdAt && (new Date() - new Date(reel.createdAt)) < 24 * 60 * 60 * 1000;
@@ -106,15 +114,15 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
 
             {/* Instructions (only on hover) */}
             <AnimatePresence>
-                {isHovered && (
+                {isHovered && !isHolding && (
                     <motion.div 
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 5 }}
                         className="absolute inset-0 flex items-center justify-center pointer-events-none"
                     >
-                        <span className="bg-black/60 backdrop-blur-md text-white text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-lg border border-white/10">
-                            Hold to peek
+                        <span className="bg-black/60 backdrop-blur-md text-white text-[8px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full border border-white/10 shadow-xl">
+                            Hold to play
                         </span>
                     </motion.div>
                 )}

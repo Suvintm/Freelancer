@@ -69,54 +69,60 @@ const ReelsExplore = () => {
 
     return (
         <div className="min-h-screen bg-[#050509] text-white">
-            {/* Sticky Header */}
-            <div className="sticky top-0 z-[100] bg-[#050509]/80 backdrop-blur-xl border-b border-white/5 px-4 py-4 sm:px-8">
-                <div className="flex items-center gap-4 max-w-7xl mx-auto">
-                    <button 
-                        onClick={() => navigate(-1)}
-                        className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
-                    >
-                        <HiOutlineChevronLeft className="text-xl" />
-                    </button>
-                    
-                    <div className="relative flex-1">
-                        <HiOutlineMagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
-                        <input 
-                            type="text" 
-                            placeholder="Explore creative reels..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all placeholder:text-zinc-600"
-                        />
-                    </div>
-                </div>
-
-                {/* Tag Pills */}
-                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide mt-4 pb-2 max-w-7xl mx-auto">
-                    <button 
-                        onClick={() => setSelectedTag(null)}
-                        className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap border ${
-                            !selectedTag 
-                            ? "bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/20" 
-                            : "bg-white/5 border-white/10 text-zinc-400 hover:text-white"
-                        }`}
-                    >
-                        <HiOutlineSparkles className="text-sm" />
-                        Explore All
-                    </button>
-                    {tags.map(tag => (
+            {/* Sticky Header - Refined Pill Design */}
+            <div className="sticky top-0 z-[100] bg-[#050509]/95 backdrop-blur-xl px-4 py-4 w-full">
+                <div className="max-w-[500px] mx-auto flex flex-col gap-4">
+                    {/* Search Pill */}
+                    <div className="flex items-center gap-3">
                         <button 
-                            key={tag}
-                            onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
-                            className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap border ${
-                                selectedTag === tag 
-                                ? "bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/20" 
-                                : "bg-white/5 border-white/10 text-zinc-400 hover:text-white"
+                            onClick={() => navigate(-1)}
+                            className="text-zinc-400 hover:text-white transition-colors p-1"
+                        >
+                            <HiOutlineChevronLeft className="text-xl" />
+                        </button>
+                        
+                        <div className="relative flex-1 flex items-center bg-white rounded-full overflow-hidden shadow-lg border border-white/20">
+                            <HiOutlineMagnifyingGlass className="absolute left-4 text-zinc-400 text-lg" />
+                            <input 
+                                type="text" 
+                                placeholder="Search"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full bg-transparent py-2.5 pl-11 pr-24 text-sm text-black focus:outline-none placeholder:text-zinc-400 font-semibold"
+                            />
+                            <button className="absolute right-1 top-1 bottom-1 px-5 bg-black text-white text-[11px] font-black uppercase tracking-wider rounded-full hover:bg-zinc-800 transition-colors">
+                                Search
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Tag Pills - Minimalist */}
+                    <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
+                        <button 
+                            onClick={() => setSelectedTag(null)}
+                            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${
+                                !selectedTag 
+                                ? "bg-black text-white border-white/40 shadow-[0_0_15px_rgba(255,255,255,0.1)]" 
+                                : "bg-transparent border-white/10 text-zinc-500 hover:text-white"
                             }`}
                         >
-                            {tag}
+                            <HiOutlineSparkles className="text-sm" />
+                            Explore
                         </button>
-                    ))}
+                        {tags.map(tag => (
+                            <button 
+                                key={tag}
+                                onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
+                                className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${
+                                    selectedTag === tag 
+                                    ? "bg-black text-white border-white/40 shadow-[0_0_15px_rgba(255,255,255,0.1)]" 
+                                    : "bg-transparent border-white/10 text-zinc-500 hover:text-white"
+                                }`}
+                            >
+                                {tag}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
