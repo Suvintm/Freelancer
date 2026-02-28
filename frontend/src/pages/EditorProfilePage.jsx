@@ -720,7 +720,7 @@ const EditorProfile = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.15 }}
-                className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5"
+                className="bg-transparent p-1 md:p-2"
               >
                 <PortfolioSection editorId={userData?._id} isOwnProfile={true} />
               </motion.div>

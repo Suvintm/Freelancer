@@ -21,10 +21,17 @@ import {
   FaVolumeMute,
   FaGlobe,
   FaComment,
+  FaRegCheckCircle,
 } from "react-icons/fa";
+import { 
+  HiOutlineSquare2Stack, 
+  HiOutlineCheckCircle, 
+  HiOutlineEyeSlash 
+} from "react-icons/hi2";
 import { useAppContext } from "../context/AppContext";
 import axios from "axios";
 import { toast } from "react-toastify";
+import ReelPreviewModal from "./ReelPreviewModal";
 
 const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) => {
   const { user, backendURL } = useAppContext();
@@ -297,6 +304,8 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
 
   // Open Reels Popup
   const openReelsPopup = (portfolio, startIndex = 0) => {
+    // If it's already a published reel, we might want to fetch the full reel data
+    // but for now we'll pass the portfolio object directly and let the modal handle it
     setReelsPortfolio(portfolio);
     setReelsIndex(startIndex);
     setShowReelsPopup(true);
@@ -803,9 +812,9 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-3 px-2 py-1 bg-white text-black rounded-lg text-4px font-semibold hover:bg-zinc-200 transition-colors"
+          className="flex items-center gap-2 px-3 py-1.5 bg-white text-black rounded-full text-[10px] font-black uppercase tracking-wider hover:bg-zinc-200 transition-all shadow-lg mb-4 ml-1"
         >
-          <FaPlus className="text-xl" />
+          <FaPlus className="text-[10px]" />
           Add Portfolio
         </motion.button>
       )}
@@ -1033,7 +1042,7 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.03 }}
                   onClick={() => openReelsPopup(p)}
-                  className="relative aspect-[9/16] bg-zinc-900 cursor-pointer group overflow-hidden"
+                  className="relative aspect-[9/16] bg-zinc-900 cursor-pointer group overflow-hidden rounded-xl"
                 >
                   {/* Thumbnail */}
                   {coverIsVideo ? (
@@ -1069,33 +1078,44 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
                     )}
                   </div>
                   
-                  {/* Top-right: Push to Reel button (always visible) */}
+                  {/* Top-Right: Status Icon (White, Small) */}
                   {!isPublic && (
-                    <button
-                      onClick={(e) => handlePushToReel(p._id, e)}
-                      className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center text-xs z-10 ${
-                        isReel 
-                          ? 'bg-green-500 text-white' 
-                          : 'bg-white/80 text-purple-600 hover:bg-white'
-                      }`}
-                      title={isReel ? "On Reels ✓" : "Push to Reels"}
+                    <div 
+                      className="absolute top-2.5 right-2.5 z-20 flex items-center justify-center"
+                      title={isReel ? "Published to Reels" : "Private (Not on Reels)"}
                     >
-                      {isReel ? <FaCheck className="text-[10px]" /> : <FaGlobe className="text-[10px]" />}
-                    </button>
+                      {isReel ? (
+                        <HiOutlineCheckCircle className="text-white text-[18px] drop-shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
+                      ) : (
+                        <HiOutlineEyeSlash className="text-white/60 text-[18px] drop-shadow-lg" />
+                      )}
+                    </div>
                   )}
                   
-                  {/* Top-left: Clips indicator */}
-                  {(p.originalClips?.length > 1 || (p.originalClip && p.editedClip)) && (
-                    <div className="absolute top-2 left-2 z-10">
-                      <FaFilm className="text-white text-sm drop-shadow-lg" />
+                  {/* Top-Left: Double Layer Icon (Original + Edited) */}
+                  {(p.originalClips?.length > 0 || p.originalClip) && p.editedClip && (
+                    <div className="absolute top-2.5 left-2.5 z-20" title="Double Layer (Original + Edited)">
+                      <HiOutlineSquare2Stack className="text-white text-[18px] drop-shadow-lg" />
                     </div>
                   )}
                   
                   {/* Bottom-left: Views (if published) */}
                   {isReel && (
-                    <div className="absolute bottom-2 left-2 flex items-center gap-1 text-white text-xs z-10">
-                      <FaEye className="text-[10px]" />
+                    <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 text-white text-[11px] font-bold z-10 drop-shadow-lg">
+                      <FaEye className="text-white text-[10px]" />
                       <span>{p.viewsCount || 0}</span>
+                    </div>
+                  )}
+                  
+                  {/* Hover Overlay with Push to Reel button for Private items */}
+                  {!isPublic && !isReel && (
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
+                        <button
+                          onClick={(e) => handlePushToReel(p._id, e)}
+                          className="px-4 py-1.5 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded-full shadow-2xl hover:bg-emerald-50 transition-colors"
+                        >
+                          Push to Reels
+                        </button>
                     </div>
                   )}
                   
@@ -1103,7 +1123,7 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
                   {!isPublic && (
                     <button
                       onClick={(e) => confirmDelete(p._id, e)}
-                      className="absolute bottom-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center text-white text-xs z-10 hover:bg-red-500"
+                      className="absolute bottom-2.5 right-2.5 w-7 h-7 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 z-10 hover:bg-red-500 hover:text-white transition-all shadow-lg"
                     >
                       <FaTrash className="text-[10px]" />
                     </button>
@@ -1138,7 +1158,15 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
       {/* Reels Popup */}
       <AnimatePresence>
         {showReelsPopup && reelsPortfolio && (
-          <ReelsPopup portfolio={reelsPortfolio} initialIndex={reelsIndex} onClose={() => setShowReelsPopup(false)} />
+          <ReelPreviewModal 
+            reel={reelsPortfolio} 
+            isPortfolioMode={true}
+            onClose={() => setShowReelsPopup(false)} 
+            onCommentClick={(id) => {
+               // Optional: Handle comment click from profile
+               setShowReelsPopup(false);
+            }}
+          />
         )}
       </AnimatePresence>
 
