@@ -455,6 +455,38 @@ export const getMyReelsAnalytics = asyncHandler(async (req, res) => {
     });
 });
 
+// ============ GET UNIQUE TAGS FROM REELS ============
+export const getReelTags = asyncHandler(async (req, res) => {
+    // Get unique titles/descriptions and split into words
+    const reels = await Reel.find({ isPublished: true }).select("title description");
+    
+    const words = new Set();
+    reels.forEach(r => {
+        // Extract words from title
+        if (r.title) {
+            r.title.split(/\s+/).forEach(word => {
+                const clean = word.replace(/[^\w#]/g, '').toLowerCase();
+                if (clean.length > 2) words.add(clean.startsWith('#') ? clean : `#${clean}`);
+            });
+        }
+        // Extract words from description
+        if (r.description) {
+            r.description.split(/\s+/).forEach(word => {
+                const clean = word.replace(/[^\w#]/g, '').toLowerCase();
+                if (clean.length > 1) words.add(clean.startsWith('#') ? clean : `#${clean}`);
+            });
+        }
+    });
+
+    // Limit to top 20 interesting tags
+    const tags = Array.from(words).slice(0, 20);
+
+    res.status(200).json({
+        success: true,
+        tags
+    });
+});
+
 // ============ TRACK WATCH TIME ============
 export const trackWatchTime = asyncHandler(async (req, res) => {
     const { id: reelId } = req.params;

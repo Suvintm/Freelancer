@@ -11,7 +11,11 @@ import {
     getReelsByEditor,
     checkPublished,
     getMyReelsAnalytics,
+    getReelsByEditor,
+    checkPublished,
+    getMyReelsAnalytics,
     trackWatchTime,
+    getReelTags,
 } from "../controllers/reelController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 
@@ -23,6 +27,9 @@ router.get("/feed", getReelsFeed);
 
 // Get single reel
 router.get("/:id", getReel);
+
+// Get unique tags for search suggestions
+router.get("/tags/unique", getReelTags);
 
 // Get comments
 router.get("/:id/comments", getComments);

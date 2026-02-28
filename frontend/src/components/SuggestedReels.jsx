@@ -80,7 +80,7 @@ const SuggestedReels = () => {
                     </div>
                 </div>
                 <button 
-                    onClick={() => navigate("/reels")}
+                    onClick={() => navigate("/reels-explore")}
                     className="group/btn flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 transition-all"
                 >
                     <span className="text-[9px] font-black text-zinc-400 group-hover/btn:text-white uppercase tracking-widest">Explore All</span>
@@ -129,7 +129,7 @@ const SuggestedReels = () => {
                     <motion.div
                         whileHover={{ y: -8, scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        onClick={() => navigate("/reels")}
+                        onClick={() => navigate("/reels-explore")}
                         className="flex-shrink-0 w-40 md:w-48 h-72 md:h-80 rounded-3xl relative overflow-hidden cursor-pointer group snap-start"
                     >
                         <div className="absolute inset-0 bg-[#0d0d12] border border-white/5 group-hover:border-purple-500/30 transition-colors bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-40" />
@@ -238,7 +238,24 @@ const ReelThumbnail = ({ reel, index }) => {
                 onDoubleClick={(e) => e.preventDefault()}
             />
             {/* Premium Badges */}
-            <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5">
+            <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+                {/* NEW Badge */}
+                {(() => {
+                    const isNew = reel.createdAt && (new Date() - new Date(reel.createdAt)) < 24 * 60 * 60 * 1000;
+                    if (!isNew) return null;
+                    return (
+                        <motion.div 
+                            animate={{ opacity: [0.7, 1, 0.7] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            className="px-2.5 py-0.5 rounded-full border border-white/50 bg-white/5 backdrop-blur-sm flex items-center justify-center min-w-[40px]"
+                        >
+                            <span className="text-white text-[8px] font-medium uppercase tracking-wider">
+                                NEW
+                            </span>
+                        </motion.div>
+                    );
+                })()}
+                
                 <span className="px-2 py-0.5 rounded-md bg-white/10 backdrop-blur-md border border-white/10 text-white text-[7px] font-black uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-all duration-300">
                    Trending
                 </span>

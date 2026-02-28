@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react"; 
 import { Routes, Route } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import SplashScreen from "./components/SplashScreen.jsx";
@@ -12,6 +12,7 @@ import EditorProfileUpdate from "./pages/EditorProfileUpdate.jsx";
 import AddPortfolio from "./pages/addportfolio.jsx";
 import PublicEditorProfile from "./pages/PublicEditorProfile.jsx";
 import ReelsPage from "./pages/ReelsPage.jsx";
+import ReelsExplore from "./pages/ReelsExplore.jsx";
 import ReelsAnalytics from "./pages/ReelsAnalytics.jsx";
 import NotificationsPage from "./pages/NotificationsPage.jsx";
 import ChatsPage from "./pages/AllChatsPage.jsx";
@@ -511,6 +512,14 @@ function App() {
           element={
             <ProtectedRoute>
               <ReelsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reels-explore"
+          element={
+            <ProtectedRoute>
+              <ReelsExplore />
             </ProtectedRoute>
           }
         />

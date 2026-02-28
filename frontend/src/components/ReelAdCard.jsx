@@ -115,14 +115,40 @@ const ReelAdCard = ({ ad, onSkip }) => {
                 )}
             </div>
 
+            {/* ── TOP HEADER (Added for Consistency) ── */}
+            <div className="absolute top-0 left-0 right-0 p-5 z-50 pointer-events-none">
+                <div className="flex items-center gap-2">
+                    <img src={logo} className="w-6 h-6 rounded-lg opacity-90 brightness-0 invert" alt="SuviX" />
+                    <span className="text-white font-black text-[12px] tracking-widest uppercase text-shadow">
+                        SuviX Reels
+                    </span>
+                </div>
+            </div>
+
             {/* ── BOTTOM OVERLAY (The Slim Design) ── */}
             <div className="absolute bottom-0 inset-x-0 z-40">
                 <div className="absolute bottom-0 inset-x-0 h-48 bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-16 pointer-events-none" />
                 
                 <div className="relative px-5 pb-6">
+                    {/* ADVERTISEMENT SPECIAL CARD */}
+                    <motion.div 
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.5, type: "spring", stiffness: 100 }}
+                        className="w-full bg-white px-4 py-2.5 rounded-lg mb-4 flex items-center justify-center shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-white/20"
+                    >
+                        <motion.span 
+                            animate={{ opacity: [0.7, 1, 0.7] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            className="text-black font-black text-[11px] uppercase tracking-[0.25em]"
+                        >
+                            Advertisement
+                        </motion.span>
+                    </motion.div>
+
                     {/* ADVERTISER HUB */}
                     <div className="flex items-center gap-2 mb-2">
-                        <span className="text-white/40 font-black text-[9px] uppercase tracking-[0.2em]">{ad.companyName || ad.advertiserName || "Sponsored"}</span>
+                        <span className="text-white/60 font-black text-[9px] uppercase tracking-[0.2em]">{ad.companyName || ad.advertiserName || "Sponsored"}</span>
                         <HiCheckCircle className="text-blue-500 text-[9px]" />
                     </div>
 
@@ -130,13 +156,13 @@ const ReelAdCard = ({ ad, onSkip }) => {
                     <h2 className="text-xl font-bold text-white leading-tight tracking-tight drop-shadow-md mb-3">{ad.title}</h2>
 
                     {/* SLIM HORIZONTAL CTA */}
-                    <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} onClick={handleCTA} className="w-full h-10 bg-white text-black rounded font-black text-[13px] flex items-center justify-between px-5 shadow-lg mb-3 group relative overflow-hidden">
+                    <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} onClick={handleCTA} className="w-full h-10 bg-white/10 backdrop-blur-md text-white border border-white/20 rounded font-black text-[13px] flex items-center justify-between px-5 shadow-lg mb-3 group relative overflow-hidden">
                         <span className="flex items-center gap-2">
                             <FaGlobe size={12} className="opacity-40" />
                             {ad.ctaText || "Learn More"}
                         </span>
                         <FaChevronRight size={10} className="group-hover:translate-x-1 transition-transform opacity-40" />
-                        <div className="absolute inset-0 w-1/4 h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-12 -translate-x-full group-hover:animate-sweep-fast" />
+                        <div className="absolute inset-0 w-1/4 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 -translate-x-full group-hover:animate-sweep-fast" />
                     </motion.button>
 
                     {/* DESCRIPTION (Low Profile) */}

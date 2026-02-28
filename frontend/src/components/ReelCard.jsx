@@ -17,6 +17,7 @@ import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { toast } from "react-toastify";
 import logo from "../assets/logo.png";
+import { repairUrl } from "../utils/urlHelper.jsx";
 
 /**
  * ReelCard — Minimalist Professional UI.
@@ -24,37 +25,6 @@ import logo from "../assets/logo.png";
  */
 const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted }) => {
     const { user, backendURL } = useAppContext();
-
-    // ✅ Repair mangled URLs from backend sanitization
-    const repairUrl = (url) => {
-        if (!url || typeof url !== "string") return url;
-        if (!url.includes("cloudinary") && !url.includes("res_") && !url.includes("_com")) return url;
-      
-        let fixed = url;
-        fixed = fixed.replace(/^(https?):?\/*_+/gi, "$1://");
-        fixed = fixed.replace(/_+res_+cloudinary_+com/g, "res.cloudinary.com")
-                     .replace(/res_cloudinary_com/g, "res.cloudinary.com")
-                     .replace(/cloudinary_com/g, "cloudinary.com");
-    
-        if (fixed.includes("res.cloudinary.com")) {
-            fixed = fixed.replace(/res\.cloudinary\.com_+/g, "res.cloudinary.com/");
-            fixed = fixed.replace(/image_upload_+/g, "image/upload/")
-                         .replace(/video_upload_+/g, "video/upload/")
-                         .replace(/raw_upload_+/g, "raw/upload/");
-            fixed = fixed.replace(/([/_]?v\d+)_+/g, "$1/"); 
-            fixed = fixed.replace(/(res\.cloudinary\.com\/[^/_]+)_+(image|video|raw|authenticated)_*/g, "$1/$2/");
-            fixed = fixed.replace(/_([a-z0-9\-_]+\.(webp|jpg|jpeg|png|mp4|mov|m4v|json))/gi, "/$1");
-            fixed = fixed.replace(/([^:])\/\/+/g, "$1/");
-        }
-    
-        fixed = fixed.replace(/_jpg([/_?#]|$)/gi, ".jpg$1")
-                     .replace(/_jpeg([/_?#]|$)/gi, ".jpeg$1")
-                     .replace(/_png([/_?#]|$)/gi, ".png$1")
-                     .replace(/_mp4([/_?#]|$)/gi, ".mp4$1")
-                     .replace(/_webp([/_?#]|$)/gi, ".webp$1");
-    
-        return fixed;
-    };
 
     const [isLiked, setIsLiked] = useState(user ? reel.likes?.includes(user._id) : false);
     const [likesCount, setLikesCount] = useState(reel.likesCount || 0);
@@ -202,50 +172,92 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
                     </motion.button>
                 )}
             </div>
-
-            {/* ── BOTTOM INFO (Tight & Minimal) ── */}
-            <div className="absolute bottom-0 inset-x-0 z-40 pointer-events-none">
-                <div className="absolute bottom-0 inset-x-0 h-64 bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-32" />
-
-                <div className="relative px-5 pb-6 pointer-events-auto">
-                    {/* USER HUB */}
-                    <div className="flex items-center gap-3 mb-3">
-                        <Link to={`/public-profile/${reel.editor?._id}`} onClick={(e) => e.stopPropagation()}>
-                            <div className="w-10 h-10 rounded-full border-[1.5px] border-white overflow-hidden shadow-lg p-[1px] bg-white/10">
-                                <img src={repairUrl(reel.editor?.profilePicture)} className="w-full h-full rounded-full object-cover" alt="" />
-                            </div>
-                        </Link>
-                        <div className="flex flex-col gap-0.5">
-                            <div className="flex items-center gap-2">
-                                <Link to={`/public-profile/${reel.editor?._id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-white text-[14px] tracking-tight hover:underline">
-                                    {reel.editor?.name}
-                                </Link>
-                                <span className="px-1.5 py-0.5 bg-white/20 text-[8px] font-bold rounded border border-white/10 text-white/90">EDITOR</span>
-                            </div>
-                            
-                            {!isOwnReel && (
-                                <button
-                                    onClick={handleFollow}
-                                    className="w-fit h-6 px-4 bg-transparent border border-white rounded-full flex items-center justify-center text-white text-[10px] font-bold uppercase tracking-wider active:scale-95 transition-all hover:bg-white/20 shadow-lg"
+            {/* OVERLAY CONTENT */}
+            <div className="absolute inset-0 z-40 p-5 flex flex-col justify-between pointer-events-none">
+                {/* TOP HEADER */}
+                <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-1 items-start">
+                        <div className="flex items-center gap-2">
+                            <img src={logo} className="w-6 h-6 rounded-lg opacity-90 brightness-0 invert" alt="SuviX" />
+                            <span className="text-white font-black text-[12px] tracking-widest uppercase text-shadow">
+                                SuviX Reels
+                            </span>
+                        </div>
+                        
+                        {/* NEW Badge - Repositioned under text */}
+                        {(() => {
+                            const isNew = reel.createdAt && (new Date() - new Date(reel.createdAt)) < 24 * 60 * 60 * 1000;
+                            if (!isNew) return null;
+                            return (
+                                <motion.div 
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ 
+                                        opacity: [0.8, 1, 0.8],
+                                        scale: [1, 1.05, 1],
+                                    }}
+                                    transition={{ 
+                                        duration: 2,
+                                        repeat: Infinity,
+                                        ease: "easeInOut"
+                                    }}
+                                    className="px-2 py-0.5 rounded-full border border-white/40 bg-white/5 backdrop-blur-sm flex items-center justify-center min-w-[35px] ml-8"
                                 >
-                                    {isFollowing ? "Following" : "Follow"}
-                                </button>
-                            )}
-                        </div>
+                                    <span className="text-white text-[7px] font-medium uppercase tracking-[0.1em]">
+                                        NEW
+                                    </span>
+                                </motion.div>
+                            );
+                        })()}
                     </div>
-
-                    {/* CONTENT */}
-                    <div className="max-w-[85%] mb-3">
-                        <h2 className="text-xl font-bold text-white leading-tight mb-0.5">{reel.title}</h2>
-                        <p className="text-[12px] font-medium text-white/70 leading-relaxed line-clamp-2">{reel.description}</p>
+                    <div className="flex items-center gap-2">
+                        {/* Empty space for consistency */}
                     </div>
+                </div>
 
-                    {/* PROGRESS */}
-                    {reel.mediaType === "video" && (
-                        <div className="w-full h-[2px] bg-white/10 rounded-full overflow-hidden">
-                            <motion.div style={{ width: `${progress}%` }} className="h-full bg-white shadow-[0_0_5px_rgba(255,255,255,0.7)]" />
+                {/* BOTTOM INFO (Tight & Minimal) */}
+                <div className="w-full">
+                    <div className="absolute bottom-0 inset-x-0 h-64 bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-32 pointer-events-none" />
+
+                    <div className="relative pb-6 pointer-events-auto">
+                        {/* USER HUB */}
+                        <div className="flex items-center gap-3 mb-3">
+                            <Link to={`/public-profile/${reel.editor?._id}`} onClick={(e) => e.stopPropagation()}>
+                                <div className="w-10 h-10 rounded-full border-[1.5px] border-white overflow-hidden shadow-lg p-[1px] bg-white/10">
+                                    <img src={repairUrl(reel.editor?.profilePicture)} className="w-full h-full rounded-full object-cover" alt="" />
+                                </div>
+                            </Link>
+                            <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center gap-2">
+                                    <Link to={`/public-profile/${reel.editor?._id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-white text-[14px] tracking-tight hover:underline text-shadow">
+                                        {reel.editor?.name}
+                                    </Link>
+                                    <span className="px-1.5 py-0.5 bg-white/20 text-[8px] font-bold rounded border border-white/10 text-white/90">EDITOR</span>
+                                </div>
+                                
+                                {!isOwnReel && (
+                                    <button
+                                        onClick={handleFollow}
+                                        className="w-fit h-6 px-4 bg-transparent border border-white rounded-full flex items-center justify-center text-white text-[10px] font-bold uppercase tracking-wider active:scale-95 transition-all hover:bg-white/20 shadow-lg"
+                                    >
+                                        {isFollowing ? "Following" : "Follow"}
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                    )}
+
+                        {/* CONTENT */}
+                        <div className="max-w-[85%] mb-3">
+                            <h2 className="text-xl font-bold text-white leading-tight mb-0.5 text-shadow">{reel.title}</h2>
+                            <p className="text-[12px] font-medium text-white/70 leading-relaxed line-clamp-2 text-shadow">{reel.description}</p>
+                        </div>
+
+                        {/* PROGRESS */}
+                        {reel.mediaType === "video" && (
+                            <div className="w-full h-[2px] bg-white/10 rounded-full overflow-hidden">
+                                <motion.div style={{ width: `${progress}%` }} className="h-full bg-white shadow-[0_0_5px_rgba(255,255,255,0.7)]" />
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
