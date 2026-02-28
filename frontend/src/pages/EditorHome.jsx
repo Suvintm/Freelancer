@@ -43,7 +43,6 @@ import EditorDashboard from "../components/EditorDashboard.jsx";
 import HomeExploreContainer from "../components/HomeExploreContainer.jsx";
 import UnifiedBannerSlider from "../components/UnifiedBannerSlider.jsx";
 import { motion, AnimatePresence } from "framer-motion";
-import PullToRefresh from "../components/PullToRefresh.jsx";
 import axios from "axios";
 import reelIcon from "../assets/reelicon.png";
 
@@ -148,22 +147,12 @@ const EditorHome = () => {
     fetchStorage();
   }, [backendURL, user?.token, user?.role]);
 
-  // Refresh data
-  const handleRefresh = async () => {
+  // Refresh page
+  const handleRefresh = () => {
     setIsRefreshing(true);
-    try {
-      const token = user?.token;
-      if (!token) return;
-      const [ordersRes, gigsRes, profileRes, completionRes] = await Promise.all([
-        axios.get(`${backendURL}/api/editor/analytics/orders?period=30`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${backendURL}/api/editor/analytics/gigs`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${backendURL}/api/profile/`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${backendURL}/api/profile/completion-status`, { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
-      setStats({ totalOrders: ordersRes.data.analytics?.totalOrders || 0, activeGigs: gigsRes.data.analytics?.activeGigs || 0 });
-      setProfileData(profileRes.data);
-      setCompletionPercent(completionRes.data?.percent || 0);
-    } catch(err) { console.error(err); } finally { setIsRefreshing(false); }
+    setTimeout(() => {
+      window.location.reload();
+    }, 300);
   };
 
   // Main tabs configuration
@@ -189,10 +178,24 @@ const EditorHome = () => {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-      {/* Old floating refresh button removed — replaced by pull-to-refresh */}
+      {/* Refresh Button */}
+      <motion.button
+        onClick={handleRefresh}
+        disabled={isRefreshing}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        className="fixed top-20 right-4 md:right-8 z-50 p-3 rounded-xl bg-[#0a0a0c] light:bg-white shadow-lg border border-white/10 light:border-slate-200 hover:shadow-xl transition-all"
+        title="Refresh page"
+      >
+        <motion.div
+          animate={isRefreshing ? { rotate: 360 } : { rotate: 0 }}
+          transition={isRefreshing ? { repeat: Infinity, duration: 0.8, ease: "linear" } : { duration: 0.3 }}
+        >
+          <FaSyncAlt className="text-emerald-500 text-sm" />
+        </motion.div>
+      </motion.button>
 
       <main className="flex-1 px-1 md:px-8 py-2 lg:pt-20 md:pt-4 md:ml-64 md:mt-16">
-        <PullToRefresh onRefresh={handleRefresh}>
         {/* Premium Banner at the Top - Responsive with Side Margins */}
         <div className="px-3 md:px-8 mb-2 md:mb-8 max-w-7xl mx-auto">
           <UnifiedBannerSlider />
@@ -276,7 +279,7 @@ const EditorHome = () => {
         >
           <img src={reelIcon} alt="reels" className="w-5 h-5 object-contain" />
         </motion.button> */}
-        </PullToRefresh>
+
       </main>
 
       {/* KYC Form Modal */}
