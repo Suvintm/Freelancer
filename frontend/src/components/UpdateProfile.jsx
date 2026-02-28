@@ -180,10 +180,10 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
 
   const isFormValid =
     formData.about.trim() &&
-    formData.experience.trim() &&
+    (user?.role === 'client' || formData.experience.trim()) &&
     formData.contactEmail.trim() &&
     formData.country.trim() &&
-    formData.skills.length > 0 &&
+    (user?.role === 'client' || formData.skills.length > 0) &&
     formData.languages.length > 0;
 
   const handleUpdate = async (e) => {
@@ -389,145 +389,145 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
       </div>
 
       {/* Experience */}
-      <div>
-        <label className="block mb-2 font-medium text-gray-200 light:text-slate-700">
-          Experience <span className="text-red-500">*</span>
-        </label>
-        <select
-          name="experience"
-          value={formData.experience}
-          onChange={handleChange}
-          className="w-full p-3.5 rounded-2xl bg-[#020617] light:bg-white border border-white/10 light:border-slate-300
-                     text-gray-100 light:text-slate-900 placeholder:text-gray-500
-                     focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-[#2563EB]
-                     transition light:shadow-sm"
-        >
-          <option value="">Select experience</option>
-          {experienceOptions.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt}
-            </option>
-          ))}
-        </select>
-      </div>
+      {user?.role === 'editor' && (
+        <div>
+          <label className="block mb-2 font-medium text-gray-200 light:text-slate-700">
+            Experience <span className="text-red-500">*</span>
+          </label>
+          <select
+            name="experience"
+            value={formData.experience}
+            onChange={handleChange}
+            className="w-full p-3.5 rounded-2xl bg-[#020617] light:bg-white border border-white/10 light:border-slate-300
+                       text-gray-100 light:text-slate-900 placeholder:text-gray-500
+                       focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-[#2563EB]
+                       transition light:shadow-sm"
+          >
+            <option value="">Select experience</option>
+            {experienceOptions.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Skills */}
-     {/* ------------------------- SKILLS SECTION ------------------------- */}
-<div>
-  <label className="block mb-2 font-medium text-gray-200 light:text-slate-700">
-    Skills <span className="text-red-500">*</span>
-    <span className="text-[11px] text-gray-400 light:text-slate-500 ml-2">
-      ({formData.skills.length}/20)
-    </span>
-  </label>
+      {user?.role === 'editor' && (
+        <div>
+          <label className="block mb-2 font-medium text-gray-200 light:text-slate-700">
+            Skills <span className="text-red-500">*</span>
+            <span className="text-[11px] text-gray-400 light:text-slate-500 ml-2">
+              ({formData.skills.length}/20)
+            </span>
+          </label>
 
-  {/* Input row */}
-  <div className="flex gap-2">
-    <input
-      type="text"
-      name="skillInput"
-      value={formData.skillInput}
-      onChange={handleChange}
-      onKeyPress={(e) => handleKeyPress(e, addSkill)}
-      placeholder="Type a skill and press Enter or click +"
-      className="flex-1 p-3.5 rounded-2xl bg-[#020617] light:bg-white border border-white/10 light:border-slate-300
-                 text-gray-100 light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400
-                 focus:outline-none focus:ring-2 focus:ring-[#22C55E] focus:border-[#22C55E]
-                 transition light:shadow-sm"
-    />
-    <button
-      type="button"
-      onClick={addSkill}
-      className="bg-gradient-to-r from-[#22C55E] to-[#16A34A]
-                 text-white px-4 rounded-2xl text-sm
-                 hover:brightness-110 transition flex items-center justify-center"
-    >
-      <FaPlus />
-    </button>
-  </div>
+          {/* Input row */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              name="skillInput"
+              value={formData.skillInput}
+              onChange={handleChange}
+              onKeyPress={(e) => handleKeyPress(e, addSkill)}
+              placeholder="Type a skill and press Enter or click +"
+              className="flex-1 p-3.5 rounded-2xl bg-[#020617] light:bg-white border border-white/10 light:border-slate-300
+                         text-gray-100 light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400
+                         focus:outline-none focus:ring-2 focus:ring-[#22C55E] focus:border-[#22C55E]
+                         transition light:shadow-sm"
+            />
+            <button
+              type="button"
+              onClick={addSkill}
+              className="bg-gradient-to-r from-[#22C55E] to-[#16A34A]
+                         text-white px-4 rounded-2xl text-sm
+                         hover:brightness-110 transition flex items-center justify-center"
+            >
+              <FaPlus />
+            </button>
+          </div>
 
-  {/* ================== QUICK-SELECT SKILL OPTIONS ================== */}
-  <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[
+              "Video Editing",
+              "Reels Editing",
+              "Wedding Editing",
+              "Cinematic Color Grading",
+              "Sound Design",
+              "Music Sync",
+              "Logo Animation",
+              "Motion Graphics",
+              "VFX Cleanup",
+              "Green Screen Keying",
+              "Photo Retouching",
+              "Thumbnail Design",
+              "Social Media Editing",
+              "YouTube Editing",
+              "After Effects",
+              "Premiere Pro",
+              "DaVinci Resolve",
+              "CapCut Pro",
+              "Final Cut Pro",
+              "SFX Editing",
+            ].map((skill) => {
+              const active = formData.skills.includes(skill);
+              return (
+                <button
+                  key={skill}
+                  type="button"
+                  onClick={() => {
+                    if (active) {
+                      setFormData({
+                        ...formData,
+                        skills: formData.skills.filter((s) => s !== skill),
+                      });
+                    } else {
+                      if (formData.skills.length >= 20) {
+                        toast.warning("Maximum 20 skills allowed");
+                        return;
+                      }
+                      setFormData({
+                        ...formData,
+                        skills: [...formData.skills, skill],
+                      });
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-xs border transition 
+                    ${
+                      active
+                        ? "bg-emerald-500/20 light:bg-emerald-100 border-emerald-400 text-emerald-200 light:text-emerald-700"
+                        : "bg-[#020617] light:bg-white border-white/15 light:border-slate-300 text-gray-300 light:text-slate-600 hover:border-emerald-400/70 light:hover:border-emerald-400 hover:text-emerald-100 light:hover:text-emerald-600"
+                    }`}
+                >
+                  {skill}
+                </button>
+              );
+            })}
+          </div>
 
-    {[
-      "Video Editing",
-      "Reels Editing",
-      "Wedding Editing",
-      "Cinematic Color Grading",
-      "Sound Design",
-      "Music Sync",
-      "Logo Animation",
-      "Motion Graphics",
-      "VFX Cleanup",
-      "Green Screen Keying",
-      "Photo Retouching",
-      "Thumbnail Design",
-      "Social Media Editing",
-      "YouTube Editing",
-      "After Effects",
-      "Premiere Pro",
-      "DaVinci Resolve",
-      "CapCut Pro",
-      "Final Cut Pro",
-      "SFX Editing",
-    ].map((skill) => {
-      const active = formData.skills.includes(skill);
-      return (
-        <button
-          key={skill}
-          type="button"
-          onClick={() => {
-            if (active) {
-              setFormData({
-                ...formData,
-                skills: formData.skills.filter((s) => s !== skill),
-              });
-            } else {
-              if (formData.skills.length >= 20) {
-                toast.warning("Maximum 20 skills allowed");
-                return;
-              }
-              setFormData({
-                ...formData,
-                skills: [...formData.skills, skill],
-              });
-            }
-          }}
-          className={`px-3 py-1.5 rounded-full text-xs border transition 
-            ${
-              active
-                ? "bg-emerald-500/20 light:bg-emerald-100 border-emerald-400 text-emerald-200 light:text-emerald-700"
-                : "bg-[#020617] light:bg-white border-white/15 light:border-slate-300 text-gray-300 light:text-slate-600 hover:border-emerald-400/70 light:hover:border-emerald-400 hover:text-emerald-100 light:hover:text-emerald-600"
-            }`}
-        >
-          {skill}
-        </button>
-      );
-    })}
-  </div>
-
-  {/* ================== DISPLAY SELECTED SKILLS ================== */}
-  <div className="flex flex-wrap gap-2 mt-3">
-    {formData.skills.map((s, i) => (
-      <span
-        key={i}
-        className="bg-emerald-500/15 border border-emerald-400/60
-                   text-emerald-200 px-3 py-1.5 rounded-full flex items-center gap-2 text-xs"
-      >
-        {s}
-        <FaTimes
-          className="cursor-pointer hover:text-red-400 transition"
-          onClick={() =>
-            setFormData({
-              ...formData,
-              skills: formData.skills.filter((skill) => skill !== s),
-            })
-          }
-        />
-      </span>
-    ))}
-  </div>
-</div>
+          <div className="flex flex-wrap gap-2 mt-3">
+            {formData.skills.map((s, i) => (
+              <span
+                key={i}
+                className="bg-emerald-500/15 border border-emerald-400/60
+                           text-emerald-200 px-3 py-1.5 rounded-full flex items-center gap-2 text-xs"
+              >
+                {s}
+                <FaTimes
+                  className="cursor-pointer hover:text-red-400 transition"
+                  onClick={() =>
+                    setFormData({
+                      ...formData,
+                      skills: formData.skills.filter((skill) => skill !== s),
+                    })
+                  }
+                />
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
 
       {/* Languages */}
@@ -607,58 +607,36 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
       </div>
 
       {/* Certifications */}
-      <div>
-        <label className="block mb-2 font-medium text-gray-200">
-          Certifications{" "}
-          <span className="text-[11px] text-gray-400">
-            (Optional -{" "}
-            {formData.existingCertifications.length +
-              formData.certifications.length}
-            /10)
-          </span>
-        </label>
-        <input
-          type="file"
-          multiple
-          accept="image/*"
-          onChange={handleCertUpload}
-          className="w-full p-2 rounded-2xl bg-[#020617] border border-white/10
-                     text-xs text-gray-300"
-        />
-        <p className="text-[11px] text-gray-500 mt-1">
-          Max 5MB per file. JPEG, PNG, WebP accepted.
-        </p>
+      {user?.role === 'editor' && (
+        <div>
+          <label className="block mb-2 font-medium text-gray-200">
+            Certifications{" "}
+            <span className="text-[11px] text-gray-400">
+              (Optional -{" "}
+              {formData.existingCertifications.length +
+                formData.certifications.length}
+              /10)
+            </span>
+          </label>
+          <input
+            type="file"
+            multiple
+            accept="image/*"
+            onChange={handleCertUpload}
+            className="w-full p-2 rounded-2xl bg-[#020617] border border-white/10
+                       text-xs text-gray-300"
+          />
+          <p className="text-[11px] text-gray-500 mt-1">
+            Max 5MB per file. JPEG, PNG, WebP accepted.
+          </p>
 
-        <div className="flex flex-wrap gap-3 mt-3">
-          {/* Existing certifications */}
-          {formData.existingCertifications.map((cert, i) => (
-            <div key={`existing-${i}`} className="relative group">
-              <img
-                src={cert.image}
-                alt={cert.title || "Certificate"}
-                className="w-20 h-20 object-cover rounded-lg border border-white/15
-                           shadow-[0_0_18px_rgba(0,0,0,0.6)]"
-              />
-              <button
-                type="button"
-                className="absolute -top-2 -right-2 bg-red-500 text-white
-                           w-5 h-5 rounded-full flex items-center justify-center text-xs
-                           opacity-0 group-hover:opacity-100 transition"
-                onClick={() => removeCert(i, "existing")}
-              >
-                <FaTimes />
-              </button>
-            </div>
-          ))}
-
-          {/* New uploads */}
-          {formData.certifications.map((file, i) => {
-            const preview = URL.createObjectURL(file);
-            return (
-              <div key={`new-${i}`} className="relative group">
+          <div className="flex flex-wrap gap-3 mt-3">
+            {/* Existing certifications */}
+            {formData.existingCertifications.map((cert, i) => (
+              <div key={`existing-${i}`} className="relative group">
                 <img
-                  src={preview}
-                  alt="New cert"
+                  src={cert.image}
+                  alt={cert.title || "Certificate"}
                   className="w-20 h-20 object-cover rounded-lg border border-white/15
                              shadow-[0_0_18px_rgba(0,0,0,0.6)]"
                 />
@@ -667,15 +645,39 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
                   className="absolute -top-2 -right-2 bg-red-500 text-white
                              w-5 h-5 rounded-full flex items-center justify-center text-xs
                              opacity-0 group-hover:opacity-100 transition"
-                  onClick={() => removeCert(i, "local")}
+                  onClick={() => removeCert(i, "existing")}
                 >
                   <FaTimes />
                 </button>
               </div>
-            );
-          })}
+            ))}
+
+            {/* New uploads */}
+            {formData.certifications.map((file, i) => {
+              const preview = URL.createObjectURL(file);
+              return (
+                <div key={`new-${i}`} className="relative group">
+                  <img
+                    src={preview}
+                    alt="New cert"
+                    className="w-20 h-20 object-cover rounded-lg border border-white/15
+                               shadow-[0_0_18px_rgba(0,0,0,0.6)]"
+                  />
+                  <button
+                    type="button"
+                    className="absolute -top-2 -right-2 bg-red-500 text-white
+                               w-5 h-5 rounded-full flex items-center justify-center text-xs
+                               opacity-0 group-hover:opacity-100 transition"
+                    onClick={() => removeCert(i, "local")}
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
 
       {/* Manual Follow Approval */}

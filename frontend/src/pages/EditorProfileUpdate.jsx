@@ -123,7 +123,7 @@ const navigate = useNavigate();
     <div className="flex flex-col leading-tight">
       <span className="text-lg font-semibold tracking-tight light:text-slate-900">SuviX</span>
       <span className="text-[11px] text-gray-400 light:text-slate-500 hidden sm:block">
-        Editor Profile · Update
+        {user?.role === 'editor' ? 'Editor Profile · Update' : 'Client Profile · Update'}
       </span>
     </div>
   </div>
@@ -221,7 +221,7 @@ const navigate = useNavigate();
               {/* Name + Email */}
               <div className="text-center space-y-1 mt-1">
                 <h2 className="text-xl md:text-2xl font-semibold text-white light:text-slate-900">
-                  {user?.name || "Editor Name"}
+                  {user?.name || "Member Name"}
                 </h2>
                 <p className="text-xs md:text-sm text-gray-400 light:text-slate-500 break-all">
                   {user?.email}

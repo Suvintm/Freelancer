@@ -17,13 +17,22 @@ import {
   FaBell,
   FaLock,
   FaSignOutAlt,
+  FaUserFriends,
+  FaUserPlus,
+  FaStar,
+  FaEye,
+  FaFilm,
+  FaRocket,
+  FaMapMarkerAlt,
 } from "react-icons/fa";
+import { MdVerified } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import ClientSidebar from "../components/ClientSidebar.jsx";
 import ClientNavbar from "../components/ClientNavbar.jsx";
+import PortfolioSection from "../components/PortfolioSection.jsx";
 
 const ClientProfile = () => {
   const navigate = useNavigate();
@@ -98,10 +107,18 @@ const ClientProfile = () => {
   };
 
   const tabs = [
-    { id: "overview", label: "Overview", icon: FaChartLine },
-    { id: "orders", label: "Order History", icon: FaClipboardList },
-    { id: "settings", label: "Settings", icon: FaCog },
+    { id: "portfolio", label: "Reels", icon: FaFilm },
+    { id: "about", label: "About", icon: FaUser },
   ];
+
+  // Progress ring config
+  const size = 100;
+  const strokeWidth = 5;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const completionPercent = 95; // Clients usually high
+  const strokeDashoffset = circumference - (completionPercent / 100) * circumference;
+  const progressColor = "#8B5CF6"; // Purple for clients
 
   if (loading) {
     return (
@@ -123,286 +140,213 @@ const ClientProfile = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
+    <div className="min-h-screen bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
       <ClientSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <ClientNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-      <main className="flex-1 px-4 md:px-8 py-6 md:ml-64 md:mt-20">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-3 rounded-xl bg-[#111319] border border-[#262A3B] hover:bg-[#1a1d25] transition-all"
+      <main className="md:ml-64 pt-2 md:pt-14 px-3 md:px-6 pb-10">
+        <div className="max-w-5xl mx-auto">
+          
+          {/* ==================== PROFILE HEADER (HYPER-COMPACT) ==================== */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-xl mb-2 bg-black border border-zinc-800/40 p-3 md:p-10"
           >
-            <FaArrowLeft />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-white">My Profile</h1>
-            <p className="text-gray-400 text-sm">Manage your account</p>
-          </div>
-        </div>
-
-        {/* Profile Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-[#111319] to-[#0f1114] border border-[#262A3B] rounded-3xl p-6 mb-6"
-        >
-          <div className="flex flex-col md:flex-row items-center gap-6">
-            {/* Avatar */}
-            <div className="relative">
-              <img
-                src={user?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
-                alt="Profile"
-                className="w-24 h-24 md:w-28 md:h-28 rounded-2xl object-cover border-2 border-emerald-500/30"
-              />
-              <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
-                <FaCheck className="text-white text-sm" />
-              </div>
-            </div>
-
-            {/* Info */}
-            <div className="text-center md:text-left flex-1">
-              <h2 className="text-2xl font-bold text-white mb-1">{user?.name}</h2>
-              <p className="text-gray-400 text-sm flex items-center justify-center md:justify-start gap-2">
-                <FaEnvelope className="text-emerald-400" />
-                {user?.email}
-              </p>
-              <p className="text-gray-500 text-xs mt-2 flex items-center justify-center md:justify-start gap-2">
-                <FaCalendarAlt />
-                Member since {user?.createdAt ? formatDate(user.createdAt) : "2024"}
-              </p>
-            </div>
-
-            {/* Stats */}
-            <div className="flex gap-6 md:gap-8">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-emerald-400">{stats.totalOrders}</p>
-                <p className="text-gray-400 text-xs">Orders</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-400">{stats.completedOrders}</p>
-                <p className="text-gray-400 text-xs">Completed</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-blue-400">₹{stats.totalSpent.toLocaleString()}</p>
-                <p className="text-gray-400 text-xs">Spent</p>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Tabs */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-6">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                activeTab === tab.id
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                  : "bg-[#111319] text-gray-400 hover:bg-[#1a1d25]"
-              }`}
-            >
-              <tab.icon className="text-sm" />
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab Content */}
-        <AnimatePresence mode="wait">
-          {activeTab === "overview" && (
-            <motion.div
-              key="overview"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="space-y-6"
-            >
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-[#111319] border border-[#262A3B] rounded-2xl p-4">
-                  <FaClipboardList className="text-emerald-400 text-xl mb-2" />
-                  <p className="text-2xl font-bold text-white">{stats.totalOrders}</p>
-                  <p className="text-gray-400 text-xs">Total Orders</p>
-                </div>
-                <div className="bg-[#111319] border border-[#262A3B] rounded-2xl p-4">
-                  <FaCheck className="text-green-400 text-xl mb-2" />
-                  <p className="text-2xl font-bold text-white">{stats.completedOrders}</p>
-                  <p className="text-gray-400 text-xs">Completed</p>
-                </div>
-                <div className="bg-[#111319] border border-[#262A3B] rounded-2xl p-4">
-                  <FaClock className="text-yellow-400 text-xl mb-2" />
-                  <p className="text-2xl font-bold text-white">{stats.totalOrders - stats.completedOrders}</p>
-                  <p className="text-gray-400 text-xs">Active</p>
-                </div>
-                <div className="bg-[#111319] border border-[#262A3B] rounded-2xl p-4">
-                  <FaRupeeSign className="text-blue-400 text-xl mb-2" />
-                  <p className="text-2xl font-bold text-white">₹{stats.totalSpent.toLocaleString()}</p>
-                  <p className="text-gray-400 text-xs">Total Spent</p>
-                </div>
-              </div>
-
-              {/* Recent Orders */}
-              <div className="bg-[#111319] border border-[#262A3B] rounded-2xl p-5">
-                <h3 className="text-lg font-semibold text-white mb-4">Recent Orders</h3>
-                {recentOrders.length === 0 ? (
-                  <p className="text-gray-400 text-sm">No orders yet</p>
-                ) : (
-                  <div className="space-y-3">
-                    {recentOrders.map((order) => (
-                      <div
-                        key={order._id}
-                        onClick={() => navigate(`/chat/${order._id}`)}
-                        className="flex items-center gap-3 p-3 rounded-xl bg-[#0a0c0f] hover:bg-[#13161d] cursor-pointer transition-all"
-                      >
-                        <img
-                          src={order.editor?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
-                          alt=""
-                          className="w-10 h-10 rounded-lg object-cover"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-medium truncate">{order.title}</p>
-                          <p className="text-gray-500 text-xs">{order.editor?.name}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-green-400 text-sm font-medium">₹{order.amount}</p>
-                          <p className="text-gray-500 text-xs">{formatDate(order.createdAt)}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {activeTab === "orders" && (
-            <motion.div
-              key="orders"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-            >
-              <div className="bg-[#111319] border border-[#262A3B] rounded-2xl p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-white">All Orders</h3>
-                  <button
-                    onClick={() => navigate("/client-orders")}
-                    className="text-emerald-400 text-sm hover:underline"
+            <div className="flex flex-col md:flex-row gap-4 md:gap-14 items-center md:items-start">
+              
+              {/* Desktop Avatar Profile (Hidden on Mobile) */}
+              <div className="hidden md:block shrink-0">
+                <div className="relative">
+                  <svg
+                    className="absolute -top-1.5 -left-1.5 w-[116px] h-[116px] -rotate-90 pointer-events-none"
+                    viewBox={`0 0 ${size + 8} ${size + 8}`}
                   >
-                    View All →
-                  </button>
-                </div>
-                {recentOrders.length === 0 ? (
-                  <p className="text-gray-400 text-sm">No orders yet</p>
-                ) : (
-                  <div className="space-y-3">
-                    {recentOrders.map((order) => (
-                      <div
-                        key={order._id}
-                        className="flex items-center gap-3 p-3 rounded-xl bg-[#0a0c0f]"
-                      >
-                        <div className="flex-1">
-                          <p className="text-white text-sm font-medium">{order.title}</p>
-                          <p className="text-gray-500 text-xs">{order.editor?.name} • {formatDate(order.createdAt)}</p>
-                        </div>
-                        <span className={`text-xs px-2 py-1 rounded-lg ${
-                          order.status === "completed" ? "bg-green-500/20 text-green-400" :
-                          order.status === "in_progress" ? "bg-yellow-500/20 text-yellow-400" :
-                          "bg-blue-500/20 text-blue-400"
-                        }`}>
-                          {order.status}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {activeTab === "settings" && (
-            <motion.div
-              key="settings"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="space-y-4"
-            >
-              {/* Account Settings */}
-              <div className="bg-[#111319] border border-[#262A3B] rounded-2xl p-5">
-                <h3 className="text-lg font-semibold text-white mb-4">Account Settings</h3>
-                <div className="space-y-4">
-                  <button className="w-full flex items-center gap-3 p-3 rounded-xl bg-[#0a0c0f] hover:bg-[#13161d] transition-all">
-                    <FaUser className="text-gray-400" />
-                    <span className="flex-1 text-left text-white text-sm">Edit Profile</span>
-                  </button>
-                  <button className="w-full flex items-center gap-3 p-3 rounded-xl bg-[#0a0c0f] hover:bg-[#13161d] transition-all">
-                    <FaBell className="text-gray-400" />
-                    <span className="flex-1 text-left text-white text-sm">Notification Preferences</span>
-                  </button>
-                  <button className="w-full flex items-center gap-3 p-3 rounded-xl bg-[#0a0c0f] hover:bg-[#13161d] transition-all">
-                    <FaLock className="text-gray-400" />
-                    <span className="flex-1 text-left text-white text-sm">Change Password</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Privacy Settings */}
-              <div className="bg-[#111319] border border-[#262A3B] rounded-2xl p-5">
-                <h3 className="text-lg font-semibold text-white mb-4">Privacy Settings</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-[#0a0c0f]">
-                    <div>
-                      <p className="text-white text-sm font-medium">Manual Follow Approval</p>
-                      <p className="text-gray-500 text-[11px]">When enabled, you must approve follow requests</p>
+                    <circle cx={(size + 8) / 2} cy={(size + 8) / 2} r={radius + 4} fill="none" stroke="#1a1a1a" strokeWidth={strokeWidth} />
+                    <circle cx={(size + 8) / 2} cy={(size + 8) / 2} r={radius + 4} fill="none" stroke={progressColor} strokeWidth={strokeWidth} strokeLinecap="round" strokeDasharray={circumference + 25} strokeDashoffset={strokeDashoffset + 12} />
+                  </svg>
+                  <div className="relative rounded-full p-[4px] bg-zinc-900 ring-2 ring-black w-[108px] h-[108px]">
+                    <div className="w-full h-full rounded-full overflow-hidden bg-zinc-950">
+                      <img src={user?.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} alt="Profile" className="w-full h-full object-cover" />
                     </div>
-                    <button
-                      onClick={async () => {
-                        if (updatingPrivacy) return;
-                        setUpdatingPrivacy(true);
-                        const newValue = !privacySettings.manualApproval;
-                        try {
-                          await axios.put(`${backendURL}/api/profile`, {
-                            followSettings: { manualApproval: newValue }
-                          }, {
-                            headers: { Authorization: `Bearer ${user.token}` }
-                          });
-                          setPrivacySettings({ manualApproval: newValue });
-                          toast.success(`Follow approval set to ${newValue ? 'Manual' : 'Automatic'}`);
-                        } catch (err) {
-                          toast.error("Failed to update privacy settings");
-                        } finally {
-                          setUpdatingPrivacy(false);
-                        }
-                      }}
-                      className={`w-12 h-6 rounded-full transition-all relative ${privacySettings.manualApproval ? 'bg-emerald-500' : 'bg-gray-700'}`}
-                    >
-                      <motion.div 
-                        animate={{ x: privacySettings.manualApproval ? 26 : 2 }}
-                        className="absolute top-1 left-0 w-4 h-4 bg-white rounded-full shadow-sm"
-                      />
-                    </button>
                   </div>
                 </div>
               </div>
 
-              {/* Danger Zone */}
-              <div className="bg-[#111319] border border-red-500/20 rounded-2xl p-5">
-                <h3 className="text-lg font-semibold text-red-400 mb-4">Danger Zone</h3>
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all"
-                >
-                  <FaSignOutAlt />
-                  <span className="text-sm font-medium">Logout from Account</span>
-                </button>
+              {/* Info & Stats Section */}
+              <div className="flex-1 w-full min-w-0">
+                
+                {/* Mobile Header Split: [Left: Avatar+Name+Edit] | [Right: Followers+Following] */}
+                <div className="flex md:hidden w-full gap-3 items-stretch mb-3">
+                  {/* Left Column (50%): Avatar + Name + Edit (Centered) */}
+                  <div className="w-1/2 flex flex-col items-center gap-1.5">
+                    <div className="relative shrink-0 mb-1">
+                      <svg
+                        className="absolute -top-1 -left-1 w-20 h-20 -rotate-90 pointer-events-none"
+                        viewBox={`0 0 ${size + 8} ${size + 8}`}
+                      >
+                        <circle cx={(size + 8) / 2} cy={(size + 8) / 2} r={radius + 4} fill="none" stroke="#1a1a1a" strokeWidth={strokeWidth + 2} />
+                        <circle cx={(size + 8) / 2} cy={(size + 8) / 2} r={radius + 4} fill="none" stroke={progressColor} strokeWidth={strokeWidth + 2} strokeLinecap="round" strokeDasharray={circumference + 25} strokeDashoffset={strokeDashoffset + 12} />
+                      </svg>
+                      <div className="relative rounded-full p-[2px] bg-zinc-900 ring-1 ring-black w-18 h-18">
+                        <div className="w-full h-full rounded-full overflow-hidden bg-zinc-950">
+                          <img src={user?.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} alt="Profile" className="w-full h-full object-cover" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="w-full text-center">
+                      <h1 className="text-base font-black text-white tracking-tight flex items-center justify-center gap-1 leading-none mb-2.5 break-all">
+                        {user?.name || "Your Name"}
+                        <MdVerified className="text-blue-500 text-sm shrink-0" />
+                      </h1>
+                      <button
+                        onClick={() => navigate("/editor-profile-update")}
+                        className="w-full py-2 bg-white text-black text-[10px] font-black rounded-md uppercase tracking-wide flex items-center justify-center gap-1"
+                      >
+                        <FaEdit size={8} /> EDIT
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Right Column (50%): Followers + Following */}
+                  <div className="w-1/2 flex flex-col justify-center gap-5 pt-1 border-l border-zinc-900 ml-1 pl-3">
+                    <div className="flex flex-col items-center">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <FaUserFriends className="text-[8px] text-zinc-600" />
+                        <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Followers</span>
+                      </div>
+                      <span className="text-2xl font-black text-white leading-none tracking-tighter">{user?.followers?.length || 0}</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <FaUserPlus className="text-[8px] text-zinc-600" />
+                        <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Following</span>
+                      </div>
+                      <span className="text-2xl font-black text-white leading-none tracking-tighter">{user?.following?.length || 0}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Desktop Name Row */}
+                <div className="hidden md:flex items-center gap-5 mb-6">
+                  <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
+                    {user?.name}
+                    <MdVerified className="text-blue-500" />
+                  </h1>
+                  <button
+                    onClick={() => navigate("/editor-profile-update")}
+                    className="flex items-center gap-2 px-6 py-2 bg-white text-black text-xs font-black rounded-full uppercase tracking-widest hover:bg-zinc-200 transition-all hover:scale-105 active:scale-95"
+                  >
+                    <FaEdit className="text-[12px]" /> Edit Profile
+                  </button>
+                </div>
+
+                {/* Subsidiary Stats Row */}
+                <div className="flex justify-between gap-1 mb-3 bg-zinc-950/40 rounded-lg py-2 px-1 border border-zinc-900/30">
+                  {[
+                    { label: "Orders", value: stats.totalOrders, icon: <FaClipboardList className="text-[7px]" /> },
+                    { label: "Spent", value: `₹${stats.totalSpent.toLocaleString()}`, icon: <FaRupeeSign className="text-[7px] text-green-500" /> },
+                    { label: "Reels", value: user?.portfolios?.length || 0, icon: <FaFilm className="text-[7px] text-violet-500" /> },
+                    { label: "Rating", value: "4.9", icon: <FaStar className="text-[7px] text-amber-500" /> }
+                  ].map((stat) => (
+                    <div key={stat.label} className="flex flex-col items-center flex-1">
+                      <div className="flex items-center gap-0.5 mb-0.5">
+                        {stat.icon}
+                        <span className="hidden xs:inline text-[7px] font-black text-zinc-600 uppercase">{stat.label}</span>
+                      </div>
+                      <div className="text-[10px] md:text-xl font-black text-white">{stat.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Bio & Metadata */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] md:text-base font-black text-zinc-300 uppercase tracking-tight">PREMIUM CLIENT</span>
+                    <span className="px-1.5 py-0.5 bg-zinc-900/50 text-zinc-500 text-[7px] md:text-[10px] font-black rounded border border-zinc-800 uppercase tracking-widest">ELITE</span>
+                  </div>
+                  
+                  <div className="text-[10px] md:text-sm font-medium text-zinc-400 leading-tight">
+                    {user?.about || "I am a content creator looking for top editors."}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3 pt-2 mt-2 border-t border-zinc-900/50 text-zinc-500 text-[8px] md:text-[11px] font-black uppercase tracking-tight">
+                    <div className="flex items-center gap-1">
+                      <FaMapMarkerAlt size={7} /> <span>INDIA</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <FaEnvelope size={7} /> <span className="normal-case">{user?.email}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <FaCalendarAlt size={7} /> <span>Member since 2024</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+          </motion.div>
+
+          {/* ==================== TABS ==================== */}
+          <div className="flex justify-center mb-2.5">
+            <div className="inline-flex bg-zinc-950/80 border border-zinc-900 rounded-lg p-1 relative">
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`
+                      relative px-6 py-1.5 rounded-md text-[10px] md:text-sm font-black uppercase tracking-widest transition-all flex items-center gap-1.5 z-10
+                      ${isActive ? "text-black" : "text-zinc-500 hover:text-zinc-300"}
+                    `}
+                  >
+                    {isActive && (
+                      <motion.div 
+                        layoutId="activeTabClient"
+                        className="absolute inset-0 bg-white rounded-md -z-10"
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      />
+                    )}
+                    <tab.icon className="text-[10px] md:text-xs" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ==================== TAB CONTENT ==================== */}
+          <AnimatePresence mode="wait">
+            {activeTab === "portfolio" && (
+              <motion.div
+                key="portfolio"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5"
+              >
+                <PortfolioSection portfolios={user?.portfolios || []} />
+              </motion.div>
+            )}
+
+            {activeTab === "about" && (
+              <motion.div
+                key="about"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-4"
+              >
+                <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-6">
+                  <h3 className="text-sm font-black text-white uppercase tracking-widest mb-4">About the Client</h3>
+                  <p className="text-zinc-400 text-sm leading-relaxed">
+                    {user?.about || "No additional information provided."}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </main>
     </div>
   );

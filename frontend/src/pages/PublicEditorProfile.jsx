@@ -428,8 +428,9 @@ const PublicEditorProfile = () => {
                     </div>
                     <div className="w-full text-center">
                       <h1 className="text-base font-black text-white tracking-tight flex items-center justify-center gap-1 leading-none mb-2.5 break-all">
-                        {userData?.name || "Editor Name"}
-                        {isVerified && <HiCheckBadge className="text-emerald-500 text-sm shrink-0" />}
+                        {userData?.name || "Member Name"}
+                        {userData?.role === 'editor' && isVerified && <HiCheckBadge className="text-emerald-500 text-sm shrink-0" />}
+                        {userData?.role === 'client' && <MdVerified className="text-purple-400 text-sm shrink-0" />}
                       </h1>
                       
                       {!isOwner && (
@@ -494,8 +495,9 @@ const PublicEditorProfile = () => {
                 <div className="hidden md:flex items-center gap-5 mb-6">
                   <div className="flex flex-wrap items-center gap-2.5">
                     <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
-                      {userData?.name || "Editor Name"}
-                      {isVerified && <HiCheckBadge className="text-emerald-500" />}
+                      {userData?.name || "Member Name"}
+                      {userData?.role === 'editor' && isVerified && <HiCheckBadge className="text-emerald-500" />}
+                      {userData?.role === 'client' && <MdVerified className="text-purple-400" />}
                     </h1>
                     {suvixScore && suvixScore.isEligible && (
                       <div className="flex items-center gap-2 bg-zinc-900/50 px-2 py-1 rounded-lg border border-zinc-800">
@@ -516,7 +518,7 @@ const PublicEditorProfile = () => {
                       >
                         {isFollowing ? "Following" : "Follow"}
                       </button>
-                      {user?.role === "client" && (
+                      {userData?.role === "editor" && user?.role === "client" && (
                         <button
                           onClick={() => {
                             if (user?.role === "client" && user?.clientKycStatus !== "verified") {
@@ -536,7 +538,12 @@ const PublicEditorProfile = () => {
 
                 {/* Subsidiary Stats Row (Ultra Dense on Mobile) */}
                 <div className="flex justify-between gap-1 mb-3 bg-zinc-950/40 rounded-lg py-2 px-1 border border-zinc-900/30">
-                  {statsData.filter(s => !s.label.includes('Follower') && !s.label.includes('Following')).map((stat) => (
+                  {(userData?.role === 'editor' ? statsData : [
+                    { label: "Spent", value: "PRO", icon: FaRupeeSign, color: "#10B981" },
+                    { label: "Orders", value: "24", icon: FaShoppingCart, color: "#6366F1" },
+                    { label: "Reels", value: userData?.portfolios?.length || 0, icon: FaFilm, color: "#8B5CF6" },
+                    { label: "Rating", value: "4.9", icon: FaStar, color: "#F59E0B" }
+                  ]).filter(s => !s.label.includes('Follower') && !s.label.includes('Following')).map((stat) => (
                     <div 
                       key={stat.label} 
                       className={`flex flex-col items-center flex-1 ${stat.clickable ? 'cursor-pointer' : ''}`}
@@ -546,7 +553,7 @@ const PublicEditorProfile = () => {
                         <stat.icon className="text-[7px]" style={{ color: stat.color }} />
                         <span className="hidden xs:inline text-[7px] font-black text-zinc-600 uppercase tracking-widest">{stat.label}</span>
                       </div>
-                      <div className="text-[10px] md:text-xl font-black text-white">
+                      <div className="text-[10px] md:text-xl font-black text-white text-center">
                         {stat.value} {stat.count && <span className="text-[7px] md:text-xs text-zinc-500">{stat.count}</span>}
                       </div>
                     </div>
@@ -556,12 +563,17 @@ const PublicEditorProfile = () => {
                 {/* Bio & Professional Indicators (Mobile Compact) */}
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[9px] md:text-base font-black text-zinc-300 uppercase">
-                      {userData?.role === "editor" ? "PRO VIDEO EDITOR" : "CLIENT"}
+                    <span className="text-[9px] md:text-base font-black text-zinc-300 uppercase leading-none">
+                      {userData?.role === "editor" ? "PRO VIDEO EDITOR" : "PREMIUM CLIENT"}
                     </span>
-                    {profile?.experience && (
-                      <span className="px-1.5 py-0.5 bg-zinc-900/50 text-zinc-500 text-[7px] md:text-[10px] font-black rounded border border-zinc-800 uppercase trackers-widest">
+                    {profile?.experience && userData?.role === 'editor' && (
+                      <span className="px-1.5 py-0.5 bg-zinc-900/50 text-zinc-500 text-[7px] md:text-[10px] font-black rounded border border-zinc-800 uppercase trackers-widest leading-none">
                         {profile.experience}
+                      </span>
+                    )}
+                    {userData?.role === 'client' && (
+                      <span className="px-1.5 py-0.5 bg-zinc-900/50 text-purple-400 text-[7px] md:text-[10px] font-black rounded border border-violet-900/50 uppercase tracking-widest leading-none">
+                        ELITE MEMBER
                       </span>
                     )}
                   </div>
