@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
     HiChevronLeft, 
@@ -59,7 +59,7 @@ const repairUrl = (url) => {
         fixed = fixed.replace(/_+(upload|image|video|v\d+)_+/g, "/$1/");
 
         // Restore slashes before the final filename
-        fixed = fixed.replace(/_([a-z0-9]+\.(webp|jpg|jpeg|png|mp4|mov|m4v|json))/gi, "/$1");
+        fixed = fixed.replace(/_([a-z0-9\-_]+\.(webp|jpg|jpeg|png|mp4|mov|m4v|json))/gi, "/$1");
         
         // Flatten double slashes
         fixed = fixed.replace(/([^:])\/\/+/g, "$1/");
@@ -116,138 +116,139 @@ const UnifiedBannerSlider = () => {
         staleTime: 10 * 60 * 1000, // 10 min — banner ads change rarely
     });
 
-    const dbAds = adsData?.ads || [];
-    const showAdsLevel = adsData?.showAds ?? true;
+    // ── Pre-repair and memoize all level data to avoid expensive regex on every render ──
+    const levels = useMemo(() => {
+        const dbAds = adsData?.ads || [];
+        const showAdsLevel = adsData?.showAds ?? true;
 
-    // Build Level 0 from DB ads (only if enabled and ads exist)
-  const adsLevel = showAdsLevel && dbAds.length > 0 ? {
-    id: "advertisements",
-    label: "Ads",
-    color: "text-amber-400",
-    icon: FaAd,
-    items: dbAds.map(ad => ({
-      _id: ad._id,
-      title: ad.title,
-      description: ad.description || ad.tagline || "",
-      mediaUrl: ad.mediaUrl,
-      mediaType: ad.mediaType,
-      link: ad.websiteUrl || `/ad-details/${ad._id}`,
-      linkText: ad.ctaText || "Learn More",
-      badge: ad.badge || "SPONSOR",
-      gradientFrom: "#f59e0b",
-      isExternal: !!ad.websiteUrl,
-    }))
-  } : null;
-
-    // Level Definitions — Level 0 (Ads) only appears when enabled & DB ads exist
-  const baseLevels = [
-        {
-            id: "promotions",
+        const builtAdsLevel = showAdsLevel && dbAds.length > 0 ? {
+            id: "advertisements",
             label: "Ads",
             color: "text-amber-400",
             icon: FaAd,
-            items: [
-                {
-                    _id: "ad-001",
-                    title: "Suvix Pro Editing",
-                    description: "High-end cinematic editing for your brand. Get started in minutes.",
-                    mediaUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-                    mediaType: "video",
-                    link: "https://suvix.in",
-                    linkText: "Explore More",
-                    badge: "featured",
-                    gradientFrom: "#f59e0b"
-                },
-                {
-                    _id: "ad-002",
-                    title: "Premium Sound Packs",
-                    description: "Unlock 500+ exclusive SFX and cinematic music tracks.",
-                    mediaUrl: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=2070&auto=format&fit=crop",
-                    mediaType: "image",
-                    link: "https://suvix.in/store",
-                    linkText: "Browse Store",
-                    badge: "new",
-                    gradientFrom: "#3b82f6"
-                },
-                {
-                    _id: "ad-003",
-                    title: "AI Color Grading",
-                    description: "Professional color grading powered by advanced Suvix AI.",
-                    mediaUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-                    mediaType: "video",
-                    link: "https://instagram.com/suvix_creative",
-                    linkText: "See Results",
-                    badge: "limited",
-                    gradientFrom: "#10b981"
-                }
-            ]
-        },
-        {
-            id: "editors",
-            label: "Editors",
-            color: "text-violet-400",
-            icon: HiOutlineUserGroup,
-            items: [
-                {
-                    id: "explore-editors-1",
-                    title: "World-Class Talent",
-                    description: "Collaborate with over 1,200+ specialized video editors globally.",
-                    mediaUrl: "/hero_banner_1_1766946342128.png",
-                    mediaType: "image",
-                    link: "/explore-editors",
-                    linkText: "Find Editor",
-                    badge: "exclusive",
-                    gradientFrom: "#8b5cf6",
-                    gradientTo: "#6366f1"
-                },
-                {
-                    id: "explore-editors-2",
-                    title: "Verified Portfolio",
-                    description: "Every editor is manually verified for quality and reliability.",
-                    mediaUrl: "/hero_banner_1_1766946342128.png",
-                    mediaType: "image",
-                    link: "/explore-editors",
-                    linkText: "Explore Now",
-                    badge: "featured"
-                }
-            ]
-        },
-        {
-            id: "gigs",
-            label: "Services",
-            color: "text-emerald-400",
-            icon: HiOutlineBriefcase,
-            items: [
-                {
-                    id: "browse-gigs-1",
-                    title: "Professional Gigs",
-                    description: "Starting at just ₹499. High speed delivery guaranteed.",
-                    mediaUrl: "/gig_banner_1_1766948855701.png",
-                    mediaType: "image",
-                    link: "/explore-editors?tab=gigs",
-                    linkText: "Book Now",
-                    badge: "hot",
-                    gradientFrom: "#10b981",
-                    gradientTo: "#059669"
-                }
-            ]
+            items: dbAds.map(ad => ({
+                _id: ad._id,
+                title: ad.title,
+                description: ad.description || ad.tagline || "",
+                mediaUrl: repairUrl(ad.mediaUrl), // Repaired here
+                mediaType: ad.mediaType,
+                link: ad.websiteUrl || `/ad-details/${ad._id}`,
+                linkText: ad.ctaText || "Learn More",
+                badge: ad.badge || "SPONSOR",
+                gradientFrom: "#f59e0b",
+                isExternal: !!ad.websiteUrl,
+            }))
+        } : null;
+
+        const base = [
+            {
+                id: "promotions",
+                label: "Ads",
+                color: "text-amber-400",
+                icon: FaAd,
+                items: [
+                    {
+                        _id: "ad-001",
+                        title: "Suvix Pro Editing",
+                        description: "High-end cinematic editing for your brand. Get started in minutes.",
+                        mediaUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                        mediaType: "video",
+                        link: "https://suvix.in",
+                        linkText: "Explore More",
+                        badge: "featured",
+                        gradientFrom: "#f59e0b"
+                    },
+                    {
+                        _id: "ad-002",
+                        title: "Premium Sound Packs",
+                        description: "Unlock 500+ exclusive SFX and cinematic music tracks.",
+                        mediaUrl: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=2070&auto=format&fit=crop",
+                        mediaType: "image",
+                        link: "https://suvix.in/store",
+                        linkText: "Browse Store",
+                        badge: "new",
+                        gradientFrom: "#3b82f6"
+                    },
+                    {
+                        _id: "ad-003",
+                        title: "AI Color Grading",
+                        description: "Professional color grading powered by advanced Suvix AI.",
+                        mediaUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                        mediaType: "video",
+                        link: "https://instagram.com/suvix_creative",
+                        linkText: "See Results",
+                        badge: "limited",
+                        gradientFrom: "#10b981"
+                    }
+                ]
+            },
+            {
+                id: "editors",
+                label: "Editors",
+                color: "text-violet-400",
+                icon: HiOutlineUserGroup,
+                items: [
+                    {
+                        id: "explore-editors-1",
+                        title: "World-Class Talent",
+                        description: "Collaborate with over 1,200+ specialized video editors globally.",
+                        mediaUrl: "/hero_banner_1_1766946342128.png",
+                        mediaType: "image",
+                        link: "/explore-editors",
+                        linkText: "Find Editor",
+                        badge: "exclusive",
+                        gradientFrom: "#8b5cf6",
+                        gradientTo: "#6366f1"
+                    },
+                    {
+                        id: "explore-editors-2",
+                        title: "Verified Portfolio",
+                        description: "Every editor is manually verified for quality and reliability.",
+                        mediaUrl: "/hero_banner_1_1766946342128.png",
+                        mediaType: "image",
+                        link: "/explore-editors",
+                        linkText: "Explore Now",
+                        badge: "featured"
+                    }
+                ]
+            },
+            {
+                id: "gigs",
+                label: "Services",
+                color: "text-emerald-400",
+                icon: HiOutlineBriefcase,
+                items: [
+                    {
+                        id: "browse-gigs-1",
+                        title: "Professional Gigs",
+                        description: "Starting at just ₹499. High speed delivery guaranteed.",
+                        mediaUrl: "/gig_banner_1_1766948855701.png",
+                        mediaType: "image",
+                        link: "/explore-editors?tab=gigs",
+                        linkText: "Book Now",
+                        badge: "hot",
+                        gradientFrom: "#10b981",
+                        gradientTo: "#059669"
+                    }
+                ]
+            }
+        ];
+
+        return builtAdsLevel ? [builtAdsLevel, ...base] : base;
+    }, [adsData]);
+
+    // If levels changed and we're out of bounds, reset
+    useEffect(() => {
+        if (verticalIndex >= levels.length && levels.length > 0) {
+            setVerticalIndex(0);
         }
-    ];
+    }, [levels.length]);
 
-  const levels = [
-    ...(adsLevel ? [adsLevel] : []),
-    ...baseLevels,
-  ];
-
-  // If Ads level is hidden and we're on index 0 in a non-ads state, adjust
-  useEffect(() => {
-    if (!adsLevel && verticalIndex === 0 && levels.length > 0) {
-      setVerticalIndex(0);
-    }
-  }, [adsLevel]);
-
-    // Reset media-loaded when slide changes
-    useEffect(() => { setMediaLoaded(false); }, [verticalIndex, horizontalIndices]);
+    // Reset media-loaded ONLY when current item changes
+    const currentMedia = levels[verticalIndex]?.items[horizontalIndices[verticalIndex]]?.mediaUrl;
+    useEffect(() => { 
+        setMediaLoaded(false); 
+    }, [currentMedia]);
 
     const currentLevel = levels[verticalIndex];
     const horizontalIndex = horizontalIndices[verticalIndex];
@@ -285,7 +286,7 @@ const UnifiedBannerSlider = () => {
         }
     };
 
-    if (isLoading) {
+    if (isLoading && !adsData) {
         return (
             <div className="relative h-60 md:h-80 w-full rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/5">
                 {/* Shimmer base */}
@@ -346,31 +347,33 @@ const UnifiedBannerSlider = () => {
                             <div className="absolute inset-0 bg-zinc-900 animate-pulse z-10" />
                         )}
                         {currentItem.mediaType === "video" ? (
-                            <video 
-                                key={repairUrl(currentItem.mediaUrl)}
-                                src={repairUrl(currentItem.mediaUrl)}
-                                autoPlay={inView}
-                                loop
-                                muted={isMuted}
-                                playsInline
-                                onTimeUpdate={handleVideoTimeUpdate}
-                                onLoadedData={() => setMediaLoaded(true)}
-                                className={`w-full h-full object-cover transition-opacity duration-700 ${mediaLoaded ? 'opacity-100' : 'opacity-0'}`}
-                                ref={(el) => {
-                                    if (el) {
-                                        if (inView) el.play().catch(() => {});
-                                        else el.pause();
-                                    }
-                                }}
-                            />
-                        ) : (
-                            <img 
-                                src={repairUrl(currentItem.mediaUrl)}
-                                alt=""
-                                onLoad={() => setMediaLoaded(true)}
-                                className={`w-full h-full object-cover transition-opacity duration-700 ${mediaLoaded ? 'opacity-100' : 'opacity-0'}`}
-                            />
-                        )}
+                                <video 
+                                    key={currentItem.mediaUrl}
+                                    src={currentItem.mediaUrl}
+                                    autoPlay={inView}
+                                    loop
+                                    muted={isMuted}
+                                    playsInline
+                                    crossOrigin="anonymous"
+                                    onTimeUpdate={handleVideoTimeUpdate}
+                                    onLoadedData={() => setMediaLoaded(true)}
+                                    className={`w-full h-full object-cover transition-opacity duration-700 ${mediaLoaded ? 'opacity-100' : 'opacity-0'}`}
+                                    ref={(el) => {
+                                        if (el) {
+                                            if (inView) el.play().catch(() => {});
+                                            else el.pause();
+                                        }
+                                    }}
+                                />
+                            ) : (
+                                <img 
+                                    src={currentItem.mediaUrl}
+                                    alt=""
+                                    onLoad={() => setMediaLoaded(true)}
+                                    crossOrigin="anonymous"
+                                    className={`w-full h-full object-cover transition-opacity duration-700 ${mediaLoaded ? 'opacity-100' : 'opacity-0'}`}
+                                />
+                            )}
                         {/* Simplified Gradient: Only Bottom to Top */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                     </div>

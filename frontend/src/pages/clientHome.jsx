@@ -93,10 +93,6 @@ const ClientHome = () => {
     }, 100);
   };
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => window.location.reload(), 300);
-  };
 
   useEffect(() => {
     const fetchData = async () => {

@@ -163,13 +163,6 @@ const EditorHome = () => {
     fetchStorage();
   }, [backendURL, user?.token, user?.role]);
 
-  // Refresh page
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      window.location.reload();
-    }, 300);
-  };
 
   // Main tabs configuration
   const mainTabs = [

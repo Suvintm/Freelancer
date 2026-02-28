@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useHomeStore } from "../store/homeStore";
 
 const AUTO_REFRESH_THRESHOLD = 10 * 60 * 1000; // 10 minutes
-const MANUAL_COOLDOWN = 60 * 1000;             // 60 seconds
+const MANUAL_COOLDOWN = 5 * 1000;              // 5 seconds
 
 /**
  * useRefreshManager — A central hook to manage data freshness across Home pages.
@@ -36,12 +36,14 @@ const useRefreshManager = () => {
         setLastHomeRefresh(now);
 
         try {
-            // Invalidate all queries tagged with 'homeData'
-            // This includes SuggestedReels, FollowSuggestions, etc.
-            await queryClient.invalidateQueries({ queryKey: ['homeData'] });
+            // Invalidate all queries tagged with 'homeData' or 'home-ads'
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['homeData'] }),
+                queryClient.invalidateQueries({ queryKey: ['home-ads'] })
+            ]);
             
             // Optional: Add a slight artificial delay for the spinner to feel "premium"
-            await new Promise(resolve => setTimeout(resolve, 800));
+            await new Promise(resolve => setTimeout(resolve, 400));
             return true;
         } catch (err) {
             console.error("[Refresh] Refresh failed:", err);
