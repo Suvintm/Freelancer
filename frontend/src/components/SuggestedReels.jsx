@@ -47,13 +47,13 @@ const SuggestedReels = () => {
         return (
             <div className="space-y-4 py-4">
                 <div className="flex items-center justify-between px-1">
-                    <div className="h-6 w-32 bg-white/5 rounded-lg animate-pulse" />
-                    <div className="h-4 w-16 bg-white/5 rounded-lg animate-pulse" />
+                    <div className="h-5 w-32 bg-white/8 rounded-lg animate-pulse" />
+                    <div className="h-4 w-16 bg-white/8 rounded-lg animate-pulse" />
                 </div>
                 <div className="flex gap-4 overflow-hidden">
                     {[1, 2, 3, 4, 5, 6].map((i) => (
-                        <div key={i} className="flex-shrink-0 w-40 md:w-48 h-72 md:h-80 bg-white/5 rounded-2xl animate-pulse relative overflow-hidden">
-                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+                        <div key={i} className="flex-shrink-0 w-40 md:w-48 h-72 md:h-80 bg-zinc-900 rounded-2xl overflow-hidden relative">
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 shimmer" />
                         </div>
                     ))}
                 </div>
@@ -207,7 +207,7 @@ const ReelThumbnail = ({ reel, index }) => {
             className="flex-shrink-0 w-40 md:w-48 h-72 md:h-80 bg-[#0a0a0c] rounded-[2rem] overflow-hidden relative cursor-pointer transition-all snap-start group shadow-2xl shadow-black/40"
         >
             
-            {/* Video/Image Content */}
+            {/* Video/Image Content with fade-in */}
             {reel.mediaType === "video" ? (
                 <video
                     ref={videoRef}
@@ -216,6 +216,9 @@ const ReelThumbnail = ({ reel, index }) => {
                     muted
                     loop
                     playsInline
+                    preload="none"
+                    onLoadedData={e => { e.target.style.opacity = '1'; }}
+                    style={{ opacity: 0, transition: 'opacity 0.5s ease' }}
                     onContextMenu={(e) => e.preventDefault()}
                     onDoubleClick={(e) => e.preventDefault()}
                     controlsList="nodownload nofullscreen noremoteplayback"
@@ -225,7 +228,10 @@ const ReelThumbnail = ({ reel, index }) => {
                 <img
                     src={reel.mediaUrl}
                     alt={reel.title}
+                    loading="lazy"
                     className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110 no-copy"
+                    onLoad={e => { e.target.style.opacity = '1'; }}
+                    style={{ opacity: 0, transition: 'opacity 0.5s ease' }}
                     onContextMenu={(e) => e.preventDefault()}
                     onDoubleClick={(e) => e.preventDefault()}
                 />

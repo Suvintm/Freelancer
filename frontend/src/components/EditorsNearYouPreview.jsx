@@ -46,11 +46,13 @@ const EditorsNearYouPreview = () => {
     }, [backendURL, user?.token]);
 
     if (loading) return (
-        <div className="px-4 py-2">
-            <div className="w-48 h-6 bg-white/5 rounded-lg animate-pulse mb-4" />
+        <div className="py-2">
+            <div className="w-48 h-5 bg-white/8 rounded-lg animate-pulse mb-4" />
             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
                 {[1, 2, 3].map(i => (
-                    <div key={i} className="flex-shrink-0 w-64 h-32 bg-white/5 rounded-3xl animate-pulse" />
+                    <div key={i} className="relative flex-shrink-0 w-64 aspect-[16/10] bg-zinc-900 rounded-3xl animate-pulse overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 shimmer" />
+                    </div>
                 ))}
             </div>
         </div>
@@ -77,11 +79,14 @@ const EditorsNearYouPreview = () => {
                             onClick={() => navigate(`/editor/${editor._id}`)}
                             className="flex-shrink-0 w-64 md:w-72 aspect-[16/10] relative rounded-3xl overflow-hidden cursor-pointer group snap-start border border-white/5 shadow-2xl"
                         >
-                            {/* Background Media */}
+                        {/* Background Media with fade-in */}
                             <img 
                                 src={editor.profilePicture || 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?q=80&w=2071&auto=format&fit=crop'} 
-                                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                className="absolute inset-0 w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
                                 alt=""
+                                loading="lazy"
+                                onLoad={e => e.target.style.opacity = '1'}
+                                style={{ opacity: 0, transition: 'opacity 0.7s ease' }}
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                             

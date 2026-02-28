@@ -88,6 +88,7 @@ const UnifiedBannerSlider = () => {
     const [loading, setLoading] = useState(true);
     const [isMuted, setIsMuted] = useState(true);
     const [isHovered, setIsHovered] = useState(false);
+    const [mediaLoaded, setMediaLoaded] = useState(false);
 
     // Fetch active ads for Level 0 from DB + global toggle
   useEffect(() => {
@@ -235,6 +236,9 @@ const UnifiedBannerSlider = () => {
     }
   }, [adsLevel]);
 
+    // Reset media-loaded when slide changes
+    useEffect(() => { setMediaLoaded(false); }, [verticalIndex, horizontalIndices]);
+
     const currentLevel = levels[verticalIndex];
     const horizontalIndex = horizontalIndices[verticalIndex];
     const currentItem = currentLevel.items[horizontalIndex];
@@ -271,6 +275,28 @@ const UnifiedBannerSlider = () => {
         }
     };
 
+    if (loading) {
+        return (
+            <div className="relative h-60 md:h-80 w-full rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/5">
+                {/* Shimmer base */}
+                <div className="absolute inset-0 bg-zinc-900 animate-pulse" />
+                {/* Moving shimmer wave */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12"
+                    style={{ animation: 'shimmer 1.8s infinite', backgroundSize: '200% 100%' }}
+                />
+                {/* Skeleton content placeholders */}
+                <div className="absolute inset-0 flex items-end p-6 md:p-8 pb-10 md:pb-12">
+                    <div className="space-y-3 w-full max-w-xs">
+                        <div className="h-3 w-16 bg-white/10 rounded-full animate-pulse" />
+                        <div className="h-6 w-48 bg-white/10 rounded-lg animate-pulse" />
+                        <div className="h-4 w-64 bg-white/8 rounded-lg animate-pulse" />
+                        <div className="h-8 w-28 bg-white/10 rounded-full animate-pulse mt-2" />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div 
             className={`relative h-60 md:h-80 w-full rounded-[2rem] md:rounded-[2.5rem] overflow-hidden group shadow-2xl border border-white/5 bg-[#0d0d12] ${verticalIndex === 0 ? "cursor-pointer" : "cursor-default"}`}
@@ -304,6 +330,10 @@ const UnifiedBannerSlider = () => {
                 >
                     {/* Media layer */}
                     <div className="absolute inset-0">
+                        {/* Skeleton shown until media loads */}
+                        {!mediaLoaded && (
+                            <div className="absolute inset-0 bg-zinc-900 animate-pulse z-10" />
+                        )}
                         {currentItem.mediaType === "video" ? (
                             <video 
                                 key={repairUrl(currentItem.mediaUrl)}
@@ -313,13 +343,15 @@ const UnifiedBannerSlider = () => {
                                 muted={isMuted}
                                 playsInline
                                 onTimeUpdate={handleVideoTimeUpdate}
-                                className="w-full h-full object-cover"
+                                onLoadedData={() => setMediaLoaded(true)}
+                                className={`w-full h-full object-cover transition-opacity duration-700 ${mediaLoaded ? 'opacity-100' : 'opacity-0'}`}
                             />
                         ) : (
                             <img 
                                 src={repairUrl(currentItem.mediaUrl)}
                                 alt=""
-                                className="w-full h-full object-cover"
+                                onLoad={() => setMediaLoaded(true)}
+                                className={`w-full h-full object-cover transition-opacity duration-700 ${mediaLoaded ? 'opacity-100' : 'opacity-0'}`}
                             />
                         )}
                         {/* Simplified Gradient: Only Bottom to Top */}

@@ -80,10 +80,15 @@ const FollowSuggestions = () => {
 
     if (loading) {
         return (
-            <div className="flex gap-4 overflow-hidden py-2 px-1">
-                {[1, 2, 3].map(i => (
-                    <div key={i} className="min-w-[140px] h-[180px] bg-white/5 rounded-2xl animate-pulse" />
-                ))}
+            <div className="space-y-4 py-2">
+                <div className="h-5 w-36 bg-white/8 rounded-lg animate-pulse" />
+                <div className="flex gap-3 overflow-hidden -mx-1 px-1">
+                    {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="relative min-w-[140px] h-[188px] bg-zinc-900 rounded-2xl overflow-hidden animate-pulse">
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 shimmer" />
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     }
@@ -131,7 +136,10 @@ const FollowSuggestions = () => {
                                     <img 
                                         src={item.profilePicture} 
                                         alt={item.name}
+                                        loading="lazy"
                                         className="w-16 h-16 rounded-full object-cover border border-white/10 group-hover:border-white/20 transition-colors"
+                                        onLoad={e => { e.target.style.opacity = '1'; }}
+                                        style={{ opacity: 0, transition: 'opacity 0.5s ease' }}
                                     />
                                 </div>
 
