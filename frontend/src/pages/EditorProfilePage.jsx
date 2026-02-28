@@ -217,7 +217,7 @@ const EditorProfile = () => {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-      <main className="md:ml-64 pt-6 md:pt-20 lg:pt-24 px-3 md:px-6 pb-10">
+      <main className="md:ml-64 pt-2 md:pt-14 px-3 md:px-6 pb-10">
         <div className="max-w-5xl mx-auto">
           
           {/* ==================== SUBSCRIPTION STATUS BADGE ==================== */}
@@ -251,7 +251,7 @@ const EditorProfile = () => {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4"
+              className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 mb-2 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4"
             >
               <div className="flex items-center gap-3 flex-1">
                 <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
@@ -277,7 +277,7 @@ const EditorProfile = () => {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl mb-4 bg-black border border-zinc-800/40 p-3 md:p-10"
+            className="rounded-xl mb-2 bg-black border border-zinc-800/40 p-3 md:p-10"
           >
             <div className="flex flex-col md:flex-row gap-4 md:gap-14 items-center md:items-start">
               
@@ -308,29 +308,29 @@ const EditorProfile = () => {
                 {/* Mobile Header Split: [Left: Avatar+Name+Edit] | [Right: Followers+Following] */}
                 <div className="flex md:hidden w-full gap-3 items-stretch mb-3">
                   {/* Left Column (50%): Avatar + Name + Edit (Centered) */}
-                  <div className="w-1/2 flex flex-col items-center gap-1">
-                    <div className="relative shrink-0 mb-1.5">
+                  <div className="w-1/2 flex flex-col items-center gap-1.5">
+                    <div className="relative shrink-0 mb-1">
                       <svg
-                        className="absolute -top-1 -left-1 w-14 h-14 -rotate-90 pointer-events-none"
+                        className="absolute -top-1 -left-1 w-20 h-20 -rotate-90 pointer-events-none"
                         viewBox={`0 0 ${size + 8} ${size + 8}`}
                       >
                         <circle cx={(size + 8) / 2} cy={(size + 8) / 2} r={radius + 4} fill="none" stroke="#1a1a1a" strokeWidth={strokeWidth + 2} />
                         <circle cx={(size + 8) / 2} cy={(size + 8) / 2} r={radius + 4} fill="none" stroke={progressColor} strokeWidth={strokeWidth + 2} strokeLinecap="round" strokeDasharray={circumference + 25} strokeDashoffset={strokeDashoffset + 12} />
                       </svg>
-                      <div className="relative rounded-full p-[2px] bg-zinc-900 ring-1 ring-black w-12 h-12">
+                      <div className="relative rounded-full p-[2px] bg-zinc-900 ring-1 ring-black w-18 h-18">
                         <div className="w-full h-full rounded-full overflow-hidden bg-zinc-950">
                           <img src={userData?.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} alt="Profile" className="w-full h-full object-cover" />
                         </div>
                       </div>
                     </div>
                     <div className="w-full text-center">
-                      <h1 className="text-sm font-black text-white tracking-tight flex items-center justify-center gap-1 leading-none mb-1.5 break-all">
+                      <h1 className="text-base font-black text-white tracking-tight flex items-center justify-center gap-1 leading-none mb-2.5 break-all">
                         {userData?.name || "Your Name"}
-                        {isVerified && <MdVerified className="text-blue-500 text-xs shrink-0" />}
+                        {isVerified && <MdVerified className="text-blue-500 text-sm shrink-0" />}
                       </h1>
                       <button
                         onClick={() => navigate("/editor-profile-update")}
-                        className="w-full py-1 bg-white text-black text-[9px] font-black rounded-md uppercase tracking-wide flex items-center justify-center gap-1"
+                        className="w-full py-2 bg-white text-black text-[10px] font-black rounded-md uppercase tracking-wide flex items-center justify-center gap-1"
                       >
                         <FaEdit size={8} /> EDIT
                       </button>
@@ -338,20 +338,20 @@ const EditorProfile = () => {
                   </div>
 
                   {/* Right Column (50%): Followers + Following (Centered with Icons) */}
-                  <div className="w-1/2 flex flex-col justify-center gap-4 pt-1 border-l border-zinc-900 ml-1 pl-3">
+                  <div className="w-1/2 flex flex-col justify-center gap-5 pt-1 border-l border-zinc-900 ml-1 pl-3">
                     <div className="flex flex-col items-center">
-                      <div className="flex items-center gap-1 mb-0.5">
-                        <FaUserFriends className="text-[7px] text-zinc-600" />
-                        <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Followers</span>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <FaUserFriends className="text-[8px] text-zinc-600" />
+                        <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Followers</span>
                       </div>
-                      <span className="text-lg font-black text-white leading-none tracking-tighter">{statsData.find(s => s.label.includes('Followers'))?.value || 0}</span>
+                      <span className="text-2xl font-black text-white leading-none tracking-tighter">{statsData.find(s => s.label.includes('Followers'))?.value || 0}</span>
                     </div>
                     <div className="flex flex-col items-center">
-                      <div className="flex items-center gap-1 mb-0.5">
-                        <FaUserPlus className="text-[7px] text-zinc-600" />
-                        <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Following</span>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <FaUserPlus className="text-[8px] text-zinc-600" />
+                        <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Following</span>
                       </div>
-                      <span className="text-lg font-black text-white leading-none tracking-tighter">{statsData.find(s => s.label.includes('Following'))?.value || 0}</span>
+                      <span className="text-2xl font-black text-white leading-none tracking-tighter">{statsData.find(s => s.label.includes('Following'))?.value || 0}</span>
                     </div>
                   </div>
                 </div>
@@ -467,8 +467,8 @@ const EditorProfile = () => {
           </motion.div>
 
           {/* ==================== TABS ==================== */}
-          <div className="flex justify-center mb-5">
-            <div className="inline-flex bg-zinc-950 border border-zinc-800/50 rounded-lg p-1">
+          <div className="flex justify-center mb-2.5">
+            <div className="inline-flex bg-zinc-950/80 border border-zinc-900 rounded-lg p-1 relative">
               {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
@@ -476,13 +476,20 @@ const EditorProfile = () => {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`
-                      px-3 md:px-4 py-2 rounded-md text-xs md:text-sm font-medium transition-all flex items-center gap-1.5
+                      relative px-2.5 py-1.5 rounded-md text-[10px] md:text-sm font-black uppercase tracking-widest transition-all flex items-center gap-1.5 z-10
                       ${isActive 
-                        ? "bg-white text-black" 
+                        ? "text-black" 
                         : "text-zinc-500 hover:text-zinc-300"
                       }
                     `}
                   >
+                    {isActive && (
+                      <motion.div 
+                        layoutId="activeTab"
+                        className="absolute inset-0 bg-white rounded-md -z-10"
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      />
+                    )}
                     <tab.icon className="text-[10px] md:text-xs" />
                     {tab.label}
                   </button>

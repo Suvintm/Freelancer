@@ -25,8 +25,12 @@ import {
   FaFilm,
   FaPlay,
   FaClock,
+  FaUserFriends,
+  FaUserPlus,
+  FaCircle,
 } from "react-icons/fa";
 import { HiCheckBadge, HiOutlineTrophy, HiOutlineLockClosed, HiOutlineLockOpen } from "react-icons/hi2";
+import { MdVerified } from "react-icons/md";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate, useParams } from "react-router-dom";
@@ -367,134 +371,151 @@ const PublicEditorProfile = () => {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-      <main className="md:ml-64 pt-16 md:pt-20 lg:pt-24 px-3 md:px-6 pb-10">
+      <main className="md:ml-64 pt-4 md:pt-14 px-3 md:px-6 pb-10">
         <div className="max-w-5xl mx-auto">
           
-          {/* ==================== PROFILE HEADER ==================== */}
+          {/* ==================== PROFILE HEADER (HYPER-COMPACT MOBILE OPTIMIZED) ==================== */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative overflow-hidden rounded-xl mb-5"
+            className="rounded-xl mb-2 bg-black border border-zinc-800/40 p-3 md:p-8"
           >
-            {/* Glass Background */}
-            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] via-white/[0.03] to-transparent" />
-            <div className="absolute inset-0 bg-zinc-950/90" />
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-            
-            <div className="relative border border-zinc-800/50 rounded-xl">
-              <div className="p-5 md:p-7">
-                <div className="flex flex-col md:flex-row gap-5 items-center md:items-start">
-                  
-                  {/* Avatar */}
-                  <div className="relative flex-shrink-0">
-                    <div 
-                      className="relative rounded-full p-[3px] bg-white"
-                      style={{ width: 120, height: 120 }}
-                    >
-                      <div className="w-full h-full rounded-full overflow-hidden bg-zinc-900">
-                        <img
-                          src={userData?.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"}
-                          alt="Profile"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
+            <div className="flex flex-col md:flex-row gap-4 md:gap-14 items-center md:items-start">
+              
+              {/* Desktop Avatar Section (Hidden on Mobile) */}
+              <div className="hidden md:block shrink-0">
+                <div className="relative">
+                  <div 
+                    className="relative rounded-full p-[3px] bg-zinc-900 ring-2 ring-black w-[108px] h-[108px]"
+                  >
+                    <div className="w-full h-full rounded-full overflow-hidden bg-zinc-950">
+                      <img
+                        src={userData?.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"}
+                        alt="Profile"
+                        className="w-full h-full object-cover"
+                      />
                     </div>
+                  </div>
+                  {isVerified && (
+                    <div className="absolute bottom-1 right-1 w-7 h-7 bg-emerald-600 rounded-full flex items-center justify-center border-2 border-black z-10">
+                      <FaCheckCircle className="text-white text-xs" />
+                    </div>
+                  )}
+                </div>
+              </div>
 
-                    {isVerified && (
-                      <div className="absolute bottom-1 right-1 w-7 h-7 bg-emerald-600 rounded-full flex items-center justify-center border-2 border-black z-10">
-                        <FaCheckCircle className="text-white text-xs" />
+              {/* Info & Stats Section */}
+              <div className="flex-1 w-full min-w-0">
+                
+                <div className="flex md:hidden w-full gap-3 items-stretch mb-3">
+                  {/* Left Column (50%): Avatar + Name + Actions (Centered) */}
+                  <div className="w-1/2 flex flex-col items-center gap-1.5">
+                    <div className="relative shrink-0 mb-1">
+                      <div className="relative rounded-full p-[2px] bg-zinc-900 ring-1 ring-black w-18 h-18 sm:w-20 sm:h-20">
+                        <div className="w-full h-full rounded-full overflow-hidden bg-zinc-950">
+                          <img 
+                            src={userData?.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} 
+                            alt="Profile" 
+                            className="w-full h-full object-cover" 
+                          />
+                        </div>
+                      </div>
+                      {isVerified && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-emerald-600 rounded-full flex items-center justify-center border border-black z-10">
+                          <FaCheckCircle className="text-white text-[10px]" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="w-full text-center">
+                      <h1 className="text-base font-black text-white tracking-tight flex items-center justify-center gap-1 leading-none mb-2.5 break-all">
+                        {userData?.name || "Editor Name"}
+                        {isVerified && <HiCheckBadge className="text-emerald-500 text-sm shrink-0" />}
+                      </h1>
+                      
+                      {!isOwner && (
+                        <div className="flex flex-col gap-1.5 w-full">
+                          <button
+                            onClick={handleFollowToggle}
+                            disabled={followLoading}
+                            className={`w-full py-2 rounded-md text-[10px] font-black uppercase tracking-wide transition-all ${
+                              isFollowing 
+                                ? "bg-zinc-800 text-white border border-zinc-700" 
+                                : "bg-white text-black"
+                            }`}
+                          >
+                            {followLoading ? "..." : isFollowing ? "Following" : "Follow"}
+                          </button>
+                          
+                          {user?.role === "client" && (
+                            <button
+                              onClick={() => {
+                                if (user?.role === "client" && user?.clientKycStatus !== "verified") {
+                                  setShowKYCModal(true);
+                                } else {
+                                  setRequestModalOpen(true);
+                                }
+                              }}
+                              className="w-full py-2 bg-emerald-600 text-white text-[10px] font-black rounded-md uppercase tracking-wide"
+                            >
+                              Contact
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column (50%): Followers + Following (Centered with Icons) */}
+                  <div className="w-1/2 flex flex-col justify-center gap-5 pt-1 border-l border-zinc-900 ml-1 pl-3">
+                    <div className="flex flex-col items-center">
+                      {userData?.role === 'editor' && (
+                        <div className="flex items-center gap-1 mb-1.5 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">
+                          <span className="text-[7px] font-black text-blue-400 uppercase tracking-tighter">Video Editor</span>
+                          <MdVerified className="text-blue-500 text-[9px]" />
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <FaUserFriends className="text-[8px] text-zinc-600" />
+                        <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Followers</span>
+                      </div>
+                      <span className="text-2xl font-black text-white leading-none tracking-tighter">{userData?.followers?.length || 0}</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <FaUserPlus className="text-[8px] text-zinc-600" />
+                        <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Following</span>
+                      </div>
+                      <span className="text-2xl font-black text-white leading-none tracking-tighter">{userData?.following?.length || 0}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Desktop Name/Action Row (Hidden on Mobile) */}
+                <div className="hidden md:flex items-center gap-5 mb-6">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
+                      {userData?.name || "Editor Name"}
+                      {isVerified && <HiCheckBadge className="text-emerald-500" />}
+                    </h1>
+                    {suvixScore && suvixScore.isEligible && (
+                      <div className="flex items-center gap-2 bg-zinc-900/50 px-2 py-1 rounded-lg border border-zinc-800">
+                        <SuvixScoreBadge score={suvixScore.total} tier={suvixScore.tier} isEligible={suvixScore.isEligible} size="small" showLabel={false} />
+                        <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: suvixScore.tierColor }}>{suvixScore.tierLabel}</span>
                       </div>
                     )}
                   </div>
-
-                  {/* Info */}
-                  <div className="flex-1 text-center md:text-left min-w-0">
-                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-1">
-                      <h1 className="text-xl md:text-2xl font-semibold text-white">
-                        {userData?.name || "Editor Name"}
-                      </h1>
-                      {isVerified && (
-                        <>
-                          <HiCheckBadge className="text-emerald-500 text-xl" />
-                          <span className="px-2 py-0.5 bg-emerald-900/50 text-emerald-400 text-[10px] font-medium rounded">
-                            VERIFIED
-                          </span>
-                        </>
-                      )}
-                      {suvixScore && suvixScore.isEligible && (
-                        <div className="flex items-center gap-2">
-                          <SuvixScoreBadge
-                            score={suvixScore.total}
-                            tier={suvixScore.tier}
-                            isEligible={suvixScore.isEligible}
-                            size="small"
-                            showLabel={false}
-                          />
-                          <span 
-                            className="px-2 py-0.5 text-[10px] font-medium rounded"
-                            style={{ 
-                              backgroundColor: suvixScore.tierColor + '20', 
-                              color: suvixScore.tierColor 
-                            }}
-                          >
-                            {suvixScore.tierLabel}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <p className="text-zinc-500 text-sm mb-3">
-                      {userData?.role === "editor" ? "Professional Video Editor" : "Client"} 
-                      {profile?.experience && ` • ${profile.experience}`}
-                    </p>
-
-                    {/* Info Tags */}
-                    <div className="flex flex-wrap justify-center md:justify-start gap-2">
-                      {profile.location?.country && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900/80 border border-zinc-800 rounded text-zinc-400 text-xs">
-                          <FaMapMarkerAlt className="text-[10px]" />
-                          <ReactCountryFlag
-                            countryCode={countryNameToCode[profile.location.country] || "IN"}
-                            svg
-                            style={{ width: "12px", height: "12px" }}
-                          />
-                          <span>{profile.location.country}</span>
-                        </div>
-                      )}
-                      {profile.contactEmail && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900/80 border border-zinc-800 rounded text-zinc-400 text-xs">
-                          <FaEnvelope className="text-[10px]" />
-                          <span className="truncate max-w-[120px] md:max-w-[160px]">{profile.contactEmail}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900/80 border border-zinc-800 rounded text-zinc-400 text-xs">
-                        <FaCalendarAlt className="text-[10px]" />
-                        <span>Member since 2024</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions (Contact & Follow) */}
+                  
                   {!isOwner && (
-                    <div className="hidden md:flex items-center gap-3">
+                    <div className="flex items-center gap-3">
                       <button
                         onClick={handleFollowToggle}
                         disabled={followLoading}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                          isFollowing 
-                            ? "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700" 
-                            : "bg-white text-black hover:bg-zinc-200"
+                        className={`px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all ${
+                          isFollowing ? "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700" : "bg-white text-black hover:bg-zinc-200"
                         }`}
                       >
-                        {followLoading ? (
-                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        ) : isFollowing ? (
-                          "Following"
-                        ) : (
-                          "Follow"
-                        )}
+                        {isFollowing ? "Following" : "Follow"}
                       </button>
-
                       {user?.role === "client" && (
                         <button
                           onClick={() => {
@@ -504,79 +525,129 @@ const PublicEditorProfile = () => {
                               setRequestModalOpen(true);
                             }
                           }}
-                          className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-500 transition-colors"
+                          className="px-6 py-2 bg-emerald-600 text-white text-xs font-black rounded-full uppercase tracking-widest hover:bg-emerald-500"
                         >
-                          <FaPaperPlane className="text-xs" />
-                          Contact
+                          Contact Editor
                         </button>
                       )}
                     </div>
                   )}
                 </div>
 
-                {/* Stats Row */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mt-5 pt-5 border-t border-zinc-800/50">
-                  {statsData.map((stat) => (
+                {/* Subsidiary Stats Row (Ultra Dense on Mobile) */}
+                <div className="flex justify-between gap-1 mb-3 bg-zinc-950/40 rounded-lg py-2 px-1 border border-zinc-900/30">
+                  {statsData.filter(s => !s.label.includes('Follower') && !s.label.includes('Following')).map((stat) => (
                     <div 
                       key={stat.label} 
-                      className={`text-center ${stat.clickable && (isOwner || reviewCount > 0) ? 'cursor-pointer hover:bg-zinc-800/30 rounded-lg py-2 -my-2 transition-colors' : ''}`}
+                      className={`flex flex-col items-center flex-1 ${stat.clickable ? 'cursor-pointer' : ''}`}
                       onClick={() => stat.clickable && (isOwner || reviewCount > 0) && setShowRatingsModal(true)}
                     >
-                      <div className="flex items-center justify-center gap-1 md:gap-1.5 mb-0.5">
-                        <stat.icon className="text-[10px] md:text-xs" style={{ color: stat.color }} />
-                        <span className="text-base md:text-lg font-semibold text-white">{stat.value}</span>
-                        {stat.count && <span className="text-xs text-zinc-500">{stat.count}</span>}
+                      <div className="flex items-center gap-0.5 mb-0.5">
+                        <stat.icon className="text-[7px]" style={{ color: stat.color }} />
+                        <span className="hidden xs:inline text-[7px] font-black text-zinc-600 uppercase tracking-widest">{stat.label}</span>
                       </div>
-                      <p className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-wide">{stat.label}</p>
+                      <div className="text-[10px] md:text-xl font-black text-white">
+                        {stat.value} {stat.count && <span className="text-[7px] md:text-xs text-zinc-500">{stat.count}</span>}
+                      </div>
                     </div>
                   ))}
                 </div>
 
-                {/* Mobile Actions */}
-                {!isOwner && (
-                  <div className="md:hidden flex flex-col gap-2 mt-4">
-                    <button
-                      onClick={handleFollowToggle}
-                      disabled={followLoading}
-                      className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                        isFollowing 
-                          ? "bg-zinc-800 text-white border border-zinc-700" 
-                          : "bg-white text-black"
-                      }`}
-                    >
-                      {followLoading ? (
-                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                      ) : isFollowing ? (
-                        "Following"
-                      ) : (
-                        "Follow"
-                      )}
-                    </button>
-
-                    {user?.role === "client" && (
-                      <button
-                        onClick={() => {
-                          if (user?.role === "client" && user?.clientKycStatus !== "verified") {
-                            setShowKYCModal(true);
-                          } else {
-                            setRequestModalOpen(true);
-                          }
-                        }}
-                        className="md:hidden w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg"
-                      >
-                        <FaPaperPlane className="text-xs" />
-                        Contact Editor
-                      </button>
+                {/* Bio & Professional Indicators (Mobile Compact) */}
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[9px] md:text-base font-black text-zinc-300 uppercase">
+                      {userData?.role === "editor" ? "PRO VIDEO EDITOR" : "CLIENT"}
+                    </span>
+                    {profile?.experience && (
+                      <span className="px-1.5 py-0.5 bg-zinc-900/50 text-zinc-500 text-[7px] md:text-[10px] font-black rounded border border-zinc-800 uppercase trackers-widest">
+                        {profile.experience}
+                      </span>
                     )}
                   </div>
-                )}
+
+                  {profile?.about && (
+                    <div className="max-w-2xl">
+                      <p className="text-[10px] md:text-sm font-medium text-zinc-400 leading-tight">
+                        <span className="md:hidden">
+                          {profile.about.split(' ').length > 4 
+                            ? (
+                              <>
+                                {profile.about.split(' ').slice(0, 4).join(' ')}... 
+                                <button onClick={() => setActiveTab("about")} className="text-white font-black ml-1 uppercase text-[8px]">more</button>
+                              </>
+                            ) : profile.about
+                          }
+                        </span>
+                        <span className="hidden md:block leading-relaxed">{profile.about}</span>
+                        
+                        {/* Mobile Integrated Availability Status */}
+                        {userData?.role === 'editor' && userData?.availability && (
+                          <div className="md:hidden inline-flex items-center gap-1 px-1.5 py-0.5 bg-zinc-900/50 rounded border border-zinc-800 scale-[0.85] origin-left">
+                            <FaCircle className={`text-[6px] ${
+                              userData.availability.status === 'available' ? 'text-emerald-500' : 
+                              userData.availability.status === 'busy' ? 'text-yellow-500' : 'text-blue-500'
+                            }`} />
+                            <span className="text-[7px] font-black text-zinc-400 uppercase tracking-widest">
+                              {userData.availability.status === 'available' ? 'Available' : 
+                               userData.availability.status === 'busy' ? 'Busy' : 'Small Only'}
+                            </span>
+                          </div>
+                        )}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Metadata & Indicators Flow */}
+                  <div className="flex flex-wrap items-center gap-3 pt-2 mt-2 border-t border-zinc-900/50 text-zinc-500 text-[8px] md:text-[11px] font-black uppercase tracking-tight">
+                    {profile.location?.country && (
+                      <div className="flex items-center gap-1">
+                        <FaMapMarkerAlt size={7} /> 
+                        <ReactCountryFlag
+                          countryCode={countryNameToCode[profile.location.country] || "IN"}
+                          svg
+                          style={{ width: "8px", height: "8px" }}
+                        />
+                        <span>{profile.location.country}</span>
+                      </div>
+                    )}
+                    {profile.contactEmail && (
+                      <div className="flex items-center gap-1">
+                        <FaEnvelope size={7} /> <span className="normal-case truncate max-w-[100px] md:max-w-none">{profile.contactEmail}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <FaCalendarAlt size={7} /> <span>Member since 2024</span>
+                    </div>
+                    
+                    {/* Availability Status (Desktop Metadata) */}
+                    {userData?.role === 'editor' && userData?.availability && (
+                      <div className="hidden md:flex items-center gap-1.5 ml-auto px-2.5 py-1 bg-zinc-900 border border-zinc-800 rounded">
+                        <FaCircle className={`text-[8px] ${
+                          userData.availability.status === 'available' ? 'text-emerald-500' : 
+                          userData.availability.status === 'busy' ? 'text-yellow-500' : 'text-blue-500'
+                        }`} />
+                        <span className="text-[9px] font-black uppercase tracking-widest text-zinc-300">
+                          {userData.availability.status === 'available' ? 'Available' : 
+                           userData.availability.status === 'busy' ? 'Busy' : 'Small Only'}
+                        </span>
+                      </div>
+                    )}
+
+                    {isVerified && !userData?.availability && (
+                      <div className="md:ml-auto flex items-center gap-1 text-emerald-500/80">
+                        <FaCheckCircle size={7} /> <span>Verified</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </motion.div>
 
           {/* ==================== TABS ==================== */}
-          <div className="flex justify-center mb-5">
-            <div className="inline-flex bg-zinc-950 border border-zinc-800/50 rounded-lg p-1">
+          <div className="flex justify-center mb-2.5">
+            <div className="inline-flex bg-zinc-950/80 border border-zinc-900 rounded-lg p-1 relative">
               {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
@@ -584,13 +655,20 @@ const PublicEditorProfile = () => {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`
-                      px-3 md:px-4 py-2 rounded-md text-xs md:text-sm font-medium transition-all flex items-center gap-1.5
+                      relative px-2.5 py-1.5 rounded-md text-[10px] md:text-sm font-black uppercase tracking-widest transition-all flex items-center gap-1.5 z-10
                       ${isActive 
-                        ? "bg-white text-black" 
+                        ? "text-black" 
                         : "text-zinc-500 hover:text-zinc-300"
                       }
                     `}
                   >
+                    {isActive && (
+                      <motion.div 
+                        layoutId="activeTabPublic"
+                        className="absolute inset-0 bg-white rounded-md -z-10"
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      />
+                    )}
                     <tab.icon className="text-[10px] md:text-xs" />
                     {tab.label}
                   </button>
