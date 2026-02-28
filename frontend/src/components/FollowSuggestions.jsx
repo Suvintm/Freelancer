@@ -7,9 +7,10 @@ import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import { useAppContext } from "../context/AppContext";
 import { toast } from "react-toastify";
+import FollowingAnimation from "./FollowingAnimation";
 
 const FollowSuggestions = () => {
-    const { user, backendURL } = useAppContext();
+    const { user, setUser, backendURL } = useAppContext();
     const navigate = useNavigate();
     const [followStates, setFollowStates] = useState({});
 
@@ -22,7 +23,8 @@ const FollowSuggestions = () => {
             // Init follow states
             const states = {};
             (res.data.suggestions || []).forEach(s => {
-                states[s._id] = { loading: false, isFollowing: false, isPending: false };
+                const isFollowed = user?.following?.some(id => id.toString() === s._id.toString());
+                states[s._id] = { loading: false, isFollowing: !!isFollowed, isPending: false, showAnimation: false };
             });
             setFollowStates(states);
             return res.data.suggestions || [];
@@ -47,19 +49,52 @@ const FollowSuggestions = () => {
                 headers: { Authorization: `Bearer ${user.token}` }
             });
 
-            setFollowStates(prev => ({
-                ...prev,
-                [targetId]: { 
-                    loading: false, 
-                    isFollowing: !!res.data.isFollowing, 
-                    isPending: !!res.data.isPending 
-                }
-            }));
+            if (res.data.isFollowing) {
+                setFollowStates(prev => ({
+                    ...prev,
+                    [targetId]: { 
+                        loading: false, 
+                        isFollowing: true, 
+                        isPending: false,
+                        showAnimation: true
+                    }
+                }));
+                // Sync with global user context
+                setUser(prevUser => ({
+                    ...prevUser,
+                    following: [...(prevUser?.following || []), targetId]
+                }));
+                
+                setTimeout(() => {
+                    setFollowStates(prev => ({
+                        ...prev,
+                        [targetId]: { ...prev[targetId], showAnimation: false }
+                    }));
+                }, 2000);
+            } else {
+                setFollowStates(prev => ({
+                    ...prev,
+                    [targetId]: { 
+                        loading: false, 
+                        isFollowing: false, 
+                        isPending: !!res.data.isPending,
+                        showAnimation: false
+                    }
+                }));
 
-            if (res.data.isPending) {
-                toast.info("Follow request sent");
-            } else if (res.data.isFollowing) {
-                toast.success(`Following ${targetUser.name}`);
+                // Sync with global user context (Remove if unfollowed)
+                if (!res.data.isPending) {
+                    setUser(prevUser => ({
+                        ...prevUser,
+                        following: (prevUser?.following || []).filter(id => id.toString() !== targetId.toString())
+                    }));
+                }
+
+                if (res.data.isPending) {
+                    toast.info("Follow request sent");
+                } else {
+                    toast.info(`Unfollowed ${targetUser.name}`);
+                }
             }
         } catch (error) {
             toast.error(error.response?.data?.message || "Action failed");
@@ -114,8 +149,19 @@ const FollowSuggestions = () => {
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ delay: idx * 0.05 }}
                                 onClick={() => navigate(item.role === 'editor' ? `/editor/${item._id}` : `/public-profile/${item._id}`)}
-                                className="relative min-w-[155px] max-w-[155px] bg-[#111116] border border-white/5 rounded-2xl p-4 flex flex-col items-center text-center group cursor-pointer hover:border-white/10 transition-all"
+                                className="relative min-w-[155px] max-w-[155px] bg-[#111116] border border-white/5 rounded-2xl p-4 flex flex-col items-center text-center group cursor-pointer hover:border-white/10 transition-all overflow-hidden"
                             >
+                                <AnimatePresence>
+                                    {state.showAnimation && (
+                                        <FollowingAnimation 
+                                            variant="local" 
+                                            onComplete={() => setFollowStates(prev => ({
+                                                ...prev,
+                                                [item._id]: { ...prev[item._id], showAnimation: false }
+                                            }))} 
+                                        />
+                                    )}
+                                </AnimatePresence>
                                 {/* Professional Editor Header */}
                                 {item.role === 'editor' && (
                                     <div className="absolute top-2 left-0 right-0 px-3 flex items-center justify-center gap-1">
@@ -144,10 +190,10 @@ const FollowSuggestions = () => {
 
                                 <button
                                     onClick={(e) => handleFollow(e, item)}
-                                    disabled={state.loading || state.isFollowing || state.isPending}
-                                    className={`w-full py-1.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-2 ${
+                                    disabled={state.loading || state.isPending}
+                                    className={`w-full py-1.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-2 group/btn ${
                                         state.isFollowing 
-                                            ? "bg-white/10 text-white cursor-default" 
+                                            ? "bg-white/10 text-white hover:bg-red-500/20 hover:text-red-400 border border-white/10 hover:border-red-500/30" 
                                             : state.isPending
                                                 ? "bg-zinc-800 text-zinc-400 cursor-default"
                                                 : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/20"
@@ -157,8 +203,9 @@ const FollowSuggestions = () => {
                                         <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                     ) : state.isFollowing ? (
                                         <>
-                                            <FaCheck className="text-[8px]" />
-                                            Following
+                                            <FaCheck className="text-[8px] group-hover/btn:hidden" />
+                                            <span className="group-hover/btn:hidden">Following</span>
+                                            <span className="hidden group-hover/btn:inline">Unfollow</span>
                                         </>
                                     ) : state.isPending ? (
                                         "Requested"

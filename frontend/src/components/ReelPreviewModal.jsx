@@ -16,6 +16,7 @@ import { useReelsContext } from "../context/ReelsContext";
 import logo from "../assets/logo.png";
 import axios from "axios";
 import { toast } from "react-toastify";
+import FollowingAnimation from "./FollowingAnimation";
 
 const ReelPreviewModal = ({ reel, onClose, onCommentClick }) => {
     const { user, backendURL } = useAppContext();
@@ -27,6 +28,9 @@ const ReelPreviewModal = ({ reel, onClose, onCommentClick }) => {
     const [likesCount, setLikesCount] = useState(reel.likes?.length || 0);
     const [isPlaying, setIsPlaying] = useState(true);
     const [showMuteIcon, setShowMuteIcon] = useState(false);
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [followLoading, setFollowLoading] = useState(false);
+    const [showFollowAnimation, setShowFollowAnimation] = useState(false);
 
     // Show mute icon when globalMuted changes
     useEffect(() => {
@@ -41,6 +45,13 @@ const ReelPreviewModal = ({ reel, onClose, onCommentClick }) => {
             videoRef.current.muted = globalMuted;
         }
     }, [globalMuted]);
+
+    useEffect(() => {
+        if (!user || user._id === reel.editor?._id) return;
+        axios.get(`${backendURL}/api/users/follow/status/${reel.editor?._id}`, {
+            headers: { Authorization: `Bearer ${user.token}` },
+        }).then((res) => setIsFollowing(res.data.isFollowing)).catch(() => {});
+    }, [user, reel.editor?._id, backendURL]);
 
     useEffect(() => {
         if (videoRef.current && isLoaded) {
@@ -80,6 +91,28 @@ const ReelPreviewModal = ({ reel, onClose, onCommentClick }) => {
         } else {
             navigator.clipboard.writeText(url);
             toast.success("Link copied!");
+        }
+    };
+
+    const handleFollow = async (e) => {
+        e.preventDefault(); e.stopPropagation();
+        if (!user) return toast.error("Please login to follow");
+        if (user._id === reel.editor?._id) return;
+        if (followLoading) return;
+        setFollowLoading(true);
+        const newFollowing = !isFollowing;
+        setIsFollowing(newFollowing);
+        try {
+            await axios.post(`${backendURL}/api/user/follow/${reel.editor?._id}`, {}, { headers: { Authorization: `Bearer ${user.token}` } });
+            if (newFollowing) {
+                setShowFollowAnimation(true);
+                setTimeout(() => setShowFollowAnimation(false), 2000);
+            }
+        } catch {
+            setIsFollowing(!newFollowing);
+            toast.error("Failed to update follow status");
+        } finally {
+            setFollowLoading(false);
         }
     };
 
@@ -271,9 +304,19 @@ const ReelPreviewModal = ({ reel, onClose, onCommentClick }) => {
                                     alt={reel.editor?.name}
                                 />
                             </div>
-                            <div className="flex flex-col">
-                                <span className="text-white text-sm font-bold tracking-tight">{reel.editor?.name}</span>
-                                <span className="text-[8px] font-black text-white/50 tracking-widest uppercase">EDITOR</span>
+                            <div className="flex flex-col gap-1">
+                                <div className="flex flex-col">
+                                    <span className="text-white text-sm font-bold tracking-tight">{reel.editor?.name}</span>
+                                    <span className="text-[8px] font-black text-white/50 tracking-widest uppercase">EDITOR</span>
+                                </div>
+                                {user?._id !== reel.editor?._id && (
+                                    <button
+                                        onClick={handleFollow}
+                                        className="w-fit h-6 px-4 bg-transparent border border-white rounded-full flex items-center justify-center text-white text-[10px] font-bold uppercase tracking-wider active:scale-95 transition-all hover:bg-white/20 shadow-lg"
+                                    >
+                                        {isFollowing ? "Following" : "Follow"}
+                                    </button>
+                                )}
                             </div>
                         </div>
                         <h2 className="text-white font-bold text-base mb-1 drop-shadow-md">{reel.title}</h2>
@@ -302,6 +345,12 @@ const ReelPreviewModal = ({ reel, onClose, onCommentClick }) => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
+
+                <AnimatePresence>
+                    {showFollowAnimation && (
+                        <FollowingAnimation onComplete={() => setShowFollowAnimation(false)} />
+                    )}
+                </AnimatePresence>
             </motion.div>
         </motion.div>
     );

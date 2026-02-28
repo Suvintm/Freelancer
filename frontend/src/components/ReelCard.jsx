@@ -18,6 +18,7 @@ import { useAppContext } from "../context/AppContext";
 import { toast } from "react-toastify";
 import logo from "../assets/logo.png";
 import { repairUrl } from "../utils/urlHelper.jsx";
+import FollowingAnimation from "./FollowingAnimation";
 
 /**
  * ReelCard — Minimalist Professional UI.
@@ -34,6 +35,7 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
     const [isFollowing, setIsFollowing] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
     const [showMuteIcon, setShowMuteIcon] = useState(false);
+    const [showFollowAnimation, setShowFollowAnimation] = useState(false);
 
     // Show mute icon when globalMuted changes
     useEffect(() => {
@@ -119,6 +121,10 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
         setIsFollowing(newFollowing);
         try {
             await axios.post(`${backendURL}/api/user/follow/${reel.editor?._id}`, {}, { headers: { Authorization: `Bearer ${user.token}` } });
+            if (newFollowing) {
+                setShowFollowAnimation(true);
+                setTimeout(() => setShowFollowAnimation(false), 2000);
+            }
         } catch {
             setIsFollowing(!newFollowing);
             toast.error("Failed to update follow status");
@@ -300,6 +306,12 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
                     <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1.1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }} className="absolute inset-0 flex items-center justify-center pointer-events-none z-[60]">
                         <FaHeart className="text-white text-7xl drop-shadow-2xl opacity-60" />
                     </motion.div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {showFollowAnimation && (
+                    <FollowingAnimation onComplete={() => setShowFollowAnimation(false)} />
                 )}
             </AnimatePresence>
         </div>
