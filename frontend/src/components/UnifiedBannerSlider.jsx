@@ -45,10 +45,10 @@ const repairUrl = (url) => {
                      .replace(/raw_upload_+/g, "raw/upload/");
 
         // Fix version slash (matches /v123_ or _v123_ or v123_)
-        fixed = fixed.replace(/([\/_]?v\d+)_+/g, "$1/"); 
+        fixed = fixed.replace(/([/_]?v\d+)_+/g, "$1/"); 
         
         // Fix cloud name slash (e.g. /cloudname_image/)
-        fixed = fixed.replace(/(res\.cloudinary\.com\/[^\/_]+)_+(image|video|raw|authenticated)_*/g, "$1/$2/");
+        fixed = fixed.replace(/(res\.cloudinary\.com\/[^/_]+)_+(image|video|raw|authenticated)_*/g, "$1/$2/");
         
         // Fix folder slashes
         fixed = fixed.replace(/advertisements_images_+/g, "advertisements/images/")

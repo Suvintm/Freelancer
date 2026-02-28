@@ -37,11 +37,11 @@ const repairUrl = (val) => {
                    .replace(/raw_upload_+/g, "raw/upload/");
       
       // Fix version slash (matches /v123_ or _v123_ or v123_)
-      fixed = fixed.replace(/([\/_]?v\d+)_+/g, "$1/"); 
+      fixed = fixed.replace(/([/_]?v\d+)_+/g, "$1/"); 
       
       // Fix slash between cloud_name and resource_type (e.g. /cloudname_image/)
       // Matches cloudname followed by underscore followed by resource type
-      fixed = fixed.replace(/(res\.cloudinary\.com\/[^\/_]+)_+(image|video|raw|authenticated)_*/g, "$1/$2/");
+      fixed = fixed.replace(/(res\.cloudinary\.com\/[^/_]+)_+(image|video|raw|authenticated)_*/g, "$1/$2/");
       
       // Fix portfolio/images folder mangling
       fixed = fixed.replace(/portfolio_([a-z0-9]+)_+/gi, "portfolio/$1/");

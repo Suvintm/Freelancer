@@ -104,7 +104,9 @@ export const delCache = async (key) => {
   try {
     await client.del(key);
     logger.debug(`[Redis] CACHE DEL: ${key}`);
-  } catch {}
+  } catch (err) {
+    // Fail silently for cache deletion errors
+  }
 };
 
 /**
@@ -116,7 +118,9 @@ export const delPattern = async (pattern) => {
     const keys = await client.keys(pattern);
     if (keys.length) await client.del(...keys);
     logger.debug(`[Redis] CACHE DEL PATTERN: ${pattern} (${keys.length} keys)`);
-  } catch {}
+  } catch (err) {
+    // Fail silently for pattern deletion errors
+  }
 };
 
 export default client;
