@@ -347,12 +347,16 @@ const PublicEditorProfile = () => {
   const isVerified = userData?.kycStatus === 'verified' || profile?.kycVerified;
   const isOwner = user?._id === userData._id;
 
-  const tabs = [
+  const allTabs = [
     { id: "portfolio", label: "Portfolio", icon: FaImages },
     { id: "about", label: "About", icon: FaUser },
     { id: "gigs", label: "Gigs", icon: FaShoppingCart },
     { id: "achievements", label: "Achievements", icon: HiOutlineTrophy },
   ];
+
+  const tabs = userData?.role === 'client' 
+    ? allTabs.filter(tab => ["portfolio", "about"].includes(tab.id))
+    : allTabs;
 
   // Real ratings from profile ratingStats
   const hasRatings = profile?.ratingStats && profile.ratingStats.totalReviews > 0;
@@ -475,6 +479,12 @@ const PublicEditorProfile = () => {
                           <MdVerified className="text-blue-500 text-[9px]" />
                         </div>
                       )}
+                      {userData?.role === 'client' && (
+                        <div className="flex items-center gap-1 mb-1.5 bg-purple-500/15 px-1.5 py-0.5 rounded border border-purple-500/30">
+                          <span className="text-[7px] font-black text-purple-400 uppercase tracking-tighter">Verified Client</span>
+                          <MdVerified className="text-purple-400 text-[9px]" />
+                        </div>
+                      )}
                       <div className="flex items-center gap-1.5 mb-1">
                         <FaUserFriends className="text-[8px] text-zinc-600" />
                         <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Followers</span>
@@ -539,10 +549,10 @@ const PublicEditorProfile = () => {
                 {/* Subsidiary Stats Row (Ultra Dense on Mobile) */}
                 <div className="flex justify-between gap-1 mb-3 bg-zinc-950/40 rounded-lg py-2 px-1 border border-zinc-900/30">
                   {(userData?.role === 'editor' ? statsData : [
-                    { label: "Spent", value: "PRO", icon: FaRupeeSign, color: "#10B981" },
-                    { label: "Orders", value: "24", icon: FaShoppingCart, color: "#6366F1" },
-                    { label: "Reels", value: userData?.portfolios?.length || 0, icon: FaFilm, color: "#8B5CF6" },
-                    { label: "Rating", value: "4.9", icon: FaStar, color: "#F59E0B" }
+                    { label: "Spent", value: profile.totalSpent ? `₹${profile.totalSpent}` : "PRO", icon: FaRupeeSign, color: "#10B981" },
+                    { label: "Orders", value: profile.orderCount || "0", icon: FaShoppingCart, color: "#6366F1" },
+                    { label: "Reels", value: profile.portfolio?.length || 0, icon: FaFilm, color: "#8B5CF6" },
+                    { label: "Rating", value: displayRating, count: reviewCount > 0 ? `(${reviewCount})` : "", icon: FaStar, color: hasRatings ? "#F59E0B" : "#6B7280", clickable: true }
                   ]).filter(s => !s.label.includes('Follower') && !s.label.includes('Following')).map((stat) => (
                     <div 
                       key={stat.label} 
@@ -735,7 +745,7 @@ const PublicEditorProfile = () => {
                     )}
 
                     {/* Skills */}
-                    {profile.skills?.length > 0 && (
+                    {profile.skills?.length > 0 && userData?.role === 'editor' && (
                       <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5">
                         <div className="flex items-center gap-2.5 mb-3">
                           <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
@@ -779,7 +789,7 @@ const PublicEditorProfile = () => {
                     )}
 
                     {/* Certifications */}
-                    {profile.certifications?.length > 0 && (
+                    {profile.certifications?.length > 0 && userData?.role === 'editor' && (
                       <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5">
                         <div className="flex items-center gap-2.5 mb-3">
                           <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
@@ -824,55 +834,57 @@ const PublicEditorProfile = () => {
                   </div>
 
                   {/* Sidebar */}
-                  <div className="space-y-4">
-                    {/* Badges */}
-                    <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4">
-                      <h4 className="text-sm font-semibold text-white mb-3">Badges</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {[
-                          { icon: FaStar, label: 'Top Rated', active: true },
-                          { icon: FaCheckCircle, label: 'Verified', active: isVerified },
-                        ].map((badge) => (
-                          <div
-                            key={badge.label}
-                            className={`flex items-center gap-1.5 px-2 py-1 rounded border text-[10px] ${
-                              badge.active 
-                                ? 'bg-zinc-900 border-zinc-700 text-zinc-300'
-                                : 'bg-zinc-950 border-zinc-800 text-zinc-600'
-                            }`}
-                          >
-                            <badge.icon className="text-[9px]" />
-                            <span>{badge.label}</span>
-                          </div>
-                        ))}
+                  {userData?.role === 'editor' && (
+                    <div className="space-y-4">
+                      {/* Badges */}
+                      <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4">
+                        <h4 className="text-sm font-semibold text-white mb-3">Badges</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { icon: FaStar, label: 'Top Rated', active: true },
+                            { icon: FaCheckCircle, label: 'Verified', active: isVerified },
+                          ].map((badge) => (
+                            <div
+                              key={badge.label}
+                              className={`flex items-center gap-1.5 px-2 py-1 rounded border text-[10px] ${
+                                badge.active 
+                                  ? 'bg-zinc-900 border-zinc-700 text-zinc-300'
+                                  : 'bg-zinc-950 border-zinc-800 text-zinc-600'
+                              }`}
+                            >
+                              <badge.icon className="text-[9px]" />
+                              <span>{badge.label}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Performance */}
-                    <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4">
-                      <h4 className="text-sm font-semibold text-white mb-3">Performance</h4>
-                      <div className="space-y-3">
-                        <div>
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-[10px] text-zinc-500">Response Rate</span>
-                            <span className="text-[10px] text-white font-medium">98%</span>
+                      {/* Performance */}
+                      <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4">
+                        <h4 className="text-sm font-semibold text-white mb-3">Performance</h4>
+                        <div className="space-y-3">
+                          <div>
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-[10px] text-zinc-500">Response Rate</span>
+                              <span className="text-[10px] text-white font-medium">98%</span>
+                            </div>
+                            <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+                              <div className="h-full bg-emerald-600 rounded-full" style={{ width: '98%' }} />
+                            </div>
                           </div>
-                          <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
-                            <div className="h-full bg-emerald-600 rounded-full" style={{ width: '98%' }} />
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-[10px] text-zinc-500">On-time Delivery</span>
-                            <span className="text-[10px] text-white font-medium">95%</span>
-                          </div>
-                          <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
-                            <div className="h-full bg-blue-600 rounded-full" style={{ width: '95%' }} />
+                          <div>
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-[10px] text-zinc-500">On-time Delivery</span>
+                              <span className="text-[10px] text-white font-medium">95%</span>
+                            </div>
+                            <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+                              <div className="h-full bg-blue-600 rounded-full" style={{ width: '95%' }} />
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </motion.div>
             )}
