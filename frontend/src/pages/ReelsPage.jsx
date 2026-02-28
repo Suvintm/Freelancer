@@ -249,20 +249,16 @@ const ReelsPage = () => {
                     <HiOutlineChevronLeft className="text-2xl" />
                 </button>
 
-                <div className="flex items-center gap-2">
-                    <img src={logo} className="w-8 h-8 rounded-xl opacity-90" alt="SuviX" />
-                    <span className="text-white font-semibold text-lg tracking-wide drop-shadow-lg">
-                        SuviX Reels
-                    </span>
-                </div>
+                {/* Removed redundant SuviX Reels text from page level */}
+                <div />
 
                 {/* Refresh button */}
                 <button
                     onClick={handleRefresh}
-                    className="w-10 h-10 bg-white/15 backdrop-blur-xl rounded-full flex items-center justify-center text-white hover:bg-white/25 transition shadow-lg pointer-events-auto"
+                    className="w-10 h-10 flex items-center justify-center text-white/70 hover:text-white transition-colors pointer-events-auto"
                     title="Refresh reels"
                 >
-                    <BiRefresh className={`text-xl ${refreshing ? "animate-spin" : ""}`} />
+                    <BiRefresh className={`text-2xl ${refreshing ? "animate-spin" : ""}`} />
                 </button>
             </div>
 

@@ -33,6 +33,14 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
     const [showHeartAnimation, setShowHeartAnimation] = useState(false);
     const [isFollowing, setIsFollowing] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
+    const [showMuteIcon, setShowMuteIcon] = useState(false);
+
+    // Show mute icon when globalMuted changes
+    useEffect(() => {
+        setShowMuteIcon(true);
+        const timer = setTimeout(() => setShowMuteIcon(false), 800);
+        return () => clearTimeout(timer);
+    }, [globalMuted]);
 
     const videoRef = useRef(null);
     const progressTimerRef = useRef(null);
@@ -124,26 +132,51 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
 
     return (
         <div className="w-full h-full bg-black relative flex items-center justify-center overflow-hidden">
-            <div className="absolute inset-0 cursor-pointer" onClick={() => { if (videoRef.current) isPlaying ? videoRef.current.pause() : videoRef.current.play(); setIsPlaying(!isPlaying); }}>
+            <div 
+                className="absolute inset-0 cursor-pointer" 
+                onClick={(e) => { e.stopPropagation(); setGlobalMuted(!globalMuted); }}
+                onMouseDown={() => { if (videoRef.current) { videoRef.current.pause(); setIsPlaying(false); } }}
+                onMouseUp={() => { if (videoRef.current) { videoRef.current.play(); setIsPlaying(true); } }}
+                onTouchStart={() => { if (videoRef.current) { videoRef.current.pause(); setIsPlaying(false); } }}
+                onTouchEnd={() => { if (videoRef.current) { videoRef.current.play(); setIsPlaying(true); } }}
+                onContextMenu={(e) => e.preventDefault()}
+            >
                 {reel.mediaType === "video" ? (
-                    <video ref={videoRef} src={repairUrl(reel.mediaUrl)} className="w-full h-full object-cover" loop playsInline muted={globalMuted} />
+                    <video 
+                        ref={videoRef} 
+                        src={repairUrl(reel.mediaUrl)} 
+                        className="w-full h-full object-cover" 
+                        loop 
+                        playsInline 
+                        muted={globalMuted} 
+                        controlsList="nodownload" 
+                    />
                 ) : (
                     <img src={repairUrl(reel.mediaUrl)} className="w-full h-full object-cover" alt="" />
                 )}
-            </div>
-
+            {/* Mute/Unmute Indicator Overlay */}
             <AnimatePresence>
-                {!isPlaying && isActive && reel.mediaType === "video" && (
-                    <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="absolute inset-0 flex items-center justify-center pointer-events-none z-50">
-                        <div className="w-14 h-14 bg-black/30 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10">
-                            <FaPlay className="text-white text-xl ml-1" />
+                {showMuteIcon && (
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.5 }}
+                        className="absolute inset-0 flex items-center justify-center pointer-events-none z-50"
+                    >
+                        <div className="w-16 h-16 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10">
+                            {globalMuted ? (
+                                <FaVolumeMute className="text-white text-2xl" />
+                            ) : (
+                                <FaVolumeUp className="text-white text-2xl" />
+                            )}
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
+            </div>
 
             {/* ── SIDEBAR (Polished & Small) ── */}
-            <div className="absolute right-3 bottom-24 z-40 flex flex-col items-center gap-5">
+            <div className="absolute right-3 bottom-24 z-50 flex flex-col items-center gap-5">
                 {[
                     { icon: isLiked ? <FaHeart className="text-red-500" /> : <FaRegHeart />, count: likesCount, action: handleLike },
                     { icon: <FaComment />, count: reel.commentsCount || 0, action: () => onCommentClick(reel._id) },
@@ -175,43 +208,38 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
             {/* OVERLAY CONTENT */}
             <div className="absolute inset-0 z-40 p-5 flex flex-col justify-between pointer-events-none">
                 {/* TOP HEADER */}
-                <div className="flex items-center justify-between">
-                    <div className="flex flex-col gap-1 items-start">
-                        <div className="flex items-center gap-2">
-                            <img src={logo} className="w-6 h-6 rounded-lg opacity-90 brightness-0 invert" alt="SuviX" />
-                            <span className="text-white font-black text-[12px] tracking-widest uppercase text-shadow">
-                                SuviX Reels
-                            </span>
-                        </div>
-                        
-                        {/* NEW Badge - Repositioned under text */}
-                        {(() => {
-                            const isNew = reel.createdAt && (new Date() - new Date(reel.createdAt)) < 24 * 60 * 60 * 1000;
-                            if (!isNew) return null;
-                            return (
-                                <motion.div 
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ 
-                                        opacity: [0.8, 1, 0.8],
-                                        scale: [1, 1.05, 1],
-                                    }}
-                                    transition={{ 
-                                        duration: 2,
-                                        repeat: Infinity,
-                                        ease: "easeInOut"
-                                    }}
-                                    className="px-2 py-0.5 rounded-full border border-white/40 bg-white/5 backdrop-blur-sm flex items-center justify-center min-w-[35px] ml-8"
-                                >
-                                    <span className="text-white text-[7px] font-medium uppercase tracking-[0.1em]">
-                                        NEW
-                                    </span>
-                                </motion.div>
-                            );
-                        })()}
-                    </div>
+                <div className="flex flex-col items-center gap-1">
                     <div className="flex items-center gap-2">
-                        {/* Empty space for consistency */}
+                        <img src={logo} className="w-6 h-6 object-contain" alt="SuviX" />
+                        <span className="text-white font-normal text-[12px] tracking-widest uppercase text-shadow">
+                            SuviX Reels
+                        </span>
                     </div>
+                    
+                    {/* NEW Badge - Centered under "SuviX Reels" text */}
+                    {(() => {
+                        const isNew = reel.createdAt && (new Date() - new Date(reel.createdAt)) < 24 * 60 * 60 * 1000;
+                        if (!isNew) return null;
+                        return (
+                            <motion.div 
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ 
+                                    opacity: [0.8, 1, 0.8],
+                                    scale: [1, 1.05, 1],
+                                }}
+                                transition={{ 
+                                    duration: 2,
+                                    repeat: Infinity,
+                                    ease: "easeInOut"
+                                }}
+                                className="px-2 py-0.5 rounded-full border border-white/40 bg-white/5 backdrop-blur-sm flex items-center justify-center min-w-[35px]"
+                            >
+                                <span className="text-white text-[7px] font-normal uppercase tracking-[0.1em]">
+                                    NEW
+                                </span>
+                            </motion.div>
+                        );
+                    })()}
                 </div>
 
                 {/* BOTTOM INFO (Tight & Minimal) */}

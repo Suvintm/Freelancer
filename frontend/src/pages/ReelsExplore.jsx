@@ -11,6 +11,7 @@ import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import ReelGridItem from "../components/ReelGridItem.jsx";
 import ReelPreviewModal from "../components/ReelPreviewModal.jsx";
+import CommentSection from "../components/CommentSection";
 import Loader from "../components/Loader.jsx";
 
 const ReelsExplore = () => {
@@ -24,6 +25,26 @@ const ReelsExplore = () => {
     const [previewReel, setPreviewReel] = useState(null);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
+    const [showComments, setShowComments] = useState(false);
+    const [activeReelId, setActiveReelId] = useState(null);
+
+
+
+    const handleCommentClick = (reelId) => {
+        setActiveReelId(reelId);
+        setShowComments(true);
+    };
+
+    const handleCommentAdded = (newCount) => {
+        setReels((prev) =>
+            prev.map((r) =>
+                r._id === activeReelId ? { ...r, commentsCount: newCount } : r
+            )
+        );
+        if (previewReel?._id === activeReelId) {
+            setPreviewReel(prev => ({ ...prev, commentsCount: newCount }));
+        }
+    };
 
     // Fetch initial data
     useEffect(() => {
@@ -153,7 +174,28 @@ const ReelsExplore = () => {
                     <ReelPreviewModal 
                         reel={previewReel} 
                         onClose={() => setPreviewReel(null)} 
+                        onCommentClick={handleCommentClick}
                     />
+                )}
+            </AnimatePresence>
+
+            {/* COMMENT SECTION DRAWER */}
+            <AnimatePresence>
+                {showComments && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1100]"
+                            onClick={() => setShowComments(false)}
+                        />
+                        <CommentSection
+                            reelId={activeReelId}
+                            onClose={() => setShowComments(false)}
+                            onCommentAdded={handleCommentAdded}
+                        />
+                    </>
                 )}
             </AnimatePresence>
         </div>

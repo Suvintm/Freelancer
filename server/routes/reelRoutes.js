@@ -11,9 +11,6 @@ import {
     getReelsByEditor,
     checkPublished,
     getMyReelsAnalytics,
-    getReelsByEditor,
-    checkPublished,
-    getMyReelsAnalytics,
     trackWatchTime,
     getReelTags,
 } from "../controllers/reelController.js";
@@ -25,11 +22,11 @@ const router = express.Router();
 // Get reels feed (can be accessed without auth for discovery)
 router.get("/feed", getReelsFeed);
 
-// Get single reel
-router.get("/:id", getReel);
-
 // Get unique tags for search suggestions
 router.get("/tags/unique", getReelTags);
+
+// Get single reel
+router.get("/:id", getReel);
 
 // Get comments
 router.get("/:id/comments", getComments);

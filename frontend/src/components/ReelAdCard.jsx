@@ -5,6 +5,7 @@ import { HiXMark, HiArrowTopRightOnSquare, HiSpeakerWave, HiSpeakerXMark, HiChec
 import { FaInstagram, FaGlobe, FaChevronRight, FaPlay } from "react-icons/fa";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
+import logo from "../assets/logo.png";
 
 /**
  * ReelAdCard - Slim Redesign.
@@ -19,6 +20,14 @@ const ReelAdCard = ({ ad, onSkip }) => {
     const [muted, setMuted] = useState(true);
     const [progress, setProgress] = useState(0);
     const [isPlaying, setIsPlaying] = useState(true);
+    const [showMuteIcon, setShowMuteIcon] = useState(false);
+
+    // Show mute icon when muted changes
+    useEffect(() => {
+        setShowMuteIcon(true);
+        const timer = setTimeout(() => setShowMuteIcon(false), 800);
+        return () => clearTimeout(timer);
+    }, [muted]);
 
     // ✅ Repair mangled URLs from backend sanitization
     const repairUrl = (url) => {
@@ -80,14 +89,54 @@ const ReelAdCard = ({ ad, onSkip }) => {
     if (!ad) return null;
 
     return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative w-full h-full bg-black overflow-hidden select-none" onClick={() => { if(videoRef.current) isPlaying ? videoRef.current.pause() : videoRef.current.play(); setIsPlaying(!isPlaying); }}>
+        <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="relative w-full h-full bg-black overflow-hidden select-none" 
+            onClick={(e) => { e.stopPropagation(); setMuted(!muted); }}
+            onMouseDown={() => { if (videoRef.current) { videoRef.current.pause(); setIsPlaying(false); } }}
+            onMouseUp={() => { if (videoRef.current) { videoRef.current.play(); setIsPlaying(true); } }}
+            onTouchStart={() => { if (videoRef.current) { videoRef.current.pause(); setIsPlaying(false); } }}
+            onTouchEnd={() => { if (videoRef.current) { videoRef.current.play(); setIsPlaying(true); } }}
+            onContextMenu={(e) => e.preventDefault()}
+        >
             {/* ── MEDIA LAYER ── */}
             <div className="absolute inset-0">
                 {ad.mediaType === "video" ? (
-                    <video ref={videoRef} src={repairedMediaUrl} className="w-full h-full object-cover" autoPlay muted={muted} loop playsInline />
+                    <video 
+                        ref={videoRef} 
+                        src={repairedMediaUrl} 
+                        className="w-full h-full object-cover" 
+                        autoPlay 
+                        muted={muted} 
+                        loop 
+                        playsInline 
+                        controlsList="nodownload"
+                    />
                 ) : (
                     <img src={repairedMediaUrl} alt="" className="w-full h-full object-cover" />
                 )}
+
+                {/* Mute/Unmute Indicator Overlay */}
+                <AnimatePresence>
+                    {showMuteIcon && (
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.5 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.5 }}
+                            className="absolute inset-0 flex items-center justify-center pointer-events-none z-50"
+                        >
+                            <div className="w-16 h-16 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10">
+                                {muted ? (
+                                    <HiSpeakerXMark className="text-white text-2xl" />
+                                ) : (
+                                    <HiSpeakerWave className="text-white text-2xl" />
+                                )}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* ── TOP PROGRESS BAR (Ultra Thin) ── */}
@@ -115,11 +164,11 @@ const ReelAdCard = ({ ad, onSkip }) => {
                 )}
             </div>
 
-            {/* ── TOP HEADER (Added for Consistency) ── */}
-            <div className="absolute top-0 left-0 right-0 p-5 z-50 pointer-events-none">
+            {/* ── TOP HEADER (Centered & Refined) ── */}
+            <div className="absolute top-0 left-0 right-0 p-5 z-50 pointer-events-none flex flex-col items-center">
                 <div className="flex items-center gap-2">
-                    <img src={logo} className="w-6 h-6 rounded-lg opacity-90 brightness-0 invert" alt="SuviX" />
-                    <span className="text-white font-black text-[12px] tracking-widest uppercase text-shadow">
+                    <img src={logo} className="w-6 h-6 object-contain" alt="SuviX" />
+                    <span className="text-white font-normal text-[12px] tracking-widest uppercase text-shadow">
                         SuviX Reels
                     </span>
                 </div>
