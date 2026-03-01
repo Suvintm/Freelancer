@@ -141,12 +141,25 @@ const ReelPreviewModal = ({
     }, [isLoaded, currentIndex]);
 
     useEffect(() => {
-        const handleEsc = (e) => {
+        const handleKeyDown = (e) => {
             if (e.key === "Escape") onClose();
+            if (e.key === "ArrowUp" && currentIndex > 0) {
+                setCurrentIndex(prev => prev - 1);
+            }
+            if (e.key === "ArrowDown" && currentIndex < reels.length - 1) {
+                setCurrentIndex(prev => prev + 1);
+            }
         };
-        window.addEventListener("keydown", handleEsc);
-        return () => window.removeEventListener("keydown", handleEsc);
-    }, [onClose]);
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [onClose, currentIndex, reels.length]);
+
+    // Reset view settings when moving to a new reel
+    useEffect(() => {
+        setViewType("edited");
+        setOriginalIndex(0);
+        setIsLoaded(false);
+    }, [currentIndex]);
 
     const updateProgress = () => {
         if (videoRef.current) {
@@ -207,7 +220,25 @@ const ReelPreviewModal = ({
         }
     };
 
-    // --- SWIPE LOGIC ---
+    // --- NAVIGATION LOGIC ---
+    const lastScrollTime = useRef(0);
+    const scrollThreshold = 1000; // ms between scrolls
+
+    const handleWheel = (e) => {
+        const now = Date.now();
+        if (now - lastScrollTime.current < scrollThreshold) return;
+
+        if (Math.abs(e.deltaY) > 30) {
+            if (e.deltaY > 0 && currentIndex < reels.length - 1) {
+                setCurrentIndex(prev => prev + 1);
+                lastScrollTime.current = now;
+            } else if (e.deltaY < 0 && currentIndex > 0) {
+                setCurrentIndex(prev => prev - 1);
+                lastScrollTime.current = now;
+            }
+        }
+    };
+
     const handleDragEnd = (e, { offset, velocity }) => {
         // Vertical swipe for next/prev reel
         if (Math.abs(offset.y) > 100 || Math.abs(velocity.y) > 500) {
@@ -221,18 +252,37 @@ const ReelPreviewModal = ({
             return;
         }
 
-        // Horizontal swipe for original clips (only if in portfolio mode and viewType is original)
-        if (isPortfolioMode && viewType === "original") {
+        // --- Unified Horizontal Swipe Logic ---
+        // Treat Edited + Originals as a sequence: [Edited, Org1, Org2, ...]
+        if (isPortfolioMode) {
             const originals = reel.originalClips || (reel.originalClip ? [reel.originalClip] : []);
-            if (originals.length <= 1) return;
-
+            
             if (Math.abs(offset.x) > 50 || Math.abs(velocity.x) > 500) {
-                if (offset.x > 0) {
-                    setOriginalIndex(prev => (prev - 1 + originals.length) % originals.length);
-                } else {
-                    setOriginalIndex(prev => (prev + 1) % originals.length);
+                if (offset.x < 0) {
+                    // Swipe Left -> Move "Forward" in sequence [Edited -> Org1 -> Org2]
+                    if (viewType === "edited") {
+                        if (originals.length > 0) {
+                            setViewType("original");
+                            setOriginalIndex(0);
+                        }
+                    } else if (viewType === "original") {
+                        if (originalIndex < originals.length - 1) {
+                            setOriginalIndex(prev => prev + 1);
+                        }
+                    }
+                } else if (offset.x > 0) {
+                    // Swipe Right -> Move "Backward" in sequence [Org2 -> Org1 -> Edited]
+                    if (viewType === "original") {
+                        if (originalIndex > 0) {
+                            setOriginalIndex(prev => prev - 1);
+                        } else {
+                            setViewType("edited");
+                            setOriginalIndex(0);
+                        }
+                    } else if (viewType === "edited") {
+                        // Already at start
+                    }
                 }
-                setIsLoaded(false);
             }
         }
     };
@@ -268,52 +318,64 @@ const ReelPreviewModal = ({
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* ── VIDEO MAIN PLAYER ── */}
-                <motion.div
-                    drag={true}
-                    dragConstraints={{ top: 0, bottom: 0, left: 0, right: 0 }}
-                    dragElastic={0.2}
-                    onDragEnd={handleDragEnd}
-                    className="flex-1 w-full bg-black flex items-center justify-center relative h-full"
-                    onClick={(e) => { e.stopPropagation(); setGlobalMuted(!globalMuted); }}
-                    onMouseDown={() => { if (videoRef.current) videoRef.current.pause(); setIsPlaying(false); }}
-                    onMouseUp={() => { if (videoRef.current) videoRef.current.play(); setIsPlaying(true); }}
-                    onTouchStart={() => { if (videoRef.current) videoRef.current.pause(); setIsPlaying(false); }}
-                    onTouchEnd={() => { if (videoRef.current) videoRef.current.play(); setIsPlaying(true); }}
+                {/* ── VIDEO MAIN PLAYER AREA ── */}
+                <div 
+                    className="flex-1 w-full bg-black flex items-center justify-center relative h-full overflow-hidden"
+                    onWheel={handleWheel}
                     onContextMenu={(e) => e.preventDefault()}
                 >
-                    {isVideo ? (
-                        <>
-                            <video
-                                key={mediaUrl} 
-                                ref={videoRef}
-                                src={mediaUrl}
-                                className="w-full h-full object-cover"
-                                autoPlay
-                                loop
-                                playsInline
-                                muted={globalMuted}
-                                controlsList="nodownload"
-                                onLoadedData={() => setIsLoaded(true)}
-                                onTimeUpdate={updateProgress}
-                                onContextMenu={(e) => e.preventDefault()}
-                            />
-                            {!isLoaded && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/50">
-                                    <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                                </div>
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={currentIndex}
+                            initial={{ y: "100%", opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: "-100%", opacity: 0 }}
+                            transition={{ type: "spring", damping: 30, stiffness: 200 }}
+                            className="absolute inset-0 z-0"
+                            drag="y"
+                            dragConstraints={{ top: 0, bottom: 0 }}
+                            dragElastic={0.1}
+                            onDragEnd={handleDragEnd}
+                            onClick={(e) => { e.stopPropagation(); setGlobalMuted(!globalMuted); }}
+                            onMouseDown={() => { if (videoRef.current) videoRef.current.pause(); setIsPlaying(false); }}
+                            onMouseUp={() => { if (videoRef.current) videoRef.current.play(); setIsPlaying(true); }}
+                            onTouchStart={() => { if (videoRef.current) videoRef.current.pause(); setIsPlaying(false); }}
+                            onTouchEnd={() => { if (videoRef.current) videoRef.current.play(); setIsPlaying(true); }}
+                        >
+                            {isVideo ? (
+                                <>
+                                    <video
+                                        key={mediaUrl} 
+                                        ref={videoRef}
+                                        src={mediaUrl}
+                                        className="w-full h-full object-cover pointer-events-none"
+                                        autoPlay
+                                        loop
+                                        playsInline
+                                        muted={globalMuted}
+                                        controlsList="nodownload"
+                                        onLoadedData={() => setIsLoaded(true)}
+                                        onTimeUpdate={updateProgress}
+                                    />
+                                    {!isLoaded && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/50">
+                                            <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <img
+                                    key={mediaUrl}
+                                    src={mediaUrl}
+                                    className="w-full h-full object-cover pointer-events-none"
+                                    alt={reel?.title}
+                                    onLoad={() => setIsLoaded(true)}
+                                />
                             )}
-                        </>
-                    ) : (
-                        <img
-                            key={mediaUrl}
-                            src={mediaUrl}
-                            className="w-full h-full object-cover"
-                            alt={reel?.title}
-                            onLoad={() => setIsLoaded(true)}
-                        />
-                    )}
+                        </motion.div>
+                    </AnimatePresence>
 
-                    {/* Top Info Badge */}
+                    {/* Top Info Overlay (Fixed above the scrolling content) */}
                     <div className="absolute top-6 left-0 right-0 z-[70] flex flex-col items-center pointer-events-none">
                         <div className="flex items-center gap-2 pointer-events-auto">
                             <img src={logo} className="w-6 h-6 object-contain" alt="SuviX" />
@@ -323,27 +385,45 @@ const ReelPreviewModal = ({
                         </div>
 
                         {isPortfolioMode && (
-                            <div className="mt-4 flex gap-2 pointer-events-auto">
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); setViewType("edited"); }}
-                                    className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border ${
-                                        viewType === "edited" ? "bg-white text-black border-white" : "bg-black/40 text-white/70 border-white/20 hover:bg-black/60"
-                                    }`}
-                                >
-                                    Edited Clip
-                                </button>
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); setViewType("original"); }}
-                                    className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border ${
-                                        viewType === "original" ? "bg-white text-black border-white" : "bg-black/40 text-white/70 border-white/20 hover:bg-black/60"
-                                    }`}
-                                >
-                                    Original Clip
-                                </button>
-                            </div>
+                            <>
+                                <div className="mt-4 flex gap-2 pointer-events-auto">
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); setViewType("edited"); }}
+                                        className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border ${
+                                            viewType === "edited" ? "bg-white text-black border-white" : "bg-black/40 text-white/70 border-white/20 hover:bg-black/60"
+                                        }`}
+                                    >
+                                        Edited Clip
+                                    </button>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); setViewType("original"); }}
+                                        className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border ${
+                                            viewType === "original" ? "bg-white text-black border-white" : "bg-black/40 text-white/70 border-white/20 hover:bg-black/60"
+                                        }`}
+                                    >
+                                        Original Clip
+                                    </button>
+                                </div>
+
+                                {/* Original Clips Counter Badge */}
+                                <AnimatePresence>
+                                    {viewType === "original" && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -10 }}
+                                            className="mt-3 px-3 py-1 bg-black/40 backdrop-blur-md rounded-full border border-white/10"
+                                        >
+                                            <span className="text-[10px] font-black text-white uppercase tracking-widest">
+                                                Clip {originalIndex + 1} / {(reel.originalClips || (reel.originalClip ? [reel.originalClip] : [])).length}
+                                            </span>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </>
                         )}
                     </div>
-                </motion.div>
+                </div>
 
                 {/* Mute/Unmute Indicator Overlay */}
                 <AnimatePresence>
