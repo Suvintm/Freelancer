@@ -18,7 +18,7 @@ export const register = asyncHandler(async (req, res) => {
   let profilePicture;
 
   // Check for existing user
-  const existingEmail = await User.findOne({ email: email.toLowerCase() });
+  const existingEmail = await User.findOne({ email: email.trim().toLowerCase() });
   if (existingEmail) {
     throw new ApiError(400, "Email already registered.");
   }
@@ -118,7 +118,7 @@ export const register = asyncHandler(async (req, res) => {
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await User.findOne({ email: email.toLowerCase() });
+  const user = await User.findOne({ email: email.trim().toLowerCase() });
   if (!user) {
     throw new ApiError(401, "Invalid email or password.");
   }

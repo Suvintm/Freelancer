@@ -52,7 +52,6 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
 
   // Reels Popup State
   const [showReelsPopup, setShowReelsPopup] = useState(false);
-  const [reelsPortfolio, setReelsPortfolio] = useState(null);
   const [reelsIndex, setReelsIndex] = useState(0);
   const [reelsMuted, setReelsMuted] = useState(false);
   const reelsVideoRef = useRef(null);
@@ -303,11 +302,8 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
   };
 
   // Open Reels Popup
-  const openReelsPopup = (portfolio, startIndex = 0) => {
-    // If it's already a published reel, we might want to fetch the full reel data
-    // but for now we'll pass the portfolio object directly and let the modal handle it
-    setReelsPortfolio(portfolio);
-    setReelsIndex(startIndex);
+  const openReelsPopup = (index) => {
+    setReelsIndex(index);
     setShowReelsPopup(true);
   };
 
@@ -356,7 +352,7 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
         whileHover={{ y: -12, scale: 1.03 }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        onClick={() => openReelsPopup(portfolio)}
+        onClick={() => openReelsPopup(index)}
         className="relative rounded-3xl overflow-hidden cursor-pointer group"
         style={{
           background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 50%, #bbf7d0 100%)",
@@ -542,263 +538,6 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
               })}
             </p>
           </div>
-        </div>
-      </motion.div>
-    );
-  };
-
-  // ============ INSTAGRAM REELS POPUP ============
-  const ReelsPopup = ({ portfolio, initialIndex, onClose }) => {
-    const [currentIndex, setCurrentIndex] = useState(initialIndex);
-    const [isPlaying, setIsPlaying] = useState(true);
-    const [isMuted, setIsMuted] = useState(false);
-    const videoRef = useRef(null);
-    const allClips = getAllClips(portfolio);
-    const currentClip = allClips[currentIndex];
-    const currentIsVideo = isVideo(currentClip?.url);
-
-    useEffect(() => {
-      if (currentIsVideo && videoRef.current) {
-        if (isPlaying) {
-          videoRef.current.play();
-        } else {
-          videoRef.current.pause();
-        }
-      }
-    }, [isPlaying, currentIndex]);
-
-    const nextClip = () => {
-      setCurrentIndex((prev) => (prev + 1) % allClips.length);
-      setIsPlaying(true);
-    };
-
-    const prevClip = () => {
-      setCurrentIndex((prev) => (prev - 1 + allClips.length) % allClips.length);
-      setIsPlaying(true);
-    };
-
-    const togglePlay = () => setIsPlaying(!isPlaying);
-    const toggleMute = () => setIsMuted(!isMuted);
-
-    // Handle swipe
-    const handleDragEnd = (e, { offset, velocity }) => {
-      if (Math.abs(offset.y) > 100 || Math.abs(velocity.y) > 500) {
-        if (offset.y > 0) prevClip();
-        else nextClip();
-      }
-    };
-
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black z-[100] flex items-center justify-center"
-        onClick={onClose}
-      >
-        {/* Close Button */}
-        <motion.button
-          whileHover={{ scale: 1.1, rotate: 90 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={onClose}
-          className="absolute top-6 right-6 w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white z-10"
-        >
-          <FaTimes className="text-xl" />
-        </motion.button>
-
-        {/* Main Content */}
-        <div
-          className="relative w-full max-w-lg h-full max-h-[90vh] mx-auto"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Clip Container */}
-          <motion.div
-            drag="y"
-            dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={0.2}
-            onDragEnd={handleDragEnd}
-            className="relative w-full h-full rounded-3xl overflow-hidden bg-gradient-to-br from-gray-900 to-black"
-          >
-            {currentIsVideo ? (
-              <video
-                ref={videoRef}
-                src={currentClip?.url}
-                className="w-full h-full object-cover"
-                loop
-                playsInline
-                muted={isMuted}
-                autoPlay
-                onClick={togglePlay}
-              />
-            ) : (
-              <img
-                src={currentClip?.url}
-                alt=""
-                className="w-full h-full object-cover"
-              />
-            )}
-
-            {/* Play/Pause Overlay */}
-            {currentIsVideo && !isPlaying && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute inset-0 flex items-center justify-center bg-black/30"
-                onClick={togglePlay}
-              >
-                <motion.div
-                  whileHover={{ scale: 1.1 }}
-                  className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center"
-                >
-                  <FaPlay className="text-white text-3xl ml-1" />
-                </motion.div>
-              </motion.div>
-            )}
-
-            {/* Top Gradient */}
-            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/60 to-transparent" />
-
-            {/* Bottom Gradient */}
-            <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/80 to-transparent" />
-
-            {/* Type Badge */}
-            <motion.div
-              key={currentIndex}
-              initial={{ y: -20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className={`absolute top-6 left-6 px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-lg ${currentClip?.type === "original"
-                ? "bg-gradient-to-r from-orange-500 to-red-500 text-white"
-                : "bg-gradient-to-r from-green-500 to-emerald-500 text-white"
-                }`}
-            >
-              {currentClip?.type === "original" ? (
-                <>
-                  <FaFilm /> ORIGINAL
-                </>
-              ) : (
-                <>
-                  <FaImage /> EDITED
-                </>
-              )}
-            </motion.div>
-
-            {/* Progress Dots */}
-            <div className="absolute top-6 left-1/2 -translate-x-1/2 flex gap-1">
-              {allClips.map((_, i) => (
-                <motion.button
-                  key={i}
-                  onClick={() => setCurrentIndex(i)}
-                  className={`h-1 rounded-full transition-all ${i === currentIndex ? "bg-white w-8" : "bg-white/40 w-4"
-                    }`}
-                  whileHover={{ scale: 1.2 }}
-                />
-              ))}
-            </div>
-
-            {/* Right Side Actions */}
-            <div className="absolute right-4 bottom-32 flex flex-col gap-4">
-              {/* Mute Button (always show for videos) */}
-              {currentIsVideo && (
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={toggleMute}
-                  className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white"
-                >
-                  {isMuted ? <FaVolumeMute /> : <FaVolumeUp />}
-                </motion.button>
-              )}
-
-              {/* Social Icons - Only show if published to reels */}
-              {portfolio.isPublished && (
-                <>
-                  {/* Views */}
-                  <div className="flex flex-col items-center text-white">
-                    <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center">
-                      <FaEye />
-                    </div>
-                    <span className="text-xs mt-1">{portfolio.viewsCount || 0}</span>
-                  </div>
-
-                  {/* Like Button */}
-                  <div className="flex flex-col items-center text-white">
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center"
-                    >
-                      <FaHeart />
-                    </motion.button>
-                    <span className="text-xs mt-1">{portfolio.likesCount || 0}</span>
-                  </div>
-
-                  {/* Comment Button */}
-                  <div className="flex flex-col items-center text-white">
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center"
-                    >
-                      <FaComment />
-                    </motion.button>
-                    <span className="text-xs mt-1">{portfolio.commentsCount || 0}</span>
-                  </div>
-
-                  {/* Share Button */}
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white"
-                  >
-                    <FaShare />
-                  </motion.button>
-                </>
-              )}
-            </div>
-
-            {/* Bottom Info */}
-            <div className="absolute bottom-6 left-6 right-20">
-              <h3 className="text-white font-bold text-xl">{portfolio.title}</h3>
-              <p className="text-white/70 text-sm mt-2 line-clamp-2">
-                {portfolio.description}
-              </p>
-              <p className="text-white/50 text-xs mt-2">
-                Clip {currentIndex + 1} of {allClips.length}
-              </p>
-            </div>
-
-            {/* Swipe Hint */}
-            <motion.div
-              animate={{ y: [0, -5, 0] }}
-              transition={{ repeat: Infinity, duration: 1.5 }}
-              className="absolute bottom-24 left-1/2 -translate-x-1/2 text-white/50 text-xs flex flex-col items-center"
-            >
-              <FaChevronLeft className="rotate-90" />
-              <span>Swipe for more</span>
-            </motion.div>
-          </motion.div>
-
-          {/* Navigation Arrows */}
-          {allClips.length > 1 && (
-            <>
-              <motion.button
-                whileHover={{ scale: 1.1, x: -5 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={prevClip}
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white"
-              >
-                <FaChevronLeft className="text-lg" />
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.1, x: 5 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={nextClip}
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white"
-              >
-                <FaChevronRight className="text-lg" />
-              </motion.button>
-            </>
-          )}
         </div>
       </motion.div>
     );
@@ -1041,7 +780,7 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.03 }}
-                  onClick={() => openReelsPopup(p)}
+                  onClick={() => openReelsPopup(i)}
                   className="relative aspect-[9/16] bg-zinc-900 cursor-pointer group overflow-hidden rounded-xl"
                 >
                   {/* Thumbnail */}
@@ -1157,15 +896,12 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
 
       {/* Reels Popup */}
       <AnimatePresence>
-        {showReelsPopup && reelsPortfolio && (
+        {showReelsPopup && portfolios.length > 0 && (
           <ReelPreviewModal 
-            reel={reelsPortfolio} 
+            reels={portfolios}
+            initialIndex={reelsIndex}
             isPortfolioMode={true}
             onClose={() => setShowReelsPopup(false)} 
-            onCommentClick={(id) => {
-               // Optional: Handle comment click from profile
-               setShowReelsPopup(false);
-            }}
           />
         )}
       </AnimatePresence>

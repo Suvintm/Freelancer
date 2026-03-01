@@ -238,9 +238,9 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
                                     repeat: Infinity,
                                     ease: "easeInOut"
                                 }}
-                                className="px-2 py-0.5 rounded-full border border-white/40 bg-white/5 backdrop-blur-sm flex items-center justify-center min-w-[35px]"
+                                className="px-3 py-1 rounded-full border border-white/40 bg-white  flex items-center justify-center min-w-[35px]"
                             >
-                                <span className="text-white text-[7px] font-normal uppercase tracking-[0.1em]">
+                                <span className="text-black  text-[7px] font-bold uppercase tracking-[0.1em]">
                                     NEW
                                 </span>
                             </motion.div>
@@ -282,7 +282,17 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
                         {/* CONTENT */}
                         <div className="max-w-[85%] mb-3">
                             <h2 className="text-xl font-bold text-white leading-tight mb-0.5 text-shadow">{reel.title}</h2>
-                            <p className="text-[12px] font-medium text-white/70 leading-relaxed line-clamp-2 text-shadow">{reel.description}</p>
+                            <div className="flex flex-wrap items-baseline gap-1">
+                                <p className="text-[12px] font-medium text-white/70 leading-relaxed line-clamp-2 text-shadow inline">
+                                    {reel.description}
+                                </p>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); onCommentClick(reel._id); }}
+                                    className="text-[12px] font-bold text-white/80 hover:text-white transition-colors cursor-pointer whitespace-nowrap"
+                                >
+                                    more...
+                                </button>
+                            </div>
                         </div>
 
                         {/* PROGRESS */}

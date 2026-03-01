@@ -11,7 +11,7 @@ import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import ReelGridItem from "../components/ReelGridItem.jsx";
 import ReelPreviewModal from "../components/ReelPreviewModal.jsx";
-import CommentSection from "../components/CommentSection";
+import ReelCommentsDrawer from "../components/ReelCommentsDrawer";
 import Loader from "../components/Loader.jsx";
 
 const ReelsExplore = () => {
@@ -26,22 +26,23 @@ const ReelsExplore = () => {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [showComments, setShowComments] = useState(false);
-    const [activeReelId, setActiveReelId] = useState(null);
+    const [activeReel, setActiveReel] = useState(null);
 
 
 
     const handleCommentClick = (reelId) => {
-        setActiveReelId(reelId);
+        const reel = reels.find(r => r._id === reelId);
+        setActiveReel(reel);
         setShowComments(true);
     };
 
     const handleCommentAdded = (newCount) => {
         setReels((prev) =>
             prev.map((r) =>
-                r._id === activeReelId ? { ...r, commentsCount: newCount } : r
+                r._id === activeReel?._id ? { ...r, commentsCount: newCount } : r
             )
         );
-        if (previewReel?._id === activeReelId) {
+        if (previewReel?._id === activeReel?._id) {
             setPreviewReel(prev => ({ ...prev, commentsCount: newCount }));
         }
     };
@@ -190,8 +191,8 @@ const ReelsExplore = () => {
                             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1100]"
                             onClick={() => setShowComments(false)}
                         />
-                        <CommentSection
-                            reelId={activeReelId}
+                        <ReelCommentsDrawer
+                            reel={activeReel}
                             onClose={() => setShowComments(false)}
                             onCommentAdded={handleCommentAdded}
                         />

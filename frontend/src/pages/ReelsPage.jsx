@@ -10,7 +10,7 @@ import { useReelsContext } from "../context/ReelsContext";
 import ReelCard from "../components/ReelCard";
 import ReelSkeleton from "../components/ReelSkeleton";
 import ReelAdCard from "../components/ReelAdCard";
-import CommentSection from "../components/CommentSection";
+import ReelCommentsDrawer from "../components/ReelCommentsDrawer";
 import useReelObserver from "../hooks/useReelObserver";
 import useScrollRestore from "../hooks/useScrollRestore";
 import logo from "../assets/logo.png";
@@ -43,7 +43,7 @@ const ReelsPage = () => {
     const [hasMore, setHasMore] = useState(true);
     const [activeReelIndex, setActiveReelIndex] = useState(0);
     const [showComments, setShowComments] = useState(false);
-    const [activeReelId, setActiveReelId] = useState(null);
+    const [activeReel, setActiveReel] = useState(null);
     const [reelAds, setReelAds] = useState([]);
     const [skippedAdIndices, setSkippedAdIndices] = useState(new Set());
 
@@ -240,14 +240,15 @@ const ReelsPage = () => {
     // COMMENTS
     // ─────────────────────────────────────────────────────────────
     const handleCommentClick = (reelId) => {
-        setActiveReelId(reelId);
+        const reel = reels.find(r => r._id === reelId);
+        setActiveReel(reel);
         setShowComments(true);
     };
 
     const handleCommentAdded = (newCount) => {
         setReels((prev) =>
             prev.map((r) =>
-                r._id === activeReelId ? { ...r, commentsCount: newCount } : r
+                r._id === activeReel?._id ? { ...r, commentsCount: newCount } : r
             )
         );
     };
@@ -300,11 +301,17 @@ const ReelsPage = () => {
             </AnimatePresence>
 
             {/* ── FEED ── */}
-            <div
+            <motion.div
                 ref={containerRef}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
-                className="flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide touch-pan-y"
+                animate={{ 
+                    scale: showComments ? 0.95 : 1,
+                    y: showComments ? -20 : 0,
+                    borderRadius: showComments ? "20px" : "0px",
+                }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide touch-pan-y origin-top bg-black"
             >
                 {/* Skeleton — shown only on first load */}
                 {loading && (
@@ -368,7 +375,7 @@ const ReelsPage = () => {
                         </p>
                     </div>
                 )}
-            </div>
+            </motion.div>
 
             {/* ── COMMENTS DRAWER ── */}
             <AnimatePresence>
@@ -378,11 +385,11 @@ const ReelsPage = () => {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55]"
+                            className="fixed inset-0 bg-black/40 z-[55]"
                             onClick={() => setShowComments(false)}
                         />
-                        <CommentSection
-                            reelId={activeReelId}
+                        <ReelCommentsDrawer
+                            reel={activeReel}
                             onClose={() => setShowComments(false)}
                             onCommentAdded={handleCommentAdded}
                         />

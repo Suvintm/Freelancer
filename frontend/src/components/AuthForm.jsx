@@ -62,13 +62,13 @@ const AuthForm = () => {
       let res;
       if (isLogin) {
         res = await axios.post(`${backendURL}/api/auth/login`, {
-          email: formData.email,
+          email: formData.email.trim(),
           password: formData.password,
         });
       } else {
         const data = new FormData();
-        data.append("name", formData.name);
-        data.append("email", formData.email);
+        data.append("name", formData.name.trim());
+        data.append("email", formData.email.trim());
         data.append("password", formData.password);
         data.append("role", formData.role);
         data.append("country", formData.country);

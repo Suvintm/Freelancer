@@ -300,14 +300,63 @@ export const getComments = asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
+    const parentComment = req.query.parentComment; // Get the raw query param
+    const parentCommentQuery = (parentComment && parentComment !== "null") 
+        ? new mongoose.Types.ObjectId(parentComment) 
+        : null;
+
+    const query = { 
+        reel: req.params.id,
+        parentComment: parentCommentQuery 
+    };
 
     const [comments, total] = await Promise.all([
-        Comment.find({ reel: req.params.id })
-            .populate("user", "name profilePicture")
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit),
-        Comment.countDocuments({ reel: req.params.id }),
+        Comment.aggregate([
+            { $match: { reel: new mongoose.Types.ObjectId(req.params.id), parentComment: parentCommentQuery } },
+            { $sort: { createdAt: -1 } },
+            { $skip: skip },
+            { $limit: limit },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "user",
+                    foreignField: "_id",
+                    as: "user",
+                },
+            },
+            { $unwind: "$user" },
+            {
+                $lookup: {
+                    from: "comments",
+                    localField: "_id",
+                    foreignField: "parentComment",
+                    as: "replies",
+                },
+            },
+            {
+                $addFields: {
+                    repliesCount: { $size: "$replies" },
+                    isLiked: {
+                        $cond: {
+                            if: { $and: [
+                                { $literal: !!req.user }, 
+                                { $in: [new mongoose.Types.ObjectId(req.user?._id || new mongoose.Types.ObjectId()), { $ifNull: ["$likes", []] }] }
+                            ] },
+                            then: true,
+                            else: false,
+                        },
+                    },
+                },
+            },
+            {
+                $project: {
+                    replies: 0,
+                    "user.password": 0,
+                    "user.email": 0,
+                },
+            },
+        ]),
+        Comment.countDocuments(query),
     ]);
 
     res.status(200).json({
@@ -324,7 +373,7 @@ export const getComments = asyncHandler(async (req, res) => {
 
 // ============ ADD COMMENT ============
 export const addComment = asyncHandler(async (req, res) => {
-    const { text } = req.body;
+    const { text, parentCommentId } = req.body;
 
     if (!text || text.trim().length === 0) {
         throw new ApiError(400, "Comment text is required");
@@ -339,13 +388,23 @@ export const addComment = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Reel not found");
     }
 
+    let parentComment = null;
+    if (parentCommentId) {
+        const parent = await Comment.findById(parentCommentId);
+        if (!parent) throw new ApiError(404, "Parent comment not found");
+        
+        // If the parent is itself a reply, point to its parent (flattening)
+        parentComment = parent.parentComment || parent._id;
+    }
+
     const comment = await Comment.create({
         reel: req.params.id,
         user: req.user._id,
         text: text.trim(),
+        parentComment,
     });
 
-    // Update comments count
+    // Update comments count for the reel
     reel.commentsCount = await Comment.countDocuments({ reel: req.params.id });
     await reel.save();
 
@@ -356,8 +415,40 @@ export const addComment = asyncHandler(async (req, res) => {
 
     res.status(201).json({
         success: true,
-        comment: populatedComment,
+        comment: {
+            ...populatedComment._doc,
+            repliesCount: 0,
+            isLiked: false,
+        },
         commentsCount: reel.commentsCount,
+    });
+});
+
+// ============ TOGGLE COMMENT LIKE ============
+export const toggleCommentLike = asyncHandler(async (req, res) => {
+    const { commentId } = req.params;
+    const comment = await Comment.findById(commentId);
+
+    if (!comment) {
+        throw new ApiError(404, "Comment not found");
+    }
+
+    const userId = req.user._id;
+    const isLiked = comment.likes.includes(userId);
+
+    if (isLiked) {
+        comment.likes = comment.likes.filter(id => id.toString() !== userId.toString());
+    } else {
+        comment.likes.push(userId);
+    }
+
+    comment.likesCount = comment.likes.length;
+    await comment.save();
+
+    res.status(200).json({
+        success: true,
+        liked: !isLiked,
+        likesCount: comment.likesCount,
     });
 });
 

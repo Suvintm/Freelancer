@@ -9,6 +9,8 @@ import {
     FaVolumeMute,
     FaEye,
     FaTimes,
+    FaChevronUp,
+    FaChevronDown,
 } from "react-icons/fa";
 import { repairUrl } from "../utils/urlHelper.jsx";
 import { useAppContext } from "../context/AppContext";
@@ -16,21 +18,39 @@ import { useReelsContext } from "../context/ReelsContext";
 import logo from "../assets/logo.png";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { Link } from "react-router-dom";
 import FollowingAnimation from "./FollowingAnimation";
+import ReelCommentsDrawer from "./ReelCommentsDrawer";
 
-const ReelPreviewModal = ({ reel, onClose, onCommentClick, isPortfolioMode = false }) => {
+const ReelPreviewModal = ({ 
+    reel: initialReel, 
+    reels: reelsArray = [], 
+    initialIndex = 0,
+    onClose, 
+    onCommentClick, 
+    isPortfolioMode = false 
+}) => {
     const { user, backendURL } = useAppContext();
     const { globalMuted, setGlobalMuted } = useReelsContext();
+    
+    // --- Multi-Reel Navigation State ---
+    const [currentIndex, setCurrentIndex] = useState(initialIndex);
+    const [reels, setReels] = useState(reelsArray.length > 0 ? reelsArray : [initialReel]);
+    const reel = reels[currentIndex];
+
     const videoRef = useRef(null);
     const [isLoaded, setIsLoaded] = useState(false);
     const [progress, setProgress] = useState(0);
-    const [isLiked, setIsLiked] = useState(reel.likes?.includes(user?._id));
-    const [likesCount, setLikesCount] = useState(reel.likes?.length || 0);
+    const [isLiked, setIsLiked] = useState(false);
+    const [likesCount, setLikesCount] = useState(0);
+    const [commentsCount, setCommentsCount] = useState(0);
+    const [viewsCount, setViewsCount] = useState(0);
     const [isPlaying, setIsPlaying] = useState(true);
     const [showMuteIcon, setShowMuteIcon] = useState(false);
     const [isFollowing, setIsFollowing] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
     const [showFollowAnimation, setShowFollowAnimation] = useState(false);
+    const [showComments, setShowComments] = useState(false);
 
     // --- Identification Logic (Moved to Top) ---
     const editor = isPortfolioMode ? (reel.user || user) : reel.editor;
@@ -76,18 +96,49 @@ const ReelPreviewModal = ({ reel, onClose, onCommentClick, isPortfolioMode = fal
         }
     }, [globalMuted]);
 
+    // Reset loader when media changes
     useEffect(() => {
-        if (!user || !editorId || isOwnContent) return;
-        axios.get(`${backendURL}/api/users/follow/status/${editorId}`, {
-            headers: { Authorization: `Bearer ${user.token}` },
-        }).then((res) => setIsFollowing(res.data.isFollowing)).catch(() => {});
-    }, [user, editorId, isOwnContent, backendURL]);
+        setIsLoaded(false);
+    }, [currentIndex, viewType, originalIndex]);
+
+    // Sync with backend on reel change
+    useEffect(() => {
+        const targetId = reel?.reelId || reel?._id;
+        if (!targetId) return;
+
+        // Skip API calls if it's an unpublished portfolio item
+        if (isPortfolioMode && !reel.isPublished) {
+            setIsLiked(false);
+            setLikesCount(0);
+            setCommentsCount(0);
+            setViewsCount(0);
+            return;
+        }
+        
+        const fetchReelData = async () => {
+            try {
+                const { data } = await axios.get(`${backendURL}/api/reels/${targetId}`);
+                const r = data.reel;
+                setIsLiked(r.likes?.includes(user?._id));
+                setLikesCount(r.likes?.length || 0);
+                setCommentsCount(r.commentsCount || 0);
+                setViewsCount(r.viewsCount || 0);
+                
+                // Track view
+                axios.post(`${backendURL}/api/reels/${targetId}/view`).catch(() => {});
+            } catch (err) {
+                console.error("Failed to fetch reel data:", err);
+            }
+        };
+
+        fetchReelData();
+    }, [currentIndex, reel?._id, reel?.reelId, reel?.isPublished, isPortfolioMode, backendURL, user?._id]);
 
     useEffect(() => {
         if (videoRef.current && isLoaded) {
             videoRef.current.play().catch(err => console.log("Auto-play blocked:", err));
         }
-    }, [isLoaded]);
+    }, [isLoaded, currentIndex]);
 
     useEffect(() => {
         const handleEsc = (e) => {
@@ -106,12 +157,15 @@ const ReelPreviewModal = ({ reel, onClose, onCommentClick, isPortfolioMode = fal
 
     const handleLike = async (e) => {
         e.stopPropagation();
+        if (isPortfolioMode && !reel.isPublished) return toast.info("Publish this portfolio to enable likes!");
         if (!user) return toast.error("Please login to like");
+        
+        const targetId = reel.reelId || reel._id;
         const newIsLiked = !isLiked;
         setIsLiked(newIsLiked);
         setLikesCount(prev => newIsLiked ? prev + 1 : prev - 1);
         try {
-            await axios.post(`${backendURL}/api/reels/${reel._id}/like`, {}, {
+            await axios.post(`${backendURL}/api/reels/${targetId}/like`, {}, {
                 headers: { Authorization: `Bearer ${user.token}` }
             });
         } catch (err) {
@@ -153,22 +207,33 @@ const ReelPreviewModal = ({ reel, onClose, onCommentClick, isPortfolioMode = fal
         }
     };
 
-    // --- SWIPE LOGIC FOR ORIGINAL CLIPS ---
+    // --- SWIPE LOGIC ---
     const handleDragEnd = (e, { offset, velocity }) => {
-        if (!isPortfolioMode || viewType !== "original") return;
-        
-        const originals = reel.originalClips || (reel.originalClip ? [reel.originalClip] : []);
-        if (originals.length <= 1) return;
-
-        if (Math.abs(offset.x) > 50 || Math.abs(velocity.x) > 500) {
-            if (offset.x > 0) {
-                // Swipe Right -> Prev
-                setOriginalIndex(prev => (prev - 1 + originals.length) % originals.length);
+        // Vertical swipe for next/prev reel
+        if (Math.abs(offset.y) > 100 || Math.abs(velocity.y) > 500) {
+            if (offset.y > 0) {
+                // Swipe Down -> Prev Reel
+                if (currentIndex > 0) setCurrentIndex(prev => prev - 1);
             } else {
-                // Swipe Left -> Next
-                setOriginalIndex(prev => (prev + 1) % originals.length);
+                // Swipe Up -> Next Reel
+                if (currentIndex < reels.length - 1) setCurrentIndex(prev => prev + 1);
             }
-            setIsLoaded(false);
+            return;
+        }
+
+        // Horizontal swipe for original clips (only if in portfolio mode and viewType is original)
+        if (isPortfolioMode && viewType === "original") {
+            const originals = reel.originalClips || (reel.originalClip ? [reel.originalClip] : []);
+            if (originals.length <= 1) return;
+
+            if (Math.abs(offset.x) > 50 || Math.abs(velocity.x) > 500) {
+                if (offset.x > 0) {
+                    setOriginalIndex(prev => (prev - 1 + originals.length) % originals.length);
+                } else {
+                    setOriginalIndex(prev => (prev + 1) % originals.length);
+                }
+                setIsLoaded(false);
+            }
         }
     };
 
@@ -179,7 +244,7 @@ const ReelPreviewModal = ({ reel, onClose, onCommentClick, isPortfolioMode = fal
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1000] flex items-center justify-center p-0 sm:p-4"
+            className="fixed inset-0 z-[1000] flex items-center justify-center p-0"
             onClick={onClose}
         >
             {/* Glassmorphic Overlay */}
@@ -193,17 +258,22 @@ const ReelPreviewModal = ({ reel, onClose, onCommentClick, isPortfolioMode = fal
             {/* Modal Content */}
             <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
+                animate={{ 
+                    scale: 1,
+                    opacity: 1,
+                    y: 0
+                }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="relative w-full h-full sm:h-auto sm:max-w-[360px] sm:aspect-[9/16] bg-black sm:rounded-3xl overflow-hidden shadow-2xl border-none sm:border sm:border-white/10"
+                className="relative w-full h-full sm:h-[90vh] sm:max-w-[420px] sm:aspect-[9/16] bg-black overflow-hidden shadow-2xl border-none sm:border sm:border-white/10"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* ── VIDEO MAIN PLAYER ── */}
                 <motion.div
-                    drag={isPortfolioMode && viewType === "original" ? "x" : false}
-                    dragConstraints={{ left: 0, right: 0 }}
+                    drag={true}
+                    dragConstraints={{ top: 0, bottom: 0, left: 0, right: 0 }}
+                    dragElastic={0.2}
                     onDragEnd={handleDragEnd}
-                    className="flex-1 w-full bg-black flex items-center justify-center relative rounded-2xl overflow-hidden shadow-2xl h-full"
+                    className="flex-1 w-full bg-black flex items-center justify-center relative h-full"
                     onClick={(e) => { e.stopPropagation(); setGlobalMuted(!globalMuted); }}
                     onMouseDown={() => { if (videoRef.current) videoRef.current.pause(); setIsPlaying(false); }}
                     onMouseUp={() => { if (videoRef.current) videoRef.current.play(); setIsPlaying(true); }}
@@ -214,7 +284,7 @@ const ReelPreviewModal = ({ reel, onClose, onCommentClick, isPortfolioMode = fal
                     {isVideo ? (
                         <>
                             <video
-                                key={mediaUrl} // Force re-render on clip change
+                                key={mediaUrl} 
                                 ref={videoRef}
                                 src={mediaUrl}
                                 className="w-full h-full object-cover"
@@ -238,82 +308,40 @@ const ReelPreviewModal = ({ reel, onClose, onCommentClick, isPortfolioMode = fal
                             key={mediaUrl}
                             src={mediaUrl}
                             className="w-full h-full object-cover"
-                            alt={reel.title}
+                            alt={reel?.title}
                             onLoad={() => setIsLoaded(true)}
                         />
                     )}
 
-                    {/* Top Info Badge - Centered & Refined */}
-                    <div className="absolute top-6 left-0 right-0 z-[70] flex flex-col items-center">
-                        <div className="flex items-center gap-2">
+                    {/* Top Info Badge */}
+                    <div className="absolute top-6 left-0 right-0 z-[70] flex flex-col items-center pointer-events-none">
+                        <div className="flex items-center gap-2 pointer-events-auto">
                             <img src={logo} className="w-6 h-6 object-contain" alt="SuviX" />
                             <span className="text-white font-normal text-[12px] tracking-widest uppercase text-shadow">
                                 {isPortfolioMode ? "Portfolio View" : "SuviX Reels"}
                             </span>
                         </div>
-                        
-                        {/* View Type Toggle (Portfolio Only) */}
-                        {isPortfolioMode && (
-                            <div className="mt-3 flex gap-2">
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); setViewType("edited"); setIsLoaded(false); }}
-                                    className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all border ${
-                                        viewType === "edited" 
-                                            ? "bg-white text-black border-white" 
-                                            : "bg-black/40 text-white/70 border-white/20 backdrop-blur-md"
-                                    }`}
-                                >
-                                    Edited
-                                </button>
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); setViewType("original"); setIsLoaded(false); }}
-                                    className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all border ${
-                                        viewType === "original" 
-                                            ? "bg-white text-black border-white" 
-                                            : "bg-black/40 text-white/70 border-white/20 backdrop-blur-md"
-                                    }`}
-                                >
-                                    Original
-                                </button>
-                            </div>
-                        )}
-                        
-                        {/* Original Clip Pagination */}
-                        {isPortfolioMode && viewType === "original" && (reel.originalClips?.length > 1) && (
-                            <div className="mt-2 flex gap-1">
-                                {reel.originalClips.map((_, i) => (
-                                    <div 
-                                        key={i} 
-                                        className={`h-1 rounded-full transition-all ${i === originalIndex ? "w-4 bg-white" : "w-1.5 bg-white/30"}`}
-                                    />
-                                ))}
-                            </div>
-                        )}
 
-                        {/* NEW Badge */}
-                        {!isPortfolioMode && (() => {
-                            const isNew = reel.createdAt && (new Date() - new Date(reel.createdAt)) < 24 * 60 * 60 * 1000;
-                            if (!isNew) return null;
-                            return (
-                                <motion.div 
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ 
-                                        opacity: [0.8, 1, 0.8],
-                                        scale: [1, 1.05, 1],
-                                    }}
-                                    transition={{ 
-                                        duration: 2,
-                                        repeat: Infinity,
-                                        ease: "easeInOut"
-                                    }}
-                                    className="px-2 py-0.5 rounded-full border border-white/40 bg-white/5 backdrop-blur-sm flex items-center justify-center min-w-[35px] mt-1"
+                        {isPortfolioMode && (
+                            <div className="mt-4 flex gap-2 pointer-events-auto">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setViewType("edited"); }}
+                                    className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border ${
+                                        viewType === "edited" ? "bg-white text-black border-white" : "bg-black/40 text-white/70 border-white/20 hover:bg-black/60"
+                                    }`}
                                 >
-                                    <span className="text-white text-[7px] font-normal uppercase tracking-[0.1em]">
-                                        NEW
-                                    </span>
-                                </motion.div>
-                            );
-                        })()}
+                                    Edited Clip
+                                </button>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setViewType("original"); }}
+                                    className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border ${
+                                        viewType === "original" ? "bg-white text-black border-white" : "bg-black/40 text-white/70 border-white/20 hover:bg-black/60"
+                                    }`}
+                                >
+                                    Original Clip
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </motion.div>
 
@@ -338,74 +366,78 @@ const ReelPreviewModal = ({ reel, onClose, onCommentClick, isPortfolioMode = fal
                 </AnimatePresence>
 
                 {/* ── SIDEBAR CONTROLS ── */}
-                <div className="absolute right-4 bottom-24 z-[70] flex flex-col items-center gap-5">
-                    <div className="flex flex-col items-center gap-1">
-                        <motion.button
-                            whileTap={{ scale: 0.8 }}
-                            onClick={handleLike}
-                            className="w-11 h-11 bg-white/10 backdrop-blur-xl border border-white/10 rounded-full flex items-center justify-center text-white text-lg shadow-lg"
-                        >
-                            {isLiked ? <FaHeart className="text-red-500" /> : <FaRegHeart />}
-                        </motion.button>
-                        <span className="text-[10px] font-bold text-white drop-shadow-md">{likesCount}</span>
-                    </div>
-
-                    <div className="flex flex-col items-center gap-1">
-                        <motion.button
-                            whileTap={{ scale: 0.8 }}
-                            onClick={(e) => { e.stopPropagation(); onCommentClick(reel._id); }}
-                            className="w-11 h-11 bg-white/10 backdrop-blur-xl border border-white/10 rounded-full flex items-center justify-center text-white text-lg shadow-lg"
-                        >
-                            <FaComment />
-                        </motion.button>
-                        <span className="text-[10px] font-bold text-white drop-shadow-md">{reel.commentsCount || 0}</span>
-                    </div>
-
-                    <div className="flex flex-col items-center gap-1">
-                        <div className="w-11 h-11 bg-white/10 backdrop-blur-xl border border-white/10 rounded-full flex items-center justify-center text-white text-lg opacity-70">
-                            <FaEye />
+                {!(isPortfolioMode && viewType === "original") && (
+                    <div className="absolute right-3 bottom-24 z-[70] flex flex-col items-center gap-5">
+                        <div className="flex flex-col items-center gap-1">
+                            <motion.button
+                                whileTap={{ scale: 0.8 }}
+                                onClick={handleLike}
+                                className="w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white text-lg shadow-lg"
+                            >
+                                {isLiked ? <FaHeart className="text-red-500" /> : <FaRegHeart />}
+                            </motion.button>
+                            <span className="text-[10px] font-bold text-white drop-shadow-md">{likesCount}</span>
                         </div>
-                        <span className="text-[10px] font-bold text-white drop-shadow-md">{reel.viewsCount || 0}</span>
-                    </div>
 
-                    <motion.button
-                        whileTap={{ scale: 0.8 }}
-                        onClick={handleShare}
-                        className="w-11 h-11 bg-white/10 backdrop-blur-xl border border-white/10 rounded-full flex items-center justify-center text-white text-lg shadow-lg"
-                    >
-                        <FaShare />
-                    </motion.button>
+                        <div className="flex flex-col items-center gap-1">
+                            <motion.button
+                                whileTap={{ scale: 0.8 }}
+                                onClick={(e) => { e.stopPropagation(); setShowComments(true); }}
+                                className="w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white text-lg shadow-lg"
+                            >
+                                <FaComment />
+                            </motion.button>
+                            <span className="text-[10px] font-bold text-white drop-shadow-md">{commentsCount}</span>
+                        </div>
 
-                    {isVideo && (
+                        <div className="flex flex-col items-center gap-1">
+                            <div className="w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white text-lg opacity-70">
+                                <FaEye />
+                            </div>
+                            <span className="text-[10px] font-bold text-white drop-shadow-md">{viewsCount}</span>
+                        </div>
+
                         <motion.button
                             whileTap={{ scale: 0.8 }}
-                            onClick={(e) => { e.stopPropagation(); setGlobalMuted(!globalMuted); }}
-                            className="w-11 h-11 bg-white/10 backdrop-blur-xl border border-white/10 rounded-full flex items-center justify-center text-white text-lg shadow-lg"
+                            onClick={handleShare}
+                            className="w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white text-lg shadow-lg"
                         >
-                            {globalMuted ? <FaVolumeMute /> : <FaVolumeUp />}
+                            <FaShare />
                         </motion.button>
-                    )}
-                </div>
+
+                        {isVideo && (
+                            <motion.button
+                                whileTap={{ scale: 0.8 }}
+                                onClick={(e) => { e.stopPropagation(); setGlobalMuted(!globalMuted); }}
+                                className="w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white text-lg shadow-lg"
+                            >
+                                {globalMuted ? <FaVolumeMute /> : <FaVolumeUp />}
+                            </motion.button>
+                        )}
+                    </div>
+                )}
 
                 {/* ── BOTTOM OVERLAY GRADIENT ── */}
-                <div className="absolute bottom-0 inset-x-0 h-80 bg-gradient-to-t from-black/95 via-black/40 to-transparent pointer-events-none z-[50]" />
+                <div className="absolute bottom-0 inset-x-0 h-64 bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-32 pointer-events-none z-[50]" />
 
                 {/* Info Overlay (Text Container) */}
-                <div className="absolute bottom-6 left-0 right-16 px-6 pb-6 pointer-events-none z-[60]">
-                    <div className="pointer-events-auto">
+                <div className="absolute bottom-0 inset-x-0 z-[60] p-5 flex flex-col justify-end pointer-events-none">
+                    <div className="relative pb-6 pointer-events-auto">
+                        {/* USER HUB */}
                         <div className="flex items-center gap-3 mb-3">
-                            <div className="w-10 h-10 rounded-full border-[1.5px] border-white overflow-hidden shadow-lg p-[1px] bg-white/10">
-                                <img 
-                                    src={repairUrl(editor?.profilePicture)} 
-                                    className="w-full h-full rounded-full object-cover"
-                                    alt={editor?.name}
-                                />
-                            </div>
-                            <div className="flex flex-col gap-1">
-                                <div className="flex flex-col">
-                                    <span className="text-white text-sm font-bold tracking-tight">{editor?.name}</span>
-                                    <span className="text-[8px] font-black text-white/50 tracking-widest uppercase">EDITOR</span>
+                            <Link to={`/public-profile/${editor?._id}`} onClick={(e) => e.stopPropagation()}>
+                                <div className="w-10 h-10 rounded-full border-[1.5px] border-white overflow-hidden shadow-lg p-[1px] bg-white/10">
+                                    <img src={repairUrl(editor?.profilePicture)} className="w-full h-full rounded-full object-cover" alt="" />
                                 </div>
+                            </Link>
+                            <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center gap-2">
+                                    <Link to={`/public-profile/${editor?._id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-white text-[14px] tracking-tight hover:underline text-shadow">
+                                        {editor?.name}
+                                    </Link>
+                                    <span className="px-1.5 py-0.5 bg-white/20 text-[8px] font-bold rounded border border-white/10 text-white/90">EDITOR</span>
+                                </div>
+                                
                                 {!isOwnContent && (
                                     <button
                                         onClick={handleFollow}
@@ -416,22 +448,31 @@ const ReelPreviewModal = ({ reel, onClose, onCommentClick, isPortfolioMode = fal
                                 )}
                             </div>
                         </div>
-                        <h2 className="text-white font-bold text-base mb-1 drop-shadow-md">{reel.title}</h2>
-                        <p className="text-white/80 text-[11px] line-clamp-2 leading-relaxed drop-shadow-md">
-                            {reel.description}
-                        </p>
+
+                        {/* CONTENT */}
+                        <div className="max-w-[85%] mb-3">
+                            <h2 className="text-xl font-bold text-white leading-tight mb-0.5 text-shadow">{reel.title}</h2>
+                            <div className="flex flex-wrap items-baseline gap-1">
+                                <p className="text-[12px] font-medium text-white/70 leading-relaxed line-clamp-2 text-shadow inline">
+                                    {reel.description}
+                                </p>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setShowComments(true); }}
+                                    className="text-[12px] font-bold text-white/80 hover:text-white transition-colors cursor-pointer whitespace-nowrap"
+                                >
+                                    more...
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* PROGRESS */}
+                        {isVideo && (
+                            <div className="w-full h-[2px] bg-white/10 rounded-full overflow-hidden">
+                                <motion.div style={{ width: `${progress}%` }} className="h-full bg-white shadow-[0_0_5px_rgba(255,255,255,0.7)]" />
+                            </div>
+                        )}
                     </div>
                 </div>
-
-                {/* Progress Bar */}
-                {isVideo && (
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10 z-[70]">
-                        <motion.div 
-                            className="h-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]"
-                            style={{ width: `${progress}%` }}
-                        />
-                    </div>
-                )}
 
                 {/* Close Button */}
                 <button 
@@ -447,6 +488,27 @@ const ReelPreviewModal = ({ reel, onClose, onCommentClick, isPortfolioMode = fal
                 <AnimatePresence>
                     {showFollowAnimation && (
                         <FollowingAnimation onComplete={() => setShowFollowAnimation(false)} />
+                    )}
+                </AnimatePresence>
+
+                {/* --- COMMENT SECTION DRAWER --- */}
+                <AnimatePresence>
+                    {showComments && (
+                        <>
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 bg-black/40 z-[110]"
+                                onClick={() => setShowComments(false)}
+                            />
+                            <ReelCommentsDrawer
+                                reel={{ ...reel, _id: reel.reelId || reel._id }}
+                                onClose={() => setShowComments(false)}
+                                onCommentAdded={(newCount) => setCommentsCount(newCount)}
+                                isEmbedded={true}
+                            />
+                        </>
                     )}
                 </AnimatePresence>
             </motion.div>

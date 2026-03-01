@@ -13,6 +13,7 @@ import {
     getMyReelsAnalytics,
     trackWatchTime,
     getReelTags,
+    toggleCommentLike,
 } from "../controllers/reelController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 
@@ -54,6 +55,9 @@ router.post("/:id/like", toggleLike);
 
 // Add comment
 router.post("/:id/comments", addComment);
+
+// Toggle comment like
+router.post("/:id/comments/:commentId/like", toggleCommentLike);
 
 // Get my reels analytics (for editor dashboard)
 router.get("/analytics/my-reels", getMyReelsAnalytics);
