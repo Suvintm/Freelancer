@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaUserPlus, FaCheck, FaChevronRight, FaStar, FaUser } from "react-icons/fa";
 import { MdVerified } from "react-icons/md";
@@ -13,6 +13,8 @@ const FollowSuggestions = () => {
     const { user, setUser, backendURL } = useAppContext();
     const navigate = useNavigate();
     const [followStates, setFollowStates] = useState({});
+    const scrollRef = useRef(null);
+    const mainContainerRef = useRef(null);
 
     const { data: suggestions = [], isLoading: loading } = useQuery({
         queryKey: ['homeData', 'follow-suggestions', backendURL, user?.token],
@@ -32,6 +34,28 @@ const FollowSuggestions = () => {
         staleTime: 5 * 60 * 1000,
         enabled: !!user?.token,
     });
+
+    // Auto-reset horizontal scroll when scrolled away vertically (Middle-Screen Focus)
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                // If it starts leaving the middle focus zone (25% top/bottom margin)
+                if (!entry.isIntersecting && scrollRef.current && scrollRef.current.scrollLeft > 0) {
+                    scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+                }
+            },
+            { 
+                threshold: 0,
+                rootMargin: "-45% 0px -45% 0px" // Ultra-precise: resets as soon as it leaves the center
+            }
+        );
+
+        if (mainContainerRef.current) {
+            observer.observe(mainContainerRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, []);
 
     const handleFollow = async (e, targetUser) => {
         e.stopPropagation();
@@ -123,7 +147,7 @@ const FollowSuggestions = () => {
     if (suggestions.length === 0) return null;
 
     return (
-        <div className="space-y-4">
+        <div ref={mainContainerRef} className="space-y-4">
             <div className="flex items-center justify-between px-1">
                 <div className="flex flex-col">
                     <h2 className="text-[13px] font-black text-white tracking-wider uppercase">Suggested for you</h2>
@@ -138,7 +162,10 @@ const FollowSuggestions = () => {
                 </button>
             </div>
 
-            <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar -mx-1 px-1">
+            <div 
+                ref={scrollRef}
+                className="flex gap-3 overflow-x-auto pb-4 no-scrollbar -mx-1 px-1"
+            >
                 <AnimatePresence>
                     {suggestions.map((item, idx) => {
                         const state = followStates[item._id] || {};

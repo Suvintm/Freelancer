@@ -18,6 +18,7 @@ const SuggestedReels = () => {
     const { backendURL } = useAppContext();
     const navigate = useNavigate();
     const scrollRef = useRef(null);
+    const mainContainerRef = useRef(null);
     const [showControls, setShowControls] = useState(false);
 
     const { data: reels = [], isLoading: loading } = useQuery({
@@ -28,6 +29,27 @@ const SuggestedReels = () => {
         },
         staleTime: 5 * 60 * 1000, // 5 min cache
     });
+
+    // Auto-reset horizontal scroll when scrolled away vertically (Middle-Screen Focus)
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (!entry.isIntersecting && scrollRef.current && scrollRef.current.scrollLeft > 0) {
+                    scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+                }
+            },
+            { 
+                threshold: 0,
+                rootMargin: "-45% 0px -45% 0px" // Ultra-precise: reset if not dead-center
+            }
+        );
+
+        if (mainContainerRef.current) {
+            observer.observe(mainContainerRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, []);
 
     const scroll = (direction) => {
         if (scrollRef.current) {
@@ -64,6 +86,7 @@ const SuggestedReels = () => {
 
     return (
         <div 
+            ref={mainContainerRef}
             className="group/main relative mb-8"
             onMouseEnter={() => setShowControls(true)}
             onMouseLeave={() => setShowControls(false)}
