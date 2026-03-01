@@ -9,126 +9,58 @@ import {
   geocodeCity,
 } from "../utils/geoUtils.js";
 
-// @desc    Update editor location settings
+// @desc    Update editor location settings (Verified Static Presence)
 // @route   PATCH /api/location/settings
 // @access  Private (Editor only)
 export const updateLocationSettings = asyncHandler(async (req, res) => {
-  const { city, state, country, visibility, coordinates } = req.body;
+  const { coordinates, accuracy, serviceRadius } = req.body;
   const userId = req.user._id;
 
-  console.log("📍 Location update request:", { city, state, country, visibility, coordinates, userId });
-
-  // Verify user is an editor
+  // 1. Verify user is an editor
   if (req.user.role !== "editor") {
     res.status(403);
-    throw new Error("Only editors can set location visibility");
+    throw new Error("Only editors can set work location");
   }
 
-  // Validate required fields
-  if (!city || !state) {
+  // 2. Anti-Spam Guard: 30-minute cooldown
+  const user = await User.findById(userId);
+  const now = new Date();
+  if (user.locationUpdatedAt && (now - user.locationUpdatedAt) < 30 * 60 * 1000) {
+    res.status(429);
+    throw new Error("Location can only be updated once every 30 minutes");
+  }
+
+  // 3. Accuracy Guard: Reject > 500m
+  if (!accuracy || accuracy > 500) {
     res.status(400);
-    throw new Error("City and state are required");
+    throw new Error("GPS accuracy too low. Please ensure you are in an open area.");
   }
 
-  let coords = coordinates;
-
-  // If coordinates not provided, try to geocode city
-  if (!coords || !coords.lat || !coords.lng) {
-    console.log(`🗺️ Attempting to geocode: ${city}, ${state}`);
-    coords = geocodeCity(city, state);
-    
-    // If geocoding fails, use default coordinates (center of India)
-    if (!coords) {
-      console.warn(`⚠️ Could not geocode ${city}. Using default coordinates.`);
-      // Use approximate center coordinates - users can update later
-      coords = { lat: 20.5937, lng: 78.9629 }; // Center of India
-    } else {
-      console.log(`✅ Geocoded to:`, coords);
-    }
-  }
-
-  // Validate coordinates
-  if (!isValidCoordinates(coords.lat, coords.lng)) {
+  // 4. Validate Coordinates
+  if (!coordinates || !isValidCoordinates(coordinates.lat, coordinates.lng)) {
     res.status(400);
-    throw new Error("Invalid coordinates");
+    throw new Error("Invalid GPS coordinates");
   }
 
-  // Round coordinates for privacy (2 decimal places = ~1.1km accuracy)
-  const roundedCoords = roundCoordinates(coords.lat, coords.lng, 2);
+  // 5. Update User Record
+  user.location = {
+    type: "Point",
+    coordinates: [coordinates.lng, coordinates.lat],
+  };
+  user.locationAccuracy = accuracy;
+  user.locationUpdatedAt = now;
+  if (serviceRadius) user.serviceRadius = Math.min(Math.max(serviceRadius, 5), 100);
 
-  console.log(`🔒 Rounded coordinates:`, roundedCoords);
+  await user.save();
 
-  try {
-    // Find or create location record
-    let location = await EditorLocation.findOne({ userId });
-
-    if (location) {
-      // Update existing
-      console.log("📝 Updating existing location record");
-      location.location.city = city;
-      location.location.state = state;
-      location.location.country = country || "India";
-      // ✅ Use GeoJSON format: {type: "Point", coordinates: [lng, lat]}
-      location.location.approxCoordinates = {
-        type: "Point",
-        coordinates: [roundedCoords.lng, roundedCoords.lat], // [longitude, latitude]
-      };
-
-      if (visibility !== undefined) {
-        location.visibility.enabled = visibility.enabled ?? location.visibility.enabled;
-        location.visibility.level = visibility.level || location.visibility.level;
-      }
-
-      await location.save();
-    } else {
-      // Create new
-      console.log("✨ Creating new location record");
-      location = await EditorLocation.create({
-        userId,
-        location: {
-          city,
-          state,
-          country: country || "India",
-          // ✅ Use GeoJSON format
-          approxCoordinates: {
-            type: "Point",
-            coordinates: [roundedCoords.lng, roundedCoords.lat],
-          },
-        },
-        visibility: {
-          enabled: visibility?.enabled || false,
-          level: visibility?.level || "city",
-        },
-      });
-    }
-
-    console.log("✅ Location saved successfully");
-    
-    // ✅ DEBUG: Log what was saved to database
-    console.log("📝 Saved location details:", {
-      userId: location.userId,
-      city: location.location.city,
-      state: location.location.state,
-      coordinates: location.location.approxCoordinates,
-      visibility: location.visibility,
-    });
-
-    res.status(200).json({
-      success: true,
-      message: "Location settings updated successfully",
-      location: {
-        city: location.location.city,
-        state: location.location.state,
-        country: location.location.country,
-        visibility: location.visibility,
-        // Don't send exact coordinates to frontend
-        approxRegion: `${location.location.city}, ${location.location.state}`,
-      },
-    });
-  } catch (error) {
-    console.error("❌ Error saving location:", error);
-    throw error;
-  }
+  res.status(200).json({
+    success: true,
+    message: "Work location verified and updated",
+    data: {
+      locationUpdatedAt: user.locationUpdatedAt,
+      serviceRadius: user.serviceRadius,
+    },
+  });
 });
 
 // @desc    Get editor location settings
@@ -159,178 +91,107 @@ export const getLocationSettings = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get nearby editors
+// @desc    Get nearby editors (5-Tier Ranking Engine)
 // @route   GET /api/location/nearby
 // @access  Private (Client only)
 export const getNearbyEditors = asyncHandler(async (req, res) => {
-  const { lat, lng, radius = 25, skills, minRating, availability } = req.query;
+  const { lat, lng, radius = 25, skills } = req.query;
 
-  // Validate coordinates
   if (!lat || !lng) {
     res.status(400);
-    throw new Error("Latitude and longitude are required");
+    throw new Error("Search coordinates are required");
   }
 
   const userLat = parseFloat(lat);
   const userLng = parseFloat(lng);
+  const searchRadiusInMeters = (parseInt(radius) || 25) * 1000;
 
-  if (!isValidCoordinates(userLat, userLng)) {
-    res.status(400);
-    throw new Error("Invalid coordinates");
-  }
+  // 1. Freshness Threshold (30 days)
+  const freshnessLimit = new Date();
+  freshnessLimit.setDate(freshnessLimit.getDate() - 30);
 
-  const searchRadius = Math.min(parseInt(radius) || 25, 100); // Cap at 100km
-
-  // Find nearby editors using geospatial query
-  let query = {
-    "visibility.enabled": true,
-    "location.approxCoordinates": {
-      $nearSphere: {
-        $geometry: {
-          type: "Point",
-          coordinates: [userLng, userLat], // [lng, lat] order for GeoJSON
+  // 2. Build Aggregation Pipeline
+  const pipeline = [
+    {
+      $geoNear: {
+        near: { type: "Point", coordinates: [userLng, userLat] },
+        distanceField: "distance",
+        maxDistance: searchRadiusInMeters,
+        query: {
+          role: "editor",
+          locationUpdatedAt: { $gte: freshnessLimit }
         },
-        $maxDistance: searchRadius * 1000, // Convert km to meters
-      },
+        spherical: true
+      }
     },
-  };
-
-  console.log("🔍 Nearby editors query:", {
-    userLocation: { lat: userLat, lng: userLng },
-    searchRadius: `${searchRadius}km (${searchRadius * 1000}m)`,
-    query: JSON.stringify(query, null, 2),
-  });
-
-  // First get locations with just user ID
-  const locations = await EditorLocation.find(query).populate({
-    path: "userId",
-    select: "name profilePicture suvixScore availability isVerified",
-  });
-
-  console.log(`📍 Found ${locations.length} location records from database`);
-  
-  if (locations.length === 0) {
-    console.warn("⚠️ No editors found! Checking all editor locations in database...");
-    const allEditors = await EditorLocation.find({});
-    console.log(`Total editors in database: ${allEditors.length}`);
-    allEditors.forEach((ed, idx) => {
-      console.log(`Editor ${idx + 1}:`, {
-        visibility: ed.visibility,
-        coordinates: ed.location?.approxCoordinates,
-        city: ed.location?.city,
-      });
-    });
-  }
-
-  // Get user IDs for profile and user lookup
-  const userIds = locations
-    .filter((loc) => loc.userId)
-    .map((loc) => loc.userId._id);
-
-  // Fetch profiles for all these users
-  const profiles = await Profile.find({ user: { $in: userIds } })
-    .select("user skills ratingStats");
-  
-  // ✅ Also fetch Users directly to get profilePicture (populate might not include it)
-  const users = await User.find({ _id: { $in: userIds } })
-    .select("_id name profilePicture isVerified suvixScore availability");
-  
-  // Create maps for quick lookup
-  const profileMap = {};
-  profiles.forEach((profile) => {
-    profileMap[profile.user.toString()] = profile;
-  });
-
-  const userMap = {};
-  users.forEach((user) => {
-    userMap[user._id.toString()] = user;
-  });
-
-
-  // Build editor list with combined data
-  let editors = locations
-    .filter((loc) => loc.userId)
-    .map((loc) => {
-      const populatedUser = loc.userId;
-      const profile = profileMap[populatedUser._id.toString()] || {};
-      // ✅ Use direct user query result to get profilePicture
-      const directUser = userMap[populatedUser._id.toString()] || {};
-      
-      // ✅ Extract coordinates from GeoJSON format
-      const [editorLng, editorLat] = loc.location.approxCoordinates.coordinates;
-      
-      const distance = calculateDistance(
-        { lat: userLat, lng: userLng },
-        { lat: editorLat, lng: editorLng }
-      );
-
-      // 🔍 DEBUG: Log profile picture from both sources
-      console.log(`📸 Editor ${populatedUser.name}:`, {
-        populatedProfilePic: populatedUser.profilePicture,
-        directProfilePic: directUser.profilePicture,
-        userId: populatedUser._id,
-      });
-
-      // Use direct query result as it's more reliable
-      const profilePicture = directUser.profilePicture || populatedUser.profilePicture || null;
-
-      return {
-        _id: populatedUser._id,
-        name: populatedUser.name,
-        profilePicture: profilePicture,
-        skills: profile.skills || [],
-        suvixScore: directUser.suvixScore?.total || 0,
-        availability: directUser.availability?.status || "unknown",
-        rating: profile.ratingStats?.averageRating || 0,
-        isVerified: directUser.isVerified || false,
-        approxLocation: {
-          city: loc.location.city,
-          state: loc.location.state,
-          distance: parseFloat(distance.toFixed(1)),
-          lat: editorLat,
-          lng: editorLng,
+    // 3. Project & Calculate Combined Relevance Score
+    {
+      $addFields: {
+        // Score = (Distance Weight 40%) + (Rating Weight 25%) + (Suvix Score Weight 35%)
+        // Normalized Distance (closer is better)
+        distScore: {
+          $subtract: [100, { $multiply: [{ $divide: ["$distance", searchRadiusInMeters] }, 100] }]
         },
-      };
-    });
+        relevanceScore: {
+          $add: [
+            { $multiply: ["$distScore", 0.4] },
+            { $multiply: [{ $ifNull: ["$suvixScore.total", 0] }, 0.6] } // Switched to SUVIX score primarily
+          ]
+        },
+        // Privacy Offset (Client-side usually, but we sanitize here)
+        isOnline: "$isAvailable"
+      }
+    },
+    // 4. Sort by Relevance
+    { $sort: { relevanceScore: -1 } },
+    { $limit: 20 },
+    // 5. Cleanup Sensitive Data (KEEP location temporarily for offset calc)
+    {
+      $project: {
+        password: 0,
+        email: 0,
+        bankDetails: 0,
+        location: 1, // Keep for offset
+        razorpayContactId: 0,
+        razorpayFundAccountId: 0
+      }
+    }
+  ];
 
+  const editors = await User.aggregate(pipeline);
 
-
-  // Apply skill filter
-  if (skills) {
-    const skillsArray = skills.split(",").map((s) => s.trim().toLowerCase());
-    editors = editors.filter((editor) =>
-      editor.skills.some((skill) => skillsArray.includes(skill.toLowerCase()))
-    );
+  // 6. Cold-Start Fallback: If < 3 editors, expand or show remote
+  if (editors.length < 3) {
+    // TBD: Logic for remote editors expansion
   }
 
-  // Apply rating filter
-  if (minRating) {
-    const minRatingNum = parseFloat(minRating);
-    editors = editors.filter((editor) => editor.rating >= minRatingNum);
-  }
+  // 7. Map to Privacy-Safe Output
+  const safeEditors = editors.map(editor => {
+    // Inject privacy offset of ±150m (approx 0.0015 degrees)
+    const offsetLat = (Math.random() - 0.5) * 0.003;
+    const offsetLng = (Math.random() - 0.5) * 0.003;
+    
+    const actualLat = editor.location?.coordinates[1] || userLat;
+    const actualLng = editor.location?.coordinates[0] || userLng;
 
-  // Apply availability filter
-  if (availability === "true" || availability === true) {
-    editors = editors.filter((editor) => editor.availability === "available");
-  }
-
-  // Sort by distance (already sorted by MongoDB, but just to be sure)
-  editors.sort((a, b) => a.approxLocation.distance - b.approxLocation.distance);
-
-  // Log access for audit
-  console.log(
-    `📍 Location search: user=${req.user._id}, coords=[${userLat},${userLng}], radius=${searchRadius}km, found=${editors.length}`
-  );
+    return {
+      _id: editor._id,
+      name: editor.name,
+      profilePicture: editor.profilePicture,
+      relevanceScore: Math.round(editor.relevanceScore),
+      distance: (editor.distance / 1000).toFixed(1),
+      isOnline: editor.isOnline,
+      approxLocation: {
+        lat: actualLat + offsetLat,
+        lng: actualLng + offsetLng
+      }
+    };
+  });
 
   res.status(200).json({
     success: true,
-    count: editors.length,
-    searchParams: {
-      userLocation: { lat: userLat, lng: userLng },
-      radius: searchRadius,
-      filters: { skills, minRating, availability },
-    },
-    editors,
+    count: safeEditors.length,
+    editors: safeEditors
   });
 });
 

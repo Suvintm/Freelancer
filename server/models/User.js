@@ -103,6 +103,33 @@ const userSchema = new mongoose.Schema(
       uppercase: true,
     },
     
+    // Production Location Strategy (Static Presence)
+    location: {
+      type: {
+        type: String,
+        enum: ["Point"],
+        default: "Point",
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+        default: [77.5946, 12.9716], // Default: Bangalore
+      },
+    },
+    locationAccuracy: {
+      type: Number, // In meters
+      default: null,
+    },
+    locationUpdatedAt: {
+      type: Date,
+      default: null,
+    },
+    serviceRadius: {
+      type: Number, // In kilometers
+      default: 25,
+      min: 5,
+      max: 100,
+    },
+    
     // Profile Completion (0-100)
     profileCompletionPercent: {
       type: Number,
@@ -165,6 +192,11 @@ const userSchema = new mongoose.Schema(
     },
 
     // ==================== AVAILABILITY STATUS ====================
+    isAvailable: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     availability: {
       status: {
         type: String,
@@ -394,5 +426,7 @@ userSchema.index({ country: 1 });
 userSchema.index({ kycStatus: 1 });
 userSchema.index({ paymentGateway: 1 });
 userSchema.index({ "bankDetails.accountNumber": 1 });
+userSchema.index({ location: "2dsphere" });
+userSchema.index({ isAvailable: 1, role: 1, "suvixScore.total": -1 });
 
 export default mongoose.model("User", userSchema);

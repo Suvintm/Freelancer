@@ -37,7 +37,7 @@ const MobileBottomNav = () => {
   if (!user) return null;
 
   // Don't render on chat pages (individual chat view) OR Reels scrolling page
-  const hidePaths = ["/chat/", "/reels"];
+  const hidePaths = ["/chat/", "/reels", "/editors-near-you"];
   if (hidePaths.some(path => location.pathname.startsWith(path) || location.pathname === path)) return null;
 
   const isDark = theme === "dark";

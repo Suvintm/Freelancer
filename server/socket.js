@@ -285,6 +285,19 @@ io.on("connection", (socket) => {
     io.emit("users:online", Object.keys(userSocketMap));
   });
 
+  // ============ EDITOR AVAILABILITY (Phase B) ============
+  socket.on("editor:availability", async ({ userId, isAvailable }) => {
+    try {
+      const User = mongoose.model("User");
+      await User.findByIdAndUpdate(userId, { isAvailable });
+      console.log(`⚡ Editor ${userId} availability set to: ${isAvailable}`);
+      // Notify all clients for real-time discovery updates
+      io.emit("editor:status_change", { userId, isAvailable });
+    } catch (error) {
+      console.error("Error updating editor availability:", error);
+    }
+  });
+
   // ============ DISCONNECT ============
 
   socket.on("disconnect", (reason) => {

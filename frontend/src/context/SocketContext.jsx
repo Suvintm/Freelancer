@@ -244,8 +244,15 @@ export const SocketProvider = ({ children }) => {
     syncIntervalRef.current = setInterval(() => {
       if (newSocket.connected) {
         newSocket.emit("request:online_users");
+        
+        // ⚡ Availability Heartbeat (Phase B)
+        // If editor is Online, send a pulse every few minutes
+        if (user?.role === "editor" && user?.isAvailable) {
+          console.log("💓 Sending availability heartbeat");
+          newSocket.emit("editor:availability", { userId: user?._id, isAvailable: true });
+        }
       }
-    }, 30000);
+    }, 30000); // 30s is fine for general online check
 
     // Visibility change handler - refresh state when tab becomes visible
     const handleVisibilityChange = () => {
@@ -413,6 +420,14 @@ export const SocketProvider = ({ children }) => {
     setNewOrdersCount(0);
   }, []);
 
+  // Update real-time availability (Phase B)
+  const updateAvailability = useCallback((isAvailable) => {
+    if (socketRef.current?.connected) {
+      console.log("⚡ Broadcasting availability:", isAvailable);
+      socketRef.current.emit("editor:availability", { userId: user?._id, isAvailable });
+    }
+  }, [user]);
+
   const value = {
     socket: socketRef.current,
     connectionState,
@@ -431,6 +446,7 @@ export const SocketProvider = ({ children }) => {
     markAsRead,
     markNotificationsRead,
     resetNewOrdersCount,
+    updateAvailability,
     isUserOnline,
     getTypingUsers,
     getUnreadCount,
