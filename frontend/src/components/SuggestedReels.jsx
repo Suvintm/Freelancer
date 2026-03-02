@@ -233,9 +233,7 @@ const ReelThumbnail = ({ reel, index }) => {
                     muted
                     loop
                     playsInline
-                    preload="none"
-                    onLoadedData={e => { e.target.style.opacity = '1'; }}
-                    style={{ opacity: 0, transition: 'opacity 0.5s ease' }}
+                    preload="metadata"
                     onContextMenu={(e) => e.preventDefault()}
                     onDoubleClick={(e) => e.preventDefault()}
                     controlsList="nodownload nofullscreen noremoteplayback"
@@ -245,10 +243,7 @@ const ReelThumbnail = ({ reel, index }) => {
                 <img
                     src={reel.mediaUrl}
                     alt={reel.title}
-                    loading="lazy"
                     className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110 no-copy"
-                    onLoad={e => { e.target.style.opacity = '1'; }}
-                    style={{ opacity: 0, transition: 'opacity 0.5s ease' }}
                     onContextMenu={(e) => e.preventDefault()}
                     onDoubleClick={(e) => e.preventDefault()}
                 />

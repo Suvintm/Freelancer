@@ -3,6 +3,7 @@ import http from "http";
 import express from "express";
 import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 import { Message } from "./models/Message.js";
 import { Order } from "./models/Order.js";
 
@@ -290,7 +291,6 @@ io.on("connection", (socket) => {
     try {
       const User = mongoose.model("User");
       await User.findByIdAndUpdate(userId, { isAvailable });
-      console.log(`⚡ Editor ${userId} availability set to: ${isAvailable}`);
       // Notify all clients for real-time discovery updates
       io.emit("editor:status_change", { userId, isAvailable });
     } catch (error) {

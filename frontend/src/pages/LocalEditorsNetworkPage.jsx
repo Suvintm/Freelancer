@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { FaFilter } from "react-icons/fa";
-import { HiMagnifyingGlass, HiChevronLeft } from "react-icons/hi2";
+import { FaFilter, FaBolt, FaTimes } from "react-icons/fa";
+import { HiMagnifyingGlass, HiChevronLeft, HiXMark } from "react-icons/hi2";
 import { useAppContext } from "../context/AppContext";
 import NearbyMapView from "../components/NearbyMapView";
 import NearbyEditorList from "../components/NearbyEditorList";
@@ -16,10 +16,10 @@ const LocalEditorsNetworkPage = () => {
   const backendURL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
   const [editors, setEditors] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
   const [selectedEditorId, setSelectedEditorId] = useState(null);
-  const [searchRadius, setSearchRadius] = useState(25);
+  const [searchRadius, setSearchRadius] = useState(5);
   const [isMatching, setIsMatching] = useState(false);
   const [matchResult, setMatchResult] = useState(null); // 'found' | 'notFound' | null
   const [hasSearched, setHasSearched] = useState(false);
@@ -115,6 +115,20 @@ const LocalEditorsNetworkPage = () => {
     
     setIsMatching(false);
     setMatchResult(null);
+  };
+  
+  const handleResetSearch = () => {
+    setHasSearched(false);
+    setEditors([]);
+    setSearchRadius(5);
+    setSelectedEditorId(null);
+  };
+
+  const handleStartDiscovery = () => {
+    setHasSearched(true);
+    if (userLocation) {
+      fetchNearbyEditors(userLocation.lat, userLocation.lng, 5);
+    }
   };
 
   return (
@@ -234,7 +248,7 @@ const LocalEditorsNetworkPage = () => {
           searchRadius={searchRadius}
           onRadiusChange={setSearchRadius}
           hasSearched={hasSearched}
-          onStartDiscovery={handleAutoMatch}
+          onStartDiscovery={handleStartDiscovery}
         />
 
         {/* Premium Header Overlay (Uber/Google Maps Style) */}
@@ -259,9 +273,21 @@ const LocalEditorsNetworkPage = () => {
                        Find<span className="text-emerald-500 not-italic">Editor</span>
                     </h1>
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.4em] mt-1 ml-1">
-                       Discovery Mode
+                       {hasSearched ? `${editors.length} Professionals Near You` : "Discovery Mode"}
                     </p>
                  </div>
+
+                 {hasSearched && (
+                   <motion.button
+                     initial={{ opacity: 0, x: -10 }}
+                     animate={{ opacity: 1, x: 0 }}
+                     onClick={handleResetSearch}
+                     className="pointer-events-auto h-8 px-3 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 flex items-center gap-2 group hover:bg-red-500 transition-colors ml-auto"
+                   >
+                     <HiXMark className="text-white text-sm" />
+                     <span className="text-[8px] font-black text-white uppercase tracking-widest">Stop Search</span>
+                   </motion.button>
+                 )}
               </div>
 
               {/* Compact Search Bar */}
@@ -273,6 +299,32 @@ const LocalEditorsNetworkPage = () => {
                    className="flex-1 bg-transparent border-none outline-none text-xs font-bold text-gray-800 placeholder:text-gray-400"
                  />
               </div>
+
+              {/* Conditional Radius Slider (Floating below search) */}
+              <AnimatePresence>
+                {hasSearched && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="w-full max-w-[220px] pointer-events-auto bg-white/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl flex flex-col gap-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Radius</p>
+                      <p className="text-[10px] font-black text-emerald-600">{searchRadius}km</p>
+                    </div>
+                    <input 
+                      type="range"
+                      min="1"
+                      max="400"
+                      step="1"
+                      value={searchRadius}
+                      onChange={(e) => setSearchRadius(Number(e.target.value))}
+                      className="w-full h-1 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
            </div>
         </div>
       </div>
@@ -284,6 +336,7 @@ const LocalEditorsNetworkPage = () => {
         onEditorSelect={handleEditorSelect} 
         onAutoMatch={handleAutoMatch}
         hasSearched={hasSearched}
+        onStartDiscovery={handleStartDiscovery}
       />
     </div>
   );

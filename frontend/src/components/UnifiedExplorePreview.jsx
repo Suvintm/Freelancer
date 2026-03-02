@@ -92,10 +92,6 @@ const UnifiedExplorePreview = () => {
                                                 src={item.user?.profilePicture || item.profilePicture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop'} 
                                                 className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700"
                                                 alt={item.user?.name || item.name}
-                                                loading="lazy"
-                                                decoding="async"
-                                                onLoad={(e) => { e.target.style.opacity = "1"; }}
-                                                style={{ opacity: 0 }}
                                             />
                                         </div>
                                     </div>
@@ -159,10 +155,6 @@ const UnifiedExplorePreview = () => {
                                     src={item.thumbnail || item.images?.[0] || 'https://images.unsplash.com/photo-1492724441997-5dc865305da7?q=80&w=2080&auto=format&fit=crop'} 
                                     className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700"
                                     alt={item.title}
-                                    loading="lazy"
-                                    decoding="async"
-                                    onLoad={(e) => { e.target.style.opacity = "1"; }}
-                                    style={{ opacity: 0 }}
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
                                 

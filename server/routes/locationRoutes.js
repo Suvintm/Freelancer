@@ -6,6 +6,8 @@ import {
   getNearbyEditors,
   logLocationConsent,
   deleteLocationSettings,
+  toggleVisibility,
+  updateServiceRadius,
 } from "../controllers/locationController.js";
 import { locationSearchLimiter } from "../middleware/rateLimiter.js";
 
@@ -26,5 +28,12 @@ router.get("/nearby", authorize("client", "editor"), locationSearchLimiter, getN
 
 // Consent logging (any authenticated user)
 router.post("/consent", logLocationConsent);
+
+// Persist editor map visibility (online/offline toggle)
+router.patch("/visibility", authorize("editor"), toggleVisibility);
+
+// Update service radius only (no GPS cooldown)
+router.patch("/radius", authorize("editor"), updateServiceRadius);
+
 
 export default router;

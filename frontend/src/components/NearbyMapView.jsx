@@ -123,11 +123,10 @@ const NearbyMapView = ({
                 radius={searchRadius * 1000} // Convert km to meters
                 pathOptions={{
                   fillColor: '#10b981',
-                  fillOpacity: 0.1,
+                  fillOpacity: 0.2,
                   color: '#10b981',
-                  weight: 2,
-                  dashArray: '5, 10',
-                  opacity: 0.5
+                  weight: 4,
+                  className: "radius-pulse-anim"
                 }}
               />
             )}
@@ -156,66 +155,6 @@ const NearbyMapView = ({
         </AnimatePresence>
       </MapContainer>
 
-      {/* Start Discovery CTA (Overlay) */}
-      <AnimatePresence>
-        {!hasSearched && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="absolute bottom-40 left-1/2 -translate-x-1/2 z-[2000] w-full max-w-[280px] px-6"
-          >
-            <motion.button
-              onClick={onStartDiscovery}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="w-full bg-black text-white h-14 rounded-2xl flex items-center justify-center gap-3 shadow-[0_20px_40px_rgba(0,0,0,0.3)] group relative overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-              <div className="relative flex items-center gap-3">
-                <div className="w-8 h-8 bg-emerald-500 rounded-xl flex items-center justify-center">
-                  <FaBolt className="text-sm" />
-                </div>
-                <span className="font-black text-sm uppercase tracking-widest">Start Scouting</span>
-              </div>
-            </motion.button>
-            <p className="text-center text-[9px] font-bold text-gray-500 uppercase tracking-[0.3em] mt-4 drop-shadow-sm">
-              Tap to find professionals nearby
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Floating Map Controls & Radius Controller (Repositioned to bottom area above peek) */}
-      <div className="absolute bottom-[320px] right-4 z-[1000] flex flex-col gap-3 items-end">
-        <div className="bg-white/95 backdrop-blur-xl border border-gray-100 rounded-2xl p-3 shadow-2xl flex flex-col gap-2 min-w-[140px]">
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Radius</p>
-            <p className="text-[10px] font-black text-emerald-600">{searchRadius}km</p>
-          </div>
-          <input 
-            type="range"
-            min="5"
-            max="100"
-            step="5"
-            value={searchRadius}
-            onChange={(e) => onRadiusChange(Number(e.target.value))}
-            className="w-full h-1 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-          />
-        </div>
-
-        <button 
-          onClick={() => {
-            if (userLocation) {
-              setMapCenter([userLocation.lat, userLocation.lng]);
-            }
-          }}
-          className="w-12 h-12 bg-white border border-gray-100 rounded-2xl flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-all shadow-xl"
-        >
-          <FaCrosshairs className="text-xl" />
-        </button>
-      </div>
-      
       {/* Visual Enhancements */}
       <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_100px_rgba(0,0,0,0.02)] z-[1]" />
       
@@ -233,6 +172,15 @@ const NearbyMapView = ({
         .editor-marker-custom {
           background: transparent !important;
           border: none !important;
+        }
+        .radius-pulse-anim {
+          animation: radiusPulse 3s infinite ease-in-out;
+          stroke-dasharray: 10, 10;
+        }
+        @keyframes radiusPulse {
+          0% { stroke-opacity: 0.9; stroke-width: 4; fill-opacity: 0.2; }
+          50% { stroke-opacity: 0.4; stroke-width: 8; fill-opacity: 0.25; }
+          100% { stroke-opacity: 0.9; stroke-width: 4; fill-opacity: 0.2; }
         }
       `}</style>
     </div>

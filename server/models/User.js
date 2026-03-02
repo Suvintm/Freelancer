@@ -127,7 +127,7 @@ const userSchema = new mongoose.Schema(
       type: Number, // In kilometers
       default: 25,
       min: 5,
-      max: 100,
+      max: 400,
     },
     
     // Profile Completion (0-100)

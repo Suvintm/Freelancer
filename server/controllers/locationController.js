@@ -49,7 +49,7 @@ export const updateLocationSettings = asyncHandler(async (req, res) => {
   };
   user.locationAccuracy = accuracy;
   user.locationUpdatedAt = now;
-  if (serviceRadius) user.serviceRadius = Math.min(Math.max(serviceRadius, 5), 100);
+  if (serviceRadius) user.serviceRadius = Math.min(Math.max(serviceRadius, 5), 400);
 
   await user.save();
 
@@ -60,6 +60,78 @@ export const updateLocationSettings = asyncHandler(async (req, res) => {
       locationUpdatedAt: user.locationUpdatedAt,
       serviceRadius: user.serviceRadius,
     },
+  });
+});
+
+// @desc    Toggle editor map visibility (persisted to DB)
+// @route   PATCH /api/location/visibility
+// @access  Private (Editor only)
+export const toggleVisibility = asyncHandler(async (req, res) => {
+  const { isAvailable } = req.body;
+  const userId = req.user._id;
+
+  if (req.user.role !== "editor") {
+    res.status(403);
+    throw new Error("Only editors can toggle map visibility");
+  }
+
+  if (typeof isAvailable !== "boolean") {
+    res.status(400);
+    throw new Error("isAvailable must be a boolean");
+  }
+
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { isAvailable },
+    { new: true }
+  );
+
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  res.status(200).json({
+    success: true,
+    message: isAvailable ? "You are now live on the map!" : "You have gone offline from the map.",
+    isAvailable: user.isAvailable,
+  });
+});
+
+// @desc    Update editor service radius only (no GPS cooldown)
+// @route   PATCH /api/location/radius
+// @access  Private (Editor only)
+export const updateServiceRadius = asyncHandler(async (req, res) => {
+  const { serviceRadius } = req.body;
+  const userId = req.user._id;
+
+  if (req.user.role !== "editor") {
+    res.status(403);
+    throw new Error("Only editors can update service radius");
+  }
+
+  if (!serviceRadius || typeof serviceRadius !== "number") {
+    res.status(400);
+    throw new Error("serviceRadius must be a valid number");
+  }
+
+  const clampedRadius = Math.min(Math.max(serviceRadius, 5), 400);
+
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { serviceRadius: clampedRadius },
+    { new: true }
+  );
+
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  res.status(200).json({
+    success: true,
+    message: `Discovery reach updated to ${clampedRadius}km`,
+    serviceRadius: user.serviceRadius,
   });
 });
 
@@ -104,11 +176,12 @@ export const getNearbyEditors = asyncHandler(async (req, res) => {
 
   const userLat = parseFloat(lat);
   const userLng = parseFloat(lng);
-  const searchRadiusInMeters = (parseInt(radius) || 25) * 1000;
-
-  // 1. Freshness Threshold (30 days)
+  // 1. Setup Freshness & Search Constraints
+  // Auto-Fade Logic: Only show editors active within last 7 days
   const freshnessLimit = new Date();
-  freshnessLimit.setDate(freshnessLimit.getDate() - 30);
+  freshnessLimit.setDate(freshnessLimit.getDate() - 7);
+
+  const searchRadiusInMeters = (parseInt(radius) || 25) * 1000;
 
   // 2. Build Aggregation Pipeline
   const pipeline = [
@@ -119,6 +192,7 @@ export const getNearbyEditors = asyncHandler(async (req, res) => {
         maxDistance: searchRadiusInMeters,
         query: {
           role: "editor",
+          isAvailable: true, // Only show editors who are marked as available
           locationUpdatedAt: { $gte: freshnessLimit }
         },
         spherical: true
@@ -145,15 +219,16 @@ export const getNearbyEditors = asyncHandler(async (req, res) => {
     // 4. Sort by Relevance
     { $sort: { relevanceScore: -1 } },
     { $limit: 20 },
-    // 5. Cleanup Sensitive Data (KEEP location temporarily for offset calc)
     {
       $project: {
-        password: 0,
-        email: 0,
-        bankDetails: 0,
-        location: 1, // Keep for offset
-        razorpayContactId: 0,
-        razorpayFundAccountId: 0
+        _id: 1,
+        name: 1,
+        profilePicture: 1,
+        location: 1,
+        distance: 1,
+        relevanceScore: 1,
+        isAvailable: 1,
+        suvixScore: 1
       }
     }
   ];

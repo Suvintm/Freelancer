@@ -149,11 +149,7 @@ const SpecialtyBrowse = ({ onSelect }) => {
                         <img 
                             src={item.image} 
                             alt={item.label} 
-                            loading="lazy"
-                            decoding="async"
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-125 brightness-90 group-hover:brightness-110" 
-                            onLoad={e => { e.target.style.opacity = '1'; }}
-                            style={{ opacity: 0, transition: 'opacity 0.6s ease' }}
                         />
                         
                         {/* Improved Glassmorphic Overlay */}
