@@ -75,6 +75,7 @@ const PublicEditorProfile = () => {
   const [suvixScore, setSuvixScore] = useState(null);
   const [showKYCModal, setShowKYCModal] = useState(false);
   const [earnedBadges, setEarnedBadges] = useState([]);
+  const [showContactRestriction, setShowContactRestriction] = useState(false);
 
   const navigate = useNavigate();
 
@@ -451,10 +452,12 @@ const PublicEditorProfile = () => {
                             {followLoading ? "..." : isFollowing ? "Following" : "Follow"}
                           </button>
                           
-                          {user?.role === "client" && (
+                          {!isOwner && user && (
                             <button
                               onClick={() => {
-                                if (user?.role === "client" && user?.clientKycStatus !== "verified") {
+                                if (user.role === "editor") {
+                                  setShowContactRestriction(true);
+                                } else if (user.role === "client" && user.clientKycStatus !== "verified") {
                                   setShowKYCModal(true);
                                 } else {
                                   setRequestModalOpen(true);
@@ -528,10 +531,12 @@ const PublicEditorProfile = () => {
                       >
                         {isFollowing ? "Following" : "Follow"}
                       </button>
-                      {userData?.role === "editor" && user?.role === "client" && (
+                      {userData?.role === "editor" && user && (
                         <button
                           onClick={() => {
-                            if (user?.role === "client" && user?.clientKycStatus !== "verified") {
+                            if (user.role === "editor") {
+                              setShowContactRestriction(true);
+                            } else if (user.role === "client" && user.clientKycStatus !== "verified") {
                               setShowKYCModal(true);
                             } else {
                               setRequestModalOpen(true);
@@ -1175,6 +1180,40 @@ const PublicEditorProfile = () => {
         onClose={() => setShowKYCModal(false)}
         kycStatus={user?.clientKycStatus}
       />
+
+      {/* Cross-Editor Contact Restriction Popup */}
+      <AnimatePresence>
+        {showContactRestriction && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowContactRestriction(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-black border border-zinc-800 p-6 rounded-2xl max-w-xs w-full text-center shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FaUser className="text-zinc-400 text-lg" />
+              </div>
+              <p className="text-white text-xs font-medium leading-relaxed mb-6">
+                You are an editor, you can't contact other editors. If you want to contact them, you have to open a new account as a normal user or client.
+              </p>
+              <button
+                onClick={() => setShowContactRestriction(false)}
+                className="w-full py-2.5 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-zinc-200 transition-colors"
+              >
+                Understood
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

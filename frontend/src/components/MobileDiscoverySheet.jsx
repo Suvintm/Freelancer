@@ -1,10 +1,14 @@
 import { useRef, useEffect } from "react";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { FaUserCircle, FaStar, FaMapMarkerAlt, FaWhatsapp, FaChevronUp, FaBolt, FaArrowRight, FaSmile, FaPlay } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 
 // Premium Mobile Editor Card for Discovery Sheet
 const MobileEditorCard = ({ editor, onClick }) => {
+  const navigate = useNavigate();
   const photoUrl = editor.profilePicture || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+  const rating = editor.ratingStats?.averageRating?.toFixed(1) || "N/A";
+  const displaySkills = editor.skills?.slice(0, 3) || [];
   
   return (
     <motion.div
@@ -28,7 +32,7 @@ const MobileEditorCard = ({ editor, onClick }) => {
           <h4 className="font-bold text-gray-900 truncate">{editor.name}</h4>
           <div className="flex items-center gap-1">
             <FaStar className="text-amber-500 text-[10px]" />
-            <span className="text-[10px] font-black text-gray-900">4.9</span>
+            <span className="text-[10px] font-black text-gray-900">{rating}</span>
           </div>
         </div>
         
@@ -45,15 +49,30 @@ const MobileEditorCard = ({ editor, onClick }) => {
 
         <div className="flex items-center justify-between">
            <div className="flex -space-x-1.5 overflow-hidden">
-             {['PR', 'AE', 'VFX'].map((tag, i) => (
+             {displaySkills.length > 0 ? displaySkills.map((tag, i) => (
                <div key={i} className="px-2 py-0.5 rounded-lg bg-white border border-gray-100 text-[8px] font-black text-gray-400">
                  {tag}
                </div>
-             ))}
+             )) : (
+               <div className="px-2 py-0.5 rounded-lg bg-white border border-gray-100 text-[8px] font-black text-gray-400 uppercase tracking-tighter">
+                 Verified Pro
+               </div>
+             )}
            </div>
-           <button className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20 active:bg-emerald-600">
-             <FaWhatsapp className="text-xs" />
-           </button>
+           <div className="flex gap-2">
+             <button 
+               onClick={(e) => {
+                 e.stopPropagation();
+                 navigate(`/editor/${editor._id}`);
+               }}
+               className="px-4 py-2 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-emerald-500/20 active:bg-emerald-600"
+             >
+               View Profile
+             </button>
+             <button className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 active:bg-emerald-200">
+               <FaWhatsapp className="text-xs" />
+             </button>
+           </div>
         </div>
       </div>
     </motion.div>

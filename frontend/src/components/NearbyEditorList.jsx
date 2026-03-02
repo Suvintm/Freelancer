@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { 
   FaStar, 
   FaMapMarkerAlt, 
@@ -10,6 +11,10 @@ import {
 } from "react-icons/fa";
 
 const EditorCard = ({ editor, isSelected, onClick }) => {
+  const navigate = useNavigate();
+  const rating = editor.ratingStats?.averageRating?.toFixed(1) || "N/A";
+  const displaySkills = editor.skills?.slice(0, 2) || [];
+
   return (
     <motion.div
       layout
@@ -47,7 +52,7 @@ const EditorCard = ({ editor, isSelected, onClick }) => {
             </h4>
             <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 rounded-full border border-amber-100">
               <FaStar className="text-amber-500 text-[10px]" />
-              <span className="text-[10px] font-black text-amber-700">4.9</span>
+              <span className="text-[10px] font-black text-amber-700">{rating}</span>
             </div>
           </div>
 
@@ -63,11 +68,15 @@ const EditorCard = ({ editor, isSelected, onClick }) => {
           </div>
 
           <div className="flex flex-wrap gap-1.5">
-            {["Adobe Premiere", "After Effects"].map((skill, i) => (
+            {displaySkills.length > 0 ? displaySkills.map((skill, i) => (
               <span key={i} className="px-2 py-0.5 bg-gray-100 rounded-md text-[9px] font-bold text-gray-600 border border-gray-200">
                 {skill}
               </span>
-            ))}
+            )) : (
+              <span className="px-2 py-0.5 bg-gray-100 rounded-md text-[9px] font-bold text-gray-400 border border-gray-200 uppercase tracking-tighter">
+                Verified Pro
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -85,7 +94,13 @@ const EditorCard = ({ editor, isSelected, onClick }) => {
               <FaWhatsapp className="text-sm" />
               WhatsApp
             </button>
-            <button className="flex-1 py-3 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-black rounded-xl transition-all">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/editor/${editor._id}`);
+              }}
+              className="flex-1 py-3 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-black rounded-xl transition-all"
+            >
               View Profile
             </button>
           </motion.div>

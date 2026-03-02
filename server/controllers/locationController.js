@@ -198,7 +198,17 @@ export const getNearbyEditors = asyncHandler(async (req, res) => {
         spherical: true
       }
     },
-    // 3. Project & Calculate Combined Relevance Score
+    // 3. Join with Profile to get skills and ratings
+    {
+      $lookup: {
+        from: "profiles",
+        localField: "_id",
+        foreignField: "user",
+        as: "profile"
+      }
+    },
+    { $unwind: { path: "$profile", preserveNullAndEmptyArrays: true } },
+    // 4. Project & Calculate Combined Relevance Score
     {
       $addFields: {
         // Score = (Distance Weight 40%) + (Rating Weight 25%) + (Suvix Score Weight 35%)
@@ -213,10 +223,12 @@ export const getNearbyEditors = asyncHandler(async (req, res) => {
           ]
         },
         // Privacy Offset (Client-side usually, but we sanitize here)
-        isOnline: "$isAvailable"
+        isOnline: "$isAvailable",
+        skills: { $ifNull: ["$profile.skills", []] },
+        ratingStats: "$profile.ratingStats"
       }
     },
-    // 4. Sort by Relevance
+    // 5. Sort by Relevance
     { $sort: { relevanceScore: -1 } },
     { $limit: 20 },
     {
@@ -228,7 +240,9 @@ export const getNearbyEditors = asyncHandler(async (req, res) => {
         distance: 1,
         relevanceScore: 1,
         isAvailable: 1,
-        suvixScore: 1
+        suvixScore: 1,
+        skills: 1,
+        ratingStats: 1
       }
     }
   ];
@@ -259,7 +273,9 @@ export const getNearbyEditors = asyncHandler(async (req, res) => {
       approxLocation: {
         lat: actualLat + offsetLat,
         lng: actualLng + offsetLng
-      }
+      },
+      skills: editor.skills || [],
+      ratingStats: editor.ratingStats || { averageRating: 0, totalReviews: 0 }
     };
   });
 
