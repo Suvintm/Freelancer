@@ -25,6 +25,23 @@ import Sidebar from "../components/Sidebar";
 import ClientNavbar from "../components/ClientNavbar";
 import ClientSidebar from "../components/ClientSidebar";
 
+const HighlightText = ({ text, highlight }) => {
+  if (!highlight?.trim()) return <span>{text}</span>;
+  const regex = new RegExp(`(${highlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, "gi");
+  const parts = text.split(regex);
+  return (
+    <span>
+      {parts.map((part, i) => 
+        regex.test(part) ? (
+          <span key={i} className="text-emerald-500 font-black decoration-emerald-500/30 underline-offset-2">{part}</span>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </span>
+  );
+};
+
 const NotificationsPage = () => {
   const { backendURL, fetchNotifications, user } = useAppContext();
   const { theme } = useTheme();
@@ -359,10 +376,10 @@ const NotificationsPage = () => {
                             <div className="flex items-start justify-between gap-2 mb-1">
                               <p className={`text-[13px] leading-tight ${!n.isRead ? "font-black text-black dark:text-white" : "font-medium text-zinc-600 dark:text-zinc-400"}`}>
                                 <span className={`${!n.isRead ? "text-zinc-900 dark:text-white" : "text-zinc-900 dark:text-zinc-200"}`}>
-                                  {n.title}
+                                  <HighlightText text={n.title} highlight={searchQuery} />
                                 </span>{" "}
                                 <span className="text-zinc-500 dark:text-zinc-500">
-                                  {n.message}
+                                  <HighlightText text={n.message} highlight={searchQuery} />
                                 </span>
                               </p>
                             </div>
@@ -437,7 +454,9 @@ const NotificationsPage = () => {
                   <div className="flex items-center gap-4">
                     <NotificationIcon notification={selectedNotification} />
                     <div>
-                      <h3 className="text-xl font-black leading-tight">{selectedNotification.title}</h3>
+                      <h3 className="text-xl font-black leading-tight">
+                        <HighlightText text={selectedNotification.title} highlight={searchQuery} />
+                      </h3>
                       <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">
                         {new Date(selectedNotification.createdAt).toLocaleString()}
                       </p>
@@ -454,7 +473,7 @@ const NotificationsPage = () => {
                 <div className="space-y-6">
                   <div className="p-5 bg-zinc-50 dark:bg-zinc-950 rounded-2xl border border-zinc-100 dark:border-zinc-800">
                     <p className="text-zinc-700 dark:text-zinc-300 leading-relaxed font-semibold">
-                      {selectedNotification.message}
+                      <HighlightText text={selectedNotification.message} highlight={searchQuery} />
                     </p>
                   </div>
 
