@@ -2,7 +2,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 import { useSocket } from "../context/SocketContext";
 import { useTheme } from "../context/ThemeContext";
-import logo from "../assets/logo.png";
+import lightLogo from "../assets/lightlogo.png";
+import darkLogo from "../assets/darklogo.png";
 import { HiBell, HiBars3, HiOutlineSun, HiOutlineMoon } from "react-icons/hi2";
 import ProfileCompletionRing from "./ProfileCompletionRing";
 import { motion, AnimatePresence } from "framer-motion";
@@ -129,18 +130,15 @@ const EditorNavbar = ({ onMenuClick }) => {
                     <HiBars3 className="text-xl" />
                 </button>
 
-                {/* LOGO */}
                 <div
-                    className="flex items-center gap-2 cursor-pointer"
+                    className="flex items-center cursor-pointer"
                     onClick={() => navigate("/editor-home")}
                 >
-                    <img src={logo} alt="SuviX" className="w-8 h-8 hover:scale-105 transition-transform" />
-                    <h2 
-                        className="text-lg font-bold text-white light:text-slate-900"
-                        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-                    >
-                        Suvi<span className="text-emerald-500">X</span>
-                    </h2>
+                    <img 
+                        src={theme === "dark" ? darkLogo : lightLogo} 
+                        alt="SuviX" 
+                        className="h-6 w-auto hover:scale-105 transition-transform duration-200" 
+                    />
                 </div>
 
                 {/* RIGHT SIDE ICONS */}

@@ -10,7 +10,8 @@ import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { useTheme } from "../context/ThemeContext";
 import { useSocket } from "../context/SocketContext";
-import logo from "../assets/logo.png";
+import lightLogo from "../assets/lightlogo.png";
+import darkLogo from "../assets/darklogo.png";
 
 // HeroIcons v2 - Outline style
 import {
@@ -242,23 +243,17 @@ const ClientSidebar = ({ isOpen, onClose }) => {
         w-64 border-r border-white/10 light:border-slate-200`}
         style={{ fontFamily: "'Inter', sans-serif" }}
       >
-        {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10 light:border-slate-100">
-          <img
+        <div className="flex items-center px-5 py-4 border-b border-white/10 light:border-slate-100">
+          <div 
+            className="flex-1 cursor-pointer"
             onClick={() => handleNavigation("/")}
-            src={logo}
-            className="w-9 h-9 cursor-pointer hover:scale-105 transition-transform"
-            alt="SuviX"
-          />
-          <div className="flex-1">
-            <h1
-              onClick={() => handleNavigation("/")}
-              className="text-lg font-bold cursor-pointer text-white light:text-slate-900"
-              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-            >
-              Suvi<span className="text-emerald-500">X</span>
-            </h1>
-            <p className="text-[10px] text-gray-500 light:text-slate-500">Client Workspace</p>
+          >
+            <img 
+              src={theme === "dark" ? darkLogo : lightLogo} 
+              className="h-6 w-auto hover:scale-105 transition-transform duration-200" 
+              alt="SuviX" 
+            />
+            <p className="text-[10px] text-gray-500 light:text-slate-500 mt-1">Client Workspace</p>
           </div>
           <button
             onClick={onClose}

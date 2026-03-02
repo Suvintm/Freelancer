@@ -17,7 +17,8 @@ import { HiOutlineSun, HiOutlineMoon } from "react-icons/hi2";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppContext } from "../context/AppContext";
 import { useTheme } from "../context/ThemeContext";
-import logo from "../assets/logo.png";
+import lightLogo from "../assets/lightlogo.png";
+import darkLogo from "../assets/darklogo.png";
 import RefreshButton from "./RefreshButton";
 
 const ClientNavbar = ({ onMenuClick }) => {
@@ -198,18 +199,15 @@ const ClientNavbar = ({ onMenuClick }) => {
           <FaBars className="text-xl" />
         </button>
 
-        {/* LOGO */}
         <div
-          className="flex items-center gap-2 cursor-pointer"
+          className="flex items-center cursor-pointer"
           onClick={() => navigate("/client-home")}
         >
-          <img src={logo} alt="SuviX" className="w-8 h-8 hover:scale-105 transition-transform" />
-          <h2 
-            className="text-lg font-bold text-white light:text-slate-900"
-            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-          >
-            Suvi<span className="text-emerald-500">X</span>
-          </h2>
+          <img 
+            src={theme === "dark" ? darkLogo : lightLogo} 
+            alt="SuviX" 
+            className="h-6 w-auto hover:scale-105 transition-transform duration-200" 
+          />
         </div>
 
         {/* RIGHT SIDE ICONS */}

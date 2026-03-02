@@ -1,10 +1,13 @@
 import { useAppContext } from "../context/AppContext";
 import { useNavigate, useLocation } from "react-router-dom";
-import logo from "../assets/logo.png";
+import lightLogo from "../assets/lightlogo.png";
+import darkLogo from "../assets/darklogo.png";
+import { useTheme } from "../context/ThemeContext";
 import { FaArrowRight } from "react-icons/fa";
 
 const Navbar = () => {
   const { user, setUser, setShowAuth } = useAppContext();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -56,15 +59,15 @@ const Navbar = () => {
 
   return (
     <nav className="w-full bg-white/95 backdrop-blur-sm shadow-sm px-4 md:px-12 py-4 flex justify-between items-center sticky top-0 z-50">
-      {/* Logo */}
       <div 
-        className="flex gap-2 items-center cursor-pointer group"
+        className="flex items-center cursor-pointer group"
         onClick={() => navigate("/")}
       >
-        <img src={logo} className="w-10 h-10 group-hover:scale-105 transition-transform" alt="SuviX" />
-        <h1 className="text-2xl font-bold text-slate-900">
-          Suvi<span className="text-emerald-500">X</span>
-        </h1>
+        <img 
+          src={theme === "dark" ? lightLogo : lightLogo} 
+          className="h-10 w-auto group-hover:scale-105 transition-transform duration-200" 
+          alt="SuviX" 
+        />
       </div>
 
       {/* Navigation Links - Desktop */}
