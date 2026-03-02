@@ -137,7 +137,7 @@ const EditorNavbar = ({ onMenuClick }) => {
                     <img 
                         src={theme === "dark" ? darkLogo : lightLogo} 
                         alt="SuviX" 
-                        className="h-6 w-auto hover:scale-105 transition-transform duration-200" 
+                        className="h-8 w-auto hover:scale-105 transition-transform duration-200" 
                     />
                 </div>
 
