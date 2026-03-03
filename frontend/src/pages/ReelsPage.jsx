@@ -333,11 +333,11 @@ const ReelsPage = () => {
 
                     return (
                         <React.Fragment key={reel._id}>
-                            <div
-                                id={`reel-${index}`}
-                                ref={index === reels.length - 1 ? lastReelRef : null}
-                                className="w-full h-screen snap-start relative flex-shrink-0"
-                            >
+                                <div
+                                    id={`reel-${index}`}
+                                    ref={index === reels.length - 1 ? lastReelRef : null}
+                                    className="w-full h-screen snap-start snap-always relative flex-shrink-0"
+                                >
                                 <ReelCard
                                     reel={reel}
                                     isActive={index === activeReelIndex}
@@ -349,7 +349,7 @@ const ReelsPage = () => {
                             {adAfterThis && adForSlot && !skippedAdIndices.has(adSlotIndex) && (
                                 <div
                                     key={adSlotIndex}
-                                    className="w-full h-screen snap-start relative flex-shrink-0"
+                                    className="w-full h-screen snap-start snap-always relative flex-shrink-0"
                                 >
                                     <ReelAdCard
                                         ad={adForSlot}
