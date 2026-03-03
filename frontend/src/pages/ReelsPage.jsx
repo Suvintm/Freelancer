@@ -160,12 +160,34 @@ const ReelsPage = () => {
     }, [activeReelIndex, reels, backendURL]);
 
     // ─────────────────────────────────────────────────────────────
+    // UNIFIED FEED (Reels + Ads)
+    // ─────────────────────────────────────────────────────────────
+    const combinedFeed = React.useMemo(() => {
+        const feed = [];
+        let adCounter = 0;
+        
+        reels.forEach((reel, index) => {
+            feed.push({ type: 'reel', content: reel, id: reel._id });
+            
+            if ((index + 1) % 5 === 0 && reelAds.length > 0) {
+                const adIndex = adCounter % reelAds.length;
+                const adId = `ad-slot-${index}`;
+                if (!skippedAdIndices.has(adId)) {
+                    feed.push({ type: 'ad', content: reelAds[adIndex], id: adId });
+                    adCounter++;
+                }
+            }
+        });
+        return feed;
+    }, [reels, reelAds, skippedAdIndices]);
+
+    // ─────────────────────────────────────────────────────────────
     // PER-REEL INTERSECTION OBSERVER — accurate active detection
     // ─────────────────────────────────────────────────────────────
-    useReelObserver(reels.length, (index) => {
+    useReelObserver(combinedFeed.length, (index) => {
         setActiveReelIndex(index);
         savePosition(index);
-    });
+    }, "feed-item");
 
     // ─────────────────────────────────────────────────────────────
     // INFINITE SCROLL — last reel observer
@@ -324,40 +346,32 @@ const ReelsPage = () => {
                     </>
                 )}
 
-                {/* Reel cards with ad injection every 5th reel */}
-                {!loading && reels.map((reel, index) => {
-                    // Insert an ad after every 5th reel (index 4, 9, 14...)
-                    const adAfterThis = (index + 1) % 5 === 0 && reelAds.length > 0;
-                    const adForSlot = reelAds[Math.floor(index / 5) % reelAds.length];
-                    const adSlotIndex = `ad-${index}`;
-
+                {/* Combined Feed (Reels + Ads) */}
+                {!loading && combinedFeed.map((item, index) => {
+                    const isLast = index === combinedFeed.length - 1;
+                    
                     return (
-                        <React.Fragment key={reel._id}>
-                                <div
-                                    id={`reel-${index}`}
-                                    ref={index === reels.length - 1 ? lastReelRef : null}
-                                    className="w-full h-screen snap-start snap-always relative flex-shrink-0"
-                                >
+                        <div
+                            key={item.id}
+                            id={`feed-item-${index}`}
+                            ref={isLast ? lastReelRef : null}
+                            className="w-full h-screen snap-start snap-always relative flex-shrink-0"
+                        >
+                            {item.type === 'reel' ? (
                                 <ReelCard
-                                    reel={reel}
+                                    reel={item.content}
                                     isActive={index === activeReelIndex}
                                     onCommentClick={handleCommentClick}
                                     globalMuted={globalMuted}
                                     setGlobalMuted={setGlobalMuted}
                                 />
-                            </div>
-                            {adAfterThis && adForSlot && !skippedAdIndices.has(adSlotIndex) && (
-                                <div
-                                    key={adSlotIndex}
-                                    className="w-full h-screen snap-start snap-always relative flex-shrink-0"
-                                >
-                                    <ReelAdCard
-                                        ad={adForSlot}
-                                        onSkip={() => setSkippedAdIndices(prev => new Set([...prev, adSlotIndex]))}
-                                    />
-                                </div>
+                            ) : (
+                                <ReelAdCard
+                                    ad={item.content}
+                                    onSkip={() => setSkippedAdIndices(prev => new Set([...prev, item.id]))}
+                                />
                             )}
-                        </React.Fragment>
+                        </div>
                     );
                 })}
 
