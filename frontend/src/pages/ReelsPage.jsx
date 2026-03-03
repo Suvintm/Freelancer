@@ -81,14 +81,17 @@ const ReelsPage = () => {
             }
  
             if (loadMore) {
-                const combined = [...feedCache.current, ...fetchedReels];
                 // Deduplicate by _id to prevent duplicate key errors
+                const combined = [...feedCache.current, ...fetchedReels];
                 const uniqueReels = Array.from(new Map(combined.map(r => [r._id, r])).values());
+                
                 setReels(uniqueReels);
-                appendToCache(uniqueReels, pageNum);
+                appendToCache(fetchedReels, pageNum); // appendToCache now handles unique internally too
             } else {
-                setReels(fetchedReels);
-                updateCache(fetchedReels, pageNum);
+                // Even on initial load, deduplicate (especially if targetReelId appeared in fetchedReels)
+                const uniqueInitial = Array.from(new Map(fetchedReels.map(r => [r._id, r])).values());
+                setReels(uniqueInitial);
+                updateCache(uniqueInitial, pageNum);
             }
 
             setHasMore(data.pagination.hasMore);

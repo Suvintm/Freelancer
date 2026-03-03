@@ -19,6 +19,7 @@ import { toast } from "react-toastify";
 import logo from "../assets/logo.png";
 import { repairUrl } from "../utils/urlHelper.jsx";
 import FollowingAnimation from "./FollowingAnimation";
+import MusicVisualizer from "./MusicVisualizer";
 
 /**
  * ReelCard — Minimalist Professional UI.
@@ -260,21 +261,27 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
                                     <img src={repairUrl(reel.editor?.profilePicture)} className="w-full h-full rounded-full object-cover" alt="" />
                                 </div>
                             </Link>
-                            <div className="flex flex-col gap-0.5">
+                            <div className="flex flex-col">
                                 <div className="flex items-center gap-2">
-                                    <Link to={`/public-profile/${reel.editor?._id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-white text-[14px] tracking-tight hover:underline text-shadow">
+                                    <Link to={`/public-profile/${reel.editor?._id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-white text-[14px] tracking-tight hover:underline text-shadow whitespace-nowrap">
                                         {reel.editor?.name}
                                     </Link>
-                                    <span className="px-1.5 py-0.5 bg-white/20 text-[8px] font-bold rounded border border-white/10 text-white/90">EDITOR</span>
+                                    <span className="px-1.5 py-0.5 bg-white/20 text-[8px] font-bold rounded border border-white/10 text-white/90 shrink-0">EDITOR</span>
+                                    
+                                    {!isOwnReel && (
+                                        <button
+                                            onClick={handleFollow}
+                                            className="h-5 px-3 bg-transparent border border-white/30 rounded-full flex items-center justify-center text-white text-[9px] font-bold uppercase tracking-wider active:scale-95 transition-all hover:bg-white/20 shadow-lg ml-1"
+                                        >
+                                            {isFollowing ? "Following" : "Follow"}
+                                        </button>
+                                    )}
                                 </div>
                                 
-                                {!isOwnReel && (
-                                    <button
-                                        onClick={handleFollow}
-                                        className="w-fit h-6 px-4 bg-transparent border border-white rounded-full flex items-center justify-center text-white text-[10px] font-bold uppercase tracking-wider active:scale-95 transition-all hover:bg-white/20 shadow-lg"
-                                    >
-                                        {isFollowing ? "Following" : "Follow"}
-                                    </button>
+                                {reel.mediaType === "video" && (
+                                    <div className="mt-1">
+                                        <MusicVisualizer isPlaying={isActive && isPlaying} />
+                                    </div>
                                 )}
                             </div>
                         </div>

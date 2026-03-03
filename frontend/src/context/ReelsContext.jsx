@@ -42,9 +42,14 @@ export const ReelsProvider = ({ children }) => {
 
     /**
      * Appends more reels to the existing cache (infinite scroll).
+     * Automatically handles deduplication by _id.
      */
     const appendToCache = (newReels, page) => {
-        feedCache.current = [...feedCache.current, ...newReels];
+        const combined = [...feedCache.current, ...newReels];
+        // Deduplicate by _id to ensure no components render with duplicate keys
+        const unique = Array.from(new Map(combined.map(r => [r._id, r])).values());
+        
+        feedCache.current = unique;
         pageCache.current = page;
         lastFetchTime.current = Date.now();
     };
