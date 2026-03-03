@@ -48,6 +48,27 @@ import { useSubscription } from "../context/SubscriptionContext";
 import SuvixScoreCard from "../components/SuvixScoreCard.jsx";
 import SuvixScoreAnalytics from "../components/SuvixScoreAnalytics.jsx";
 import AvailabilitySelector from "../components/AvailabilitySelector.jsx";
+import SoftwareExpertise from "../components/SoftwareExpertise.jsx";
+
+import _premiereIcon from "../assets/preimerepro.png";
+import _aeIcon from "../assets/adobeexpress.png";
+import _davinciIcon from "../assets/davinci.png";
+import _capcutIcon from "../assets/capcut.png";
+import _fcpxIcon from "../assets/FCPX.png";
+import _photoshopIcon from "../assets/photoshop.png";
+import _canvaIcon from "../assets/canvalogo.png";
+import _vnIcon from "../assets/Vnlogo.png";
+
+const SW_ICON_MAP = {
+  "Premiere Pro": _premiereIcon,
+  "After Effects": _aeIcon,
+  "DaVinci Resolve": _davinciIcon,
+  "CapCut": _capcutIcon,
+  "FCPX": _fcpxIcon,
+  "Photoshop": _photoshopIcon,
+  "Canva": _canvaIcon,
+  "VN Editor": _vnIcon,
+};
 
 
 // Country Code Mapping
@@ -431,18 +452,30 @@ const EditorProfile = () => {
                     </div>
                   )}
 
-                  <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-zinc-900/40">
-                    {isVerified && (
-                      <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/5 text-blue-400 text-[8px] md:text-[10px] font-black rounded-md border border-blue-500/10 uppercase">
-                        <MdVerified className="text-[9px] md:text-[13px]" /> VERIFIED
+                  {/* Software Carousel */}
+                  {profileData.softwares?.length > 0 && (
+                    <div className="pt-1 border-t border-zinc-900/40">
+                      <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                        {profileData.softwares.map((name) => {
+                          const iconSrc = SW_ICON_MAP[name];
+                          return (
+                            <div key={name} className="flex-shrink-0 flex flex-col items-center gap-1 w-10">
+                              {iconSrc ? (
+                                <img src={iconSrc} alt={name} className="w-7 h-7 object-contain" />
+                              ) : (
+                                <div className="w-7 h-7 bg-zinc-800 rounded-lg flex items-center justify-center">
+                                  <FaBriefcase className="text-zinc-500 text-[10px]" />
+                                </div>
+                              )}
+                              <span className="text-[7px] font-black text-zinc-600 uppercase tracking-tight text-center leading-none w-full truncate">
+                                {name.split(' ')[0]}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
-                    )}
-                    {completionPercent >= 80 && (
-                      <div className="flex items-center gap-1 px-2 py-0.5 bg-purple-500/5 text-purple-400 text-[8px] md:text-[10px] font-black rounded-md border border-purple-500/10 uppercase">
-                        <FaRocket className="text-[9px] md:text-[13px]" /> LISTED
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   {/* Integrated Location Section */}
                   <div className="flex flex-wrap items-center gap-3 pt-2 mt-2 border-t border-zinc-900/50 text-zinc-500 text-[8px] md:text-[11px] font-black uppercase tracking-tight">
@@ -568,6 +601,19 @@ const EditorProfile = () => {
                             </span>
                           ))}
                         </div>
+                      </div>
+                    )}
+
+                    {/* Software Expertise */}
+                    {profileData.softwares?.length > 0 && (
+                      <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5">
+                        <div className="flex items-center gap-2.5 mb-4">
+                          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                            <FaBriefcase className="text-zinc-400 text-xs" />
+                          </div>
+                          <h3 className="text-sm font-semibold text-white">Software Expertise</h3>
+                        </div>
+                        <SoftwareExpertise softwares={profileData.softwares} />
                       </div>
                     )}
 

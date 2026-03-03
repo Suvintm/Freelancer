@@ -43,6 +43,27 @@ import PortfolioSection from "../components/PortfolioSection.jsx";
 import EditorRatingsModal from "../components/EditorRatingsModal.jsx";
 import SuvixScoreBadge from "../components/SuvixScoreBadge.jsx";
 import KYCRequiredModal from "../components/KYCRequiredModal.jsx";
+import SoftwareExpertise from "../components/SoftwareExpertise.jsx";
+
+import _premiereIcon from "../assets/preimerepro.png";
+import _aeIcon from "../assets/adobeexpress.png";
+import _davinciIcon from "../assets/davinci.png";
+import _capcutIcon from "../assets/capcut.png";
+import _fcpxIcon from "../assets/FCPX.png";
+import _photoshopIcon from "../assets/photoshop.png";
+import _canvaIcon from "../assets/canvalogo.png";
+import _vnIcon from "../assets/Vnlogo.png";
+
+const SW_ICON_MAP = {
+  "Premiere Pro": _premiereIcon,
+  "After Effects": _aeIcon,
+  "DaVinci Resolve": _davinciIcon,
+  "CapCut": _capcutIcon,
+  "FCPX": _fcpxIcon,
+  "Photoshop": _photoshopIcon,
+  "Canva": _canvaIcon,
+  "VN Editor": _vnIcon,
+};
 
 // Country Code Mapping
 const countryNameToCode = {
@@ -78,6 +99,10 @@ const PublicEditorProfile = () => {
   const [showContactRestriction, setShowContactRestriction] = useState(false);
 
   const navigate = useNavigate();
+  
+  const userData = profile?.user || {};
+  const isVerified = userData?.kycStatus === 'verified' || profile?.kycVerified;
+  const isOwner = user?._id === userData._id;
 
   // Fetch profile
   useEffect(() => {
@@ -132,13 +157,24 @@ const PublicEditorProfile = () => {
   }, [backendURL, userId, user?._id]);
   
   const [isFollowing, setIsFollowing] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
 
   useEffect(() => {
-    if (profile?.user?.followers && user?._id) {
-      setIsFollowing(profile.user.followers.includes(user._id));
-    }
-  }, [profile, user?._id]);
+    const fetchFollowStatus = async () => {
+      if (!user || !userData?._id || isOwner) return;
+      try {
+        const res = await axios.get(`${backendURL}/api/user/follow/status/${userData._id}`, {
+          headers: { Authorization: `Bearer ${user.token}` }
+        });
+        setIsFollowing(res.data.isFollowing);
+        setIsPending(res.data.isPending);
+      } catch (error) {
+        console.error("Error fetching follow status:", error);
+      }
+    };
+    if (userData?._id) fetchFollowStatus();
+  }, [userData?._id, user, isOwner]);
 
   const handleFollowToggle = async () => {
     if (!user) {
@@ -154,17 +190,22 @@ const PublicEditorProfile = () => {
       });
       
       if (res.data.success) {
-        setIsFollowing(res.data.isFollowing);
-        // Optimistically update follower count in local state
-        setProfile(prev => ({
-          ...prev,
-          user: {
-            ...prev.user,
-            followers: res.data.isFollowing 
-              ? [...(prev.user.followers || []), user._id]
-              : (prev.user.followers || []).filter(id => id !== user._id)
-          }
-        }));
+        setIsFollowing(res.data.isFollowing || false);
+        setIsPending(res.data.isPending || false);
+        
+        // Update local follower count if it was an auto-follow/unfollow
+        if (res.data.isFollowing !== undefined) {
+          setProfile(prev => ({
+            ...prev,
+            user: {
+              ...prev.user,
+              followers: res.data.isFollowing 
+                ? [...(prev.user.followers || []), user._id]
+                : (prev.user.followers || []).filter(id => id !== user._id)
+            }
+          }));
+        }
+        
         toast.success(res.data.message);
       }
     } catch (error) {
@@ -344,9 +385,6 @@ const PublicEditorProfile = () => {
     );
   }
 
-  const userData = profile?.user || {};
-  const isVerified = userData?.kycStatus === 'verified' || profile?.kycVerified;
-  const isOwner = user?._id === userData._id;
 
   const allTabs = [
     { id: "portfolio", label: "Portfolio", icon: FaImages },
@@ -443,13 +481,24 @@ const PublicEditorProfile = () => {
                           <button
                             onClick={handleFollowToggle}
                             disabled={followLoading}
-                            className={`w-full py-2 rounded-md text-[10px] font-black uppercase tracking-wide transition-all ${
+                            className={`w-full py-2 rounded-md text-[10px] font-black uppercase tracking-wide transition-all flex items-center justify-center gap-1.5 ${
                               isFollowing 
                                 ? "bg-zinc-800 text-white border border-zinc-700" 
+                                : isPending
+                                ? "bg-zinc-900 text-zinc-400 border border-zinc-800"
                                 : "bg-white text-black"
                             }`}
                           >
-                            {followLoading ? "..." : isFollowing ? "Following" : "Follow"}
+                            {followLoading ? "..." : isFollowing ? "Following" : isPending ? (
+                              <>
+                                <HiOutlineLockClosed className="text-[10px]" /> Requested
+                              </>
+                            ) : (
+                              <>
+                                {userData?.followSettings?.manualApproval && <HiOutlineLockClosed className="text-[10px]" />}
+                                Follow
+                              </>
+                            )}
                           </button>
                           
                           {!isOwner && user && (
@@ -501,6 +550,22 @@ const PublicEditorProfile = () => {
                       </div>
                       <span className="text-2xl font-black text-white leading-none tracking-tighter">{userData?.following?.length || 0}</span>
                     </div>
+
+                    {userData?.role === 'editor' && (
+                      <div 
+                        className="flex flex-col items-center cursor-pointer"
+                        onClick={() => reviewCount > 0 && setShowRatingsModal(true)}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <FaStar className="text-[8px]" style={{ color: hasRatings ? "#F59E0B" : "#6B7280" }} />
+                          <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Rating</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-2xl font-black text-white leading-none tracking-tighter">{displayRating}</span>
+                          {reviewCount > 0 && <span className="text-[10px] text-zinc-500 font-bold">({reviewCount})</span>}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -518,6 +583,16 @@ const PublicEditorProfile = () => {
                         <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: suvixScore.tierColor }}>{suvixScore.tierLabel}</span>
                       </div>
                     )}
+                    {userData?.role === 'editor' && (
+                      <div 
+                        className="flex items-center gap-2 bg-zinc-900/50 px-3 py-1.5 rounded-lg border border-zinc-800 cursor-pointer hover:bg-zinc-800/80 transition-all"
+                        onClick={() => reviewCount > 0 && setShowRatingsModal(true)}
+                      >
+                        <FaStar className="text-sm" style={{ color: hasRatings ? "#F59E0B" : "#6B7280" }} />
+                        <span className="text-sm font-black text-white leading-none">{displayRating}</span>
+                        {reviewCount > 0 && <span className="text-xs text-zinc-500 font-bold ml-1">({reviewCount} reviews)</span>}
+                      </div>
+                    )}
                   </div>
                   
                   {!isOwner && (
@@ -525,11 +600,24 @@ const PublicEditorProfile = () => {
                       <button
                         onClick={handleFollowToggle}
                         disabled={followLoading}
-                        className={`px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all ${
-                          isFollowing ? "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700" : "bg-white text-black hover:bg-zinc-200"
+                        className={`px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
+                          isFollowing 
+                            ? "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700" 
+                            : isPending
+                            ? "bg-zinc-900 text-zinc-400 border border-zinc-800"
+                            : "bg-white text-black hover:bg-zinc-200"
                         }`}
                       >
-                        {isFollowing ? "Following" : "Follow"}
+                        {followLoading ? "..." : isFollowing ? "Following" : isPending ? (
+                          <>
+                            <HiOutlineLockClosed className="text-sm" /> Requested
+                          </>
+                        ) : (
+                          <>
+                            {userData?.followSettings?.manualApproval && <HiOutlineLockClosed className="text-sm" />}
+                            Follow
+                          </>
+                        )}
                       </button>
                       {userData?.role === "editor" && user && (
                         <button
@@ -551,29 +639,6 @@ const PublicEditorProfile = () => {
                   )}
                 </div>
 
-                {/* Subsidiary Stats Row (Ultra Dense on Mobile) */}
-                <div className="flex justify-between gap-1 mb-3 bg-zinc-950/40 rounded-lg py-2 px-1 border border-zinc-900/30">
-                  {(userData?.role === 'editor' ? statsData : [
-                    { label: "Spent", value: profile.totalSpent ? `₹${profile.totalSpent}` : "PRO", icon: FaRupeeSign, color: "#10B981" },
-                    { label: "Orders", value: profile.orderCount || "0", icon: FaShoppingCart, color: "#6366F1" },
-                    { label: "Reels", value: profile.portfolio?.length || 0, icon: FaFilm, color: "#8B5CF6" },
-                    { label: "Rating", value: displayRating, count: reviewCount > 0 ? `(${reviewCount})` : "", icon: FaStar, color: hasRatings ? "#F59E0B" : "#6B7280", clickable: true }
-                  ]).filter(s => !s.label.includes('Follower') && !s.label.includes('Following')).map((stat) => (
-                    <div 
-                      key={stat.label} 
-                      className={`flex flex-col items-center flex-1 ${stat.clickable ? 'cursor-pointer' : ''}`}
-                      onClick={() => stat.clickable && (isOwner || reviewCount > 0) && setShowRatingsModal(true)}
-                    >
-                      <div className="flex items-center gap-0.5 mb-0.5">
-                        <stat.icon className="text-[7px]" style={{ color: stat.color }} />
-                        <span className="hidden xs:inline text-[7px] font-black text-zinc-600 uppercase tracking-widest">{stat.label}</span>
-                      </div>
-                      <div className="text-[10px] md:text-xl font-black text-white text-center">
-                        {stat.value} {stat.count && <span className="text-[7px] md:text-xs text-zinc-500">{stat.count}</span>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
 
                 {/* Bio & Professional Indicators (Mobile Compact) */}
                 <div className="space-y-2">
@@ -622,6 +687,31 @@ const PublicEditorProfile = () => {
                           </div>
                         )}
                       </p>
+                    </div>
+                  )}
+
+                  {/* Software Carousel (Editor only) */}
+                  {userData?.role === 'editor' && profile.softwares?.length > 0 && (
+                    <div className="pt-2 mt-1 border-t border-zinc-900/40">
+                      <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                        {profile.softwares.map((name) => {
+                          const iconSrc = SW_ICON_MAP[name];
+                          return (
+                            <div key={name} className="flex-shrink-0 flex flex-col items-center gap-1 w-10">
+                              {iconSrc ? (
+                                <img src={iconSrc} alt={name} className="w-7 h-7 object-contain" />
+                              ) : (
+                                <div className="w-7 h-7 bg-zinc-800 rounded-lg flex items-center justify-center">
+                                  <FaBriefcase className="text-zinc-500 text-[10px]" />
+                                </div>
+                              )}
+                              <span className="text-[7px] font-black text-zinc-600 uppercase tracking-tight text-center leading-none w-full truncate">
+                                {name.split(' ')[0]}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 
@@ -790,6 +880,19 @@ const PublicEditorProfile = () => {
                             </span>
                           ))}
                         </div>
+                      </div>
+                    )}
+
+                    {/* Software Expertise */}
+                    {profile.softwares?.length > 0 && userData?.role === 'editor' && (
+                      <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5">
+                        <div className="flex items-center gap-2.5 mb-4">
+                          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                            <FaBriefcase className="text-zinc-400 text-xs" />
+                          </div>
+                          <h3 className="text-sm font-semibold text-white">Software Expertise</h3>
+                        </div>
+                        <SoftwareExpertise softwares={profile.softwares} />
                       </div>
                     )}
 

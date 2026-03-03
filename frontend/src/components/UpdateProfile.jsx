@@ -3,17 +3,45 @@ import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { toast } from "react-toastify";
 import {
-  FaGlobe,
-  FaEnvelope,
-  FaUserEdit,
-  FaPlus,
-  FaTimes,
-  FaSave,
-} from "react-icons/fa";
+  HiOutlineUser,
+  HiOutlineEnvelope,
+  HiOutlineGlobeAlt,
+  HiOutlineAcademicCap,
+  HiOutlineLanguage,
+  HiOutlineCloudArrowUp,
+  HiOutlineShieldCheck,
+  HiOutlinePlus,
+  HiOutlineXMark,
+  HiOutlineDevicePhoneMobile,
+  HiOutlineBriefcase,
+  HiOutlineSparkles,
+} from "react-icons/hi2";
 import countryList from "react-select-country-list";
 import Select from "react-select";
 import { PageLoader } from "./LoadingSpinner.jsx";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "../context/ThemeContext";
+import AvailabilitySelector from "./AvailabilitySelector";
+import { 
+  FaYoutube, 
+  FaInstagram, 
+  FaTiktok, 
+  FaSquareXTwitter, 
+  FaLinkedin 
+} from "react-icons/fa6";
+import { 
+  HiOutlineLink,
+} from "react-icons/hi2";
+
+import premiereIcon from "../assets/preimerepro.png";
+import aeIcon from "../assets/adobeexpress.png";
+import davinciIcon from "../assets/davinci.png";
+import capcutIcon from "../assets/capcut.png";
+import fcpxIcon from "../assets/FCPX.png";
+import photoshopIcon from "../assets/photoshop.png";
+import canvaIcon from "../assets/canvalogo.png";
+import vnIcon from "../assets/Vnlogo.png";
 
 
 const UpdateProfile = ({ languagesOptions = [] }) => {
@@ -22,6 +50,8 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [countries, setCountries] = useState([]);
+  const { isDark } = useTheme();
+  const [customSoftwareInput, setCustomSoftwareInput] = useState("");
 
   const [formData, setFormData] = useState({
     about: "",
@@ -35,6 +65,14 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
     certifications: [],
     existingCertifications: [],
     manualApproval: user?.followSettings?.manualApproval || false,
+    softwares: [],
+    socialLinks: {
+      youtube: "",
+      instagram: "",
+      tiktok: "",
+      twitter: "",
+      linkedin: ""
+    }
   });
 
   useEffect(() => {
@@ -58,9 +96,19 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
         country: p?.location?.country || "",
         skills: p?.skills?.filter(Boolean) || [],
         languages: p?.languages?.filter(Boolean) || [],
+        certifications:
+          p?.certifications?.filter((c) => c?.image) || [],
         existingCertifications:
           p?.certifications?.filter((c) => c?.image) || [],
         manualApproval: p?.user?.followSettings?.manualApproval || false,
+        softwares: p?.softwares || [],
+        socialLinks: {
+          youtube: p?.socialLinks?.youtube || "",
+          instagram: p?.socialLinks?.instagram || "",
+          tiktok: p?.socialLinks?.tiktok || "",
+          twitter: p?.socialLinks?.twitter || "",
+          linkedin: p?.socialLinks?.linkedin || ""
+        }
       }));
     } catch (err) {
       console.error("Error fetching profile:", err);
@@ -193,6 +241,10 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
       return;
     }
 
+    console.log("Saving softwares:", formData.softwares);
+    const softwaresPayload = JSON.stringify(formData.softwares);
+    console.log("Softwares Payload String:", softwaresPayload);
+
     try {
       setUpdating(true);
       const formPayload = new FormData();
@@ -202,7 +254,9 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
       formPayload.append("country", formData.country);
       formPayload.append("skills", formData.skills.join(","));
       formPayload.append("languages", formData.languages.join(","));
-      formPayload.append("followSettings[manualApproval]", formData.manualApproval);
+      formPayload.append("followSettings", JSON.stringify({ manualApproval: formData.manualApproval }));
+      formPayload.append("softwares", JSON.stringify(formData.softwares));
+      formPayload.append("socialLinks", JSON.stringify(formData.socialLinks));
 
       formData.certifications.forEach((file) => {
         formPayload.append("certifications", file);
@@ -220,6 +274,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
 
       setFormData((prev) => ({
         ...prev,
+        softwares: res.data.profile.softwares || [],
         certifications: [],
         existingCertifications:
           res.data.profile.certifications?.filter((c) => c?.image) || [],
@@ -248,480 +303,595 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
     "5+ years",
   ];
 
+  const SOFTWARES_LIST = [
+    { name: "Premiere Pro", icon: premiereIcon, color: "#9999FF", isImage: true },
+    { name: "After Effects", icon: aeIcon, color: "#CF96FD", isImage: true },
+    { name: "DaVinci Resolve", icon: davinciIcon, color: "#32A5D5", isImage: true },
+    { name: "CapCut", icon: capcutIcon, color: "#FFFFFF", isImage: true },
+    { name: "FCPX", icon: fcpxIcon, color: "#3B3B3B", isImage: true },
+    { name: "Photoshop", icon: photoshopIcon, color: "#31A8FF", isImage: true },
+    { name: "Canva", icon: canvaIcon, color: "#00C4CC", isImage: true },
+    { name: "VN Editor", icon: vnIcon, color: "#FFDE59", isImage: true },
+  ];
+
+  const SOCIAL_PLATFORMS = [
+    { id: "youtube", label: "YouTube", icon: FaYoutube, color: "#FF0000" },
+    { id: "instagram", label: "Instagram", icon: FaInstagram, color: "#E4405F" },
+    { id: "tiktok", label: "TikTok", icon: FaTiktok, color: "#FFFFFF" },
+    { id: "twitter", label: "X / Twitter", icon: FaSquareXTwitter, color: "#FFFFFF" },
+    { id: "linkedin", label: "LinkedIn", icon: FaLinkedin, color: "#0A66C2" },
+  ];
+
   if (loading) {
-    return <PageLoader text="Loading profile..." />;
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <motion.div 
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full"
+        />
+      </div>
+    );
   }
 
+  const SectionHeader = ({ icon: Icon, title, subtitle, simple }) => (
+    <div className={`flex items-center gap-3 ${simple ? "mb-4" : "mb-6"}`}>
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+        simple 
+        ? (isDark ? "bg-white/10 text-white" : "bg-zinc-900 text-white")
+        : (isDark ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-emerald-50 text-emerald-600 border border-emerald-100")
+      }`}>
+        <Icon className={simple ? "w-4 h-4" : "w-5 h-5"} />
+      </div>
+      <div>
+        <h3 className={`${simple ? "text-sm" : "text-base"} font-black tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{title}</h3>
+        <p className={`${simple ? "text-[8px]" : "text-[10px]"} font-bold uppercase tracking-wider ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{subtitle}</p>
+      </div>
+    </div>
+  );
+
+  const InputWrapper = ({ label, required, children, error }) => (
+    <div className="space-y-2">
+      <label className={`text-[11px] font-black uppercase tracking-wider flex items-center gap-1 ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>
+        {label} {required && <span className="text-emerald-500">*</span>}
+      </label>
+      {children}
+      {error && <p className="text-[10px] text-red-500 font-bold">{error}</p>}
+    </div>
+  );
+
   return (
-    <form
-      onSubmit={handleUpdate}
-      className="w-full space-y-7 text-sm md:text-[15px]"
-    >
-      {/* Header strip (inside card) */}
-      <div className="flex items-center gap-2 mb-1">
-        <div className="w-9 h-9 rounded-2xl bg-[#0B1220] light:bg-slate-100 border border-white/10 light:border-slate-300 flex items-center justify-center">
-          <FaUserEdit className="text-[#22C55E]" />
-        </div>
-        <div>
-          <h2 className="font-semibold text-white light:text-slate-900 text-base md:text-lg">
-            Profile Details
-          </h2>
-          <p className="text-[11px] text-gray-400 light:text-slate-500">
-            Fill in these details to help clients understand you better.
-          </p>
-        </div>
-      </div>
-
-      {/* About */}
-      <div>
-        <label className="block mb-2 font-medium text-gray-200 light:text-slate-700">
-          About <span className="text-red-500">*</span>
-        </label>
-        <textarea
-          name="about"
-          value={formData.about}
-          onChange={handleChange}
-          placeholder="Tell something about yourself, your editing style, tools, and niche..."
-          rows="4"
-          maxLength={1000}
-          className="w-full p-3.5 rounded-2xl bg-[#020617] light:bg-white border border-white/10 light:border-slate-300
-                     text-gray-100 light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400
-                     focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-[#2563EB]
-                     transition resize-none light:shadow-sm"
-        />
-        <p className="text-[11px] text-gray-500 light:text-slate-500 mt-1 text-right">
-          {formData.about.length}/1000
-        </p>
-      </div>
-
-      {/* Contact Email + Country (2-col on md+) */}
-      <div className="grid md:grid-cols-2 gap-5">
-        {/* Contact Email */}
-        <div>
-          <label className="block mb-2 font-medium text-gray-200 light:text-slate-700">
-            Contact Email <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <FaEnvelope className="absolute left-3 top-3.5 text-gray-500 light:text-slate-400" />
-            <input
-              type="email"
-              name="contactEmail"
-              value={formData.contactEmail}
-              onChange={handleChange}
-              placeholder="Enter your contact email"
-              className="w-full p-3.5 pl-10 rounded-2xl bg-[#020617] light:bg-white border border-white/10 light:border-slate-300
-                         text-gray-100 light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400
-                         focus:outline-none focus:ring-2 focus:ring-[#22C55E] focus:border-[#22C55E]
-                         transition light:shadow-sm"
-            />
-          </div>
-        </div>
-
-        {/* Country */}
-        <div>
-          <label className="block mb-2 font-medium text-gray-200 light:text-slate-700">
-            Location <span className="text-red-500">*</span>
-          </label>
-          <div className="flex items-center gap-2">
-            <FaGlobe className="text-gray-400 light:text-slate-500" />
-            <div className="flex-1">
-              <Select
-                options={countries}
-                value={
-                  formData.country
-                    ? { label: formData.country, value: formData.country }
-                    : null
-                }
-                onChange={handleCountryChange}
-                placeholder="Select your country"
-                classNamePrefix="react-select"
-                styles={{
-                  control: (base, state) => ({
-                    ...base,
-                    borderRadius: "0.75rem",
-                    backgroundColor: "#020617",
-                    borderColor: state.isFocused ? "#22C55E" : "#1F2937",
-                    boxShadow: state.isFocused
-                      ? "0 0 0 1px rgba(34,197,94,0.5)"
-                      : "none",
-                    ":hover": {
-                      borderColor: "#22C55E",
-                    },
-                    minHeight: "44px",
-                  }),
-                  menu: (base) => ({
-                    ...base,
-                    backgroundColor: "#020617",
-                    borderRadius: "0.75rem",
-                    border: "1px solid rgba(148,163,184,0.4)",
-                    overflow: "hidden",
-                    zIndex: 30,
-                  }),
-                  option: (base, state) => ({
-                    ...base,
-                    backgroundColor: state.isSelected
-                      ? "#22C55E"
-                      : state.isFocused
-                      ? "rgba(30,64,175,0.6)"
-                      : "transparent",
-                    color: state.isSelected ? "#0B1120" : "#E5E7EB",
-                    fontSize: "13px",
-                  }),
-                  singleValue: (base) => ({
-                    ...base,
-                    color: "#E5E7EB",
-                    fontSize: "13px",
-                  }),
-                  input: (base) => ({
-                    ...base,
-                    color: "#E5E7EB",
-                  }),
-                  placeholder: (base) => ({
-                    ...base,
-                    color: "#6B7280",
-                    fontSize: "13px",
-                  }),
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Experience */}
-      {user?.role === 'editor' && (
-        <div>
-          <label className="block mb-2 font-medium text-gray-200 light:text-slate-700">
-            Experience <span className="text-red-500">*</span>
-          </label>
-          <select
-            name="experience"
-            value={formData.experience}
-            onChange={handleChange}
-            className="w-full p-3.5 rounded-2xl bg-[#020617] light:bg-white border border-white/10 light:border-slate-300
-                       text-gray-100 light:text-slate-900 placeholder:text-gray-500
-                       focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-[#2563EB]
-                       transition light:shadow-sm"
-          >
-            <option value="">Select experience</option>
-            {experienceOptions.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* Skills */}
-      {user?.role === 'editor' && (
-        <div>
-          <label className="block mb-2 font-medium text-gray-200 light:text-slate-700">
-            Skills <span className="text-red-500">*</span>
-            <span className="text-[11px] text-gray-400 light:text-slate-500 ml-2">
-              ({formData.skills.length}/20)
-            </span>
-          </label>
-
-          {/* Input row */}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              name="skillInput"
-              value={formData.skillInput}
-              onChange={handleChange}
-              onKeyPress={(e) => handleKeyPress(e, addSkill)}
-              placeholder="Type a skill and press Enter or click +"
-              className="flex-1 p-3.5 rounded-2xl bg-[#020617] light:bg-white border border-white/10 light:border-slate-300
-                         text-gray-100 light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400
-                         focus:outline-none focus:ring-2 focus:ring-[#22C55E] focus:border-[#22C55E]
-                         transition light:shadow-sm"
-            />
-            <button
-              type="button"
-              onClick={addSkill}
-              className="bg-gradient-to-r from-[#22C55E] to-[#16A34A]
-                         text-white px-4 rounded-2xl text-sm
-                         hover:brightness-110 transition flex items-center justify-center"
+    <div className="max-w-4xl mx-auto pb-20" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <form onSubmit={handleUpdate} className="space-y-6">
+        <div className="grid lg:grid-cols-2 gap-4">
+          {/* Left Column: Basic Info & Social */}
+          <div className="space-y-6">
+            {/* Availability & Account Status - NEW */}
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-0 transition-all"
             >
-              <FaPlus />
-            </button>
-          </div>
-
-          <div className="mt-3 flex flex-wrap gap-2">
-            {[
-              "Video Editing",
-              "Reels Editing",
-              "Wedding Editing",
-              "Cinematic Color Grading",
-              "Sound Design",
-              "Music Sync",
-              "Logo Animation",
-              "Motion Graphics",
-              "VFX Cleanup",
-              "Green Screen Keying",
-              "Photo Retouching",
-              "Thumbnail Design",
-              "Social Media Editing",
-              "YouTube Editing",
-              "After Effects",
-              "Premiere Pro",
-              "DaVinci Resolve",
-              "CapCut Pro",
-              "Final Cut Pro",
-              "SFX Editing",
-            ].map((skill) => {
-              const active = formData.skills.includes(skill);
-              return (
-                <button
-                  key={skill}
-                  type="button"
-                  onClick={() => {
-                    if (active) {
-                      setFormData({
-                        ...formData,
-                        skills: formData.skills.filter((s) => s !== skill),
-                      });
-                    } else {
-                      if (formData.skills.length >= 20) {
-                        toast.warning("Maximum 20 skills allowed");
-                        return;
-                      }
-                      setFormData({
-                        ...formData,
-                        skills: [...formData.skills, skill],
-                      });
-                    }
-                  }}
-                  className={`px-3 py-1.5 rounded-full text-xs border transition 
-                    ${
-                      active
-                        ? "bg-emerald-500/20 light:bg-emerald-100 border-emerald-400 text-emerald-200 light:text-emerald-700"
-                        : "bg-[#020617] light:bg-white border-white/15 light:border-slate-300 text-gray-300 light:text-slate-600 hover:border-emerald-400/70 light:hover:border-emerald-400 hover:text-emerald-100 light:hover:text-emerald-600"
-                    }`}
-                >
-                  {skill}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex flex-wrap gap-2 mt-3">
-            {formData.skills.map((s, i) => (
-              <span
-                key={i}
-                className="bg-emerald-500/15 border border-emerald-400/60
-                           text-emerald-200 px-3 py-1.5 rounded-full flex items-center gap-2 text-xs"
-              >
-                {s}
-                <FaTimes
-                  className="cursor-pointer hover:text-red-400 transition"
-                  onClick={() =>
-                    setFormData({
-                      ...formData,
-                      skills: formData.skills.filter((skill) => skill !== s),
-                    })
-                  }
-                />
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-
-      {/* Languages */}
-      <div>
-        <label className="block mb-2 font-medium text-gray-200 light:text-slate-700">
-          Languages <span className="text-red-500">*</span>
-          <span className="text-[11px] text-gray-400 light:text-slate-500 ml-2">
-            ({formData.languages.length}/10)
-          </span>
-        </label>
-
-        {/* Input row (keep old logic) */}
-        <div className="flex gap-2 mb-3">
-          <input
-            type="text"
-            name="languageInput"
-            value={formData.languageInput}
-            onChange={handleChange}
-            onKeyPress={(e) => handleKeyPress(e, addLanguage)}
-            placeholder="Type a language and press Enter or click +"
-            className="flex-1 p-3.5 rounded-2xl bg-[#020617] light:bg-white border border-white/10 light:border-slate-300
-                       text-gray-100 light:text-slate-900 placeholder:text-gray-500 light:placeholder:text-slate-400
-                       focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-[#2563EB]
-                       transition light:shadow-sm"
-          />
-          <button
-            type="button"
-            onClick={addLanguage}
-            className="bg-gradient-to-r from-[#2563EB] to-[#4F46E5]
-                       text-white px-4 rounded-2xl text-sm
-                       hover:brightness-110 transition flex items-center justify-center"
-          >
-            <FaPlus />
-          </button>
-        </div>
-
-        {/* Quick-select chips from languagesOptions */}
-        {languagesOptions.length > 0 && (
-          <div className="mb-3 flex flex-wrap gap-2">
-            {languagesOptions.map((lang) => {
-              const active = formData.languages.includes(lang);
-              return (
-                <button
-                  key={lang}
-                  type="button"
-                  onClick={() => toggleLanguageFromOptions(lang)}
-                  className={`px-3 py-1.5 rounded-full text-xs border transition 
-                    ${
-                      active
-                        ? "bg-blue-500/20 border-blue-400 text-blue-100"
-                        : "bg-[#020617] border-white/15 text-gray-300 hover:border-blue-400/70 hover:text-blue-100"
-                    }`}
-                >
-                  {lang}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Selected languages display */}
-        <div className="flex flex-wrap gap-2 mt-1">
-          {formData.languages.map((l, i) => (
-            <span
-              key={i}
-              className="bg-blue-500/15 border border-blue-400/60
-                         text-blue-100 px-3 py-1.5 rounded-full flex items-center gap-2 text-xs"
-            >
-              {l}
-              <FaTimes
-                className="cursor-pointer hover:text-red-400 transition"
-                onClick={() => removeLanguage(l)}
-              />
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Certifications */}
-      {user?.role === 'editor' && (
-        <div>
-          <label className="block mb-2 font-medium text-gray-200">
-            Certifications{" "}
-            <span className="text-[11px] text-gray-400">
-              (Optional -{" "}
-              {formData.existingCertifications.length +
-                formData.certifications.length}
-              /10)
-            </span>
-          </label>
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleCertUpload}
-            className="w-full p-2 rounded-2xl bg-[#020617] border border-white/10
-                       text-xs text-gray-300"
-          />
-          <p className="text-[11px] text-gray-500 mt-1">
-            Max 5MB per file. JPEG, PNG, WebP accepted.
-          </p>
-
-          <div className="flex flex-wrap gap-3 mt-3">
-            {/* Existing certifications */}
-            {formData.existingCertifications.map((cert, i) => (
-              <div key={`existing-${i}`} className="relative group">
-                <img
-                  src={cert.image}
-                  alt={cert.title || "Certificate"}
-                  className="w-20 h-20 object-cover rounded-lg border border-white/15
-                             shadow-[0_0_18px_rgba(0,0,0,0.6)]"
-                />
-                <button
-                  type="button"
-                  className="absolute -top-2 -right-2 bg-red-500 text-white
-                             w-5 h-5 rounded-full flex items-center justify-center text-xs
-                             opacity-0 group-hover:opacity-100 transition"
-                  onClick={() => removeCert(i, "existing")}
-                >
-                  <FaTimes />
-                </button>
+              <SectionHeader simple icon={HiOutlineShieldCheck} title="Availability & Access" subtitle="Sync with sidebar" />
+              <div className="flex items-center justify-between p-4 rounded-2xl border bg-black/20 border-white/5">
+                <div>
+                  <h4 className="text-sm font-black text-white">Editor Availability</h4>
+                  <p className="text-[10px] text-zinc-500 font-medium mt-1">Updates both here and Sidebar</p>
+                </div>
+                <AvailabilitySelector />
               </div>
-            ))}
+            </motion.div>
 
-            {/* New uploads */}
-            {formData.certifications.map((file, i) => {
-              const preview = URL.createObjectURL(file);
-              return (
-                <div key={`new-${i}`} className="relative group">
-                  <img
-                    src={preview}
-                    alt="New cert"
-                    className="w-20 h-20 object-cover rounded-lg border border-white/15
-                               shadow-[0_0_18px_rgba(0,0,0,0.6)]"
+            {/* Basic Info Card - Simple Version */}
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-0 transition-all"
+            >
+              <SectionHeader simple icon={HiOutlineUser} title="Basic Information" subtitle="Your public identity" />
+              
+              <div className="space-y-6">
+                <InputWrapper label="About Me" required>
+                  <textarea
+                    name="about"
+                    value={formData.about}
+                    onChange={handleChange}
+                    rows="5"
+                    maxLength={1000}
+                    className={`w-full p-4 rounded-2xl border text-sm transition-all outline-none resize-none ${isDark ? "bg-black/40 border-white/5 text-white focus:border-emerald-500/50" : "bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-emerald-500"}`}
+                    placeholder="Describe your editing style, niche, and what makes you unique..."
+                  />
+                  <div className={`text-[10px] text-right font-bold ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
+                    {formData.about.length}/1000
+                  </div>
+                </InputWrapper>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <InputWrapper label="Contact Email" required>
+                    <div className="relative">
+                      <HiOutlineEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />
+                      <input
+                        type="email"
+                        name="contactEmail"
+                        value={formData.contactEmail}
+                        onChange={handleChange}
+                        className={`w-full pl-11 pr-4 py-3.5 rounded-2xl border text-sm transition-all outline-none ${isDark ? "bg-black/40 border-white/5 text-white focus:border-emerald-500/50" : "bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-emerald-500"}`}
+                        placeholder="Public email"
+                      />
+                    </div>
+                  </InputWrapper>
+
+                  <InputWrapper label="Country" required>
+                    <Select
+                      options={countries}
+                      value={formData.country ? { label: formData.country, value: formData.country } : null}
+                      onChange={handleCountryChange}
+                      classNamePrefix="select"
+                      placeholder="Select..."
+                      styles={{
+                        control: (base, state) => ({
+                          ...base,
+                          borderRadius: "1rem",
+                          padding: "4px",
+                          backgroundColor: isDark ? "rgba(0,0,0,0.4)" : "#f9fafb",
+                          borderColor: state.isFocused ? "#10b981" : isDark ? "rgba(255,255,255,0.05)" : "#e5e7eb",
+                          color: isDark ? "white" : "#18181b",
+                          fontSize: "14px",
+                          boxShadow: "none",
+                          "&:hover": { borderColor: "#10b981" }
+                        }),
+                        menu: (base) => ({
+                          ...base,
+                          backgroundColor: isDark ? "#18181b" : "white",
+                          borderRadius: "1rem",
+                          overflow: "hidden",
+                          border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid #e5e7eb"
+                        }),
+                        option: (base, { isFocused, isSelected }) => ({
+                          ...base,
+                          backgroundColor: isSelected ? "#10b981" : isFocused ? (isDark ? "#27272a" : "#f4f4f5") : "transparent",
+                          color: isSelected ? "white" : isDark ? "#e4e4e7" : "#3f3f46",
+                          cursor: "pointer"
+                        }),
+                        singleValue: (base) => ({
+                          ...base,
+                          color: isDark ? "white" : "#18181b"
+                        })
+                      }}
+                    />
+                  </InputWrapper>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Social Presence Card - NEW */}
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-0 transition-all"
+            >
+              <SectionHeader simple icon={HiOutlineGlobeAlt} title="Social Presence" subtitle="Connect your platforms" />
+              <div className="grid grid-cols-1 gap-4">
+                {SOCIAL_PLATFORMS.map((platform) => (
+                  <div key={platform.id} className="relative group">
+                    <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                      <platform.icon className={`w-4 h-4 transition-colors group-focus-within:text-emerald-500`} style={{ color: platform.color }} />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder={`${platform.label} profile URL...`}
+                      value={formData.socialLinks[platform.id]}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        socialLinks: { ...formData.socialLinks, [platform.id]: e.target.value }
+                      })}
+                      className={`w-full pl-12 pr-4 py-3 rounded-2xl border text-sm transition-all outline-none ${isDark ? "bg-black/40 border-white/5 text-white focus:border-emerald-500/50" : "bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-emerald-500"}`}
+                    />
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Privacy & Settings - Simple Version */}
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-0 transition-all"
+            >
+              <SectionHeader simple icon={HiOutlineShieldCheck} title="Privacy & Social" subtitle="Management controls" />
+              
+              <div className="space-y-6">
+                <div className={`flex items-center justify-between p-4 rounded-2xl border ${isDark ? "bg-black/20 border-white/5" : "bg-zinc-50 border-zinc-100"}`}>
+                  <div>
+                    <h4 className={`text-sm font-black ${isDark ? "text-white" : "text-zinc-900"}`}>Manual Follow Approval</h4>
+                    <p className={`text-[10px] font-medium leading-relaxed mt-1 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>
+                      Require approval for all follow requests
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, manualApproval: !formData.manualApproval })}
+                    className={`w-12 h-6 rounded-full p-1 transition-all ${formData.manualApproval ? "bg-emerald-500" : (isDark ? "bg-zinc-800" : "bg-zinc-300")}`}
+                  >
+                    <motion.div 
+                      animate={{ x: formData.manualApproval ? 24 : 0 }}
+                      className="w-4 h-4 bg-white rounded-full shadow-sm"
+                    />
+                  </button>
+                </div>
+
+                {user?.role === 'editor' && (
+                  <InputWrapper label="Experience Level" required>
+                    <div className="grid grid-cols-2 gap-2">
+                      {experienceOptions.map(opt => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, experience: opt })}
+                          className={`px-4 py-3 rounded-xl text-xs font-bold transition-all border ${formData.experience === opt 
+                            ? "bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/20" 
+                            : (isDark ? "bg-black/40 border-white/5 text-zinc-400 hover:border-white/10" : "bg-white border-zinc-200 text-zinc-600 hover:border-zinc-300")
+                          }`}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </InputWrapper>
+                )}
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Right Column: Skills & Portfolio */}
+          <div className="space-y-6">
+            {/* Professional Tools - NEW */}
+            {user?.role === 'editor' && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-0 transition-all"
+              >
+                <SectionHeader simple icon={HiOutlineBriefcase} title="Professional Tools" subtitle="Your creative arsenal" />
+                <div className="grid grid-cols-4 sm:grid-cols-4 gap-3">
+                  {SOFTWARES_LIST.map((tool) => (
+                    <button
+                      key={tool.name}
+                      type="button"
+                      onClick={() => {
+                        const isSelected = formData.softwares.includes(tool.name);
+                        setFormData({
+                          ...formData,
+                          softwares: isSelected 
+                            ? formData.softwares.filter(t => t !== tool.name)
+                            : [...formData.softwares, tool.name]
+                        });
+                      }}
+                      className={`relative aspect-square flex flex-col items-center justify-center p-3 rounded-2xl border transition-all ${
+                        formData.softwares.includes(tool.name)
+                        ? "bg-emerald-500/10 border-emerald-500 shadow-lg shadow-emerald-500/10"
+                        : "bg-black/20 border-white/5 hover:border-white/10"
+                      }`}
+                    >
+                      {tool.isImage ? (
+                        <img 
+                          src={tool.icon} 
+                          className={`w-8 h-8 mb-2 object-contain transition-transform ${formData.softwares.includes(tool.name) ? "scale-110" : "grayscale opacity-50"}`} 
+                          alt={tool.name}
+                        />
+                      ) : (
+                        <tool.icon 
+                          className={`w-8 h-8 mb-2 transition-transform ${formData.softwares.includes(tool.name) ? "scale-110" : ""}`} 
+                          style={{ color: formData.softwares.includes(tool.name) ? tool.color : (isDark ? "#52525b" : "#9ca3af") }}
+                        />
+                      )}
+                      <span className={`text-[8px] font-black uppercase tracking-widest text-center ${formData.softwares.includes(tool.name) ? "text-emerald-500" : "text-zinc-500"}`}>
+                        {tool.name}
+                      </span>
+                      {formData.softwares.includes(tool.name) && (
+                        <div className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full" />
+                      )}
+                    </button>
+                  ))}
+
+                  {/* Render Custom Selected Tools */}
+                  {formData.softwares
+                    .filter(name => !SOFTWARES_LIST.some(t => t.name === name))
+                    .map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          softwares: formData.softwares.filter(t => t !== name)
+                        });
+                      }}
+                      className="relative aspect-square flex flex-col items-center justify-center p-3 rounded-2xl border bg-emerald-500/10 border-emerald-500 shadow-lg shadow-emerald-500/10 transition-all"
+                    >
+                      <HiOutlineBriefcase className="w-8 h-8 mb-2 text-emerald-500" />
+                      <span className="text-[8px] font-black uppercase tracking-widest text-center text-emerald-500">
+                        {name}
+                      </span>
+                      <div className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full" />
+                    </button>
+                  ))}
+                </div>
+
+                {/* Add Custom Tool Input */}
+                <div className="mt-4 flex gap-2">
+                  <div className="relative flex-1">
+                    <HiOutlineLink className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                    <input
+                      type="text"
+                      placeholder="Add other software..."
+                      value={customSoftwareInput}
+                      onChange={(e) => setCustomSoftwareInput(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (customSoftwareInput.trim()) {
+                            const newTool = customSoftwareInput.trim();
+                            if (!formData.softwares.includes(newTool)) {
+                              setFormData({
+                                ...formData,
+                                softwares: [...formData.softwares, newTool]
+                              });
+                            }
+                            setCustomSoftwareInput("");
+                          }
+                        }
+                      }}
+                      className={`w-full pl-11 pr-4 py-3 rounded-2xl border text-[11px] font-bold transition-all outline-none ${isDark ? "bg-black/40 border-white/5 text-white focus:border-emerald-500/50" : "bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-emerald-500"}`}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (customSoftwareInput.trim()) {
+                        const newTool = customSoftwareInput.trim();
+                        if (!formData.softwares.includes(newTool)) {
+                          setFormData({
+                            ...formData,
+                            softwares: [...formData.softwares, newTool]
+                          });
+                        }
+                        setCustomSoftwareInput("");
+                      }
+                    }}
+                    className={`px-6 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all ${isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}
+                  >
+                    Add
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Skills & Expertise - Simple Version */}
+            {user?.role === 'editor' && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-0 transition-all"
+              >
+                <SectionHeader simple icon={HiOutlineSparkles} title="Skills & Expertise" subtitle="Showcase your power" />
+                
+                <div className="space-y-6">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      name="skillInput"
+                      value={formData.skillInput}
+                      onChange={handleChange}
+                      onKeyPress={(e) => handleKeyPress(e, addSkill)}
+                      placeholder="Add a skill..."
+                      className={`flex-1 px-4 py-3 rounded-2xl border text-sm transition-all outline-none ${isDark ? "bg-black/40 border-white/5 text-white focus:border-emerald-500/50" : "bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-emerald-500"}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={addSkill}
+                      className="w-12 h-12 bg-emerald-500 text-white rounded-2xl flex items-center justify-center hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20"
+                    >
+                      <HiOutlinePlus className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <AnimatePresence>
+                      {formData.skills.map((skill) => (
+                        <motion.span
+                          key={skill}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          className={`px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-2 border transition-colors ${
+                            isDark ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-emerald-50 border-emerald-100 text-emerald-700"
+                          }`}
+                        >
+                          {skill}
+                          <HiOutlineXMark 
+                            className="w-3.5 h-3.5 cursor-pointer hover:text-red-500"
+                            onClick={() => removeSkill(skill)}
+                          />
+                        </motion.span>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>Suggested Skills</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {["Video Editing", "Reels", "DaVinci", "Premiere", "After Effects", "Color Grading", "Sound Design", "Motion Graphics"].map(skill => (
+                        <button
+                          key={skill}
+                          type="button"
+                          disabled={formData.skills.includes(skill)}
+                          onClick={() => {
+                            if (formData.skills.length < 20) {
+                              setFormData({ ...formData, skills: [...formData.skills, skill] });
+                            }
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                            formData.skills.includes(skill)
+                            ? "opacity-30 grayscale cursor-default"
+                            : (isDark ? "bg-transparent border-white/5 text-zinc-500 hover:border-emerald-500/30 hover:text-emerald-500" : "bg-white border-zinc-100 text-zinc-400 hover:border-emerald-500 hover:text-emerald-600")
+                          }`}
+                        >
+                          + {skill}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Languages - Simple Version */}
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-0 transition-all"
+            >
+              <SectionHeader simple icon={HiOutlineLanguage} title="Language Hub" subtitle="Global communication" />
+              
+              <div className="space-y-6">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    name="languageInput"
+                    value={formData.languageInput}
+                    onChange={handleChange}
+                    onKeyPress={(e) => handleKeyPress(e, addLanguage)}
+                    placeholder="Add a language..."
+                    className={`flex-1 px-4 py-3 rounded-2xl border text-sm transition-all outline-none ${isDark ? "bg-black/40 border-white/5 text-white focus:border-emerald-500/50" : "bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-emerald-500"}`}
                   />
                   <button
                     type="button"
-                    className="absolute -top-2 -right-2 bg-red-500 text-white
-                               w-5 h-5 rounded-full flex items-center justify-center text-xs
-                               opacity-0 group-hover:opacity-100 transition"
-                    onClick={() => removeCert(i, "local")}
+                    onClick={addLanguage}
+                    className="w-12 h-12 bg-zinc-900 dark:bg-white dark:text-zinc-900 text-white rounded-2xl flex items-center justify-center hover:opacity-90 transition-all shadow-lg shadow-black/10"
                   >
-                    <FaTimes />
+                    <HiOutlinePlus className="w-5 h-5" />
                   </button>
                 </div>
-              );
-            })}
+
+                <div className="flex flex-wrap gap-2">
+                  <AnimatePresence>
+                    {formData.languages.map((l) => (
+                      <motion.span
+                        key={l}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className={`px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-2 border transition-colors ${
+                          isDark ? "bg-zinc-100 border-zinc-200 text-black" : "bg-zinc-900 border-zinc-800 text-white"
+                        }`}
+                      >
+                        {l}
+                        <HiOutlineXMark 
+                          className="w-3.5 h-3.5 cursor-pointer hover:text-red-500"
+                          onClick={() => removeLanguage(l)}
+                        />
+                      </motion.span>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Certifications - Simple Version */}
+            {user?.role === 'editor' && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-0 transition-all"
+              >
+                <SectionHeader simple icon={HiOutlineAcademicCap} title="Certifications" subtitle="Verify your skill" />
+                
+                <div className="space-y-6">
+                  <div className={`relative group p-8 rounded-3xl border-2 border-dashed transition-all flex flex-col items-center justify-center text-center ${isDark ? "border-white/5 bg-black/20 hover:border-emerald-500/30" : "border-zinc-200 bg-zinc-50 hover:border-emerald-500/50"}`}>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleCertUpload}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    />
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-all ${isDark ? "bg-emerald-500/10 text-emerald-500 group-hover:scale-110" : "bg-emerald-50 text-emerald-600 group-hover:scale-110"}`}>
+                      <HiOutlineCloudArrowUp className="w-8 h-8" />
+                    </div>
+                    <p className={`text-sm font-black ${isDark ? "text-white" : "text-zinc-900"}`}>Upload Certificates</p>
+                    <p className={`text-[10px] font-bold mt-1 ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>PNG, JPG or WEBP (Max 5MB)</p>
+                  </div>
+
+                  {(formData.existingCertifications.length > 0 || formData.certifications.length > 0) && (
+                    <div className="grid grid-cols-4 gap-3">
+                      {formData.existingCertifications.map((cert, i) => (
+                        <div key={`existing-${i}`} className="relative group aspect-square">
+                          <img src={cert.image} alt="" className="w-full h-full object-cover rounded-xl border border-white/10" />
+                          <button
+                            type="button"
+                            onClick={() => removeCert(i, "existing")}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                          >
+                            <HiOutlineXMark className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                      {formData.certifications.map((file, i) => (
+                        <div key={`new-${i}`} className="relative group aspect-square">
+                          <img src={file instanceof File ? URL.createObjectURL(file) : file} alt="" className="w-full h-full object-cover rounded-xl border border-white/10" />
+                          <button
+                            type="button"
+                            onClick={() => removeCert(i, "local")}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                          >
+                            <HiOutlineXMark className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
           </div>
         </div>
-      )}
 
-
-      {/* Manual Follow Approval */}
-      <div className="bg-[#0B1220] border border-white/10 rounded-2xl p-4 flex items-center justify-between">
-        <div>
-          <h4 className="text-white font-medium">Manual Follow Approval</h4>
-          <p className="text-[11px] text-gray-500">Enable this to manually approve/reject each follow request.</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setFormData({ ...formData, manualApproval: !formData.manualApproval })}
-          className={`w-12 h-6 rounded-full transition-all relative ${formData.manualApproval ? 'bg-emerald-500' : 'bg-gray-700'}`}
+        {/* Global Submit */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="sticky bottom-8 z-30"
         >
-          <motion.div 
-            animate={{ x: formData.manualApproval ? 26 : 2 }}
-            className="absolute top-1 left-0 w-4 h-4 bg-white rounded-full shadow-sm"
-          />
-        </button>
-      </div>
-
-      {/* Submit */}
-      <button
-        type="submit"
-        disabled={!isFormValid || updating}
-        className={`w-full py-3.5 rounded-2xl text-white font-semibold 
-                    flex items-center justify-center gap-2 text-sm md:text-base
-                    transition-all ${
-                      isFormValid && !updating
-                        ? "bg-gradient-to-r from-[#22C55E] via-[#16A34A] to-[#15803D] hover:shadow-[0_18px_40px_rgba(22,163,74,0.5)] hover:translate-y-[1px]"
-                        : "bg-gray-600 cursor-not-allowed opacity-70"
-                    }`}
-      >
-        {updating ? (
-          <>
-            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            Updating...
-          </>
-        ) : (
-          <>
-            <FaSave /> Update Profile
-          </>
-        )}
-      </button>
-    </form>
+          <button
+            type="submit"
+            disabled={!isFormValid || updating}
+            className={`w-full max-w-lg mx-auto py-5 rounded-[24px] font-black text-sm tracking-widest uppercase flex items-center justify-center gap-3 transition-all ${
+              isFormValid && !updating
+              ? "bg-emerald-500 text-white shadow-2xl shadow-emerald-500/40 hover:scale-[1.02] active:scale-95"
+              : "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed"
+            }`}
+          >
+            {updating ? (
+              <>
+                <motion.div 
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+                  className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
+                />
+                Updating Hub...
+              </>
+            ) : (
+              <>
+                <HiOutlineShieldCheck className="w-5 h-5" />
+                Save Changes
+              </>
+            )}
+          </button>
+        </motion.div>
+      </form>
+    </div>
   );
 };
 

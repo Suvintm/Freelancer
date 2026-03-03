@@ -1,5 +1,6 @@
 import User from "../models/User.js";
 import FollowRequest from "../models/FollowRequest.js";
+import Notification from "../models/Notification.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
 import { createNotification } from "./notificationController.js";
@@ -141,17 +142,32 @@ export const toggleFollow = asyncHandler(async (req, res) => {
     // Check if user has manual approval enabled
     if (editor.followSettings?.manualApproval) {
       // Create follow request
-      const existingRequest = await FollowRequest.findOne({ sender: followerId, receiver: editorId });
-      if (existingRequest) {
-        if (existingRequest.status === 'pending') {
-          res.status(400);
-          throw new Error("Follow request already pending");
+      let followRequest = await FollowRequest.findOne({ sender: followerId, receiver: editorId });
+      
+      if (followRequest) {
+        if (followRequest.status === 'pending') {
+          // CANCEL REQUEST: If it's already pending, delete it and the notification
+          await FollowRequest.findByIdAndDelete(followRequest._id);
+          
+          // Also remove the notification sent to the editor
+          await Notification.findOneAndDelete({
+            recipient: editorId,
+            sender: followerId,
+            type: "follow_request"
+          });
+
+          return res.status(200).json({ 
+            success: true, 
+            message: "Follow request canceled", 
+            isPending: false,
+            isFollowing: false 
+          });
         }
         // If they were rejected before, they can try again (resets status to pending)
-        existingRequest.status = 'pending';
-        await existingRequest.save();
+        followRequest.status = 'pending';
+        await followRequest.save();
       } else {
-        await FollowRequest.create({ sender: followerId, receiver: editorId });
+        followRequest = await FollowRequest.create({ sender: followerId, receiver: editorId });
       }
 
       // Send interactive notification
@@ -160,9 +176,9 @@ export const toggleFollow = asyncHandler(async (req, res) => {
         type: "follow_request",
         title: "Follow Request",
         message: `${follower.name} wants to follow you`,
-        link: `/notifications`, // Deep link to notifications where they can approve
+        link: `/notifications`, 
         sender: followerId,
-        metaData: { requestId: editorId } // Using editorId as placeholder or we could fetch actual ID
+        metaData: { followRequestId: followRequest._id } 
       });
 
       return res.status(200).json({ success: true, message: "Follow request sent", isPending: true });

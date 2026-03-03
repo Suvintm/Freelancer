@@ -15,7 +15,7 @@ export const getProfile = asyncHandler(async (req, res) => {
   const viewerId = req.user?._id?.toString() || req.user?._id || req.user?.id;
 
   let profile = await Profile.findOne({ user: userId })
-    .populate("user", "name email role profilePicture kycStatus followers following suvixId followSettings")
+    .populate("user", "name email role profilePicture kycStatus followers following suvixId followSettings clientKycStatus availability")
     .lean();
 
   if (!profile) {
@@ -76,6 +76,7 @@ export const getProfile = asyncHandler(async (req, res) => {
 
 // ============ UPDATE PROFILE ============
 export const updateProfile = asyncHandler(async (req, res) => {
+  logger.info(`Incoming updateProfile request body for user ${req.user._id}: ${JSON.stringify(req.body)}`);
   const { 
     about, 
     experience, 
@@ -84,6 +85,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
     skills, 
     languages,
     socialLinks,
+    softwares,
     hourlyRate,
     availability,
     responseTime,
@@ -126,15 +128,50 @@ export const updateProfile = asyncHandler(async (req, res) => {
 
   // Update social links
   if (socialLinks !== undefined) {
+    let parsedSocials = socialLinks;
+    if (typeof socialLinks === "string") {
+      try {
+        parsedSocials = JSON.parse(socialLinks);
+      } catch (e) {
+        logger.error("Failed to parse socialLinks JSON", e);
+      }
+    }
     profile.socialLinks = {
-      instagram: socialLinks.instagram?.trim() || '',
-      youtube: socialLinks.youtube?.trim() || '',
-      twitter: socialLinks.twitter?.trim() || '',
-      linkedin: socialLinks.linkedin?.trim() || '',
-      website: socialLinks.website?.trim() || '',
-      behance: socialLinks.behance?.trim() || '',
-      dribbble: socialLinks.dribbble?.trim() || '',
+      instagram: parsedSocials.instagram?.trim() || '',
+      youtube: parsedSocials.youtube?.trim() || '',
+      tiktok: parsedSocials.tiktok?.trim() || '',
+      twitter: parsedSocials.twitter?.trim() || '',
+      linkedin: parsedSocials.linkedin?.trim() || '',
+      website: parsedSocials.website?.trim() || '',
+      behance: parsedSocials.behance?.trim() || '',
+      dribbble: parsedSocials.dribbble?.trim() || '',
     };
+  }
+
+  // Update softwares
+  if (softwares !== undefined) {
+    logger.info(`Source softwares value: ${softwares} (Type: ${typeof softwares})`);
+    let softwaresArray = [];
+    
+    // Try JSON parsing first, then fallback to comma-separated
+    if (typeof softwares === "string" && softwares.trim() !== "") {
+      try {
+        const parsed = JSON.parse(softwares);
+        softwaresArray = Array.isArray(parsed) ? parsed : [parsed];
+        logger.info(`Successfully parsed softwares as JSON: ${JSON.stringify(softwaresArray)}`);
+      } catch (e) {
+        logger.info("Softwares not valid JSON, splitting by comma...");
+        softwaresArray = softwares.split(",").map(s => s.trim()).filter(Boolean);
+        logger.info(`Successfully parsed softwares as comma-separated: ${JSON.stringify(softwaresArray)}`);
+      }
+    } else if (Array.isArray(softwares)) {
+      softwaresArray = softwares;
+      logger.info(`Softwares already an array: ${JSON.stringify(softwaresArray)}`);
+    }
+
+    profile.softwares = softwaresArray;
+    profile.markModified('softwares');
+    logger.info(`Set profile.softwares to: ${JSON.stringify(profile.softwares)}`);
   }
 
   // Update hourly rate
@@ -157,10 +194,29 @@ export const updateProfile = asyncHandler(async (req, res) => {
   }
 
   // Update followSettings (Manual Approval)
-  if (followSettings !== undefined) {
+  let manualApproval = undefined;
+  if (followSettings) {
+    if (typeof followSettings === 'string') {
+      try {
+        const parsed = JSON.parse(followSettings);
+        manualApproval = parsed.manualApproval;
+      } catch (e) {
+        // Fallback for direct field or other formats
+        manualApproval = req.body['followSettings[manualApproval]'];
+      }
+    } else {
+      manualApproval = followSettings.manualApproval;
+    }
+  } else if (req.body['followSettings[manualApproval]'] !== undefined) {
+    manualApproval = req.body['followSettings[manualApproval]'];
+  }
+
+  if (manualApproval !== undefined) {
+    const isManual = String(manualApproval) === 'true';
     await User.findByIdAndUpdate(req.user._id, { 
-      'followSettings.manualApproval': followSettings.manualApproval 
+      'followSettings.manualApproval': isManual 
     });
+    logger.info(`Updated manualApproval to ${isManual} for user ${req.user._id}`);
   }
 
   // Handle certifications upload
@@ -198,6 +254,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
     ];
   }
 
+  logger.info(`Saving profile with softwares: ${JSON.stringify(profile.softwares)}`);
   await profile.save();
 
   // Mark profile as completed if required fields are filled

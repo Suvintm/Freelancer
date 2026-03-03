@@ -1,4 +1,4 @@
-import { Notification } from "../models/Notification.js";
+import Notification from "../models/Notification.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import { io, getReceiverSocketId } from "../socket.js";
 import { withCache, deleteCache, CacheKey, TTL } from "../utils/cache.js";

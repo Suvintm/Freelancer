@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const notificationSchema = new mongoose.Schema(
+ const notificationSchema = new mongoose.Schema(
     {
         recipient: {
             type: mongoose.Schema.Types.ObjectId,
@@ -10,7 +10,7 @@ const notificationSchema = new mongoose.Schema(
         },
         type: {
             type: String,
-            enum: ["info", "success", "warning", "error", "follow"],
+            enum: ["info", "success", "warning", "error", "follow", "follow_request", "follow_accept"],
             default: "info",
         },
         sender: {
@@ -48,4 +48,5 @@ const notificationSchema = new mongoose.Schema(
 notificationSchema.index({ recipient: 1, isRead: 1 });
 notificationSchema.index({ createdAt: -1 });
 
-export const Notification = mongoose.model("Notification", notificationSchema);
+const Notification = mongoose.model("Notification", notificationSchema);
+export default Notification;

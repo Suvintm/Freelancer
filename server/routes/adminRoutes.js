@@ -5,7 +5,7 @@ import User from "../models/User.js";
 import { Order } from "../models/Order.js";
 import { Gig } from "../models/Gig.js";
 import { Message } from "../models/Message.js";
-import { Notification } from "../models/Notification.js";
+import Notification from "../models/Notification.js";
 import { SiteSettings } from "../models/SiteSettings.js";
 import { StorageSettings } from "../models/StorageSettings.js";
 import { StoragePurchase } from "../models/StoragePurchase.js";

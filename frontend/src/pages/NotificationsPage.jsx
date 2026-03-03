@@ -403,7 +403,7 @@ const NotificationsPage = () => {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    onHandleFollowRequest(n._id, n.sender?._id, "accepted");
+                                    onHandleFollowRequest(n._id, n.metaData?.followRequestId, "accepted");
                                   }}
                                   className="px-5 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[11px] font-black rounded-lg hover:opacity-90 transition-all shadow-lg shadow-black/10 flex items-center gap-1.5"
                                 >
@@ -412,7 +412,7 @@ const NotificationsPage = () => {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    onHandleFollowRequest(n._id, n.sender?._id, "rejected");
+                                    onHandleFollowRequest(n._id, n.metaData?.followRequestId, "rejected");
                                   }}
                                   className="px-5 py-1.5 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-[11px] font-black rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all border border-zinc-200 dark:border-zinc-700 flex items-center gap-1.5"
                                 >

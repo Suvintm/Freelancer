@@ -1,65 +1,59 @@
 import { useState, useEffect } from "react";
-import { FaArrowAltCircleRight, FaPlus } from "react-icons/fa";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAppContext } from "../context/AppContext";
 import axios from "axios";
-import logo from "../assets/logo.png";
-import UpdateProfile from "../components/UpdateProfile"; // ✅ imported
+import UpdateProfile from "../components/UpdateProfile";
 import { useNavigate } from "react-router-dom";
+import Sidebar from "../components/Sidebar.jsx";
+import EditorNavbar from "../components/EditorNavbar.jsx";
+import { HiOutlineCamera, HiOutlinePlus } from "react-icons/hi2";
+import { useTheme } from "../context/ThemeContext";
 
-// Optional language options (for UpdateProfile to use)
+// Optional language options
 const LANGUAGE_OPTIONS = [
-  "English",
-  "Hindi",
-  "Kannada",
-  "Tamil",
-  "Telugu",
-  "Malayalam",
-  "Marathi",
-  "Gujarati",
-  "Bengali",
-  "Punjabi",
-  "Urdu",
-  "French",
-  "Spanish",
-  "German",
-  "Arabic",
-  "Chinese",
-  "Japanese",
-  "Korean",
+  "English", "Hindi", "Kannada", "Tamil", "Telugu", "Malayalam", "Marathi", 
+  "Gujarati", "Bengali", "Punjabi", "Urdu", "French", "Spanish", "German", 
+  "Arabic", "Chinese", "Japanese", "Korean"
 ];
 
 const EditorProfileUpdate = () => {
   const { user, setUser, backendURL } = useAppContext();
+  const { isDark } = useTheme();
+  const navigate = useNavigate();
+  
   const [profileImage, setProfileImage] = useState(
-    user?.profilePicture ||
-      "https://cdn-icons-png.flaticon.com/512/847/847969.png"
+    user?.profilePicture || "https://cdn-icons-png.flaticon.com/512/847/847969.png"
   );
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [loading, setLoading] = useState(true); // ✅ shimmer loading
-
-const navigate = useNavigate();
-
+  const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showHint, setShowHint] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 2000);
+    const timer = setTimeout(() => setLoading(false), 1500);
     return () => clearTimeout(timer);
   }, []);
 
-  const handleBack = () => window.history.back();
+  useEffect(() => {
+    if (showHint) {
+      const timer = setTimeout(() => setShowHint(false), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [showHint]);
 
   const handleImageChange = (e) => {
     const selected = e.target.files[0];
     if (selected) {
       setFile(selected);
-      setProfileImage(URL.createObjectURL(selected)); // preview
+      setProfileImage(URL.createObjectURL(selected));
+      setShowHint(false);
     }
   };
 
   const handleUpload = async () => {
     if (!file) {
-      alert("Please select an image first.");
+      setShowHint(true);
       return;
     }
 
@@ -83,7 +77,6 @@ const navigate = useNavigate();
       const updatedUser = { ...user, ...res.data.user };
       setUser(updatedUser);
       localStorage.setItem("user", JSON.stringify(updatedUser));
-
       alert("✅ Profile picture updated successfully!");
     } catch (error) {
       console.error("Error uploading:", error);
@@ -93,212 +86,126 @@ const navigate = useNavigate();
     }
   };
 
-  // ✅ Dark shimmer block
   const ShimmerBlock = ({ className }) => (
-    <div
-      className={`relative overflow-hidden bg-[#0B1220] rounded-xl ${className}`}
-    >
-      <div className="absolute inset-0 -translate-x-full bg-[linear-gradient(90deg,transparent,rgba(84, 84, 84, 0.25),transparent)] animate-[shimmer_1.5s_infinite]" />
+    <div className={`relative overflow-hidden ${isDark ? "bg-white/5" : "bg-zinc-100"} rounded-xl ${className}`}>
+      <div className="absolute inset-0 -translate-x-full bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.05),transparent)] animate-[shimmer_1.5s_infinite]" />
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#020617] light:bg-slate-50 text-white light:text-slate-900 flex flex-col transition-colors duration-200">
-      {/* ✅ Top Navbar - Dark Glass */}
-      <nav className="w-full bg-[#050816]/80 light:bg-white/90 border-b border-white/10 light:border-slate-200 backdrop-blur-md py-3.5 px-4 md:px-8 flex justify-between items-center light:shadow-sm">
+    <div className={`min-h-screen transition-colors duration-200 ${isDark ? "bg-[#000000]" : "bg-white"} text-white light:text-slate-900 flex flex-col`}>
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-  {/* LEFT — LOGO + TEXT */}
-  <div
-    className="flex items-center gap-2 cursor-pointer"
-    onClick={() => navigate("/editor-home")}
-  >
-    <div className="w-9 h-9 rounded-2xl overflow-hidden bg-[#0B1220] light:bg-slate-100 border border-white/10 light:border-slate-200 flex items-center justify-center">
-      <img
-        src={logo}
-        alt="Logo"
-        className="w-8 h-8 rounded-xl object-cover"
-      />
-    </div>
-
-    <div className="flex flex-col leading-tight">
-      <span className="text-lg font-semibold tracking-tight light:text-slate-900">SuviX</span>
-      <span className="text-[11px] text-gray-400 light:text-slate-500 hidden sm:block">
-        {user?.role === 'editor' ? 'Editor Profile · Update' : 'Client Profile · Update'}
-      </span>
-    </div>
-  </div>
-
-  {/* RIGHT — BACK BUTTON */}
-  <motion.button
-    onClick={handleBack}
-    whileHover={{ x: 2, scale: 1.02 }}
-    whileTap={{ scale: 0.97 }}
-    className="flex items-center gap-2 text-xs md:text-sm 
-               text-gray-200 light:text-slate-700 hover:text-white light:hover:text-slate-900 px-3 py-1.5 rounded-full
-               bg-white/5 light:bg-slate-100 border border-white/10 light:border-slate-200 shadow-[0_0_20px_rgba(0,0,0,0.7)] light:shadow-sm"
-  >
-    <span>Back</span>
-    <FaArrowAltCircleRight className="text-base md:text-lg text-[#22C55E]" />
-  </motion.button>
-
-</nav>
-
-
-      {/* ✅ Main Section */}
-      <main className="flex flex-col items-center flex-grow py-8 md:py-10 px-4 md:px-8">
+      <main className="flex-1 md:ml-64 md:mt-16 px-4 md:px-12 py-10 flex flex-col items-center">
         {loading ? (
-          // ✅ Shimmer Skeleton (dark neon style)
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-6xl space-y-6 animate-fadeIn"
-          >
-            <div className="grid md:grid-cols-[260px,minmax(0,1fr)] gap-6 lg:gap-8">
-              {/* Left skeleton (avatar card) */}
-              <div className="bg-[#050816] border border-white/10 rounded-3xl p-6 flex flex-col items-center gap-4 shadow-[0_18px_45px_rgba(0,0,0,0.9)]">
-                <ShimmerBlock className="w-32 h-32 rounded-full mb-2" />
-                <ShimmerBlock className="h-5 w-32" />
-                <ShimmerBlock className="h-4 w-40" />
-                <ShimmerBlock className="h-10 w-40 mt-2" />
-              </div>
-
-              {/* Right skeleton (form card) */}
-              <div className="bg-[#050816] border border-white/10 rounded-3xl p-6 md:p-7 shadow-[0_18px_45px_rgba(0,0,0,0.9)] space-y-4">
-                <ShimmerBlock className="h-6 w-48" />
-                <ShimmerBlock className="h-4 w-1/2" />
-                <ShimmerBlock className="h-24 w-full" />
-                <ShimmerBlock className="h-24 w-full" />
-              </div>
-            </div>
-          </motion.div>
+          <div className="w-full max-w-5xl space-y-12">
+             <div className="flex items-center gap-6">
+                <ShimmerBlock className="w-32 h-32 rounded-full" />
+                <div className="space-y-3">
+                   <ShimmerBlock className="h-8 w-64 rounded-lg" />
+                   <ShimmerBlock className="h-12 w-48 rounded-2xl" />
+                </div>
+             </div>
+             <ShimmerBlock className="h-[600px] w-full rounded-[48px]" />
+          </div>
         ) : (
           <motion.section
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-6xl mt-2 md:mt-4 
-                       grid gap-6 lg:gap-8 
-                       md:grid-cols-[280px,minmax(0,1fr)] items-start"
+            className="w-full max-w-5xl space-y-8"
           >
-            {/* ================= LEFT COLUMN: AVATAR + BASIC INFO ================= */}
-            <div className="bg-[#050816] light:bg-white border border-white/10 light:border-slate-200 rounded-3xl 
-                            px-6 py-1 flex flex-col items-center gap-4 relative light:shadow-md">
-              {/* Glow accent */}
-              <div className="absolute inset-x-10 -top-10 h-28 
-                              bg-[radial-gradient(circle_at_top,rgba(0, 0, 0, 0.35),transparent)] pointer-events-none" />
+            {/* ================= AVATAR SECTION ================= */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 sm:gap-12 w-full">
+              {/* Left Side: Avatar + Details */}
+              <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8">
+                {/* Profile Image Circle */}
+                <div className="relative group self-center md:self-auto">
+                  <div className={`absolute -inset-1.5 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity ${isDark ? "bg-black" : "bg-black"}`} />
+                  <div className={`relative p-2 rounded-full border-2 ${isDark ? "border-white bg-white/5" : "border-zinc-200 bg-zinc-50"} shadow-xl shadow-zinc-200/50`}>
+                    <img
+                      src={profileImage}
+                      alt="Profile"
+                      className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover"
+                    />
+                    <label
+                      htmlFor="uploadProfile"
+                      className="absolute bottom-0 right-0 p-2.5 rounded-full bg-white text-black shadow-2xl cursor-pointer hover:scale-110 active:scale-95 transition-all z-10"
+                    >
+                      <HiOutlinePlus className="w-4 h-4" />
+                      <input id="uploadProfile" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                    </label>
 
-              {/* Profile Image */}
-              <div className="relative mt-4">
-                <div className="absolute -inset-1 rounded-full
-                                bg-gradient-to-br from-[#146322FF] via-transparent to-[#22C5225E]
-                                opacity-70 blur-md" />
-                <img
-                  src={profileImage}
-                  alt="Profile"
-                  className="relative w-32 h-32 md:w-36 md:h-36 rounded-full object-cover 
-                             border-[3px] border-white/80 
-                             "
-                />
+                    {/* Animated Hint - Pointing to Plus Icon */}
+                    <AnimatePresence>
+                      {showHint && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          className="absolute -top-14 left-1/2 -translate-x-1/2 md:top-auto md:bottom-0 md:left-full md:ml-6 md:translate-x-0 z-50 pointer-events-none whitespace-nowrap"
+                        >
+                          <div className="flex items-center gap-3 bg-white text-black px-4 py-2.5 rounded-2xl shadow-2xl font-black text-[11px] uppercase tracking-wider relative">
+                            {/* Pointing Arrow (Mobile: Down, Desktop: Left) */}
+                            <div className="md:hidden absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white rotate-45" />
+                            <div className="hidden md:block absolute -left-1.5 bottom-3 w-3 h-3 bg-white rotate-45" />
+                            
+                            <motion.div
+                              animate={{ x: [0, -5, 0] }}
+                              transition={{ repeat: Infinity, duration: 1.5 }}
+                              className="flex items-center gap-2"
+                            >
+                              <span className="text-emerald-500 text-lg md:block hidden">←</span>
+                              <span className="text-emerald-500 text-lg md:hidden block">↓</span>
+                              Click here to choose photo
+                            </motion.div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
 
-                <label
-                  htmlFor="uploadProfile"
-                  className="absolute bottom-1 right-1 bg-gradient-to-br from-[#22C55E] to-[#4ADE80]
-                             hover:from-[#16A34A] hover:to-[#22C55E]
-                             text-white p-2 rounded-full shadow-lg cursor-pointer 
-                             border border-emerald-200/70 transition-all duration-200
-                             flex items-center justify-center"
-                >
-                  <FaPlus className="text-xs" />
-                  <input
-                    id="uploadProfile"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
-                </label>
+                {/* Identity Details */}
+                <div className="flex flex-col items-center md:items-start text-center md:text-left">
+                  <h2 className={`text-2xl md:text-4xl font-black tracking-tight mb-1 ${isDark ? "text-white" : "text-zinc-900"}`}>
+                    {user?.name || "Premium Member"}
+                  </h2>
+                  <p className={`text-sm font-medium ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>
+                    {user?.email}
+                  </p>
+                </div>
               </div>
 
-              {/* Name + Email */}
-              <div className="text-center space-y-1 mt-1">
-                <h2 className="text-xl md:text-2xl font-semibold text-white light:text-slate-900">
-                  {user?.name || "Member Name"}
-                </h2>
-                <p className="text-xs md:text-sm text-gray-400 light:text-slate-500 break-all">
-                  {user?.email}
-                </p>
-              </div>
-
-              {/* Change Profile Button */}
+              {/* Right Side: Action Button */}
               <motion.button
                 onClick={handleUpload}
                 disabled={uploading}
-                whileHover={{ scale: uploading ? 1 : 1.03, y: uploading ? 0 : -2 }}
-                whileTap={{ scale: uploading ? 1 : 0.98 }}
-                className={`mt-4 w-full bg-gradient-to-r from-[#1463FF] to-black/60
-                            text-white font-medium px-6 py-2.5 rounded-2xl shadow-lg 
-                            text-sm md:text-base flex items-center justify-center
-                            transition-all duration-200 ${
-                              uploading ? "opacity-70 cursor-not-allowed" : ""
-                            }`}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className={`flex items-center gap-3 px-4 py-2 rounded-2xl font-black text-xs tracking-wider uppercase transition-all shadow-xl ${
+                  isDark 
+                  ? "bg-white text-black hover:bg-zinc-100" 
+                  : "bg-zinc-900 text-white hover:bg-black shadow-zinc-200"
+                } ${uploading ? "opacity-50 cursor-not-allowed" : ""}`}
               >
-                {uploading ? "Uploading..." : "Change Your Profile Picture"}
+                <HiOutlineCamera className="w-6 h-6" />
+                {uploading ? "Uploading..." : "Change Photo"}
               </motion.button>
-
-              {/* Small note */}
-              <p className="text-[11px] text-gray-500 light:text-slate-500 text-center mt-1">
-                Use a clear, high-quality image for better client trust.
-              </p>
             </div>
 
-            {/* ================= RIGHT COLUMN: UPDATE PROFILE FORM ================= */}
-            <div className="bg-[#050816] light:bg-white border border-white/10 light:border-slate-200 rounded-3xl 
-                            shadow-[0_18px_50px_rgba(0,0,0,0.9)] light:shadow-lg
-                            p-5 md:p-7 lg:p-8 flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
-                <div>
-                  <h3 className="text-lg md:text-xl font-semibold text-white light:text-slate-900">
-                    Update Your Profile
-                  </h3>
-                  <p className="text-xs md:text-sm text-gray-400 light:text-slate-500 mt-1">
-                    Add your experience, skills, languages, and more. This helps clients
-                    understand your editing style & background.
-                  </p>
-                </div>
-
-                {/* Small badge */}
-                <div className="inline-flex items-center px-3 py-1 rounded-full 
-                                bg-white/5 light:bg-slate-100 border border-white/10 light:border-slate-200 text-[11px] md:text-xs
-                                text-gray-300 light:text-slate-600 self-start sm:self-auto">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse" />
-                  Profile completion boosts your visibility
-                </div>
-              </div>
-
-              {/* ✅ Responsive Form Wrapper */}
-              <div className="mt-2">
-                {/* 
-                  We are passing LANGUAGE_OPTIONS so that inside UpdateProfile 
-                  you can show a multi-select / chips UI for languages. 
-                  (No logic here is changed; you can use this prop in that component.)
-                */}
-                <UpdateProfile languagesOptions={LANGUAGE_OPTIONS} />
-              </div>
+            {/* Hub Content */}
+            <div className={`pt-8 border-t ${isDark ? "border-white/5" : "border-zinc-100"}`}>
+               <UpdateProfile languagesOptions={LANGUAGE_OPTIONS} />
             </div>
           </motion.section>
         )}
       </main>
 
-      {/* ✅ Shimmer & Fade-in Keyframes */}
       <style>
         {`
           @keyframes shimmer {
-            100% {
-              transform: translateX(100%);
-            }
-          }
-          @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(4px); }
-            to { opacity: 1; transform: translateY(0); }
+            100% { transform: translateX(100%); }
           }
         `}
       </style>
