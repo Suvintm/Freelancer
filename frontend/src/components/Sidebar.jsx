@@ -245,7 +245,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 text-sm bg-white/5 light:bg-slate-50 border border-white/10 light:border-slate-200 rounded-lg text-white light:text-slate-900 placeholder:text-gray-500 focus:outline-none focus:border-emerald-500/50 transition-colors"
+              className="w-full pl-9 pr-8 py-2 text-sm bg-white/5 light:bg-slate-50 border border-white/10 light:border-slate-200 rounded-lg text-white light:text-slate-900 placeholder:text-gray-500 focus:outline-none focus:border-white/50 light:focus:border-black/50 transition-colors"
             />
             {searchQuery && (
               <button
@@ -276,19 +276,19 @@ const Sidebar = ({ isOpen, onClose }) => {
                   key={item.id}
                   onClick={() => handleNavigation(item.path)}
                   whileTap={{ scale: 0.98 }}
-                  className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group ${
+                  className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold tracking-tight transition-all group ${
                     active
-                      ? "bg-emerald-500/10 light:bg-emerald-50 text-emerald-400 light:text-emerald-600"
+                      ? "bg-white light:bg-[#0a0a0c] text-black light:text-white shadow-[0_4px_12px_rgba(255,255,255,0.1)]"
                       : "text-gray-400 light:text-slate-600 hover:text-white light:hover:text-slate-900 hover:bg-white/5 light:hover:bg-slate-50"
                   }`}
                 >
                   {active && (
                     <motion.div
                       layoutId="activeIndicator"
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-emerald-500 rounded-r-full"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-black light:bg-white rounded-r-full"
                     />
                   )}
-                  <Icon className={`text-lg ${active ? "text-emerald-500" : "text-gray-500 light:text-slate-400"}`} />
+                  <Icon className={`text-lg ${active ? "text-black light:text-white" : "text-gray-500 light:text-slate-400"}`} />
                   <span>{item.label}</span>
                   {item.badge > 0 && (
                     <span className="ml-auto px-2 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full">
@@ -310,13 +310,13 @@ const Sidebar = ({ isOpen, onClose }) => {
                   <motion.button
                     onClick={() => toggleGroup(item.id)}
                     whileTap={{ scale: 0.98 }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group ${
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold tracking-tight transition-all group ${
                       groupActive
-                        ? "text-emerald-400 light:text-emerald-600"
+                        ? "text-white light:text-black"
                         : "text-gray-400 light:text-slate-600 hover:text-white light:hover:text-slate-900 hover:bg-white/5 light:hover:bg-slate-50"
                     }`}
                   >
-                    <Icon className={`text-lg ${groupActive ? "text-emerald-500" : "text-gray-500 light:text-slate-400"}`} />
+                    <Icon className={`text-lg ${groupActive ? "text-white light:text-black" : "text-gray-500 light:text-slate-400"}`} />
                     <span>{item.label}</span>
                     <motion.div
                       animate={{ rotate: isExpanded ? 180 : 0 }}
@@ -347,19 +347,19 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 key={child.path}
                                 onClick={() => handleNavigation(child.path)}
                                 whileTap={{ scale: 0.98 }}
-                                className={`relative w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-all ${
+                                className={`relative w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-bold tracking-tight transition-all ${
                                   childActive
-                                    ? "bg-emerald-500/10 light:bg-emerald-50 text-emerald-400 light:text-emerald-600"
+                                    ? "bg-white light:bg-[#0a0a0c] text-black light:text-white shadow-[0_2px_8px_rgba(255,255,255,0.05)]"
                                     : "text-gray-500 light:text-slate-500 hover:text-white light:hover:text-slate-900 hover:bg-white/5 light:hover:bg-slate-50"
                                 }`}
                               >
                                 {childActive && (
                                   <motion.div
                                     layoutId="childActiveIndicator"
-                                    className="absolute -left-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-emerald-500 rounded-full"
+                                    className="absolute -left-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-white light:bg-black rounded-full"
                                   />
                                 )}
-                                <ChildIcon className={`text-base ${childActive ? "text-emerald-500" : "text-gray-600 light:text-slate-400"}`} />
+                                <ChildIcon className={`text-base ${childActive ? "text-black light:text-white" : "text-gray-600 light:text-slate-400"}`} />
                                 <span>{child.label}</span>
                                 {child.isNew && (
                                   <span className="ml-auto px-1.5 py-0.5 text-[9px] font-bold bg-amber-400 text-amber-900 rounded-full">
