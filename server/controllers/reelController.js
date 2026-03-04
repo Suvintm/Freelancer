@@ -39,6 +39,10 @@ export const publishToReel = asyncHandler(async (req, res) => {
         description: portfolio.description,
         mediaUrl,
         mediaType: isVideo ? "video" : "image",
+        hashtags: portfolio.hashtags || [],
+        location: portfolio.location || "",
+        taggedUsers: portfolio.taggedUsers || [],
+        isAIContent: portfolio.isAIContent || false,
     });
 
     const populatedReel = await Reel.findById(reel._id)

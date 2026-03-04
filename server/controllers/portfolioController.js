@@ -38,10 +38,31 @@ const validateFile = (file, type) => {
 
 // ============ CREATE PORTFOLIO ============
 export const createPortfolio = asyncHandler(async (req, res) => {
-  const { title, description } = req.body;
+  const { title, description, hashtags, location, taggedUsers, isAIContent } = req.body;
   let originalClips = [];
   let editedClip = "";
   let totalSizeBytes = 0; // Track actual file sizes for storage calculation
+
+  // Parse JSON strings if necessary (from FormData)
+  let parsedHashtags = [];
+  if (hashtags) {
+    try {
+      parsedHashtags = Array.isArray(hashtags) ? hashtags : JSON.parse(hashtags);
+    } catch (e) {
+      parsedHashtags = String(hashtags).split(",").map(h => h.trim()).filter(h => h);
+    }
+  }
+
+  let parsedTaggedUsers = [];
+  if (taggedUsers) {
+    try {
+      parsedTaggedUsers = Array.isArray(taggedUsers) ? taggedUsers : JSON.parse(taggedUsers);
+    } catch (e) {
+      if (typeof taggedUsers === "string" && taggedUsers.length > 0) {
+        parsedTaggedUsers = [taggedUsers];
+      }
+    }
+  }
 
   // Handle multiple original clips
   if (req.files?.originalClip) {
@@ -79,6 +100,10 @@ export const createPortfolio = asyncHandler(async (req, res) => {
     originalClip: originalClips.length > 0 ? originalClips[0] : "", // First clip for backward compatibility
     originalClips: originalClips, // All clips in array
     editedClip,
+    hashtags: parsedHashtags,
+    location: location || "",
+    taggedUsers: parsedTaggedUsers,
+    isAIContent: isAIContent === "true" || isAIContent === true,
     totalSizeBytes, // Store actual size for accurate storage calculation
   });
 

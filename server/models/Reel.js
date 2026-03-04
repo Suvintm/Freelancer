@@ -70,6 +70,22 @@ const reelSchema = new mongoose.Schema(
             type: Boolean,
             default: true,
         },
+        hashtags: [{
+            type: String,
+            trim: true
+        }],
+        location: {
+            type: String,
+            trim: true
+        },
+        taggedUsers: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User"
+        }],
+        isAIContent: {
+            type: Boolean,
+            default: false
+        },
     },
     { timestamps: true }
 );

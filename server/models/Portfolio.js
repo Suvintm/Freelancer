@@ -33,6 +33,22 @@ const portfolioSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    hashtags: [{
+      type: String,
+      trim: true
+    }],
+    location: {
+      type: String,
+      trim: true
+    },
+    taggedUsers: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    }],
+    isAIContent: {
+      type: Boolean,
+      default: false
+    },
     // Store total file size in bytes for accurate storage calculation
     totalSizeBytes: {
       type: Number,

@@ -6,7 +6,6 @@ import {
   FaFilm,
   FaImage,
   FaTimes,
-  FaCloudUploadAlt,
   FaPlay,
   FaExpand,
   FaCheck,
@@ -31,18 +30,13 @@ import {
 import { useAppContext } from "../context/AppContext";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 import ReelPreviewModal from "./ReelPreviewModal";
 
 const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) => {
   const { user, backendURL } = useAppContext();
+  const navigate = useNavigate();
 
-  const [showForm, setShowForm] = useState(false);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [originalFiles, setOriginalFiles] = useState([]);
-  const [originalPreviews, setOriginalPreviews] = useState([]);
-  const [editedFile, setEditedFile] = useState(null);
-  const [editedPreview, setEditedPreview] = useState(null);
   const [portfolios, setPortfolios] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetchingPortfolios, setFetchingPortfolios] = useState(true);
@@ -55,10 +49,6 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
   const [reelsIndex, setReelsIndex] = useState(0);
   const [reelsMuted, setReelsMuted] = useState(false);
   const reelsVideoRef = useRef(null);
-
-  const [showUploadPreviewModal, setShowUploadPreviewModal] = useState(false);
-  const [uploadPreviewFile, setUploadPreviewFile] = useState(null);
-  const [uploadPreviewType, setUploadPreviewType] = useState("");
 
   const fetchPortfolios = async () => {
     if (!user) return;
@@ -118,99 +108,6 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
     }
   }, [user, isPublic, initialPortfolios]);
 
-  const handleOriginalFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
-    const newFiles = files.slice(0, 5 - originalFiles.length);
-    const newPreviews = newFiles.map((file) => ({
-      file,
-      url: URL.createObjectURL(file),
-      type: file.type.startsWith("video") ? "video" : "image",
-    }));
-    setOriginalFiles([...originalFiles, ...newFiles]);
-    setOriginalPreviews([...originalPreviews, ...newPreviews]);
-  };
-
-  const removeOriginalFile = (index) => {
-    const newFiles = [...originalFiles];
-    const newPreviews = [...originalPreviews];
-    URL.revokeObjectURL(newPreviews[index].url);
-    newFiles.splice(index, 1);
-    newPreviews.splice(index, 1);
-    setOriginalFiles(newFiles);
-    setOriginalPreviews(newPreviews);
-  };
-
-  const handleEditedFileChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setEditedFile(file);
-    setEditedPreview(URL.createObjectURL(file));
-  };
-
-  const clearEditedFile = () => {
-    if (editedPreview) URL.revokeObjectURL(editedPreview);
-    setEditedFile(null);
-    setEditedPreview(null);
-  };
-
-  const openUploadPreview = (url, type, e) => {
-    e?.stopPropagation?.();
-    setUploadPreviewFile(url);
-    setUploadPreviewType(type);
-    setShowUploadPreviewModal(true);
-  };
-
-  const handleAddPortfolio = async (e) => {
-    e.preventDefault();
-
-    if (!title || title.length < 3) {
-      toast.error("Title must be at least 3 characters");
-      return;
-    }
-    if (!description || description.length < 10) {
-      toast.error("Description must be at least 10 characters");
-      return;
-    }
-    if (originalFiles.length === 0) {
-      toast.error("Please add at least one original clip/image");
-      return;
-    }
-    if (!editedFile) {
-      toast.error("Please add an edited clip/image");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("description", description);
-    originalFiles.forEach((file) => formData.append("originalClip", file));
-    formData.append("editedClip", editedFile);
-
-    try {
-      setLoading(true);
-      toast.info("Uploading portfolio...", { autoClose: false, toastId: "uploading" });
-
-      const { data } = await axios.post(`${backendURL}/api/portfolio`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          Authorization: `Bearer ${user?.token}`,
-        },
-        withCredentials: true,
-      });
-
-      toast.dismiss("uploading");
-      toast.success("🎉 Portfolio uploaded successfully!");
-      setPortfolios([data.portfolio, ...portfolios]);
-      closeModal();
-    } catch (err) {
-      toast.dismiss("uploading");
-      const errorMsg = err.response?.data?.message || err.message || "Failed to upload";
-      toast.error(`❌ ${errorMsg}`);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const confirmDelete = (id, e) => {
     e?.stopPropagation?.();
@@ -274,17 +171,6 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
   const isVideo = (url) =>
     url?.endsWith(".mp4") || url?.endsWith(".mov") || url?.endsWith(".webm");
 
-  const closeModal = () => {
-    setShowForm(false);
-    setTitle("");
-    setDescription("");
-    originalPreviews.forEach((p) => URL.revokeObjectURL(p.url));
-    setOriginalFiles([]);
-    setOriginalPreviews([]);
-    if (editedPreview) URL.revokeObjectURL(editedPreview);
-    setEditedFile(null);
-    setEditedPreview(null);
-  };
 
   const getAllClips = (portfolio) => {
     const clips = [];
@@ -550,216 +436,15 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => setShowForm(true)}
+          onClick={() => navigate("/upload-reel")}
           className="flex items-center gap-2 px-3 py-1.5 bg-white text-black rounded-full text-[10px] font-black uppercase tracking-wider hover:bg-zinc-200 transition-all shadow-lg mb-4 ml-1"
         >
           <FaPlus className="text-[10px]" />
-          Add Portfolio
+          Add Portfolio / Reel
         </motion.button>
       )}
 
       {/* Add Portfolio Modal */}
-      <AnimatePresence>
-        {showForm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4"
-            onClick={closeModal}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-white rounded-3xl w-full max-w-2xl relative shadow-2xl max-h-[90vh] overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="sticky top-0 bg-gradient-to-r from-green-500 to-emerald-600 p-6 text-white z-10">
-                <motion.button
-                  whileHover={{ scale: 1.1, rotate: 90 }}
-                  onClick={closeModal}
-                  className="absolute top-4 right-4 w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"
-                >
-                  <FaTimes />
-                </motion.button>
-                <h2 className="text-2xl font-bold flex items-center gap-3">
-                  <Icon3D icon={FaPlus} color="text-white" />
-                  Add New Portfolio
-                </h2>
-              </div>
-
-              <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
-                <form className="space-y-6" onSubmit={handleAddPortfolio}>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Project Title <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Wedding Highlight Reel"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Description <span className="text-red-500">*</span>
-                      <span className="text-gray-400 font-normal ml-2">({description.length}/500)</span>
-                    </label>
-                    <textarea
-                      placeholder="Describe your editing work..."
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value.slice(0, 500))}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
-                      rows={3}
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Icon3D icon={FaFilm} color="text-orange-500" />
-                      <div>
-                        <h4 className="font-semibold text-gray-800">Original Clips</h4>
-                        <p className="text-xs text-gray-500">Max 5 files</p>
-                      </div>
-                    </div>
-
-                    {originalPreviews.length > 0 && (
-                      <div className="grid grid-cols-3 gap-3 mb-3">
-                        {originalPreviews.map((preview, index) => (
-                          <motion.div
-                            key={index}
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="relative aspect-video bg-gray-100 rounded-xl overflow-hidden group cursor-pointer"
-                            onClick={(e) => openUploadPreview(preview.url, preview.type, e)}
-                          >
-                            {preview.type === "video" ? (
-                              <video src={preview.url} className="w-full h-full object-contain" />
-                            ) : (
-                              <img src={preview.url} alt="" className="w-full h-full object-contain" />
-                            )}
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <FaEye className="text-white text-xl" />
-                            </div>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeOriginalFile(index);
-                              }}
-                              className="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white"
-                            >
-                              <FaTimes className="text-xs" />
-                            </button>
-                          </motion.div>
-                        ))}
-                      </div>
-                    )}
-
-                    {originalPreviews.length < 5 && (
-                      <label className="block border-2 border-dashed border-orange-300 bg-orange-50/50 hover:bg-orange-50 rounded-2xl p-6 text-center cursor-pointer">
-                        <input type="file" accept="video/*,image/*" multiple onChange={handleOriginalFileChange} className="hidden" />
-                        <FaCloudUploadAlt className="text-4xl text-orange-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-600">Click to upload</p>
-                      </label>
-                    )}
-                  </div>
-
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Icon3D icon={FaImage} color="text-green-500" />
-                      <h4 className="font-semibold text-gray-800">Edited Clip</h4>
-                    </div>
-
-                    {!editedPreview ? (
-                      <label className="block border-2 border-dashed border-green-300 bg-green-50/50 hover:bg-green-50 rounded-2xl p-6 text-center cursor-pointer">
-                        <input type="file" accept="video/*,image/*" onChange={handleEditedFileChange} className="hidden" />
-                        <FaCloudUploadAlt className="text-4xl text-green-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-600">Click to upload</p>
-                      </label>
-                    ) : (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="relative rounded-2xl overflow-hidden shadow-lg group cursor-pointer"
-                        onClick={(e) => openUploadPreview(editedPreview, editedFile?.type?.startsWith("video") ? "video" : "image", e)}
-                      >
-                        <div className="relative h-40 bg-gray-100">
-                          {editedFile?.type?.startsWith("video") ? (
-                            <video src={editedPreview} className="w-full h-full object-contain" />
-                          ) : (
-                            <img src={editedPreview} alt="" className="w-full h-full object-contain" />
-                          )}
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <FaEye className="text-white text-2xl" />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              clearEditedFile();
-                            }}
-                            className="absolute top-2 right-2 w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center text-white"
-                          >
-                            <FaTimes className="text-sm" />
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
-
-                  <motion.button
-                    type="submit"
-                    disabled={loading || title.length < 3 || description.length < 10 || originalFiles.length === 0 || !editedFile}
-                    whileHover={{ scale: loading ? 1 : 1.02 }}
-                    className={`w-full py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-3 ${loading || title.length < 3 || description.length < 10 || originalFiles.length === 0 || !editedFile
-                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                      : "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg"
-                      }`}
-                  >
-                    {loading ? (
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <FaCloudUploadAlt className="text-xl" />
-                        Upload Portfolio
-                      </>
-                    )}
-                  </motion.button>
-                </form>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Upload Preview Modal */}
-      <AnimatePresence>
-        {showUploadPreviewModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/90 flex justify-center items-center z-[60] p-4"
-            onClick={() => setShowUploadPreviewModal(false)}
-          >
-            <motion.button onClick={() => setShowUploadPreviewModal(false)} className="absolute top-6 right-6 w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-white">
-              <FaTimes />
-            </motion.button>
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
-              {uploadPreviewType === "video" ? (
-                <video src={uploadPreviewFile} controls autoPlay className="w-full max-h-[80vh] object-contain rounded-2xl" />
-              ) : (
-                <img src={uploadPreviewFile} alt="" className="w-full max-h-[80vh] object-contain rounded-2xl" />
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Instagram-Style Portfolio Grid */}
       <div className="mt-6">

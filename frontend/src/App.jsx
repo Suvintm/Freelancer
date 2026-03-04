@@ -10,6 +10,7 @@ import EditorProfilePage from "./pages/EditorProfilePage.jsx";
 import EditorMyorderspage from "./pages/EditorMyorderspage.jsx";
 import EditorProfileUpdate from "./pages/EditorProfileUpdate.jsx";
 import AddPortfolio from "./pages/addportfolio.jsx";
+import ReelUploadPage from "./pages/ReelUploadPage.jsx";
 import PublicEditorProfile from "./pages/PublicEditorProfile.jsx";
 import ReelsPage from "./pages/ReelsPage.jsx";
 import ReelsExplore from "./pages/ReelsExplore.jsx";
@@ -411,7 +412,15 @@ function App() {
           path="/add-portfolio"
           element={
             <ProtectedRoute allowedRoles={["editor"]}>
-              <AddPortfolio />
+              <ReelUploadPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/upload-reel"
+          element={
+            <ProtectedRoute allowedRoles={["editor"]}>
+              <ReelUploadPage />
             </ProtectedRoute>
           }
         />
