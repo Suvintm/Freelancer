@@ -4,6 +4,7 @@ import Notification from "../models/Notification.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
 import { createNotification } from "./notificationController.js";
+import { io, getReceiverSocketId } from "../socket.js";
 
 // @desc    Toggle saved editor (save/unsave)
 // @route   POST /api/user/saved-editors/:editorId
@@ -150,11 +151,19 @@ export const toggleFollow = asyncHandler(async (req, res) => {
           await FollowRequest.findByIdAndDelete(followRequest._id);
           
           // Also remove the notification sent to the editor
-          await Notification.findOneAndDelete({
+          const deletedNotif = await Notification.findOneAndDelete({
             recipient: editorId,
             sender: followerId,
             type: "follow_request"
           });
+
+          // Real-time: tell the recipient's page to remove the notification instantly
+          if (deletedNotif) {
+            const recipientSocketId = getReceiverSocketId(editorId.toString());
+            if (recipientSocketId) {
+              io.to(recipientSocketId).emit("notification:remove", { notificationId: deletedNotif._id.toString() });
+            }
+          }
 
           return res.status(200).json({ 
             success: true, 
@@ -272,9 +281,26 @@ export const handleFollowRequest = asyncHandler(async (req, res) => {
 
   const followRequest = await FollowRequest.findById(requestId);
 
-  if (!followRequest || followRequest.receiver.toString() !== userId.toString()) {
-    res.status(404);
-    throw new Error("Follow request not found");
+  // If the follow request no longer exists (sender canceled it), 
+  // tell the frontend to remove the notification and respond gracefully
+  if (!followRequest) {
+    // Find and clean up the stale notification on the recipient's side
+    const staleNotif = await Notification.findOneAndDelete({
+      recipient: userId,
+      type: "follow_request",
+      "metaData.followRequestId": requestId
+    });
+    // Emit remove event so the UI updates instantly
+    const recipientSocketId = getReceiverSocketId(userId.toString());
+    if (recipientSocketId && staleNotif) {
+      io.to(recipientSocketId).emit("notification:remove", { notificationId: staleNotif._id.toString() });
+    }
+    return res.status(200).json({ success: false, message: "Follow request was already canceled by the sender", alreadyCanceled: true });
+  }
+
+  if (followRequest.receiver.toString() !== userId.toString()) {
+    res.status(403);
+    throw new Error("Unauthorized: This request is not for you");
   }
 
   if (status === 'accepted') {

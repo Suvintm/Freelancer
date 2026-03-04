@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   HiOutlineBell,
   HiOutlineTrash,
@@ -18,6 +19,7 @@ import {
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { useTheme } from "../context/ThemeContext";
+import { useSocket } from "../context/SocketContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 import EditorNavbar from "../components/EditorNavbar";
@@ -45,6 +47,9 @@ const HighlightText = ({ text, highlight }) => {
 const NotificationsPage = () => {
   const { backendURL, fetchNotifications, user } = useAppContext();
   const { theme } = useTheme();
+  const navigate = useNavigate();
+  const socketCtx = useSocket();
+  const socket = socketCtx?.socket;
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
@@ -55,10 +60,41 @@ const NotificationsPage = () => {
   const [selectedIds, setSelectedIds] = useState([]);
 
   const isEditor = user?.role === "editor";
+  // Track which follow requests have been handled (accepted/rejected) this session
+  const [handledRequests, setHandledRequests] = useState(new Set());
 
+  // Initial load
   useEffect(() => {
     loadNotifications();
   }, [backendURL]);
+
+  // Real-time: listen to socket for new and removed notifications
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewNotification = (notification) => {
+      // Prepend to list instantly — no reload needed
+      setNotifications((prev) => {
+        // Avoid duplicates if the notification already exists
+        if (prev.some((n) => n._id === notification._id)) return prev;
+        return [notification, ...prev];
+      });
+      fetchNotifications?.(); // Update badge count in navbar
+    };
+
+    // When sender cancels their follow request, remove it from the recipient's list in real-time
+    const handleRemoveNotification = ({ notificationId }) => {
+      setNotifications((prev) => prev.filter((n) => n._id !== notificationId));
+      fetchNotifications?.();
+    };
+
+    socket.on("notification:new", handleNewNotification);
+    socket.on("notification:remove", handleRemoveNotification);
+    return () => {
+      socket.off("notification:new", handleNewNotification);
+      socket.off("notification:remove", handleRemoveNotification);
+    };
+  }, [socket]);
 
   const loadNotifications = async () => {
     try {
@@ -74,11 +110,14 @@ const NotificationsPage = () => {
   };
 
   const markAsRead = async (id) => {
+    // Optimistic update — mark as read immediately in UI
+    setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+    fetchNotifications?.();
     try {
       await axios.put(`${backendURL}/api/notifications/read/${id}`);
-      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
-      fetchNotifications?.();
     } catch (error) {
+      // Rollback on error
+      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: false } : n));
       console.error("markAsRead error", error);
     }
   };
@@ -136,12 +175,28 @@ const NotificationsPage = () => {
 
   const onHandleFollowRequest = async (requestId, followRequestId, status) => {
     try {
-      await axios.post(`${backendURL}/api/user/follow-request/${followRequestId}/${status}`);
-      toast.success(`Request ${status}`);
+      const res = await axios.post(`${backendURL}/api/user/follow-request/${followRequestId}/${status}`);
+      
+      if (res.data.alreadyCanceled) {
+        toast.info("This request was already removed by the sender.");
+        // Remove from list since it no longer exists
+        setNotifications(prev => prev.filter(n => n._id !== requestId));
+        fetchNotifications?.();
+        return;
+      }
+
+      toast.success(status === "accepted" ? "Request accepted! They can now see your content." : "Request declined.");
       await axios.put(`${backendURL}/api/notifications/read/${requestId}`);
+      // Mark this request as handled so buttons disappear
+      setHandledRequests(prev => new Set([...prev, requestId]));
       loadNotifications();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to handle request");
+      // If we get a 404, it might have been canceled as well
+      if (error.response?.status === 404) {
+        setNotifications(prev => prev.filter(n => n._id !== requestId));
+        fetchNotifications?.();
+      }
     }
   };
 
@@ -179,16 +234,34 @@ const NotificationsPage = () => {
     const title = notification.title?.toLowerCase() || "";
 
     if (notification.sender && (type === "follow" || type === "follow_request" || type === "follow_accept")) {
+      const senderProfile = notification.sender?.role === "editor"
+        ? `/public-profile/${notification.sender._id}`
+        : `/client-profile/${notification.sender._id}`;
+
       return (
         <div className="relative">
-          <img 
-            src={notification.sender.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} 
-            alt=""
-            className="w-11 h-11 rounded-full object-cover border border-zinc-200 dark:border-zinc-800"
-          />
+          <div
+            className="cursor-pointer hover:scale-105 transition-transform"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (notification.sender?._id) navigate(senderProfile);
+            }}
+            title={`View ${notification.sender?.name}'s profile`}
+          >
+            <img 
+              src={notification.sender.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} 
+              alt=""
+              className="w-11 h-11 rounded-full object-cover border-2 border-transparent hover:border-zinc-300 dark:hover:border-zinc-600 transition-all"
+            />
+          </div>
           {type === "follow_request" && (
             <div className="absolute -bottom-1 -right-1 bg-violet-500 text-white p-1 rounded-full border-2 border-white dark:border-zinc-900">
               <HiOutlineUserPlus className="w-2.5 h-2.5" />
+            </div>
+          )}
+          {type === "follow_accept" && (
+            <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full border-2 border-white dark:border-zinc-900">
+              <HiOutlineCheck className="w-2.5 h-2.5" />
             </div>
           )}
         </div>
@@ -349,10 +422,18 @@ const NotificationsPage = () => {
                           onClick={() => {
                             if (isSelectMode) {
                               toggleSelect(n._id);
-                            } else {
-                              if (!n.isRead) markAsRead(n._id);
-                              setSelectedNotification(n);
+                              return;
                             }
+                            // For follow_request, navigate to sender's profile instead of opening popup
+                            if (n.type === "follow_request") {
+                              if (!n.isRead) markAsRead(n._id);
+                              if (n.sender?._id) {
+                                navigate(`/public-profile/${n.sender._id}`);
+                              }
+                              return;
+                            }
+                            if (!n.isRead) markAsRead(n._id);
+                            setSelectedNotification(n);
                           }}
                         >
                           {isSelectMode && (
@@ -375,7 +456,15 @@ const NotificationsPage = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2 mb-1">
                               <p className={`text-[13px] leading-tight ${!n.isRead ? "font-black text-black dark:text-white" : "font-medium text-zinc-600 dark:text-zinc-400"}`}>
-                                <span className={`${!n.isRead ? "text-zinc-900 dark:text-white" : "text-zinc-900 dark:text-zinc-200"}`}>
+                                <span
+                                  className={`${!n.isRead ? "text-zinc-900 dark:text-white" : "text-zinc-900 dark:text-zinc-200"} ${n.sender?._id ? "cursor-pointer hover:underline" : ""}`}
+                                  onClick={(e) => {
+                                    if (n.sender?._id) {
+                                      e.stopPropagation();
+                                      navigate(`/public-profile/${n.sender._id}`);
+                                    }
+                                  }}
+                                >
                                   <HighlightText text={n.title} highlight={searchQuery} />
                                 </span>{" "}
                                 <span className="text-zinc-500 dark:text-zinc-500">
@@ -398,7 +487,8 @@ const NotificationsPage = () => {
                               </span>
                             </div>
 
-                            {n.type === "follow_request" && !n.isRead && (
+                            {/* Accept/Reject buttons — show for pending follow_request that hasn't been handled yet */}
+                            {n.type === "follow_request" && !handledRequests.has(n._id) && n.metaData?.followRequestId && (
                               <div className="flex items-center gap-2 mt-3">
                                 <button
                                   onClick={(e) => {

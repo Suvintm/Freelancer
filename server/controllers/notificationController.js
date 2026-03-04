@@ -105,13 +105,13 @@ export const createNotification = async ({ recipient, type, title, message, link
 
         const receiverSocketId = getReceiverSocketId(recipient.toString());
         if (receiverSocketId) {
-            // Populate sender before emitting if needed
-            let populatedNotification = notification;
+            // Always populate sender before emitting for rich client-side display
             if (sender) {
-                await notification.populate("sender", "name profilePicture");
-                populatedNotification = notification.toObject();
+                await notification.populate("sender", "name profilePicture role");
             }
-            io.to(receiverSocketId).emit("newNotification", populatedNotification);
+            const populatedNotification = notification.toObject();
+            // Emit using standard event name (matches SocketContext listener)
+            io.to(receiverSocketId).emit("notification:new", populatedNotification);
         }
 
         // Invalidate unread count cache
