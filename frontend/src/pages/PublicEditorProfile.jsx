@@ -501,7 +501,7 @@ const PublicEditorProfile = () => {
                             )}
                           </button>
                           
-                          {!isOwner && user && (
+                          {!isOwner && user && userData?.role === "editor" && (
                             <button
                               onClick={() => {
                                 if (user.role === "editor") {
