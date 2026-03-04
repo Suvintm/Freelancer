@@ -11,6 +11,8 @@ import {
     FaTimes,
     FaChevronUp,
     FaChevronDown,
+    FaChevronLeft,
+    FaChevronRight,
 } from "react-icons/fa";
 import { repairUrl } from "../utils/urlHelper.jsx";
 import { useAppContext } from "../context/AppContext";
@@ -21,6 +23,7 @@ import { toast } from "react-toastify";
 import { Link } from "react-router-dom";
 import FollowingAnimation from "./FollowingAnimation";
 import ReelCommentsDrawer from "./ReelCommentsDrawer";
+import MusicVisualizer from "./MusicVisualizer";
 
 const ReelPreviewModal = ({ 
     reel: initialReel, 
@@ -332,8 +335,8 @@ const ReelPreviewModal = ({
                             exit={{ y: "-100%", opacity: 0 }}
                             transition={{ type: "spring", damping: 30, stiffness: 200 }}
                             className="absolute inset-0 z-0"
-                            drag="y"
-                            dragConstraints={{ top: 0, bottom: 0 }}
+                            drag={isPortfolioMode ? true : "y"}
+                            dragConstraints={{ top: 0, bottom: 0, left: 0, right: 0 }}
                             dragElastic={0.1}
                             onDragEnd={handleDragEnd}
                             onClick={(e) => { e.stopPropagation(); setGlobalMuted(!globalMuted); }}
@@ -375,6 +378,39 @@ const ReelPreviewModal = ({
                         </motion.div>
                     </AnimatePresence>
 
+                    {/* WATERMARK */}
+                    <div className="absolute bottom-3 right-4 flex items-center gap-1 opacity-20 pointer-events-none grayscale invert scale-75 origin-right z-50">
+                        <img src={logo} className="w-4 h-4" alt="" />
+                        <span className="text-white font-black text-[8px] tracking-widest uppercase">SuviX</span>
+                    </div>
+
+                    {/* NEW Badge - Centered under "SuviX Reels" text */}
+                    <div className="absolute top-16 left-0 right-0 z-[70] flex flex-col items-center pointer-events-none">
+                        {(() => {
+                            const isNew = reel.createdAt && (new Date() - new Date(reel.createdAt)) < 24 * 60 * 60 * 1000;
+                            if (!isNew) return null;
+                            return (
+                                <motion.div 
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ 
+                                        opacity: [0.8, 1, 0.8],
+                                        scale: [1, 1.05, 1],
+                                    }}
+                                    transition={{ 
+                                        duration: 2,
+                                        repeat: Infinity,
+                                        ease: "easeInOut"
+                                    }}
+                                    className="px-3 py-1 rounded-full border border-white/40 bg-white  flex items-center justify-center min-w-[35px]"
+                                >
+                                    <span className="text-black  text-[7px] font-bold uppercase tracking-[0.1em]">
+                                        NEW
+                                    </span>
+                                </motion.div>
+                            );
+                        })()}
+                    </div>
+
                     {/* Top Info Overlay (Fixed above the scrolling content) */}
                     <div className="absolute top-6 left-0 right-0 z-[70] flex flex-col items-center pointer-events-none">
                         <div className="flex items-center gap-2 pointer-events-auto">
@@ -412,11 +448,38 @@ const ReelPreviewModal = ({
                                             initial={{ opacity: 0, y: -10 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             exit={{ opacity: 0, y: -10 }}
-                                            className="mt-3 px-3 py-1 bg-black/40 backdrop-blur-md rounded-full border border-white/10"
+                                            className="mt-3 px-3 py-1 bg-black/40 backdrop-blur-md rounded-full border border-white/10 flex items-center gap-4 pointer-events-auto"
                                         >
-                                            <span className="text-[10px] font-black text-white uppercase tracking-widest">
+                                            <button 
+                                                onClick={(e) => { 
+                                                    e.stopPropagation(); 
+                                                    if (originalIndex > 0) {
+                                                        setOriginalIndex(prev => prev - 1);
+                                                    } else {
+                                                        setViewType("edited");
+                                                    }
+                                                }}
+                                                className="text-white/70 hover:text-white transition-colors"
+                                            >
+                                                <FaChevronLeft className="text-[10px]" />
+                                            </button>
+
+                                            <span className="text-[10px] font-black text-white uppercase tracking-widest min-w-[60px] text-center">
                                                 Clip {originalIndex + 1} / {(reel.originalClips || (reel.originalClip ? [reel.originalClip] : [])).length}
                                             </span>
+
+                                            <button 
+                                                onClick={(e) => { 
+                                                    e.stopPropagation(); 
+                                                    const originals = reel.originalClips || (reel.originalClip ? [reel.originalClip] : []);
+                                                    if (originalIndex < originals.length - 1) {
+                                                        setOriginalIndex(prev => prev + 1);
+                                                    }
+                                                }}
+                                                className="text-white/70 hover:text-white transition-colors"
+                                            >
+                                                <FaChevronRight className="text-[10px]" />
+                                            </button>
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
@@ -471,7 +534,7 @@ const ReelPreviewModal = ({
                         </div>
 
                         <div className="flex flex-col items-center gap-1">
-                            <div className="w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white text-lg opacity-70">
+                            <div className="w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white text-lg opacity-50">
                                 <FaEye />
                             </div>
                             <span className="text-[10px] font-bold text-white drop-shadow-md">{viewsCount}</span>
@@ -510,21 +573,27 @@ const ReelPreviewModal = ({
                                     <img src={repairUrl(editor?.profilePicture)} className="w-full h-full rounded-full object-cover" alt="" />
                                 </div>
                             </Link>
-                            <div className="flex flex-col gap-0.5">
+                            <div className="flex flex-col">
                                 <div className="flex items-center gap-2">
-                                    <Link to={`/public-profile/${editor?._id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-white text-[14px] tracking-tight hover:underline text-shadow">
+                                    <Link to={`/public-profile/${editor?._id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-white text-[14px] tracking-tight hover:underline text-shadow whitespace-nowrap">
                                         {editor?.name}
                                     </Link>
-                                    <span className="px-1.5 py-0.5 bg-white/20 text-[8px] font-bold rounded border border-white/10 text-white/90">EDITOR</span>
+                                    <span className="px-1.5 py-0.5 bg-white/20 text-[8px] font-bold rounded border border-white/10 text-white/90 shrink-0">EDITOR</span>
+                                    
+                                    {!isOwnContent && (
+                                        <button
+                                            onClick={handleFollow}
+                                            className="h-5 px-3 bg-transparent border border-white/30 rounded-full flex items-center justify-center text-white text-[9px] font-bold uppercase tracking-wider active:scale-95 transition-all hover:bg-white/20 shadow-lg ml-1"
+                                        >
+                                            {isFollowing ? "Following" : "Follow"}
+                                        </button>
+                                    )}
                                 </div>
                                 
-                                {!isOwnContent && (
-                                    <button
-                                        onClick={handleFollow}
-                                        className="w-fit h-6 px-4 bg-transparent border border-white rounded-full flex items-center justify-center text-white text-[10px] font-bold uppercase tracking-wider active:scale-95 transition-all hover:bg-white/20 shadow-lg"
-                                    >
-                                        {isFollowing ? "Following" : "Follow"}
-                                    </button>
+                                {isVideo && (
+                                    <div className="mt-1">
+                                        <MusicVisualizer isPlaying={isLoaded && isPlaying} />
+                                    </div>
                                 )}
                             </div>
                         </div>

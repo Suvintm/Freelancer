@@ -660,7 +660,7 @@ const PublicEditorProfile = () => {
 
                   {profile?.about && (
                     <div className="max-w-2xl">
-                      <p className="text-[10px] md:text-sm font-medium text-zinc-400 leading-tight">
+                      <div className="text-[10px] md:text-sm font-medium text-zinc-400 leading-tight">
                         <span className="md:hidden">
                           {profile.about.split(' ').length > 4 
                             ? (
@@ -686,7 +686,7 @@ const PublicEditorProfile = () => {
                             </span>
                           </div>
                         )}
-                      </p>
+                      </div>
                     </div>
                   )}
 

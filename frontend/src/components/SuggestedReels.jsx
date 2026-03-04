@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import { useAppContext } from "../context/AppContext";
+import MusicVisualizer from "./MusicVisualizer";
 
 const SuggestedReels = () => {
     const { backendURL } = useAppContext();
@@ -263,11 +264,19 @@ const ReelThumbnail = ({ reel, index }) => {
                     if (!isNew) return null;
                     return (
                         <motion.div 
-                            animate={{ opacity: [0.7, 1, 0.7] }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                            className="px-2.5 py-0.5 rounded-full border border-white/50 bg-white/5 backdrop-blur-sm flex items-center justify-center min-w-[40px]"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ 
+                                opacity: [0.8, 1, 0.8],
+                                scale: [1, 1.05, 1],
+                            }}
+                            transition={{ 
+                                duration: 2,
+                                repeat: Infinity,
+                                ease: "easeInOut"
+                            }}
+                            className="px-3 py-1 rounded-full border border-white/40 bg-white  flex items-center justify-center min-w-[35px]"
                         >
-                            <span className="text-white text-[8px] font-medium uppercase tracking-wider">
+                            <span className="text-black  text-[7px] font-bold uppercase tracking-[0.1em]">
                                 NEW
                             </span>
                         </motion.div>
@@ -291,7 +300,14 @@ const ReelThumbnail = ({ reel, index }) => {
                             />
                             <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full border border-black ring-1 ring-emerald-500/50" />
                         </div>
-                        <span className="text-[10px] text-white font-bold tracking-tight truncate max-w-[80px] drop-shadow-md">{reel.editor?.name}</span>
+                        <div className="flex flex-col">
+                            <span className="text-[10px] text-white font-bold tracking-tight truncate max-w-[80px] drop-shadow-md">{reel.editor?.name}</span>
+                            {reel.mediaType === "video" && (
+                                <div className="mt-0.5 scale-[0.6] origin-left opacity-70">
+                                    <MusicVisualizer isPlaying={isVisible || isHovered} />
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
                 <h3 className="text-[11px] font-bold text-white line-clamp-2 leading-tight drop-shadow-md transition-colors">
@@ -300,7 +316,7 @@ const ReelThumbnail = ({ reel, index }) => {
                 <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-all duration-500 delay-100">
                     <div className="flex items-center gap-1">
                         <HiOutlineEye className="text-[10px] text-zinc-400" />
-                        <span className="text-[9px] font-bold text-zinc-400">{reel.viewsCount || '4.2k'}</span>
+                        <span className="text-[9px] font-bold text-zinc-400">{reel.viewsCount || 0}</span>
                     </div>
                     <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
                         <HiPlay className="text-[10px] text-white" />

@@ -81,6 +81,10 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
                         <HiHeart className="text-white text-xs opacity-80" />
                         <span className="text-white text-[10px] font-bold">{reel.likesCount || 0}</span>
                     </div>
+                    <div className="flex items-center gap-1.5">
+                        <HiOutlinePlay className="text-white text-xs opacity-80" />
+                        <span className="text-white text-[10px] font-bold">{reel.viewsCount || 0}</span>
+                    </div>
                 </div>
             </div>
 
@@ -92,11 +96,19 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
                     if (!isNew) return null;
                     return (
                         <motion.div 
-                            animate={{ opacity: [0.7, 1, 0.7] }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                            className="px-2 py-0.5 rounded-full border border-white/50 bg-white/5 backdrop-blur-sm flex items-center justify-center min-w-[35px]"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ 
+                                opacity: [0.8, 1, 0.8],
+                                scale: [1, 1.05, 1],
+                            }}
+                            transition={{ 
+                                duration: 2,
+                                repeat: Infinity,
+                                ease: "easeInOut"
+                            }}
+                            className="px-3 py-1 rounded-full border border-white/40 bg-white  flex items-center justify-center min-w-[35px]"
                         >
-                            <span className="text-white text-[7px] font-medium uppercase tracking-tight">
+                            <span className="text-black  text-[7px] font-bold uppercase tracking-[0.1em]">
                                 NEW
                             </span>
                         </motion.div>
