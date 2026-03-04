@@ -107,7 +107,7 @@ const ReelAdCard = ({ ad, onSkip }) => {
                     <video 
                         ref={videoRef} 
                         src={repairedMediaUrl} 
-                        className="w-full h-full object-cover" 
+                        className="w-full h-full object-contain" 
                         autoPlay 
                         muted={muted} 
                         loop 
@@ -115,7 +115,7 @@ const ReelAdCard = ({ ad, onSkip }) => {
                         controlsList="nodownload"
                     />
                 ) : (
-                    <img src={repairedMediaUrl} alt="" className="w-full h-full object-cover" />
+                    <img src={repairedMediaUrl} alt="" className="w-full h-full object-contain" />
                 )}
 
                 {/* Mute/Unmute Indicator Overlay */}

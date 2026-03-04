@@ -152,14 +152,14 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
                     <video 
                         ref={videoRef} 
                         src={repairUrl(reel.mediaUrl)} 
-                        className="w-full h-full object-cover" 
+                        className="w-full h-full object-contain" 
                         loop 
                         playsInline 
                         muted={globalMuted} 
                         controlsList="nodownload" 
                     />
                 ) : (
-                    <img src={repairUrl(reel.mediaUrl)} className="w-full h-full object-cover" alt="" />
+                    <img src={repairUrl(reel.mediaUrl)} className="w-full h-full object-contain" alt="" />
                 )}
             {/* Mute/Unmute Indicator Overlay */}
             <AnimatePresence>
