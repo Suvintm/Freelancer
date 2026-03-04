@@ -386,7 +386,7 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
               <video
                 ref={videoRef}
                 src={coverClip}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
                 muted
                 loop
                 playsInline
@@ -395,7 +395,7 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
               <img
                 src={coverClip}
                 alt={portfolio.title}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110"
               />
             )}
 
@@ -638,9 +638,9 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
                             onClick={(e) => openUploadPreview(preview.url, preview.type, e)}
                           >
                             {preview.type === "video" ? (
-                              <video src={preview.url} className="w-full h-full object-cover" />
+                              <video src={preview.url} className="w-full h-full object-contain" />
                             ) : (
-                              <img src={preview.url} alt="" className="w-full h-full object-cover" />
+                              <img src={preview.url} alt="" className="w-full h-full object-contain" />
                             )}
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                               <FaEye className="text-white text-xl" />
@@ -690,9 +690,9 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
                       >
                         <div className="relative h-40 bg-gray-100">
                           {editedFile?.type?.startsWith("video") ? (
-                            <video src={editedPreview} className="w-full h-full object-cover" />
+                            <video src={editedPreview} className="w-full h-full object-contain" />
                           ) : (
-                            <img src={editedPreview} alt="" className="w-full h-full object-cover" />
+                            <img src={editedPreview} alt="" className="w-full h-full object-contain" />
                           )}
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <FaEye className="text-white text-2xl" />
@@ -787,14 +787,14 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
                   {coverIsVideo ? (
                     <video
                       src={coverClip}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain"
                       muted
                     />
                   ) : (
                     <img
                       src={coverClip}
                       alt={p.title}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain"
                     />
                   )}
                   

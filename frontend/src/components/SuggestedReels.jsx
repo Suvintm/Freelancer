@@ -229,7 +229,7 @@ const ReelThumbnail = ({ reel, index }) => {
                 <video
                     ref={videoRef}
                     src={reel.mediaUrl}
-                    className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110 no-copy"
+                    className="w-full h-full object-contain transition-all duration-500 group-hover:scale-110 no-copy"
                     muted
                     loop
                     playsInline
@@ -243,7 +243,7 @@ const ReelThumbnail = ({ reel, index }) => {
                 <img
                     src={reel.mediaUrl}
                     alt={reel.title}
-                    className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110 no-copy"
+                    className="w-full h-full object-contain transition-all duration-500 group-hover:scale-110 no-copy"
                     onContextMenu={(e) => e.preventDefault()}
                     onDoubleClick={(e) => e.preventDefault()}
                 />

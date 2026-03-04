@@ -59,7 +59,7 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
                 <video 
                     ref={videoRef}
                     src={mediaUrl} 
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110"
                     muted 
                     playsInline
                     loop
@@ -68,7 +68,7 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
             ) : (
                 <img 
                     src={mediaUrl} 
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110"
                     alt={reel.title}
                     crossOrigin="anonymous"
                 />

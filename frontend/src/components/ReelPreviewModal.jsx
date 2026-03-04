@@ -348,7 +348,7 @@ const ReelPreviewModal = ({
                                         key={mediaUrl} 
                                         ref={videoRef}
                                         src={mediaUrl}
-                                        className="w-full h-full object-cover pointer-events-none"
+                                        className="w-full h-full object-contain pointer-events-none"
                                         autoPlay
                                         loop
                                         playsInline
@@ -367,7 +367,7 @@ const ReelPreviewModal = ({
                                 <img
                                     key={mediaUrl}
                                     src={mediaUrl}
-                                    className="w-full h-full object-cover pointer-events-none"
+                                    className="w-full h-full object-contain pointer-events-none"
                                     alt={reel?.title}
                                     onLoad={() => setIsLoaded(true)}
                                 />
