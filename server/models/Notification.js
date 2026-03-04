@@ -10,7 +10,7 @@ import mongoose from "mongoose";
         },
         type: {
             type: String,
-            enum: ["info", "success", "warning", "error", "follow", "follow_request", "follow_accept"],
+            enum: ["info", "success", "warning", "error", "follow", "follow_request", "follow_accept", "reel_like", "reel_comment"],
             default: "info",
         },
         sender: {

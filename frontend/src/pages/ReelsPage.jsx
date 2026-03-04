@@ -159,6 +159,18 @@ const ReelsPage = () => {
         axios.post(`${backendURL}/api/reels/${reel._id}/view`).catch(() => {});
     }, [activeReelIndex, reels, backendURL]);
 
+    // Handle openComments parameter (from notifications)
+    useEffect(() => {
+        const openComments = searchParams.get("openComments");
+        if (openComments === "true" && targetReelId && reels.length > 0) {
+            const firstReel = reels[0];
+            if (firstReel?._id === targetReelId) {
+                setActiveReel(firstReel);
+                setShowComments(true);
+            }
+        }
+    }, [searchParams, targetReelId, reels]);
+
     // ─────────────────────────────────────────────────────────────
     // UNIFIED FEED (Reels + Ads)
     // ─────────────────────────────────────────────────────────────

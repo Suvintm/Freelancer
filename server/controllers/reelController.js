@@ -267,6 +267,23 @@ export const toggleLike = asyncHandler(async (req, res) => {
         liked: !isLiked,
         likesCount: reel.likesCount,
     });
+
+    // Send Notification for Like (Non-blocking)
+    if (!isLiked && reel.editor.toString() !== userId.toString()) {
+        createNotification({
+            recipient: reel.editor,
+            type: "reel_like",
+            sender: userId,
+            title: "New Like! ❤️",
+            message: `${req.user.name} liked your reel "${reel.title}"`,
+            link: `/reels?id=${reel._id}`, // Default link, but we'll handle it specially in UI
+            metaData: {
+                reelId: reel._id,
+                thumbnail: reel.mediaUrl,
+                mediaType: reel.mediaType
+            }
+        }).catch(err => console.error("Reel like notification failed:", err));
+    }
 });
 
 // ============ INCREMENT VIEW COUNT ============
@@ -422,6 +439,24 @@ export const addComment = asyncHandler(async (req, res) => {
         },
         commentsCount: reel.commentsCount,
     });
+
+    // Send Notification for Comment (Non-blocking)
+    if (reel.editor.toString() !== req.user._id.toString()) {
+        createNotification({
+            recipient: reel.editor,
+            type: "reel_comment",
+            sender: req.user._id,
+            title: "New Comment! 💬",
+            message: `${req.user.name} commented on your reel: "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"`,
+            link: `/reels?id=${reel._id}&openComments=true`,
+            metaData: {
+                reelId: reel._id,
+                thumbnail: reel.mediaUrl,
+                mediaType: reel.mediaType,
+                openComments: true
+            }
+        }).catch(err => console.error("Reel comment notification failed:", err));
+    }
 });
 
 // ============ TOGGLE COMMENT LIKE ============

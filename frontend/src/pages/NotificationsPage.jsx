@@ -14,8 +14,10 @@ import {
   HiOutlineSparkles,
   HiOutlineClock,
   HiOutlineShieldCheck,
-   
+  HiChatBubbleBottomCenterText,
+  HiHeart,
 } from "react-icons/hi2";
+import { repairUrl } from "../utils/urlHelper";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { useTheme } from "../context/ThemeContext";
@@ -233,10 +235,19 @@ const NotificationsPage = () => {
     const type = notification.type || "info";
     const title = notification.title?.toLowerCase() || "";
 
-    if (notification.sender && (type === "follow" || type === "follow_request" || type === "follow_accept")) {
+    if (notification.sender && (type === "follow" || type === "follow_request" || type === "follow_accept" || type === "reel_like" || type === "reel_comment")) {
       const senderProfile = notification.sender?.role === "editor"
         ? `/public-profile/${notification.sender._id}`
         : `/client-profile/${notification.sender._id}`;
+
+      const iconMap = {
+        follow_request: { icon: HiOutlineUserPlus, color: "bg-violet-500" },
+        follow_accept: { icon: HiOutlineCheck, color: "bg-emerald-500" },
+        reel_like: { icon: HiHeart, color: "bg-red-500" },
+        reel_comment: { icon: HiChatBubbleBottomCenterText, color: "bg-blue-500" },
+      };
+
+      const IconData = iconMap[type];
 
       return (
         <div className="relative">
@@ -254,14 +265,9 @@ const NotificationsPage = () => {
               className="w-11 h-11 rounded-full object-cover border-2 border-transparent hover:border-zinc-300 dark:hover:border-zinc-600 transition-all"
             />
           </div>
-          {type === "follow_request" && (
-            <div className="absolute -bottom-1 -right-1 bg-violet-500 text-white p-1 rounded-full border-2 border-white dark:border-zinc-900">
-              <HiOutlineUserPlus className="w-2.5 h-2.5" />
-            </div>
-          )}
-          {type === "follow_accept" && (
-            <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full border-2 border-white dark:border-zinc-900">
-              <HiOutlineCheck className="w-2.5 h-2.5" />
+          {IconData && (
+            <div className={`absolute -bottom-1 -right-1 ${IconData.color} text-white p-1 rounded-full border-2 border-white dark:border-zinc-900`}>
+              <IconData.icon className="w-2.5 h-2.5" />
             </div>
           )}
         </div>
@@ -432,6 +438,17 @@ const NotificationsPage = () => {
                               }
                               return;
                             }
+                            
+                            // For reel notifications, navigate to the reel
+                            if (n.type === "reel_like" || n.type === "reel_comment") {
+                              if (!n.isRead) markAsRead(n._id);
+                              if (n.metaData?.reelId) {
+                                const url = `/reels?id=${n.metaData.reelId}${n.metaData.openComments ? '&openComments=true' : ''}`;
+                                navigate(url);
+                              }
+                              return;
+                            }
+
                             if (!n.isRead) markAsRead(n._id);
                             setSelectedNotification(n);
                           }}
@@ -511,6 +528,25 @@ const NotificationsPage = () => {
                               </div>
                             )}
                           </div>
+
+                          {/* Reel Thumbnail (Right Side) */}
+                          {n.metaData?.thumbnail && (
+                            <div 
+                              className="shrink-0 ml-2 w-12 h-16 rounded-lg bg-zinc-100 dark:bg-zinc-900 overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-sm transition-transform active:scale-95 z-10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!n.isRead) markAsRead(n._id);
+                                const url = `/reels?id=${n.metaData.reelId}${n.metaData.openComments ? '&openComments=true' : ''}`;
+                                navigate(url);
+                              }}
+                            >
+                              {n.metaData.mediaType === "video" ? (
+                                <video src={repairUrl(n.metaData.thumbnail)} className="w-full h-full object-cover" muted />
+                              ) : (
+                                <img src={repairUrl(n.metaData.thumbnail)} className="w-full h-full object-cover" alt="" />
+                              )}
+                            </div>
+                          )}
                         </motion.div>
                       ))}
                     </AnimatePresence>
