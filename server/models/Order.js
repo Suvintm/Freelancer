@@ -311,6 +311,14 @@ const orderSchema = new mongoose.Schema(
       enum: ["none", "overdue", "refunded", "completed", "cancelled"],
       default: "none",
     },
+
+    // 📌 Pinned status (user-specific)
+    pinnedBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   { timestamps: true }
 );

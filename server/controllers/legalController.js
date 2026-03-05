@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import User from "../models/User.js";
 import ContentAccessLog from "../models/ContentAccessLog.js";
 import { Message } from "../models/Message.js";
+import { getIO } from "../socket.js";
 
 // @desc    Accept Content Protection Policy
 // @route   POST /api/user/legal/accept-policy
@@ -75,8 +76,25 @@ export const logContentAccess = asyncHandler(async (req, res) => {
           type: "system",
           systemAction: "content_accessed",
           content: `${req.user.name} accepted the Content Protection Agreement and accessed: ${linkTitle || "Project Files"}`,
+          // System messages are pre-marked as seen — they are informational only,
+          // not "sent by a user to another user", so they should not generate unread badges.
+          seen: true,
+          seenAt: new Date(),
+          delivered: true,
+          deliveredAt: new Date(),
       });
       console.log("✅ System message created successfully! ID:", newMessage._id);
+      
+      // Emit via socket so the message appears in real-time without causing an unread count
+      const io = getIO();
+      if (io) {
+          const populatedMessage = await Message.findById(newMessage._id).populate("sender", "name profilePicture");
+          io.to(`order_${orderId}`).emit("message:new", {
+              ...populatedMessage.toObject(),
+              orderId,
+              senderName: req.user.name,
+          });
+      }
   } catch (msgErr) {
       console.error("❌ Failed to create system message:", msgErr.message);
       console.error("Full error:", msgErr);

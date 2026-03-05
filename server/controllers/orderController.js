@@ -653,6 +653,42 @@ export const getOrder = asyncHandler(async (req, res) => {
   });
 });
 
+// ============ TOGGLE PIN ORDER ============
+export const togglePinOrder = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id);
+
+  if (!order) {
+    throw new ApiError(404, "Order not found");
+  }
+
+  // Only parties involved can pin
+  if (
+    order.client.toString() !== req.user._id.toString() &&
+    order.editor.toString() !== req.user._id.toString()
+  ) {
+    throw new ApiError(403, "Not authorized");
+  }
+
+  const userId = req.user._id;
+  const pinIndex = order.pinnedBy.indexOf(userId);
+
+  if (pinIndex > -1) {
+    // Unpin
+    order.pinnedBy.splice(pinIndex, 1);
+  } else {
+    // Pin
+    order.pinnedBy.push(userId);
+  }
+
+  await order.save();
+
+  res.status(200).json({
+    success: true,
+    isPinned: pinIndex === -1, // True if we just pinned it
+    message: pinIndex === -1 ? "Conversation pinned" : "Conversation unpinned",
+  });
+});
+
 // ============ ACCEPT ORDER (Editor) ============
 export const acceptOrder = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id);

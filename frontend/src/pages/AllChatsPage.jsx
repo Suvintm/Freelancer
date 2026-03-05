@@ -1,4 +1,3 @@
-// AllChatsPage.jsx - Displays list of chats with tabs: All, Gigs, Requested
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -9,14 +8,14 @@ import {
   FaEnvelope,
   FaChevronRight,
   FaRupeeSign,
-  FaClock,
   FaCircle,
-  FaCheckCircle,
-  FaExclamationCircle,
-  FaHourglassHalf,
   FaCreditCard,
   FaClipboardList,
+  FaThumbtack,
+  FaFilter,
+  FaClock,
 } from "react-icons/fa";
+import { HiOutlineAdjustmentsHorizontal, HiOutlineHashtag } from "react-icons/hi2";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 import { useSocket } from "../context/SocketContext";
@@ -27,60 +26,49 @@ import EditorNavbar from "../components/EditorNavbar.jsx";
 
 // Status configuration for different order states
 const STATUS_CONFIG = {
-  new: { label: "NEW ORDER", color: "text-red-400", bg: "bg-red-500/20" },
-  awaiting_payment: { label: "Awaiting Payment", color: "text-orange-400", bg: "bg-orange-500/20" },
-  accepted: { label: "Accepted", color: "text-green-400", bg: "bg-green-500/20" },
-  in_progress: { label: "In Progress", color: "text-yellow-400", bg: "bg-yellow-500/20" },
-  submitted: { label: "Submitted", color: "text-purple-400", bg: "bg-purple-500/20" },
-  completed: { label: "Completed", color: "text-emerald-400", bg: "bg-emerald-500/20" },
-  rejected: { label: "Rejected", color: "text-red-400", bg: "bg-red-500/20" },
-  cancelled: { label: "Cancelled", color: "text-gray-400", bg: "bg-gray-500/20" },
+  new: { label: "NEW ORDER", color: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20" },
+  awaiting_payment: { label: "Awaiting Payment", color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+  accepted: { label: "Accepted", color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+  in_progress: { label: "In Progress", color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
+  submitted: { label: "Submitted", color: "text-indigo-400", bg: "bg-indigo-500/10", border: "border-indigo-500/20" },
+  completed: { label: "Completed", color: "text-zinc-400", bg: "bg-zinc-500/10", border: "border-zinc-500/20" },
+  rejected: { label: "Rejected", color: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20" },
+  cancelled: { label: "Cancelled", color: "text-zinc-500", bg: "bg-zinc-500/5", border: "border-zinc-500/10" },
 };
 
 // Tab configuration
 const TABS = [
-  { id: "all", label: "All", icon: FaComments },
+  { id: "all", label: "All Chats", icon: FaComments },
   { id: "gigs", label: "Gigs", icon: FaShoppingCart },
   { id: "requested", label: "Requested", icon: FaEnvelope },
   { id: "briefs", label: "Briefs", icon: FaClipboardList },
 ];
 
-// Calculate deadline status
 const getDeadlineStatus = (deadline, createdAt) => {
   if (!deadline) return null;
-  
   const now = new Date();
   const end = new Date(deadline);
   const start = new Date(createdAt);
-  
   const totalDuration = end - start;
   const elapsed = now - start;
   const remaining = end - now;
   const percentUsed = (elapsed / totalDuration) * 100;
-  
   const daysLeft = Math.ceil(remaining / (1000 * 60 * 60 * 24));
   
-  let color = "text-green-400 bg-green-500/20";
-  if (percentUsed >= 90 || daysLeft <= 1) {
-    color = "text-red-400 bg-red-500/20";
-  } else if (percentUsed >= 70 || daysLeft <= 2) {
-    color = "text-orange-400 bg-orange-500/20";
-  } else if (percentUsed >= 50 || daysLeft <= 3) {
-    color = "text-yellow-400 bg-yellow-500/20";
-  }
+  let color = "text-emerald-400 bg-emerald-500/10";
+  if (percentUsed >= 90 || daysLeft <= 1) color = "text-rose-400 bg-rose-500/10";
+  else if (percentUsed >= 70 || daysLeft <= 2) color = "text-amber-400 bg-amber-500/10";
+  else if (percentUsed >= 50 || daysLeft <= 3) color = "text-yellow-400 bg-yellow-500/10";
   
-  if (daysLeft < 0) {
-    return { text: "Overdue", color: "text-red-500 bg-red-500/30", daysLeft: 0 };
-  }
-  
+  if (daysLeft < 0) return { text: "Overdue", color: "text-rose-500 bg-rose-500/20", daysLeft: 0 };
   return { 
-    text: daysLeft === 0 ? "Today" : daysLeft === 1 ? "1 day left" : `${daysLeft} days left`,
+    text: daysLeft === 0 ? "Today" : daysLeft === 1 ? "1d left" : `${daysLeft}d left`,
     color,
     daysLeft
   };
 };
 
-const ChatsPage = () => {
+const AllChatsPage = () => {
   const navigate = useNavigate();
   const { user, backendURL } = useAppContext();
   const socketContext = useSocket();
@@ -91,547 +79,400 @@ const ChatsPage = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     fetchChats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Real-time updates via Socket
+  const handleNewMessage = (message) => {
+    setChats(prevChats => {
+      const orderId = message.orderId || message.order;
+      const chatIndex = prevChats.findIndex(c => c._id === orderId);
+      if (chatIndex === -1) return prevChats;
+
+      const updatedChats = [...prevChats];
+      const chat = { ...updatedChats[chatIndex] };
+      chat.lastMessage = {
+        content: message.content,
+        type: message.type,
+        createdAt: message.createdAt,
+        sender: message.sender
+      };
+      chat.lastActivityAt = message.createdAt;
+      if (message.sender?._id !== user?._id) chat.unreadCount = (chat.unreadCount || 0) + 1;
+      updatedChats[chatIndex] = chat;
+
+      return sortChats(updatedChats);
+    });
+  };
+
   useEffect(() => {
     const socket = socketContext?.socket;
     if (!socket) return;
 
-    const handleNewMessage = (message) => {
-      setChats(prevChats => {
-        const orderId = message.orderId || message.order;
-        const chatIndex = prevChats.findIndex(c => c._id === orderId);
-        
-        if (chatIndex === -1) {
-          // If chat not in current list, we might need a full fetch or just ignore
-          // since it might be a status that shouldn't be here yet
-          return prevChats;
-        }
-
-        const updatedChats = [...prevChats];
-        const chat = { ...updatedChats[chatIndex] };
-
-        // Update latest message info
-        chat.latestMessage = {
-          content: message.content,
-          type: message.type,
-          createdAt: message.createdAt,
-          sender: message.sender
-        };
-        chat.lastActivityAt = message.createdAt;
-        
-        // Update unread count if not from current user
-        if (message.sender?._id !== user?._id) {
-          chat.unreadCount = (chat.unreadCount || 0) + 1;
-        }
-
-        updatedChats[chatIndex] = chat;
-
-        // Re-sort by activity
-        return updatedChats.sort((a, b) => {
-          const aTime = a.lastActivityAt || a.createdAt;
-          const bTime = b.lastActivityAt || b.createdAt;
-          return new Date(bTime) - new Date(aTime);
-        });
-      });
-    };
-
+    // New message: increment unread for other party's messages
     socket.on("message:new", handleNewMessage);
-    return () => socket.off("message:new", handleNewMessage);
+
+    // Message read: clear unread count for the chat the user just opened
+    const handleMessageRead = ({ orderId, readBy }) => {
+      if (readBy === user?._id) {
+        setChats(prev => prev.map(c =>
+          c._id === orderId ? { ...c, unreadCount: 0 } : c
+        ));
+      }
+    };
+    socket.on("message:read", handleMessageRead);
+
+    return () => {
+      socket.off("message:new", handleNewMessage);
+      socket.off("message:read", handleMessageRead);
+    };
   }, [socketContext, user?._id]);
 
-  const fetchChats = async () => {
-    try {
-      setLoading(true);
-      const token = user?.token;
+  const sortChats = (chatList) => {
+    return chatList.sort((a, b) => {
+      const aPinned = a.pinnedBy?.includes(user?._id);
+      const bPinned = b.pinnedBy?.includes(user?._id);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      
+      const aTime = new Date(a.lastMessage?.createdAt || a.lastActivityAt || a.updatedAt);
+      const bTime = new Date(b.lastMessage?.createdAt || b.lastActivityAt || b.updatedAt);
+      return bTime - aTime;
+    });
+  };
 
-      // Fetch all orders with aggregated latestMessage
+  const fetchChats = async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      else setIsRefreshing(true);
+
+      const token = user?.token;
       const res = await axios.get(`${backendURL}/api/orders`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Include relevant statuses - filter based on user role
       const relevantStatuses = ["awaiting_payment", "accepted", "in_progress", "submitted", "completed"];
-      
-      // For clients, also include "new" status
-      // For editors, "new" status orders now appear in both places
-      const activeChats = (res.data.orders || []).filter(order => {
-        if (order.status === "new") return true;
-        return relevantStatuses.includes(order.status);
-      });
+      const activeChats = (res.data.orders || []).filter(order => order.status === "new" || relevantStatuses.includes(order.status));
 
-      // 🆕 Fetch unread counts from dedicated endpoint
       let unreadCounts = {};
       try {
         const unreadRes = await axios.get(`${backendURL}/api/messages/unread-per-order`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         unreadCounts = unreadRes.data.unreadCounts || {};
-      } catch (err) {
-        console.error("Failed to fetch unread counts:", err);
-      }
+      } catch (err) { console.error(err); }
 
-      // Map chats with unread counts and fix field name (API returns latestMessage, we use lastMessage)
-      const chatsWithMessages = activeChats.map(chat => ({
+      const chatsWithData = activeChats.map(chat => ({
         ...chat,
-        lastMessage: chat.latestMessage || null, // Map latestMessage to lastMessage
+        lastMessage: chat.latestMessage || null,
         unreadCount: unreadCounts[chat._id] || 0,
       }));
 
-      // Sort by latest message time or creation date
-      chatsWithMessages.sort((a, b) => {
-        const aTime = a.lastMessage?.createdAt || a.lastActivityAt || a.updatedAt;
-        const bTime = b.lastMessage?.createdAt || b.lastActivityAt || b.updatedAt;
-        return new Date(bTime) - new Date(aTime);
-      });
-
-      setChats(chatsWithMessages);
+      setChats(sortChats(chatsWithData));
     } catch (err) {
       toast.error("Failed to load chats");
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
-  const getOtherParty = (order) => {
-    if (user?.role === "editor") {
-      return order.client;
+  const togglePin = async (e, orderId) => {
+    e.stopPropagation();
+    try {
+      const res = await axios.patch(`${backendURL}/api/orders/${orderId}/pin`, {}, {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      });
+      
+      setChats(prev => {
+        const updated = prev.map(c => {
+          if (c._id === orderId) {
+            const pinnedBy = [...(c.pinnedBy || [])];
+            const userId = user?._id;
+            const idx = pinnedBy.indexOf(userId);
+            if (idx > -1) pinnedBy.splice(idx, 1);
+            else pinnedBy.push(userId);
+            return { ...c, pinnedBy };
+          }
+          return c;
+        });
+        return sortChats(updated);
+      });
+      toast.success(res.data.message);
+    } catch (err) {
+      toast.error("Failed to pin conversation");
     }
-    return order.editor;
   };
 
-  // WhatsApp-style timestamp formatting
+  const getOtherParty = (order) => user?.role === "editor" ? order.client : order.editor;
+
   const formatMessageTime = (date) => {
     if (!date) return "";
     const d = new Date(date);
     const now = new Date();
-    const diff = now - d;
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    // Same day - show time
-    if (d.toDateString() === now.toDateString()) {
-      return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
-    }
-    
-    // Yesterday
+    if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
-    if (d.toDateString() === yesterday.toDateString()) {
-      return "Yesterday";
-    }
-    
-    // Within last 7 days - show day name
-    if (days < 7) {
-      return d.toLocaleDateString("en-IN", { weekday: "short" });
-    }
-    
-    // Older - show date
+    if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+    const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
+    if (diffDays < 7) return d.toLocaleDateString("en-IN", { weekday: "short" });
     return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
   };
 
-  // Legacy format for other uses
-  const formatDate = (date) => {
-    const d = new Date(date);
-    const now = new Date();
-    const diff = now - d;
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(hours / 24);
+  const filteredChats = chats.filter(chat => {
+    const searchLower = search.toLowerCase();
+    const otherParty = getOtherParty(chat);
+    const matchesSearch = chat.title?.toLowerCase().includes(searchLower) || otherParty?.name?.toLowerCase().includes(searchLower) || chat.orderNumber?.toString().includes(searchLower);
+    const matchesTab = activeTab === "all" || (activeTab === "gigs" && chat.type === "gig") || (activeTab === "requested" && chat.type === "request") || (activeTab === "briefs" && chat.type === "brief");
+    return matchesSearch && matchesTab;
+  });
 
-    if (hours < 1) return "Just now";
-    if (hours < 24) return `${hours}h ago`;
-    if (days === 1) return "Yesterday";
-    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-  };
-
-  // Filter chats by tab and search
-  const getFilteredChats = () => {
-    let filtered = chats;
-
-    // Filter by tab
-    if (activeTab === "gigs") {
-      filtered = filtered.filter(chat => chat.type === "gig");
-    } else if (activeTab === "requested") {
-      filtered = filtered.filter(chat => chat.type === "request");
-    } else if (activeTab === "briefs") {
-      filtered = filtered.filter(chat => chat.type === "brief");
-    }
-
-    // Filter by search
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter(chat => {
-        const otherParty = getOtherParty(chat);
-        return (
-          chat.title?.toLowerCase().includes(searchLower) ||
-          otherParty?.name?.toLowerCase().includes(searchLower) ||
-          chat.orderNumber?.toString().includes(searchLower)
-        );
-      });
-    }
-
-    return filtered;
-  };
-
-  const filteredChats = getFilteredChats();
-
-  // Count chats by tab
   const gigCount = chats.filter(c => c.type === "gig").length;
   const requestCount = chats.filter(c => c.type === "request").length;
   const briefCount = chats.filter(c => c.type === "brief").length;
 
-  // Shimmer skeleton component
   const ShimmerCard = () => (
-    <div className="bg-zinc-900 light:bg-white border border-zinc-800 light:border-zinc-200 rounded-xl p-4 animate-pulse light:shadow-sm">
+    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 animate-pulse">
       <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-zinc-800 light:bg-zinc-200" />
+        <div className="w-12 h-12 rounded-xl bg-zinc-800" />
         <div className="flex-1 space-y-2">
-          <div className="h-4 w-32 bg-zinc-800 light:bg-zinc-200 rounded" />
-          <div className="h-3 w-48 bg-zinc-800 light:bg-zinc-200 rounded" />
+          <div className="h-4 w-32 bg-zinc-800 rounded" />
+          <div className="h-3 w-48 bg-zinc-800 rounded" />
         </div>
-        <div className="h-6 w-20 bg-zinc-800 light:bg-zinc-200 rounded-lg" />
+        <div className="h-6 w-20 bg-zinc-800 rounded-lg" />
       </div>
     </div>
   );
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col md:flex-row bg-[#09090B] light:bg-[#FAFAFA] text-white light:text-zinc-900">
+      <div className="min-h-screen bg-black text-white">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 px-4 md:px-6 py-6 pt-20 md:pt-6 md:ml-64 md:mt-20">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-zinc-800 light:bg-zinc-200 animate-pulse" />
-            <div className="space-y-2">
-              <div className="h-6 w-32 bg-zinc-800 light:bg-zinc-200 rounded animate-pulse" />
-              <div className="h-3 w-24 bg-zinc-800 light:bg-zinc-200 rounded animate-pulse" />
-            </div>
-          </div>
-          <div className="h-10 w-full bg-zinc-900 light:bg-zinc-100 rounded-lg mb-4 animate-pulse" />
-          <div className="h-12 w-full bg-zinc-900 light:bg-zinc-100 rounded-xl mb-6 animate-pulse" />
-          <div className="space-y-3">
-            <ShimmerCard />
-            <ShimmerCard />
-            <ShimmerCard />
-          </div>
+        <main className="flex-1 px-4 md:px-6 py-6 pt-24 md:ml-64">
+           <div className="space-y-4">
+             <div className="h-8 w-48 bg-zinc-900 rounded mb-6" />
+             {[1,2,3,4].map(i => <ShimmerCard key={i} />)}
+           </div>
         </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#09090B] light:bg-[#FAFAFA] text-white light:text-zinc-900 transition-colors duration-200" style={{ fontFamily: "'Manrope', sans-serif" }}>
+    <div className="min-h-screen bg-black text-white selection:bg-white/10 overflow-x-hidden" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-      <main className="flex-1 px-4 md:px-6 py-6 pt-20 md:pt-6 md:ml-64 md:mt-20">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-5">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2.5 rounded-xl bg-[#0d0d12] light:bg-white border border-white/[0.06] light:border-slate-200 hover:bg-white/5 light:hover:bg-slate-100 transition-all"
-          >
-            <FaArrowLeft className="text-sm text-zinc-400 light:text-slate-600" />
-          </button>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-violet-500/20 to-purple-500/10 rounded-xl flex items-center justify-center">
-              <FaComments className="text-violet-400" />
+      <main className="w-full px-3 sm:px-4 md:px-8 py-4 pt-14 md:pt-24 md:ml-64 md:max-w-[calc(100%-16rem)] pb-24 md:pb-6">
+        {/* Header Section */}
+        <div className="flex flex-col gap-3 mb-5">
+          <div>
+            <div className="flex items-center gap-1.5 text-zinc-500 text-[10px] font-bold tracking-widest uppercase mb-0.5">
+              <HiOutlineHashtag className="text-sm" />
+              Direct Communication
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-white light:text-slate-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Messages</h1>
-              <p className="text-zinc-500 light:text-slate-500 text-xs">{chats.length} conversations</p>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Messages</h1>
+            <p className="text-zinc-500 text-xs sm:text-sm mt-0.5">Manage your {chats.length} active projects and collaborations</p>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <div className="relative group flex-1">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs group-focus-within:text-white transition-colors" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by project, user or ID..."
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-9 pr-3 py-2.5 text-sm placeholder:text-zinc-600 focus:border-white/20 focus:ring-0 outline-none transition-all"
+              />
             </div>
+            <button className="p-2.5 bg-zinc-900 border border-zinc-800 rounded-xl hover:bg-zinc-800 transition-colors shrink-0">
+              <HiOutlineAdjustmentsHorizontal className="text-lg text-zinc-400" />
+            </button>
           </div>
         </div>
 
-        {/* Story Strip - Instagram Style (Unique Clients) */}
-        {chats.length > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-5"
-          >
-            <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-hide snap-x">
-              {(() => {
-                const uniqueClients = [];
-                const seenIds = new Set();
-                chats.forEach(chat => {
-                  const otherParty = user?.role === "editor" ? chat.client : chat.editor;
-                  if (otherParty?._id && !seenIds.has(otherParty._id)) {
-                    seenIds.add(otherParty._id);
-                    uniqueClients.push({
-                      ...otherParty,
-                      chatId: chat._id,
-                      isOnline: onlineUsers.includes(otherParty._id),
-                      hasUnread: chat.unreadCount > 0
-                    });
-                  }
-                });
-                return uniqueClients.slice(0, 10).map((person, idx) => (
-                  <motion.button
-                    key={person._id}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: idx * 0.05 }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => navigate(`/chat/${person.chatId}`)}
-                    className="flex flex-col items-center gap-1.5 snap-start flex-shrink-0"
-                  >
-                    <div className={`relative p-0.5 rounded-full ${person.hasUnread ? 'bg-gradient-to-br from-violet-500 to-purple-500' : 'bg-gradient-to-br from-zinc-600 to-zinc-700'}`}>
-                      <div className="p-0.5 bg-[#09090B] rounded-full">
-                        <img 
-                          src={person.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
-                          alt={person.name}
-                          className="w-14 h-14 rounded-full object-cover"
-                        />
-                      </div>
-                      {person.isOnline && (
-                        <span className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 rounded-full border-2 border-[#09090B]" />
-                      )}
-                    </div>
-                    <span className="text-[10px] text-zinc-400 font-medium max-w-[60px] truncate">
-                      {person.name?.split(" ")[0]}
-                    </span>
-                  </motion.button>
-                ));
-              })()}
-            </div>
-          </motion.div>
-        )}
-
-        {/* Tabs */}
-        <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
+        {/* Tab Navigation */}
+        <div className="flex gap-1.5 mb-5 overflow-x-auto pb-1 no-scrollbar" style={{scrollbarWidth:'none'}}>
           {TABS.map(tab => {
             const isActive = activeTab === tab.id;
             const count = tab.id === "all" ? chats.length : tab.id === "gigs" ? gigCount : tab.id === "briefs" ? briefCount : requestCount;
-            
             return (
-              <motion.button
+              <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                whileHover={{ scale: isActive ? 1 : 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[11px] font-bold whitespace-nowrap transition-all border shrink-0 ${
                   isActive 
-                    ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg shadow-violet-500/25" 
-                    : "bg-[#0d0d12] light:bg-white border border-white/[0.06] light:border-slate-200 text-zinc-400 light:text-slate-600 hover:text-white light:hover:text-slate-900 hover:bg-white/5"
+                    ? "bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.15)]" 
+                    : "bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700"
                 }`}
               >
-                <tab.icon className="text-xs" />
+                <tab.icon className={`text-[10px] ${isActive ? "text-black" : "text-zinc-500"}`} />
                 {tab.label}
-                <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
-                  isActive ? "bg-white/20" : "bg-white/5 light:bg-slate-100"
+                <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${
+                  isActive ? "bg-black/10 text-black" : "bg-zinc-800 text-zinc-500"
                 }`}>
                   {count}
                 </span>
-              </motion.button>
+              </button>
             );
           })}
         </div>
 
-        {/* Search */}
-        <div className="relative mb-5">
-          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 light:text-slate-400 text-sm" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search chats..."
-            className="w-full bg-[#0d0d12] light:bg-white border border-white/[0.06] light:border-slate-200 rounded-full pl-11 pr-4 py-3 text-sm placeholder:text-zinc-600 light:placeholder:text-slate-400 focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 outline-none transition-all light:text-slate-900"
-          />
-        </div>
-
-        {/* Chat List */}
-        {filteredChats.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <div className="w-16 h-16 bg-gradient-to-br from-violet-500/10 to-purple-500/5 rounded-2xl flex items-center justify-center mb-4">
-              <FaComments className="text-2xl text-violet-400" />
-            </div>
-            <h3 className="text-sm font-bold text-white light:text-slate-900 mb-1">
-              {search ? "No chats found" : "No chats yet"}
-            </h3>
-            <p className="text-xs text-zinc-500 light:text-slate-500">
-              {search ? "Try a different search" : activeTab === "requested" ? "No request orders" : "Accept orders to start chatting!"}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <AnimatePresence>
-              {filteredChats.map((chat, index) => {
+        {/* Chat List Grid */}
+        <div className="grid gap-4">
+          <AnimatePresence mode="popLayout">
+            {filteredChats.length === 0 ? (
+              <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }}
+                className="flex flex-col items-center justify-center py-20 bg-zinc-900/30 rounded-3xl border border-zinc-800/50 border-dashed"
+              >
+                <div className="p-5 bg-zinc-900 rounded-full mb-4">
+                  <FaComments className="text-3xl text-zinc-700" />
+                </div>
+                <h3 className="text-zinc-400 font-bold uppercase tracking-wider text-xs">No conversations found</h3>
+                <p className="text-zinc-600 text-sm mt-2">Try adjusting your filters or search terms</p>
+              </motion.div>
+            ) : (
+              filteredChats.map((chat, idx) => {
                 const otherParty = getOtherParty(chat);
-                const statusConfig = STATUS_CONFIG[chat.status] || STATUS_CONFIG.in_progress;
-                const isTyping = typingUsers[chat._id]?.length > 0;
+                const isPinned = chat.pinnedBy?.includes(user?._id);
                 const isOnline = onlineUsers.includes(otherParty?._id);
-                const deadlineStatus = getDeadlineStatus(chat.deadline, chat.createdAt);
-                
-                // Check if this is awaiting payment (for request orders)
-                const isAwaitingPayment = chat.status === "awaiting_payment";
-                const isPaid = chat.type === "request" && chat.paymentStatus === "escrow";
-                const isNewRequest = chat.status === "new" && chat.type === "request";
+                const status = STATUS_CONFIG[chat.status] || STATUS_CONFIG.in_progress;
+                const deadline = getDeadlineStatus(chat.deadline, chat.createdAt);
+                const isTyping = typingUsers[chat._id]?.length > 0;
 
                 return (
                   <motion.div
                     key={chat._id}
-                    initial={{ opacity: 0, y: 10 }}
+                    layout
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ delay: index * 0.02 }}
-                    whileHover={{ scale: 1.01, y: -2 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.3, delay: idx * 0.03 }}
                     onClick={() => navigate(`/chat/${chat._id}`)}
-                    className={`relative overflow-hidden bg-[#0d0d12] light:bg-white border rounded-2xl p-4 cursor-pointer hover:border-violet-500/30 light:hover:border-violet-300 transition-all group ${
-                      isAwaitingPayment ? "border-orange-500/30" : 
-                      isNewRequest ? "border-amber-500/30" :
-                      "border-white/[0.06] light:border-slate-200"
-                    }`}
+                    className={`group relative bg-zinc-900 hover:bg-zinc-800/80 border border-zinc-800 rounded-2xl p-3 sm:p-4 cursor-pointer transition-all duration-300 overflow-hidden ${isPinned ? 'border-white/10 ring-1 ring-white/5' : ''}`}
                   >
-                    {/* Hover glow */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-violet-500/0 to-purple-500/0 group-hover:from-violet-500/5 group-hover:to-purple-500/5 transition-all duration-300" />
-                    
-                    <div className="relative flex items-center gap-3">
-                      {/* Avatar */}
-                      <div className="relative flex-shrink-0">
-                        <img
-                          src={otherParty?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
-                          alt={otherParty?.name}
-                          className="w-11 h-11 rounded-xl object-cover"
-                        />
-                        {/* Online indicator */}
-                        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-zinc-950 light:border-white ${
-                          isOnline ? "bg-green-500" : "bg-zinc-600 light:bg-slate-300"
-                        }`} />
-                        
-                        {/* Unread Badge */}
-                        {chat.unreadCount > 0 && (
-                          <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-[9px] font-bold">
-                            {chat.unreadCount > 9 ? "9+" : chat.unreadCount}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        {/* Row 1: Name + Timestamp */}
-                        <div className="flex items-center justify-between mb-0.5">
-                          <h3 className={`font-semibold text-sm truncate group-hover:text-violet-400 transition-colors ${chat.unreadCount > 0 ? 'text-white light:text-slate-900' : 'text-zinc-300 light:text-slate-700'}`}>
-                            {otherParty?.name}
-                          </h3>
-                          {/* WhatsApp-style Timestamp */}
-                          <span className={`text-[10px] flex-shrink-0 ml-2 ${chat.unreadCount > 0 ? 'text-violet-400 font-semibold' : 'text-zinc-500'}`}>
-                            {formatMessageTime(chat.lastMessage?.createdAt || chat.lastActivityAt || chat.updatedAt)}
-                          </span>
+                    <div className="flex items-start gap-3 sm:gap-4">
+                      {/* Avatar with Status */}
+                      <div className="relative shrink-0">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden bg-zinc-800 ring-2 ring-black">
+                          <img
+                            src={otherParty?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
+                            alt={otherParty?.name}
+                            className="w-full h-full object-cover"
+                          />
                         </div>
-                        
-                        {/* Row 2: Type tag + payment status */}
-                        <div className="flex items-center gap-1.5 mb-1">
-                          
-                          {/* Type Tag */}
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                            chat.type === "gig" 
-                              ? "bg-purple-500/20 text-purple-400"
-                              : chat.type === "brief"
-                              ? "bg-blue-500/20 text-blue-400"
-                              : "bg-cyan-500/20 text-cyan-400"
-                          }`}>
-                            {chat.type === "gig" ? "Gig" : chat.type === "brief" ? "Brief" : "Request"}
-                          </span>
-
-                          {/* Payment Status for Request Orders */}
-                          {chat.type === "request" && isPaid && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium bg-green-500/20 text-green-400 flex items-center gap-0.5">
-                              <FaCreditCard className="text-[7px]" /> Paid
-                            </span>
-                          )}
-                        </div>
-                        
-                        {/* Last Message or Status */}
-                        {isTyping ? (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] text-green-400 font-medium">typing</span>
-                            <div className="flex items-center gap-0.5">
-                              {[0, 0.2, 0.4].map((delay, i) => (
-                                <motion.span
-                                  key={i}
-                                  animate={{ opacity: [0.4, 1, 0.4] }}
-                                  transition={{ duration: 1, repeat: Infinity, delay }}
-                                  className="w-1 h-1 bg-green-400 rounded-full"
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        ) : isNewRequest && user?.role === "editor" ? (
-                          <p className="text-[11px] text-amber-400 font-medium flex items-center gap-1">
-                            <FaExclamationCircle className="text-[9px]" />
-                            New request - Action required
-                          </p>
-                        ) : isAwaitingPayment && user?.role === "client" ? (
-                          <p className="text-[11px] text-orange-400 font-medium flex items-center gap-1">
-                            <FaHourglassHalf className="text-[9px]" />
-                            Payment required to start
-                          </p>
-                        ) : chat.lastMessage ? (
-                          <p className={`text-[11px] truncate ${chat.unreadCount > 0 ? 'text-white light:text-slate-800 font-medium' : 'text-zinc-500 light:text-slate-500'}`}>
-                            {/* Add "You:" prefix if current user sent the message */}
-                            {chat.lastMessage.sender?._id === user?._id && <span className="text-zinc-400">You: </span>}
-                            {chat.lastMessage.type === "image" ? "📷 Photo" :
-                             chat.lastMessage.type === "video" ? "🎥 Video" :
-                             chat.lastMessage.type === "file" ? "📎 File" :
-                             chat.lastMessage.type === "system" ? "📢 " + (chat.lastMessage.content?.substring(0, 35) || "System message") :
-                             chat.lastMessage.type === "payment_request" ? "💳 Payment Request" :
-                             chat.lastMessage.content?.length > 35 
-                               ? `${chat.lastMessage.content.substring(0, 35)}...` 
-                               : chat.lastMessage.content || "New message"}
-                          </p>
+                        {isOnline ? (
+                          <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-[#09090B]" />
                         ) : (
-                          <p className="text-[11px] text-zinc-600 light:text-slate-400 italic">No messages yet</p>
+                          <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-zinc-700 border-2 border-[#09090B]" />
                         )}
-                        
-                        {/* Row 4: Amount + Deadline info */}
-                        <div className="flex items-center gap-2 mt-1.5 text-[9px] text-zinc-600 light:text-slate-500">
-                          <span className="flex items-center gap-0.5 text-violet-400 font-medium">
-                            <FaRupeeSign className="text-[7px]" /> {chat.amount?.toLocaleString()}
-                          </span>
+                        {isPinned && (
+                          <div className="absolute -top-1.5 -left-1.5 w-5 h-5 bg-white text-black rounded-full flex items-center justify-center shadow-lg transform -rotate-12 border border-zinc-200 z-10">
+                            <FaThumbtack className="text-[10px]" />
+                          </div>
+                        )}
+                        {chat.unreadCount > 0 && (
+                          <div className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 min-w-[18px] h-4.5 bg-white text-black text-[9px] font-black rounded-full flex items-center justify-center shadow-xl z-20">
+                            {chat.unreadCount}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Content Section */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <h3 className="text-sm sm:text-base font-bold truncate tracking-tight">
+                              {otherParty?.name}
+                            </h3>
+                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ring-1 ring-inset shrink-0 ${
+                              chat.type === "gig" ? "bg-violet-500/10 text-violet-400 ring-violet-500/20" : 
+                              chat.type === "brief" ? "bg-blue-500/10 text-blue-400 ring-blue-500/20" : 
+                              "bg-cyan-500/10 text-cyan-400 ring-cyan-500/20"
+                            } uppercase tracking-tighter`}>
+                              {chat.type}
+                            </span>
+                            {isPinned && <FaThumbtack className="text-zinc-500 text-[9px] rotate-45 shrink-0" />}
+                          </div>
+                          <div className="text-zinc-500 text-[10px] font-medium shrink-0">
+                            {formatMessageTime(chat.lastMessage?.createdAt || chat.lastActivityAt || chat.updatedAt)}
+                          </div>
+                        </div>
+
+                        {/* Last Message Preview */}
+                        <div className="mb-3">
+                          {isTyping ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs text-emerald-400 font-bold tracking-wide italic">Typing...</span>
+                              <div className="flex gap-1">
+                                {[0, 0.2, 0.4].map(d => <motion.div key={d} animate={{ y: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: d }} className="w-1 h-1 bg-emerald-400 rounded-full" />)}
+                              </div>
+                            </div>
+                          ) : (
+                            <p className={`text-xs sm:text-sm truncate ${chat.unreadCount > 0 ? 'text-zinc-100 font-semibold' : 'text-zinc-500'}`}>
+                              {chat.lastMessage?.sender?._id === user?._id && <span className="text-zinc-600 font-bold mr-1">You:</span>}
+                              {chat.lastMessage?.type === "image" ? "📷 Shared a photo" :
+                               chat.lastMessage?.type === "video" ? "🎥 Shared a reel" :
+                               chat.lastMessage?.type === "file" ? "📎 Attached a document" :
+                               chat.lastMessage?.content || "No messages yet"}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Meta Data Row */}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <div className="flex items-center gap-1 px-2 py-0.5 bg-black rounded-full border border-zinc-800">
+                             <FaRupeeSign className="text-[9px] text-zinc-500" />
+                             <span className="text-[10px] font-bold text-zinc-200">{chat.amount?.toLocaleString()}</span>
+                          </div>
                           
-                          {/* Deadline Indicator */}
-                          {chat.overdueRefunded ? (
-                            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
-                              💸 Refunded
-                            </span>
-                          ) : chat.isOverdue ? (
-                            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse">
-                              ⚠️ Overdue
-                            </span>
-                          ) : deadlineStatus && !["completed", "cancelled", "rejected", "new", "awaiting_payment"].includes(chat.status) && (
-                            <span className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-medium ${deadlineStatus.color}`}>
-                              <FaCircle className="text-[3px]" />
-                              {deadlineStatus.text}
-                            </span>
+                          <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full border ${status.bg} ${status.border} ${status.color} text-[9px] font-black uppercase tracking-widest`}>
+                            {status.label}
+                          </div>
+
+                          {deadline && !["completed", "cancelled", "rejected"].includes(chat.status) && (
+                            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full border ${deadline.color} text-[9px] font-bold`}>
+                               <FaClock className="text-[9px]" />
+                               {deadline.text}
+                            </div>
+                          )}
+                          
+                          {chat.type === "request" && chat.paymentStatus === "escrow" && (
+                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-black uppercase tracking-tight">
+                              <FaCreditCard className="text-[9px]" /> Secured
+                            </div>
                           )}
                         </div>
                       </div>
 
-                      {/* Status + Arrow */}
-                      <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                        <span className={`text-[10px] px-2 py-1 rounded-lg font-medium ${statusConfig.bg} ${statusConfig.color}`}>
-                          {statusConfig.label}
-                        </span>
-                        <FaChevronRight className="text-zinc-600 light:text-slate-400 text-[10px] group-hover:text-violet-400 transition-colors" />
+                      {/* Action - Pin & Navigation */}
+                      <div className="flex flex-col items-center gap-1.5 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300">
+                         <button 
+                           onClick={(e) => togglePin(e, chat._id)}
+                           className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl border transition-all ${isPinned ? 'bg-white text-black border-white shadow-md' : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-white hover:border-zinc-600'}`}
+                         >
+                           <FaThumbtack className={`text-[10px] sm:text-xs ${isPinned ? '' : '-rotate-45'}`} />
+                         </button>
+                         <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-zinc-800 text-zinc-400 border border-zinc-700 hidden sm:block">
+                            <FaChevronRight className="text-[9px] sm:text-[10px]" />
+                         </div>
                       </div>
                     </div>
                   </motion.div>
                 );
-              })}
-            </AnimatePresence>
-          </div>
-        )}
+              })
+            )}
+          </AnimatePresence>
+        </div>
       </main>
     </div>
   );
 };
 
-export default ChatsPage;
+export default AllChatsPage;

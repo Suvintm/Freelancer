@@ -181,10 +181,11 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // ============ EXEMPTIONS FROM GLOBAL SANITIZATION ============
-// 🚨 IMPORTANT: Advertisement routes are moved ABOVE mongoSanitize to prevent 
-// mangling of Cloudinary and external URLs (which contain dots).
+// 🚨 IMPORTANT: These routes are moved ABOVE mongoSanitize to prevent 
+// mangling of external URLs (which contain dots that mongoSanitize replaces with '_').
 // These routes handle their own specific validation and security.
 app.use("/api/ads", advertisementRoutes);
+app.use("/api/messages", messageRoutes); // Drive link URLs contain dots — must bypass sanitizer
 
 // ============ SECURITY: INPUT SANITIZATION ============
 
@@ -256,7 +257,7 @@ app.use("/api/reels", reelRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/gigs", gigRoutes);
 app.use("/api/orders", orderRoutes);
-app.use("/api/messages", messageRoutes);
+// app.use("/api/messages", messageRoutes); // Moved above sanitization block (drive link URLs need dots preserved)
 app.use("/api/quick-replies", quickReplyRoutes);
 app.use("/api/checklists", checklistRoutes);
 app.use("/api/delivery", finalDeliveryRoutes);

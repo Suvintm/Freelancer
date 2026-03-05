@@ -16,6 +16,7 @@ import {
   processOverdueRefunds,
   getDeadlineStatus,
   getNewOrdersCount,
+  togglePinOrder,
 } from "../controllers/orderController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import { requireClientKYC } from "../middleware/kycCheckMiddleware.js";
@@ -53,5 +54,6 @@ router.patch("/:id/submit", submitWork);
 router.patch("/:id/complete", completeOrder);
 router.patch("/:id/dispute", disputeValidator, raiseDispute);
 router.post("/:id/extend-deadline", extendDeadlineValidator, extendDeadline);
+router.patch("/:id/pin", togglePinOrder);
 
 export default router;

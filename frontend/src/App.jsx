@@ -16,7 +16,7 @@ import ReelsPage from "./pages/ReelsPage.jsx";
 import ReelsExplore from "./pages/ReelsExplore.jsx";
 import ReelsAnalytics from "./pages/ReelsAnalytics.jsx";
 import NotificationsPage from "./pages/NotificationsPage.jsx";
-import ChatsPage from "./pages/AllChatsPage.jsx";
+import AllChatsPage from "./pages/AllChatsPage.jsx";
 import Chatbox from "./components/ChatPage.jsx";
 import MobileBottomNav from "./components/MobileBottomNav.jsx";
  
@@ -548,7 +548,7 @@ function App() {
           path="/chats"
           element={
             <ProtectedRoute>
-              <ChatsPage />
+              <AllChatsPage />
             </ProtectedRoute>
           }
         />

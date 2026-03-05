@@ -87,36 +87,36 @@ const SystemMessageCard = ({ message, userRole }) => {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex justify-center my-3 px-3"
+      className="flex justify-center my-2 sm:my-3 px-3"
     >
-      <div className="w-full max-w-[280px] bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800">
+      <div className="w-full max-w-[240px] sm:max-w-[280px] bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 shadow-xl">
         {/* Header - Logo + Suvix + Verified Badge */}
-        <div className="px-4 py-3 border-b border-zinc-800">
+        <div className="px-3 py-2 sm:px-4 sm:py-3 border-b border-zinc-800 bg-black/20">
           <div className="flex items-center gap-2">
             {/* Platform Logo */}
             <img 
               src={logo} 
               alt="Suvix" 
-              className="w-7 h-7 rounded-lg object-contain"
+              className="w-5 h-5 sm:w-7 sm:h-7 rounded-lg object-contain"
             />
             
             {/* Suvix Name + Verified Badge */}
             <div className="flex items-center gap-1">
-              <span className="text-white font-bold text-[13px]">Suvix</span>
-              <HiCheckBadge className="text-[#3B82F6] text-base" />
+              <span className="text-white font-bold text-xs sm:text-[13px]">Suvix</span>
+              <HiCheckBadge className="text-[#3B82F6] text-sm sm:text-base" />
             </div>
           </div>
         </div>
 
         {/* Message Content */}
-        <div className="px-4 py-3">
+        <div className="px-3 py-2 sm:px-4 sm:py-3">
           {/* Title */}
-          <h3 className="text-white font-semibold text-[14px] mb-1.5">
+          <h3 className="text-white font-semibold text-xs sm:text-[14px] mb-1">
             {config.title}
           </h3>
           
           {/* Description */}
-          <p className="text-zinc-400 text-[12px] leading-relaxed">
+          <p className="text-zinc-400 text-[11px] sm:text-[12px] leading-relaxed">
             {config.getDescription(isEditor)}
           </p>
         </div>

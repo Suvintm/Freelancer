@@ -141,15 +141,15 @@ const PaymentRequestCard = ({ message, order, onPaymentSuccess }) => {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-gradient-to-br from-emerald-900/30 to-emerald-800/20 border border-emerald-500/30 rounded-2xl p-5 max-w-sm mx-auto my-4"
+        className="bg-gradient-to-br from-emerald-900/30 to-emerald-800/20 border border-emerald-500/30 rounded-2xl p-4 sm:p-5 max-w-[300px] sm:max-w-sm mx-auto my-3 sm:my-4 shadow-xl"
       >
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center">
-            <FaCheckCircle className="text-emerald-400 text-xl" />
+        <div className="flex items-center gap-3 mb-2 sm:mb-3">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-500/20 rounded-full flex items-center justify-center">
+            <FaCheckCircle className="text-emerald-400 text-lg sm:text-xl" />
           </div>
           <div>
-            <h3 className="text-white font-semibold text-sm">Payment Confirmed</h3>
-            <p className="text-emerald-400 text-xs">₹{amount.toLocaleString()} paid to escrow</p>
+            <h3 className="text-white font-semibold text-xs sm:text-sm">Payment Confirmed</h3>
+            <p className="text-emerald-400 text-[10px] sm:text-xs">₹{amount.toLocaleString()} paid to escrow</p>
           </div>
         </div>
         <p className="text-zinc-400 text-xs">
@@ -163,25 +163,25 @@ const PaymentRequestCard = ({ message, order, onPaymentSuccess }) => {
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-gradient-to-br from-orange-900/20 via-zinc-900 to-zinc-950 border border-orange-500/30 rounded-2xl p-5 max-w-sm mx-auto my-4"
+      className="bg-gradient-to-br from-orange-900/20 via-zinc-900 to-zinc-950 border border-orange-500/30 rounded-2xl p-4 sm:p-5 max-w-[300px] sm:max-w-sm mx-auto my-3 sm:my-4 shadow-xl"
     >
       {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center">
-          <FaCreditCard className="text-orange-400 text-xl" />
+      <div className="flex items-center gap-3 mb-3 sm:mb-4">
+        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-500/20 rounded-full flex items-center justify-center">
+          <FaCreditCard className="text-orange-400 text-lg sm:text-xl" />
         </div>
         <div>
-          <h3 className="text-white font-semibold text-sm">Payment Required</h3>
-          <p className="text-orange-400 text-xs">Editor accepted your request</p>
+          <h3 className="text-white font-semibold text-xs sm:text-sm">Payment Required</h3>
+          <p className="text-orange-400 text-[10px] sm:text-xs">Editor accepted your request</p>
         </div>
       </div>
 
       {/* Amount */}
-      <div className="bg-black/40 rounded-xl p-4 mb-4">
+      <div className="bg-black/40 rounded-xl p-3 sm:p-4 mb-3 sm:mb-4">
         <div className="flex items-center justify-between">
-          <span className="text-zinc-500 text-xs">Project Amount</span>
-          <span className="text-white font-bold text-lg flex items-center gap-1">
-            <FaRupeeSign className="text-sm" />
+          <span className="text-zinc-500 text-[11px] sm:text-xs">Project Amount</span>
+          <span className="text-white font-bold text-base sm:text-lg flex items-center gap-1">
+            <FaRupeeSign className="text-xs sm:text-sm" />
             {amount.toLocaleString()}
           </span>
         </div>
@@ -207,7 +207,7 @@ const PaymentRequestCard = ({ message, order, onPaymentSuccess }) => {
         <button
           onClick={handlePayNow}
           disabled={loading}
-          className="w-full py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-semibold rounded-xl hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+          className="w-full py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-semibold rounded-xl hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-sm"
         >
           {loading ? (
             <>

@@ -35,7 +35,22 @@ import {
   FaCreditCard,
   FaClipboardList,
   FaReceipt,
+  FaPlus,
 } from "react-icons/fa";
+import { 
+  HiOutlineClipboardDocumentList, 
+  HiOutlineCheckCircle, 
+  HiOutlineCreditCard, 
+  HiOutlineReceiptPercent, 
+  HiOutlineClipboardDocumentCheck, 
+  HiCheck, 
+  HiCheckBadge,
+  HiPhoto,
+  HiVideoCamera,
+  HiDocumentText,
+  HiSparkles,
+  HiLink
+} from "react-icons/hi2";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
@@ -81,16 +96,15 @@ const MediaCard = ({ msg, isMe, onClick }) => {
 
   return (
     <div 
-      className="mb-2 rounded-2xl overflow-hidden cursor-pointer relative group/media"
+      className="mb-2 rounded-2xl overflow-hidden cursor-pointer relative group/media max-w-[220px] sm:max-w-[280px]"
       onClick={onClick}
-      style={{ maxWidth: "280px" }}
     >   
       {/* Loading overlay for receiver */}
       {!isMe && !loaded && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-md z-10 flex items-center justify-center rounded-2xl">
           <div className="relative">
             {/* Circular progress */}
-            <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
+            <svg className="w-12 h-12 sm:w-16 sm:h-16 transform -rotate-90" viewBox="0 0 36 36">
               <circle cx="18" cy="18" r="16" fill="none" stroke="#333" strokeWidth="2" />
               <circle 
                 cx="18" cy="18" r="16" fill="none" 
@@ -106,7 +120,7 @@ const MediaCard = ({ msg, isMe, onClick }) => {
               </defs>
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-white text-xs font-bold">{Math.round(Math.min(progress, 100))}%</span>
+              <span className="text-white text-[10px] sm:text-xs font-bold">{Math.round(Math.min(progress, 100))}%</span>
             </div>
           </div>
         </div>
@@ -298,7 +312,7 @@ const VoicePlayer = ({ audioUrl, duration }) => {
   const formatTime = (s) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, "0")}`;
 
   return (
-    <div className="flex items-center gap-3 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-2xl px-4 py-3 min-w-[200px]">
+    <div className="flex items-center gap-2 sm:gap-3 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-xl sm:rounded-2xl px-3 py-2 sm:px-4 sm:py-3 min-w-[160px] sm:min-w-[200px]">
       <audio 
         ref={audioRef} 
         src={audioUrl}
@@ -306,16 +320,16 @@ const VoicePlayer = ({ audioUrl, duration }) => {
         onEnded={() => { setIsPlaying(false); setProgress(0); }}
       />
       
-      <button onClick={togglePlay} className="p-2 bg-purple-500 rounded-full hover:bg-purple-600 transition">
-        {isPlaying ? <FaPause className="text-white text-xs" /> : <FaPlay className="text-white text-xs ml-0.5" />}
+      <button onClick={togglePlay} className="p-1.5 sm:p-2 bg-purple-500 rounded-full hover:bg-purple-600 transition">
+        {isPlaying ? <FaPause className="text-white text-[10px] sm:text-xs" /> : <FaPlay className="text-white text-[10px] sm:text-xs ml-0.5" />}
       </button>
       
       {/* Progress bar */}
-      <div className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
+      <div className="flex-1 h-0.5 sm:h-1 bg-white/20 rounded-full overflow-hidden">
         <div className="h-full bg-purple-500 transition-all" style={{ width: `${progress}%` }} />
       </div>
       
-      <span className="text-xs text-gray-300 font-mono">{formatTime(duration || 0)}</span>
+      <span className="text-[10px] sm:text-xs text-gray-300 font-mono">{formatTime(duration || 0)}</span>
     </div>
   );
 };
@@ -463,18 +477,18 @@ const DriveLinkCard = ({ link, onLinkClick }) => {
   const ProviderIcon = providerInfo.Icon;
 
   return (
-    <div className="w-full max-w-[280px]">
+    <div className="w-full max-w-[240px] sm:max-w-[280px]">
       <div className="bg-white light:bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-sm overflow-hidden">
         {/* Compact Header */}
-        <div className="p-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center border border-zinc-100 dark:border-zinc-700">
+        <div className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center border border-zinc-100 dark:border-zinc-700">
             <ProviderIcon />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-zinc-900 dark:text-white text-[13px] truncate leading-tight">
+            <h4 className="font-medium text-zinc-900 dark:text-white text-xs sm:text-[13px] truncate leading-tight">
               {link.title || "Shared Files"}
             </h4>
-            <p className="text-zinc-500 dark:text-zinc-400 text-[11px]">{providerInfo.name}</p>
+            <p className="text-zinc-500 dark:text-zinc-400 text-[10px] sm:text-[11px]">{providerInfo.name}</p>
           </div>
         </div>
         
@@ -510,6 +524,8 @@ const AddDriveLinkModal = ({ onSubmit, onClose }) => {
 
   const handleSubmit = async () => {
     if (!url.trim()) return;
+    console.log("🔍 [AddDriveLinkModal] url state:", url);
+    console.log("🔍 [AddDriveLinkModal] typeof url:", typeof url);
     setLoading(true);
     await onSubmit({ url, title, description });
     setLoading(false);
@@ -529,48 +545,48 @@ const AddDriveLinkModal = ({ onSubmit, onClose }) => {
         animate={{ scale: 1 }}
         exit={{ scale: 0.9 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-[#1a1a1a] rounded-2xl p-6 max-w-md w-full border border-white/10"
+        className="bg-[#1a1a1a] rounded-2xl p-4 sm:p-6 max-w-[340px] sm:max-w-md w-full border border-white/10 shadow-2xl"
       >
-        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+        <h3 className="text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
           <FaFolder className="text-yellow-500" />
           Share Raw Footage
         </h3>
         
-        <p className="text-gray-400 text-sm mb-4">
+        <p className="text-gray-400 text-xs sm:text-sm mb-4">
           Paste a Google Drive, Dropbox, or any cloud storage link for your editor to download the files.
         </p>
         
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div>
-            <label className="text-gray-400 text-xs mb-1 block">Link URL *</label>
+            <label className="text-gray-400 text-[10px] sm:text-xs mb-1 block">Link URL *</label>
             <input
-              type="url"
+              type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://drive.google.com/..."
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base text-white focus:outline-none focus:border-purple-500"
             />
           </div>
           
           <div>
-            <label className="text-gray-400 text-xs mb-1 block">Title (Optional)</label>
+            <label className="text-gray-400 text-[10px] sm:text-xs mb-1 block">Title (Optional)</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., Wedding Raw Clips"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base text-white focus:outline-none focus:border-purple-500"
             />
           </div>
           
           <div>
-            <label className="text-gray-400 text-xs mb-1 block">Description (Optional)</label>
+            <label className="text-gray-400 text-[10px] sm:text-xs mb-1 block">Description (Optional)</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Any notes for the editor..."
               rows={2}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white resize-none focus:outline-none focus:border-purple-500"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base text-white resize-none focus:outline-none focus:border-purple-500"
             />
           </div>
         </div>
@@ -881,7 +897,11 @@ const ChatPage = () => {
       const handleNewMessage = (message) => {
         const msgOrderId = message.orderId || message.order;
         if (msgOrderId === orderId || String(msgOrderId) === String(orderId)) {
-          setMessages((prev) => [...prev, message]);
+          setMessages((prev) => {
+            // Prevent duplicate: skip if message with same _id already exists
+            if (prev.some(m => m._id?.toString() === message._id?.toString())) return prev;
+            return [...prev, message];
+          });
           if (document.hasFocus()) markAsRead(orderId);
         }
       };
@@ -1137,11 +1157,11 @@ const ChatPage = () => {
   // 📁 Send Drive Link (Client Only)
   const handleSendDriveLink = async ({ url, title, description }) => {
     try {
-      await axios.post(`${backendURL}/api/messages/${orderId}/drive-link`, {
-        url,
-        title,
-        description
-      }, {
+      const payload = { url, title, description };
+      console.log("🚀 [handleSendDriveLink] Payload to send:", JSON.stringify(payload));
+      console.log("🚀 [handleSendDriveLink] typeof url:", typeof url);
+      console.log("🚀 [handleSendDriveLink] url value:", url);
+      await axios.post(`${backendURL}/api/messages/${orderId}/drive-link`, payload, {
         headers: { Authorization: `Bearer ${user?.token}` }
       });
       
@@ -1495,21 +1515,33 @@ const ChatPage = () => {
           {/* Profile + Name/Username */}
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="relative">
-              <div className="w-10 h-10 rounded-full p-[2px] bg-gradient-to-tr from-[#feda75] via-[#fa7e1e] via-[#d62976] via-[#962fbf] to-[#4f5bd5]">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full p-[1.5px] sm:p-[2px] bg-gradient-to-tr from-[#feda75] via-[#fa7e1e] via-[#d62976] via-[#962fbf] to-[#4f5bd5]">
                 <img 
                   src={otherParty?.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
                   alt="Profile"
-                  className={`w-full h-full rounded-full object-cover border-2 ${theme === 'dark' ? 'border-[#0a0a0c]' : 'border-white'}`}
+                  className={`w-full h-full rounded-full object-cover border-1.5 sm:border-2 ${theme === 'dark' ? 'border-[#0a0a0c]' : 'border-white'}`}
                 />
               </div>
               {isOnline && <div className={`absolute bottom-0 right-0 w-3 h-3 bg-[#00a400] rounded-full border-2 ${theme === 'dark' ? 'border-[#0a0a0c]' : 'border-white'}`}></div>}
             </div>
             <div className="flex flex-col justify-center min-w-0">
-              <span className={`font-semibold text-[15px] truncate leading-tight ${theme === 'dark' ? 'text-white' : 'text-[#262626]'}`}>{otherParty?.name || "Unknown User"}</span>
+              <span className={`font-semibold text-sm sm:text-[15px] truncate leading-tight ${theme === 'dark' ? 'text-white' : 'text-[#262626]'}`}>{otherParty?.name || "Unknown User"}</span>
               <div className="flex items-center gap-2">
-                <span className={`text-[13px] leading-tight ${theme === 'dark' ? 'text-gray-400' : 'text-[#8e8e8e]'}`}>
-                  {isOnline ? "Active now" : "Offline"}
-                </span>
+                  {isOnline ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                      </span>
+                      <span className={`text-[12px] font-medium ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                        Active now
+                      </span>
+                    </div>
+                  ) : (
+                    <span className={`text-[12px] ${theme === 'dark' ? 'text-gray-500' : 'text-[#8e8e8e]'}`}>
+                      Offline
+                    </span>
+                  )}
                 {/* Deadline Badge - Preserved */}
                 {deadlineStatus && order?.status !== "completed" && (
                   <span className={`text-[9px] px-2 py-0.5 rounded border ${deadlineStatus.color} ${deadlineStatus.urgent ? 'animate-pulse' : ''}`}>
@@ -1525,12 +1557,17 @@ const ChatPage = () => {
             {/* Project Details - Opens popup modal (Clipboard/Document Icon) */}
             <button 
               onClick={() => setShowProjectDetails(!showProjectDetails)}
-              className={`p-2 rounded-full transition ${theme === 'dark' ? (showProjectDetails ? 'bg-white/10' : 'hover:bg-white/10') : (showProjectDetails ? 'bg-zinc-50' : 'hover:bg-zinc-50')}`}
+              className={`p-2.5 rounded-xl transition-all duration-300 flex items-center gap-2 ${
+                theme === 'dark' 
+                  ? (showProjectDetails ? 'bg-white text-black' : 'bg-white/5 text-white hover:bg-white/10') 
+                  : (showProjectDetails ? 'bg-black text-white' : 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200')
+              }`}
               title="Project details"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-[18px] h-[18px] ${theme === 'dark' ? 'text-white' : 'text-[#262626]'}`}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
-              </svg>
+              <HiOutlineClipboardDocumentList className="w-5 h-5" />
+              <span className="text-xs font-bold uppercase tracking-wider hidden sm:block">
+                {showProjectDetails ? "Hide Info" : "Project Info"}
+              </span>
             </button>
             
             {/* Google Drive - Opens footage links popup for all users */}
@@ -1985,6 +2022,114 @@ const ChatPage = () => {
           )}
         </AnimatePresence>
       </header>
+      
+      {/* 2. Project Summary Drawer - Professional Slide Down */}
+      <AnimatePresence>
+        {showProjectDetails && order && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className={`fixed top-[64px] left-0 right-0 z-[45] border-b overflow-hidden shadow-2xl ${
+              theme === 'dark' ? 'bg-[#0a0a0c]/95 border-white/10' : 'bg-white/95 border-zinc-200'
+            } backdrop-blur-xl`}
+          >
+            <div className="max-w-4xl mx-auto p-4 md:p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Column 1: Order Identity */}
+              <div className="space-y-4">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-1">Project Identifier</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-mono font-bold">#{order?.orderNumber || order?._id?.slice(-8).toUpperCase()}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                      order?.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'
+                    }`}>
+                      {order?.status?.replace('_', ' ')}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-1">Time Horizon</span>
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-xl ${theme === 'dark' ? 'bg-white/5' : 'bg-zinc-100'}`}>
+                      <FaCalendarPlus className="w-4 h-4 text-zinc-400" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold">
+                        {order?.deadline ? new Date(order.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : 'Flexible'}
+                      </div>
+                      <div className="text-[11px] text-zinc-500">Scheduled Handover</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Column 2: Financial Matrix */}
+              <div className={`md:border-x px-0 md:px-6 ${theme === 'dark' ? 'border-white/10' : 'border-zinc-200'}`}>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-3 block">Financial Summary</span>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-zinc-400">Project Value</span>
+                    <span className="font-bold">₹{order?.amount?.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-zinc-400">Escrow Status</span>
+                    <span className={`text-xs font-bold ${order?.paymentStatus === 'released' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                      {order?.paymentStatus === 'released' ? 'Released' : order?.paymentStatus === 'escrow' ? 'Secured' : 'Pending'}
+                    </span>
+                  </div>
+                  <div className={`mt-2 pt-2 border-t ${theme === 'dark' ? 'border-white/5' : 'border-zinc-100'} flex justify-between items-center`}>
+                    <span className="text-sm font-bold">Net Earnings</span>
+                    <span className="text-lg font-black text-emerald-500">₹{(order?.editorEarning || order?.amount * 0.9).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Column 3: Progress Matrix */}
+              <div className="space-y-4">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-1 block">Work Stream</span>
+                <div className="relative pt-1">
+                  <div className="flex mb-2 items-center justify-between">
+                    <div>
+                      <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full bg-blue-500/10 text-blue-500 text-[10px]">
+                        Overall Progress
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-black inline-block text-blue-500">
+                        {order?.status === 'completed' ? '100%' : order?.status === 'submitted' ? '90%' : '45%'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className={`overflow-hidden h-1.5 mb-4 text-xs flex rounded-full ${theme === 'dark' ? 'bg-white/10' : 'bg-zinc-100'}`}>
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: order?.status === 'completed' ? '100%' : order?.status === 'submitted' ? '90%' : '45%' }}
+                      className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500"
+                    ></motion.div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setShowProjectDetails(false)}
+                      className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest ${
+                        theme === 'dark' ? 'bg-white text-black hover:bg-zinc-200' : 'bg-black text-white hover:bg-zinc-800'
+                      } transition-colors`}
+                    >
+                      Close Drawer
+                    </button>
+                    <button className={`p-2 rounded-lg border ${theme === 'dark' ? 'border-white/10 hover:bg-white/5' : 'border-zinc-200 hover:bg-zinc-100'}`}>
+                      <FaExternalLinkAlt className="w-3 h-3 text-zinc-400" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+
 
       {/* Deadline Warning Banner - Show to clients when deadline is approaching */}
       <AnimatePresence>
@@ -2097,7 +2242,7 @@ const ChatPage = () => {
                         setReplyingTo(msg);
                       }
                     }}
-                    className={`relative max-w-[75%] md:max-w-[60%] flex items-center gap-2 no-copy ${isMe ? "flex-row-reverse" : "flex-row"}`}
+                    className={`relative max-w-[85%] sm:max-w-[70%] md:max-w-[60%] flex items-center gap-2 no-copy ${isMe ? "flex-row-reverse" : "flex-row"}`}
                     onContextMenu={(e) => e.preventDefault()}
                   >
                   {/* Reply indicator (shows on drag) */}
@@ -2165,15 +2310,15 @@ const ChatPage = () => {
                         </div>
                     )}
 
-                  {/* Message Bubble - Clean Style: Dark for ME, Light gray for THEM */}
+                  {/* Message Bubble - Premium B/W Style */}
                   <div 
-                    className={`relative px-4 py-2.5 overflow-hidden ${
+                    className={`relative overflow-hidden transition-all duration-300 ${
                         msg.isDeleted 
-                            ? "bg-[#EFEFEF] text-[#8e8e8e] rounded-[22px] italic" 
+                            ? (theme === 'dark' ? "bg-white/5 text-zinc-500" : "bg-zinc-100 text-zinc-400") + " rounded-[18px] italic px-3 py-1.5 sm:px-4 sm:py-2"
                             : isMe 
-                            ? "bg-zinc-800 text-white rounded-[22px] rounded-br-[4px]" 
-                            : "bg-[#EFEFEF] text-[#262626] rounded-[22px] rounded-bl-[4px]"
-                    } shadow-sm`}
+                            ? "bg-white text-black shadow-[0_4px_12px_rgba(255,255,255,0.1)] rounded-[18px] rounded-br-[4px] px-3 py-2 sm:px-4 sm:py-3" 
+                            : (theme === 'dark' ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-900") + " rounded-[18px] rounded-bl-[4px] px-3 py-2 sm:px-4 sm:py-3 shadow-md"
+                    }`}
                     onDoubleClick={() => !msg.isDeleted && setReplyingTo(msg)}
                   >
                         {/* Deleted Message */}
@@ -2260,7 +2405,7 @@ const ChatPage = () => {
 
                         {/* Text Content */}
                         {msg.content && msg.type === "text" && (
-                          <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words emoji-font">{msg.content}</p>
+                          <p className="text-sm sm:text-[15px] leading-relaxed whitespace-pre-wrap break-words emoji-font">{msg.content}</p>
                         )}
                         
                         {/* Edited Indicator */}
@@ -2505,61 +2650,6 @@ const ChatPage = () => {
          </AnimatePresence>
          
          <div className="flex items-end gap-2 max-w-4xl mx-auto">
-             {/* Sender Profile Image with Gradient Border */}
-             <button 
-                onClick={() => setShowMediaMenu(!showMediaMenu)}
-                className="w-11 h-11 rounded-full bg-gradient-to-tr from-[#feda75] via-[#fa7e1e] via-[#d62976] via-[#962fbf] to-[#4f5bd5] p-[2px] hover:scale-105 transition-transform"
-             >
-                <div className="w-full h-full rounded-full overflow-hidden bg-white">
-                  {user?.profileImage ? (
-                    <img 
-                      src={user.profileImage} 
-                      alt={user.name} 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-black from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm">
-                      {user?.name?.charAt(0)?.toUpperCase() || "U"}
-                    </div>
-                  )}
-                </div>
-             </button>
-             
-             {/* Popup Menu */}
-             <AnimatePresence>
-                 {showMediaMenu && (
-                     <motion.div 
-                        initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                        className={`absolute bottom-20 left-4 rounded-xl shadow-lg p-2 w-44 flex flex-col gap-1 z-[60] ${theme === 'dark' ? 'bg-[#1a1a1a] border border-white/10' : 'bg-white border border-[#DBDBDB]'}`}
-                    >
-                         <button onClick={() => imageInputRef.current.click()} className={`flex items-center gap-3 p-2.5 rounded-lg text-[14px] ${theme === 'dark' ? 'hover:bg-white/10 text-white' : 'hover:bg-[#FAFAFA] text-[#262626]'}`}><FaCamera className="text-[#E1306C]" /> Photo</button>
-                         <button onClick={() => videoInputRef.current.click()} className={`flex items-center gap-3 p-2.5 rounded-lg text-[14px] ${theme === 'dark' ? 'hover:bg-white/10 text-white' : 'hover:bg-[#FAFAFA] text-[#262626]'}`}><FaVideo className="text-[#0095F6]" /> Video</button>
-                         <button onClick={() => docInputRef.current.click()} className={`flex items-center gap-3 p-2.5 rounded-lg text-[14px] ${theme === 'dark' ? 'hover:bg-white/10 text-white' : 'hover:bg-[#FAFAFA] text-[#262626]'}`}><FaFileAlt className="text-[#FDCB5C]" /> Document</button>
-                         
-                         {/* Share Raw Footage - Client Only */}
-                         {user?.role === "client" && (
-                           <button 
-                             onClick={() => { setShowDriveLinkModal(true); setShowMediaMenu(false); }} 
-                             className="flex items-center gap-3 p-2.5 hover:bg-[#FAFAFA] rounded-lg text-[14px] text-[#262626] border-t border-[#DBDBDB] mt-1 pt-2"
-                           >
-                             <FaFolder className="text-[#4AAE54]" /> Share Footage
-                           </button>
-                         )}
-                         
-                         {/* Send Final Output - Editor Only */}
-                         {user?.role === "editor" && (
-                           <button 
-                             onClick={() => { finalDeliveryInputRef.current?.click(); setShowMediaMenu(false); }} 
-                             className="flex items-center gap-3 p-2.5 hover:bg-[#FAFAFA] rounded-lg text-[14px] text-[#C13584] border-t border-[#DBDBDB] mt-1 pt-2"
-                           >
-                             <FaFilm className="text-[#C13584]" /> Send Final Output
-                           </button>
-                         )}
-                     </motion.div>
-                 )}
-             </AnimatePresence>
 
              {/* Text Input or Voice Recorder */}
              {isRecordingVoice ? (
@@ -2570,7 +2660,7 @@ const ChatPage = () => {
                  />
                </div>
              ) : (
-               <div className={`flex-1 flex items-center gap-2 rounded-[24px] px-4 py-2 border focus-within:border-[#C13584] transition ${theme === 'dark' ? 'bg-white/10 border-white/20' : 'bg-white border-[#DBDBDB]'}`}>
+               <div className={`flex-1 flex items-center gap-2 rounded-[24px] px-3 sm:px-4 py-1.5 sm:py-2 border focus-within:border-[#C13584] transition ${theme === 'dark' ? 'bg-white/10 border-white/20' : 'bg-white border-[#DBDBDB]'}`}>
                    <textarea
                       value={newMessage}
                       onChange={(e) => { setNewMessage(e.target.value); startTyping(orderId); }}
@@ -2578,66 +2668,101 @@ const ChatPage = () => {
                       onKeyDown={(e) => { if(e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
                       placeholder="Message..."
                       rows={1}
-                      className={`flex-1 bg-transparent outline-none resize-none max-h-32 py-1 scrollbar-hide text-[15px] ${theme === 'dark' ? 'text-white placeholder:text-gray-400' : 'text-[#262626] placeholder:text-[#8e8e8e]'}`} 
+                      className={`flex-1 bg-transparent outline-none resize-none max-h-32 py-1 scrollbar-hide text-sm sm:text-[15px] ${theme === 'dark' ? 'text-white placeholder:text-gray-400' : 'text-[#262626] placeholder:text-[#8e8e8e]'}`} 
                    />
-                   {/* Right side - Attachment clip icon + mic when no text */}
+                   {/* Right side - Attachment (+) icon + mic when no text */}
                    {!newMessage.trim() && (
-                     <>
-                       {/* Single Attachment Clip - Opens options menu */}
+                     <div className="flex items-center gap-1">
+                       {/* Single Attachment (+) - Opens WhatsApp style menu */}
                        <div className="relative">
                          <button 
                            onClick={() => setShowAttachmentMenu(!showAttachmentMenu)} 
-                           className={`p-1.5 rounded-full transition ${theme === 'dark' ? (showAttachmentMenu ? 'bg-white text-black' : 'bg-white/90 hover:bg-white text-black') : (showAttachmentMenu ? 'bg-zinc-100' : 'hover:bg-zinc-50') + ' text-[#262626]'}`}
+                           className={`p-2 rounded-full transition-all duration-300 ${
+                             showAttachmentMenu 
+                               ? 'bg-white text-black rotate-45' 
+                               : (theme === 'dark' ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200')
+                           }`}
                          >
-                           <FaPaperclip className="text-lg" />
+                           <FaPlus className="text-sm" />
                          </button>
                          
-                         {/* Attachment Options Popup */}
+                         {/* WhatsApp Style Attachment Options - Pop Animation */}
                          <AnimatePresence>
                            {showAttachmentMenu && (
                              <motion.div
-                               initial={{ opacity: 0, y: 5, scale: 0.95 }}
-                               animate={{ opacity: 1, y: 0, scale: 1 }}
-                               exit={{ opacity: 0, y: 5, scale: 0.95 }}
-                               className="absolute bottom-10 right-0 bg-white border border-[#DBDBDB] rounded-xl shadow-lg p-2 w-48 z-[60]"
+                               initial={{ opacity: 0, scale: 0.5, y: 10, x: -20 }}
+                               animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+                               exit={{ opacity: 0, scale: 0.5, y: 10, x: -20 }}
+                               className={`absolute bottom-12 right-0 p-3 rounded-2xl shadow-2xl flex flex-col gap-3 z-[100] min-w-[160px] ${
+                                 theme === 'dark' ? 'bg-[#1a1a1c]/95 border border-white/10' : 'bg-white border border-zinc-200'
+                               } backdrop-blur-xl`}
                              >
-                               {/* Send Normal File */}
-                               <button 
-                                 onClick={() => { docInputRef.current?.click(); setShowAttachmentMenu(false); }}
-                                 className="w-full flex items-center gap-3 p-2.5 hover:bg-zinc-50 rounded-lg text-[13px] text-[#262626]"
-                               >
-                                 <FaFileAlt className="text-zinc-500" /> Send File
-                               </button>
-                               
-                               {/* Send Final Output - Editor Only */}
-                               {user?.role === "editor" && (
+                               {/* Row 1: Photo & Video */}
+                               <div className="grid grid-cols-3 gap-3">
                                  <button 
-                                   onClick={() => { finalDeliveryInputRef.current?.click(); setShowAttachmentMenu(false); }}
-                                   className="w-full flex items-center gap-3 p-2.5 hover:bg-zinc-50 rounded-lg text-[13px] text-[#C13584] border-t border-zinc-100"
+                                   onClick={() => { imageInputRef.current?.click(); setShowAttachmentMenu(false); }}
+                                   className="flex flex-col items-center gap-1 group"
                                  >
-                                   <FaFilm className="text-[#C13584]" /> Send Final Output
+                                   <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform">
+                                     <HiPhoto className="w-5 h-5" />
+                                   </div>
+                                   <span className="text-[10px] font-bold text-zinc-400">Photo</span>
                                  </button>
-                               )}
-                               
-                               {/* Share Drive Link - Client Only */}
-                               {user?.role === "client" && (
                                  <button 
-                                   onClick={() => { setShowDriveLinkModal(true); setShowAttachmentMenu(false); }}
-                                   className="w-full flex items-center gap-3 p-2.5 hover:bg-zinc-50 rounded-lg text-[13px] text-[#0066da] border-t border-zinc-100"
-                                 >
-                                   <FaFolder className="text-[#0066da]" /> Share Drive Link
+                                   onClick={() => { videoInputRef.current?.click(); setShowAttachmentMenu(false); }}
+                                   className="flex flex-col items-center gap-1 group"
+                                  >
+                                   <div className="w-10 h-10 rounded-full bg-pink-500 flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform">
+                                     <HiVideoCamera className="w-5 h-5" />
+                                   </div>
+                                   <span className="text-[10px] font-bold text-zinc-400">Video</span>
                                  </button>
-                               )}
+                                 <button 
+                                   onClick={() => { docInputRef.current?.click(); setShowAttachmentMenu(false); }}
+                                   className="flex flex-col items-center gap-1 group"
+                                  >
+                                   <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform">
+                                     <HiDocumentText className="w-5 h-5" />
+                                   </div>
+                                   <span className="text-[10px] font-bold text-zinc-400">File</span>
+                                 </button>
+                               </div>
+
+                               {/* Special Row: Delivery/Drive */}
+                               <div className="border-t border-white/5 pt-2 flex flex-col gap-2">
+                                 {user?.role === "editor" && (
+                                   <button 
+                                     onClick={() => { finalDeliveryInputRef.current?.click(); setShowAttachmentMenu(false); }}
+                                     className={`flex items-center gap-3 p-2 rounded-xl transition ${theme === 'dark' ? 'hover:bg-white/5' : 'hover:bg-zinc-50'}`}
+                                   >
+                                     <div className="w-8 h-8 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center text-white">
+                                       <HiSparkles className="w-4 h-4" />
+                                     </div>
+                                     <span className="text-xs font-bold text-zinc-300">Final Delivery</span>
+                                   </button>
+                                 )}
+                                 {user?.role === "client" && (
+                                   <button 
+                                     onClick={() => { setShowDriveLinkModal(true); setShowAttachmentMenu(false); }}
+                                     className={`flex items-center gap-3 p-2 rounded-xl transition ${theme === 'dark' ? 'hover:bg-white/5' : 'hover:bg-zinc-50'}`}
+                                   >
+                                     <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 flex items-center justify-center text-white">
+                                       <HiLink className="w-4 h-4" />
+                                     </div>
+                                     <span className="text-xs font-bold text-zinc-300">Footage Link</span>
+                                   </button>
+                                 )}
+                               </div>
                              </motion.div>
                            )}
                          </AnimatePresence>
                        </div>
                        
                        {/* Voice Message */}
-                       <button onClick={() => setIsRecordingVoice(true)} className={`p-1.5 rounded-full transition ${theme === 'dark' ? 'bg-white/90 hover:bg-white text-black' : 'hover:opacity-70 text-[#262626]'}`}>
-                         <FaMicrophone className="text-lg" />
+                       <button onClick={() => setIsRecordingVoice(true)} className={`p-2 rounded-full transition ${theme === 'dark' ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200'}`}>
+                         <FaMicrophone className="text-sm" />
                        </button>
-                     </>
+                     </div>
                    )}
                </div>
              )}

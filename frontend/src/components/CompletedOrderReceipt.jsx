@@ -53,7 +53,7 @@ const CompletedOrderReceipt = ({ order }) => {
       initial={{ opacity: 0, scale: 0.9, y: 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.5, type: "spring" }}
-      className="w-full max-w-md mx-auto my-6"
+      className="w-full max-w-[340px] sm:max-w-md mx-auto my-3 sm:my-6"
     >
       {/* Premium Receipt Card */}
       <div className="relative overflow-hidden rounded-3xl">
@@ -63,7 +63,7 @@ const CompletedOrderReceipt = ({ order }) => {
         {/* Glass card */}
         <div className="relative bg-black/90 backdrop-blur-xl rounded-3xl overflow-hidden m-[2px]">
           {/* Header with success animation */}
-          <div className="relative bg-gradient-to-r from-emerald-900/50 to-green-900/50 px-6 py-8 text-center">
+          <div className="relative bg-gradient-to-r from-emerald-900/50 to-green-900/50 px-4 py-6 sm:px-6 sm:py-8 text-center">
             {/* Animated circles background */}
             <div className="absolute inset-0 overflow-hidden">
               <div className="absolute top-4 left-4 w-20 h-20 bg-emerald-500/10 rounded-full blur-xl animate-pulse" />
@@ -77,8 +77,8 @@ const CompletedOrderReceipt = ({ order }) => {
               transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
               className="relative z-10"
             >
-              <div className="w-20 h-20 mx-auto bg-gradient-to-br from-emerald-500 to-green-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                <FaCheckCircle className="text-white text-4xl" />
+              <div className="w-14 h-14 sm:w-20 sm:h-20 mx-auto bg-gradient-to-br from-emerald-500 to-green-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                <FaCheckCircle className="text-white text-2xl sm:text-4xl" />
               </div>
             </motion.div>
             
@@ -86,30 +86,30 @@ const CompletedOrderReceipt = ({ order }) => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="relative z-10 mt-4"
+              className="relative z-10 mt-3 sm:mt-4"
             >
-              <h2 className="text-2xl font-bold text-white">Order Completed!</h2>
-              <p className="text-emerald-300 text-sm mt-1">Transaction Successful</p>
+              <h2 className="text-lg sm:text-2xl font-bold text-white">Order Completed!</h2>
+              <p className="text-emerald-300 text-[12px] sm:text-sm mt-1">Transaction Successful</p>
             </motion.div>
           </div>
 
           {/* Receipt content */}
-          <div className="px-6 py-6 space-y-5">
+          <div className="px-4 py-4 sm:px-6 sm:py-6 space-y-4 sm:space-y-5">
             {/* Order Number */}
-            <div className="text-center pb-4 border-b border-white/10">
-              <p className="text-gray-400 text-xs uppercase tracking-wider">Order Number</p>
-              <p className="text-white font-mono text-lg font-bold mt-1">{order.orderNumber}</p>
+            <div className="text-center pb-3 border-b border-white/10">
+              <p className="text-gray-400 text-[10px] sm:text-xs uppercase tracking-wider">Order Number</p>
+              <p className="text-white font-mono text-base sm:text-lg font-bold mt-1">{order.orderNumber}</p>
             </div>
 
             {/* Project Title */}
-            <div className="bg-white/5 rounded-xl p-4">
+            <div className="bg-white/5 rounded-xl p-3 sm:p-4">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center shrink-0">
-                  <FaFileAlt className="text-purple-400" />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-500/20 rounded-lg flex items-center justify-center shrink-0">
+                  <FaFileAlt className="text-purple-400 text-sm sm:text-base" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-gray-400 text-xs">Project</p>
-                  <p className="text-white font-semibold truncate">{order.title}</p>
+                  <p className="text-gray-400 text-[10px] sm:text-xs">Project</p>
+                  <p className="text-white text-sm sm:text-base font-semibold truncate">{order.title}</p>
                 </div>
               </div>
             </div>

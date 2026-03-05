@@ -134,7 +134,7 @@ const FinalDeliveryCard = ({
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-[240px] no-copy"
+        className="w-full max-w-[180px] sm:max-w-[240px] no-copy"
         onContextMenu={(e) => e.preventDefault()}
       >
         {/* Reel Media - No border, no background, natural aspect */}
@@ -174,8 +174,8 @@ const FinalDeliveryCard = ({
           {/* Play Button - Centered */}
           {isVideo && imageLoaded && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform">
-                <FaPlay className="text-white text-base ml-0.5" />
+              <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform">
+                <FaPlay className="text-white text-[10px] sm:text-base ml-0.5" />
               </div>
             </div>
           )}
@@ -205,12 +205,12 @@ const FinalDeliveryCard = ({
         {/* Details OUTSIDE/BELOW the reel */}
         <div className="mt-2 space-y-1">
           {/* Ratio, Size, Timer Row */}
-          <div className="flex items-center gap-2 text-[10px]">
-            <span className="px-1.5 py-0.5 bg-zinc-800 rounded text-zinc-300 font-medium">{aspectRatio}</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px]">
+            <span className="px-1 py-0.5 sm:px-1.5 sm:py-0.5 bg-zinc-800 rounded text-zinc-300 font-medium">{aspectRatio}</span>
             <span className="text-zinc-500">{formatBytes(delivery.fileSize)}</span>
             {timeLeft && !isCompleted && (
               <span className="text-amber-400 flex items-center gap-0.5 ml-auto">
-                <FaClock className="text-[8px]" />
+                <FaClock className="text-[7px] sm:text-[8px]" />
                 {timeLeft.hours}h {timeLeft.mins}m
               </span>
             )}
@@ -218,8 +218,8 @@ const FinalDeliveryCard = ({
 
           {/* Status */}
           <div className="flex items-center gap-1">
-            <div className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`} />
-            <span className={`text-[10px] ${statusConfig.color}`}>{statusConfig.label}</span>
+            <div className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${statusConfig.dot}`} />
+            <span className={`text-[9px] sm:text-[10px] ${statusConfig.color}`}>{statusConfig.label}</span>
           </div>
 
           {/* Action Buttons */}

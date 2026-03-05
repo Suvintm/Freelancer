@@ -223,10 +223,11 @@ export const SocketProvider = ({ children }) => {
       }
     });
 
-    // Read receipts
+    // Read receipts - only clear count for the specific user who marked as read
     newSocket.on("message:read", ({ orderId, readBy }) => {
       console.log("✓✓ Message read:", orderId, "by", readBy);
-      if (readBy === user._id) {
+      // Use toString() to safely compare string vs ObjectId
+      if (readBy?.toString() === user._id?.toString()) {
         setUnreadCounts((prev) => {
           const newCounts = { ...prev };
           const diff = newCounts[orderId] || 0;

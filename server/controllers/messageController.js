@@ -284,6 +284,8 @@ export const getUnreadCountsPerOrder = asyncHandler(async (req, res) => {
         sender: { $ne: userId },
         seen: false,
         isDeleted: { $ne: true },
+        // System messages are informational and should never count as unread
+        type: { $ne: "system" },
       },
     },
     {
@@ -664,13 +666,30 @@ export const sendDriveLink = asyncHandler(async (req, res) => {
   const { orderId } = req.params;
   const { url, title, description, provider, fileCount, totalSize } = req.body;
 
-  if (!url) {
+  // 🔍 DEBUG: trace exact URL received
+  console.log("═══════════════════════════════════");
+  console.log("📥 [DRIVE-LINK] Raw req.body:", JSON.stringify(req.body, null, 2));
+  console.log("📥 [DRIVE-LINK] typeof url:", typeof url);
+  console.log("📥 [DRIVE-LINK] url value:", String(url));
+  console.log("═══════════════════════════════════");
+
+  // Validate URL — use URL constructor (handles all valid URLs reliably)
+  const urlString = typeof url === "string" ? url.trim() : String(url || "").trim();
+  console.log("📐 [DRIVE-LINK] urlString after trim:", urlString);
+  if (!urlString) {
     throw new ApiError(400, "URL is required");
   }
-
-  // Validate URL format
-  const urlPattern = /^https?:\/\/.+/i;
-  if (!urlPattern.test(url)) {
+  let normalizedUrl;
+  try {
+    const parsed = new URL(urlString);
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      throw new ApiError(400, "URL must start with http:// or https://");
+    }
+    normalizedUrl = parsed.href; // always has protocol (e.g. https://drive.google.com/...)
+    console.log("✅ [DRIVE-LINK] normalizedUrl (will be stored):", normalizedUrl);
+  } catch (e) {
+    console.log("❌ [DRIVE-LINK] URL parse error:", e.message);
+    if (e instanceof ApiError) throw e;
     throw new ApiError(400, "Invalid URL format");
   }
 
@@ -691,11 +710,11 @@ export const sendDriveLink = asyncHandler(async (req, res) => {
   // Detect provider from URL
   let detectedProvider = provider || "other";
   if (!provider) {
-    if (url.includes("drive.google.com")) detectedProvider = "google_drive";
-    else if (url.includes("dropbox.com")) detectedProvider = "dropbox";
-    else if (url.includes("onedrive")) detectedProvider = "onedrive";
-    else if (url.includes("wetransfer.com")) detectedProvider = "wetransfer";
-    else if (url.includes("mega.nz")) detectedProvider = "mega";
+    if (normalizedUrl.includes("drive.google.com")) detectedProvider = "google_drive";
+    else if (normalizedUrl.includes("dropbox.com")) detectedProvider = "dropbox";
+    else if (normalizedUrl.includes("onedrive")) detectedProvider = "onedrive";
+    else if (normalizedUrl.includes("wetransfer.com")) detectedProvider = "wetransfer";
+    else if (normalizedUrl.includes("mega.nz")) detectedProvider = "mega";
   }
 
   const message = await Message.create({
@@ -705,7 +724,7 @@ export const sendDriveLink = asyncHandler(async (req, res) => {
     content: description || "Shared raw footage files",
     externalLink: {
       provider: detectedProvider,
-      url,
+      url: normalizedUrl,
       title: title || "Raw Footage Package",
       description: description || "",
       fileCount: fileCount || null,
