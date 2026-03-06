@@ -126,18 +126,26 @@ export const SocketProvider = ({ children }) => {
 
     // Message events - now includes real-time status updates
     newSocket.on("message:new", (message) => {
-      console.log("💬 New message received:", message);
-      const senderId = message.sender?._id || message.sender;
-      if (senderId !== user._id) {
+      // sender can be an ObjectId object (from populated toObject()) or a plain string
+      const senderIdStr = (message.sender?._id ?? message.sender)?.toString();
+      const currentUserIdStr = user._id?.toString();
+      
+      console.log(`[SocketContext] 💬 Message:new in order ${message.orderId || message.order} from ${senderIdStr}. Me: ${currentUserIdStr}`);
+
+      if (senderIdStr !== currentUserIdStr) {
+        console.log(`[SocketContext] 📈 Incrementing unread counts`);
+        const orderKey = message.orderId || message.order;
         setUnreadCounts((prev) => ({
           ...prev,
-          [message.orderId || message.order]: (prev[message.orderId || message.order] || 0) + 1,
+          [orderKey]: (prev[orderKey] || 0) + 1,
         }));
         setTotalUnread((prev) => prev + 1);
         toast.info(`New message from ${message.senderName || message.sender?.name || "Someone"}`, {
           position: "top-right",
           autoClose: 3000,
         });
+      } else {
+        console.log(`[SocketContext] 💁 Own message, NOT incrementing unread counts`);
       }
     });
 

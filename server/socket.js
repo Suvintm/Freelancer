@@ -79,9 +79,9 @@ io.use((socket, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("🔐 JWT decoded:", JSON.stringify(decoded));
+    console.log("🔐 JWT decoded");
     
-    socket.userId = decoded._id || decoded.id || decoded.userId;
+    socket.userId = (decoded._id || decoded.id || decoded.userId)?.toString();
     socket.userName = decoded.name || "Unknown";
     
     if (!socket.userId) {
@@ -116,7 +116,7 @@ io.on("connection", (socket) => {
 
   socket.on("room:join", ({ orderId }) => {
     socket.join(`order_${orderId}`);
-    console.log(`📥 User ${userId} joined room: order_${orderId}`);
+    console.log(`📥 User ${socket.userId} joined room: order_${orderId}`);
     
     // Send current message statuses when joining room
     Message.find({ order: orderId })

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaArrowLeft,
@@ -85,7 +85,7 @@ const AllChatsPage = () => {
     fetchChats();
   }, []);
 
-  const handleNewMessage = (message) => {
+  const handleNewMessage = useCallback((message) => {
     setChats(prevChats => {
       const orderId = message.orderId || message.order;
       const chatIndex = prevChats.findIndex(c => c._id === orderId);
@@ -100,12 +100,23 @@ const AllChatsPage = () => {
         sender: message.sender
       };
       chat.lastActivityAt = message.createdAt;
-      if (message.sender?._id !== user?._id) chat.unreadCount = (chat.unreadCount || 0) + 1;
+      
+      const senderIdStr = (message.sender?._id ?? message.sender)?.toString();
+      const currentUserIdStr = user?._id?.toString();
+      
+      console.log(`[AllChatsPage] New message in ${orderId} from ${senderIdStr}. Me: ${currentUserIdStr}`);
+      
+      if (senderIdStr !== currentUserIdStr) {
+        console.log(`[AllChatsPage] Incrementing unread for ${orderId}`);
+        chat.unreadCount = (chat.unreadCount || 0) + 1;
+      } else {
+        console.log(`[AllChatsPage] Own message, NOT incrementing unread`);
+      }
+      
       updatedChats[chatIndex] = chat;
-
       return sortChats(updatedChats);
     });
-  };
+  }, [user?._id]);
 
   useEffect(() => {
     const socket = socketContext?.socket;
@@ -116,7 +127,13 @@ const AllChatsPage = () => {
 
     // Message read: clear unread count for the chat the user just opened
     const handleMessageRead = ({ orderId, readBy }) => {
-      if (readBy === user?._id) {
+      const readByStr = readBy?.toString();
+      const currentUserIdStr = user?._id?.toString();
+      
+      console.log(`[AllChatsPage] Message:read event for ${orderId} by ${readByStr}. Me: ${currentUserIdStr}`);
+      
+      if (readByStr === currentUserIdStr) {
+        console.log(`[AllChatsPage] Clearing unread count for ${orderId}`);
         setChats(prev => prev.map(c =>
           c._id === orderId ? { ...c, unreadCount: 0 } : c
         ));

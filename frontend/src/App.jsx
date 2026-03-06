@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"; 
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import SplashScreen from "./components/SplashScreen.jsx";
 import Homepage from "./pages/Homepage.jsx";
@@ -209,11 +209,7 @@ function App() {
         />
         <Route
           path="/client-messages"
-          element={
-            <ProtectedRoute allowedRoles={["client"]}>
-              <ClientMessages />
-            </ProtectedRoute>
-          }
+          element={<Navigate to="/chats" replace />}
         />
         <Route
           path="/client-profile"

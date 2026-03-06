@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Message } from "../models/Message.js";
 import { Order } from "../models/Order.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
@@ -5,9 +6,10 @@ import { createNotification } from "./notificationController.js";
 import { getIO } from "../socket.js";
 import logger from "../utils/logger.js";
 
-// ============ GET MESSAGES FOR ORDER ============
+// ============ GET MESSAGES FOR ORDER (Cursor-based pagination) ============
 export const getMessages = asyncHandler(async (req, res) => {
   const { orderId } = req.params;
+  const { cursor, limit = 30 } = req.query; // cursor = oldest _id already loaded
 
   // Verify order access
   const order = await Order.findById(orderId);
@@ -22,26 +24,48 @@ export const getMessages = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Not authorized to view messages");
   }
 
-  const messages = await Message.find({ order: orderId })
-    .populate("sender", "name profilePicture")
-    .sort({ createdAt: 1 });
+  // Build query - if cursor provided, fetch messages OLDER than the cursor
+  const query = { order: orderId };
+  if (cursor) {
+    query._id = { $lt: cursor }; // ObjectId comparison works as timestamp comparison
+  }
 
-  // Mark messages as seen
-  await Message.updateMany(
-    {
-      order: orderId,
-      sender: { $ne: req.user._id },
-      seen: false,
-    },
-    {
-      seen: true,
-      seenAt: new Date(),
-    }
-  );
+  const pageLimit = Math.min(parseInt(limit), 50); // cap at 50 per request
+
+  const messages = await Message.find(query)
+    .populate("sender", "name profilePicture")
+    .sort({ createdAt: -1 }) // newest first so we get the most recent page
+    .limit(pageLimit);
+
+  // Reverse so messages are in ascending chronological order for the UI
+  const orderedMessages = messages.reverse();
+
+  // Determine if there are more messages older than what we just loaded
+  const hasMore = messages.length === pageLimit;
+  const nextCursor = hasMore && orderedMessages.length > 0
+    ? orderedMessages[0]._id.toString()
+    : null;
+
+  // Mark messages as seen (only for the initial load, when no cursor is passed meaning fresh open)
+  if (!cursor) {
+    await Message.updateMany(
+      {
+        order: orderId,
+        sender: { $ne: req.user._id },
+        seen: false,
+      },
+      {
+        seen: true,
+        seenAt: new Date(),
+      }
+    );
+  }
 
   res.status(200).json({
     success: true,
-    messages,
+    messages: orderedMessages,
+    hasMore,
+    nextCursor,
   });
 });
 
@@ -240,72 +264,92 @@ export const markAsDownloaded = asyncHandler(async (req, res) => {
 
 // ============ GET UNREAD COUNT ============
 export const getUnreadCount = asyncHandler(async (req, res) => {
-  const userId = req.user._id;
+  try {
+    if (!req.user?._id) {
+      return res.status(200).json({ success: true, unreadCount: 0 });
+    }
+    const userId = req.user._id;
 
-  // Get all orders where user is participant
-  const orders = await Order.find({
-    $or: [{ client: userId }, { editor: userId }],
-    status: { $in: ["accepted", "in_progress", "submitted"] },
-  });
+    // Get all orders where user is participant
+    const orders = await Order.find({
+      $or: [{ client: userId }, { editor: userId }],
+      status: { $in: ["accepted", "in_progress", "submitted"] },
+    });
 
-  const orderIds = orders.map((o) => o._id);
+    const orderIds = orders.map((o) => o._id);
 
-  // Count unread messages
-  const unreadCount = await Message.countDocuments({
-    order: { $in: orderIds },
-    sender: { $ne: userId },
-    seen: false,
-  });
+    // Count unread messages
+    const unreadCount = await Message.countDocuments({
+      order: { $in: orderIds },
+      sender: { $ne: userId },
+      seen: false,
+    });
 
-  res.status(200).json({
-    success: true,
-    unreadCount,
-  });
+    res.status(200).json({
+      success: true,
+      unreadCount,
+    });
+  } catch (error) {
+    logger.error("Error in getUnreadCount:", error);
+    res.status(500).json({ success: false, message: "Internal server error fetching unread count" });
+  }
 });
 
 // ============ GET UNREAD COUNTS PER ORDER ============
 // 🆕 Returns unread count for each order (used by chat list without marking as seen)
 export const getUnreadCountsPerOrder = asyncHandler(async (req, res) => {
-  const userId = req.user._id;
+  try {
+    if (!req.user?._id) {
+      return res.status(200).json({ success: true, unreadCounts: {} });
+    }
+    const userId = new mongoose.Types.ObjectId(req.user._id);
 
-  // Get all orders where user is participant
-  const orders = await Order.find({
-    $or: [{ client: userId }, { editor: userId }],
-    status: { $in: ["accepted", "in_progress", "submitted", "completed"] },
-  });
+    // Get all orders where user is participant
+    const orders = await Order.find({
+      $or: [{ client: userId }, { editor: userId }],
+      status: { $in: ["accepted", "in_progress", "submitted", "completed"] },
+    });
 
-  const orderIds = orders.map((o) => o._id);
+    const orderIds = orders.map((o) => o._id);
 
-  // Get unread counts grouped by order using aggregation
-  const unreadCounts = await Message.aggregate([
-    {
-      $match: {
-        order: { $in: orderIds },
-        sender: { $ne: userId },
-        seen: false,
-        isDeleted: { $ne: true },
-        // System messages are informational and should never count as unread
-        type: { $ne: "system" },
+    if (orderIds.length === 0) {
+      return res.status(200).json({ success: true, unreadCounts: {} });
+    }
+
+    // Get unread counts grouped by order using aggregation
+    const unreadCounts = await Message.aggregate([
+      {
+        $match: {
+          order: { $in: orderIds },
+          sender: { $ne: userId },
+          seen: false,
+          isDeleted: { $ne: true },
+          // System messages are informational and should never count as unread
+          type: { $ne: "system" },
+        },
       },
-    },
-    {
-      $group: {
-        _id: "$order",
-        count: { $sum: 1 },
+      {
+        $group: {
+          _id: "$order",
+          count: { $sum: 1 },
+        },
       },
-    },
-  ]);
+    ]);
 
-  // Convert to object { orderId: count }
-  const counts = {};
-  unreadCounts.forEach((item) => {
-    counts[item._id.toString()] = item.count;
-  });
+    // Convert to object { orderId: count }
+    const counts = {};
+    unreadCounts.forEach((item) => {
+      counts[item._id.toString()] = item.count;
+    });
 
-  res.status(200).json({
-    success: true,
-    unreadCounts: counts,
-  });
+    res.status(200).json({
+      success: true,
+      unreadCounts: counts,
+    });
+  } catch (error) {
+    logger.error("Error in getUnreadCountsPerOrder:", error);
+    res.status(500).json({ success: false, message: "Internal server error fetching unread counts" });
+  }
 });
 
 // ============ UPLOAD FILE ============

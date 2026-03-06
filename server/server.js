@@ -224,7 +224,7 @@ app.use(passport.session());
 // ============ REQUEST LOGGING ============
 
 app.use((req, res, next) => {
-  logger.info({
+  logger.info(`Incoming request: ${req.method} ${req.originalUrl}`, {
     method: req.method,
     url: req.originalUrl,
     ip: req.ip,

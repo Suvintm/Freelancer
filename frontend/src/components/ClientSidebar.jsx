@@ -159,7 +159,7 @@ const ClientSidebar = ({ isOpen, onClose }) => {
       id: "messages",
       label: "Messages",
       icon: HiOutlineChatBubbleLeftRight,
-      path: "/client-messages",
+      path: "/chats",
       type: "link",
       badge: displayUnread,
     },

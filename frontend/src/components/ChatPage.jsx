@@ -644,6 +644,9 @@ const ChatPage = () => {
   const videoInputRef = useRef(null);
   const docInputRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const markAsReadTimerRef = useRef(null); // debounce timer for markAsRead
+  const isInitialLoad = useRef(true); // track first load for instant scroll
+  const [initialScrollFinished, setInitialScrollFinished] = useState(false); // trigger for IntersectionObserver
 
   // --- State ---
   const [messages, setMessages] = useState([]);
@@ -655,6 +658,12 @@ const ChatPage = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [typingUsers, setTypingUsers] = useState([]);
   const [showMediaMenu, setShowMediaMenu] = useState(false);
+  // --- Pagination state ---
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [paginationCursor, setPaginationCursor] = useState(null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const scrollContainerRef = useRef(null);
+  const topSentinelRef = useRef(null);
   const [previewMedia, setPreviewMedia] = useState(null);
   const [replyingTo, setReplyingTo] = useState(null);
   const [pendingFile, setPendingFile] = useState(null);
@@ -823,10 +832,62 @@ const ChatPage = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessages(data.messages || []);
+      setHasMoreMessages(data.hasMore || false);
+      setPaginationCursor(data.nextCursor || null);
     } catch (err) {
       console.error("fetchMessages error", err);
     }
   }, [backendURL, orderId, user?.token]);
+
+  // Load older messages (called when user scrolls to top)
+  const loadOlderMessages = useCallback(async () => {
+    if (!orderId || !paginationCursor || loadingOlder || !hasMoreMessages) return;
+    setLoadingOlder(true);
+    try {
+      const token = user?.token;
+      const { data } = await axios.get(
+        `${backendURL}/api/messages/${orderId}?cursor=${paginationCursor}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const older = data.messages || [];
+      if (older.length > 0) {
+        // Remember scroll height before prepend so we can restore position
+        const container = scrollContainerRef.current;
+        const prevScrollHeight = container ? container.scrollHeight : 0;
+        setMessages(prev => [...older, ...prev]);
+        setHasMoreMessages(data.hasMore || false);
+        setPaginationCursor(data.nextCursor || null);
+        // Restore scroll position after DOM update
+        requestAnimationFrame(() => {
+          if (container) {
+            container.scrollTop = container.scrollHeight - prevScrollHeight;
+          }
+        });
+      }
+    } catch (err) {
+      console.error("loadOlderMessages error", err);
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [backendURL, orderId, paginationCursor, loadingOlder, hasMoreMessages, user?.token]);
+
+  // IntersectionObserver: watch the top sentinel div; when it enters view, load older msgs
+  useEffect(() => {
+    const sentinel = topSentinelRef.current;
+    // CRITICAL: Don't start observing until the initial scroll to bottom is complete
+    if (!sentinel || !hasMoreMessages || !initialScrollFinished) return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadOlderMessages();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadOlderMessages, hasMoreMessages, initialScrollFinished]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -892,7 +953,16 @@ const ChatPage = () => {
   useEffect(() => {
     if (orderId && socket) {
       joinRoom(orderId);
-      markAsRead(orderId);
+
+      // Debounced markAsRead — fires once after 400ms of no new messages
+      const debouncedMarkAsRead = () => {
+        if (markAsReadTimerRef.current) clearTimeout(markAsReadTimerRef.current);
+        markAsReadTimerRef.current = setTimeout(() => {
+          if (document.hasFocus()) markAsRead(orderId);
+        }, 400);
+      };
+
+      debouncedMarkAsRead(); // Mark as read on room join
 
       const handleNewMessage = (message) => {
         const msgOrderId = message.orderId || message.order;
@@ -902,7 +972,8 @@ const ChatPage = () => {
             if (prev.some(m => m._id?.toString() === message._id?.toString())) return prev;
             return [...prev, message];
           });
-          if (document.hasFocus()) markAsRead(orderId);
+          // Debounced: wait 400ms after last message before sending read receipt
+          debouncedMarkAsRead();
         }
       };
 
@@ -1039,9 +1110,28 @@ const ChatPage = () => {
   }, [orderId, socket, joinRoom, leaveRoom, markAsRead, user?._id]);
 
   // --- Auto Scroll ---
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, typingUsers]);
+  // --- Auto Scroll (WhatsApp Style) ---
+useEffect(() => {
+  const container = scrollContainerRef.current;
+  if (!container) return;
+
+  if (isInitialLoad.current) {
+    // Instantly jump to bottom when chat opens
+    requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight;
+      setInitialScrollFinished(true);
+    });
+
+    isInitialLoad.current = false;
+  } else {
+    // Smooth scroll only when new message arrives
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: "smooth",
+    });
+  }
+}, [messages]);
+
 
   // --- Handlers ---
   const handleSendMessage = async () => {
@@ -1454,10 +1544,6 @@ const ChatPage = () => {
   const otherParty = user?.role === "editor" ? order?.client : order?.editor;
   const isOnline = otherParty?._id ? onlineUsers.includes(otherParty._id) : false;
 
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, typingUsers]);
 
   if (loading) return <div className="min-h-screen bg-[#09090B] light:bg-[#FAFAFA] flex items-center justify-center text-white light:text-zinc-900">Loading...</div>;
 
@@ -1497,6 +1583,26 @@ const ChatPage = () => {
   };
 
   const deadlineStatus = getDeadlineStatus();
+
+  const formatChatDate = (date) => {
+    const msgDate = new Date(date);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    if (msgDate.toDateString() === today.toDateString()) {
+      return "Today";
+    }
+    if (msgDate.toDateString() === yesterday.toDateString()) {
+      return "Yesterday";
+    }
+
+    return msgDate.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
   return (
     <div 
@@ -2195,32 +2301,65 @@ const ChatPage = () => {
 
       {/* 2. Messages Area (Textured Background) - with padding for fixed header/footer */}
       <div 
-        className="flex-1 overflow-y-auto overflow-x-hidden p-4 pt-40 pb-32 space-y-2 relative scroll-smooth no-copy"
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 pt-40 pb-32 space-y-2 relative no-copy"
         onContextMenu={(e) => e.preventDefault()}
         style={{
           backgroundImage: `url(${chattexture})`,
-          backgroundSize: "cover", // Or "300px" based on texture type
+          backgroundSize: "cover",
           backgroundRepeat: "repeat",
-          backgroundAttachment: "fixed" 
+          backgroundAttachment: "fixed",
+          opacity: initialScrollFinished ? 1 : 0,
+          transition: "opacity 0.2s ease-in-out"
         }}
       >
         {/* Light overlay for readability */}
         <div className={`fixed inset-0 pointer-events-none z-0 ${theme === 'dark' ? 'bg-[#0a0a0c]/95' : 'bg-white/95'}`} />
 
-        <div className="relative z-10 flex flex-col gap-1 pb-4">
+        <div className="relative z-20 flex flex-col gap-1 pb-4">
+          {/* Sentinel for infinite scroll — triggers loadOlderMessages when visible */}
+          {hasMoreMessages && (
+            <div ref={topSentinelRef} className="flex justify-center py-2">
+              {loadingOlder ? (
+                <div className="flex items-center gap-2 text-xs text-gray-400 bg-black/20 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                  <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4" strokeDashoffset="10" />
+                  </svg>
+                  Loading older messages...
+                </div>
+              ) : (
+                <div className="h-1" />
+              )}
+            </div>
+          )}
           {messages.map((msg, i) => {
             const isMe = msg.sender?._id === user?._id || msg.sender === user?._id;
             const isLast = i === messages.length - 1;
             
+            // Date separator logic
+            const showDate =
+              i === 0 ||
+              new Date(messages[i - 1].createdAt).toDateString() !==
+                new Date(msg.createdAt).toDateString();
+
             return (
-              <motion.div
-                key={msg._id || i}
-                id={`msg-${msg._id}`}
-                initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.2 }}
-                className={`flex w-full ${msg.type === "payment_request" ? "justify-center" : isMe ? "justify-end" : "justify-start"} group mb-1 transition-all duration-300`}
-              >
+              <React.Fragment key={msg._id || i}>
+                {showDate && (
+                  <div className="flex justify-center my-6 relative z-10">
+                    <div className="px-3 py-1 text-[11px] bg-zinc-800 text-zinc-300 rounded-full shadow-sm">
+                      {formatChatDate(msg.createdAt)}
+                    </div>
+                  </div>
+                )}
+                
+                <motion.div
+                  key={msg._id || i}
+                  id={`msg-${msg._id}`}
+                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.2 }}
+                  className={`flex w-full ${msg.type === "payment_request" ? "justify-center" : isMe ? "justify-end" : "justify-start"} group mb-1 transition-all duration-300`}
+                >
                 {/* Special: Payment Request Card - Full Width Centered */}
                 {msg.type === "payment_request" ? (
                   <PaymentRequestCard 
@@ -2486,9 +2625,11 @@ const ChatPage = () => {
                 </motion.div>
                 )}
               </motion.div>
-            );
-          })}
+            </React.Fragment>
+          );
+        })}
           
+
           {/* Typing Indicator: Premium "Wave" Animation */}
           <AnimatePresence>
             {typingUsers.length > 0 && (
@@ -2512,11 +2653,6 @@ const ChatPage = () => {
                 </motion.div>
             )}
           </AnimatePresence>
-
-          {/* 🧾 Completed Order Receipt */}
-          {order?.status === "completed" && (
-            <CompletedOrderReceipt order={order} />
-          )}
 
           <div ref={messagesEndRef} className="h-1" />
         </div>
