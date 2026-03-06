@@ -36,6 +36,7 @@ import {
   FaClipboardList,
   FaReceipt,
   FaPlus,
+  FaClock,
 } from "react-icons/fa";
 import { 
   HiOutlineClipboardDocumentList, 
@@ -137,7 +138,7 @@ const MediaCard = ({ msg, isMe, onClick }) => {
         />
       ) : (
         <div className="relative w-full">
-          <video 
+          <video
             src={msg.mediaUrl} 
             className={`w-full h-auto max-h-[350px] object-cover rounded-2xl no-copy transition-all duration-500 ${!loaded && !isMe ? "blur-md scale-105" : ""}`}
             onLoadedData={() => setLoaded(true)}
@@ -1142,24 +1143,52 @@ useEffect(() => {
 
     try {
       const token = user?.token;
-      const messageData = { content: newMessage.trim(), type: "text" };
+      
+      // 🚀 Optimistic UI: Create temporary message
+      const tempId = `temp_${Date.now()}`;
+      const optimisticMsg = {
+        _id: tempId,
+        content: newMessage.trim(),
+        type: "text",
+        sender: { _id: user._id, name: user.name, profilePicture: user.profilePicture },
+        createdAt: new Date().toISOString(),
+        isPending: true, // Custom flag for UI
+        status: "pending"
+      };
+
       if (replyingTo) {
-        messageData.replyTo = replyingTo._id;
-        messageData.replyPreview = {
+        optimisticMsg.replyTo = replyingTo._id;
+        optimisticMsg.replyPreview = {
           senderName: replyingTo.sender?.name || "Unknown",
           content: replyingTo.content || "Media",
           type: replyingTo.type,
         };
       }
 
-      await axios.post(`${backendURL}/api/messages/${orderId}`, messageData, {
+      // Add to state instantly
+      setMessages(prev => [...prev, optimisticMsg]);
+      setNewMessage("");
+      setReplyingTo(null);
+
+      const messageContent = newMessage.trim();
+      const messageData = { content: messageContent, type: "text" };
+      if (optimisticMsg.replyTo) {
+        messageData.replyTo = optimisticMsg.replyTo;
+        messageData.replyPreview = optimisticMsg.replyPreview;
+      }
+
+      const { data } = await axios.post(`${backendURL}/api/messages/${orderId}`, messageData, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      setNewMessage("");
-      setReplyingTo(null);
+      // Update the optimistic message with the real one from server
+      if (data.message) {
+        setMessages(prev => prev.map(m => m._id === tempId ? data.message : m));
+      }
     } catch (err) {
       toast.error("Failed to send.");
+      // 🚀 Clean up optimistic message on failure
+      setMessages(prev => prev.filter(m => m._id !== tempId));
     } finally {
       setSending(false);
     }
@@ -2342,6 +2371,12 @@ useEffect(() => {
               new Date(messages[i - 1].createdAt).toDateString() !==
                 new Date(msg.createdAt).toDateString();
 
+            // 🤳 Same-sender grouping logic
+            // Group if: same sender AND not a new date AND within 5 minutes
+            const isGrouped = !showDate && i > 0 && 
+              (messages[i - 1].sender?._id === msg.sender?._id || messages[i - 1].sender === msg.sender?._id || messages[i - 1].sender?._id === msg.sender) &&
+              (new Date(msg.createdAt) - new Date(messages[i - 1].createdAt) < 5 * 60 * 1000);
+
             return (
               <React.Fragment key={msg._id || i}>
                 {showDate && (
@@ -2358,7 +2393,7 @@ useEffect(() => {
                   initial={{ opacity: 0, y: 10, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ duration: 0.2 }}
-                  className={`flex w-full ${msg.type === "payment_request" ? "justify-center" : isMe ? "justify-end" : "justify-start"} group mb-1 transition-all duration-300`}
+                  className={`flex w-full ${msg.type === "payment_request" ? "justify-center" : isMe ? "justify-end" : "justify-start"} group ${isGrouped ? "mb-0.5" : "mb-3"} transition-all duration-300`}
                 >
                 {/* Special: Payment Request Card - Full Width Centered */}
                 {msg.type === "payment_request" ? (
@@ -2454,6 +2489,8 @@ useEffect(() => {
                     className={`relative overflow-hidden transition-all duration-300 ${
                         msg.isDeleted 
                             ? (theme === 'dark' ? "bg-white/5 text-zinc-500" : "bg-zinc-100 text-zinc-400") + " rounded-[18px] italic px-3 py-1.5 sm:px-4 sm:py-2"
+                            : (msg.type === "image" || msg.type === "video" || msg.type === "final_delivery")
+                            ? "bg-transparent border border-white/10 rounded-[18px] p-1 shadow-lg"
                             : isMe 
                             ? "bg-white text-black shadow-[0_4px_12px_rgba(255,255,255,0.1)] rounded-[18px] rounded-br-[4px] px-3 py-2 sm:px-4 sm:py-3" 
                             : (theme === 'dark' ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-900") + " rounded-[18px] rounded-bl-[4px] px-3 py-2 sm:px-4 sm:py-3 shadow-md"
@@ -2559,35 +2596,76 @@ useEffect(() => {
                           </div>
                         )}
                         
-                        {/* Timestamp & Status (Inside Bubble) */}
-                        <div className={`flex items-center gap-1.5 mt-1 ${isMe ? "justify-end text-white/70" : "justify-start text-gray-400"}`}>
-                            <span className="text-[10px]">
-                                {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            {isMe && (
-                                <span className="flex items-center gap-0.5 text-[10px]">
-                                    {msg.seen ? (
-                                        <>
-                                            <FaCheckDouble className="text-green-400" />
-                                            <span className="text-green-400 text-[9px]">Seen</span>
-                                        </>
-                                    ) : msg.delivered ? (
-                                        <>
-                                            <FaCheckDouble className="text-white/60" />
-                                            <span className="text-white/60 text-[9px]">Delivered</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <FaCheck className="text-white/50" />
-                                            <span className="text-white/50 text-[9px]">Sent</span>
-                                        </>
-                                    )}
-                                </span>
-                            )}
-                        </div>
+                        {/* Timestamp & Status (Inside Bubble - ONLY for non-media) */}
+                        {msg.type !== "image" && msg.type !== "video" && !msg.isDeleted && (
+                          <div className={`flex items-center gap-1.5 mt-1 ${isMe ? "justify-end text-black/60 font-medium" : "justify-start text-gray-400"}`}>
+                              <span className="text-[10px]">
+                                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                              {isMe && (
+                                  <span className="flex items-center gap-0.5 text-[10px]">
+                                      {msg.isPending ? (
+                                          <div className="flex items-center gap-1 text-black/40">
+                                              <FaClock className="text-[9px] animate-pulse" />
+                                              <span className="text-[9px]">Pending</span>
+                                          </div>
+                                      ) : msg.seen ? (
+                                          <>
+                                              <FaCheckDouble className="text-green-500 font-bold" />
+                                              <span className="text-green-600 text-[9px] font-bold">Seen</span>
+                                          </>
+                                      ) : msg.delivered ? (
+                                          <>
+                                              <FaCheckDouble className="text-black/60" />
+                                              <span className="text-black/60 text-[9px]">Delivered</span>
+                                          </>
+                                      ) : (
+                                          <>
+                                              <FaCheck className="text-black/50" />
+                                              <span className="text-black/50 text-[9px]">Sent</span>
+                                          </>
+                                      )}
+                                  </span>
+                              )}
+                          </div>
+                        )}
                           </>  
                         )}
                   </div>
+
+                  {/* 🕒 Timestamp & Status (Outside Bubble - ONLY for media) */}
+                  {(msg.type === "image" || msg.type === "video") && !msg.isDeleted && (
+                    <div className={`flex items-center gap-1.5 mt-1 px-1 ${isMe ? "justify-end text-gray-400" : "justify-start text-gray-400"}`}>
+                        <span className="text-[10px]">
+                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        {isMe && (
+                            <span className="flex items-center gap-0.5 text-[10px]">
+                                {msg.isPending ? (
+                                    <div className="flex items-center gap-1 text-gray-500">
+                                        <FaClock className="text-[9px] animate-pulse" />
+                                        <span className="text-[9px]">Pending</span>
+                                    </div>
+                                ) : msg.seen ? (
+                                    <>
+                                        <FaCheckDouble className="text-green-500 font-bold" />
+                                        <span className="text-green-600 text-[9px] font-bold">Seen</span>
+                                    </>
+                                ) : msg.delivered ? (
+                                    <>
+                                        <FaCheckDouble className="text-gray-400" />
+                                        <span className="text-gray-400 text-[9px]">Delivered</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <FaCheck className="text-gray-500" />
+                                        <span className="text-gray-500 text-[9px]">Sent</span>
+                                    </>
+                                )}
+                            </span>
+                        )}
+                    </div>
+                  )}
 
                   {/* Action Buttons (Hover) */}
                   {!msg.isDeleted && (

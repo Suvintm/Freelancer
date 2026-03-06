@@ -1,10 +1,3 @@
-/**
- * FinalDeliveryCard.jsx - Instagram Reels-Style (No Border, Natural Aspect)
- * 
- * Design: Video/Image shows at natural aspect ratio with no border/background
- * Details appear BELOW the media, not inside it
- */
-
 import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,6 +7,8 @@ import {
   FaPause,
   FaEye,
   FaCheck,
+  FaCheckCircle,
+  FaExclamationCircle,
   FaFilm,
   FaImage,
   FaClock,
@@ -21,16 +16,18 @@ import {
   FaDownload,
   FaVolumeUp,
   FaVolumeMute,
+  FaGem,
+  FaStar,
 } from "react-icons/fa";
 
 // === Status Configuration ===
 const STATUS_CONFIG = {
-  pending: { label: "Waiting for review", color: "text-amber-500", dot: "bg-amber-500" },
-  previewed: { label: "Previewed", color: "text-blue-500", dot: "bg-blue-500" },
-  accepted: { label: "Approved", color: "text-emerald-500", dot: "bg-emerald-500" },
-  changes_requested: { label: "Revision needed", color: "text-orange-500", dot: "bg-orange-500" },
-  downloaded: { label: "Completed", color: "text-emerald-500", dot: "bg-emerald-500" },
-  expired: { label: "Expired", color: "text-zinc-400", dot: "bg-zinc-400" },
+  pending: { label: "Client Review Pending", color: "text-amber-400", icon: FaClock, dot: "bg-amber-400/20" },
+  previewed: { label: "Previewed", color: "text-blue-400", icon: FaEye, dot: "bg-blue-400/20" },
+  accepted: { label: "Approved Delivery", color: "text-emerald-400", icon: FaCheckCircle, dot: "bg-emerald-400/20" },
+  changes_requested: { label: "Revision Requested", color: "text-orange-400", icon: FaExclamationCircle, dot: "bg-orange-400/20" },
+  downloaded: { label: "Project Completed", color: "text-emerald-400", icon: FaStar, dot: "bg-emerald-400/20" },
+  expired: { label: "Delivery Expired", color: "text-zinc-500", icon: FaTimes, dot: "bg-zinc-800" },
 };
 
 // === Format Utilities ===
@@ -50,7 +47,7 @@ const formatDuration = (seconds) => {
 };
 
 const getAspectRatio = (width, height) => {
-  if (!width || !height) return "16:9";
+  if (!width || !height) return null;
   const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
   const divisor = gcd(width, height);
   const ratioW = width / divisor;
@@ -81,18 +78,18 @@ const FinalDeliveryCard = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
 
-  const aspectRatio = delivery?.aspectRatio || getAspectRatio(delivery?.width, delivery?.height);
+  // Parse dimensions for dynamic aspect ratio
+  const mediaWidth = delivery?.width || 1080;
+  const mediaHeight = delivery?.height || 1920;
+  const aspectRatioValue = mediaWidth / mediaHeight;
+  const aspectRatioLabel = delivery?.aspectRatio || getAspectRatio(mediaWidth, mediaHeight);
 
-  // Robust video detection - check mimeType OR file extension
+  // Robust video detection
   const videoExtensions = ['.mp4', '.mov', '.avi', '.webm', '.mkv', '.m4v'];
-  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
-  const fileName = delivery?.fileName || delivery?.originalName || '';
+  const fileName = delivery?.fileName || delivery?.originalName || 'Asset';
   const fileExt = fileName.toLowerCase().slice(fileName.lastIndexOf('.'));
   
   const isVideo = delivery?.mimeType?.startsWith("video/") || videoExtensions.includes(fileExt);
-  const isImage = delivery?.mimeType?.startsWith("image/") || imageExtensions.includes(fileExt);
-  
-  // Get video/image URL - check multiple possible fields
   const videoUrl = delivery?.previewUrl || delivery?.watermarkedUrl || delivery?.fileUrl || delivery?.url;
   
   const statusConfig = STATUS_CONFIG[delivery?.status] || STATUS_CONFIG.pending;
@@ -132,129 +129,163 @@ const FinalDeliveryCard = ({
   return (
     <>
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-[180px] sm:max-w-[240px] no-copy"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-[200px] sm:max-w-[280px] no-copy group/card relative"
         onContextMenu={(e) => e.preventDefault()}
       >
-        {/* Reel Media - No border, no background, natural aspect */}
+        {/* ✨ Premium Outer Glow */}
+        <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 to-blue-500/10 blur-xl opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 pointer-events-none" />
+
+        {/* 🏆 Milestone Header - Special System Card Look */}
+        <div className="relative z-10 bg-gradient-to-r from-emerald-500/10 to-transparent backdrop-blur-md rounded-t-2xl border-t border-x border-white/10 px-3 py-1.5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FaGem className="text-[10px] text-emerald-400 animate-pulse" />
+            <span className="text-[9px] font-black uppercase tracking-[0.1em] text-emerald-400 shadow-emerald-500/50">Final Delivery</span>
+          </div>
+          <div className="flex items-center gap-1">
+             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+             <span className="text-[8px] text-zinc-400 font-medium">Verified Asset</span>
+          </div>
+        </div>
+
+        {/* 🎥 Media Stage - True Natural Aspect Ratio */}
         <div 
-          className="relative rounded-xl overflow-hidden cursor-pointer group"
-          onClick={() => {
-            // Editors can always view, Clients use onPreview if provided
-            if (isClient && onPreview) {
-              onPreview();
-            } else {
-              setShowPreviewModal(true);
-            }
+          className="relative rounded-b-none overflow-hidden cursor-pointer bg-zinc-950 border-x border-white/10 group transition-all duration-500"
+          onClick={() => isClient && onPreview ? onPreview() : setShowPreviewModal(true)}
+          style={{
+            aspectRatio: mediaWidth && mediaHeight ? `${mediaWidth}/${mediaHeight}` : "9/16",
+            maxHeight: "60vh"
           }}
         >
           {delivery.thumbnailUrl ? (
-            <>
+            <div className="w-full h-full relative">
               {!imageLoaded && (
-                <div className="w-full aspect-video bg-zinc-800 flex items-center justify-center">
-                  <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center">
+                  <div className="w-8 h-8 border-2 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
                 </div>
               )}
               <img
                 src={delivery.thumbnailUrl}
-                alt="Preview"
-                className={`w-full h-auto rounded-xl no-copy ${imageLoaded ? "block" : "hidden"}`}
+                alt="Premium Delivery"
+                className={`w-full h-full object-contain transition-all duration-700 bg-black group-hover:scale-105 ${imageLoaded ? "opacity-100" : "opacity-0"}`}
                 onLoad={() => setImageLoaded(true)}
                 draggable="false"
-                onContextMenu={(e) => e.preventDefault()}
               />
-            </>
+            </div>
           ) : (
-            <div className="w-full aspect-video bg-zinc-800 rounded-xl flex items-center justify-center">
-              {isVideo ? <FaFilm className="text-3xl text-zinc-600" /> : <FaImage className="text-3xl text-zinc-600" />}
+            <div className="w-full h-full bg-zinc-900 flex items-center justify-center">
+              {isVideo ? <FaFilm className="text-4xl text-zinc-700" /> : <FaImage className="text-4xl text-zinc-700" />}
             </div>
           )}
-          
-          {/* Play Button - Centered */}
+
+          {/* Luxury Play Button Overlay */}
           {isVideo && imageLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform">
-                <FaPlay className="text-white text-[10px] sm:text-base ml-0.5" />
-              </div>
+            <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-all duration-500">
+              <motion.div 
+                whileHover={{ scale: 1.1 }}
+                className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white/5 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.5)] opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-emerald-500/80 flex items-center justify-center">
+                  <FaPlay className="text-white text-xs sm:text-lg ml-1" />
+                </div>
+              </motion.div>
             </div>
           )}
 
-          {/* Reels Icon - Bottom Left */}
-          <div className="absolute bottom-2 left-2 w-6 h-6 rounded bg-gradient-to-br from-[#833AB4] to-[#C13584] flex items-center justify-center">
-            <FaFilm className="text-white text-[10px]" />
+          {/* Visual Specs Label - Bottom Right */}
+          <div className="absolute bottom-3 right-3 px-2 py-0.5 bg-black/70 backdrop-blur-md rounded-md border border-white/5 text-[9px] font-mono text-zinc-400 flex items-center gap-2">
+            {isVideo && delivery.duration && (
+              <span className="text-white font-bold">{formatDuration(delivery.duration)}</span>
+            )}
+            <span className="text-emerald-500/80">{aspectRatioLabel}</span>
           </div>
-
-          {/* Duration - Bottom Right */}
-          {isVideo && delivery.duration && (
-            <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/70 rounded text-white text-[10px] font-medium">
-              {formatDuration(delivery.duration)}
-            </div>
-          )}
-
-          {/* Completed Overlay */}
+          
+          {/* Completion Seal */}
           {isCompleted && (
-            <div className="absolute inset-0 bg-emerald-500/30 rounded-xl flex items-center justify-center">
-              <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center">
-                <FaCheck className="text-white text-lg" />
+            <div className="absolute inset-0 bg-emerald-500/10 backdrop-blur-[2px] flex items-center justify-center">
+              <div className="bg-emerald-500 text-white p-4 rounded-full shadow-[0_0_30px_rgba(16,185,129,0.5)] ring-4 ring-emerald-500/20">
+                <FaCheck className="text-2xl" />
               </div>
             </div>
           )}
         </div>
 
-        {/* Details OUTSIDE/BELOW the reel */}
-        <div className="mt-2 space-y-1">
-          {/* Ratio, Size, Timer Row */}
-          <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px]">
-            <span className="px-1 py-0.5 sm:px-1.5 sm:py-0.5 bg-zinc-800 rounded text-zinc-300 font-medium">{aspectRatio}</span>
-            <span className="text-zinc-500">{formatBytes(delivery.fileSize)}</span>
-            {timeLeft && !isCompleted && (
-              <span className="text-amber-400 flex items-center gap-0.5 ml-auto">
-                <FaClock className="text-[7px] sm:text-[8px]" />
-                {timeLeft.hours}h {timeLeft.mins}m
-              </span>
+        {/* ✨ Professional Detail Box - Ultra Premium Style */}
+        <div className="relative z-10">
+          <div className="backdrop-blur-3xl bg-white/5 border border-white/10 rounded-b-2xl p-4 shadow-2xl group-hover/card:border-emerald-500/30 transition-all duration-500">
+            {/* Status Indicator */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className={`p-1.5 rounded-lg ${statusConfig.dot} border border-white/5`}>
+                  <statusConfig.icon className={`text-xs ${statusConfig.color} ${isPending ? "animate-pulse" : ""}`} />
+                </div>
+                <div className="flex flex-col">
+                  <span className={`text-[11px] font-black uppercase tracking-wider ${statusConfig.color}`}>
+                    {statusConfig.label}
+                  </span>
+                  {isPending && (
+                    <motion.span 
+                      animate={{ opacity: [0.5, 1, 0.5] }}
+                      transition={{ repeat: Infinity, duration: 2 }}
+                      className="text-[8px] text-zinc-500 font-bold"
+                    >
+                      Unlocked After Approval
+                    </motion.span>
+                  )}
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="block text-[10px] text-white font-mono leading-none">{formatBytes(delivery.fileSize)}</span>
+                <span className="text-[8px] text-zinc-500 uppercase tracking-tighter">{fileExt.replace('.','')} High Quality</span>
+              </div>
+            </div>
+
+            {/* Action Buttons - Premium Design */}
+            {isClient && isPending && !isExpired && (
+              <div className="grid grid-cols-2 gap-3 mt-4">
+                <button
+                  onClick={() => onPreview ? onPreview() : setShowPreviewModal(true)}
+                  className="py-3 bg-zinc-800/80 hover:bg-zinc-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all border border-white/10"
+                >
+                  <FaEye className="text-xs" /> Preview
+                </button>
+                <button
+                  onClick={handleAcceptAndDownload}
+                  className="py-3 bg-gradient-to-r from-emerald-600 to-green-500 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all border border-white/20 active:scale-95"
+                >
+                  <FaDownload className="text-xs" /> Approve
+                </button>
+              </div>
+            )}
+
+            {/* Revision Request */}
+            {isClient && isPending && !isExpired && delivery.status !== "changes_requested" && (
+              <button 
+                onClick={onRequestChanges} 
+                className="w-full mt-3 text-[9px] text-zinc-500 hover:text-orange-400 transition-colors py-1 flex items-center justify-center gap-2 font-bold uppercase tracking-tighter"
+              >
+                <FaExclamationCircle /> Request Revision
+              </button>
+            )}
+
+            {/* Status Label for Editor */}
+            {!isClient && isPending && !isCompleted && !isExpired && (
+              <div className="mt-4 py-2.5 bg-zinc-900/50 rounded-xl border border-white/5 text-center">
+                 <motion.p 
+                   animate={{ opacity: [0.4, 0.8, 0.4] }}
+                   transition={{ repeat: Infinity, duration: 2.5 }}
+                   className="text-[9px] text-emerald-400/80 font-black uppercase tracking-widest"
+                 >
+                   Awaiting Client Review
+                 </motion.p>
+              </div>
             )}
           </div>
-
-          {/* Status */}
-          <div className="flex items-center gap-1">
-            <div className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${statusConfig.dot}`} />
-            <span className={`text-[9px] sm:text-[10px] ${statusConfig.color}`}>{statusConfig.label}</span>
-          </div>
-
-          {/* Action Buttons */}
-          {isClient && isPending && !isExpired && (
-            <div className="flex gap-1.5 pt-1">
-              <button
-                onClick={() => onPreview ? onPreview() : setShowPreviewModal(true)}
-                className="flex-1 py-1.5 bg-zinc-800 text-white rounded-lg text-[10px] font-medium flex items-center justify-center gap-1 hover:bg-zinc-700"
-              >
-                <FaEye className="text-[9px]" /> Preview
-              </button>
-              <button
-                onClick={handleAcceptAndDownload}
-                className="flex-1 py-1.5 bg-emerald-500 text-white rounded-lg text-[10px] font-medium flex items-center justify-center gap-1 hover:bg-emerald-600"
-              >
-                <FaDownload className="text-[9px]" /> Accept
-              </button>
-            </div>
-          )}
-
-          {/* Request Changes */}
-          {isClient && isPending && !isExpired && delivery.status !== "changes_requested" && (
-            <button onClick={onRequestChanges} className="w-full text-[9px] text-orange-400 py-0.5">
-              Request changes
-            </button>
-          )}
-
-          {/* Editor Waiting */}
-          {!isClient && isPending && !isCompleted && !isExpired && (
-            <p className="text-[10px] text-zinc-500">⏳ Waiting for client review...</p>
-          )}
         </div>
       </motion.div>
 
-      {/* Preview Modal - Rendered via Portal at document.body for true fullscreen */}
+      {/* Luxury Preview Modal */}
       {ReactDOM.createPortal(
         <AnimatePresence>
           {showPreviewModal && (
@@ -262,120 +293,113 @@ const FinalDeliveryCard = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black z-[9999] flex flex-col no-copy"
-              style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+              className="fixed inset-0 bg-black/98 backdrop-blur-3xl z-[9999] flex flex-col no-copy overflow-hidden"
               onContextMenu={(e) => e.preventDefault()}
             >
-            {/* Header */}
-            <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 z-20 bg-gradient-to-b from-black/80 to-transparent">
-              <div className="px-3 py-1.5 bg-zinc-800/80 backdrop-blur-sm rounded-full text-white text-[12px] font-medium">
-                Media Preview
+              {/* Cinematic Watermark Background (Prevents screen recording theft) */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5 overflow-hidden select-none">
+                <div className="flex flex-col gap-20 -rotate-12">
+                   {[...Array(5)].map((_, i) => (
+                     <div key={i} className="flex gap-40 whitespace-nowrap">
+                       {[...Array(5)].map((_, j) => (
+                         <span key={j} className="text-7xl font-black text-white uppercase tracking-[1em]">SUVIX PREVIEW</span>
+                       ))}
+                     </div>
+                   ))}
+                </div>
               </div>
-              
-              <button
-                onClick={() => setShowPreviewModal(false)}
-                className="w-9 h-9 bg-zinc-800/80 backdrop-blur-sm hover:bg-zinc-700 rounded-full flex items-center justify-center text-white transition"
-              >
-                <FaTimes className="text-base" />
-              </button>
-            </div>
 
-            {/* Full Video/Image Container - Original Aspect Ratio */}
-            <div 
-              className="flex-1 flex items-center justify-center p-4"
-              onClick={() => setShowPreviewModal(false)}
-            >
-              {isVideo && videoUrl ? (
-                <video
-                  ref={videoRef}
-                  src={videoUrl}
-                  className="max-w-full max-h-full object-contain rounded-lg select-none no-copy"
-                  onClick={(e) => e.stopPropagation()}
-                  onPlay={() => setIsPlaying(true)}
-                  onPause={() => setIsPlaying(false)}
-                  muted={isMuted}
-                  playsInline
-                  loop
-                  onContextMenu={(e) => e.preventDefault()}
-                  controlsList="nodownload"
-                />
-              ) : delivery.thumbnailUrl || videoUrl ? (
-                <img 
-                  src={videoUrl || delivery.thumbnailUrl} 
-                  alt="Preview" 
-                  className="max-w-full max-h-full object-contain rounded-lg select-none no-copy"
-                  onClick={(e) => e.stopPropagation()}
-                  draggable="false"
-                  onContextMenu={(e) => e.preventDefault()}
-                />
-              ) : (
-                <FaFilm className="text-6xl text-zinc-700" />
-              )}
-            </div>
-
-            {/* Video Controls - Bottom Center */}
-            {isVideo && videoUrl && (
-              <div className="absolute bottom-24 left-1/2 -translate-x-1/2 flex items-center gap-3">
-                {/* Play/Pause Button */}
-                <button
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    if (videoRef.current) {
-                      if (isPlaying) {
-                        videoRef.current.pause();
-                      } else {
-                        try {
-                          await videoRef.current.play();
-                        } catch (err) {
-                          // Ignore AbortError - happens when play is interrupted
-                          if (err.name !== 'AbortError') {
-                            console.error('Video play error:', err);
-                          }
-                        }
-                      }
-                    }
-                  }}
-                  className="w-12 h-12 bg-zinc-800/80 backdrop-blur-sm hover:bg-zinc-700 rounded-full flex items-center justify-center text-white transition"
-                >
-                  {isPlaying ? <FaPause className="text-lg" /> : <FaPlay className="text-lg ml-0.5" />}
-                </button>
+              {/* Floating Glass Header */}
+              <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-8 z-50 bg-gradient-to-b from-black/90 to-transparent">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.4)] border border-white/30">
+                    <FaGem className="text-white text-xl" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-black text-lg tracking-tight leading-tight">{delivery.fileName || "Final Output"}</h3>
+                    <div className="flex items-center gap-3 text-zinc-500 text-[11px] font-bold uppercase tracking-widest">
+                      <span className="text-emerald-400">{aspectRatioLabel}</span>
+                      <span className="w-1 h-1 rounded-full bg-zinc-800" />
+                      <span>{formatBytes(delivery.fileSize)}</span>
+                      <span className="w-1 h-1 rounded-full bg-zinc-800" />
+                      <span>{fileExt.replace('.','')} High Quality</span>
+                    </div>
+                  </div>
+                </div>
                 
-                {/* Volume Button */}
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsMuted(!isMuted);
-                    if (videoRef.current) {
-                      videoRef.current.muted = !isMuted;
-                    }
-                  }}
-                  className="w-12 h-12 bg-zinc-800/80 backdrop-blur-sm hover:bg-zinc-700 rounded-full flex items-center justify-center text-white transition"
+                  onClick={() => setShowPreviewModal(false)}
+                  className="w-14 h-14 bg-white/5 hover:bg-white/10 backdrop-blur-2xl rounded-3xl flex items-center justify-center text-white transition-all border border-white/10 active:scale-90 shadow-2xl"
                 >
-                  {isMuted ? <FaVolumeMute className="text-lg" /> : <FaVolumeUp className="text-lg" />}
+                  <FaTimes className="text-2xl" />
                 </button>
               </div>
-            )}
 
-            {/* Watermark Badge - Only for clients */}
-            {isClient && (
-              <div className="absolute bottom-20 left-4 px-3 py-1.5 bg-amber-500/20 border border-amber-500/30 rounded-full text-amber-400 text-[11px] font-medium flex items-center gap-1.5 backdrop-blur-sm">
-                <FaEye className="text-[10px]" /> Watermarked Preview
+              {/* Immersive Preview Stage */}
+              <div 
+                className="flex-1 flex items-center justify-center p-4 sm:p-20 relative z-10"
+                onClick={() => setShowPreviewModal(false)}
+              >
+                {isVideo && videoUrl ? (
+                  <video
+                    ref={videoRef}
+                    src={videoUrl}
+                    className="max-w-full max-h-full object-contain rounded-3xl shadow-[0_0_150px_rgba(0,0,0,1)] ring-1 ring-white/10"
+                    onClick={(e) => e.stopPropagation()}
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    muted={isMuted}
+                    playsInline
+                    loop
+                    controls
+                    controlsList="nodownload"
+                  />
+                ) : delivery.thumbnailUrl || videoUrl ? (
+                  <img 
+                    src={videoUrl || delivery.thumbnailUrl} 
+                    alt="Premium Delivery Preview" 
+                    className="max-w-full max-h-full object-contain rounded-3xl shadow-[0_0_150px_rgba(0,0,0,1)] ring-1 ring-white/10 cursor-default"
+                    onClick={(e) => e.stopPropagation()}
+                    draggable="false"
+                  />
+                ) : (
+                  <div className="text-center bg-zinc-900 p-20 rounded-[40px] border border-white/5 shadow-2xl">
+                    <FaFilm className="text-8xl text-zinc-800 mb-6 mx-auto animate-pulse" />
+                    <p className="text-emerald-500/50 text-sm font-black uppercase tracking-widest italic">Preparing Premium View...</p>
+                  </div>
+                )}
               </div>
-            )}
 
-            {/* Bottom Info Bar */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/80 to-transparent">
-              <div className="max-w-md mx-auto text-center">
-                <p className="text-white font-medium">{delivery.fileName || "Final Output"}</p>
-                <p className="text-zinc-400 text-sm mt-1">
-                  {aspectRatio} • {formatBytes(delivery.fileSize)}
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>,
-      document.body
+              {/* Luxury Floating Status Banner */}
+              {isClient && isPending && (
+                <motion.div 
+                  initial={{ y: 50, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  className="absolute bottom-12 left-1/2 -translate-x-1/2 px-8 py-4 bg-emerald-500/10 border border-emerald-500/20 backdrop-blur-3xl rounded-[28px] flex items-center gap-4 shadow-[0_20px_60px_rgba(0,0,0,0.5)] z-50"
+                >
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center animate-pulse">
+                    <FaEye className="text-emerald-400 text-sm" />
+                  </div>
+                  <div className="text-left pr-4">
+                    <p className="text-emerald-400 text-xs font-black uppercase tracking-widest">Watermarked Preview Only</p>
+                    <p className="text-zinc-500 text-[10px] font-bold">Unlocks original 4K/Full-Res asset after approval</p>
+                  </div>
+                  <div className="w-px h-8 bg-emerald-500/10" />
+                  <button 
+                    onClick={() => {
+                        setShowPreviewModal(false);
+                        handleAcceptAndDownload();
+                    }}
+                    className="px-6 py-2 bg-emerald-500 hover:bg-emerald-400 text-white text-[11px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg active:scale-95"
+                  >
+                    Accept Project
+                  </button>
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
       )}
     </>
   );
