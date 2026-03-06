@@ -2302,7 +2302,7 @@ useEffect(() => {
       {/* 2. Messages Area (Textured Background) - with padding for fixed header/footer */}
       <div 
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden p-4 pt-40 pb-32 space-y-2 relative no-copy"
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 pt-8 sm:pt-32 pb-32 space-y-2 relative no-copy"
         onContextMenu={(e) => e.preventDefault()}
         style={{
           backgroundImage: `url(${chattexture})`,
@@ -2345,8 +2345,8 @@ useEffect(() => {
             return (
               <React.Fragment key={msg._id || i}>
                 {showDate && (
-                  <div className="flex justify-center my-6 relative z-10">
-                    <div className="px-3 py-1 text-[11px] bg-zinc-800 text-zinc-300 rounded-full shadow-sm">
+                  <div className="sticky top-[60px] sm:top-[72px] flex justify-center z-30 my-2 pointer-events-none">
+                    <div className="px-3 py-1 text-[11px] bg-zinc-800/90 backdrop-blur-md text-zinc-300 rounded-full shadow-md">
                       {formatChatDate(msg.createdAt)}
                     </div>
                   </div>
