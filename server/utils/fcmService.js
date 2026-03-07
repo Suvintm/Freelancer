@@ -22,11 +22,19 @@ export const sendPushNotification = async (userId, { title, body, icon, data = {
     const messaging = getMessaging();
 
     // Prepare Production-Grade message
+    // 🏷️ Sanitize data: FCM only accepts strings in the 'data' object
+    const sanitizedData = {};
+    Object.keys(data).forEach(key => {
+      if (data[key] !== null && data[key] !== undefined) {
+        sanitizedData[key] = String(data[key]);
+      }
+    });
+
     const message = {
       notification: {
         title,
         body,
-        image: data.image || null, // Support rich media thumbnails
+        ...(data.image ? { image: String(data.image) } : {}), // Only include if exists
       },
       webpush: {
         notification: {
@@ -35,7 +43,7 @@ export const sendPushNotification = async (userId, { title, body, icon, data = {
           // 📷 Instagram-style: Use sender avatar if provided, otherwise default icon
           icon: data.senderAvatar || "/icons/notification-icon.png",
           badge: "/icons/notification-badge.png",
-          image: data.image || null,
+          ...(data.image ? { image: String(data.image) } : {}),
           vibrate: [200, 100, 200],
           requireInteraction: true,
           tag: data.tag || "suvix-notification", 
@@ -48,9 +56,8 @@ export const sendPushNotification = async (userId, { title, body, icon, data = {
             }
           ],
           data: {
-            ...data,
+            ...sanitizedData,
             click_action: link,
-            senderAvatar: data.senderAvatar || null,
           }
         },
         fcmOptions: {
@@ -58,10 +65,9 @@ export const sendPushNotification = async (userId, { title, body, icon, data = {
         }
       },
       data: {
-        ...data,
+        ...sanitizedData,
         type: data.type || "standard",
         link: link,
-        senderAvatar: data.senderAvatar || "",
       },
       android: {
         priority: "high",
@@ -69,7 +75,7 @@ export const sendPushNotification = async (userId, { title, body, icon, data = {
           channel_id: "suvix_notifications",
           icon: "stock_ticker_update",
           color: "#007bff",
-          image: data.image || null,
+          ...(data.image ? { image: String(data.image) } : {}),
         }
       }
     };
