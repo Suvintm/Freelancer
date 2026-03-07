@@ -20,7 +20,16 @@ export const requestForToken = async (backendURL) => {
   try {
     // 1. Register Service Worker explicitly (FCM requires this for background messages)
     if ('serviceWorker' in navigator) {
-      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      // Pass config as query parameters to avoid hardcoding secrets in public/firebase-messaging-sw.js
+      const swUrl = `/firebase-messaging-sw.js?` + 
+        `apiKey=${encodeURIComponent(import.meta.env.VITE_FIREBASE_API_KEY)}&` +
+        `authDomain=${encodeURIComponent(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN)}&` +
+        `projectId=${encodeURIComponent(import.meta.env.VITE_FIREBASE_PROJECT_ID)}&` +
+        `storageBucket=${encodeURIComponent(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET)}&` +
+        `messagingSenderId=${encodeURIComponent(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID)}&` +
+        `appId=${encodeURIComponent(import.meta.env.VITE_FIREBASE_APP_ID)}`;
+
+      const registration = await navigator.serviceWorker.register(swUrl);
       console.log('✅ Service Worker registered with scope:', registration.scope);
     }
 

@@ -2,16 +2,24 @@
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
 
-// Initialize the Firebase app in the service worker by passing in the messagingSenderId.
-// This will be replaced by the actual config later.
-firebase.initializeApp({
-  apiKey: "AIzaSyDG7yF_Wi7w-kQlexlf_mUHLCzqfHTjRy4",
-  authDomain: "suvix-2b3f9.firebaseapp.com",
-  projectId: "suvix-2b3f9",
-  storageBucket: "suvix-2b3f9.firebasestorage.app",
-  messagingSenderId: "154559332423",
-  appId: "1:154559332423:web:068a1c3d25da2210587162"
-});
+// Initialize the Firebase app in the service worker.
+// These values are passed dynamically from the main thread during registration 
+// to avoid hardcoding secrets in this public file.
+const urlParams = new URL(location).searchParams;
+const config = {
+  apiKey: urlParams.get('apiKey'),
+  authDomain: urlParams.get('authDomain'),
+  projectId: urlParams.get('projectId'),
+  storageBucket: urlParams.get('storageBucket'),
+  messagingSenderId: urlParams.get('messagingSenderId'),
+  appId: urlParams.get('appId')
+};
+
+if (config.apiKey) {
+  firebase.initializeApp(config);
+} else {
+  console.warn('[firebase-messaging-sw.js] No config found in query params. SW may not function correctly.');
+}
 
 const messaging = firebase.messaging();
 
@@ -22,8 +30,8 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.notification.title || payload.data.title || 'SuviX';
   const notificationOptions = {
     body: payload.notification.body || payload.data.body || '',
-    icon: payload.notification.icon || '/icons/suvix-icon.png',
-    badge: '/icons/suvix-badge.png',
+    icon: payload.notification.icon || '/icons/notification-icon.png',
+    badge: '/icons/notification-badge.png',
     image: payload.notification.image || payload.data.image || null, // Rich media image
     vibrate: [200, 100, 200],
     tag: payload.notification.tag || payload.data.tag || 'suvix-notification',
@@ -33,7 +41,7 @@ messaging.onBackgroundMessage((payload) => {
       {
         action: 'view',
         title: 'View Details',
-        icon: '/icons/suvix-badge.png'
+        icon: '/icons/notification-badge.png'
       }
     ],
     data: {
