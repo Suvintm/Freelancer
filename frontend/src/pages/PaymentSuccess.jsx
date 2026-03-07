@@ -1,12 +1,11 @@
 /**
  * PaymentSuccess Page
- * Professional, elegant success page after payment completion
- * Clean design with subtle animations - not flashy
+ * Compact, professional receipt-style confirmation
  */
 
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FaCheckCircle, FaReceipt, FaArrowRight, FaShieldAlt } from 'react-icons/fa';
+import { FaCheckCircle, FaArrowRight, FaShieldAlt } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import './PaymentSuccess.css';
 
@@ -14,6 +13,7 @@ const PaymentSuccess = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [showContent, setShowContent] = useState(false);
+  const [countdown, setCountdown] = useState(5);
   
   // Get payment details from navigation state
   const paymentData = location.state || {};
@@ -22,13 +22,30 @@ const PaymentSuccess = () => {
     amount = 0,
     title = 'Order',
     transactionId = '',
+    targetPath = '/client-orders' // Default redirect path
   } = paymentData;
 
   useEffect(() => {
-    // Delay content reveal for smooth animation
-    const timer = setTimeout(() => setShowContent(true), 300);
-    return () => clearTimeout(timer);
-  }, []);
+    // Delay content reveal
+    const revealTimer = setTimeout(() => setShowContent(true), 100);
+    
+    // Auto-redirect timer
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          navigate(targetPath);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      clearTimeout(revealTimer);
+      clearInterval(interval);
+    };
+  }, [navigate, targetPath]);
 
   // Format currency
   const formatCurrency = (amt) => {
@@ -44,42 +61,25 @@ const PaymentSuccess = () => {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
   });
 
   return (
     <div className="payment-success-page">
-      {/* Background gradient */}
       <div className="ps-background">
         <div className="ps-bg-circle ps-bg-1"></div>
-        <div className="ps-bg-circle ps-bg-2"></div>
       </div>
 
       <div className="ps-container">
-        {/* Success Icon with Animation */}
+        {/* Success Icon */}
         <motion.div
           className="ps-icon-wrapper"
-          initial={{ scale: 0, opacity: 0 }}
+          initial={{ scale: 0.5, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ 
-            type: "spring", 
-            stiffness: 200, 
-            damping: 15,
-            delay: 0.1 
-          }}
+          transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
         >
           <div className="ps-icon-bg">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.4, type: "spring" }}
-            >
-              <FaCheckCircle className="ps-check-icon" />
-            </motion.div>
+            <FaCheckCircle className="ps-check-icon" />
           </div>
-          
-          {/* Ripple effect */}
           <motion.div 
             className="ps-ripple"
             initial={{ scale: 0.8, opacity: 0.5 }}
@@ -91,32 +91,20 @@ const PaymentSuccess = () => {
         {/* Main Content */}
         <motion.div
           className="ps-content"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: showContent ? 1 : 0, y: showContent ? 0 : 30 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: showContent ? 1 : 0, y: showContent ? 0 : 15 }}
+          transition={{ duration: 0.4 }}
         >
           <h1 className="ps-title">Payment Successful</h1>
-          <p className="ps-subtitle">
-            Your payment has been processed securely
-          </p>
+          <p className="ps-subtitle">Your request has been sent to the editor</p>
 
-          {/* Amount Display */}
-          <motion.div 
-            className="ps-amount"
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.7 }}
-          >
+          <div className="ps-amount">
             {formatCurrency(amount)}
-          </motion.div>
+          </div>
 
-          {/* Transaction Details Card */}
-          <motion.div 
-            className="ps-details-card"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.9 }}
-          >
+          <div className="ps-receipt-label">Payment Receipt</div>
+          
+          <div className="ps-details-card">
             <div className="ps-detail-row">
               <span className="ps-label">Order</span>
               <span className="ps-value">{title}</span>
@@ -128,7 +116,7 @@ const PaymentSuccess = () => {
             </div>
             <div className="ps-divider"></div>
             <div className="ps-detail-row">
-              <span className="ps-label">Date & Time</span>
+              <span className="ps-label">Date</span>
               <span className="ps-value">{currentDate}</span>
             </div>
             {transactionId && (
@@ -140,26 +128,18 @@ const PaymentSuccess = () => {
                 </div>
               </>
             )}
-          </motion.div>
+          </div>
 
-          {/* Security Badge */}
-          <motion.div 
-            className="ps-security"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.1 }}
-          >
+          <div className="ps-redirect-status">
+            Returning to orders in {countdown}s...
+          </div>
+
+          <div className="ps-security">
             <FaShieldAlt />
             <span>Payment secured by Razorpay</span>
-          </motion.div>
+          </div>
 
-          {/* Action Buttons */}
-          <motion.div 
-            className="ps-actions"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.2 }}
-          >
+          <div className="ps-actions">
             <button 
               onClick={() => navigate('/client-orders')}
               className="ps-btn-primary"
@@ -173,18 +153,8 @@ const PaymentSuccess = () => {
             >
               Continue Browsing
             </button>
-          </motion.div>
+          </div>
         </motion.div>
-
-        {/* Footer Note */}
-        <motion.p 
-          className="ps-footer"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.4 }}
-        >
-          The editor has been notified and will begin work shortly
-        </motion.p>
       </div>
     </div>
   );
