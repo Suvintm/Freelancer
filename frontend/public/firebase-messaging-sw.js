@@ -34,9 +34,12 @@ const messaging = firebase.messaging();
 
 // Handle background messages
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+  console.log('[firebase-messaging-sw.js] Background Payload:', JSON.stringify(payload, null, 2));
   
   const notificationTitle = payload.notification?.title || payload.data?.title || 'SuviX';
+  const tag = payload.notification?.tag || payload.data?.tag || undefined;
+
+  console.log(`[firebase-messaging-sw.js] Showing notification: "${notificationTitle}" with tag: "${tag}"`);
   
   // 📷 Instagram-style: Show sender avatar as icon if available, otherwise brand logo
   const icon = payload.data?.senderAvatar || payload.notification?.icon || '/icons/notification-icon.png';
@@ -47,8 +50,8 @@ messaging.onBackgroundMessage((payload) => {
     badge: '/icons/notification-badge2.png',
     image: payload.notification?.image || payload.data?.image || null, // Rich media thumbnail
     vibrate: [200, 100, 200],
-    tag: payload.notification?.tag || payload.data?.tag || undefined,
-    renotify: (payload.notification?.tag || payload.data?.tag) ? true : false,
+    tag: tag,
+    renotify: tag ? true : false,
     requireInteraction: true,
     actions: payload.notification?.actions || [
       {
@@ -61,6 +64,8 @@ messaging.onBackgroundMessage((payload) => {
       url: payload.data?.click_action || payload.data?.link || '/notifications'
     }
   };
+
+  console.log('[firebase-messaging-sw.js] Final Notification Options:', notificationOptions);
 
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });

@@ -115,7 +115,7 @@ export const AppProvider = ({ children }) => {
           
           // Foreground listener
           onMessageListener().then(async payload => {
-            console.log("🔔 Foreground Notification:", payload);
+            console.log("🔔 Foreground Notification Payload:", payload);
             fetchNotifications();
             
             // FORCE SYSTEM NOTIFICATION in foreground for "Production Level" feel
@@ -123,14 +123,18 @@ export const AppProvider = ({ children }) => {
               const registration = await navigator.serviceWorker.getRegistration();
               if (registration) {
                 const title = payload.notification?.title || payload.data?.title || "SuviX";
+                const tag = payload.notification?.tag || payload.data?.tag || undefined;
+                
+                console.log(`🔔 Showing FG notification: "${title}" with tag: "${tag}"`);
+
                 const options = {
                   body: payload.notification?.body || payload.data?.body || "",
                   // 📷 Show sender avatar in foreground too
                   icon: payload.data?.senderAvatar || payload.notification?.icon || "/icons/notification-icon.png",
                   badge: "/icons/notification-badge2.png",
                   image: payload.notification?.image || payload.data?.image || null,
-                  tag: payload.notification?.tag || payload.data?.tag || undefined,
-                  renotify: (payload.notification?.tag || payload.data?.tag) ? true : false,
+                  tag: tag,
+                  renotify: tag ? true : false,
                   data: {
                     url: payload.data?.click_action || payload.data?.link || "/notifications"
                   }

@@ -34,7 +34,8 @@ export const sendPushNotification = async (userId, { title, body, icon, data = {
       notification: {
         title,
         body,
-        ...(data.image ? { image: String(data.image) } : {}), // Only include if exists
+        ...(data.image ? { image: String(data.image) } : {}),
+        tag: data.tag || undefined, // Enforce stacking at top level
       },
       webpush: {
         notification: {
@@ -94,7 +95,7 @@ export const sendPushNotification = async (userId, { title, body, icon, data = {
     );
 
     await Promise.all(sendPromises);
-    logger.info(`Push notification sent to user ${userId}: "${title}"`);
+    logger.info(`Push notification sent to user ${userId}: "${title}" (Tag: ${data.tag || 'none'})`);
   } catch (error) {
     logger.error("Error in sendPushNotification:", error.message);
   }
