@@ -130,12 +130,11 @@ export const createNotification = async ({ recipient, type, title, message, link
 
         // Send Push Notification (FCM)
         import("../utils/fcmService.js").then(({ sendPushNotification }) => {
-            // 🏷️ Unique Tagging: Use notification ID or nothing to allow stacking instead of overwriting
-            // Chrome/WebPush use 'tag' to replace existing notifications. Removing it allows multiple to show.
-            let smartTag = metaData.tag || null; 
+            // 🏷️ Unique Tagging: Use notification ID as a default to allow stacking instead of overwriting
+            // Chrome/WebPush use 'tag' to replace existing notifications. Using a unique ID ensures they stack.
+            let smartTag = metaData.tag || notification._id.toString(); 
             if (type === "chat_message" && metaData.orderId) {
-                // If we WANT to group by chat, we use chat_orderId. 
-                // But the user wants multiple notifications, so we'll use null or unique ID.
+                // Keep the chat order prefix but still ensure uniqueness with the notification ID
                 smartTag = `chat_${metaData.orderId}_${notification._id}`;
             }
 
