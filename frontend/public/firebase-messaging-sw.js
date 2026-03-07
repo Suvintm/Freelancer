@@ -21,23 +21,36 @@ if (config.apiKey) {
   console.warn('[firebase-messaging-sw.js] No config found in query params. SW may not function correctly.');
 }
 
+// 🚀 Instant Activation: Ensure new versions take control immediately
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 const messaging = firebase.messaging();
 
 // Handle background messages
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
-  const notificationTitle = payload.notification.title || payload.data.title || 'SuviX';
+  const notificationTitle = payload.notification?.title || payload.data?.title || 'SuviX';
+  
+  // 📷 Instagram-style: Show sender avatar as icon if available, otherwise brand logo
+  const icon = payload.data?.senderAvatar || payload.notification?.icon || '/icons/notification-icon.png';
+  
   const notificationOptions = {
-    body: payload.notification.body || payload.data.body || '',
-    icon: payload.notification.icon || '/icons/notification-icon.png',
+    body: payload.notification?.body || payload.data?.body || '',
+    icon: icon,
     badge: '/icons/notification-badge.png',
-    image: payload.notification.image || payload.data.image || null, // Rich media image
+    image: payload.notification?.image || payload.data?.image || null, // Rich media thumbnail
     vibrate: [200, 100, 200],
-    tag: payload.notification.tag || payload.data.tag || 'suvix-notification',
+    tag: payload.notification?.tag || payload.data?.tag || 'suvix-notification',
     renotify: true,
     requireInteraction: true,
-    actions: payload.notification.actions || [
+    actions: payload.notification?.actions || [
       {
         action: 'view',
         title: 'View Details',

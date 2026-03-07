@@ -20,8 +20,11 @@ export const requestForToken = async (backendURL) => {
   try {
     // 1. Register Service Worker explicitly (FCM requires this for background messages)
     if ('serviceWorker' in navigator) {
-      // Pass config as query parameters to avoid hardcoding secrets in public/firebase-messaging-sw.js
-      const swUrl = `/firebase-messaging-sw.js?` + 
+      // 🚀 SW_VERSION v2: Automatic update detection
+      const SW_VERSION = "v2";
+      
+      // Pass config and version as query parameters to avoid hardcoding secrets
+      const swUrl = `/firebase-messaging-sw.js?v=${SW_VERSION}&` + 
         `apiKey=${encodeURIComponent(import.meta.env.VITE_FIREBASE_API_KEY)}&` +
         `authDomain=${encodeURIComponent(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN)}&` +
         `projectId=${encodeURIComponent(import.meta.env.VITE_FIREBASE_PROJECT_ID)}&` +

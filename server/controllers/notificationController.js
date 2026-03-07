@@ -130,11 +130,29 @@ export const createNotification = async ({ recipient, type, title, message, link
 
         // Send Push Notification (FCM)
         import("../utils/fcmService.js").then(({ sendPushNotification }) => {
+            // 🏷️ Smart Grouping: Group notifications by chat, order, or gig to avoid tray spam
+            let smartTag = metaData.tag || "suvix-notification";
+            if (type === "chat_message" && metaData.orderId) {
+                smartTag = `chat_${metaData.orderId}`;
+            } else if (metaData.orderId) {
+                smartTag = `order_${metaData.orderId}`;
+            } else if (metaData.gigId) {
+                smartTag = `gig_${metaData.gigId}`;
+            }
+
+            // Include sender avatar and rich media image in fcm data
+            const fcmData = { 
+                ...metaData,
+                senderAvatar: notification.sender?.profilePicture || null,
+                image: metaData.image || null,
+                tag: smartTag
+            };
+            
             sendPushNotification(recipient, {
                 title: title,
                 body: message,
                 link: link,
-                data: metaData
+                data: fcmData
             });
         }).catch(err => console.error("FCM send failed:", err));
 

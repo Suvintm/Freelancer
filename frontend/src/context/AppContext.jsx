@@ -125,8 +125,10 @@ export const AppProvider = ({ children }) => {
                 const title = payload.notification?.title || payload.data?.title || "SuviX";
                 const options = {
                   body: payload.notification?.body || payload.data?.body || "",
-                  icon: "/icons/suvix-icon.png",
-                  badge: "/icons/suvix-badge.png",
+                  // 📷 Show sender avatar in foreground too
+                  icon: payload.data?.senderAvatar || payload.notification?.icon || "/icons/notification-icon.png",
+                  badge: "/icons/notification-badge.png",
+                  image: payload.notification?.image || payload.data?.image || null,
                   tag: payload.notification?.tag || payload.data?.tag || "suvix-notification",
                   renotify: true,
                   data: {

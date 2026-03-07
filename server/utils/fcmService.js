@@ -26,14 +26,15 @@ export const sendPushNotification = async (userId, { title, body, icon, data = {
       notification: {
         title,
         body,
-        image: data.image || null, // Support rich media images
+        image: data.image || null, // Support rich media thumbnails
       },
       webpush: {
         notification: {
           title,
           body,
-          icon: "/icons/suvix-icon.png",
-          badge: "/icons/suvix-badge.png",
+          // 📷 Instagram-style: Use sender avatar if provided, otherwise default icon
+          icon: data.senderAvatar || "/icons/notification-icon.png",
+          badge: "/icons/notification-badge.png",
           image: data.image || null,
           vibrate: [200, 100, 200],
           requireInteraction: true,
@@ -43,12 +44,13 @@ export const sendPushNotification = async (userId, { title, body, icon, data = {
             {
               action: "view",
               title: "View Details",
-              icon: "/icons/suvix-badge.png"
+              icon: "/icons/notification-badge.png"
             }
           ],
           data: {
             ...data,
             click_action: link,
+            senderAvatar: data.senderAvatar || null,
           }
         },
         fcmOptions: {
@@ -59,6 +61,7 @@ export const sendPushNotification = async (userId, { title, body, icon, data = {
         ...data,
         type: data.type || "standard",
         link: link,
+        senderAvatar: data.senderAvatar || "",
       },
       android: {
         priority: "high",
