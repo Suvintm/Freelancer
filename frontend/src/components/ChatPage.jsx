@@ -1143,7 +1143,7 @@ useEffect(() => {
       behavior: "smooth",
     });
   }
-}, [messages]);
+}, [messages, typingUsers]);
 
 
   // --- Handlers ---

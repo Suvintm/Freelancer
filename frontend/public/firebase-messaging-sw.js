@@ -44,7 +44,7 @@ messaging.onBackgroundMessage((payload) => {
   const notificationOptions = {
     body: payload.notification?.body || payload.data?.body || '',
     icon: icon,
-    badge: '/icons/notification-badge.png',
+    badge: '/icons/notification-badge2.png',
     image: payload.notification?.image || payload.data?.image || null, // Rich media thumbnail
     vibrate: [200, 100, 200],
     tag: payload.notification?.tag || payload.data?.tag || 'suvix-notification',
@@ -54,7 +54,7 @@ messaging.onBackgroundMessage((payload) => {
       {
         action: 'view',
         title: 'View Details',
-        icon: '/icons/notification-badge.png'
+        icon: '/icons/notification-badge2.png'
       }
     ],
     data: {
