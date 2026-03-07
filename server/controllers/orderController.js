@@ -763,6 +763,11 @@ export const acceptOrder = asyncHandler(async (req, res) => {
     title: "Order Accepted",
     message: `${req.user.name} accepted your order "${order.title}"`,
     link: `/chat/${order._id}`,
+    metaData: {
+      orderId: order._id,
+      senderId: req.user._id,
+      type: "order_accepted"
+    }
   });
 
   logger.info(`Order accepted: ${order.orderNumber}`);

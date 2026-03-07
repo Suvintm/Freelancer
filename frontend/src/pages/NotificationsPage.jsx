@@ -527,6 +527,32 @@ const NotificationsPage = () => {
                                 </button>
                               </div>
                             )}
+
+                            {/* Order Accepted Actions */}
+                            {n.title === "Order Accepted" && n.metaData?.orderId && (
+                              <div className="flex items-center gap-2 mt-3 overflow-x-auto no-scrollbar pb-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!n.isRead) markAsRead(n._id);
+                                    navigate(`/chat/${n.metaData.orderId}`);
+                                  }}
+                                  className="px-4 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[10px] font-black rounded-lg hover:opacity-90 transition-all shadow-lg flex items-center gap-1.5 whitespace-nowrap"
+                                >
+                                  View Order
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!n.isRead) markAsRead(n._id);
+                                    navigate(`/chat/${n.metaData.orderId}`);
+                                  }}
+                                  className="px-4 py-1.5 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-[10px] font-black rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all whitespace-nowrap"
+                                >
+                                  Start Conversation
+                                </button>
+                              </div>
+                            )}
                           </div>
 
                           {/* Reel Thumbnail (Right Side) */}
