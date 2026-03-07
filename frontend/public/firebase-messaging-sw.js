@@ -1,6 +1,7 @@
 // firebase-messaging-sw.js
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
+importScripts('https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/umd/idb-keyval-iife.min.js');
 
 // Initialize the Firebase app in the service worker.
 // These values are passed dynamically from the main thread during registration 
@@ -32,12 +33,35 @@ self.addEventListener('activate', (event) => {
 
 const messaging = firebase.messaging();
 
-// 📥 In-memory store for InboxStyle stacking (WhatsApp style)
-// Note: This persists as long as the Service Worker is alive.
-const messageStore = {};
+// � Production: Native Push Event listener (The Slack/Discord trick)
+// This listener fires as soon as the push packet arrives, often bypassing 
+// the throttling that occasionally affects high-level wrappers.
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+  try {
+    const payload = event.data.json();
+    // Only show if it's a valid data-only payload with title
+    if (payload.data && payload.data.title) {
+      const title = payload.data.title;
+      const options = {
+        body: payload.data.body || "",
+        icon: payload.data.senderAvatar || "/icons/notification-icon.png",
+        badge: "/icons/notification-badge2.png",
+        tag: payload.data.tag,
+        renotify: true,
+        timestamp: Date.now(), // 🕒 Production: Ensure correct OS ordering
+        data: { url: payload.data.link || "/notifications" }
+      };
+      event.waitUntil(self.registration.showNotification(title, options));
+    }
+  } catch (e) {} // Fail gracefully
+});
+
+// �📥 Note: We now use IndexedDB (idb-keyval) instead of in-memory store
+// to ensure message history persists across Service Worker reloads.
 
 // Handle background messages
-messaging.onBackgroundMessage((payload) => {
+messaging.onBackgroundMessage(async (payload) => {
   // 🧹 Production: Remove verbose logs for cleaner client console
   // console.log('[firebase-messaging-sw.js] Background Payload:', JSON.stringify(payload, null, 2));
   
@@ -47,24 +71,35 @@ messaging.onBackgroundMessage((payload) => {
   const messageBody = payload.notification?.body || payload.data?.body || "";
   const tag = payload.notification?.tag || payload.data?.tag || undefined;
 
-  // 1. Logic for Chat Message Stacking (InboxStyle)
+  // 1. Logic for Chat Message Stacking (InboxStyle + Persistent)
   if (type === "chat_message" && chatId !== "default") {
-    if (!messageStore[chatId]) {
-      messageStore[chatId] = [];
+    // 📥 Retrieve persistent history from IndexedDB
+    let messageLines = [];
+    try {
+      messageLines = (await idbKeyval.get(`chat_history_${chatId}`)) || [];
+    } catch (e) {
+      console.error("[SW] Error reading idb:", e);
     }
     
-    // Add new message to the list for this chat
-    messageStore[chatId].push(messageBody);
+    // Add new message to the list
+    messageLines.push(messageBody);
     
-    // Keep only the last 5 messages to avoid overflow
-    if (messageStore[chatId].length > 5) {
-      messageStore[chatId].shift();
+    // Keep only last 5 messages to avoid overflow
+    if (messageLines.length > 5) {
+      messageLines.shift();
     }
     
-    const messageLines = messageStore[chatId];
+    // 💾 Save back to IndexedDB
+    try {
+      await idbKeyval.set(`chat_history_${chatId}`, messageLines);
+    } catch (e) {
+      console.error("[SW] Error writing idb:", e);
+    }
+    
+    // 📱 Adaptive UI: Update title with count for clear mobile & desktop UX
     const displayTitle = senderName + (messageLines.length > 1 ? ` (${messageLines.length} messages)` : "");
     
-    // Build the stacked body (last message at bottom)
+    // Body shows the stacked history for desktop support
     const stackedBody = messageLines.join("\n");
 
     const notificationOptions = {
@@ -72,8 +107,9 @@ messaging.onBackgroundMessage((payload) => {
       icon: payload.data?.senderAvatar || payload.notification?.icon || "/icons/notification-icon.png",
       badge: "/icons/notification-badge2.png",
       image: payload.notification?.image || payload.data?.image || null,
-      tag: `chat_${chatId}`, // Use consistent tag for the chat session
+      tag: `chat_${chatId}`,
       renotify: true,
+      timestamp: Date.now(), // 🕒 Production: Correct chronology
       requireInteraction: false,
       data: {
         url: payload.data?.click_action || payload.data?.link || "/notifications",
@@ -96,6 +132,7 @@ messaging.onBackgroundMessage((payload) => {
     vibrate: [200, 100, 200],
     tag: tag,
     renotify: tag ? true : false,
+    timestamp: Date.now(), // 🕒 Production: Correct chronology
     requireInteraction: false,
     actions: payload.notification?.actions || [
       {
@@ -117,6 +154,12 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   
   const targetUrl = event.notification.data.url;
+  const chatId = event.notification.data.chatId;
+
+  // 🧹 Clear history from IndexedDB on click to reset the stack
+  if (chatId) {
+    idbKeyval.del(`chat_history_${chatId}`).catch(() => {});
+  }
   
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {

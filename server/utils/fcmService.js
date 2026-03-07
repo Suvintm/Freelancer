@@ -32,6 +32,9 @@ export const sendPushNotification = async (userId, { title, body, icon, data = {
 
     const message = {
       webpush: {
+        headers: {
+          Urgency: "high", // 🚀 Production: Request immediate delivery (reduces background delay)
+        },
         notification: {
           title,
           body,
