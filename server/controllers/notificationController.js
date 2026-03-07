@@ -3,6 +3,20 @@ import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import { io, getReceiverSocketId } from "../socket.js";
 import { withCache, deleteCache, CacheKey, TTL } from "../utils/cache.js";
 
+// ============ GET UNREAD COUNT ============
+export const getUnreadCount = asyncHandler(async (req, res) => {
+    const unreadCount = await withCache(
+        CacheKey.notificationCount(req.user._id),
+        TTL.NOTIFICATION_COUNT,
+        () => Notification.countDocuments({ recipient: req.user._id, isRead: false })
+    );
+
+    res.status(200).json({
+        success: true,
+        unreadCount,
+    });
+});
+
 // ============ GET NOTIFICATIONS ============
 export const getNotifications = asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
@@ -113,6 +127,16 @@ export const createNotification = async ({ recipient, type, title, message, link
             // Emit using standard event name (matches SocketContext listener)
             io.to(receiverSocketId).emit("notification:new", populatedNotification);
         }
+
+        // Send Push Notification (FCM)
+        import("../utils/fcmService.js").then(({ sendPushNotification }) => {
+            sendPushNotification(recipient, {
+                title: title,
+                body: message,
+                link: link,
+                data: metaData
+            });
+        }).catch(err => console.error("FCM send failed:", err));
 
         // Invalidate unread count cache
         await deleteCache(CacheKey.notificationCount(recipient.toString()));

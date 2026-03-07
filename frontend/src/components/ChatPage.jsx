@@ -969,8 +969,20 @@ const ChatPage = () => {
         const msgOrderId = message.orderId || message.order;
         if (msgOrderId === orderId || String(msgOrderId) === String(orderId)) {
           setMessages((prev) => {
-            // Prevent duplicate: skip if message with same _id already exists
+            // 1. Check if message already exists by real DB ID
             if (prev.some(m => m._id?.toString() === message._id?.toString())) return prev;
+            
+            // 2. Check if this is OUR message that was added optimistically (matches by content and sender)
+            // This handles the case where the socket message arrives BEFORE the axios response updates the tempId
+            const isOwnMessage = (message.sender?._id || message.sender)?.toString() === user?._id?.toString();
+            if (isOwnMessage) {
+              const hasOptimistic = prev.some(m => m.isPending && m.content === message.content);
+              if (hasOptimistic) {
+                // Replace the optimistic one with the real one right now to avoid duplication
+                return prev.map(m => (m.isPending && m.content === message.content) ? message : m);
+              }
+            }
+
             return [...prev, message];
           });
           // Debounced: wait 400ms after last message before sending read receipt

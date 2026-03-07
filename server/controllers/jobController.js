@@ -408,6 +408,11 @@ export const applyToJob = asyncHandler(async (req, res) => {
     title: "New Job Application",
     message: `${req.user.name} applied for "${job.title}"`,
     link: `/my-jobs/${job._id}/applicants`,
+    metaData: {
+      jobId: job._id,
+      senderId: req.user._id,
+      type: "job_application"
+    }
   });
 
   logger.info(`Application submitted: ${application._id} for job ${jobId}`);
@@ -522,6 +527,12 @@ export const updateApplicationStatus = asyncHandler(async (req, res) => {
       title: status === "hired" ? "You're Hired!" : "Application Update",
       message: notificationMessages[status],
       link: "/my-applications",
+      metaData: {
+        applicationId: application._id,
+        jobId: application.job._id,
+        type: "job_application_status",
+        status
+      }
     });
   }
 
@@ -706,6 +717,11 @@ export const hireEditor = asyncHandler(async (req, res) => {
     title: "🎉 You're Hired!",
     message: `${req.user.name} selected you for "${application.job.title}". Check your email for contact details.`,
     link: "/my-applications",
+    metaData: {
+      applicationId: application._id,
+      jobId: application.job._id,
+      type: "job_hire"
+    }
   });
 
   logger.info(`Editor ${application.applicant._id} hired for job ${application.job._id}`);

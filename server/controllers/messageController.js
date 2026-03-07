@@ -152,8 +152,20 @@ export const sendMessage = asyncHandler(async (req, res) => {
     console.log("❌ Socket IO not available");
   }
 
-  // 🔕 Notification removed - using unread count badge instead to save storage
-  // Real-time socket event already notifies the recipient
+  // 🔔 Create Notification for the recipient
+  await createNotification({
+    recipient: isClient ? order.editor._id : order.client._id,
+    sender: req.user._id,
+    type: "chat_message",
+    title: `💬 New Message from ${req.user.name}`,
+    message: type === "text" ? content : `Sent a ${type || "file"}`,
+    link: `/chat/${orderId}`,
+    metaData: {
+      orderId,
+      senderId: req.user._id,
+      type: "chat_message",
+    }
+  });
 
   logger.info(`Message sent in order: ${order.orderNumber}`);
 
@@ -438,8 +450,20 @@ export const uploadFile = asyncHandler(async (req, res) => {
     });
   }
 
-  // 🔕 Notification removed - using unread count badge instead to save storage
-  // Real-time socket event already notifies the recipient
+  // 🔔 Create Notification for the recipient
+  await createNotification({
+    recipient: isClient ? order.editor._id : order.client._id,
+    sender: req.user._id,
+    type: "chat_message",
+    title: `📁 New ${messageType === "file" ? "File" : messageType} received`,
+    message: `${req.user.name} shared a ${messageType}: ${req.file.originalname}`,
+    link: `/chat/${orderId}`,
+    metaData: {
+      orderId,
+      senderId: req.user._id,
+      type: "chat_message",
+    }
+  });
 
   logger.info(`File uploaded in order: ${order.orderNumber}`);
 
@@ -696,8 +720,20 @@ export const uploadVoice = asyncHandler(async (req, res) => {
     });
   }
 
-  // 🔕 Notification removed - using unread count badge instead to save storage
-  // Real-time socket event already notifies the recipient
+  // 🔔 Create Notification for the recipient
+  await createNotification({
+    recipient: isClient ? order.editor._id : order.client._id,
+    sender: req.user._id,
+    type: "chat_message",
+    title: `🎤 New Voice Message`,
+    message: `${req.user.name} sent a voice message (${duration}s)`,
+    link: `/chat/${orderId}`,
+    metaData: {
+      orderId,
+      senderId: req.user._id,
+      type: "chat_message",
+    }
+  });
 
   res.status(201).json({
     success: true,

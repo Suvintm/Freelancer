@@ -61,6 +61,10 @@ import jobRoutes from "./routes/jobRoutes.js";
 // Scheduled Jobs
 import { startScheduledJobs } from "./jobs/scheduledJobs.js";
 
+// Firebase Admin initialization
+import { initFirebaseAdmin } from "./utils/firebaseAdmin.js";
+initFirebaseAdmin();
+
 // Validate required environment variables
 const requiredEnvVars = ["MONGO_URI", "JWT_SECRET", "CLOUDINARY_CLOUD_NAME", "REDIS_URL", "REDIS_TOKEN"];
 const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);

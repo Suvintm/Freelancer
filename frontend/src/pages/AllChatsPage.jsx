@@ -87,9 +87,12 @@ const AllChatsPage = () => {
 
   const handleNewMessage = useCallback((message) => {
     setChats(prevChats => {
-      const orderId = message.orderId || message.order;
-      const chatIndex = prevChats.findIndex(c => c._id === orderId);
-      if (chatIndex === -1) return prevChats;
+      const orderId = (message.orderId || message.order)?.toString();
+      const chatIndex = prevChats.findIndex(c => c._id?.toString() === orderId);
+      if (chatIndex === -1) {
+        console.warn(`[AllChatsPage] Order ${orderId} not found in current list`);
+        return prevChats;
+      }
 
       const updatedChats = [...prevChats];
       const chat = { ...updatedChats[chatIndex] };

@@ -16,6 +16,10 @@ router.route("/saved-editors").get(getSavedEditors);
 // Update availability
 router.route("/availability").put(updateAvailability);
 
+// FCM Token registration
+import { updateFcmToken } from "../controllers/userController.js";
+router.route("/fcm-token").post(updateFcmToken);
+
 // Social / Follow system
 router.route("/follow/:editorId").post(toggleFollow);
 router.route("/follow/status/:editorId").get(getFollowStatus);

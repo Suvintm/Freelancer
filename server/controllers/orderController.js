@@ -726,10 +726,15 @@ export const acceptOrder = asyncHandler(async (req, res) => {
     // Notify client to pay
     await createNotification({
       recipient: order.client,
-      type: "info",
+      type: "warning",
       title: "💳 Payment Required",
       message: `${req.user.name} accepted your request! Pay ₹${order.amount} to start the project.`,
       link: `/chat/${order._id}`,
+      metaData: {
+        orderId: order._id,
+        senderId: req.user._id,
+        type: "payment_required"
+      }
     });
 
     logger.info(`Request accepted, awaiting payment: ${order.orderNumber}`);

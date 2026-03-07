@@ -224,6 +224,11 @@ export const uploadFinalDelivery = asyncHandler(async (req, res) => {
     title: "🎬 Final Video Ready!",
     message: `${req.user.name} has submitted the final delivery for "${order.title}"`,
     link: `/chat/${orderId}`,
+    metaData: {
+      orderId,
+      senderId: req.user._id,
+      type: "delivery_uploaded"
+    }
   });
 
   res.status(201).json({
@@ -381,6 +386,11 @@ export const requestChanges = asyncHandler(async (req, res) => {
     title: "📝 Changes Requested",
     message: `${req.user.name} has requested changes for "${order.title}"`,
     link: `/chat/${orderId}`,
+    metaData: {
+      orderId,
+      senderId: req.user._id,
+      type: "delivery_revision"
+    }
   });
 
   res.json({
@@ -527,7 +537,12 @@ export const confirmDownload = asyncHandler(async (req, res) => {
     type: "success",
     title: "💰 Payment Released!",
     message: `₹${order.editorEarning} has been released for "${order.title}"`,
-    link: `/payments`,
+    link: `/chat/${orderId}`,
+    metaData: {
+      orderId,
+      senderId: req.user._id,
+      type: "payment_released"
+    }
   });
 
   // Create system message for completion

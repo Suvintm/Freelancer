@@ -284,7 +284,8 @@ export const toggleLike = asyncHandler(async (req, res) => {
             metaData: {
                 reelId: reel._id,
                 thumbnail: reel.mediaUrl,
-                mediaType: reel.mediaType
+                mediaType: reel.mediaType,
+                type: "reel_like"
             }
         }).catch(err => console.error("Reel like notification failed:", err));
     }
@@ -457,7 +458,8 @@ export const addComment = asyncHandler(async (req, res) => {
                 reelId: reel._id,
                 thumbnail: reel.mediaUrl,
                 mediaType: reel.mediaType,
-                openComments: true
+                openComments: true,
+                type: "reel_comment"
             }
         }).catch(err => console.error("Reel comment notification failed:", err));
     }

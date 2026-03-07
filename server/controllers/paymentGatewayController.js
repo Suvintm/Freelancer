@@ -222,6 +222,11 @@ export const verifyPayment = async (req, res) => {
       title: "💰 Payment Received!",
       message: `${populatedOrder.client?.name || "A client"} paid ₹${order.amount} for "${order.title}". Start working!`,
       link: `/chat/${order._id}`,
+      metaData: {
+        orderId: order._id,
+        senderId: order.client,
+        type: "payment_received"
+      }
     });
 
     // Increment gig orders count now that it's paid (only for gig orders)

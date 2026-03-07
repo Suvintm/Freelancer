@@ -100,6 +100,52 @@ export const AppProvider = ({ children }) => {
     delete axios.defaults.headers.common["Authorization"];
   };
 
+  // ============ FIREBASE FCM INIT ============
+  useEffect(() => {
+    if (user?.token) {
+      const initFCM = async () => {
+        try {
+          const { requestForToken, onMessageListener } = await import("../firebaseConfig");
+          
+          // Sync token with server (Internal utility handles permission)
+          const token = await requestForToken(backendURL);
+          if (token) {
+            console.log("🚀 SuviX Push Notifications Active");
+          }
+          
+          // Foreground listener
+          onMessageListener().then(async payload => {
+            console.log("🔔 Foreground Notification:", payload);
+            fetchNotifications();
+            
+            // FORCE SYSTEM NOTIFICATION in foreground for "Production Level" feel
+            if (Notification.permission === 'granted') {
+              const registration = await navigator.serviceWorker.getRegistration();
+              if (registration) {
+                const title = payload.notification?.title || payload.data?.title || "SuviX";
+                const options = {
+                  body: payload.notification?.body || payload.data?.body || "",
+                  icon: "/icons/suvix-icon.png",
+                  badge: "/icons/suvix-badge.png",
+                  tag: payload.notification?.tag || payload.data?.tag || "suvix-notification",
+                  renotify: true,
+                  data: {
+                    url: payload.data?.click_action || payload.data?.link || "/notifications"
+                  }
+                };
+                registration.showNotification(title, options);
+              }
+            }
+          }).catch(err => console.log("FCM Listener error:", err));
+          
+        } catch (err) {
+          console.error("FCM Initialization failed:", err);
+        }
+      };
+      initFCM();
+    }
+  }, [user?.token, backendURL]);
+
   return (
     <AppContext.Provider
       value={{

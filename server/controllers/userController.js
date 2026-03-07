@@ -187,7 +187,11 @@ export const toggleFollow = asyncHandler(async (req, res) => {
         message: `${follower.name} wants to follow you`,
         link: `/notifications`, 
         sender: followerId,
-        metaData: { followRequestId: followRequest._id } 
+        metaData: { 
+          followRequestId: followRequest._id,
+          senderId: followerId,
+          type: "follow_request"
+        } 
       });
 
       return res.status(200).json({ success: true, message: "Follow request sent", isPending: true });
@@ -206,6 +210,10 @@ export const toggleFollow = asyncHandler(async (req, res) => {
       message: `${follower.name} started following you`,
       link: `/public-profile/${followerId}`,
       sender: followerId,
+      metaData: {
+        senderId: followerId,
+        type: "follow"
+      }
     });
 
     res.status(200).json({ success: true, message: "Followed successfully", isFollowing: true });
@@ -330,7 +338,11 @@ export const handleFollowRequest = asyncHandler(async (req, res) => {
       title: "Request Accepted",
       message: `${receiver.name} accepted your follow request`,
       link: `/public-profile/${receiver._id}`,
-      sender: receiver._id
+      sender: receiver._id,
+      metaData: {
+        senderId: receiver._id,
+        type: "follow_accept"
+      }
     });
 
     res.status(200).json({ success: true, message: "Request accepted" });
@@ -361,4 +373,35 @@ export const searchUsers = asyncHandler(async (req, res) => {
     .lean();
 
   res.status(200).json({ success: true, users });
+});
+
+// @desc    Update FCM Token for push notifications
+// @route   POST /api/user/fcm-token
+// @access  Private
+export const updateFcmToken = asyncHandler(async (req, res) => {
+  const { token } = req.body;
+  const userId = req.user._id;
+
+  if (!token) {
+    res.status(400);
+    throw new Error("FCM Token is required");
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  // Add token if it doesn't exist
+  if (!user.fcmTokens.includes(token)) {
+    user.fcmTokens.push(token);
+    await user.save();
+    logger.info(`FCM Token registered for user ${userId}`);
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "FCM Token updated successfully",
+  });
 });

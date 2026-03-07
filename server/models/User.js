@@ -409,6 +409,12 @@ const userSchema = new mongoose.Schema(
       type: Date,
       select: false,
     },
+    
+    // ==================== NOTIFICATIONS (FCM) ====================
+    fcmTokens: [{
+      type: String,
+      default: [],
+    }],
   },
   {
     timestamps: true,
