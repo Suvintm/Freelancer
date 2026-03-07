@@ -46,8 +46,8 @@ export const sendPushNotification = async (userId, { title, body, icon, data = {
           ...(data.image ? { image: String(data.image) } : {}),
           vibrate: [200, 100, 200],
           requireInteraction: true,
-          tag: data.tag || "suvix-notification", 
-          renotify: true,
+          tag: data.tag || undefined, 
+          renotify: data.tag ? true : false,
           actions: [
             {
               action: "view",

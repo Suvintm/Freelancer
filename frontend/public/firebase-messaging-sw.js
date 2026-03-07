@@ -47,8 +47,8 @@ messaging.onBackgroundMessage((payload) => {
     badge: '/icons/notification-badge2.png',
     image: payload.notification?.image || payload.data?.image || null, // Rich media thumbnail
     vibrate: [200, 100, 200],
-    tag: payload.notification?.tag || payload.data?.tag || 'suvix-notification',
-    renotify: true,
+    tag: payload.notification?.tag || payload.data?.tag || undefined,
+    renotify: (payload.notification?.tag || payload.data?.tag) ? true : false,
     requireInteraction: true,
     actions: payload.notification?.actions || [
       {

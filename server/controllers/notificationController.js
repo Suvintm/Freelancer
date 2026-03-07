@@ -130,14 +130,13 @@ export const createNotification = async ({ recipient, type, title, message, link
 
         // Send Push Notification (FCM)
         import("../utils/fcmService.js").then(({ sendPushNotification }) => {
-            // 🏷️ Smart Grouping: Group notifications by chat, order, or gig to avoid tray spam
-            let smartTag = metaData.tag || "suvix-notification";
+            // 🏷️ Unique Tagging: Use notification ID or nothing to allow stacking instead of overwriting
+            // Chrome/WebPush use 'tag' to replace existing notifications. Removing it allows multiple to show.
+            let smartTag = metaData.tag || null; 
             if (type === "chat_message" && metaData.orderId) {
-                smartTag = `chat_${metaData.orderId}`;
-            } else if (metaData.orderId) {
-                smartTag = `order_${metaData.orderId}`;
-            } else if (metaData.gigId) {
-                smartTag = `gig_${metaData.gigId}`;
+                // If we WANT to group by chat, we use chat_orderId. 
+                // But the user wants multiple notifications, so we'll use null or unique ID.
+                smartTag = `chat_${metaData.orderId}_${notification._id}`;
             }
 
             // Include sender avatar and rich media image in fcm data

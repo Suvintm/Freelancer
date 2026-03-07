@@ -129,8 +129,8 @@ export const AppProvider = ({ children }) => {
                   icon: payload.data?.senderAvatar || payload.notification?.icon || "/icons/notification-icon.png",
                   badge: "/icons/notification-badge.png",
                   image: payload.notification?.image || payload.data?.image || null,
-                  tag: payload.notification?.tag || payload.data?.tag || "suvix-notification",
-                  renotify: true,
+                  tag: payload.notification?.tag || payload.data?.tag || undefined,
+                  renotify: (payload.notification?.tag || payload.data?.tag) ? true : false,
                   data: {
                     url: payload.data?.click_action || payload.data?.link || "/notifications"
                   }
