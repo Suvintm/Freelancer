@@ -113,8 +113,8 @@ export const AppProvider = ({ children }) => {
             console.log("🚀 SuviX Push Notifications Active");
           }
           
-          // Foreground listener
-          onMessageListener().then(async payload => {
+          // Foreground listener - Refactored to handle multiple messages via callback
+          onMessageListener(async (payload) => {
             console.log("🔔 Foreground Notification Payload:", payload);
             fetchNotifications();
             
@@ -142,7 +142,7 @@ export const AppProvider = ({ children }) => {
                 registration.showNotification(title, options);
               }
             }
-          }).catch(err => console.log("FCM Listener error:", err));
+          });
           
         } catch (err) {
           console.error("FCM Initialization failed:", err);

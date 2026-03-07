@@ -379,6 +379,13 @@ export const searchUsers = asyncHandler(async (req, res) => {
 // @route   POST /api/user/fcm-token
 // @access  Private
 export const updateFcmToken = asyncHandler(async (req, res) => {
+  // 🔍 Diagnostic logging to find why req.body is missing in production
+  if (!req.body) {
+    logger.error(`FCM registration failed: req.body is undefined. Content-Type: ${req.get('Content-Type')}`);
+    res.status(400);
+    throw new Error("Request body is missing. Ensure Content-Type is application/json.");
+  }
+
   const { token } = req.body;
   const userId = req.user._id;
 

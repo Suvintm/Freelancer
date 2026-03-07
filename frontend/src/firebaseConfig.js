@@ -81,10 +81,11 @@ export const requestForToken = async (backendURL) => {
 };
 
 // Listen for messages while app is in foreground
-export const onMessageListener = () =>
-  new Promise((resolve) => {
-    onMessage(messaging, (payload) => {
-      console.log("🔔 Foreground Message:", payload);
-      resolve(payload);
-    });
+export const onMessageListener = (callback) => {
+  if (typeof callback !== 'function') return;
+  
+  return onMessage(messaging, (payload) => {
+    console.log("🔔 Foreground Message Received:", payload);
+    callback(payload);
   });
+};
