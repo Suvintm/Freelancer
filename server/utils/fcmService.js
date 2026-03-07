@@ -42,7 +42,7 @@ export const sendPushNotification = async (userId, { title, body, icon, data = {
           body,
           // 📷 Instagram-style: Use sender avatar if provided, otherwise default icon
           icon: data.senderAvatar || "/icons/notification-icon.png",
-          badge: "/icons/notification-badge.png",
+          badge: "/icons/notification-badge2.png",
           ...(data.image ? { image: String(data.image) } : {}),
           vibrate: [200, 100, 200],
           requireInteraction: true,

@@ -127,7 +127,7 @@ export const AppProvider = ({ children }) => {
                   body: payload.notification?.body || payload.data?.body || "",
                   // 📷 Show sender avatar in foreground too
                   icon: payload.data?.senderAvatar || payload.notification?.icon || "/icons/notification-icon.png",
-                  badge: "/icons/notification-badge.png",
+                  badge: "/icons/notification-badge2.png",
                   image: payload.notification?.image || payload.data?.image || null,
                   tag: payload.notification?.tag || payload.data?.tag || undefined,
                   renotify: (payload.notification?.tag || payload.data?.tag) ? true : false,
