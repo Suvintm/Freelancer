@@ -36,10 +36,16 @@ const connect = () => {
 
   try {
     client = new Redis(redisUrl, {
-      maxRetriesPerRequest: 1,
-      connectTimeout:       5000,
+      // 🛡️ Set to null to avoid MaxRetriesPerRequestError. 
+      // ioredis will keep retrying based on retryStrategy instead of giving up.
+      maxRetriesPerRequest: null, 
+      connectTimeout:      10000, // 10s for slow warm-ups
       lazyConnect:          true,
       enableReadyCheck:     true,
+      retryStrategy(times) {
+        // Reconnect after 2, 4, 8... up to 10 seconds
+        return Math.min(times * 200, 10000);
+      },
     });
 
     client.on("connect", () => {

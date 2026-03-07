@@ -31,12 +31,6 @@ export const sendPushNotification = async (userId, { title, body, icon, data = {
     });
 
     const message = {
-      notification: {
-        title,
-        body,
-        ...(data.image ? { image: String(data.image) } : {}),
-        tag: data.tag || undefined, // Enforce stacking at top level
-      },
       webpush: {
         notification: {
           title,
@@ -46,7 +40,7 @@ export const sendPushNotification = async (userId, { title, body, icon, data = {
           badge: "/icons/notification-badge2.png",
           ...(data.image ? { image: String(data.image) } : {}),
           vibrate: [200, 100, 200],
-          requireInteraction: true,
+          requireInteraction: false,
           tag: data.tag || undefined, 
           renotify: data.tag ? true : false,
           actions: [
@@ -67,6 +61,8 @@ export const sendPushNotification = async (userId, { title, body, icon, data = {
       },
       data: {
         ...sanitizedData,
+        title: String(title),
+        body: String(body),
         type: data.type || "standard",
         link: link,
       },

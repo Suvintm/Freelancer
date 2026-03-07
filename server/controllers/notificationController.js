@@ -2,6 +2,7 @@ import Notification from "../models/Notification.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import { io, getReceiverSocketId } from "../socket.js";
 import { withCache, deleteCache, CacheKey, TTL } from "../utils/cache.js";
+import { sendPushNotification } from "../utils/fcmService.js";
 
 // ============ GET UNREAD COUNT ============
 export const getUnreadCount = asyncHandler(async (req, res) => {
@@ -129,30 +130,31 @@ export const createNotification = async ({ recipient, type, title, message, link
         }
 
         // Send Push Notification (FCM)
-        import("../utils/fcmService.js").then(({ sendPushNotification }) => {
-            // 🏷️ Unique Tagging: Use notification ID as a default to allow stacking instead of overwriting
-            // Chrome/WebPush use 'tag' to replace existing notifications. Using a unique ID ensures they stack.
-            let smartTag = metaData.tag || notification._id.toString(); 
-            if (type === "chat_message" && metaData.orderId) {
-                // Keep the chat order prefix but still ensure uniqueness with the notification ID
-                smartTag = `chat_${metaData.orderId}_${notification._id}`;
-            }
+        // 🏷️ Production Tagging: Group chats by order, everything else stays unique to stack
+        let smartTag = metaData.tag || undefined; 
 
-            // Include sender avatar and rich media image in fcm data
-            const fcmData = { 
-                ...metaData,
-                senderAvatar: notification.sender?.profilePicture || null,
-                image: metaData.image || null,
-                tag: smartTag
-            };
-            
-            sendPushNotification(recipient, {
+        if (type === "chat_message" && metaData.orderId) {
+            // Group by order so multiple chat messages replace each other (with renotify alert)
+            smartTag = `chat_${metaData.orderId}`;
+        } else if (!smartTag) {
+            // For others, use unique ID to ENSURE they stack independently
+            smartTag = notification._id.toString();
+        }
+
+        // Include sender avatar and rich media image in fcm data
+        const fcmData = { 
+            ...metaData,
+            senderAvatar: notification.sender?.profilePicture || null,
+            image: metaData.image || null,
+            tag: smartTag
+        };
+        
+        sendPushNotification(recipient, {
                 title: title,
                 body: message,
                 link: link,
                 data: fcmData
             });
-        }).catch(err => console.error("FCM send failed:", err));
 
         // Invalidate unread count cache
         await deleteCache(CacheKey.notificationCount(recipient.toString()));

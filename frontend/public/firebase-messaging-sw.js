@@ -34,12 +34,11 @@ const messaging = firebase.messaging();
 
 // Handle background messages
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Background Payload:', JSON.stringify(payload, null, 2));
+  // 🧹 Production: Remove verbose logs for cleaner client console
+  // console.log('[firebase-messaging-sw.js] Background Payload:', JSON.stringify(payload, null, 2));
   
   const notificationTitle = payload.notification?.title || payload.data?.title || 'SuviX';
   const tag = payload.notification?.tag || payload.data?.tag || undefined;
-
-  console.log(`[firebase-messaging-sw.js] Showing notification: "${notificationTitle}" with tag: "${tag}"`);
   
   // 📷 Instagram-style: Show sender avatar as icon if available, otherwise brand logo
   const icon = payload.data?.senderAvatar || payload.notification?.icon || '/icons/notification-icon.png';
@@ -52,7 +51,7 @@ messaging.onBackgroundMessage((payload) => {
     vibrate: [200, 100, 200],
     tag: tag,
     renotify: tag ? true : false,
-    requireInteraction: true,
+    requireInteraction: false, // Don't block screen for standard alerts (User preference)
     actions: payload.notification?.actions || [
       {
         action: 'view',
@@ -64,8 +63,6 @@ messaging.onBackgroundMessage((payload) => {
       url: payload.data?.click_action || payload.data?.link || '/notifications'
     }
   };
-
-  console.log('[firebase-messaging-sw.js] Final Notification Options:', notificationOptions);
 
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });
@@ -81,7 +78,8 @@ self.addEventListener('notificationclick', (event) => {
       // Check if there is already a window tab open with the target URL
       for (let i = 0; i < windowClients.length; i++) {
         const client = windowClients[i];
-        if (client.url === targetUrl && 'focus' in client) {
+        // 🔗 Production: Use .includes() to match URLs even if they have slightly different query params
+        if (client.url.includes(targetUrl) && 'focus' in client) {
           return client.focus();
         }
       }

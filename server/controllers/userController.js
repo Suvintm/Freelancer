@@ -400,11 +400,14 @@ export const updateFcmToken = asyncHandler(async (req, res) => {
     throw new Error("User not found");
   }
 
-  // Add token if it doesn't exist
+  // Add token if it doesn't exist (Maintain max 5 tokens for performance)
   if (!user.fcmTokens.includes(token)) {
+    if (user.fcmTokens.length >= 5) {
+      user.fcmTokens.shift(); // Remove oldest token (FIFO)
+    }
     user.fcmTokens.push(token);
     await user.save();
-    logger.info(`FCM Token registered for user ${userId}`);
+    logger.info(`FCM Token registered for user ${userId} (Count: ${user.fcmTokens.length})`);
   }
 
   res.status(200).json({
