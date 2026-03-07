@@ -20,8 +20,8 @@ export const requestForToken = async (backendURL) => {
   try {
     // 1. Register Service Worker explicitly (FCM requires this for background messages)
     if ('serviceWorker' in navigator) {
-      // 🚀 SW_VERSION v6: Production-level data-only payloads and grouping
-      const SW_VERSION = "v6";
+      // 🚀 SW_VERSION v7: Inbox-Style (WhatsApp) multi-line stacking
+      const SW_VERSION = "v7";
       
       // Pass config and version as query parameters to avoid hardcoding secrets
       const swUrl = `/firebase-messaging-sw.js?v=${SW_VERSION}&` + 

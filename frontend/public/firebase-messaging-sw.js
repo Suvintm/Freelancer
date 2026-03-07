@@ -32,26 +32,71 @@ self.addEventListener('activate', (event) => {
 
 const messaging = firebase.messaging();
 
+// 📥 In-memory store for InboxStyle stacking (WhatsApp style)
+// Note: This persists as long as the Service Worker is alive.
+const messageStore = {};
+
 // Handle background messages
 messaging.onBackgroundMessage((payload) => {
   // 🧹 Production: Remove verbose logs for cleaner client console
   // console.log('[firebase-messaging-sw.js] Background Payload:', JSON.stringify(payload, null, 2));
   
-  const notificationTitle = payload.notification?.title || payload.data?.title || 'SuviX';
+  const type = payload.data?.type || "standard";
+  const chatId = payload.data?.orderId || "default";
+  const senderName = payload.data?.senderName || payload.notification?.title || "SuviX";
+  const messageBody = payload.notification?.body || payload.data?.body || "";
   const tag = payload.notification?.tag || payload.data?.tag || undefined;
-  
-  // 📷 Instagram-style: Show sender avatar as icon if available, otherwise brand logo
+
+  // 1. Logic for Chat Message Stacking (InboxStyle)
+  if (type === "chat_message" && chatId !== "default") {
+    if (!messageStore[chatId]) {
+      messageStore[chatId] = [];
+    }
+    
+    // Add new message to the list for this chat
+    messageStore[chatId].push(messageBody);
+    
+    // Keep only the last 5 messages to avoid overflow
+    if (messageStore[chatId].length > 5) {
+      messageStore[chatId].shift();
+    }
+    
+    const messageLines = messageStore[chatId];
+    const displayTitle = senderName + (messageLines.length > 1 ? ` (${messageLines.length} messages)` : "");
+    
+    // Build the stacked body (last message at bottom)
+    const stackedBody = messageLines.join("\n");
+
+    const notificationOptions = {
+      body: stackedBody,
+      icon: payload.data?.senderAvatar || payload.notification?.icon || "/icons/notification-icon.png",
+      badge: "/icons/notification-badge2.png",
+      image: payload.notification?.image || payload.data?.image || null,
+      tag: `chat_${chatId}`, // Use consistent tag for the chat session
+      renotify: true,
+      requireInteraction: false,
+      data: {
+        url: payload.data?.click_action || payload.data?.link || "/notifications",
+        chatId: chatId
+      }
+    };
+
+    return self.registration.showNotification(displayTitle, notificationOptions);
+  }
+
+  // 2. Standard Logic for other notifications (Follows, Orders, etc.)
+  const notificationTitle = payload.notification?.title || payload.data?.title || 'SuviX';
   const icon = payload.data?.senderAvatar || payload.notification?.icon || '/icons/notification-icon.png';
   
   const notificationOptions = {
-    body: payload.notification?.body || payload.data?.body || '',
+    body: messageBody,
     icon: icon,
     badge: '/icons/notification-badge2.png',
-    image: payload.notification?.image || payload.data?.image || null, // Rich media thumbnail
+    image: payload.notification?.image || payload.data?.image || null,
     vibrate: [200, 100, 200],
     tag: tag,
     renotify: tag ? true : false,
-    requireInteraction: false, // Don't block screen for standard alerts (User preference)
+    requireInteraction: false,
     actions: payload.notification?.actions || [
       {
         action: 'view',
