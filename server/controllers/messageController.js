@@ -162,6 +162,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
     link: `/chat/${orderId}`,
     metaData: {
       orderId,
+      orderNumber: order.orderNumber,
       senderId: req.user._id,
       senderName: req.user.name,
       type: "chat_message",
@@ -461,6 +462,7 @@ export const uploadFile = asyncHandler(async (req, res) => {
     link: `/chat/${orderId}`,
     metaData: {
       orderId,
+      orderNumber: order.orderNumber,
       senderId: req.user._id,
       senderName: req.user.name,
       type: "chat_message",
@@ -732,6 +734,7 @@ export const uploadVoice = asyncHandler(async (req, res) => {
     link: `/chat/${orderId}`,
     metaData: {
       orderId,
+      orderNumber: order.orderNumber,
       senderId: req.user._id,
       senderName: req.user.name,
       type: "chat_message",

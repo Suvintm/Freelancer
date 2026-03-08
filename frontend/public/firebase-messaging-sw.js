@@ -1,11 +1,10 @@
 // firebase-messaging-sw.js
+// ✅ SW Version: v10 — Data-only payload, Order ID display, Smart grouping, App-closed support
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
 importScripts('https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/umd/idb-keyval-iife.min.js');
 
-// Initialize the Firebase app in the service worker.
-// These values are passed dynamically from the main thread during registration 
-// to avoid hardcoding secrets in this public file.
+// Initialize Firebase using config passed in query params (avoids hardcoding secrets)
 const urlParams = new URL(location).searchParams;
 const config = {
   apiKey: urlParams.get('apiKey'),
@@ -19,162 +18,127 @@ const config = {
 if (config.apiKey) {
   firebase.initializeApp(config);
 } else {
-  console.warn('[firebase-messaging-sw.js] No config found in query params. SW may not function correctly.');
+  console.warn('[SW] No Firebase config in query params. Working in limited mode.');
 }
 
-// 🚀 Instant Activation: Ensure new versions take control immediately
-self.addEventListener('install', (event) => {
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
-});
+// ⚡ Instant Activation — new SW activates immediately without waiting for old clients
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
 const messaging = firebase.messaging();
 
-// � Production: Native Push Event listener (The Slack/Discord trick)
-// This listener fires as soon as the push packet arrives, often bypassing 
-// the throttling that occasionally affects high-level wrappers.
-self.addEventListener("push", (event) => {
-  if (!event.data) return;
-  try {
-    const payload = event.data.json();
-    // Only show if it's a valid data-only payload with title
-    if (payload.data && payload.data.title) {
-      const title = payload.data.title;
-      const options = {
-        body: payload.data.body || "",
-        icon: payload.data.senderAvatar || "/icons/notification-icon.png",
-        badge: "/icons/notification-badge2.png",
-        tag: payload.data.tag,
-        renotify: true,
-        timestamp: Date.now(), // 🕒 Production: Ensure correct OS ordering
-        data: { url: payload.data.link || "/notifications" }
-      };
-      event.waitUntil(self.registration.showNotification(title, options));
-    }
-  } catch (e) {} // Fail gracefully
-});
-
-// �📥 Note: We now use IndexedDB (idb-keyval) instead of in-memory store
-// to ensure message history persists across Service Worker reloads.
-
-// Handle background messages
+// =============================================================================
+// BACKGROUND MESSAGE HANDLER — the ONLY notification display handler.
+// ✅ Works when app is open, backgrounded, OR CLOSED.
+// ✅ Handles chat message stacking with persistent IndexedDB history.
+// ✅ Shows Order ID in notification title for order-related messages.
+// ✅ Groups messages per order — each order has its own stacked notification.
+// =============================================================================
 messaging.onBackgroundMessage(async (payload) => {
-  // 🧹 Production: Remove verbose logs for cleaner client console
-  // console.log('[firebase-messaging-sw.js] Background Payload:', JSON.stringify(payload, null, 2));
-  
-  const type = payload.data?.type || "standard";
-  const chatId = payload.data?.orderId || "default";
-  const senderName = payload.data?.senderName || payload.notification?.title || "SuviX";
-  const messageBody = payload.notification?.body || payload.data?.body || "";
-  const tag = payload.notification?.tag || payload.data?.tag || undefined;
+  const data = payload.data || {};
+  const type = data.type || "standard";
+  const chatId = data.orderId || null;
+  const orderNumber = data.orderNumber || null;
+  const senderName = data.senderName || "SuviX";
+  const messageBody = data.body || "";
+  const notifTag = data.tag || undefined;
 
-  // 1. Logic for Chat Message Stacking (InboxStyle + Persistent)
-  if (type === "chat_message" && chatId !== "default") {
-    // 📥 Retrieve persistent history from IndexedDB
-    let messageLines = [];
+  // ── CHAT MESSAGE (Order Chat) ──────────────────────────────────────────────
+  if (type === "chat_message" && chatId) {
+    // 1. Load persistent history for this chat from IndexedDB
+    let history = [];
     try {
-      messageLines = (await idbKeyval.get(`chat_history_${chatId}`)) || [];
-    } catch (e) {
-      console.error("[SW] Error reading idb:", e);
-    }
-    
-    // Add new message to the list
-    messageLines.push(messageBody);
-    
-    // Keep only last 5 messages to avoid overflow
-    if (messageLines.length > 5) {
-      messageLines.shift();
-    }
-    
-    // 💾 Save back to IndexedDB
-    try {
-      await idbKeyval.set(`chat_history_${chatId}`, messageLines);
-    } catch (e) {
-      console.error("[SW] Error writing idb:", e);
-    }
-    
-    // 📱 Adaptive UI: Update title with count for clear mobile & desktop UX
-    const displayTitle = senderName + (messageLines.length > 1 ? ` (${messageLines.length} messages)` : "");
-    
-    // Body shows the stacked history for desktop support
-    const stackedBody = messageLines.join("\n");
+      history = (await idbKeyval.get(`chat_history_${chatId}`)) || [];
+    } catch (_) {}
 
-    const notificationOptions = {
+    // 2. Append new message
+    history.push(messageBody);
+    if (history.length > 5) history.shift(); // keep last 5
+
+    // 3. Persist updated history
+    try {
+      await idbKeyval.set(`chat_history_${chatId}`, history);
+    } catch (_) {}
+
+    // 4. Build rich display
+    //    Title: "Order #SUVIX-001 • SenderName" or "SenderName (N messages)"
+    const orderLabel = orderNumber ? `Order #${orderNumber}` : null;
+    let displayTitle;
+    if (orderLabel) {
+      // With order number: "Order #SUVIX-001 • Suvin (3 messages)"
+      displayTitle = history.length > 1
+        ? `${orderLabel} • ${senderName} (${history.length} messages)`
+        : `${orderLabel} • ${senderName}`;
+    } else {
+      // Fallback without order number
+      displayTitle = history.length > 1
+        ? `${senderName} (${history.length} messages)`
+        : senderName;
+    }
+
+    // 5. Body: stacked messages (desktop shows all; mobile shows latest naturally)
+    const stackedBody = history.join("\n");
+
+    return self.registration.showNotification(displayTitle, {
       body: stackedBody,
-      icon: payload.data?.senderAvatar || payload.notification?.icon || "/icons/notification-icon.png",
+      icon: data.senderAvatar || "/icons/notification-icon.png",
       badge: "/icons/notification-badge2.png",
-      image: payload.notification?.image || payload.data?.image || null,
+      // 🔑 tag = chat_${orderId} → same order messages UPDATE the same notification
+      //    Different orders get different tags → stack independently in the tray
       tag: `chat_${chatId}`,
-      renotify: true,
-      timestamp: Date.now(), // 🕒 Production: Correct chronology
+      renotify: true,           // Buzz/alert user even when updating existing notification
       requireInteraction: false,
+      timestamp: Date.now(),
       data: {
-        url: payload.data?.click_action || payload.data?.link || "/notifications",
-        chatId: chatId
+        url: data.click_action || data.link || `/chat/${chatId}`,
+        chatId: chatId,
       }
-    };
-
-    return self.registration.showNotification(displayTitle, notificationOptions);
+    });
   }
 
-  // 2. Standard Logic for other notifications (Follows, Orders, etc.)
-  const notificationTitle = payload.notification?.title || payload.data?.title || 'SuviX';
-  const icon = payload.data?.senderAvatar || payload.notification?.icon || '/icons/notification-icon.png';
-  
-  const notificationOptions = {
-    body: messageBody,
-    icon: icon,
-    badge: '/icons/notification-badge2.png',
-    image: payload.notification?.image || payload.data?.image || null,
-    vibrate: [200, 100, 200],
-    tag: tag,
-    renotify: tag ? true : false,
-    timestamp: Date.now(), // 🕒 Production: Correct chronology
-    requireInteraction: false,
-    actions: payload.notification?.actions || [
-      {
-        action: 'view',
-        title: 'View Details',
-        icon: '/icons/notification-badge2.png'
-      }
-    ],
-    data: {
-      url: payload.data?.click_action || payload.data?.link || '/notifications'
-    }
-  };
+  // ── ALL OTHER NOTIFICATIONS (Follow, Order status, etc.) ──────────────────
+  const title = data.title || "SuviX";
 
-  return self.registration.showNotification(notificationTitle, notificationOptions);
+  return self.registration.showNotification(title, {
+    body: messageBody,
+    icon: data.senderAvatar || "/icons/notification-icon.png",
+    badge: "/icons/notification-badge2.png",
+    vibrate: [200, 100, 200],
+    tag: notifTag,
+    renotify: notifTag ? true : false,
+    requireInteraction: false,
+    timestamp: Date.now(),
+    data: {
+      url: data.click_action || data.link || "/notifications"
+    }
+  });
 });
 
-// Handle notification item click
+// =============================================================================
+// NOTIFICATION CLICK HANDLER
+// Opens the correct URL or focuses existing tab. Clears chat history on click.
+// =============================================================================
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  
-  const targetUrl = event.notification.data.url;
-  const chatId = event.notification.data.chatId;
 
-  // 🧹 Clear history from IndexedDB on click to reset the stack
+  const targetUrl = event.notification.data?.url || "/notifications";
+  const chatId = event.notification.data?.chatId;
+
+  // Clear stacked history when user clicks — fresh start for next batch of messages
   if (chatId) {
     idbKeyval.del(`chat_history_${chatId}`).catch(() => {});
   }
-  
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Check if there is already a window tab open with the target URL
-      for (let i = 0; i < windowClients.length; i++) {
-        const client = windowClients[i];
-        // 🔗 Production: Use .includes() to match URLs even if they have slightly different query params
+      // Focus existing tab if already open
+      for (const client of windowClients) {
         if (client.url.includes(targetUrl) && 'focus' in client) {
           return client.focus();
         }
       }
-      // If no tab is open, open a new one
-      if (clients.openWindow) {
-        return clients.openWindow(targetUrl);
-      }
+      // Otherwise open a new tab
+      if (clients.openWindow) return clients.openWindow(targetUrl);
     })
   );
 });

@@ -33,41 +33,26 @@ export const sendPushNotification = async (userId, { title, body, icon, data = {
     const message = {
       webpush: {
         headers: {
-          Urgency: "high", // 🚀 Production: Request immediate delivery (reduces background delay)
+          // 🚀 High-urgency: deliver immediately, skip browser batching/throttling
+          Urgency: "high",
+          TTL: "60", // Message expires after 60s if undeliverable
         },
-        notification: {
-          title,
-          body,
-          // 📷 Instagram-style: Use sender avatar if provided, otherwise default icon
-          icon: data.senderAvatar || "/icons/notification-icon.png",
-          badge: "/icons/notification-badge2.png",
-          ...(data.image ? { image: String(data.image) } : {}),
-          vibrate: [200, 100, 200],
-          requireInteraction: false,
-          tag: data.tag || undefined, 
-          renotify: data.tag ? true : false,
-          actions: [
-            {
-              action: "view",
-              title: "View Details",
-              icon: "/icons/notification-badge.png"
-            }
-          ],
-          data: {
-            ...sanitizedData,
-            click_action: link,
-          }
-        },
+        // ✅ DATA-ONLY: No webpush.notification block here.
+        // When a notification block is present, Android Chrome BYPASSES the Service Worker
+        // and renders natively — this breaks background delivery.
+        // With data-only, onBackgroundMessage in the SW handles ALL display, even when app is closed.
         fcmOptions: {
           link: link,
         }
       },
+      // Primary data payload — SW reads this in onBackgroundMessage
       data: {
         ...sanitizedData,
         title: String(title),
         body: String(body),
         type: data.type || "standard",
         link: link,
+        click_action: link,
       },
       android: {
         priority: "high",
