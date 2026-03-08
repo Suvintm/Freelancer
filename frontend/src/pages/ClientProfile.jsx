@@ -1,5 +1,6 @@
 // ClientProfile.jsx - Client's profile and settings page
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaArrowLeft,
@@ -33,13 +34,15 @@ import { toast } from "react-toastify";
 import ClientSidebar from "../components/ClientSidebar.jsx";
 import ClientNavbar from "../components/ClientNavbar.jsx";
 import PortfolioSection from "../components/PortfolioSection.jsx";
+import { useRef } from "react";
+import useRefreshManager from "../hooks/useRefreshManager.js";
+import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 
 const ClientProfile = () => {
   const navigate = useNavigate();
   const { user, backendURL, logout } = useAppContext();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalOrders: 0,
     completedOrders: 0,
@@ -58,40 +61,48 @@ const ClientProfile = () => {
   });
   const [updatingPrivacy, setUpdatingPrivacy] = useState(false);
 
+  // ── DATA FETCHING ──────────────────────────────────────────────────
+  const { data: ordersData, isLoading: ordersLoading } = useQuery({
+    queryKey: ['orders', 'client'],
+    queryFn: async () => {
+      const { data } = await axios.get(`${backendURL}/api/orders`, {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      });
+      return data.orders || [];
+    },
+    enabled: !!user?.token,
+  });
+
+  // Sync state with query data
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = user?.token;
-        if (!token) return;
+    if (ordersData) {
+      const orders = ordersData;
+      const completed = orders.filter(o => o.status === "completed").length;
+      const totalSpent = orders
+        .filter(o => o.status === "completed")
+        .reduce((sum, o) => sum + (o.amount || 0), 0);
 
-        const res = await axios.get(`${backendURL}/api/orders`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+      setStats({
+        totalOrders: orders.length,
+        completedOrders: completed,
+        totalSpent,
+        averageRating: 4.8,
+      });
 
-        const orders = res.data.orders || [];
-        const completed = orders.filter(o => o.status === "completed").length;
-        const totalSpent = orders
-          .filter(o => o.status === "completed")
-          .reduce((sum, o) => sum + (o.amount || 0), 0);
+      setRecentOrders(orders.slice(0, 5));
+    }
+  }, [ordersData]);
 
-        setStats({
-          totalOrders: orders.length,
-          completedOrders: completed,
-          totalSpent,
-          averageRating: 4.8,
-        });
+  const scrollContainerRef = useRef(null);
+  const { triggerRefresh } = useRefreshManager();
 
-        // Get 5 most recent orders
-        setRecentOrders(orders.slice(0, 5));
-      } catch (err) {
-        console.error("Failed to fetch data:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Pull-to-Refresh Integration
+  const { handleTouchStart, handleTouchEnd, PullIndicator } = usePullToRefresh(
+    () => triggerRefresh(true, ['orders', 'profile']), 
+    scrollContainerRef
+  );
 
-    fetchData();
-  }, [backendURL, user?.token]);
+  const loading = ordersLoading;
 
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString("en-IN", {
@@ -140,11 +151,17 @@ const ClientProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
+    <div className="h-full bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
       <ClientSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <ClientNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-      <main className="md:ml-64 pt-2 md:pt-14 px-3 md:px-6 pb-10">
+      <main 
+        ref={scrollContainerRef}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="flex-1 md:ml-64 md:mt-16 overflow-y-auto"
+      >
+        <PullIndicator />
         <div className="max-w-5xl mx-auto">
           
           {/* ==================== PROFILE HEADER (HYPER-COMPACT) ==================== */}

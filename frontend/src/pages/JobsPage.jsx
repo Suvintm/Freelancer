@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -33,6 +34,8 @@ import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
 import ClientSidebar from "../components/ClientSidebar.jsx";
 import ClientNavbar from "../components/ClientNavbar.jsx";
+import useRefreshManager from "../hooks/useRefreshManager.js";
+import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 
 // Categories for pills
 const CATEGORY_PILLS = [
@@ -145,7 +148,6 @@ const JobsPage = () => {
   const isDark = theme === "dark";
   
   const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -165,70 +167,81 @@ const JobsPage = () => {
     return () => clearInterval(slideInterval.current);
   }, [heroBanners.length]);
 
-  // Fetch banners from API
-  useEffect(() => {
-    const fetchBanners = async () => {
-      try {
-        const res = await axios.get(`${backendURL}/api/banners?page=jobs`);
-        if (res.data.banners && res.data.banners.length > 0) {
-          // Map API banners to our format
-          const apiBanners = res.data.banners.map((b) => ({
-            badge: b.badge || "",
-            title: b.title,
-            subtitle: b.description || "",
-            image: b.mediaUrl,
-            overlayType: b.overlayType,
-            overlayOpacity: b.overlayOpacity,
-            gradientFrom: b.gradientFrom,
-            gradientTo: b.gradientTo,
-          }));
-          setHeroBanners(apiBanners);
-        }
-      } catch (err) {
-        console.log("Using default banners");
-      }
-    };
-    fetchBanners();
-  }, [backendURL]);
+  // ── DATA FETCHING ──────────────────────────────────────────────────
+  const { data: bannersResponse } = useQuery({
+    queryKey: ['banners', 'jobs'],
+    queryFn: async () => {
+      const res = await axios.get(`${backendURL}/api/banners?page=jobs`);
+      return res.data.banners || [];
+    },
+    enabled: !!backendURL,
+  });
 
-  useEffect(() => {
-    fetchJobs();
-  }, [selectedCategory]);
-
-  const fetchJobs = async () => {
-    try {
-      setLoading(true);
+  const { data: jobsResponse, isLoading: jobsLoading } = useQuery({
+    queryKey: ['jobs', { category: selectedCategory }],
+    queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedCategory !== "all") params.append("category", selectedCategory);
-
       const res = await axios.get(`${backendURL}/api/jobs?${params.toString()}`, {
         headers: { Authorization: `Bearer ${user?.token}` },
       });
-      setJobs(res.data.jobs || []);
-      setStats(prev => ({ ...prev, jobs: res.data.jobs?.length || 0 }));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return res.data.jobs || [];
+    },
+    enabled: !!backendURL && !!user?.token,
+  });
 
-  // Fetch user's applied jobs
+  const { data: applicationsResponse } = useQuery({
+    queryKey: ['jobApplications'],
+    queryFn: async () => {
+      const res = await axios.get(`${backendURL}/api/jobs/my/applications`, {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      });
+      return res.data.applications || [];
+    },
+    enabled: !!backendURL && !!user?.token && isEditor,
+  });
+
+  // Sync state with query data
   useEffect(() => {
-    const fetchMyApplications = async () => {
-      if (!user?.token || user?.role !== "editor") return;
-      try {
-        const res = await axios.get(`${backendURL}/api/jobs/my/applications`, {
-          headers: { Authorization: `Bearer ${user.token}` },
-        });
-        const jobIds = new Set(res.data.applications?.map(app => app.job?._id) || []);
-        setAppliedJobIds(jobIds);
-      } catch (err) {
-        console.error("Failed to fetch applications:", err);
-      }
-    };
-    fetchMyApplications();
-  }, [backendURL, user]);
+    if (bannersResponse && bannersResponse.length > 0) {
+      const apiBanners = bannersResponse.map((b) => ({
+        badge: b.badge || "",
+        title: b.title,
+        subtitle: b.description || "",
+        image: b.mediaUrl,
+        overlayType: b.overlayType,
+        overlayOpacity: b.overlayOpacity,
+        gradientFrom: b.gradientFrom,
+        gradientTo: b.gradientTo,
+      }));
+      setHeroBanners(apiBanners);
+    }
+  }, [bannersResponse]);
+
+  useEffect(() => {
+    if (jobsResponse) {
+      setJobs(jobsResponse);
+      setStats(prev => ({ ...prev, jobs: jobsResponse.length }));
+    }
+  }, [jobsResponse]);
+
+  useEffect(() => {
+    if (applicationsResponse) {
+      const jobIds = new Set(applicationsResponse.map(app => app.job?._id) || []);
+      setAppliedJobIds(jobIds);
+    }
+  }, [applicationsResponse]);
+
+  const scrollContainerRef = useRef(null);
+  const { triggerRefresh } = useRefreshManager();
+
+  // Pull-to-Refresh Integration
+  const { handleTouchStart, handleTouchEnd, PullIndicator } = usePullToRefresh(
+    () => triggerRefresh(true, ['jobs', 'banners', 'jobApplications']), 
+    scrollContainerRef
+  );
+
+  const loading = jobsLoading;
 
   const getDaysAgo = (date) => {
     const days = Math.floor((Date.now() - new Date(date)) / (1000 * 60 * 60 * 24));
@@ -265,13 +278,19 @@ const JobsPage = () => {
 
   return (
     <div 
-      className={`min-h-screen flex flex-col md:flex-row ${isDark ? 'bg-[#09090B] text-white' : 'bg-[#FAFAFA] text-zinc-900'}`}
+      className={`h-full flex flex-col md:flex-row ${isDark ? 'bg-[#09090B] text-white' : 'bg-[#FAFAFA] text-zinc-900'}`}
       style={{ fontFamily: "'Manrope', sans-serif" }}
     >
       <SidebarComponent isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <NavbarComponent onMenuClick={() => setSidebarOpen(true)} />
       
-      <main className="flex-1 px-4 md:px-6 py-6 pt-20 md:pt-6 md:ml-64 md:mt-20 pb-28">
+      <main 
+        ref={scrollContainerRef}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="flex-1 md:ml-64 md:mt-16 overflow-y-auto"
+      >
+        <PullIndicator />
         
         {/* Header with Post Job button */}
         <div className="flex items-center justify-between mb-5">

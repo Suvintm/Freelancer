@@ -2,7 +2,7 @@
 // ✅ SW Version: v12 — Centralized Logic, Foreground delegation, Data-only support
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
-importScripts('https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/umd/idb-keyval-iife.min.js');
+importScripts('./idb-keyval-umd.js');
 
 const urlParams = new URL(location).searchParams;
 const config = {
@@ -156,6 +156,8 @@ self.addEventListener('push', (event) => {
           data: { url: payload?.data?.click_action || payload?.data?.link || '/notifications' }
         })
       );
+    } else if (payload?.data) {
+      event.waitUntil(handleNotificationDisplay(payload.data));
     }
   } catch (_) {}
 });

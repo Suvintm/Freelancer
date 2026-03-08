@@ -43,21 +43,23 @@ import EditorDashboard from "../components/EditorDashboard.jsx";
 import HomeExploreContainer from "../components/HomeExploreContainer.jsx";
 import UnifiedBannerSlider from "../components/UnifiedBannerSlider.jsx";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import reelIcon from "../assets/reelicon.png";
 import LegalBanner from "../components/LegalBanner.jsx";
 import { useHomeStore } from "../store/homeStore";
 import useScrollRestore from "../hooks/useScrollRestore";
-import useRefreshManager from "../hooks/useRefreshManager";
-import usePullToRefresh from "../hooks/usePullToRefresh";
-import RefreshIndicator from "../components/RefreshIndicator";
+import useRefreshManager from "../hooks/useRefreshManager.js";
+import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 
 const EditorHome = () => {
   const { user, backendURL, refreshUser } = useAppContext();
   const mainContainerRef = useRef(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const hasLoadedOnce = useRef(false);
   const [stats, setStats] = useState({ totalOrders: 0, activeGigs: 0 });
   const [showKYC, setShowKYC] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [profileData, setProfileData] = useState(null);
   const [completionPercent, setCompletionPercent] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -69,7 +71,10 @@ const EditorHome = () => {
 
   // ── REFRESH SYSTEM ──────────────────────────────────────────────────
   const { triggerRefresh } = useRefreshManager();
-  const { pullDistance, handleTouchStart, handleTouchEnd } = usePullToRefresh(triggerRefresh, mainContainerRef);
+  const { pullDistance, handleTouchStart, handleTouchEnd, PullIndicator } = usePullToRefresh(
+    () => triggerRefresh(true, ['editorStats', 'editorGigStats', 'profile', 'profileCompletion', 'storageStatus']), 
+    mainContainerRef
+  );
 
   // Persistent tab state via Zustand — survives navigation
   const mainTab = useHomeStore((s) => s.editorMainTab);
@@ -80,123 +85,109 @@ const EditorHome = () => {
   // Scroll position restored per tab to isolate Discover from Dashboard
   useScrollRestore(`editorHome_${mainTab}`);
 
-  // Fetch basic stats
+  // ── DATA FETCHING ──────────────────────────────────────────────────
+  const { data: editorStats, isLoading: statsLoading } = useQuery({
+    queryKey: ['editorStats', { period: 30 }],
+    queryFn: async () => {
+      const { data } = await axios.get(`${backendURL}/api/editor/analytics/orders?period=30`, {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      });
+      return data.analytics || {};
+    },
+    enabled: !!user?.token,
+  });
+
+  const { data: gigStats, isLoading: gigStatsLoading } = useQuery({
+    queryKey: ['editorGigStats'],
+    queryFn: async () => {
+      const { data } = await axios.get(`${backendURL}/api/editor/analytics/gigs`, {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      });
+      return data.analytics || {};
+    },
+    enabled: !!user?.token,
+  });
+
+  const { data: profileResponse, isLoading: profileLoading } = useQuery({
+    queryKey: ['profile'],
+    queryFn: async () => {
+      const { data } = await axios.get(`${backendURL}/api/profile/`, {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      });
+      return data;
+    },
+    enabled: !!user?.token,
+  });
+
+  const { data: completionResponse, isLoading: completionLoading } = useQuery({
+    queryKey: ['profileCompletion'],
+    queryFn: async () => {
+      const { data } = await axios.get(`${backendURL}/api/profile/completion-status`, {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      });
+      return data;
+    },
+    enabled: !!user?.token,
+  });
+
+  const { data: storageResponse, isLoading: storageLoading } = useQuery({
+    queryKey: ['storageStatus'],
+    queryFn: async () => {
+      const { data } = await axios.get(`${backendURL}/api/storage/status`, {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      });
+      return data;
+    },
+    enabled: !!user?.token && user?.role === "editor",
+  });
+
+  // Keep derived states in sync
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const token = user?.token;
-        if (!token) return;
-
-        const [ordersRes, gigsRes] = await Promise.all([
-          axios.get(`${backendURL}/api/editor/analytics/orders?period=30`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          axios.get(`${backendURL}/api/editor/analytics/gigs`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
-
-        setStats({
-          totalOrders: ordersRes.data.analytics?.totalOrders || 0,
-          activeGigs: gigsRes.data.analytics?.activeGigs || 0,
-        });
-      } catch (err) {
-        console.error("Failed to fetch stats:", err);
-      }
-    };
-
-    const fetchProfileData = async () => {
-      try {
-        const token = user?.token;
-        if (!token) return;
-
-        const [profileRes, completionRes] = await Promise.all([
-          axios.get(`${backendURL}/api/profile/`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          axios.get(`${backendURL}/api/profile/completion-status`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
-
-        setProfileData(profileRes.data);
-        setCompletionPercent(completionRes.data?.percent || 0);
-      } catch (err) {
-        console.error("Failed to fetch profile:", err);
-      }
-    };
-
-    fetchStats();
-    fetchProfileData();
-  }, [backendURL, user?.token]);
-
-  // Loading State with Minimum Delay
-  const [isLoading, setIsLoading] = useState(true);
+    if (editorStats && gigStats) {
+      setStats({
+        totalOrders: editorStats.totalOrders || 0,
+        activeGigs: gigStats.activeGigs || 0,
+      });
+    }
+  }, [editorStats, gigStats]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
+    if (profileResponse) setProfileData(profileResponse);
+    if (completionResponse) setCompletionPercent(completionResponse.percent || 0);
+  }, [profileResponse, completionResponse]);
 
-    return () => clearTimeout(timer);
-  }, []);
-
-
-
-  // Fetch storage status
   useEffect(() => {
-    const fetchStorage = async () => {
-      try {
-        const token = user?.token;
-        if (!token || user?.role !== "editor") return;
+    if (storageResponse) {
+      setStorageData(storageResponse.storage || null);
+      setStorageBreakdown(storageResponse.breakdown || null);
+    }
+  }, [storageResponse]);
 
-        const res = await axios.get(`${backendURL}/api/storage/status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setStorageData(res.data?.storage || null);
-        setStorageBreakdown(res.data?.breakdown || null);
-      } catch (err) {
-        console.error("Failed to fetch storage:", err);
-      }
-    };
+  // Unified loading state for the skeleton/loader
+  const isLoadingDerived = statsLoading || gigStatsLoading || profileLoading || completionLoading;
 
-    fetchStorage();
-  }, [backendURL, user?.token, user?.role]);
+  useEffect(() => {
+    if (!isLoadingDerived) {
+      hasLoadedOnce.current = true;
+    }
+  }, [isLoadingDerived]);
 
-
-  // Main tabs configuration
-  const mainTabs = [
-    { id: "home", label: "Home", icon: FaHome },
-    { id: "dashboard", label: "Dashboard", icon: FaTachometerAlt },
-  ];
-
-  // Explore tabs configuration  
-  const exploreTabs = [
-    { id: "editors", label: "Explore Editors", icon: FaUsers },
-    { id: "gigs", label: "Explore Gigs", icon: FaBriefcase },
-    { id: "jobs", label: "Find Jobs", icon: FaClipboardList },
-    { id: "reels", label: "Reels", icon: FaPlayCircle },
-  ];
-
-  if (isLoading) {
+  if (!hasLoadedOnce.current && isLoadingDerived) {
     return <Loader />;
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="h-full flex flex-col md:flex-row bg-[#050509] light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200" style={{ fontFamily: "'Inter', sans-serif" }}>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
       
-      <RefreshIndicator pullDistance={pullDistance} />
-
-
       <main 
         ref={mainContainerRef}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className="flex-1 px-1 md:px-8 py-2 lg:pt-20 md:pt-4 md:ml-64 md:mt-16 overflow-y-auto transition-transform duration-75"
-        style={{ transform: `translateY(${pullDistance}px)` }}
+        className="flex-1 md:ml-64 md:mt-16 overflow-y-auto"
       >
+        <PullIndicator />
         {/* Premium Banner at the Top - Responsive with Side Margins */}
         <div className="px-3 md:px-8 mb-2 md:mb-8 max-w-7xl mx-auto">
           <UnifiedBannerSlider />

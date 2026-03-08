@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import {
   FaSearch,
@@ -41,9 +42,7 @@ const ExploreGigs = () => {
   const navigate = useNavigate();
 
   const [gigs, setGigs] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [loadingText, setLoadingText] = useState("Discovering amazing gigs...");
-  const [error, setError] = useState("");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -110,12 +109,19 @@ const ExploreGigs = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const fetchGigs = async (page = 1, showLoader = true) => {
-    try {
-      if (showLoader) setLoading(true);
+  // ── DATA FETCHING ──────────────────────────────────────────────────
+  const { data: gigsResponse, isLoading: gigsLoading, isFetching: gigsFetching, isError, error: queryError } = useQuery({
+    queryKey: ['explore', 'gigs', { 
+      search: searchQuery, 
+      category: selectedCategory,
+      sortBy,
+      priceRange,
+      page: pagination.page 
+    }],
+    queryFn: async () => {
       const token = user?.token || JSON.parse(localStorage.getItem("user"))?.token;
       const params = new URLSearchParams({
-        page: page.toString(),
+        page: pagination.page.toString(),
         limit: "12",
         ...(searchQuery && { search: searchQuery }),
         ...(selectedCategory !== "All" && { category: selectedCategory }),
@@ -124,26 +130,28 @@ const ExploreGigs = () => {
         sort: sortBy === "newest" ? "createdAt" : sortBy === "price_low" ? "price_low" : sortBy === "price_high" ? "price_high" : "popular",
       });
       const res = await axios.get(`${backendURL}/api/gigs?${params}`, { headers: { Authorization: `Bearer ${token}` } });
-      setGigs(res.data.gigs || []);
-      setPagination(res.data.pagination || { page: 1, limit: 12, total: 0, pages: 1 });
-    } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.message || "Failed to fetch gigs");
-    } finally {
-      if (showLoader) setLoading(false);
+      return res.data;
+    },
+    enabled: !!backendURL,
+    keepPreviousData: true,
+  });
+
+  // Keep state in sync with query results
+  useEffect(() => {
+    if (gigsResponse) {
+      setGigs(gigsResponse.gigs || []);
+      setPagination(gigsResponse.pagination || { page: 1, limit: 12, total: 0, pages: 1 });
+    }
+  }, [gigsResponse]);
+
+  // Combined loading check for UI (initial or no-data fetch)
+  const loading = gigsLoading || (gigsFetching && gigs.length === 0);
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.pages) {
+      setPagination(prev => ({ ...prev, page: newPage }));
     }
   };
-
-  useEffect(() => { fetchGigs(1); }, [backendURL, user]);
-  useEffect(() => { fetchGigs(1); }, [backendURL, user]);
-  useEffect(() => { 
-    const timer = setTimeout(() => {
-      if (searchQuery) saveToRecentSearches(searchQuery);
-      // Suppress full loader for search updates to prevent flashing
-      fetchGigs(1, false);
-    }, 500); 
-    return () => clearTimeout(timer); 
-  }, [searchQuery, selectedCategory, sortBy, priceRange]);
 
   const handleCreateOrder = async () => {
     if (!orderForm.deadline) { toast.error("Please select a deadline"); return; }
@@ -180,6 +188,18 @@ const ExploreGigs = () => {
     setSelectedGig(gig);
     setShowOrderModal(true);
   };
+
+  if (isError) {
+    return (
+      <div className="min-h-[50vh] flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
+          <span className="text-2xl">⚠️</span>
+        </div>
+        <h3 className="text-xl font-bold text-white mb-2">Failed to load gigs</h3>
+        <p className="text-gray-500 text-sm mb-6">{queryError?.message || "Error loading gigs"}</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -519,11 +539,11 @@ const ExploreGigs = () => {
       {/* Pagination */}
       {pagination.pages > 1 && (
         <div className="flex justify-center items-center gap-2 mt-10">
-          <button onClick={() => fetchGigs(pagination.page - 1)} disabled={pagination.page === 1} className="w-10 h-10 rounded-xl bg-white/5 light:bg-white border border-white/10 light:border-slate-200 flex items-center justify-center text-gray-500 light:text-slate-500 hover:bg-white/10 light:hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+          <button onClick={() => handlePageChange(pagination.page - 1)} disabled={pagination.page === 1} className="w-10 h-10 rounded-xl bg-white/5 light:bg-white border border-white/10 light:border-slate-200 flex items-center justify-center text-gray-500 light:text-slate-500 hover:bg-white/10 light:hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
             <FaChevronLeft className="text-sm" />
           </button>
           <span className="text-gray-500 light:text-slate-500 text-sm px-3">{pagination.page} / {pagination.pages}</span>
-          <button onClick={() => fetchGigs(pagination.page + 1)} disabled={pagination.page === pagination.pages} className="w-10 h-10 rounded-xl bg-white/5 light:bg-white border border-white/10 light:border-slate-200 flex items-center justify-center text-gray-500 light:text-slate-500 hover:bg-white/10 light:hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+          <button onClick={() => handlePageChange(pagination.page + 1)} disabled={pagination.page === pagination.pages} className="w-10 h-10 rounded-xl bg-white/5 light:bg-white border border-white/10 light:border-slate-200 flex items-center justify-center text-gray-500 light:text-slate-500 hover:bg-white/10 light:hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
             <FaChevronRight className="text-sm" />
           </button>
         </div>

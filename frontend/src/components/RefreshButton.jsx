@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { HiOutlineArrowPath } from "react-icons/hi2";
-import useRefreshManager from "../hooks/useRefreshManager";
+import useRefreshManager from "../hooks/useRefreshManager.js";
 import { useHomeStore } from "../store/homeStore";
 
 const RefreshButton = ({ className = "" }) => {

@@ -21,35 +21,48 @@ const useRefreshManager = () => {
     } = useHomeStore();
 
     // ── CORE REFRESH LOGIC ───────────────────────────────────────────────
-    const triggerRefresh = useCallback(async (isManual = false) => {
+    /**
+     * triggerRefresh — Invalidates queries.
+     * @param {boolean} isManual - Whether this was triggered by user action.
+     * @param {string[]} queryKeys - Specific keys to invalidate. If empty, invalidates ALL tab keys.
+     */
+    const triggerRefresh = useCallback(async (isManual = false, queryKeys = []) => {
         const now = Date.now();
+        const COOLDOWN = 10000; // 10 seconds
 
         // 1. Manual Rate Limiting (Cooldown)
-        if (isManual && now - lastManualRefresh < MANUAL_COOLDOWN) {
+        if (isManual && now - lastManualRefresh < COOLDOWN) {
             console.log("[Refresh] Skipping manual refresh: Cooldown active.");
-            
-            // Show "Wait a moment" notice
             setShowCooldownNotice(true);
             setTimeout(() => setShowCooldownNotice(false), 2000);
-            
             return false;
         }
 
-        console.log(`[Refresh] Triggering ${isManual ? "MANUAL" : "AUTO"} refresh...`);
+        console.log(`[Refresh] Triggering ${isManual ? "MANUAL" : "AUTO"} refresh for keys:`, queryKeys.length ? queryKeys : "ALL");
         
         setIsRefreshing(true);
         if (isManual) setLastManualRefresh(now);
         setLastHomeRefresh(now);
 
         try {
-            // Invalidate all queries tagged with 'homeData' or 'home-ads'
-            await Promise.all([
-                queryClient.invalidateQueries({ queryKey: ['homeData'] }),
-                queryClient.invalidateQueries({ queryKey: ['home-ads'] })
-            ]);
+            // Define all tab-related query keys
+            const allKeys = [
+                ['homeData'], ['home-ads'], ['orders'], ['explore'], 
+                ['editorStats'], ['editorGigStats'], ['profile'], 
+                ['profileCompletion'], ['storageStatus'], ['location', 'nearby'], 
+                ['jobs'], ['banners'], ['jobApplications'], ['notifications'],
+                ['reels'], ['completionStatus']
+            ];
+
+            // Determine which keys to invalidate
+            const keysToInvalidate = queryKeys.length > 0 
+                ? queryKeys.map(k => Array.isArray(k) ? k : [k]) 
+                : allKeys;
+
+            await Promise.all(
+                keysToInvalidate.map(key => queryClient.invalidateQueries({ queryKey: key }))
+            );
             
-            // Optional: Add a slight artificial delay for the spinner to feel "premium"
-            await new Promise(resolve => setTimeout(resolve, 400));
             return true;
         } catch (err) {
             console.error("[Refresh] Refresh failed:", err);
@@ -57,7 +70,7 @@ const useRefreshManager = () => {
         } finally {
             setIsRefreshing(false);
         }
-    }, [queryClient, lastManualRefresh, setLastHomeRefresh, setLastManualRefresh, setIsRefreshing]);
+    }, [queryClient, lastManualRefresh, setLastHomeRefresh, setLastManualRefresh, setIsRefreshing, setShowCooldownNotice]);
 
     // ── AUTO REFRESH TRIGGER ─────────────────────────────────────────────
     useEffect(() => {

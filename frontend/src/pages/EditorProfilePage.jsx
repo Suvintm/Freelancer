@@ -34,9 +34,10 @@ import {
 } from "react-icons/fa";
 import { MdVerified } from "react-icons/md";
 import { HiCheckBadge, HiLockClosed } from "react-icons/hi2";
+import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useParams } from "react-router-dom";
 import ReactCountryFlag from "react-country-flag";
 
 import Sidebar from "../components/Sidebar.jsx";
@@ -49,6 +50,9 @@ import SuvixScoreCard from "../components/SuvixScoreCard.jsx";
 import SuvixScoreAnalytics from "../components/SuvixScoreAnalytics.jsx";
 import AvailabilitySelector from "../components/AvailabilitySelector.jsx";
 import SoftwareExpertise from "../components/SoftwareExpertise.jsx";
+import { useRef } from "react";
+import useRefreshManager from "../hooks/useRefreshManager.js";
+import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 
 import _premiereIcon from "../assets/preimerepro.png";
 import _aeIcon from "../assets/adobeexpress.png";
@@ -93,15 +97,20 @@ const getProgressColor = (percent) => {
 const EditorProfile = () => {
   const { user, backendURL } = useAppContext();
   const [profile, setProfile] = useState(null);
+  const [editedProfile, setEditedProfile] = useState(null);
+  const [reels, setReels] = useState([]);
   const [activeTab, setActiveTab] = useState("portfolio");
-  const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCert, setSelectedCert] = useState(null);
   const [completionData, setCompletionData] = useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [searchParams] = useSearchParams();
+  const { id: routeEditorId } = useParams();
   const [showRatingsModal, setShowRatingsModal] = useState(false);
+
+  // When used as profile tab, show the logged-in editor's own profile
+  const targetEditorId = routeEditorId || user?._id;
 
   const navigate = useNavigate();
   const { hasActiveSubscription, getSubscription } = useSubscription();
@@ -125,42 +134,102 @@ const EditorProfile = () => {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [profileRes, completionRes, earningsRes, ordersRes] = await Promise.all([
-          axios.get(`${backendURL}/api/profile`, {
-            headers: { Authorization: `Bearer ${user?.token}` },
-          }),
-          axios.get(`${backendURL}/api/profile/completion-status`, {
-            headers: { Authorization: `Bearer ${user?.token}` },
-          }),
-          axios.get(`${backendURL}/api/editor/analytics/earnings`, {
-            headers: { Authorization: `Bearer ${user?.token}` },
-          }).catch(() => ({ data: { analytics: {} } })),
-          axios.get(`${backendURL}/api/editor/analytics/orders`, {
-            headers: { Authorization: `Bearer ${user?.token}` },
-          }).catch(() => ({ data: { analytics: {} } })),
-        ]);
-        setProfile(profileRes.data.profile);
-        setCompletionData(completionRes.data);
-        setAnalytics({
-          totalEarnings: earningsRes.data.analytics?.totalEarnings || 0,
-          totalOrders: ordersRes.data.analytics?.totalOrders || 0,
-          completedOrders: ordersRes.data.analytics?.completedOrders || 0,
-          profileViews: profileRes.data.profile?.profileViews || 0,
+    // ── DATA FETCHING ──────────────────────────────────────────────────
+    const { data: profileResponse, isLoading: profileLoading } = useQuery({
+        queryKey: ['profile', targetEditorId || 'me'],
+        queryFn: async () => {
+            const endpoint = targetEditorId ? `/api/profile/${targetEditorId}` : '/api/profile/';
+            const { data } = await axios.get(`${backendURL}${endpoint}`, {
+                headers: { Authorization: `Bearer ${user?.token}` },
+            });
+            return data;
+        },
+        enabled: !!user?.token,
+    });
+
+    const { data: statsResponse, isLoading: statsLoading } = useQuery({
+        queryKey: ['editorStats', targetEditorId || 'me'],
+        queryFn: async () => {
+            const { data } = await axios.get(`${backendURL}/api/editor/analytics/orders?period=30${targetEditorId ? `&editorId=${targetEditorId}` : ''}`, {
+                headers: { Authorization: `Bearer ${user?.token}` },
+            });
+            return data.analytics || {};
+        },
+        enabled: !!user?.token,
+    });
+
+    const { data: reelsResponse, isLoading: reelsLoading } = useQuery({
+        queryKey: ['reels', { editorId: targetEditorId || user?._id }],
+        queryFn: async () => {
+            const editorId = targetEditorId || user?._id;
+            const { data } = await axios.get(`${backendURL}/api/reels/editor/${editorId}`, {
+                headers: { Authorization: `Bearer ${user?.token}` },
+            });
+            return data.reels || [];
+        },
+        enabled: !!user?.token && (!!targetEditorId || !!user?._id),
+    });
+
+    // Fetch completion status separately as it's not part of the refactor instruction
+    const { data: completionRes, isLoading: completionLoading } = useQuery({
+      queryKey: ['completionStatus', targetEditorId || 'me'],
+      queryFn: async () => {
+        const { data } = await axios.get(`${backendURL}/api/profile/completion-status${targetEditorId ? `?editorId=${targetEditorId}` : ''}`, {
+          headers: { Authorization: `Bearer ${user?.token}` },
         });
-      } catch (error) {
-        console.error("Error fetching profile:", error);
-      } finally {
-        setLoading(false);
+        return data;
+      },
+      enabled: !!user?.token,
+    });
+
+    // Keep state in sync
+    useEffect(() => {
+        if (profileResponse) {
+            setProfile(profileResponse.profile); // Assuming profileResponse contains a 'profile' key
+            setEditedProfile(profileResponse.profile); // Assuming profileResponse contains a 'profile' key
+            setAnalytics(prev => ({
+              ...prev,
+              profileViews: profileResponse.profile?.profileViews || 0,
+            }));
+        }
+    }, [profileResponse]);
+
+    useEffect(() => {
+        if (statsResponse) {
+            setAnalytics(prev => ({
+              ...prev,
+              totalOrders: statsResponse.totalOrders || 0,
+              completedOrders: statsResponse.completedOrders || 0,
+              totalEarnings: statsResponse.totalEarnings || 0,
+            }));
+        }
+    }, [statsResponse]);
+
+    useEffect(() => {
+        if (reelsResponse) {
+            setReels(reelsResponse);
+        }
+    }, [reelsResponse]);
+
+    useEffect(() => {
+      if (completionRes) {
+        setCompletionData(completionRes);
       }
-    };
+    }, [completionRes]);
 
-    fetchData();
-  }, [backendURL, user?.token]);
+    const scrollContainerRef = useRef(null);
+    const { triggerRefresh } = useRefreshManager();
 
-  if (loading) {
+    // Pull-to-Refresh Integration
+    const { handleTouchStart, handleTouchEnd, PullIndicator } = usePullToRefresh(
+        () => triggerRefresh(true, ['profile', 'editorStats', 'reels', 'completionStatus', 'completionStatus']), 
+        scrollContainerRef
+    );
+
+    // Combine loading states
+    const isLoading = profileLoading || statsLoading || reelsLoading || completionLoading;
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
@@ -234,11 +303,17 @@ const EditorProfile = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
+    <div className="h-full bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200" style={{ fontFamily: "'Inter', sans-serif" }}>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-      <main className="md:ml-64 pt-2 md:pt-14 px-3 md:px-6 pb-10">
+      <main 
+        ref={scrollContainerRef}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="flex-1 md:ml-64 md:mt-16 overflow-y-auto"
+      >
+        <PullIndicator />
         <div className="max-w-5xl mx-auto">
           
           {/* ==================== SUBSCRIPTION STATUS BADGE ==================== */}

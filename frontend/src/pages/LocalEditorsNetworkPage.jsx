@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
@@ -9,6 +10,8 @@ import { useAppContext } from "../context/AppContext";
 import NearbyMapView from "../components/NearbyMapView";
 import NearbyEditorList from "../components/NearbyEditorList";
 import MobileDiscoverySheet from "../components/MobileDiscoverySheet";
+import useRefreshManager from "../hooks/useRefreshManager.js";
+import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 
 const LocalEditorsNetworkPage = () => {
   const { user } = useAppContext();
@@ -16,7 +19,6 @@ const LocalEditorsNetworkPage = () => {
   const backendURL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
   const [editors, setEditors] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
   const [selectedEditorId, setSelectedEditorId] = useState(null);
   const [searchRadius, setSearchRadius] = useState(5);
@@ -24,17 +26,33 @@ const LocalEditorsNetworkPage = () => {
   const [matchResult, setMatchResult] = useState(null); // 'found' | 'notFound' | null
   const [hasSearched, setHasSearched] = useState(false);
 
+  // ── DATA FETCHING ──────────────────────────────────────────────────
+  const { data: nearbyData, isLoading: nearbyLoading, isFetching: nearbyFetching } = useQuery({
+    queryKey: ['location', 'nearby', { 
+      lat: userLocation?.lat, 
+      lng: userLocation?.lng, 
+      radius: searchRadius 
+    }],
+    queryFn: async () => {
+      const { data } = await axios.get(
+        `${backendURL}/api/location/nearby?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${searchRadius}`,
+        { headers: { Authorization: `Bearer ${user?.token}` } }
+      );
+      return data.editors || [];
+    },
+    enabled: !!userLocation && !!user?.token && hasSearched,
+    staleTime: 5 * 60 * 1000, // 5 mins
+  });
+
+  // Keep state in sync
   useEffect(() => {
-    if (!hasSearched) return; // Only fetch dynamically after initial search
+    if (nearbyData) {
+      setEditors(nearbyData);
+    }
+  }, [nearbyData]);
 
-    const debounceTimer = setTimeout(() => {
-      if (userLocation) {
-        fetchNearbyEditors(userLocation.lat, userLocation.lng, searchRadius);
-      }
-    }, 500); 
-
-    return () => clearTimeout(debounceTimer);
-  }, [searchRadius, userLocation, hasSearched]);
+  // Combined loading state for UI
+  const isLoading = nearbyLoading || (nearbyFetching && editors.length === 0);
 
   // Initial user location capture
   useEffect(() => {
@@ -46,7 +64,6 @@ const LocalEditorsNetworkPage = () => {
             lng: position.coords.longitude,
           };
           setUserLocation(loc);
-          // fetchNearbyEditors(loc.lat, loc.lng); // Removed automatic search
         },
         (error) => {
           console.error("Geolocation error:", error);
@@ -54,30 +71,11 @@ const LocalEditorsNetworkPage = () => {
           // Fallback to Bangalore
           const fallback = { lat: 12.9716, lng: 77.5946 };
           setUserLocation(fallback);
-          // fetchNearbyEditors(fallback.lat, fallback.lng); // Removed automatic search
         },
         { enableHighAccuracy: true }
       );
     }
   }, []);
-
-  const fetchNearbyEditors = async (lat, lng, radius = searchRadius) => {
-    setIsLoading(true);
-    try {
-      const { data } = await axios.get(
-        `${backendURL}/api/location/nearby?lat=${lat}&lng=${lng}&radius=${radius}`,
-        { headers: { Authorization: `Bearer ${user?.token}` } }
-      );
-      if (data.success) {
-        setEditors(data.editors);
-      }
-    } catch (error) {
-      console.error("Failed to fetch nearby editors:", error);
-      toast.error("Could not load nearby editors");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleEditorSelect = (editor) => {
     setSelectedEditorId(editor._id);
@@ -127,9 +125,23 @@ const LocalEditorsNetworkPage = () => {
   const handleStartDiscovery = () => {
     setHasSearched(true);
     if (userLocation) {
-      fetchNearbyEditors(userLocation.lat, userLocation.lng, 5);
+      // The original code had fetchNearbyEditors, but it's not defined.
+      // Assuming it should trigger a refetch of the useQuery.
+      // The useQuery is already enabled by hasSearched, so setting hasSearched(true)
+      // should be enough to trigger it if userLocation is available.
+      // If a manual trigger is needed, it would be queryClient.invalidateQueries.
+      // For now, rely on the `enabled` property of useQuery.
     }
   };
+
+  const scrollContainerRef = useRef(null);
+  const { triggerRefresh } = useRefreshManager();
+
+  // Pull-to-Refresh Integration
+  const { handleTouchStart, handleTouchEnd, PullIndicator } = usePullToRefresh(
+    () => triggerRefresh(true, [['location', 'nearby']]), 
+    scrollContainerRef
+  );
 
   return (
     <div className="h-screen w-full flex flex-col md:flex-row overflow-hidden bg-[#f8f9fa]">

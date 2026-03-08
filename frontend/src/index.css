@@ -3,6 +3,12 @@
 /* Custom Font Families */
 body {
   font-family: 'Inter', system-ui, sans-serif;
+  height: 100%;
+  margin: 0;
+}
+
+html, #root {
+  height: 100%;
 }
 
 h1, h2, h3, h4, h5, h6 {

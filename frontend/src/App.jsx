@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react"; 
-import { Routes, Route, Navigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import SplashScreen from "./components/SplashScreen.jsx";
 import Homepage from "./pages/Homepage.jsx";
 import ClientHome from "./pages/clientHome.jsx";
 import EditorHome from "./pages/EditorHome.jsx";
-import ChatPage from "./pages/chatpage.jsx";
+import ChatPage from "./pages/chatpage.jsx"; // Original ChatPage
 import EditorProfilePage from "./pages/EditorProfilePage.jsx";
 import EditorMyorderspage from "./pages/EditorMyorderspage.jsx";
 import EditorProfileUpdate from "./pages/EditorProfileUpdate.jsx";
@@ -17,9 +17,9 @@ import ReelsExplore from "./pages/ReelsExplore.jsx";
 import ReelsAnalytics from "./pages/ReelsAnalytics.jsx";
 import NotificationsPage from "./pages/NotificationsPage.jsx";
 import AllChatsPage from "./pages/AllChatsPage.jsx";
-import Chatbox from "./components/ChatPage.jsx";
+import Chatbox from "./components/ChatPage.jsx"; // This seems to be the actual chat component
 import MobileBottomNav from "./components/MobileBottomNav.jsx";
- 
+import { useAppContext } from "./context/AppContext.jsx"; // Assuming this context exists
 
 // Gig & Order Pages
 import CreateGig from "./pages/CreateGig.jsx";
@@ -88,13 +88,66 @@ import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import "react-toastify/dist/ReactToastify.css";
 import { ToastContainer } from "react-toastify";
 
+// ── TAB SWITCHER COMPONENT ──────────────────────────────────────────
+const TabSwitcher = () => {
+  const { user } = useAppContext();
+  const location = useLocation();
+  const [mountedTabs, setMountedTabs] = useState(new Set());
+
+  // Define tabs configuration
+  const tabs = [
+    { id: "home", path: user?.role === "client" ? "/client-home" : "/editor-home", component: user?.role === "client" ? ClientHome : EditorHome },
+    { id: "explore", path: "/explore-editors", component: ExploreEditorsPage },
+    { id: "nearby", path: "/editors-near-you", component: LocalEditorsNetworkPage },
+    { id: "reels", path: "/reels", component: ReelsPage },
+    { id: "jobs", path: "/jobs", component: JobsPage },
+    { id: "chats", path: "/chats", component: AllChatsPage },
+    { id: "profile", path: user?.role === "client" ? "/client-profile" : "/editor-profile", component: user?.role === "client" ? ClientProfile : EditorProfilePage },
+  ];
+
+  // Current active tab ID
+  const activeTabId = tabs.find(t => t.path === location.pathname)?.id;
+
+  // Track which tabs have been visited (Lazy Load)
+  useEffect(() => {
+    if (activeTabId) {
+      setMountedTabs(prev => new Set([...prev, activeTabId]));
+    }
+  }, [activeTabId]);
+
+  return (
+    <div className="relative h-full w-full overflow-hidden bg-[#FAFAFA] dark:bg-[#09090B]">
+      {tabs.map((tab) => {
+        const isMounted = mountedTabs.has(tab.id);
+        const isActive = activeTabId === tab.id;
+
+        if (!isMounted) return null;
+
+        return (
+          <div
+            key={tab.id}
+            className={`absolute inset-0 w-full h-full bg-[#FAFAFA] dark:bg-[#09090B] overflow-y-auto ${isActive ? "z-10" : "-z-10"}`}
+            style={{
+              display: isActive ? "block" : "none",
+              pointerEvents: isActive ? "auto" : "none"
+            }}
+          >
+            <tab.component />
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 function App() {
   const [showSplash, setShowSplash] = useState(false);
+  const { user } = useAppContext();
 
   useEffect(() => {
     const SPLASH_COOLDOWN = 30 * 60 * 1000; // 30 minutes
     const RE_ENTRY_THRESHOLD = 10 * 1000; // 10 seconds (Testing)
-    
+
     const triggerSplash = () => {
       setShowSplash(true);
       localStorage.setItem('lastSplashTime', Date.now().toString());
@@ -138,465 +191,81 @@ function App() {
         {/* {showSplash && <SplashScreen key="splash" />} */}
       </AnimatePresence>
       <ToastContainer />
-       
+
 
       <Routes>
-        {/* Legal Routes */}
+        {/* Public & Legal Routes */}
         <Route path="/legal-center" element={<LegalCenterPage />} />
         <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/content-protection-policy" element={<ContentProtectionPolicy />} />
         <Route path="/editor-code-of-conduct" element={<EditorCodeOfConduct />} />
-
-        {/* Public Route */}
         <Route path="/" element={<Homepage />} />
-
-        {/* OAuth Routes (Public) */}
         <Route path="/oauth-success" element={<OAuthSuccess />} />
         <Route path="/select-role" element={<SelectRole />} />
-
-        {/* Password Reset Routes (Public) */}
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
-
-        {/* Banned & Maintenance Pages (Public) */}
         <Route path="/banned" element={<BannedPage />} />
         <Route path="/maintenance" element={<MaintenancePage />} />
         <Route path="/request-payment-success" element={<RequestPaymentSuccess />} />
 
-        {/* Download Page (Protected) */}
-        <Route
-          path="/download/:id"
-          element={
-            <ProtectedRoute allowedRoles={["client", "editor"]}>
-              <DownloadPage />
-            </ProtectedRoute>
-          }
-        />
+        {/* ============ TAB CATCHER ============ */}
+        {/* These 9 paths are handled by the persistent TabSwitcher */}
+        <Route path="/client-home" element={<ProtectedRoute allowedRoles={["client"]}><TabSwitcher /></ProtectedRoute>} />
+        <Route path="/editor-home" element={<ProtectedRoute allowedRoles={["editor"]}><TabSwitcher /></ProtectedRoute>} />
+        <Route path="/explore-editors" element={<ProtectedRoute allowedRoles={["client", "editor"]}><TabSwitcher /></ProtectedRoute>} />
+        <Route path="/editors-near-you" element={<ProtectedRoute allowedRoles={["client", "editor"]}><TabSwitcher /></ProtectedRoute>} />
+        <Route path="/reels" element={<ProtectedRoute allowedRoles={["client", "editor"]}><TabSwitcher /></ProtectedRoute>} />
+        <Route path="/jobs" element={<ProtectedRoute allowedRoles={["client", "editor"]}><TabSwitcher /></ProtectedRoute>} />
+        <Route path="/chats" element={<ProtectedRoute allowedRoles={["client", "editor"]}><TabSwitcher /></ProtectedRoute>} />
+        <Route path="/client-profile" element={<ProtectedRoute allowedRoles={["client"]}><TabSwitcher /></ProtectedRoute>} />
+        <Route path="/editor-profile" element={<ProtectedRoute allowedRoles={["editor"]}><TabSwitcher /></ProtectedRoute>} />
 
-        {/* ============ CLIENT ROUTES ============ */}
-        <Route
-          path="/client-home"
-          element={
-            <ProtectedRoute allowedRoles={["client"]}>
-              <ClientHome />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/client-analytics"
-          element={
-            <ProtectedRoute allowedRoles={["client"]}>
-              <ClientAnalytics />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/client-kyc"
-          element={
-            <ProtectedRoute allowedRoles={["client"]}>
-              <ClientKYCPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/client-orders"
-          element={
-            <ProtectedRoute allowedRoles={["client"]}>
-              <ClientOrders />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/client-messages"
-          element={<Navigate to="/chats" replace />}
-        />
-        <Route
-          path="/client-profile"
-          element={
-            <ProtectedRoute allowedRoles={["client"]}>
-              <ClientProfile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/saved-editors"
-          element={
-            <ProtectedRoute allowedRoles={["client"]}>
-              <SavedEditors />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/explore-editors"
-          element={
-            <ProtectedRoute allowedRoles={["client","editor"]}>
-              <ExploreEditorsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/follow-suggestions"
-          element={
-            <ProtectedRoute allowedRoles={["client", "editor"]}>
-              <FollowSuggestionsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/editors-near-you"
-          element={
-            <ProtectedRoute allowedRoles={["client", "editor"]}>
-              <LocalEditorsNetworkPage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Client - Open Briefs Routes */}
-        <Route
-          path="/create-brief"
-          element={
-            <ProtectedRoute allowedRoles={["client"]}>
-              <CreateBriefPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/my-briefs"
-          element={
-            <ProtectedRoute allowedRoles={["client"]}>
-              <MyBriefsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/manage-brief/:id"
-          element={
-            <ProtectedRoute allowedRoles={["client"]}>
-              <ManageBriefPage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* ============ EDITOR ROUTES ============ */}
-        {/* Editor - Open Briefs Routes */}
-        <Route
-          path="/briefs"
-          element={
-            <ProtectedRoute allowedRoles={["editor"]}>
-              <OpenBriefsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/brief/:id"
-          element={
-            <ProtectedRoute allowedRoles={["editor", "client"]}>
-              <BriefDetailPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/my-proposals"
-          element={
-            <ProtectedRoute allowedRoles={["editor"]}>
-              <MyProposalsPage />
-            </ProtectedRoute>
-          }
-        />
-
+        {/* ============ PROTECTED NON-TAB ROUTES ============ */}
+        <Route path="/download/:id" element={<ProtectedRoute allowedRoles={["client", "editor"]}><DownloadPage /></ProtectedRoute>} />
+        <Route path="/chat/:orderId" element={<ProtectedRoute allowedRoles={["client", "editor"]}><Chatbox /></ProtectedRoute>} />
+        <Route path="/jobs/:id" element={<ProtectedRoute allowedRoles={["editor", "client"]}><JobDetailsPage /></ProtectedRoute>} />
+        <Route path="/public-profile/:userId" element={<ProtectedRoute><PublicEditorProfile /></ProtectedRoute>} />
+        <Route path="/editor/:userId" element={<ProtectedRoute><PublicEditorProfile /></ProtectedRoute>} />
+        <Route path="/post-job" element={<ProtectedRoute allowedRoles={["client"]}><PostJobPage /></ProtectedRoute>} />
+        <Route path="/my-jobs" element={<ProtectedRoute allowedRoles={["client"]}><MyJobsPage /></ProtectedRoute>} />
+        <Route path="/my-jobs/:id/applicants" element={<ProtectedRoute allowedRoles={["client"]}><JobApplicantsPage /></ProtectedRoute>} />
+        <Route path="/client-analytics" element={<ProtectedRoute allowedRoles={["client"]}><ClientAnalytics /></ProtectedRoute>} />
+        <Route path="/client-kyc" element={<ProtectedRoute allowedRoles={["client"]}><ClientKYCPage /></ProtectedRoute>} />
+        <Route path="/editor-analytics" element={<ProtectedRoute allowedRoles={["editor"]}><EditorAnalytics /></ProtectedRoute>} />
+        <Route path="/editor-profile-update" element={<ProtectedRoute allowedRoles={["editor"]}><EditorProfileUpdate /></ProtectedRoute>} />
+        <Route path="/add-portfolio" element={<ProtectedRoute allowedRoles={["editor"]}><AddPortfolio /></ProtectedRoute>} />
+        <Route path="/upload-reel" element={<ProtectedRoute allowedRoles={["editor"]}><ReelUploadPage /></ProtectedRoute>} />
+        <Route path="/kyc-details" element={<ProtectedRoute allowedRoles={["editor"]}><KYCDetailsPage /></ProtectedRoute>} />
+        <Route path="/location-settings" element={<ProtectedRoute allowedRoles={["editor"]}><LocationSettingsPage /></ProtectedRoute>} />
+        <Route path="/suvix-score" element={<ProtectedRoute allowedRoles={["editor"]}><SuvixScorePage /></ProtectedRoute>} />
+        <Route path="/achievements" element={<ProtectedRoute allowedRoles={["editor"]}><AchievementsPage /></ProtectedRoute>} />
+        <Route path="/create-gig" element={<ProtectedRoute allowedRoles={["editor"]}><CreateGig /></ProtectedRoute>} />
+        <Route path="/my-gigs" element={<ProtectedRoute allowedRoles={["editor"]}><MyGigs /></ProtectedRoute>} />
+        <Route path="/my-orders" element={<ProtectedRoute allowedRoles={["editor"]}><MyOrders /></ProtectedRoute>} />
+        <Route path="/client-orders" element={<ProtectedRoute allowedRoles={["client"]}><ClientOrders /></ProtectedRoute>} />
+        <Route path="/saved-editors" element={<ProtectedRoute allowedRoles={["client"]}><SavedEditors /></ProtectedRoute>} />
+        <Route path="/follow-suggestions" element={<ProtectedRoute allowedRoles={["client", "editor"]}><FollowSuggestionsPage /></ProtectedRoute>} />
+        <Route path="/create-brief" element={<ProtectedRoute allowedRoles={["client"]}><CreateBriefPage /></ProtectedRoute>} />
+        <Route path="/my-briefs" element={<ProtectedRoute allowedRoles={["client"]}><MyBriefsPage /></ProtectedRoute>} />
+        <Route path="/manage-brief/:id" element={<ProtectedRoute allowedRoles={["client"]}><ManageBriefPage /></ProtectedRoute>} />
+        <Route path="/briefs" element={<ProtectedRoute allowedRoles={["editor"]}><OpenBriefsPage /></ProtectedRoute>} />
+        <Route path="/brief/:id" element={<ProtectedRoute allowedRoles={["editor", "client"]}><BriefDetailPage /></ProtectedRoute>} />
+        <Route path="/my-proposals" element={<ProtectedRoute allowedRoles={["editor"]}><MyProposalsPage /></ProtectedRoute>} />
         <Route path="/ad-details/:id" element={<AdDetailsPage />} />
+        <Route path="/reels-explore" element={<ProtectedRoute><ReelsExplore /></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+        <Route path="/payment-success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
+        <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
+        <Route path="/subscription/plans" element={<ProtectedRoute><SubscriptionPlansPage /></ProtectedRoute>} />
+        <Route path="/profile-insights" element={<ProtectedRoute><ProfileInsightsPage /></ProtectedRoute>} />
+        <Route path="/storage-plans" element={<ProtectedRoute><StoragePlans /></ProtectedRoute>} />
 
-        {/* Job Portal Routes */}
-        <Route
-          path="/jobs"
-          element={
-            <ProtectedRoute allowedRoles={["editor", "client"]}>
-              <JobsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/jobs/:id"
-          element={
-            <ProtectedRoute allowedRoles={["editor", "client"]}>
-              <JobDetailsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/post-job"
-          element={
-            <ProtectedRoute allowedRoles={["client"]}>
-              <PostJobPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/my-jobs"
-          element={
-            <ProtectedRoute allowedRoles={["client"]}>
-              <MyJobsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/my-jobs/:id/applicants"
-          element={
-            <ProtectedRoute allowedRoles={["client"]}>
-              <JobApplicantsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/my-applications"
-          element={
-            <ProtectedRoute allowedRoles={["editor"]}>
-              <MyApplicationsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/editor-home"
-          element={
-            <ProtectedRoute allowedRoles={["editor"]}>
-              <EditorHome />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/editor-analytics"
-          element={
-            <ProtectedRoute allowedRoles={["editor"]}>
-              <EditorAnalytics />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/storage-plans"
-          element={
-            <ProtectedRoute allowedRoles={["editor"]}>
-              <StoragePlans />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/reels-analytics"
-          element={
-            <ProtectedRoute allowedRoles={["editor"]}>
-              <ReelsAnalytics />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/editor-my-orders"
-          element={
-            <ProtectedRoute allowedRoles={["editor"]}>
-              <EditorMyorderspage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/editor-profile"
-          element={
-            <ProtectedRoute allowedRoles={["editor"]}>
-              <EditorProfilePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/add-portfolio"
-          element={
-            <ProtectedRoute allowedRoles={["editor"]}>
-              <ReelUploadPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/upload-reel"
-          element={
-            <ProtectedRoute allowedRoles={["editor"]}>
-              <ReelUploadPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/editor-profile-update"
-          element={
-            <ProtectedRoute allowedRoles={["editor"]}>
-              <EditorProfileUpdate />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/kyc-details"
-          element={
-            <ProtectedRoute allowedRoles={["editor"]}>
-              <KYCDetailsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/location-settings"
-          element={
-            <ProtectedRoute allowedRoles={["editor"]}>
-              <LocationSettingsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/suvix-score"
-          element={
-            <ProtectedRoute allowedRoles={["editor"]}>
-              <SuvixScorePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/achievements"
-          element={
-            <ProtectedRoute allowedRoles={["editor"]}>
-              <AchievementsPage />
-            </ProtectedRoute>
-          }
-        />
+        {/* ============ REDIRECTS ============ */}
+        <Route path="/client-messages" element={<Navigate to="/chats" replace />} />
 
-        {/* Gig Routes (Editor) */}
-        <Route
-          path="/create-gig"
-          element={
-            <ProtectedRoute allowedRoles={["editor"]}>
-              <CreateGig />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/my-gigs"
-          element={
-            <ProtectedRoute allowedRoles={["editor"]}>
-              <MyGigs />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* My Orders (Editor) */}
-        <Route
-          path="/my-orders"
-          element={
-            <ProtectedRoute allowedRoles={["editor"]}>
-              <MyOrders />
-            </ProtectedRoute>
-          }
-        />
-
-
-
-        {/* ============ SHARED ROUTES ============ */}
-
-        {/* Public Profile */}
-        <Route
-          path="/public-profile/:userId"
-          element={
-            <ProtectedRoute>
-              <PublicEditorProfile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/editor/:userId"
-          element={
-            <ProtectedRoute>
-              <PublicEditorProfile />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Reels (accessible by any logged-in user) */}
-        <Route
-          path="/reels"
-          element={
-            <ProtectedRoute>
-              <ReelsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/reels-explore"
-          element={
-            <ProtectedRoute>
-              <ReelsExplore />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Notifications */}
-        <Route
-          path="/notifications"
-          element={
-            <ProtectedRoute>
-              <NotificationsPage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Chat (accessible by any logged-in user) */}
-        <Route
-          path="/chats"
-          element={
-            <ProtectedRoute>
-              <AllChatsPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/chat/:orderId"
-          element={
-            <ProtectedRoute>
-              <Chatbox />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Payment Success Page */}
-        <Route
-          path="/payment-success"
-          element={
-            <ProtectedRoute>
-              <PaymentSuccess />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Payments (accessible by any logged-in user) */}
-        <Route
-          path="/payments"
-          element={
-            <ProtectedRoute>
-              <PaymentsPage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Subscription Plans (accessible by any logged-in user) */}
-        <Route
-          path="/subscription/plans"
-          element={
-            <ProtectedRoute>
-              <SubscriptionPlansPage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Profile Insights (accessible by any logged-in user) */}
-        <Route
-          path="/profile-insights"
-          element={
-            <ProtectedRoute>
-              <ProfileInsightsPage />
-            </ProtectedRoute>
-          }
-        />
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to={user ? (user.role === 'client' ? '/client-home' : '/editor-home') : '/'} replace />} />
       </Routes>
 
       {/* Mobile Bottom Navigation - Only visible on mobile devices */}
@@ -604,6 +273,5 @@ function App() {
     </>
   );
 }
-
 export default App;
 

@@ -35,6 +35,7 @@ import {
 } from "react-icons/hi2";
 import { FaUsers, FaBriefcase, FaPlayCircle, FaArrowRight } from "react-icons/fa";
 import { PiHeartFill } from "react-icons/pi";
+import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { useSocket } from "../context/SocketContext";
@@ -50,9 +51,8 @@ import UnifiedBannerSlider from "../components/UnifiedBannerSlider.jsx";
 import reelIcon from "../assets/reelicon.png";
 import { useHomeStore } from "../store/homeStore";
 import useScrollRestore from "../hooks/useScrollRestore";
-import useRefreshManager from "../hooks/useRefreshManager";
-import usePullToRefresh from "../hooks/usePullToRefresh";
-import RefreshIndicator from "../components/RefreshIndicator";
+import useRefreshManager from "../hooks/useRefreshManager.js";
+import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 
 const ClientHome = () => {
   const { user, backendURL } = useAppContext();
@@ -61,18 +61,22 @@ const ClientHome = () => {
   const mainContainerRef = useRef(null);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const hasLoadedOnce = useRef(false);
   const [stats, setStats] = useState({ totalOrders: 0, activeOrders: 0, completedOrders: 0, totalSpent: 0 });
+  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [featuredEditors, setFeaturedEditors] = useState([]);
   const [activeProjects, setActiveProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [showHowItWorks, setShowHowItWorks] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [recentSearches, setRecentSearches] = useState([]);
 
   // ── REFRESH SYSTEM ──────────────────────────────────────────────────
   const { triggerRefresh } = useRefreshManager();
-  const { pullDistance, handleTouchStart, handleTouchEnd } = usePullToRefresh(triggerRefresh, mainContainerRef);
+  const { pullDistance, handleTouchStart, handleTouchEnd, PullIndicator } = usePullToRefresh(
+    () => triggerRefresh(true, ['homeData', 'orders']), 
+    mainContainerRef
+  );
 
   // Persistent tab state via Zustand — survives navigation
   const mainTab = useHomeStore((s) => s.clientMainTab);
@@ -94,52 +98,63 @@ const ClientHome = () => {
   };
 
 
+  // ── DATA FETCHING ──────────────────────────────────────────────────
+  const { data: ordersData, isLoading: ordersLoading } = useQuery({
+    queryKey: ['orders'],
+    queryFn: async () => {
+      const { data } = await axios.get(`${backendURL}/api/orders`, {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      });
+      return data.orders || [];
+    },
+    enabled: !!user?.token,
+  });
+
+  const { data: editorsData, isLoading: editorsLoading } = useQuery({
+    queryKey: ['explore', 'editors', { limit: 6, sortBy: 'popular' }],
+    queryFn: async () => {
+      const { data } = await axios.get(`${backendURL}/api/explore/editors?limit=6&sortBy=popular`, {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      });
+      return data.editors || [];
+    },
+    enabled: !!user?.token,
+  });
+
+  // Derived stats and data
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = user?.token;
-        if (!token) return;
-
-        const [ordersRes, editorsRes] = await Promise.all([
-          axios.get(`${backendURL}/api/orders`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          axios.get(`${backendURL}/api/explore/editors?limit=6&sortBy=popular`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }).catch(() => ({ data: { editors: [] } }))
-        ]);
-
-        const orders = ordersRes.data.orders || [];
-        const activeOrders = orders.filter(o => ["new", "accepted", "in_progress", "submitted"].includes(o.status));
-        const completedOrders = orders.filter(o => o.status === "completed").length;
-        const totalSpent = orders.filter(o => o.status === "completed").reduce((sum, o) => sum + (o.amount || 0), 0);
-        
-        setStats({ totalOrders: orders.length, activeOrders: activeOrders.length, completedOrders, totalSpent });
-        setActiveProjects(activeOrders.slice(0, 5));
-        
-        // Hide "How It Works" if user has orders
-        if (orders.length > 0) setShowHowItWorks(false);
-        setFeaturedEditors(editorsRes.data.editors?.slice(0, 6) || []);
-
-      } catch (err) {
-        console.error("Failed to fetch data:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [backendURL, user?.token]);
-
-  // Loading State with Minimum Delay
-  const [isPageLoading, setIsPageLoading] = useState(true);
+    if (ordersData) {
+      const orders = ordersData;
+      const activeOrders = orders.filter(o => ["new", "accepted", "in_progress", "submitted"].includes(o.status));
+      const completedOrders = orders.filter(o => o.status === "completed").length;
+      const totalSpent = orders.filter(o => o.status === "completed").reduce((sum, o) => sum + (o.amount || 0), 0);
+      
+      setStats({ 
+        totalOrders: orders.length, 
+        activeOrders: activeOrders.length, 
+        completedOrders, 
+        totalSpent 
+      });
+      setActiveProjects(activeOrders.slice(0, 5));
+      
+      if (orders.length > 0) setShowHowItWorks(false);
+    }
+  }, [ordersData]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsPageLoading(false);
-    }, 2000);
+    if (editorsData) {
+      setFeaturedEditors(editorsData.slice(0, 6));
+    }
+  }, [editorsData]);
 
-    return () => clearTimeout(timer);
-  }, []);
+  // Combined loading state
+  const loading = ordersLoading || editorsLoading;
+
+  useEffect(() => {
+    if (!ordersLoading && !editorsLoading) {
+      hasLoadedOnce.current = true;
+    }
+  }, [ordersLoading, editorsLoading]);
 
 
 
@@ -164,28 +179,25 @@ const ClientHome = () => {
     return styles[status] || { bg: "bg-zinc-500/10", text: "text-zinc-400", label: status };
   };
 
-  if (loading) {
+  if (!hasLoadedOnce.current && loading) {
     return <Loader />;
   }
 
   return (
     <div 
-      className="min-h-screen flex flex-col md:flex-row bg-[#09090B] light:bg-[#FAFAFA] text-white light:text-zinc-900"
+      className="h-full flex flex-col md:flex-row bg-[#09090B] light:bg-[#FAFAFA] text-white light:text-zinc-900"
       style={{ fontFamily: "'Manrope', sans-serif" }}
     >
       <ClientSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <ClientNavbar onMenuClick={() => setSidebarOpen(true)} />
       
-      <RefreshIndicator pullDistance={pullDistance} />
-
-
       <main 
         ref={mainContainerRef}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className="flex-1 px-0 md:ml-64 md:mt-16 overflow-x-hidden overflow-y-auto transition-transform duration-75"
-        style={{ transform: `translateY(${pullDistance}px)` }}
+        className="flex-1 md:ml-64 md:mt-16 overflow-y-auto"
       >
+        <PullIndicator />
         {/* Premium Banner at the Top - Responsive with Side Margins */}
         <div className="px-3 md:px-8 mb-1.5 md:mb-4 max-w-7xl mx-auto">
           <UnifiedBannerSlider />

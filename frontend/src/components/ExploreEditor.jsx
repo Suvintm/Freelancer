@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import {
   FaCheckCircle,
@@ -73,8 +74,6 @@ const ExploreEditors = () => {
   const [searchParams] = useSearchParams();
   const [editors, setEditors] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
@@ -163,51 +162,53 @@ const ExploreEditors = () => {
     localStorage.setItem("recentEditorSearches", JSON.stringify(updated));
   };
 
-  const fetchEditors = async (page = 1, search = "", activeFilters = filters) => {
-    try {
-      setLoading(true);
+  // ── DATA FETCHING ──────────────────────────────────────────────────
+  const { data: editorsResponse, isLoading: editorsLoading, isFetching: editorsFetching, isError, error: queryError } = useQuery({
+    queryKey: ['explore', 'editors', { 
+      search: searchQuery, 
+      page: pagination.page,
+      filters 
+    }],
+    queryFn: async () => {
       const token = user?.token || JSON.parse(localStorage.getItem("user"))?.token;
-
       const params = new URLSearchParams({
-        page: page.toString(),
+        page: pagination.page.toString(),
         limit: "12",
-        ...(search && { search }),
-        ...(activeFilters.availability.length > 0 && { availability: activeFilters.availability.join(",") }),
-        ...(activeFilters.skills.length > 0 && { skills: activeFilters.skills.join(",") }),
-        ...(activeFilters.languages.length > 0 && { languages: activeFilters.languages.join(",") }),
-        ...(activeFilters.experience && { experience: activeFilters.experience }),
-        ...(activeFilters.country && { country: activeFilters.country }),
-        sortBy: activeFilters.sortBy,
+        ...(searchQuery && { search: searchQuery }),
+        ...(filters.availability.length > 0 && { availability: filters.availability.join(",") }),
+        ...(filters.skills.length > 0 && { skills: filters.skills.join(",") }),
+        ...(filters.languages.length > 0 && { languages: filters.languages.join(",") }),
+        ...(filters.experience && { experience: filters.experience }),
+        ...(filters.country && { country: filters.country }),
+        sortBy: filters.sortBy,
       });
 
       const res = await axios.get(`${backendURL}/api/explore/editors?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
+      return res.data;
+    },
+    enabled: !!backendURL,
+    keepPreviousData: true, // Crucial for smooth pagination/filteringUX
+  });
 
-      setEditors(res.data.editors || []);
-      setPagination(res.data.pagination || { page: 1, limit: 12, total: 0, pages: 1 });
-      if (res.data.filters) setFilterOptions(res.data.filters);
-    } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.message || "Failed to fetch editors");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { fetchEditors(1, "", filters); }, [backendURL, user]);
+  // Derived state updates
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchQuery) saveToRecentSearches(searchQuery);
-      fetchEditors(1, searchQuery, filters);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-  useEffect(() => { fetchEditors(1, searchQuery, filters); }, [filters]);
+    if (editorsResponse) {
+      setEditors(editorsResponse.editors || []);
+      setPagination(editorsResponse.pagination || { page: 1, limit: 12, total: 0, pages: 1 });
+      if (editorsResponse.filters) setFilterOptions(editorsResponse.filters);
+    }
+  }, [editorsResponse]);
+
+  // Combined loading state for UI
+  const loading = editorsLoading || (editorsFetching && editors.length === 0);
 
   const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= pagination.pages) fetchEditors(newPage, searchQuery, filters);
+    if (newPage >= 1 && newPage <= pagination.pages) {
+      setPagination(prev => ({ ...prev, page: newPage }));
+    }
   };
 
   const toggleSkillFilter = (skill) => {
@@ -229,7 +230,7 @@ const ExploreEditors = () => {
 
   const activeFilterCount = filters.skills.length + filters.languages.length + (filters.experience ? 1 : 0) + (filters.country ? 1 : 0) + filters.availability.length;
 
-  if (error) {
+  if (isError) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center">
         <div className="text-center max-w-md p-8 bg-[#0a0a0c] light:bg-white rounded-2xl border border-white/10 light:border-slate-200 shadow-lg">
@@ -237,7 +238,7 @@ const ExploreEditors = () => {
             <span className="text-2xl">⚠️</span>
           </div>
           <h3 className="text-xl font-bold text-white light:text-slate-900 mb-2">Something went wrong</h3>
-          <p className="text-gray-500 light:text-slate-500 mb-6">{error}</p>
+          <p className="text-gray-500 light:text-slate-500 mb-6">{queryError?.message || "Error loading editors"}</p>
           <button onClick={() => fetchEditors(1, "", filters)} className="inline-flex items-center gap-2 bg-emerald-500 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-emerald-600 transition-all">
             Try Again
           </button>

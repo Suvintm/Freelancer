@@ -13,6 +13,7 @@ import ReelAdCard from "../components/ReelAdCard";
 import ReelCommentsDrawer from "../components/ReelCommentsDrawer";
 import useReelObserver from "../hooks/useReelObserver";
 import useScrollRestore from "../hooks/useScrollRestore";
+import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 import logo from "../assets/logo.png";
 
 const ReelsPage = () => {
@@ -242,23 +243,12 @@ const ReelsPage = () => {
     // ─────────────────────────────────────────────────────────────
     // PULL-TO-REFRESH
     // ─────────────────────────────────────────────────────────────
-    const touchStartY = useRef(0);
-    const isPulling = useRef(false);
-
-    const handleTouchStart = (e) => {
-        touchStartY.current = e.touches[0].clientY;
-        isPulling.current = containerRef.current?.scrollTop === 0;
-    };
-
-    const handleTouchEnd = (e) => {
-        if (!isPulling.current) return;
-        const delta = e.changedTouches[0].clientY - touchStartY.current;
-
-        if (delta > 90) {
-            handleRefresh();
-        }
-        isPulling.current = false;
-    };
+    const { handleTouchStart, handleTouchEnd, PullIndicator } = usePullToRefresh(
+        async () => {
+            await handleRefresh();
+        }, 
+        containerRef
+    );
 
     const handleRefresh = async () => {
         if (refreshing) return;
@@ -319,23 +309,7 @@ const ReelsPage = () => {
             </div>
 
             {/* ── PULL-TO-REFRESH INDICATOR ── */}
-            <AnimatePresence>
-                {refreshing && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        className="absolute top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
-                    >
-                        <div className="bg-white/20 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 shadow-xl">
-                            <FaSpinner className="text-white animate-spin text-sm" />
-                            <span className="text-white text-xs font-semibold">
-                                Loading fresh reels...
-                            </span>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <PullIndicator />
 
             {/* ── FEED ── */}
             <motion.div
@@ -348,7 +322,7 @@ const ReelsPage = () => {
                     borderRadius: showComments ? "20px" : "0px",
                 }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide touch-pan-y origin-top bg-black"
+                className="flex-1 overflow-y-auto snap-y snap-mandatory scrollbar-hide touch-pan-y origin-top bg-black h-full"
             >
                 {/* Skeleton — shown only on first load */}
                 {loading && (

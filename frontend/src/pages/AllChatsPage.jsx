@@ -1,4 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import useRefreshManager from "../hooks/useRefreshManager.js";
+import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaArrowLeft,
@@ -67,6 +70,17 @@ const getDeadlineStatus = (deadline, createdAt) => {
     daysLeft
   };
 };
+const sortChats = (chats) => {
+  return [...chats].sort((a, b) => {
+    const aPinned = a.pinnedBy?.length > 0;
+    const bPinned = b.pinnedBy?.length > 0;
+    if (aPinned && !bPinned) return -1;
+    if (!aPinned && bPinned) return 1;
+    const aTime = new Date(a.lastActivityAt || a.updatedAt || a.createdAt);
+    const bTime = new Date(b.lastActivityAt || b.updatedAt || b.createdAt);
+    return bTime - aTime;
+  });
+};
 
 const AllChatsPage = () => {
   const navigate = useNavigate();
@@ -75,106 +89,24 @@ const AllChatsPage = () => {
   const { typingUsers = {}, onlineUsers = [] } = socketContext || {};
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const scrollContainerRef = useRef(null);
+  const { triggerRefresh } = useRefreshManager();
   const [chats, setChats] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchChats();
-  }, []);
-
-  const handleNewMessage = useCallback((message) => {
-    setChats(prevChats => {
-      const orderId = (message.orderId || message.order)?.toString();
-      const chatIndex = prevChats.findIndex(c => c._id?.toString() === orderId);
-      if (chatIndex === -1) {
-        console.warn(`[AllChatsPage] Order ${orderId} not found in current list`);
-        return prevChats;
-      }
-
-      const updatedChats = [...prevChats];
-      const chat = { ...updatedChats[chatIndex] };
-      chat.lastMessage = {
-        content: message.content,
-        type: message.type,
-        createdAt: message.createdAt,
-        sender: message.sender
-      };
-      chat.lastActivityAt = message.createdAt;
-      
-      const senderIdStr = (message.sender?._id ?? message.sender)?.toString();
-      const currentUserIdStr = user?._id?.toString();
-      
-      console.log(`[AllChatsPage] New message in ${orderId} from ${senderIdStr}. Me: ${currentUserIdStr}`);
-      
-      if (senderIdStr !== currentUserIdStr) {
-        console.log(`[AllChatsPage] Incrementing unread for ${orderId}`);
-        chat.unreadCount = (chat.unreadCount || 0) + 1;
-      } else {
-        console.log(`[AllChatsPage] Own message, NOT incrementing unread`);
-      }
-      
-      updatedChats[chatIndex] = chat;
-      return sortChats(updatedChats);
-    });
-  }, [user?._id]);
-
-  useEffect(() => {
-    const socket = socketContext?.socket;
-    if (!socket) return;
-
-    // New message: increment unread for other party's messages
-    socket.on("message:new", handleNewMessage);
-
-    // Message read: clear unread count for the chat the user just opened
-    const handleMessageRead = ({ orderId, readBy }) => {
-      const readByStr = readBy?.toString();
-      const currentUserIdStr = user?._id?.toString();
-      
-      console.log(`[AllChatsPage] Message:read event for ${orderId} by ${readByStr}. Me: ${currentUserIdStr}`);
-      
-      if (readByStr === currentUserIdStr) {
-        console.log(`[AllChatsPage] Clearing unread count for ${orderId}`);
-        setChats(prev => prev.map(c =>
-          c._id === orderId ? { ...c, unreadCount: 0 } : c
-        ));
-      }
-    };
-    socket.on("message:read", handleMessageRead);
-
-    return () => {
-      socket.off("message:new", handleNewMessage);
-      socket.off("message:read", handleMessageRead);
-    };
-  }, [socketContext, user?._id]);
-
-  const sortChats = (chatList) => {
-    return chatList.sort((a, b) => {
-      const aPinned = a.pinnedBy?.includes(user?._id);
-      const bPinned = b.pinnedBy?.includes(user?._id);
-      if (aPinned && !bPinned) return -1;
-      if (!aPinned && bPinned) return 1;
-      
-      const aTime = new Date(a.lastMessage?.createdAt || a.lastActivityAt || a.updatedAt);
-      const bTime = new Date(b.lastMessage?.createdAt || b.lastActivityAt || b.updatedAt);
-      return bTime - aTime;
-    });
-  };
-
-  const fetchChats = async (silent = false) => {
-    try {
-      if (!silent) setLoading(true);
-      else setIsRefreshing(true);
-
+  // ── DATA FETCHING ──────────────────────────────────────────────────
+  const { data: chatData, isLoading: chatsLoading, refetch } = useQuery({
+    queryKey: ['orders', 'chats'],
+    queryFn: async () => {
       const token = user?.token;
       const res = await axios.get(`${backendURL}/api/orders`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const relevantStatuses = ["awaiting_payment", "accepted", "in_progress", "submitted", "completed"];
-      const activeChats = (res.data.orders || []).filter(order => order.status === "new" || relevantStatuses.includes(order.status));
+      const allStatuses = ['new', 'awaiting_payment', 'accepted', 'in_progress', 'submitted', 'completed', 'cancelled', 'rejected', 'disputed', 'expired'];
+      const activeChats = (res.data.orders || []).filter(order => allStatuses.includes(order.status));
 
       let unreadCounts = {};
       try {
@@ -190,14 +122,49 @@ const AllChatsPage = () => {
         unreadCount: unreadCounts[chat._id] || 0,
       }));
 
-      setChats(sortChats(chatsWithData));
-    } catch (err) {
-      toast.error("Failed to load chats");
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
+      return sortChats(chatsWithData);
+    },
+    enabled: !!user?.token,
+  });
+
+  // Pull-to-Refresh Integration
+  const { handleTouchStart, handleTouchEnd, PullIndicator } = usePullToRefresh(
+    () => triggerRefresh(true, [['orders', 'chats']]), 
+    scrollContainerRef
+  );
+
+  // Sync state with query data
+  useEffect(() => {
+    if (chatData) {
+      setChats(chatData);
     }
-  };
+  }, [chatData]);
+
+  // Handle Socket Events for Real-time Refresh
+  // Optimized for persistent TabSwitcher (keeps listeners unique)
+  useEffect(() => {
+    const socket = socketContext?.socket;
+    if (!socket || !user?._id) return;
+
+    console.log("[AllChatsPage] Registering socket listeners...");
+
+    const handleSocketUpdate = () => {
+      refetch();
+    };
+
+    socket.on("message:new", handleSocketUpdate);
+    socket.on("message:read", handleSocketUpdate);
+    socket.on("order:update", handleSocketUpdate); // Added for broader status updates
+
+    return () => {
+      console.log("[AllChatsPage] Cleaning up socket listeners...");
+      socket.off("message:new", handleSocketUpdate);
+      socket.off("message:read", handleSocketUpdate);
+      socket.off("order:update", handleSocketUpdate);
+    };
+  }, [socketContext?.socket, user?._id, refetch]);
+
+  const loading = chatsLoading;
 
   const togglePin = async (e, orderId) => {
     e.stopPropagation();
@@ -282,11 +249,17 @@ const AllChatsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-white/10 overflow-x-hidden" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+    <div className="h-full bg-black text-white selection:bg-white/10" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-      <main className="w-full px-3 sm:px-4 md:px-8 py-4 pt-14 md:pt-24 md:ml-64 md:max-w-[calc(100%-16rem)] pb-24 md:pb-6">
+      <main 
+        ref={scrollContainerRef}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="flex-1 md:ml-64 md:mt-16 overflow-y-auto px-3 sm:px-4 md:px-8 py-4"
+      >
+        <PullIndicator />
         {/* Header Section */}
         <div className="flex flex-col gap-3 mb-5">
           <div>
