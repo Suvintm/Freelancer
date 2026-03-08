@@ -166,6 +166,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
       senderId: req.user._id,
       senderName: req.user.name,
       type: "chat_message",
+      body: type === "text" ? content : `Sent a ${type || "file"}`,
     }
   });
 
@@ -466,6 +467,7 @@ export const uploadFile = asyncHandler(async (req, res) => {
       senderId: req.user._id,
       senderName: req.user.name,
       type: "chat_message",
+      body: `${req.user.name} shared a ${messageType}: ${req.file.originalname}`,
     }
   });
 
@@ -738,6 +740,7 @@ export const uploadVoice = asyncHandler(async (req, res) => {
       senderId: req.user._id,
       senderName: req.user.name,
       type: "chat_message",
+      body: `${req.user.name} sent a voice message (${duration}s)`,
     }
   });
 

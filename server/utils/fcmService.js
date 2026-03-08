@@ -7,80 +7,85 @@ import { initFirebaseAdmin } from "./firebaseAdmin.js";
 /**
  * Send push notification to a specific user
  * @param {string} userId - Recipient user ID
- * @param {object} payload - Notification data { title, body, data, link }
+ * @param {object} fcmPayload - Flat notification data (all fields at top level)
  */
-export const sendPushNotification = async (userId, { title, body, icon, data = {}, link = "/notifications" }) => {
+export const sendPushNotification = async (userId, fcmPayload) => {
   try {
     const app = initFirebaseAdmin();
     if (!app) return;
 
     const user = await User.findById(userId).select("fcmTokens");
-    if (!user || !user.fcmTokens || user.fcmTokens.length === 0) {
-      return;
-    }
+    if (!user || !user.fcmTokens || user.fcmTokens.length === 0) return;
 
     const messaging = getMessaging();
 
-    // Prepare Production-Grade message
-    // 🏷️ Sanitize data: FCM only accepts strings in the 'data' object
+    // ── Sanitize: FCM data payload only accepts flat strings ─────────────────
     const sanitizedData = {};
-    Object.keys(data).forEach(key => {
-      if (data[key] !== null && data[key] !== undefined) {
-        sanitizedData[key] = String(data[key]);
+    Object.entries(fcmPayload).forEach(([key, value]) => {
+      if (value !== null && value !== undefined && value !== "") {
+        sanitizedData[key] = String(value);
       }
     });
 
+    // ── FCM Message ───────────────────────────────────────────────────────────
+    // ✅ DATA-ONLY: No `notification` block anywhere. This is the ONLY way to guarantee:
+    //    1. SW onBackgroundMessage fires on ALL platforms
+    //    2. Mobile browsers respect custom grouping & stacking
+    //    3. App-closed delivery works correctly
     const message = {
-      webpush: {
-        headers: {
-          // 🚀 High-urgency: deliver immediately, skip browser batching/throttling
-          Urgency: "high",
-          TTL: "60", // Message expires after 60s if undeliverable
-        },
-        // ✅ DATA-ONLY: No webpush.notification block here.
-        // When a notification block is present, Android Chrome BYPASSES the Service Worker
-        // and renders natively — this breaks background delivery.
-        // With data-only, onBackgroundMessage in the SW handles ALL display, even when app is closed.
-        fcmOptions: {
-          link: link,
-        }
-      },
-      // Primary data payload — SW reads this in onBackgroundMessage
-      data: {
-        ...sanitizedData,
-        title: String(title),
-        body: String(body),
-        type: data.type || "standard",
-        link: link,
-        click_action: link,
-      },
+      data: sanitizedData,
+
       android: {
         priority: "high",
-        notification: {
-          channel_id: "suvix_notifications",
-          icon: "stock_ticker_update",
-          color: "#007bff",
-          ...(data.image ? { image: String(data.image) } : {}),
-        }
-      }
+        // ✅ NO android.notification block — would bypass SW on Android
+      },
+
+      webpush: {
+        headers: {
+          Urgency: "high",
+          TTL: "86400", // 24 hours — survive device sleep/offline
+        },
+        fcmOptions: {
+          link: fcmPayload.link || "/notifications",
+        },
+        // ✅ NO webpush.notification block — would bypass SW
+      },
+
+      apns: {
+        headers: {
+          "apns-priority": "10",
+        },
+        payload: {
+          aps: {
+            contentAvailable: true, // Wake iOS app in background
+            sound: "default",
+          },
+        },
+        // ✅ NO apns.alert block — keeps it data-only on iOS too
+      },
     };
 
-    // Send to all tokens for this user
-    const sendPromises = user.fcmTokens.map(token => 
+    // ── Send to all registered tokens ─────────────────────────────────────────
+    const sendPromises = user.fcmTokens.map(token =>
       messaging.send({ ...message, token })
-        .catch(err => {
-          if (err.code === 'messaging/registration-token-not-registered' || 
-              err.code === 'messaging/invalid-registration-token') {
-            // Remove invalid token
-            return User.findByIdAndUpdate(userId, { $pull: { fcmTokens: token } });
+        .catch(async (err) => {
+          // Clean up dead tokens automatically
+          if (
+            err.code === 'messaging/registration-token-not-registered' ||
+            err.code === 'messaging/invalid-registration-token'
+          ) {
+            await User.findByIdAndUpdate(userId, { $pull: { fcmTokens: token } });
+            logger.info(`Removed stale FCM token for user ${userId}`);
+          } else {
+            logger.error(`FCM send error for user ${userId} token ...${token.slice(-6)}: ${err.message}`);
           }
-          logger.error(`FCM error for token ${token.substring(0, 10)}...:`, err.message);
         })
     );
 
     await Promise.all(sendPromises);
-    logger.info(`Push notification sent to user ${userId}: "${title}" (Tag: ${data.tag || 'none'})`);
+    logger.info(`[FCM] Push sent to user ${userId} — "${fcmPayload.title}" (tag: ${fcmPayload.tag || 'none'}, order: ${fcmPayload.orderNumber || 'none'})`);
+
   } catch (error) {
-    logger.error("Error in sendPushNotification:", error.message);
+    logger.error("[FCM] sendPushNotification failed:", error.message);
   }
 };

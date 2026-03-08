@@ -20,8 +20,8 @@ export const requestForToken = async (backendURL) => {
   try {
     // 1. Register Service Worker explicitly (FCM requires this for background messages)
     if ('serviceWorker' in navigator) {
-      // 🚀 SW_VERSION v10: Data-only payload, Order ID display, Smart grouping, App-closed support
-      const SW_VERSION = "v10";
+      // 🚀 SW_VERSION v12: Logic Consolidation & Foreground postMessage delegation
+      const SW_VERSION = "v12";
       
       // Pass config and version as query parameters to avoid hardcoding secrets
       const swUrl = `/firebase-messaging-sw.js?v=${SW_VERSION}&` + 
@@ -84,8 +84,28 @@ export const requestForToken = async (backendURL) => {
 export const onMessageListener = (callback) => {
   if (typeof callback !== 'function') return;
   
-  return onMessage(messaging, (payload) => {
+  return onMessage(messaging, async (payload) => {
     console.log("🔔 Foreground Message Received:", payload);
+
+    // ✅ DELEGATE TO SERVICE WORKER:
+    // We don't show the notification directly. Instead, we send the data to the SW
+    // via postMessage. This ensures that BOTH foreground and background messages
+    // share the same stacking, order-grouping, and IndexedDB history logic.
+    if (Notification.permission === 'granted') {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg && reg.active) {
+          reg.active.postMessage({
+            type: 'FOREGROUND_MESSAGE',
+            payload: payload.data || {}
+          });
+        }
+      } catch (e) {
+        console.warn('⚠️ Could not delegate foreground message to Service Worker:', e);
+      }
+    }
+
+    // Also call the in-app UI callback (for toasts etc.)
     callback(payload);
   });
 };

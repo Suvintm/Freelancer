@@ -141,20 +141,34 @@ export const createNotification = async ({ recipient, type, title, message, link
             smartTag = notification._id.toString();
         }
 
-        // Include sender avatar and rich media image in fcm data
-        const fcmData = { 
+        // ── Resolve sender avatar independently ─────────────────────────────
+        // (Socket populate only runs if recipient is online; push needs it always)
+        let senderAvatar = metaData.senderAvatar || null;
+        if (!senderAvatar && sender) {
+            try {
+                const User = (await import("../models/User.js")).default;
+                const senderDoc = await User.findById(sender).select("profilePicture").lean();
+                senderAvatar = senderDoc?.profilePicture || null;
+            } catch (_) {}
+        }
+
+        // ── Flatten FCM Payload ─────────────────────────────────────────────
+        const fcmPayload = {
+            title: title,
+            body: message,
+            link: link || "/notifications",
+            click_action: link || "/notifications",
             ...metaData,
-            senderAvatar: notification.sender?.profilePicture || null,
+            senderAvatar: senderAvatar || "",
             image: metaData.image || null,
-            tag: smartTag
+            tag: smartTag,
+            notificationId: notification._id.toString()
         };
         
-        sendPushNotification(recipient, {
-                title: title,
-                body: message,
-                link: link,
-                data: fcmData
-            });
+        // Fire and forget - don't block the API response
+        sendPushNotification(recipient, fcmPayload).catch(err => 
+            console.error("[FCM] Push failed:", err.message)
+        );
 
         // Invalidate unread count cache
         await deleteCache(CacheKey.notificationCount(recipient.toString()));
