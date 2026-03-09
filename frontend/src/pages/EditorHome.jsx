@@ -48,7 +48,6 @@ import axios from "axios";
 import reelIcon from "../assets/reelicon.png";
 import LegalBanner from "../components/LegalBanner.jsx";
 import { useHomeStore } from "../store/homeStore";
-import useScrollRestore from "../hooks/useScrollRestore";
 import useRefreshManager from "../hooks/useRefreshManager.js";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 
@@ -82,8 +81,6 @@ const EditorHome = () => {
   const exploreTab = useHomeStore((s) => s.editorExploreTab);
   const setExploreTab = useHomeStore((s) => s.setEditorExploreTab);
 
-  // Scroll position restored per tab to isolate Discover from Dashboard
-  useScrollRestore(`editorHome_${mainTab}`);
 
   // ── DATA FETCHING ──────────────────────────────────────────────────
   const { data: editorStats, isLoading: statsLoading } = useQuery({
@@ -212,11 +209,7 @@ const EditorHome = () => {
                   <tab.icon className={`w-3.5 h-3.5 ${isActive ? 'text-white light:text-zinc-900' : 'text-zinc-500'}`} />
                   {tab.label}
                   {isActive && (
-                    <motion.div
-                      layoutId="editorActivePill"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                      className="absolute inset-0 bg-white/10 light:bg-white rounded-xl -z-10 shadow-sm"
-                    />
+                    <div className="absolute inset-0 bg-white/10 light:bg-white rounded-xl -z-10 shadow-sm" />
                   )}
                 </button>
               );
@@ -224,7 +217,7 @@ const EditorHome = () => {
           </div>
         </div>
 
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           {/* ============ HOME TAB CONTENT ============ */}
           {mainTab === "home" && (
             <motion.div

@@ -305,10 +305,7 @@ const ClientSidebar = ({ isOpen, onClose }) => {
                   }`}
                 >
                   {active && (
-                    <motion.div
-                      layoutId="clientActiveIndicator"
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-emerald-500 rounded-r-full"
-                    />
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-emerald-500 rounded-r-full" />
                   )}
                   <Icon className={`text-lg ${active ? "text-emerald-500" : "text-gray-500 light:text-slate-400"}`} />
                   <span>{item.label}</span>
@@ -376,10 +373,7 @@ const ClientSidebar = ({ isOpen, onClose }) => {
                                 }`}
                               >
                                 {childActive && (
-                                  <motion.div
-                                    layoutId="clientChildActiveIndicator"
-                                    className="absolute -left-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-emerald-500 rounded-full"
-                                  />
+                                  <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-emerald-500 rounded-full" />
                                 )}
                                 <ChildIcon className={`text-base ${childActive ? "text-emerald-500" : "text-gray-600 light:text-slate-400"}`} />
                                 <span>{child.label}</span>

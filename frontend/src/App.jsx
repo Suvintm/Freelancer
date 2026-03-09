@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import SplashScreen from "./components/SplashScreen.jsx";
@@ -95,7 +95,7 @@ const TabSwitcher = () => {
   const [mountedTabs, setMountedTabs] = useState(new Set());
 
   // Define tabs configuration
-  const tabs = [
+  const tabs = useMemo(() => [
     { id: "home", path: user?.role === "client" ? "/client-home" : "/editor-home", component: user?.role === "client" ? ClientHome : EditorHome },
     { id: "explore", path: "/explore-editors", component: ExploreEditorsPage },
     { id: "nearby", path: "/editors-near-you", component: LocalEditorsNetworkPage },
@@ -103,7 +103,7 @@ const TabSwitcher = () => {
     { id: "jobs", path: "/jobs", component: JobsPage },
     { id: "chats", path: "/chats", component: AllChatsPage },
     { id: "profile", path: user?.role === "client" ? "/client-profile" : "/editor-profile", component: user?.role === "client" ? ClientProfile : EditorProfilePage },
-  ];
+  ], [user?.role]);
 
   // Current active tab ID
   const activeTabId = tabs.find(t => t.path === location.pathname)?.id;
@@ -126,13 +126,12 @@ const TabSwitcher = () => {
         return (
           <div
             key={tab.id}
-            className={`absolute inset-0 w-full h-full bg-[#FAFAFA] dark:bg-[#09090B] overflow-y-auto ${isActive ? "z-10" : "-z-10"}`}
-            style={{
+className={`absolute inset-0 w-full h-full bg-[#FAFAFA] dark:bg-[#09090B] overflow-hidden ${isActive ? "z-10" : "-z-10"}`}            style={{
               display: isActive ? "block" : "none",
               pointerEvents: isActive ? "auto" : "none"
             }}
           >
-            <tab.component />
+            <tab.component isActive={isActive} />
           </div>
         );
       })}
@@ -210,16 +209,18 @@ function App() {
         <Route path="/request-payment-success" element={<RequestPaymentSuccess />} />
 
         {/* ============ TAB CATCHER ============ */}
-        {/* These 9 paths are handled by the persistent TabSwitcher */}
-        <Route path="/client-home" element={<ProtectedRoute allowedRoles={["client"]}><TabSwitcher /></ProtectedRoute>} />
-        <Route path="/editor-home" element={<ProtectedRoute allowedRoles={["editor"]}><TabSwitcher /></ProtectedRoute>} />
-        <Route path="/explore-editors" element={<ProtectedRoute allowedRoles={["client", "editor"]}><TabSwitcher /></ProtectedRoute>} />
-        <Route path="/editors-near-you" element={<ProtectedRoute allowedRoles={["client", "editor"]}><TabSwitcher /></ProtectedRoute>} />
-        <Route path="/reels" element={<ProtectedRoute allowedRoles={["client", "editor"]}><TabSwitcher /></ProtectedRoute>} />
-        <Route path="/jobs" element={<ProtectedRoute allowedRoles={["client", "editor"]}><TabSwitcher /></ProtectedRoute>} />
-        <Route path="/chats" element={<ProtectedRoute allowedRoles={["client", "editor"]}><TabSwitcher /></ProtectedRoute>} />
-        <Route path="/client-profile" element={<ProtectedRoute allowedRoles={["client"]}><TabSwitcher /></ProtectedRoute>} />
-        <Route path="/editor-profile" element={<ProtectedRoute allowedRoles={["editor"]}><TabSwitcher /></ProtectedRoute>} />
+        {/* All these paths share a single persistent TabSwitcher instance to prevent re-mounting delays */}
+        <Route element={<ProtectedRoute><TabSwitcher /></ProtectedRoute>}>
+          <Route path="/client-home" element={null} />
+          <Route path="/editor-home" element={null} />
+          <Route path="/explore-editors" element={null} />
+          <Route path="/editors-near-you" element={null} />
+          <Route path="/reels" element={null} />
+          <Route path="/jobs" element={null} />
+          <Route path="/chats" element={null} />
+          <Route path="/client-profile" element={null} />
+          <Route path="/editor-profile" element={null} />
+        </Route>
 
         {/* ============ PROTECTED NON-TAB ROUTES ============ */}
         <Route path="/download/:id" element={<ProtectedRoute allowedRoles={["client", "editor"]}><DownloadPage /></ProtectedRoute>} />

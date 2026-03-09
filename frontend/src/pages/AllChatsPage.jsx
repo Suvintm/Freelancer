@@ -95,6 +95,8 @@ const AllChatsPage = () => {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+
 
   // ── DATA FETCHING ──────────────────────────────────────────────────
   const { data: chatData, isLoading: chatsLoading, refetch } = useQuery({
@@ -126,6 +128,14 @@ const AllChatsPage = () => {
     },
     enabled: !!user?.token,
   });
+
+  const loading = chatsLoading;
+  
+  const hasLoadedOnce = useRef(false);
+
+  useEffect(() => {
+    if (!loading) hasLoadedOnce.current = true;
+  }, [loading]);
 
   // Pull-to-Refresh Integration
   const { handleTouchStart, handleTouchEnd, PullIndicator } = usePullToRefresh(
@@ -164,7 +174,7 @@ const AllChatsPage = () => {
     };
   }, [socketContext?.socket, user?._id, refetch]);
 
-  const loading = chatsLoading;
+
 
   const togglePin = async (e, orderId) => {
     e.stopPropagation();
@@ -233,7 +243,7 @@ const AllChatsPage = () => {
     </div>
   );
 
-  if (loading) {
+  if (loading && !hasLoadedOnce.current) {
     return (
       <div className="min-h-screen bg-black text-white">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -249,7 +259,7 @@ const AllChatsPage = () => {
   }
 
   return (
-    <div className="h-full bg-black text-white selection:bg-white/10" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+    <div className="h-full flex flex-col bg-black text-white selection:bg-white/10" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 

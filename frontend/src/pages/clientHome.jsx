@@ -50,7 +50,6 @@ import ClientDashboard from "../components/ClientDashboard.jsx";
 import UnifiedBannerSlider from "../components/UnifiedBannerSlider.jsx";
 import reelIcon from "../assets/reelicon.png";
 import { useHomeStore } from "../store/homeStore";
-import useScrollRestore from "../hooks/useScrollRestore";
 import useRefreshManager from "../hooks/useRefreshManager.js";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 
@@ -84,8 +83,6 @@ const ClientHome = () => {
   const activeTab = useHomeStore((s) => s.clientActiveTab);
   const setActiveTab = useHomeStore((s) => s.setClientActiveTab);
 
-  // Scroll position restored per tab to isolate Discover from Dashboard
-  useScrollRestore(`clientHome_${mainTab}`);
 
   const socketContext = useSocket();
   const totalUnread = socketContext?.totalUnread || 0;
@@ -222,11 +219,7 @@ const ClientHome = () => {
                   <tab.icon className={`w-3.5 h-3.5 ${isActive ? 'text-white light:text-zinc-900' : 'text-zinc-500'}`} />
                   {tab.label}
                   {isActive && (
-                    <motion.div
-                      layoutId="activePill"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                      className="absolute inset-0 bg-white/10 light:bg-white rounded-xl -z-10 shadow-sm"
-                    />
+                    <div className="absolute inset-0 bg-white/10 light:bg-white rounded-xl -z-10 shadow-sm" />
                   )}
                 </button>
               );
@@ -234,13 +227,14 @@ const ClientHome = () => {
           </div>
         </div>
 
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           {mainTab === "home" ? (
             <motion.div
               key="home"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.1 }}
             >
               <HomeExploreContainer 
                 searchQuery={searchQuery}
@@ -256,6 +250,7 @@ const ClientHome = () => {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.1 }}
             >
               <ClientDashboard 
                 user={user}

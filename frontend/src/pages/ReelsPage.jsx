@@ -12,13 +12,10 @@ import ReelSkeleton from "../components/ReelSkeleton";
 import ReelAdCard from "../components/ReelAdCard";
 import ReelCommentsDrawer from "../components/ReelCommentsDrawer";
 import useReelObserver from "../hooks/useReelObserver";
-import useScrollRestore from "../hooks/useScrollRestore";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 import logo from "../assets/logo.png";
 
-const ReelsPage = () => {
-    // Isolated scroll for Reels page
-    useScrollRestore('reelsPage');
+const ReelsPage = ({ isActive = true }) => {
     const { backendURL, user } = useAppContext();
     const {
         feedCache,
@@ -284,7 +281,7 @@ const ReelsPage = () => {
     // RENDER
     // ─────────────────────────────────────────────────────────────
     return (
-        <div className="fixed inset-0 bg-black z-50 flex flex-col">
+        <div className="relative h-full w-full bg-black flex flex-col overflow-hidden">
 
             {/* ── HEADER ── */}
             <div className="absolute top-0 left-0 right-0 px-4 py-4 z-40 flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
@@ -346,7 +343,7 @@ const ReelsPage = () => {
                             {item.type === 'reel' ? (
                                 <ReelCard
                                     reel={item.content}
-                                    isActive={index === activeReelIndex}
+                                    isActive={isActive && index === activeReelIndex}
                                     onCommentClick={handleCommentClick}
                                     globalMuted={globalMuted}
                                     setGlobalMuted={setGlobalMuted}

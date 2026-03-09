@@ -283,10 +283,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                   }`}
                 >
                   {active && (
-                    <motion.div
-                      layoutId="activeIndicator"
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-black light:bg-white rounded-r-full"
-                    />
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-black light:bg-white rounded-r-full" />
                   )}
                   <Icon className={`text-lg ${active ? "text-black light:text-white" : "text-gray-500 light:text-slate-400"}`} />
                   <span>{item.label}</span>
@@ -354,10 +351,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 }`}
                               >
                                 {childActive && (
-                                  <motion.div
-                                    layoutId="childActiveIndicator"
-                                    className="absolute -left-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-white light:bg-black rounded-full"
-                                  />
+                                  <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-white light:bg-black rounded-full" />
                                 )}
                                 <ChildIcon className={`text-base ${childActive ? "text-black light:text-white" : "text-gray-600 light:text-slate-400"}`} />
                                 <span>{child.label}</span>

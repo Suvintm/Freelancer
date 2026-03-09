@@ -134,14 +134,8 @@ const MobileBottomNav = () => {
                     >
                       <Icon className="text-white text-xl relative z-10" />
                       
-                      {/* Pulsing Active Indicator (Subtle) */}
                       {active && (
-                        <motion.div 
-                          layoutId="centerGlow"
-                          className="absolute -inset-1 rounded-2xl bg-emerald-500/20 blur-md -z-10"
-                          animate={{ opacity: [0.5, 0.8, 0.5] }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                        />
+                        <div className="absolute -inset-1 rounded-2xl bg-emerald-500/20 blur-md -z-10" />
                       )}
                     </motion.button>
                   </div>
@@ -166,12 +160,10 @@ const MobileBottomNav = () => {
                 <div className="relative p-2 rounded-2xl">
                   {/* Active Indicator Background - Only for Icon */}
                   {active && (
-                    <motion.div
-                      layoutId="navTab"
+                    <div
                       className={`absolute inset-0 rounded-2xl -z-10 ${
                         isDark ? 'bg-white/5' : 'bg-emerald-50'
                       }`}
-                      transition={{ type: "spring", bounce: 0.25, duration: 0.5 }}
                     />
                   )}
 
@@ -206,10 +198,8 @@ const MobileBottomNav = () => {
 
                 {/* Micro active dot */}
                 {active && (
-                  <motion.div 
-                    layoutId="activeDot"
+                  <div 
                     className="absolute -bottom-2 w-1 h-1 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"
-                    transition={{ type: "spring", bounce: 0.5, duration: 0.6 }}
                   />
                 )}
               </motion.button>

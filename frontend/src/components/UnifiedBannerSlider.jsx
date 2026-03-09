@@ -413,10 +413,7 @@ const UnifiedBannerSlider = () => {
                     >
                         <level.icon className="text-[10px] md:text-[11px]" />
                         {verticalIndex === idx && (
-                            <motion.div 
-                                layoutId="vertical-glow"
-                                className="absolute -inset-1 rounded-full bg-white/10 blur-md -z-10"
-                            />
+                            <div className="absolute -inset-1 rounded-full bg-white/10 blur-md -z-10" />
                         )}
                     </button>
                 ))}

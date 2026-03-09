@@ -3,7 +3,7 @@
  * Glass effect header, progress ring, completion banner
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaArrowRight,
@@ -50,8 +50,7 @@ import SuvixScoreCard from "../components/SuvixScoreCard.jsx";
 import SuvixScoreAnalytics from "../components/SuvixScoreAnalytics.jsx";
 import AvailabilitySelector from "../components/AvailabilitySelector.jsx";
 import SoftwareExpertise from "../components/SoftwareExpertise.jsx";
-import { useRef } from "react";
-import useRefreshManager from "../hooks/useRefreshManager.js";
+ import useRefreshManager from "../hooks/useRefreshManager.js";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 
 import _premiereIcon from "../assets/preimerepro.png";
@@ -108,6 +107,8 @@ const EditorProfile = () => {
   const [searchParams] = useSearchParams();
   const { id: routeEditorId } = useParams();
   const [showRatingsModal, setShowRatingsModal] = useState(false);
+  
+
 
   // When used as profile tab, show the logged-in editor's own profile
   const targetEditorId = routeEditorId || user?._id;
@@ -182,6 +183,14 @@ const EditorProfile = () => {
       enabled: !!user?.token,
     });
 
+    const isLoading = profileLoading || statsLoading || reelsLoading || completionLoading;
+    
+    const hasLoadedOnce = useRef(false);
+
+    useEffect(() => {
+        if (!isLoading) hasLoadedOnce.current = true;
+    }, [isLoading]);
+
     // Keep state in sync
     useEffect(() => {
         if (profileResponse) {
@@ -226,10 +235,8 @@ const EditorProfile = () => {
         scrollContainerRef
     );
 
-    // Combine loading states
-    const isLoading = profileLoading || statsLoading || reelsLoading || completionLoading;
 
-  if (isLoading) {
+  if (isLoading && !hasLoadedOnce.current) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
@@ -303,7 +310,7 @@ const EditorProfile = () => {
   ];
 
   return (
-    <div className="h-full bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="h-full flex flex-col bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200" style={{ fontFamily: "'Inter', sans-serif" }}>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
@@ -592,11 +599,7 @@ const EditorProfile = () => {
                     `}
                   >
                     {isActive && (
-                      <motion.div 
-                        layoutId="activeTab"
-                        className="absolute inset-0 bg-white rounded-md -z-10"
-                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                      />
+                      <div className="absolute inset-0 bg-white rounded-md -z-10" />
                     )}
                     <tab.icon className="text-[10px] md:text-xs" />
                     {tab.label}

@@ -1,5 +1,5 @@
 // ClientProfile.jsx - Client's profile and settings page
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -34,8 +34,7 @@ import { toast } from "react-toastify";
 import ClientSidebar from "../components/ClientSidebar.jsx";
 import ClientNavbar from "../components/ClientNavbar.jsx";
 import PortfolioSection from "../components/PortfolioSection.jsx";
-import { useRef } from "react";
-import useRefreshManager from "../hooks/useRefreshManager.js";
+ import useRefreshManager from "../hooks/useRefreshManager.js";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 
 const ClientProfile = () => {
@@ -60,6 +59,8 @@ const ClientProfile = () => {
     manualApproval: user?.followSettings?.manualApproval || false,
   });
   const [updatingPrivacy, setUpdatingPrivacy] = useState(false);
+  
+
 
   // ── DATA FETCHING ──────────────────────────────────────────────────
   const { data: ordersData, isLoading: ordersLoading } = useQuery({
@@ -72,6 +73,14 @@ const ClientProfile = () => {
     },
     enabled: !!user?.token,
   });
+
+  const loading = ordersLoading;
+  
+  const hasLoadedOnce = useRef(false);
+
+  useEffect(() => {
+    if (!loading) hasLoadedOnce.current = true;
+  }, [loading]);
 
   // Sync state with query data
   useEffect(() => {
@@ -102,7 +111,7 @@ const ClientProfile = () => {
     scrollContainerRef
   );
 
-  const loading = ordersLoading;
+
 
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString("en-IN", {
@@ -131,7 +140,7 @@ const ClientProfile = () => {
   const strokeDashoffset = circumference - (completionPercent / 100) * circumference;
   const progressColor = "#8B5CF6"; // Purple for clients
 
-  if (loading) {
+  if (loading && !hasLoadedOnce.current) {
     return (
       <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] text-white">
         <ClientSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -151,7 +160,7 @@ const ClientProfile = () => {
   }
 
   return (
-    <div className="h-full bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
+    <div className="h-full flex flex-col bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
       <ClientSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <ClientNavbar onMenuClick={() => setSidebarOpen(true)} />
 
@@ -318,11 +327,7 @@ const ClientProfile = () => {
                     `}
                   >
                     {isActive && (
-                      <motion.div 
-                        layoutId="activeTabClient"
-                        className="absolute inset-0 bg-white rounded-md -z-10"
-                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                      />
+                      <div className="absolute inset-0 bg-white rounded-md -z-10" />
                     )}
                     <tab.icon className="text-[10px] md:text-xs" />
                     {tab.label}
