@@ -44,7 +44,7 @@ const BADGE_ICONS = {
 
 // Badge colors
 const BADGE_COLORS = {
-  rising_star: '#F59E0B',
+  rising_star: '#ffaf24ff',
   order_master: '#8B5CF6',
   elite_editor: '#F97316',
   top_rated: '#EAB308',
