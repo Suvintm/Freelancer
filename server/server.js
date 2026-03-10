@@ -18,6 +18,8 @@ import logger from "./utils/logger.js";
 // Middleware
 import { generalLimiter, redis } from "./middleware/rateLimiter.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
+import { geoCheckMiddleware } from "./middleware/geoCheck.js";
+import { vpnCheckMiddleware } from "./middleware/vpnCheck.js";
 
 // Passport - must be imported AFTER dotenv.config()
 import passport from "./config/passport.js";
@@ -175,6 +177,10 @@ app.use(
 // Rate limiter (general)
 app.use(generalLimiter);
 
+// ============ REGIONAL SECURITY ============
+// Layer 1: Country-level block (India Only)
+app.use(geoCheckMiddleware);
+
 // Response compression (must be before routes)
 app.use(compression());
 
@@ -250,8 +256,8 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-app.use("/api/auth", authRoutes);
-app.use("/api/auth", oauthRoutes); // OAuth routes under /api/auth
+app.use("/api/auth", vpnCheckMiddleware, authRoutes);
+app.use("/api/auth", vpnCheckMiddleware, oauthRoutes); // OAuth routes under /api/auth
 app.use("/api/profile", profileRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/users", userRoutes); // Support plural version for Reels/Follow system

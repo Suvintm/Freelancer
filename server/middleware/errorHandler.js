@@ -48,6 +48,8 @@ export const errorHandler = (err, req, res, next) => {
     }
 
     // Log error details (but don't expose to client)
+    logger.error(`[ErrorHandler] Sending status ${statusCode} for error: ${message}`);
+    
     logger.error({
         message: err.message,
         stack: process.env.NODE_ENV !== "production" ? err.stack : undefined,

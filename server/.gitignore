@@ -1,6 +1,10 @@
 # Dependencies
 node_modules/
 
+# GeoIP databases
+geoip/
+*.mmdb
+
 # Environment variables - NEVER COMMIT THESE!
 # Ignore all .env files
 .env

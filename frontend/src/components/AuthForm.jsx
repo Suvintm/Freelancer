@@ -33,6 +33,7 @@ const AuthForm = () => {
     password: "",
     role: "editor",
     country: "IN",
+    phone: "",
     profilePicture: null,
   });
   const [loading, setLoading] = useState(false);
@@ -85,6 +86,7 @@ const AuthForm = () => {
         data.append("password", formData.password);
         data.append("role", formData.role);
         data.append("country", formData.country);
+        data.append("phone", formData.phone);
         if (formData.profilePicture)
           data.append("profilePicture", formData.profilePicture);
 
@@ -127,6 +129,7 @@ const AuthForm = () => {
     try {
       const res = await axios.post(`${backendURL}/api/auth/verify-otp`, {
         email: formData.email.trim(),
+        phone: formData.phone.trim(),
         otp: otp.trim(),
       });
 
@@ -154,6 +157,7 @@ const AuthForm = () => {
     try {
       await axios.post(`${backendURL}/api/auth/resend-otp`, {
         email: formData.email.trim(),
+        phone: formData.phone.trim(),
       });
       setResendTimer(60);
       setMessage("A new code has been sent!");
@@ -172,16 +176,18 @@ const AuthForm = () => {
       onClick={() => setShowAuth(false)}
     >
       <div
-        className="bg-white rounded-2xl w-full max-w-md p-8 relative shadow-2xl overflow-hidden"
+        className="bg-white rounded-2xl w-full max-w-md p-6 sm:p-8 relative shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
         <button
           onClick={() => setShowAuth(false)}
-          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition z-10"
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition z-50"
         >
           <FaTimes />
         </button>
+
+        <div className="overflow-y-auto custom-scrollbar flex-1 pr-1">
 
         <AnimatePresence mode="wait">
           {!showOtp ? (
@@ -282,13 +288,35 @@ const AuthForm = () => {
                       value={formData.name}
                       onChange={handleChange}
                       required
-                      className="p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition"
+                      className="w-full px-4 py-4 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-400 transition text-gray-900 placeholder:text-gray-400"
                     />
+
+                    {/* Phone Number (India Only) */}
+                    {formData.country === "IN" && (
+                      <div className="relative">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-gray-400">
+                          <span className="text-lg">🇮🇳</span>
+                          <span className="text-sm font-semibold border-r border-gray-200 pr-2">+91</span>
+                        </div>
+                        <input
+                          type="tel"
+                          name="phone"
+                          placeholder="Mobile Number"
+                          value={formData.phone}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                            setFormData({ ...formData, phone: val });
+                          }}
+                          required
+                          className="w-full pl-20 pr-4 py-4 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-400 transition text-gray-900 placeholder:text-gray-400"
+                        />
+                      </div>
+                    )}
                     <select
                       name="role"
                       value={formData.role}
                       onChange={handleChange}
-                      className="p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition"
+                      className="p-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition text-gray-900"
                     >
                       <option value="editor">I'm an Editor</option>
                       <option value="client">I'm a Client</option>
@@ -303,7 +331,7 @@ const AuthForm = () => {
                         name="country"
                         value={formData.country}
                         onChange={handleChange}
-                        className="w-full p-3 pl-10 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition appearance-none"
+                        className="w-full p-3 pl-10 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition appearance-none text-gray-900"
                       >
                         {COUNTRIES.map((country) => (
                           <option key={country.code} value={country.code}>
@@ -321,7 +349,7 @@ const AuthForm = () => {
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  className="p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition"
+                  className="w-full px-4 py-4 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-400 transition text-gray-900 placeholder:text-gray-400"
                 />
                 <input
                   type="password"
@@ -330,7 +358,7 @@ const AuthForm = () => {
                   value={formData.password}
                   onChange={handleChange}
                   required
-                  className="p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition"
+                  className="w-full px-4 py-4 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-400 transition text-gray-900 placeholder:text-gray-400"
                 />
                 
                 {isLogin && (
@@ -402,7 +430,7 @@ const AuthForm = () => {
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                   autoFocus
-                  className="text-center text-3xl tracking-[0.75rem] font-bold p-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-400 transition placeholder:text-gray-300 placeholder:tracking-normal text-gray-900"
+                  className="text-center text-3xl tracking-[0.75rem] font-bold p-4 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-400 transition placeholder:text-gray-300 placeholder:tracking-normal text-gray-900"
                 />
 
                 <button
@@ -442,6 +470,7 @@ const AuthForm = () => {
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
 
         {/* Error/Success Message */}
         {message && (

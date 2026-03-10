@@ -7,8 +7,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Name is required"],
       trim: true,
-      minlength: [2, "Name must be at least 2 characters"],
-      maxlength: [50, "Name cannot exceed 50 characters"],
+      unique: true,
     },
     email: {
       type: String,
@@ -16,236 +15,88 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
-      match: [
-        /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
-        "Please provide a valid email",
-      ],
     },
     password: {
       type: String,
-      required: function () {
-        // Password not required for OAuth users
-        return !this.googleId && !this.facebookId;
+      required: function() {
+        return !this.googleId; // Password required only if not signed up via Google
       },
-      minlength: [8, "Password must be at least 8 characters"],
+      select: false,
     },
     role: {
       type: String,
-      enum: {
-        values: ["editor", "client", "pending"],
-        message: "Role must be 'editor', 'client', or 'pending'",
-      },
-      required: [true, "Role is required"],
-    },
-    profileCompleted: {
-      type: Boolean,
-      default: false,
-    },
-    // Editor verification status (set when KYC is approved)
-    isVerified: {
-      type: Boolean,
-      default: false,
-      index: true, // Index for faster explore queries
+      enum: ["admin", "client", "editor"],
+      default: "editor",
     },
     profilePicture: {
       type: String,
-      default: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+      default: "",
     },
-    // OAuth fields
+    bio: {
+      type: String,
+      default: "",
+    },
+    phone: {
+      type: String,
+      trim: true,
+    },
+    isPhoneVerified: {
+      type: Boolean,
+      default: false,
+    },
+    country: {
+      type: String,
+      default: "IN",
+    },
+    currency: {
+      type: String,
+      default: "INR",
+    },
+    paymentGateway: {
+      type: String,
+      default: "razorpay",
+    },
     googleId: {
       type: String,
-      unique: true,
-      sparse: true, // Allows multiple null values
-    },
-    facebookId: {
-      type: String,
-      unique: true,
       sparse: true,
+      unique: true,
     },
-    authProvider: {
-      type: String,
-      enum: ["local", "google", "facebook"],
-      default: "local",
-    },
-    // Ban fields (controlled by admin)
+
+    // Status & Moderation
     isBanned: {
       type: Boolean,
       default: false,
     },
     banReason: {
       type: String,
-      default: null,
     },
     bannedAt: {
       type: Date,
-      default: null,
-    },
-    bannedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Admin",
-      default: null,
     },
 
-    // ==================== PAYMENT & LOCATION FIELDS ====================
-    
-    // Country & Currency
-    country: {
-      type: String,
-      required: true,
-      default: "IN",
-      uppercase: true,
-      minlength: 2,
-      maxlength: 2,
-    },
-    currency: {
-      type: String,
-      default: "INR",
-      uppercase: true,
-    },
-    
-    // Production Location Strategy (Static Presence)
-    location: {
-      type: {
-        type: String,
-        enum: ["Point"],
-        default: "Point",
-      },
-      coordinates: {
-        type: [Number], // [longitude, latitude]
-        default: [77.5946, 12.9716], // Default: Bangalore
-      },
-    },
-    locationAccuracy: {
-      type: Number, // In meters
-      default: null,
-    },
-    locationUpdatedAt: {
-      type: Date,
-      default: null,
-    },
-    serviceRadius: {
-      type: Number, // In kilometers
-      default: 25,
-      min: 5,
-      max: 400,
-    },
-    
-    // Profile Completion (0-100)
-    profileCompletionPercent: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 100,
-    },
-    
-    // Payment Gateway Assignment
-    paymentGateway: {
-      type: String,
-      enum: ["razorpay", "stripe", "none"],
-      default: "none",
-    },
-    
-    // KYC Status (for editors)
-    kycStatus: {
-      type: String,
-      enum: ["not_started", "pending", "submitted", "verified", "rejected"],
-      default: "not_started",
-    },
-    kycSubmittedAt: {
-      type: Date,
-      default: null,
-    },
-    kycVerifiedAt: {
-      type: Date,
-      default: null,
-    },
-    kycRejectionReason: {
-      type: String,
-      default: null,
-    },
-    kycDocuments: [{
-      type: { type: String, enum: ["id_proof", "bank_proof", "other"], required: true },
-      url: { type: String, required: true },
-      verified: { type: Boolean, default: false },
-      uploadedAt: { type: Date, default: Date.now }
-    }],
-    
-    // Razorpay Fields (for India)
-    razorpayContactId: {
-      type: String,
-      default: null,
-    },
-    razorpayFundAccountId: {
-      type: String,
-      default: null,
-    },
-    
-    // Stripe Connect Fields (for International - Future)
-    stripeAccountId: {
-      type: String,
-      default: null,
-    },
-    stripeAccountStatus: {
-      type: String,
-      enum: ["none", "pending", "onboarding", "active", "restricted"],
-      default: "none",
-    },
+    // Security
+    passwordResetToken: String,
+    passwordResetExpires: Date,
 
-    // ==================== AVAILABILITY STATUS ====================
-    isAvailable: {
-      type: Boolean,
-      default: false,
-      index: true,
-    },
-    availability: {
-      status: {
-        type: String,
-        enum: ["available", "busy", "small_only"],
-        default: "available",
+    // Social & Connections
+    savedEditors: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
       },
-      busyUntil: {
-        type: Date,
-        default: null,
+    ],
+    following: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
       },
-      updatedAt: {
-        type: Date,
-        default: Date.now,
+    ],
+    followers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
       },
-    },
-
-    // ==================== LEGAL & COMPLIANCE ====================
-    legalAcceptance: {
-      contentPolicyAccepted: {
-        type: Boolean,
-        default: false,
-      },
-      acceptedAt: {
-        type: Date,
-      },
-      agreementVersion: {
-        type: String,
-        default: "v1.0",
-      },
-      ipAddress: {
-        type: String,
-      },
-    },
-
-    // ==================== SAVED ITEMS ====================
-    savedEditors: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    }],
-
-    // ==================== SOCIAL & REELS ====================
-    followers: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    }],
-    following: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    }],
+    ],
     followSettings: {
       manualApproval: {
         type: Boolean,
@@ -253,168 +104,100 @@ const userSchema = new mongoose.Schema(
       },
     },
 
-    // ==================== CLIENT KYC & WALLET ====================
-    
-    // Client KYC Status (separate from editor KYC)
-    clientKycStatus: {
-      type: String,
-      enum: ["not_started", "pending", "under_review", "verified", "rejected"],
-      default: "not_started",
-    },
-    clientKycVerifiedAt: {
-      type: Date,
-      default: null,
-    },
-    
-    // Wallet Balance (for refunds credited to wallet)
-    walletBalance: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-    walletLastUpdated: {
-      type: Date,
-      default: null,
-    },
-    
-    // Bank Details (for editor payouts)
-    bankDetails: {
-      accountHolderName: {
+    // Editor-specific Fields
+    availability: {
+      status: {
         type: String,
-        default: null,
+        enum: ["available", "busy", "away", "small_only", ""],
+        default: "available",
       },
-      accountNumber: {
-        type: String,
-        default: null,
-        select: false, // Don't include in queries by default
-        set: encrypt,
-        get: decrypt,
-      },
-      ifscCode: {
-        type: String,
-        default: null,
-      },
-      bankName: {
-        type: String,
-        default: null,
-      },
-      panNumber: {
-        type: String,
-        default: null,
-        select: false, // Sensitive - don't include by default
-      },
-      gstin: {
-        type: String,
-        default: null,
-      },
-      address: {
-        street: { type: String, default: null },
-        city: { type: String, default: null },
-        state: { type: String, default: null },
-        postalCode: { type: String, default: null },
-        country: { type: String, default: "IN" },
-      },
-    },
-    
-    // Payout Settings
-    minPayoutAmount: {
-      type: Number,
-      default: 100, // ₹100 minimum
-    },
-    totalEarnings: {
-      type: Number,
-      default: 0,
-    },
-    pendingPayout: {
-      type: Number,
-      default: 0,
-    },
-    totalWithdrawn: {
-      type: Number,
-      default: 0,
-    },
-    
-    // ==================== STORAGE MANAGEMENT ====================
-    
-    // Total storage limit in bytes (default: 500MB free tier)
-    storageLimit: {
-      type: Number,
-      default: 500 * 1024 * 1024, // 500 MB
-    },
-    
-    // Current storage used in bytes
-    storageUsed: {
-      type: Number,
-      default: 0,
-    },
-    
-    // Current storage plan
-    storagePlan: {
-      type: String,
-      enum: ["free", "starter", "pro", "business", "unlimited"],
-      default: "free",
-    },
-    
-    // Last storage calculation timestamp
-    storageLastCalculated: {
-      type: Date,
-      default: null,
-    },
-    
-    // ==================== SUVIX SCORE ====================
-    
-    // Editor Performance Score (0-100)
-    suvixScore: {
-      total: {
-        type: Number,
-        default: 0,
-        min: 0,
-        max: 100,
-      },
-      tier: {
-        type: String,
-        enum: ["newcomer", "rising", "established", "professional", "expert", "elite"],
-        default: "newcomer",
-      },
-      // Component breakdown (for analytics)
-      components: {
-        deadline: { type: Number, default: 0 },      // 0-25 points
-        ratings: { type: Number, default: 0 },       // 0-25 points
-        completion: { type: Number, default: 0 },    // 0-20 points
-        response: { type: Number, default: 0 },      // 0-15 points
-        revisions: { type: Number, default: 0 },     // 0-10 points
-        experience: { type: Number, default: 0 },    // 0-5 points
-      },
-      // Eligible for display (min 2 orders)
-      isEligible: {
-        type: Boolean,
-        default: false,
-      },
-      completedOrders: {
-        type: Number,
-        default: 0,
-      },
-      lastCalculated: {
+      busyUntil: {
         type: Date,
-        default: null,
+      },
+      updatedAt: {
+        type: Date,
+        default: Date.now,
       },
     },
 
-    // ==================== PASSWORD RESET ====================
-    passwordResetToken: {
+    // Push Notifications
+    fcmTokens: [
+      {
+        type: String,
+      },
+    ],
+
+    // KYC & Banking Details
+    kycStatus: {
       type: String,
-      select: false, // Never include in queries by default
+      enum: ["not_started", "submitted", "pending", "verified", "rejected"],
+      default: "not_started",
     },
-    passwordResetExpires: {
-      type: Date,
-      select: false,
+    kycSubmittedAt: Date,
+    kycVerifiedAt: Date,
+    kycRejectionReason: String,
+    kycDocuments: [
+      {
+        type: { type: String }, // e.g., 'id_proof', 'bank_proof'
+        url: String,
+        uploadedAt: { type: Date, default: Date.now },
+      },
+    ],
+    bankDetails: {
+      accountHolderName: String,
+      accountNumber: {
+        type: String,
+        set: encrypt,
+        get: decrypt,
+        select: false,
+      },
+      ifscCode: String,
+      bankName: String,
+      panNumber: {
+        type: String,
+        set: encrypt,
+        get: decrypt,
+      },
+      gstin: String,
+      address: {
+        street: String,
+        city: String,
+        state: String,
+        postalCode: String,
+        country: { type: String, default: "IN" },
+      },
     },
-    
-    // ==================== NOTIFICATIONS (FCM) ====================
-    fcmTokens: [{
-      type: String,
-      default: [],
-    }],
+    razorpayContactId: String,
+    razorpayFundAccountId: String,
+
+    // Performance & Scoring
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    profileCompleted: {
+      type: Boolean,
+      default: false,
+    },
+    profileCompletionPercent: {
+      type: Number,
+      default: 0,
+    },
+    suvixScore: {
+      total: { type: Number, default: 0 },
+      tier: { type: String, default: "newcomer" },
+      isEligible: { type: Boolean, default: false },
+      completedOrders: { type: Number, default: 0 },
+      components: {
+        deadline: { type: Number, default: 0 },
+        ratings: { type: Number, default: 0 },
+        completion: { type: Number, default: 0 },
+        response: { type: Number, default: 0 },
+        revisions: { type: Number, default: 0 },
+        experience: { type: Number, default: 0 },
+      },
+      lastCalculated: Date,
+    },
   },
   {
     timestamps: true,
@@ -423,16 +206,7 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Indexes for faster queries
-userSchema.index({ email: 1 });
-userSchema.index({ role: 1, profileCompleted: 1 });
-userSchema.index({ name: 1 });
-userSchema.index({ googleId: 1 });
-userSchema.index({ country: 1 });
-userSchema.index({ kycStatus: 1 });
-userSchema.index({ paymentGateway: 1 });
-userSchema.index({ "bankDetails.accountNumber": 1 });
-userSchema.index({ location: "2dsphere" });
-userSchema.index({ isAvailable: 1, role: 1, "suvixScore.total": -1 });
+// Essential indexes (not already covered by unique/sparse constraints)
+userSchema.index({ "suvixScore.total": -1 });
 
-export default mongoose.model("User", userSchema);
+export default mongoose.models.User || mongoose.model("User", userSchema);

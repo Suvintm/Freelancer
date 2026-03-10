@@ -43,6 +43,32 @@ import photoshopIcon from "../assets/photoshop.png";
 import canvaIcon from "../assets/canvalogo.png";
 import vnIcon from "../assets/Vnlogo.png";
 
+const SectionHeader = ({ icon: Icon, title, subtitle, simple, isDark }) => (
+  <div className={`flex items-center gap-3 ${simple ? "mb-4" : "mb-6"}`}>
+    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+      simple 
+      ? (isDark ? "bg-white/10 text-white" : "bg-zinc-900 text-white")
+      : (isDark ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-emerald-50 text-emerald-600 border border-emerald-100")
+    }`}>
+      <Icon className={simple ? "w-4 h-4" : "w-5 h-5"} />
+    </div>
+    <div>
+      <h3 className={`${simple ? "text-sm" : "text-base"} font-black tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{title}</h3>
+      <p className={`${simple ? "text-[8px]" : "text-[10px]"} font-bold uppercase tracking-wider ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{subtitle}</p>
+    </div>
+  </div>
+);
+
+const InputWrapper = ({ label, required, children, error, isDark }) => (
+  <div className="space-y-2">
+    <label className={`text-[11px] font-black uppercase tracking-wider flex items-center gap-1 ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>
+      {label} {required && <span className="text-emerald-500">*</span>}
+    </label>
+    {children}
+    {error && <p className="text-[10px] text-red-500 font-bold">{error}</p>}
+  </div>
+);
+
 
 const UpdateProfile = ({ languagesOptions = [] }) => {
   const { user, backendURL } = useAppContext();
@@ -334,31 +360,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
     );
   }
 
-  const SectionHeader = ({ icon: Icon, title, subtitle, simple }) => (
-    <div className={`flex items-center gap-3 ${simple ? "mb-4" : "mb-6"}`}>
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-        simple 
-        ? (isDark ? "bg-white/10 text-white" : "bg-zinc-900 text-white")
-        : (isDark ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-emerald-50 text-emerald-600 border border-emerald-100")
-      }`}>
-        <Icon className={simple ? "w-4 h-4" : "w-5 h-5"} />
-      </div>
-      <div>
-        <h3 className={`${simple ? "text-sm" : "text-base"} font-black tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{title}</h3>
-        <p className={`${simple ? "text-[8px]" : "text-[10px]"} font-bold uppercase tracking-wider ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{subtitle}</p>
-      </div>
-    </div>
-  );
-
-  const InputWrapper = ({ label, required, children, error }) => (
-    <div className="space-y-2">
-      <label className={`text-[11px] font-black uppercase tracking-wider flex items-center gap-1 ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>
-        {label} {required && <span className="text-emerald-500">*</span>}
-      </label>
-      {children}
-      {error && <p className="text-[10px] text-red-500 font-bold">{error}</p>}
-    </div>
-  );
+  // Section components moved outside to prevent focus loss on re-render
 
   return (
     <div className="max-w-4xl mx-auto pb-20" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -372,7 +374,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
               animate={{ opacity: 1, y: 0 }}
               className="p-0 transition-all"
             >
-              <SectionHeader simple icon={HiOutlineShieldCheck} title="Availability & Access" subtitle="Sync with sidebar" />
+              <SectionHeader simple icon={HiOutlineShieldCheck} title="Availability & Access" subtitle="Sync with sidebar" isDark={isDark} />
               <div className="flex items-center justify-between p-4 rounded-2xl border bg-black/20 border-white/5">
                 <div>
                   <h4 className="text-sm font-black text-white">Editor Availability</h4>
@@ -388,10 +390,10 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
               animate={{ opacity: 1, y: 0 }}
               className="p-0 transition-all"
             >
-              <SectionHeader simple icon={HiOutlineUser} title="Basic Information" subtitle="Your public identity" />
+              <SectionHeader simple icon={HiOutlineUser} title="Basic Information" subtitle="Your public identity" isDark={isDark} />
               
               <div className="space-y-6">
-                <InputWrapper label="About Me" required>
+                <InputWrapper label="About Me" required isDark={isDark}>
                   <textarea
                     name="about"
                     value={formData.about}
@@ -407,7 +409,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
                 </InputWrapper>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <InputWrapper label="Contact Email" required>
+                  <InputWrapper label="Contact Email" required isDark={isDark}>
                     <div className="relative">
                       <HiOutlineEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />
                       <input
@@ -421,7 +423,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
                     </div>
                   </InputWrapper>
 
-                  <InputWrapper label="Country" required>
+                  <InputWrapper label="Country" required isDark={isDark}>
                     <Select
                       options={countries}
                       value={formData.country ? { label: formData.country, value: formData.country } : null}
@@ -470,7 +472,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
               animate={{ opacity: 1, y: 0 }}
               className="p-0 transition-all"
             >
-              <SectionHeader simple icon={HiOutlineGlobeAlt} title="Social Presence" subtitle="Connect your platforms" />
+              <SectionHeader simple icon={HiOutlineGlobeAlt} title="Social Presence" subtitle="Connect your platforms" isDark={isDark} />
               <div className="grid grid-cols-1 gap-4">
                 {SOCIAL_PLATFORMS.map((platform) => (
                   <div key={platform.id} className="relative group">
@@ -498,7 +500,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
               animate={{ opacity: 1, y: 0 }}
               className="p-0 transition-all"
             >
-              <SectionHeader simple icon={HiOutlineShieldCheck} title="Privacy & Social" subtitle="Management controls" />
+              <SectionHeader simple icon={HiOutlineShieldCheck} title="Privacy & Social" subtitle="Management controls" isDark={isDark} />
               
               <div className="space-y-6">
                 <div className={`flex items-center justify-between p-4 rounded-2xl border ${isDark ? "bg-black/20 border-white/5" : "bg-zinc-50 border-zinc-100"}`}>
@@ -521,7 +523,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
                 </div>
 
                 {user?.role === 'editor' && (
-                  <InputWrapper label="Experience Level" required>
+                  <InputWrapper label="Experience Level" required isDark={isDark}>
                     <div className="grid grid-cols-2 gap-2">
                       {experienceOptions.map(opt => (
                         <button
@@ -552,7 +554,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
                 animate={{ opacity: 1, y: 0 }}
                 className="p-0 transition-all"
               >
-                <SectionHeader simple icon={HiOutlineBriefcase} title="Professional Tools" subtitle="Your creative arsenal" />
+                <SectionHeader simple icon={HiOutlineBriefcase} title="Professional Tools" subtitle="Your creative arsenal" isDark={isDark} />
                 <div className="grid grid-cols-4 sm:grid-cols-4 gap-3">
                   {SOFTWARES_LIST.map((tool) => (
                     <button
@@ -674,7 +676,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
                 animate={{ opacity: 1, y: 0 }}
                 className="p-0 transition-all"
               >
-                <SectionHeader simple icon={HiOutlineSparkles} title="Skills & Expertise" subtitle="Showcase your power" />
+                <SectionHeader simple icon={HiOutlineSparkles} title="Skills & Expertise" subtitle="Showcase your power" isDark={isDark} />
                 
                 <div className="space-y-6">
                   <div className="flex gap-2">
@@ -752,7 +754,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
               animate={{ opacity: 1, y: 0 }}
               className="p-0 transition-all"
             >
-              <SectionHeader simple icon={HiOutlineLanguage} title="Language Hub" subtitle="Global communication" />
+              <SectionHeader simple icon={HiOutlineLanguage} title="Language Hub" subtitle="Global communication" isDark={isDark} />
               
               <div className="space-y-6">
                 <div className="flex gap-2">
@@ -805,7 +807,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
                 animate={{ opacity: 1, y: 0 }}
                 className="p-0 transition-all"
               >
-                <SectionHeader simple icon={HiOutlineAcademicCap} title="Certifications" subtitle="Verify your skill" />
+                <SectionHeader simple icon={HiOutlineAcademicCap} title="Certifications" subtitle="Verify your skill" isDark={isDark} />
                 
                 <div className="space-y-6">
                   <div className={`relative group p-8 rounded-3xl border-2 border-dashed transition-all flex flex-col items-center justify-center text-center ${isDark ? "border-white/5 bg-black/20 hover:border-emerald-500/30" : "border-zinc-200 bg-zinc-50 hover:border-emerald-500/50"}`}>
@@ -862,17 +864,17 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="sticky bottom-8 z-30"
+          className="sticky bottom-8 z-30 pointer-events-none flex justify-center"
         >
-          <button
+         <button
             type="submit"
             disabled={!isFormValid || updating}
-            className={`w-full max-w-lg mx-auto py-5 rounded-[24px] font-black text-sm tracking-widest uppercase flex items-center justify-center gap-3 transition-all ${
+            className={`pointer-events-auto w-full max-w-lg mx-auto py-5 rounded-[24px] font-black text-sm tracking-widest uppercase flex items-center justify-center gap-3 transition-all ${
               isFormValid && !updating
               ? "bg-emerald-500 text-white shadow-2xl shadow-emerald-500/40 hover:scale-[1.02] active:scale-95"
               : "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed"
             }`}
-          >
+          > 
             {updating ? (
               <>
                 <motion.div 

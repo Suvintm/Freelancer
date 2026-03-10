@@ -9,13 +9,15 @@ import logger from "../utils/logger.js";
 import { createNotification } from "./notificationController.js";
 import { sendPasswordResetEmail, sendOTPEmail } from "../utils/emailService.js";
 import Otp from "../models/Otp.js";
+import { initiateSMSOTP, verifySMSOTP, validateIndianMobile } from "../services/otpService.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = "7d";
 
 // ============ REGISTER ============
 export const register = asyncHandler(async (req, res) => {
-  const { name, email, password, role, country = "IN" } = req.body;
+  logger.info("Registration Request Body:", req.body);
+  const { name, email, password, role, country = "IN", phone } = req.body;
   let profilePicture;
 
   // Check for existing user
@@ -54,11 +56,31 @@ export const register = asyncHandler(async (req, res) => {
 
   // Generate 6-digit OTP
   const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const hashedOtp = crypto.createHash("sha256").update(otpCode).digest("hex");
+
+  const isIndia = country.toUpperCase() === "IN";
+  
+  // Defensive: ensure phone is a string for validation
+  const phoneValue = typeof phone === 'string' ? phone : "";
+  const mobile = isIndia ? validateIndianMobile(phoneValue) : null;
+
+  logger.info("Mobile Validation Check:", {
+    country,
+    phoneProvided: !!phone,
+    isIndia,
+    mobileValidated: !!mobile,
+    mobileValue: mobile
+  });
+
+  if (isIndia && !mobile) {
+    throw new ApiError(400, "A valid Indian mobile number is required for registration.");
+  }
 
   // Save OTP and registration data
   await Otp.create({
     email: email.toLowerCase().trim(),
-    otp: otpCode,
+    phone: mobile,
+    otp: hashedOtp,
     type: "register",
     registrationData: {
       name: name.trim(),
@@ -70,16 +92,29 @@ export const register = asyncHandler(async (req, res) => {
     }
   });
 
-  // Send OTP Email
-  await sendOTPEmail(email.toLowerCase().trim(), name.trim(), otpCode);
+  // Send OTP (SMS if India, Email fallback)
+  let otpMethod = "Email";
 
-  logger.info(`OTP sent for registration: ${email}`);
+  if (isIndia && mobile) {
+    try {
+      await initiateSMSOTP(mobile, otpCode);
+      otpMethod = "SMS";
+      logger.info(`SMS OTP sent for registration: ${mobile}`);
+    } catch (smsError) {
+      logger.error(`SMS OTP failed for ${mobile}, falling back to Email: ${smsError.message}`);
+      await sendOTPEmail(email.toLowerCase().trim(), name.trim(), otpCode);
+    }
+  } else {
+    await sendOTPEmail(email.toLowerCase().trim(), name.trim(), otpCode);
+  }
 
   res.status(200).json({
     success: true,
     requiresVerification: true,
-    message: "A verification code has been sent to your email.",
-    email: email.toLowerCase().trim()
+    message: `A verification code has been sent to your ${otpMethod === "SMS" ? "mobile" : "email"}.`,
+    email: email.toLowerCase().trim(),
+    phone: mobile,
+    otpMethod
   });
 });
 
@@ -87,7 +122,8 @@ export const register = asyncHandler(async (req, res) => {
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await User.findOne({ email: email.trim().toLowerCase() });
+  // Fix: Explicitly select password because it's marked select: false in Model
+  const user = await User.findOne({ email: email.trim().toLowerCase() }).select("+password");
   if (!user) {
     throw new ApiError(401, "Invalid email or password.");
   }
@@ -103,6 +139,7 @@ export const login = asyncHandler(async (req, res) => {
     });
   }
 
+  // user.password will now be present
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
     throw new ApiError(401, "Invalid email or password.");
@@ -111,42 +148,88 @@ export const login = asyncHandler(async (req, res) => {
   // Generate 6-digit OTP for login
   const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
 
+  // Hash OTP
+  const hashedOtp = crypto.createHash("sha256").update(otpCode).digest("hex");
+
   // Save OTP
   await Otp.create({
     email: email.toLowerCase().trim(),
-    otp: otpCode,
+    otp: hashedOtp,
     type: "login"
   });
 
-  // Send OTP Email
-  await sendOTPEmail(user.email, user.name, otpCode);
+  // Send OTP (SMS if India, Email otherwise)
+  const isIndia = user.country === "IN";
+  const mobile = isIndia ? validateIndianMobile(user.phone) : null;
 
-  logger.info(`OTP sent for login: ${user.email}`);
+  // Send OTP (SMS if India, Email fallback)
+  let otpMethod = "Email";
+  if (isIndia && mobile) {
+    try {
+      await initiateSMSOTP(mobile, otpCode);
+      otpMethod = "SMS";
+      logger.info(`SMS OTP sent for login: ${mobile}`);
+    } catch (smsError) {
+      logger.error(`SMS login failed for ${mobile}, falling back to Email: ${smsError.message}`);
+      await sendOTPEmail(user.email, user.name, otpCode);
+    }
+  } else {
+    await sendOTPEmail(user.email, user.name, otpCode);
+    logger.info(`Email OTP sent for login: ${user.email}`);
+  }
 
   res.status(200).json({
     success: true,
     requiresVerification: true,
-    message: "A verification code has been sent to your email.",
-    email: user.email
+    message: `A verification code has been sent to your ${otpMethod === "SMS" ? "mobile" : "email"}.`,
+    email: user.email,
+    phone: mobile,
+    otpMethod
   });
 });
 
 // ============ VERIFY OTP ============
 export const verifyOtp = asyncHandler(async (req, res) => {
-  const { email, otp } = req.body;
+  const { email, phone, otp } = req.body;
 
-  if (!email || !otp) {
-    throw new ApiError(400, "Email and OTP are required.");
+  if (!email && !phone) {
+    throw new ApiError(400, "Email or Phone is required.");
+  }
+  
+  if (!otp) {
+    throw new ApiError(400, "OTP is required.");
   }
 
+  // Final verification check
+  const otpIn = otp.trim();
+  const hashedOtp = crypto.createHash("sha256").update(otpIn).digest("hex");
+
   // Find valid OTP
-  const otpDoc = await Otp.findOne({ 
-    email: email.toLowerCase().trim(), 
-    otp: otp.trim() 
-  });
+  const query = phone ? { phone: phone.trim() } : { email: email.toLowerCase().trim() };
+  const otpDoc = await Otp.findOne(query);
 
   if (!otpDoc) {
     throw new ApiError(400, "Invalid or expired verification code.");
+  }
+
+  // Check brute force
+  if (otpDoc.attempts >= 5) {
+    throw new ApiError(403, "Too many failed attempts. Please request a new code.");
+  }
+
+  // Check explicit expiry (10 minutes)
+  const isExpired = Date.now() - new Date(otpDoc.createdAt).getTime() > 600000;
+  if (isExpired) {
+    await Otp.deleteOne({ _id: otpDoc._id });
+    throw new ApiError(400, "Verification code has expired.");
+  }
+
+  // Compare hashes
+  if (otpDoc.otp !== hashedOtp) {
+    otpDoc.attempts += 1;
+    await otpDoc.save();
+    const remaining = 5 - otpDoc.attempts;
+    throw new ApiError(400, `Invalid code. ${remaining} attempts remaining.`);
   }
 
   let user;
@@ -165,6 +248,8 @@ export const verifyOtp = asyncHandler(async (req, res) => {
       email,
       password,
       role,
+      phone: otpDoc.phone,
+      isPhoneVerified: !!otpDoc.phone,
       country: country.toUpperCase(),
       currency,
       paymentGateway,
@@ -233,46 +318,56 @@ export const verifyOtp = asyncHandler(async (req, res) => {
 
 // ============ RESEND OTP ============
 export const resendOtp = asyncHandler(async (req, res) => {
-  const { email } = req.body;
+  const { email, phone } = req.body;
 
-  if (!email) {
-    throw new ApiError(400, "Email is required.");
+  if (!email && !phone) {
+    throw new ApiError(400, "Email or Phone is required.");
   }
 
-  // Delete existing OTPs for this email to avoid duplicates
-  await Otp.deleteMany({ email: email.toLowerCase().trim() });
-
-  // We need to know if this is for register or login to resend properly
-  // Since we don't have the registration data anymore if we only have the email,
-  // we should check if a user exists. If user exists, it's login. 
-  // If not, we have a problem unless we kept the data.
-  // Actually, we should only allow resending if the Otp document STILL exists
-  // but just generate a new code.
+  const query = phone ? { phone: phone.trim() } : { email: email.toLowerCase().trim() };
   
-  const existingOtpDoc = await Otp.findOne({ email: email.toLowerCase().trim() });
+  const existingOtpDoc = await Otp.findOne(query);
   if (!existingOtpDoc) {
     throw new ApiError(400, "Session expired. Please register or login again.");
   }
 
   const newOtpCode = Math.floor(100000 + Math.random() * 900000).toString();
-  existingOtpDoc.otp = newOtpCode;
+  const hashedOtp = crypto.createHash("sha256").update(newOtpCode).digest("hex");
+  
+  existingOtpDoc.otp = hashedOtp;
+  existingOtpDoc.attempts = 0; // Reset attempts on resend
   existingOtpDoc.createdAt = new Date(); // Reset expiry
   await existingOtpDoc.save();
 
-  // Get name for email
+  // Get name for email/sms
   let name = "User";
   if (existingOtpDoc.type === "register") {
     name = existingOtpDoc.registrationData.name;
   } else {
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
-    if (user) name = user.name;
+    const userDoc = await User.findOne(query);
+    if (userDoc) name = userDoc.name;
   }
 
-  await sendOTPEmail(email.toLowerCase().trim(), name, newOtpCode);
+  // Send Resend OTP (SMS if mobile available, Email fallback)
+  let otpMethod = "Email";
+  if (existingOtpDoc.phone) {
+    try {
+      await initiateSMSOTP(existingOtpDoc.phone, newOtpCode);
+      otpMethod = "SMS";
+      logger.info(`SMS OTP Resent to: ${existingOtpDoc.phone}`);
+    } catch (smsError) {
+      logger.error(`SMS resend failed for ${existingOtpDoc.phone}, falling back to Email: ${smsError.message}`);
+      await sendOTPEmail(existingOtpDoc.email, name, newOtpCode);
+    }
+  } else {
+    await sendOTPEmail(existingOtpDoc.email, name, newOtpCode);
+    logger.info(`Email OTP Resent to: ${existingOtpDoc.email}`);
+  }
 
   res.status(200).json({
     success: true,
-    message: "A new verification code has been sent."
+    message: `A new verification code has been sent to your ${otpMethod === "SMS" ? "mobile" : "email"}.`,
+    otpMethod
   });
 });
 

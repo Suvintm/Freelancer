@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
+import { validateTimezone } from "../utils/timezoneValidator";
 
 export const AppContext = createContext();
 
@@ -11,6 +12,7 @@ export const AppProvider = ({ children }) => {
 
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [geoBlocked, setGeoBlocked] = useState(null); // 'REGION_BLOCKED' or 'VPN_DETECTED'
 
   const fetchNotifications = async () => {
     if (!user?.token) return;
@@ -152,6 +154,31 @@ export const AppProvider = ({ children }) => {
     }
   }, [user?.token, backendURL]);
 
+  // ============ AXIOS INTERCEPTOR FOR REGIONAL SECURITY ============
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 403) {
+          const errorCode = error.response.data.error;
+          if (errorCode === "REGION_BLOCKED" || errorCode === "VPN_DETECTED") {
+            setGeoBlocked(errorCode);
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => axios.interceptors.response.eject(interceptor);
+  }, []);
+
+  // ============ TIMEZONE FALLBACK CHECK ============
+  useEffect(() => {
+    if (!validateTimezone()) {
+      setGeoBlocked("REGION_BLOCKED");
+    }
+  }, []);
+
   return (
     <AppContext.Provider
       value={{
@@ -165,6 +192,8 @@ export const AppProvider = ({ children }) => {
         unreadCount,
         fetchNotifications,
         logout,
+        geoBlocked,
+        setGeoBlocked,
       }}
     >
       {children}

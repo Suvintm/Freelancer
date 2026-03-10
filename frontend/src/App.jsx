@@ -84,6 +84,7 @@ import AdDetailsPage from "./pages/AdDetailsPage.jsx";
 import { TermsAndConditions, PrivacyPolicy, ContentProtectionPolicy, EditorCodeOfConduct } from "./pages/LegalPages";
 
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import RestrictedAccess from "./components/RestrictedAccess.jsx";
 
 import "react-toastify/dist/ReactToastify.css";
 import { ToastContainer } from "react-toastify";
@@ -141,7 +142,7 @@ className={`absolute inset-0 w-full h-full bg-[#FAFAFA] dark:bg-[#09090B] overfl
 
 function App() {
   const [showSplash, setShowSplash] = useState(false);
-  const { user } = useAppContext();
+  const { user, geoBlocked } = useAppContext();
 
   useEffect(() => {
     const SPLASH_COOLDOWN = 30 * 60 * 1000; // 30 minutes
@@ -186,6 +187,7 @@ function App() {
 
   return (
     <>
+      {geoBlocked && <RestrictedAccess type={geoBlocked} />}
       <AnimatePresence>
         {/* {showSplash && <SplashScreen key="splash" />} */}
       </AnimatePresence>
@@ -226,6 +228,7 @@ function App() {
         <Route path="/download/:id" element={<ProtectedRoute allowedRoles={["client", "editor"]}><DownloadPage /></ProtectedRoute>} />
         <Route path="/chat/:orderId" element={<ProtectedRoute allowedRoles={["client", "editor"]}><Chatbox /></ProtectedRoute>} />
         <Route path="/jobs/:id" element={<ProtectedRoute allowedRoles={["editor", "client"]}><JobDetailsPage /></ProtectedRoute>} />
+        <Route path="/my-applications" element={<ProtectedRoute allowedRoles={["editor"]}><MyApplicationsPage /></ProtectedRoute>} />
         <Route path="/public-profile/:userId" element={<ProtectedRoute><PublicEditorProfile /></ProtectedRoute>} />
         <Route path="/editor/:userId" element={<ProtectedRoute><PublicEditorProfile /></ProtectedRoute>} />
         <Route path="/post-job" element={<ProtectedRoute allowedRoles={["client"]}><PostJobPage /></ProtectedRoute>} />

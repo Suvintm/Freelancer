@@ -8,6 +8,11 @@ const otpSchema = new mongoose.Schema({
     lowercase: true,
     trim: true,
   },
+  phone: {
+    type: String,
+    index: true,
+    trim: true,
+  },
   otp: {
     type: String,
     required: true,
@@ -16,6 +21,10 @@ const otpSchema = new mongoose.Schema({
     type: String,
     enum: ["register", "login"],
     required: true,
+  },
+  attempts: {
+    type: Number,
+    default: 0,
   },
   // Data for registration (stored temporarily until verified)
   registrationData: {
@@ -29,4 +38,4 @@ const otpSchema = new mongoose.Schema({
   },
 });
 
-export default mongoose.model("Otp", otpSchema);
+export default mongoose.models.Otp || mongoose.model("Otp", otpSchema);
