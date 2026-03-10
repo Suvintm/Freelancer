@@ -7,7 +7,8 @@ import { Profile } from "../models/Profile.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
 import { createNotification } from "./notificationController.js";
-import { sendPasswordResetEmail } from "../utils/emailService.js";
+import { sendPasswordResetEmail, sendOTPEmail } from "../utils/emailService.js";
+import Otp from "../models/Otp.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = "7d";
@@ -51,66 +52,34 @@ export const register = asyncHandler(async (req, res) => {
     profilePicture = uploadResult.url;
   }
 
-  // Determine currency and payment gateway based on country
-  const currencyMap = { IN: "INR", US: "USD", GB: "GBP", CA: "CAD", AU: "AUD" };
-  const currency = currencyMap[country] || "INR";
-  const paymentGateway = country === "IN" ? "razorpay" : "none";
+  // Generate 6-digit OTP
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-  // Create User
-  const user = await User.create({
-    name: name.trim(),
+  // Save OTP and registration data
+  await Otp.create({
     email: email.toLowerCase().trim(),
-    password: hashedPassword,
-    role,
-    country: country.toUpperCase(),
-    currency,
-    paymentGateway,
-    profilePicture,
+    otp: otpCode,
+    type: "register",
+    registrationData: {
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
+      password: hashedPassword,
+      role,
+      country,
+      profilePicture
+    }
   });
 
-  // Auto-create Profile document
-  await Profile.create({
-    user: user._id,
-    about: "",
-    portfolio: [],
-    skills: [],
-    languages: [],
-    experience: "",
-    certifications: [],
-    contactEmail: "",
-    location: { country: "" },
-  });
+  // Send OTP Email
+  await sendOTPEmail(email.toLowerCase().trim(), name.trim(), otpCode);
 
-  // Trigger Welcome Notification
-  await createNotification({
-    recipient: user._id,
-    type: "success",
-    title: "Welcome to SuviX! 🎉",
-    message: "We're excited to have you on board. Complete your profile to get started.",
-    link: "/editor-profile",
-  });
+  logger.info(`OTP sent for registration: ${email}`);
 
-  // Generate JWT
-  const token = jwt.sign(
-    { id: user._id, role: user.role },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
-  );
-
-  logger.info(`New user registered: ${user.email} (${user.role})`);
-
-  res.status(201).json({
+  res.status(200).json({
     success: true,
-    message: "User registered successfully.",
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      profileCompleted: user.profileCompleted,
-      profilePicture: user.profilePicture,
-    },
-    token,
+    requiresVerification: true,
+    message: "A verification code has been sent to your email.",
+    email: email.toLowerCase().trim()
   });
 });
 
@@ -139,17 +108,114 @@ export const login = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Invalid email or password.");
   }
 
+  // Generate 6-digit OTP for login
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+  // Save OTP
+  await Otp.create({
+    email: email.toLowerCase().trim(),
+    otp: otpCode,
+    type: "login"
+  });
+
+  // Send OTP Email
+  await sendOTPEmail(user.email, user.name, otpCode);
+
+  logger.info(`OTP sent for login: ${user.email}`);
+
+  res.status(200).json({
+    success: true,
+    requiresVerification: true,
+    message: "A verification code has been sent to your email.",
+    email: user.email
+  });
+});
+
+// ============ VERIFY OTP ============
+export const verifyOtp = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    throw new ApiError(400, "Email and OTP are required.");
+  }
+
+  // Find valid OTP
+  const otpDoc = await Otp.findOne({ 
+    email: email.toLowerCase().trim(), 
+    otp: otp.trim() 
+  });
+
+  if (!otpDoc) {
+    throw new ApiError(400, "Invalid or expired verification code.");
+  }
+
+  let user;
+
+  if (otpDoc.type === "register") {
+    // Create actual user from stored registration data
+    const { name, email, password, role, country, profilePicture } = otpDoc.registrationData;
+    
+    // Determine currency and payment gateway based on country
+    const currencyMap = { IN: "INR", US: "USD", GB: "GBP", CA: "CAD", AU: "AUD" };
+    const currency = currencyMap[country] || "INR";
+    const paymentGateway = country === "IN" ? "razorpay" : "none";
+
+    user = await User.create({
+      name,
+      email,
+      password,
+      role,
+      country: country.toUpperCase(),
+      currency,
+      paymentGateway,
+      profilePicture,
+    });
+
+    // Auto-create Profile document
+    await Profile.create({
+      user: user._id,
+      about: "",
+      portfolio: [],
+      skills: [],
+      languages: [],
+      experience: "",
+      certifications: [],
+      contactEmail: "",
+      location: { country: "" },
+    });
+
+    // Trigger Welcome Notification
+    await createNotification({
+      recipient: user._id,
+      type: "success",
+      title: "Welcome to SuviX! 🎉",
+      message: "We're excited to have you on board. Complete your profile to get started.",
+      link: "/editor-profile",
+    });
+
+    logger.info(`New user verified and created: ${user.email}`);
+  } else {
+    // Login verification
+    user = await User.findOne({ email: email.toLowerCase().trim() });
+  }
+
+  if (!user) {
+    throw new ApiError(404, "User not found.");
+  }
+
+  // Delete OTP after successful verification
+  await Otp.deleteOne({ _id: otpDoc._id });
+
+  // Generate JWT
   const token = jwt.sign(
     { id: user._id, role: user.role },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
   );
 
-  logger.info(`User logged in: ${user.email}`);
-
   res.status(200).json({
     success: true,
-    message: "Login successful",
+    message: "Verification successful",
     user: {
       id: user._id,
       name: user.name,
@@ -162,6 +228,51 @@ export const login = asyncHandler(async (req, res) => {
       profileCompletionPercent: user.profileCompletionPercent,
     },
     token,
+  });
+});
+
+// ============ RESEND OTP ============
+export const resendOtp = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    throw new ApiError(400, "Email is required.");
+  }
+
+  // Delete existing OTPs for this email to avoid duplicates
+  await Otp.deleteMany({ email: email.toLowerCase().trim() });
+
+  // We need to know if this is for register or login to resend properly
+  // Since we don't have the registration data anymore if we only have the email,
+  // we should check if a user exists. If user exists, it's login. 
+  // If not, we have a problem unless we kept the data.
+  // Actually, we should only allow resending if the Otp document STILL exists
+  // but just generate a new code.
+  
+  const existingOtpDoc = await Otp.findOne({ email: email.toLowerCase().trim() });
+  if (!existingOtpDoc) {
+    throw new ApiError(400, "Session expired. Please register or login again.");
+  }
+
+  const newOtpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  existingOtpDoc.otp = newOtpCode;
+  existingOtpDoc.createdAt = new Date(); // Reset expiry
+  await existingOtpDoc.save();
+
+  // Get name for email
+  let name = "User";
+  if (existingOtpDoc.type === "register") {
+    name = existingOtpDoc.registrationData.name;
+  } else {
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (user) name = user.name;
+  }
+
+  await sendOTPEmail(email.toLowerCase().trim(), name, newOtpCode);
+
+  res.status(200).json({
+    success: true,
+    message: "A new verification code has been sent."
   });
 });
 

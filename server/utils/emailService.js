@@ -10,9 +10,13 @@ import logger from "./logger.js";
  * Always use Resend API for production deployments!
  */
 
-// Check if Resend is configured (preferred for production)
+// Check if Resend should be used
 const useResend = () => {
-  return !!process.env.RESEND_API_KEY;
+  // Use Resend only if:
+  // 1. API key exists
+  // 2. We're NOT explicitly asking for SMTP
+  const mailService = process.env.MAIL_SERVICE || "resend";
+  return !!process.env.RESEND_API_KEY && mailService.toLowerCase() === "resend";
 };
 
 // Create SMTP transporter (for local development only)
@@ -257,4 +261,75 @@ Need help? Contact us at support@suvix.com
   return sendEmail({ to: email, subject, html, text });
 };
 
-export default { sendEmail, sendPasswordResetEmail };
+/**
+ * Send OTP verification email
+ */
+export const sendOTPEmail = async (email, name, otp) => {
+  const subject = `${otp} is your SuviX verification code`;
+  const year = new Date().getFullYear();
+  
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify Your Email - SuviX</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Arial, sans-serif; background-color: #f9fafb;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f9fafb; padding: 40px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 500px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e5e7eb;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background-color: #000000; padding: 32px; text-align: center;">
+              <span style="font-size: 28px; font-weight: 800; color: #ffffff; letter-spacing: -1px;">
+                <span style="color: #10b981;">Suvi</span>X
+              </span>
+            </td>
+          </tr>
+          
+          <!-- Hero Section -->
+          <tr>
+            <td style="padding: 40px 32px 32px; text-align: center;">
+              <div style="width: 64px; height: 64px; background-color: #ecfdf5; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 24px; text-align: center; line-height: 64px;">
+                <span style="font-size: 32px;">🛡️</span>
+              </div>
+              <h1 style="color: #111827; font-size: 24px; font-weight: 700; margin: 0 0 12px; letter-spacing: -0.5px;">Verify your identity</h1>
+              <p style="color: #4b5563; font-size: 16px; margin: 0; line-height: 1.6;">Hi ${name}, please use the following one-time password to complete your verification.</p>
+            </td>
+          </tr>
+          
+          <!-- OTP Box -->
+          <tr>
+            <td style="padding: 0 32px 40px; text-align: center;">
+              <div style="background-color: #f3f4f6; border-radius: 12px; padding: 24px; display: inline-block; min-width: 200px; border: 1px dashed #d1d5db;">
+                <span style="font-family: 'Courier New', Courier, monospace; font-size: 42px; font-weight: 800; letter-spacing: 8px; color: #111827;">${otp}</span>
+              </div>
+              <p style="color: #9ca3af; font-size: 14px; margin: 20px 0 0;">This code will expire in 10 minutes.</p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 32px; background-color: #fafafa; border-top: 1px solid #f3f4f6; text-align: center;">
+              <p style="color: #6b7280; font-size: 14px; margin: 0 0 12px;">If you didn't request this code, you can safely ignore this email.</p>
+              <p style="color: #9ca3af; font-size: 12px; margin: 0;">&copy; ${year} SuviX Technologies. All rights reserved.</p>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `Hi ${name}, your SuviX verification code is ${otp}. This code expires in 10 minutes.`;
+  
+  return sendEmail({ to: email, subject, html, text });
+};
+
+export default { sendEmail, sendPasswordResetEmail, sendOTPEmail };

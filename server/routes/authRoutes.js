@@ -7,6 +7,8 @@ import {
   getCurrentUser,
   forgotPassword,
   resetPassword,
+  verifyOtp,
+  resendOtp,
 } from "../controllers/authcontroller.js";
 import { upload } from "../middleware/upload.js";
 import protect from "../middleware/authMiddleware.js";
@@ -31,6 +33,14 @@ router.post("/login", authLimiter, loginValidator, login);
 
 // Logout - protected
 router.post("/logout", protect, logout);
+
+// ============ OTP VERIFICATION ============
+
+// Verify OTP - finalize registration or login
+router.post("/verify-otp", verifyOtp);
+
+// Resend OTP
+router.post("/resend-otp", resendOtp);
 
 // ============ PASSWORD RESET ============
 
