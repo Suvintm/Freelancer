@@ -42,7 +42,6 @@ const profileVisitSchema = new mongoose.Schema(
     visitedAt: {
       type: Date,
       default: Date.now,
-      index: true,
     },
 
     // How they found the profile

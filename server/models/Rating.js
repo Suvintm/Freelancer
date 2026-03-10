@@ -94,7 +94,6 @@ const ratingSchema = new mongoose.Schema(
 // Indexes for efficient querying
 ratingSchema.index({ reviewee: 1, createdAt: -1 }); // Get editor's ratings
 ratingSchema.index({ reviewer: 1, createdAt: -1 }); // Get client's given ratings
-ratingSchema.index({ order: 1 }); // Check if order has rating
 
 // Static method to calculate editor's average ratings
 ratingSchema.statics.calculateEditorStats = async function (editorId) {

@@ -9,18 +9,27 @@
  */
 
 import rateLimit from "express-rate-limit";
-import redis from "../config/redisClient.js";
+import redis, { redisAvailable } from "../config/redisClient.js";
 import { RedisStore } from "rate-limit-redis";
 
 /**
  * Build a RedisStore for express-rate-limit.
- * ioredis provides the .call() method needed for standard Redis Lua scripts.
+ * Falls back to memory store (undefined) if Redis is unavailable.
  */
-const makeRedisStore = (prefix) =>
-  new RedisStore({
-    sendCommand: (...args) => redis.call(...args),
-    prefix,
-  });
+const makeRedisStore = (prefix) => {
+  if (!redisAvailable) {
+    return undefined;
+  }
+  
+  try {
+    return new RedisStore({
+      sendCommand: (...args) => redis.call(...args),
+      prefix,
+    });
+  } catch (err) {
+    return undefined;
+  }
+};
 
 
 // ─── General API limiter: 1000 req / 5 min ────────────────────────────────

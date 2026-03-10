@@ -1,5 +1,5 @@
 import axios from "axios";
-import redis from "../config/redisClient.js";
+import redis, { redisAvailable } from "../config/redisClient.js";
 import logger from "../utils/logger.js";
 
 // Using centralized redis client from config/redisClient.js
@@ -55,6 +55,7 @@ export const sendSMSOTP = async (phone, otp) => {
         headers: {
           authorization: process.env.FAST2SMS_API_KEY,
         },
+        timeout: 10000, // 10 second timeout to prevent hanging
       }
     );
 
@@ -66,7 +67,10 @@ export const sendSMSOTP = async (phone, otp) => {
       return false;
     }
   } catch (error) {
-    logger.error("Fast2SMS API Failed:", error.message);
+    const errorDetail = error.response 
+      ? `${error.response.status} - ${JSON.stringify(error.response.data)}`
+      : error.message;
+    logger.error(`Fast2SMS API Failed: ${errorDetail}`);
     return false;
   }
 };
@@ -78,19 +82,31 @@ export const initiateSMSOTP = async (phone, customOTP = null) => {
   const mobile = validateIndianMobile(phone);
   if (!mobile) throw new Error("INVALID_MOBILE");
 
-  // Rate limit: Max 3 OTPs per hour per number
-  const sendAttempts = await redis.incr(SEND_LIMIT_KEY(mobile));
-  if (sendAttempts === 1) await redis.expire(SEND_LIMIT_KEY(mobile), 3600);
-  
-  if (sendAttempts > 3) {
-    throw new Error("OTP_LIMIT_EXCEEDED");
+  // Rate limit: Max 3 OTPs per hour per number (Only if Redis is available)
+  if (redisAvailable) {
+    try {
+      const sendAttempts = await redis.incr(SEND_LIMIT_KEY(mobile));
+      if (sendAttempts === 1) await redis.expire(SEND_LIMIT_KEY(mobile), 3600);
+      
+      if (sendAttempts > 3) {
+        throw new Error("OTP_LIMIT_EXCEEDED");
+      }
+    } catch (err) {
+      logger.warn(`[Redis] Rate limit failed: ${err.message}. Proceeding without limit.`);
+    }
   }
 
   const otp = customOTP || generateOTP();
   
-  // Save to Redis (Fallback/Tracking)
-  await redis.set(OTP_KEY(mobile), otp, "EX", OTP_TTL);
-  await redis.del(ATTEMPT_KEY(mobile)); // Reset verification attempts
+  // Save to Redis (Fallback/Tracking) - Only if available
+  if (redisAvailable) {
+    try {
+      await redis.set(OTP_KEY(mobile), otp, "EX", OTP_TTL);
+      await redis.del(ATTEMPT_KEY(mobile)); // Reset verification attempts
+    } catch (err) {
+      logger.warn(`[Redis] OTP storage failed: ${err.message}`);
+    }
+  }
 
   const sent = await sendSMSOTP(mobile, otp);
   if (!sent) throw new Error("SMS_SEND_FAILED");
@@ -105,12 +121,23 @@ export const verifySMSOTP = async (phone, enteredOTP) => {
   const mobile = validateIndianMobile(phone);
   if (!mobile) throw new Error("INVALID_MOBILE");
 
-  const attempts = await redis.incr(ATTEMPT_KEY(mobile));
-  if (attempts === 1) await redis.expire(ATTEMPT_KEY(mobile), OTP_TTL);
+  // Brute force protection (Only if Redis is available)
+  if (redisAvailable) {
+    try {
+      const attempts = await redis.incr(ATTEMPT_KEY(mobile));
+      if (attempts === 1) await redis.expire(ATTEMPT_KEY(mobile), OTP_TTL);
 
-  if (attempts > MAX_ATTEMPTS) {
-    throw new Error("TOO_MANY_ATTEMPTS");
+      if (attempts > MAX_ATTEMPTS) {
+        throw new Error("TOO_MANY_ATTEMPTS");
+      }
+    } catch (err) {
+      logger.warn(`[Redis] Brute force check failed: ${err.message}`);
+    }
   }
+
+  // If Redis is offline, we can't verify SMS OTPs stored there.
+  // However, the system falls back to Email which uses MongoDB.
+  if (!redisAvailable) throw new Error("OTP_EXPIRED");
 
   const storedOTP = await redis.get(OTP_KEY(mobile));
   

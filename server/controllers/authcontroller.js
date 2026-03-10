@@ -154,6 +154,7 @@ export const login = asyncHandler(async (req, res) => {
   // Save OTP
   await Otp.create({
     email: email.toLowerCase().trim(),
+    phone: user.phone, // Include phone for robust verification query
     otp: hashedOtp,
     type: "login"
   });

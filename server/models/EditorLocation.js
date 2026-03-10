@@ -96,9 +96,6 @@ editorLocationSchema.index({
 // Index for visibility queries
 editorLocationSchema.index({ "visibility.enabled": 1 });
 
-// Index for user lookups
-editorLocationSchema.index({ userId: 1 });
-
 // Pre-save hook to update timestamps
 editorLocationSchema.pre("save", function (next) {
   this.updatedAt = Date.now();

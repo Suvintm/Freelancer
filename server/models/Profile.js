@@ -119,7 +119,6 @@ const profileSchema = new mongoose.Schema(
 );
 
 // Indexes for faster queries
-profileSchema.index({ user: 1 });
 profileSchema.index({ skills: 1 });
 profileSchema.index({ languages: 1 });
 

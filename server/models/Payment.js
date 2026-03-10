@@ -119,6 +119,5 @@ paymentSchema.pre("save", function (next) {
 // Indexes for queries
 paymentSchema.index({ status: 1, createdAt: -1 });
 paymentSchema.index({ type: 1 });
-paymentSchema.index({ receiptNumber: 1 });
 
 export const Payment = mongoose.model("Payment", paymentSchema);

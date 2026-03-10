@@ -194,8 +194,6 @@ const refundSchema = new mongoose.Schema(
 // === Indexes ===
 refundSchema.index({ status: 1, createdAt: -1 });
 refundSchema.index({ client: 1, status: 1 });
-refundSchema.index({ order: 1 });
-refundSchema.index({ razorpayRefundId: 1 }, { sparse: true });
 
 // === Pre-save middleware ===
 refundSchema.pre("save", function (next) {

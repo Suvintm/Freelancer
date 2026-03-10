@@ -14,7 +14,7 @@ import Redis from "ioredis";
 import logger from "../utils/logger.js";
 
 let client = null;
-let redisAvailable = false;
+export let redisAvailable = false;
 
 const connect = () => {
   if (client) return;
@@ -129,4 +129,38 @@ export const delPattern = async (pattern) => {
   }
 };
 
-export default client;
+// Proxy object to ensure safe, non-blocking calls to the live ioredis client
+const redisProxy = {
+  get: (key) => {
+    if (!redisAvailable || !client) return Promise.resolve(null);
+    return client.get(key);
+  },
+  set: (key, value, ...args) => {
+    if (!redisAvailable || !client) return Promise.resolve();
+    // Ensure value is a string before passing to ioredis
+    const toStore = typeof value === "string" ? value : JSON.stringify(value);
+    return client.set(key, toStore, ...args);
+  },
+  incr: (key) => {
+    if (!redisAvailable || !client) return Promise.resolve(0);
+    return client.incr(key);
+  },
+  expire: (key, ttl) => {
+    if (!redisAvailable || !client) return Promise.resolve();
+    return client.expire(key, ttl);
+  },
+  del: (key) => {
+    if (!redisAvailable || !client) return Promise.resolve();
+    return client.del(key);
+  },
+  ping: () => {
+    if (!redisAvailable || !client) return Promise.reject(new Error("Redis not available"));
+    return client.ping();
+  },
+  call: (...args) => {
+    if (!redisAvailable || !client) return Promise.resolve();
+    return client.call(...args);
+  },
+};
+
+export default redisProxy;
