@@ -47,16 +47,18 @@ const createSmtpTransporter = () => {
 /**
  * Send an email
  * Prioritizes Resend API (works on all cloud providers)
- * Falls back to SMTP only for local development
+ * Falls back to SMTP if Resend is missing or fails
  */
 export const sendEmail = async ({ to, subject, html, text }) => {
+  let resendTried = false;
+
   try {
-    // Prioritize Resend API (Recommended for production/Render)
+    // 1. Try Resend API first (Preferred for Production/Render)
     if (useResend()) {
-      logger.info(`Sending email to ${to} via Resend API...`);
+      resendTried = true;
+      logger.info(`[Email] Sending to ${to} via Resend...`);
       const resend = new Resend(process.env.RESEND_API_KEY);
       
-      // Use custom domain if verified, otherwise use Resend's testing domain
       const fromEmail = process.env.EMAIL_FROM || "SuviX <onboarding@resend.dev>";
       
       const { data, error } = await resend.emails.send({
@@ -68,17 +70,24 @@ export const sendEmail = async ({ to, subject, html, text }) => {
       });
 
       if (error) {
-        logger.error(`❌ Resend API Failed for ${to}:`, error.message);
-        throw new Error(`Resend Error: ${error.message}`);
+        // If Resend fails (e.g. testing restriction), log and fall through to SMTP
+        logger.warn(`[Email] Resend API Failed: ${error.message}`);
+        logger.info("[Email] Attempting SMTP fallback...");
+      } else {
+        logger.info(`✅ [Email] Sent via Resend to ${to}`);
+        return { success: true, messageId: data.id };
       }
-
-      logger.info(`✅ Email sent via Resend successfully to ${to}. ID: ${data.id}`);
-      return { success: true, messageId: data.id };
     }
 
-    // Fallback to Gmail SMTP (for local development only)
-    logger.info(`Sending email to ${to} via Gmail SMTP...`);
-    logger.warn(`⚠️ SMTP may not work on cloud providers. Consider using RESEND_API_KEY.`);
+    // 2. Fallback to Gmail SMTP
+    const transportLabel = resendTried ? "SMTP (Fallback)" : "SMTP";
+    logger.info(`[Email] Sending to ${to} via ${transportLabel}...`);
+    
+    // Warn about cloud provider limitations if we're falling back in production
+    if (resendTried && process.env.NODE_ENV === "production") {
+      logger.warn("[Email] Falling back to SMTP in production. This may fail if Render/Vercel blocks ports 465/587.");
+    }
+
     const transporter = createSmtpTransporter();
 
     const mailOptions = {
@@ -89,16 +98,23 @@ export const sendEmail = async ({ to, subject, html, text }) => {
       text: text || html.replace(/<[^>]*>/g, ""),
     };
 
+    // Verify connection before sending to get better error reporting
+    logger.info(`[Email] Connecting to ${process.env.SMTP_HOST || "smtp.gmail.com"}...`);
     const info = await transporter.sendMail(mailOptions);
-    logger.info(`Email sent via SMTP to ${to}: ${info.messageId}`);
+    logger.info(`✅ [Email] Sent via SMTP to ${to}`);
     
     return { success: true, messageId: info.messageId };
   } catch (error) {
     let errorMessage = error.message;
+    
+    // Provide better context for common errors
     if (errorMessage.includes("timeout") || errorMessage.includes("ETIMEDOUT")) {
-      errorMessage = "Email connection timed out. Cloud providers (Render/Vercel) often block SMTP. Please set RESEND_API_KEY to use the API route instead.";
+      errorMessage = "Email timed out. If on Render, verify Resend settings. If local, your ISP might block SMTP ports (465/587) or your App Password might be invalid.";
+    } else if (errorMessage.includes("testing emails")) {
+      errorMessage = "Resend restriction: you can only send to yourself until you verify a domain. SMTP fallback also failed.";
     }
-    logger.error(`Failed to send email to ${to}:`, errorMessage);
+
+    logger.error(`❌ [Email] Final failure for ${to}:`, errorMessage);
     throw new Error(errorMessage);
   }
 };
