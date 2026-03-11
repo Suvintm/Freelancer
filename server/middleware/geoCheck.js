@@ -56,12 +56,15 @@ export const geoCheckMiddleware = async (req, res, next) => {
     const lookup = geoReader.get(ip);
     const country = lookup?.country?.iso_code;
 
-    if (country !== "IN") {
+    // Allow India (IN) and United States (US)
+    const allowedCountries = ["IN", "US"];
+
+    if (!country || !allowedCountries.includes(country)) {
       logger.warn(`🚫 Access denied for IP ${ip} (Country: ${country || "Unknown"})`);
       return res.status(403).json({
         success: false,
         error: "REGION_BLOCKED",
-        message: "SuviX is currently available in India only.",
+        message: "SuviX is currently available in India and US only.",
       });
     }
 

@@ -54,9 +54,11 @@ export const register = asyncHandler(async (req, res) => {
     profilePicture = uploadResult.url;
   }
 
-  // Generate 6-digit OTP
+  /* 
+  // COMMENTED OUT FOR TESTING - Generating 6-digit OTP
   const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
   const hashedOtp = crypto.createHash("sha256").update(otpCode).digest("hex");
+  */
 
   const isIndia = country.toUpperCase() === "IN";
   
@@ -64,19 +66,12 @@ export const register = asyncHandler(async (req, res) => {
   const phoneValue = typeof phone === 'string' ? phone : "";
   const mobile = isIndia ? validateIndianMobile(phoneValue) : null;
 
-  logger.info("Mobile Validation Check:", {
-    country,
-    phoneProvided: !!phone,
-    isIndia,
-    mobileValidated: !!mobile,
-    mobileValue: mobile
-  });
-
   if (isIndia && !mobile) {
     throw new ApiError(400, "A valid Indian mobile number is required for registration.");
   }
 
-  // Save OTP and registration data
+  /*
+  // COMMENTED OUT FOR TESTING - Save OTP and registration data
   await Otp.create({
     email: email.toLowerCase().trim(),
     phone: mobile,
@@ -101,6 +96,68 @@ export const register = asyncHandler(async (req, res) => {
     message: "A verification code has been sent to your email.",
     email: email.toLowerCase().trim(),
     otpMethod: "Email"
+  });
+  */
+
+  // DIRECT CREATION FOR TESTING
+  // Determine currency and payment gateway based on country
+  const currencyMap = { IN: "INR", US: "USD", GB: "GBP", CA: "CAD", AU: "AUD" };
+  const currency = currencyMap[country] || "INR";
+  const paymentGateway = country === "IN" ? "razorpay" : "none";
+
+  const user = await User.create({
+    name: name.trim(),
+    email: email.toLowerCase().trim(),
+    password: hashedPassword,
+    role,
+    phone: mobile,
+    isPhoneVerified: !!mobile,
+    country: country.toUpperCase(),
+    currency,
+    paymentGateway,
+    profilePicture,
+  });
+
+  // Auto-create Profile document
+  await Profile.create({
+    user: user._id,
+    about: "",
+    portfolio: [],
+    skills: [],
+    languages: [],
+    experience: "",
+    certifications: [],
+    contactEmail: "",
+    location: { country: "" },
+  });
+
+  // Trigger Welcome Notification
+  await createNotification({
+    recipient: user._id,
+    type: "success",
+    title: "Welcome to SuviX! 🎉",
+    message: "We're excited to have you on board. Complete your profile to get started.",
+    link: "/editor-profile",
+  });
+
+  // Generate JWT
+  const token = jwt.sign(
+    { id: user._id, role: user.role },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  );
+
+  res.status(201).json({
+    success: true,
+    message: "Registration successful",
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      profilePicture: user.profilePicture,
+    },
+    token
   });
 });
 
@@ -131,7 +188,8 @@ export const login = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Invalid email or password.");
   }
 
-  // Generate 6-digit OTP for login
+  /*
+  // COMMENTED OUT FOR TESTING - Generate 6-digit OTP for login
   const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
 
   // Hash OTP
@@ -155,6 +213,32 @@ export const login = asyncHandler(async (req, res) => {
     message: "A verification code has been sent to your email.",
     email: user.email,
     otpMethod: "Email"
+  });
+  */
+
+  // DIRECT LOGIN FOR TESTING
+  // Generate JWT
+  const token = jwt.sign(
+    { id: user._id, role: user.role },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Login successful",
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      profileCompleted: user.profileCompleted,
+      profilePicture: user.profilePicture,
+      isVerified: user.isVerified,
+      kycStatus: user.kycStatus,
+      profileCompletionPercent: user.profileCompletionPercent,
+    },
+    token,
   });
 });
 
