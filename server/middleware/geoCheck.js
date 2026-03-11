@@ -15,8 +15,7 @@ const loadGeoIP = async () => {
     geoReader = await maxmind.open(dbPath);
     logger.info("✅ GeoIP Database loaded successfully");
   } catch (error) {
-    logger.error("❌ Failed to load GeoIP Database:", error.message);
-    logger.warn("⚠️ GeoIP check will be bypassed until database is provided");
+    logger.warn("⚠️ GeoIP Database not found at startup. Ensure MAXMIND_LICENSE_KEY is set and build script ran.");
   }
 };
 
@@ -42,8 +41,7 @@ export const getClientIP = (req) => {
 export const geoCheckMiddleware = async (req, res, next) => {
   // Bypass if DB is not loaded (prevents app crash if file is missing)
   if (!geoReader) {
-    // Silence this in production logs to avoid clutter
-    logger.debug("Skipping GeoIP check: Database not found");
+    logger.warn("⚠️ Skipping GeoIP check: Database not found");
     return next();
   }
 
