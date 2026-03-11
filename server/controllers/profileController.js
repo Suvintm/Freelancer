@@ -319,7 +319,7 @@ export const getProfileCompletionStatus = asyncHandler(async (req, res) => {
       weight: 15,
       required: true,
       section: "about",
-      complete: profile?.about && profile.about.length >= 50,
+      complete: profile?.about && profile.about.length >= 10,
     },
     {
       id: "skills",
@@ -362,7 +362,7 @@ export const getProfileCompletionStatus = asyncHandler(async (req, res) => {
       complete: (() => {
         if (!profile?.socialLinks) return false;
         const links = Object.values(profile.socialLinks).filter(v => v && v.trim().length > 0);
-        return links.length >= 2;
+        return links.length >= 1; // Lowered from 2 to 1
       })(),
     },
     {

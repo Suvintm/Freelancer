@@ -25,6 +25,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import axios from 'axios';
+import kycBannerImg from '../assets/kycbanner.png';
 
 // Icon mapping
 const iconMap = {
@@ -137,33 +138,87 @@ const ProfileCompletionBanner = () => {
           </div>
 
           {/* Info */}
-          <div className="flex flex-col">
+          <div className="flex flex-col gap-0.5">
             <h3 className="text-sm font-semibold text-gray-100 light:text-slate-900 tracking-tight">Profile Completion</h3>
-            <p className="text-[0.7rem] text-gray-500 light:text-slate-500 font-medium">
+            <p className="text-[11px] leading-tight text-gray-400 light:text-slate-500 max-w-[280px]">
+              Complete all <span className="text-gray-200 light:text-slate-700 font-bold">required</span> fields to be recognized as a <span className="text-emerald-400 light:text-emerald-600 font-bold">SuviX Editor</span>. Optional fields are bonus!
+            </p>
+            <p className="text-[0.7rem] text-gray-500 light:text-slate-500 font-medium mt-1">
               {requiredComplete} of {requiredCount} required
             </p>
-            <p className="text-[10px] text-gray-400 light:text-slate-400">{completionData?.message}</p>
           </div>
         </div>
 
-        {/* Right: Actions */}
-        <div className="flex gap-2 flex-shrink-0">
-          <button 
-            className="flex items-center gap-1 px-3 py-1.5 bg-transparent border border-white/10 light:border-slate-200 rounded-lg text-gray-400 light:text-slate-600 text-[0.7rem] font-medium cursor-pointer transition-all hover:bg-white/[0.03] light:hover:bg-slate-50"
-            onClick={() => setShowChecklist(!showChecklist)}
-          >
-            <span>Checklist</span>
-            <FaChevronDown 
-              className={`text-[0.6rem] transition-transform duration-200 ${showChecklist ? 'rotate-180' : ''}`}
+        {/* Right: Actions + KYC */}
+        <div className="flex items-center gap-4 flex-shrink-0">
+          {/* KYC Section */}
+          <div className="flex flex-col items-center gap-1">
+            <AnimatePresence mode="wait">
+              {completionData?.breakdown.find(i => i.id === 'kycVerified')?.complete ? (
+                <motion.div
+                  key="done"
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -5 }}
+                  className="px-2 py-0.5 bg-emerald-500/10 rounded flex items-center gap-1"
+                >
+                  <FaCheckCircle className="text-[10px] text-emerald-500" />
+                  <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">KYC Done</span>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="pending"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ 
+                    opacity: 1, 
+                    scale: 1,
+                    transition: { duration: 0.3 }
+                  }}
+                  className="flex flex-col items-center"
+                >
+                  <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest animate-pulse">Required</span>
+                  <div className="text-[8px] text-gray-500 font-medium -mt-1 uppercase">Not Completed</div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            
+            <motion.img 
+              src={kycBannerImg} 
+              alt="KYC status" 
+              className="w-12 h-12 object-contain cursor-pointer transition-transform hover:scale-110"
+              animate={{ 
+                y: [0, -4, 0],
+                rotate: [0, 1, -1, 0]
+              }}
+              transition={{ 
+                duration: 4, 
+                repeat: Infinity, 
+                ease: "easeInOut" 
+              }}
+              onClick={() => navigate('/kyc-details')}
             />
-          </button>
-          <button 
-            className="flex items-center gap-1 px-4 py-1.5 bg-gradient-to-r from-green-400/20 to-green-500 light:from-emerald-500 light:to-emerald-600 border border-white/[0.08] light:border-transparent rounded-lg text-gray-200 light:text-white text-[0.75rem] font-semibold cursor-pointer transition-all hover:bg-[#222225]"
-            onClick={() => navigate('/editor-profile-update')}
-          >
-            <span>Complete</span>
-            <FaArrowRight className="text-[0.65rem]" />
-          </button>
+          </div>
+
+          <div className="h-10 w-[1px] bg-white/10 hidden md:block" />
+
+          <div className="flex gap-2">
+            <button 
+              className="flex items-center gap-1 px-3 py-1.5 bg-transparent border border-white/10 light:border-slate-200 rounded-lg text-gray-400 light:text-slate-600 text-[0.7rem] font-medium cursor-pointer transition-all hover:bg-white/[0.03] light:hover:bg-slate-50"
+              onClick={() => setShowChecklist(!showChecklist)}
+            >
+              <span>Checklist</span>
+              <FaChevronDown 
+                className={`text-[0.6rem] transition-transform duration-200 ${showChecklist ? 'rotate-180' : ''}`}
+              />
+            </button>
+            <button 
+              className="flex items-center gap-1 px-4 py-1.5 bg-gradient-to-r from-green-400/20 to-green-500 light:from-emerald-500 light:to-emerald-600 border border-white/[0.08] light:border-transparent rounded-lg text-gray-200 light:text-white text-[0.75rem] font-semibold cursor-pointer transition-all hover:bg-[#222225]"
+              onClick={() => navigate('/editor-profile-update')}
+            >
+              <span>Complete</span>
+              <FaArrowRight className="text-[0.65rem]" />
+            </button>
+          </div>
         </div>
       </div>
 
