@@ -200,27 +200,8 @@ app.use(compression());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// ============ EXEMPTIONS FROM GLOBAL SANITIZATION ============
-// 🚨 IMPORTANT: These routes are moved ABOVE mongoSanitize to prevent 
-// mangling of external URLs (which contain dots that mongoSanitize replaces with '_').
-// These routes handle their own specific validation and security.
-app.use("/api/ads", advertisementRoutes);
-app.use("/api/messages", messageRoutes); // Drive link URLs contain dots — must bypass sanitizer
-
-// ============ SECURITY: INPUT SANITIZATION ============
-
-// Prevent MongoDB NoSQL injection — strips $ and . from user input
-app.use(mongoSanitize({
-  replaceWith: "_",
-  onSanitize: ({ req, key }) => {
-    logger.warn(`[SECURITY] Sanitized potential NoSQL injection at field: "${key}" from IP: ${req.ip}`);
-  },
-}));
-
-// Prevent HTTP Parameter Pollution — keeps only the last value of duplicate params
-app.use(hpp());
-
 // ============ SESSION (for OAuth) ============
+// 🚨 MUST be before passport.initialize() and passport.session()
 
 // Initialize Redis Store for sessions
 const redisStore = new RedisStore({
@@ -243,8 +224,30 @@ app.use(
 );
 
 // Initialize Passport
+// 🚨 MUST be after session() and before routes
 app.use(passport.initialize());
 app.use(passport.session());
+
+// ============ EXEMPTIONS FROM GLOBAL SANITIZATION ============
+// 🚨 IMPORTANT: These routes are moved ABOVE mongoSanitize to prevent 
+// mangling of external URLs (which contain dots that mongoSanitize replaces with '_').
+// These routes handle their own specific validation and security.
+app.use("/api/ads", advertisementRoutes);
+app.use("/api/messages", messageRoutes); // Drive link URLs contain dots — must bypass sanitizer
+app.use("/api/auth", vpnCheckMiddleware, oauthRoutes); // OAuth codes contain dots — must bypass sanitizer
+
+// ============ SECURITY: INPUT SANITIZATION ============
+
+// Prevent MongoDB NoSQL injection — strips $ and . from user input
+app.use(mongoSanitize({
+  replaceWith: "_",
+  onSanitize: ({ req, key }) => {
+    logger.warn(`[SECURITY] Sanitized potential NoSQL injection at field: "${key}" from IP: ${req.ip}`);
+  },
+}));
+
+// Prevent HTTP Parameter Pollution — keeps only the last value of duplicate params
+app.use(hpp());
 
 // ============ REQUEST LOGGING ============
 
@@ -274,8 +277,7 @@ app.get("/api/health", (req, res) => {
 });
 
 app.use("/api/auth", vpnCheckMiddleware, authRoutes);
-app.use("/api/auth", vpnCheckMiddleware, oauthRoutes); // OAuth routes under /api/auth
-app.use("/api/profile", profileRoutes);
+ app.use("/api/profile", profileRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/users", userRoutes); // Support plural version for Reels/Follow system
 app.use("/api/portfolio", portfolioRoutes);

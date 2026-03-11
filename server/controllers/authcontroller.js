@@ -118,7 +118,7 @@ export const register = asyncHandler(async (req, res) => {
     profilePicture,
   });
 
-  // Auto-create Profile document
+  // Auto-create Profile document with consistent initial data
   await Profile.create({
     user: user._id,
     about: "",
@@ -127,8 +127,8 @@ export const register = asyncHandler(async (req, res) => {
     languages: [],
     experience: "",
     certifications: [],
-    contactEmail: "",
-    location: { country: "" },
+    contactEmail: user.email, // Sync with registration email
+    location: { country: user.country }, // Sync with user country
   });
 
   // Trigger Welcome Notification

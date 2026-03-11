@@ -28,6 +28,7 @@ router.get(
     passport.authenticate("google", {
         scope: ["profile", "email"],
         prompt: "select_account", // Always show account selector
+        session: false,
     })
 );
 
@@ -107,7 +108,7 @@ router.post("/select-role", async (req, res) => {
             });
         }
 
-        // Update user role
+        // Update user role and production defaults
         const user = await User.findById(decoded.id);
         if (!user) {
             return res.status(404).json({
@@ -116,10 +117,19 @@ router.post("/select-role", async (req, res) => {
             });
         }
 
+        // Production Parity: Set defaults based on country (defaulting to IN if missing)
+        const country = user.country || "IN";
+        const currencyMap = { IN: "INR", US: "USD", GB: "GBP", CA: "CAD", AU: "AUD" };
+        const currency = currencyMap[country] || "INR";
+        const paymentGateway = country === "IN" ? "razorpay" : "none";
+
         user.role = role;
+        user.currency = currency;
+        user.paymentGateway = paymentGateway;
+        user.isVerified = true; // OAuth users are verified
         await user.save();
 
-        // Create profile for the user
+        // Create profile for the user with full consistency
         const existingProfile = await Profile.findOne({ user: user._id });
         if (!existingProfile) {
             await Profile.create({
@@ -131,18 +141,18 @@ router.post("/select-role", async (req, res) => {
                 experience: "",
                 certifications: [],
                 contactEmail: user.email,
-                location: { country: "" },
+                location: { country: country },
             });
         }
 
         // Generate full token
         const authToken = generateToken(user);
 
-        logger.info(`OAuth user role set: ${user.email} -> ${role}`);
+        logger.info(`[OAuth] Finalized registration: ${user.email} as ${role}`);
 
         res.status(200).json({
             success: true,
-            message: "Role selected successfully",
+            message: "Registration completed successfully",
             user: {
                 id: user._id,
                 name: user.name,
@@ -150,6 +160,9 @@ router.post("/select-role", async (req, res) => {
                 role: user.role,
                 profileCompleted: user.profileCompleted,
                 profilePicture: user.profilePicture,
+                isVerified: user.isVerified,
+                kycStatus: user.kycStatus,
+                profileCompletionPercent: user.profileCompletionPercent,
             },
             token: authToken,
         });

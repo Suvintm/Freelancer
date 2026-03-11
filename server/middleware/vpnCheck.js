@@ -33,14 +33,15 @@ const detectVPN = async (ip) => {
 
     const { proxy, hosting, countryCode } = response.data;
 
-    // Detect VPN if it's a proxy, datacenter (hosting), or NOT India
-    const isVPN = proxy === true || hosting === true || countryCode !== "IN";
+    // Detect VPN if it's a proxy, datacenter (hosting), or NOT in Allowed Countries
+    const allowedCountries = ["IN", "US"];
+    const isVPN = proxy === true || hosting === true || !allowedCountries.includes(countryCode);
 
     const result = {
       ip,
       countryCode,
       isVPN,
-      isIndia: countryCode === "IN",
+      isAllowedCountry: allowedCountries.includes(countryCode),
       isHosting: hosting === true,
       timestamp: Date.now(),
     };
@@ -61,8 +62,8 @@ const detectVPN = async (ip) => {
 export const vpnCheckMiddleware = async (req, res, next) => {
   const ip = getClientIP(req);
 
-  // Skip for local development
-  if (ip === "127.0.0.1" || ip.startsWith("192.168.") || ip.startsWith("10.")) {
+  // Skip for local development (IPv4 and IPv6 localhost)
+  if (ip === "127.0.0.1" || ip === "::1" || ip.startsWith("192.168.") || ip.startsWith("10.")) {
     return next();
   }
 
@@ -70,21 +71,11 @@ export const vpnCheckMiddleware = async (req, res, next) => {
 
   // If VPN/Proxy detected, block access
   if (result.isVPN) {
-    logger.warn(`🚫 VPN Detected: Blocked access for IP ${ip} (Hosting: ${result.isHosting})`);
+    logger.warn(`🚫 VPN/Restricted Access: Blocked IP ${ip} (Country: ${result.countryCode}, Hosting: ${result.isHosting})`);
     return res.status(403).json({
       success: false,
-      error: "VPN_DETECTED",
-      message: "Please disable your VPN or Proxy to access SuviX.",
-    });
-  }
-
-  // Double check country (Layer 3 defense)
-  if (!result.isIndia) {
-    logger.warn(`🚫 VPN/Proxy Mismatch: Blocked access for IP ${ip} (Country: ${result.countryCode})`);
-    return res.status(403).json({
-      success: false,
-      error: "REGION_BLOCKED",
-      message: "SuviX is currently available in India only.",
+      error: "ACCESS_DENIED",
+      message: "Access restricted. Please disable VPN or ensure you are in an allowed region.",
     });
   }
 
