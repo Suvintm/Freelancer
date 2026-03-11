@@ -16,10 +16,23 @@ fi
 echo "🌐 Downloading GeoIP Country database..."
 
 # Download the tar.gz file
-curl -s "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz" -o geoip.tar.gz
+# -L: Follow redirects (CRITICAL for MaxMind CDN)
+# -f: Fail on HTTP errors (don't create an empty file)
+# -s: Silent mode
+curl -sfL "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz" -o geoip.tar.gz || {
+  echo "❌ Error: Failed to download GeoIP database. Please check your MAXMIND_LICENSE_KEY."
+  exit 1
+}
+
+# Check if file is small (likely an error message instead of a database)
+FILESIZE=$(stat -c%s "geoip.tar.gz")
+if [ "$FILESIZE" -lt 1000 ]; then
+  echo "❌ Error: Downloaded file is too small ($FILESIZE bytes). It might be an error from MaxMind."
+  cat geoip.tar.gz
+  exit 1
+fi
 
 # Extract the .mmdb file from the tarball
-# The tarball contains a folder like GeoLite2-Country_20240311/GeoLite2-Country.mmdb
 tar -xzf geoip.tar.gz --strip-components=1 -C $GEOIP_DIR --wildcards "*.mmdb"
 
 # Cleanup
