@@ -42,7 +42,8 @@ export const getClientIP = (req) => {
 export const geoCheckMiddleware = async (req, res, next) => {
   // Bypass if DB is not loaded (prevents app crash if file is missing)
   if (!geoReader) {
-    logger.warn("⚠️ Skipping GeoIP check: Database not found");
+    // Silence this in production logs to avoid clutter
+    logger.debug("Skipping GeoIP check: Database not found");
     return next();
   }
 

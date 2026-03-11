@@ -12,9 +12,6 @@ import logger from "./logger.js";
 
 // Check if Resend should be used
 const useResend = () => {
-  // Resend disabled as per user request
-  return false;
-  /*
   // Use Resend only if:
   // 1. API key exists
   // 2. We're NOT explicitly asking for SMTP
@@ -23,7 +20,6 @@ const useResend = () => {
   
   const mailService = process.env.MAIL_SERVICE || "resend";
   return !!process.env.RESEND_API_KEY && mailService.toLowerCase() === "resend";
-  */
 };
 
 // Create SMTP transporter (for local development only)
@@ -55,8 +51,7 @@ const createSmtpTransporter = () => {
  */
 export const sendEmail = async ({ to, subject, html, text }) => {
   try {
-    /* 
-    // Commented out Resend logic
+    // Prioritize Resend API (Recommended for production/Render)
     if (useResend()) {
       logger.info(`Sending email to ${to} via Resend API...`);
       const resend = new Resend(process.env.RESEND_API_KEY);
@@ -73,14 +68,13 @@ export const sendEmail = async ({ to, subject, html, text }) => {
       });
 
       if (error) {
-        logger.error(`Resend API error:`, error.message);
-        throw new Error(error.message);
+        logger.error(`❌ Resend API Failed for ${to}:`, error.message);
+        throw new Error(`Resend Error: ${error.message}`);
       }
 
-      logger.info(`Email sent via Resend to ${to}. ID: ${data.id}`);
+      logger.info(`✅ Email sent via Resend successfully to ${to}. ID: ${data.id}`);
       return { success: true, messageId: data.id };
     }
-    */
 
     // Fallback to Gmail SMTP (for local development only)
     logger.info(`Sending email to ${to} via Gmail SMTP...`);

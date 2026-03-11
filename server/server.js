@@ -8,6 +8,7 @@ import mongoSanitize from "@exortek/express-mongo-sanitize";
 import hpp from "hpp";
 import compression from "compression";
 import session from "express-session";
+import { RedisStore } from "connect-redis";
 
 // IMPORTANT: Load env variables FIRST before any other imports that use them
 dotenv.config();
@@ -221,8 +222,15 @@ app.use(hpp());
 
 // ============ SESSION (for OAuth) ============
 
+// Initialize Redis Store for sessions
+const redisStore = new RedisStore({
+  client: redis,
+  prefix: "sess:",
+});
+
 app.use(
   session({
+    store: redisStore,
     secret: process.env.SESSION_SECRET || process.env.JWT_SECRET,
     resave: false,
     saveUninitialized: false,
