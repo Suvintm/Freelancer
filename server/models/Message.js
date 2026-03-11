@@ -14,7 +14,7 @@ const messageSchema = new mongoose.Schema(
     sender: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: false, // Optional for system messages
     },
 
     // Message type
@@ -162,6 +162,7 @@ const messageSchema = new mongoose.Schema(
         "dispute_raised",
         "deadline_reminder",
         "content_accessed",  // Editor accepted terms and accessed drive link
+        "order_refunded",    // Auto-refund or manual refund processed
       ],
     },
 

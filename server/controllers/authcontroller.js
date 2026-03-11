@@ -92,29 +92,15 @@ export const register = asyncHandler(async (req, res) => {
     }
   });
 
-  // Send OTP (SMS if India, Email fallback)
-  let otpMethod = "Email";
-
-  if (isIndia && mobile) {
-    try {
-      await initiateSMSOTP(mobile, otpCode);
-      otpMethod = "SMS";
-      logger.info(`SMS OTP sent for registration: ${mobile}`);
-    } catch (smsError) {
-      logger.error(`SMS OTP failed for ${mobile}, falling back to Email: ${smsError.message}`);
-      await sendOTPEmail(email.toLowerCase().trim(), name.trim(), otpCode);
-    }
-  } else {
-    await sendOTPEmail(email.toLowerCase().trim(), name.trim(), otpCode);
-  }
+  // Send OTP via Email
+  await sendOTPEmail(email.toLowerCase().trim(), name.trim(), otpCode);
 
   res.status(200).json({
     success: true,
     requiresVerification: true,
-    message: `A verification code has been sent to your ${otpMethod === "SMS" ? "mobile" : "email"}.`,
+    message: "A verification code has been sent to your email.",
     email: email.toLowerCase().trim(),
-    phone: mobile,
-    otpMethod
+    otpMethod: "Email"
   });
 });
 
@@ -159,33 +145,16 @@ export const login = asyncHandler(async (req, res) => {
     type: "login"
   });
 
-  // Send OTP (SMS if India, Email otherwise)
-  const isIndia = user.country === "IN";
-  const mobile = isIndia ? validateIndianMobile(user.phone) : null;
-
-  // Send OTP (SMS if India, Email fallback)
-  let otpMethod = "Email";
-  if (isIndia && mobile) {
-    try {
-      await initiateSMSOTP(mobile, otpCode);
-      otpMethod = "SMS";
-      logger.info(`SMS OTP sent for login: ${mobile}`);
-    } catch (smsError) {
-      logger.error(`SMS login failed for ${mobile}, falling back to Email: ${smsError.message}`);
-      await sendOTPEmail(user.email, user.name, otpCode);
-    }
-  } else {
-    await sendOTPEmail(user.email, user.name, otpCode);
-    logger.info(`Email OTP sent for login: ${user.email}`);
-  }
+  // Send OTP via Email
+  await sendOTPEmail(user.email, user.name, otpCode);
+  logger.info(`Email OTP sent for login: ${user.email}`);
 
   res.status(200).json({
     success: true,
     requiresVerification: true,
-    message: `A verification code has been sent to your ${otpMethod === "SMS" ? "mobile" : "email"}.`,
+    message: "A verification code has been sent to your email.",
     email: user.email,
-    phone: mobile,
-    otpMethod
+    otpMethod: "Email"
   });
 });
 
@@ -349,26 +318,14 @@ export const resendOtp = asyncHandler(async (req, res) => {
     if (userDoc) name = userDoc.name;
   }
 
-  // Send Resend OTP (SMS if mobile available, Email fallback)
-  let otpMethod = "Email";
-  if (existingOtpDoc.phone) {
-    try {
-      await initiateSMSOTP(existingOtpDoc.phone, newOtpCode);
-      otpMethod = "SMS";
-      logger.info(`SMS OTP Resent to: ${existingOtpDoc.phone}`);
-    } catch (smsError) {
-      logger.error(`SMS resend failed for ${existingOtpDoc.phone}, falling back to Email: ${smsError.message}`);
-      await sendOTPEmail(existingOtpDoc.email, name, newOtpCode);
-    }
-  } else {
-    await sendOTPEmail(existingOtpDoc.email, name, newOtpCode);
-    logger.info(`Email OTP Resent to: ${existingOtpDoc.email}`);
-  }
+  // Send Resend OTP via Email
+  await sendOTPEmail(existingOtpDoc.email, name, newOtpCode);
+  logger.info(`Email OTP Resent to: ${existingOtpDoc.email}`);
 
   res.status(200).json({
     success: true,
-    message: `A new verification code has been sent to your ${otpMethod === "SMS" ? "mobile" : "email"}.`,
-    otpMethod
+    message: "A new verification code has been sent to your email.",
+    otpMethod: "Email"
   });
 });
 

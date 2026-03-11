@@ -12,11 +12,18 @@ import logger from "./logger.js";
 
 // Check if Resend should be used
 const useResend = () => {
+  // Resend disabled as per user request
+  return false;
+  /*
   // Use Resend only if:
   // 1. API key exists
   // 2. We're NOT explicitly asking for SMTP
+  // Force Resend in production if key exists regardless of MAIL_SERVICE
+  if (process.env.NODE_ENV === "production" && process.env.RESEND_API_KEY) return true;
+  
   const mailService = process.env.MAIL_SERVICE || "resend";
   return !!process.env.RESEND_API_KEY && mailService.toLowerCase() === "resend";
+  */
 };
 
 // Create SMTP transporter (for local development only)
@@ -48,7 +55,8 @@ const createSmtpTransporter = () => {
  */
 export const sendEmail = async ({ to, subject, html, text }) => {
   try {
-    // Use Resend if API key is configured (required for production)
+    /* 
+    // Commented out Resend logic
     if (useResend()) {
       logger.info(`Sending email to ${to} via Resend API...`);
       const resend = new Resend(process.env.RESEND_API_KEY);
@@ -72,6 +80,7 @@ export const sendEmail = async ({ to, subject, html, text }) => {
       logger.info(`Email sent via Resend to ${to}. ID: ${data.id}`);
       return { success: true, messageId: data.id };
     }
+    */
 
     // Fallback to Gmail SMTP (for local development only)
     logger.info(`Sending email to ${to} via Gmail SMTP...`);
@@ -91,8 +100,12 @@ export const sendEmail = async ({ to, subject, html, text }) => {
     
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    logger.error(`Failed to send email to ${to}:`, error.message);
-    throw error;
+    let errorMessage = error.message;
+    if (errorMessage.includes("timeout") || errorMessage.includes("ETIMEDOUT")) {
+      errorMessage = "Email connection timed out. Cloud providers (Render/Vercel) often block SMTP. Please set RESEND_API_KEY to use the API route instead.";
+    }
+    logger.error(`Failed to send email to ${to}:`, errorMessage);
+    throw new Error(errorMessage);
   }
 };
 
