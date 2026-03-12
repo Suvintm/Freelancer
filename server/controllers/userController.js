@@ -248,7 +248,14 @@ export const getUserSuggestions = asyncHandler(async (req, res) => {
   const user = await User.findById(userId);
   const excludeIds = [userId, ...user.following];
 
-  let matchQuery = { _id: { $nin: excludeIds }, isBanned: false };
+  let matchQuery = { 
+    _id: { $nin: excludeIds }, 
+    isBanned: false,
+    $or: [
+      { role: { $ne: "editor" } }, // Always show non-editors (clients, etc)
+      { role: "editor", profileCompleted: true } // Only show completed editors
+    ]
+  };
   let sortQuery = { createdAt: -1 };
 
   if (type === "trending") {
@@ -366,7 +373,11 @@ export const searchUsers = asyncHandler(async (req, res) => {
 
   const users = await User.find({
     name: searchRegex,
-    isBanned: { $ne: true }
+    isBanned: { $ne: true },
+    $or: [
+      { role: { $ne: "editor" } },
+      { role: "editor", profileCompleted: true }
+    ]
   })
     .select("name profilePicture role country")
     .limit(8)

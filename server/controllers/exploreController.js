@@ -32,7 +32,7 @@ export const getAllEditors = asyncHandler(async (req, res) => {
       role: "editor",
       isVerified: true,
       kycStatus: "verified",
-      profileCompletionPercent: { $gte: 80 },
+      profileCompleted: true, // Required for visibility
       isBanned: { $ne: true },
     };
 
@@ -146,6 +146,7 @@ export const getEditorSuggestions = asyncHandler(async (req, res) => {
   const userMatches = await User.find({
     role: "editor",
     isVerified: true,
+    profileCompleted: true,
     name: searchRegex,
     isBanned: { $ne: true }
   })

@@ -192,7 +192,8 @@ export const getNearbyEditors = asyncHandler(async (req, res) => {
         maxDistance: searchRadiusInMeters,
         query: {
           role: "editor",
-          isAvailable: true, // Only show editors who are marked as available
+          isAvailable: true, 
+          profileCompleted: true, // Only show completed profiles
           locationUpdatedAt: { $gte: freshnessLimit }
         },
         spherical: true
