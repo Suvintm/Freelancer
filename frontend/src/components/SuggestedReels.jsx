@@ -6,7 +6,6 @@ import {
     HiChevronLeft, 
     HiChevronRight,
     HiSparkles,
-    HiFire,
     HiOutlineArrowRight
 } from "react-icons/hi2";
 import { useNavigate } from "react-router-dom";
@@ -14,6 +13,52 @@ import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import { useAppContext } from "../context/AppContext";
 import MusicVisualizer from "./MusicVisualizer";
+
+// ─── Robust scrollable parent finder ─────────────────────────────────────────
+// Works in both dev and production (handles CSS purging, SSR hydration, etc.)
+const findScrollableParent = (el) => {
+    if (!el) return null;
+
+    let node = el.parentElement;
+
+    while (node && node !== document.body) {
+        try {
+            const style = window.getComputedStyle(node);
+            const overflowY = style.overflowY;
+            const overflow  = style.overflow;
+
+            // Check both overflow and overflow-y
+            const isScrollable = 
+                overflowY === 'auto'   || overflowY === 'scroll' ||
+                overflow  === 'auto'   || overflow  === 'scroll';
+
+            // Also verify the element actually HAS scrollable content
+            if (isScrollable && node.scrollHeight > node.clientHeight) {
+                return node;
+            }
+        } catch (_) {
+            // getComputedStyle can throw in some envs — skip
+        }
+        node = node.parentElement;
+    }
+
+    // Fallback 1: look for <main> tag (common app shell pattern)
+    const main = document.querySelector('main');
+    if (main && main.scrollHeight > main.clientHeight) return main;
+
+    // Fallback 2: find the first div/section that is actually scrolling
+    const candidates = document.querySelectorAll('div, section, article');
+    for (const candidate of candidates) {
+        if (candidate.scrollHeight > candidate.clientHeight + 10) {
+            try {
+                const ov = window.getComputedStyle(candidate).overflowY;
+                if (ov === 'auto' || ov === 'scroll') return candidate;
+            } catch (_) {}
+        }
+    }
+
+    return window;
+};
 
 const SuggestedReels = () => {
     const { backendURL } = useAppContext();
@@ -28,66 +73,84 @@ const SuggestedReels = () => {
             const { data } = await axios.get(`${backendURL}/api/reels/feed?page=1&limit=12`);
             return data.reels || [];
         },
-        staleTime: 5 * 60 * 1000, // 5 min cache
+        staleTime: 5 * 60 * 1000,
     });
 
-    // Auto-reset horizontal scroll when vertical scrolling is detected (High-Performance UX)
-  useEffect(() => {
-    const getScrollableParent = (el) => {
-        if (!el) return window;
-        let parent = el.parentElement;
-        while (parent) {
-            const { overflow, overflowY } = window.getComputedStyle(parent);
-            if (/(auto|scroll)/.test(overflow + overflowY)) return parent;
-            parent = parent.parentElement;
-        }
-        return window;
-    };
+    // ── Auto-reset horizontal scroll on vertical scroll ──────────────────────
+    useEffect(() => {
+        // Delay so DOM is fully painted — critical for production builds
+        // where hydration and CSS application can be async
+        const init = () => {
+            const scrollableParent = findScrollableParent(mainContainerRef.current);
+            const target = scrollableParent || window;
 
-    const scrollableParent = getScrollableParent(mainContainerRef.current);
-    let lastY = scrollableParent === window ? window.scrollY : scrollableParent.scrollTop;
-    let ticking = false;
+            const getScrollTop = () =>
+                target === window ? window.scrollY : target.scrollTop;
 
-    const handleScroll = () => {
-        if (!ticking) {
-            window.requestAnimationFrame(() => {
-                const currentY = scrollableParent === window
-                    ? window.scrollY
-                    : scrollableParent.scrollTop;
-                const diffY = Math.abs(currentY - lastY);
+            let lastY = getScrollTop();
+            let ticking = false;
 
-                if (diffY > 15 && scrollRef.current && mainContainerRef.current) {
-                    const { scrollLeft } = scrollRef.current;
-                    if (scrollLeft > 0) {
-                        // Check if the reels section is still near center of screen
-                        const rect = mainContainerRef.current.getBoundingClientRect();
-                        const viewportHeight = window.innerHeight;
-                        const elementCenter = rect.top + rect.height / 2;
-                        const screenCenter = viewportHeight / 2;
-                        const distanceFromCenter = Math.abs(elementCenter - screenCenter);
+            const handleScroll = () => {
+                if (ticking) return;
+                ticking = true;
 
-                        // Only reset if the section is more than 40% away from screen center
-                        const threshold = viewportHeight * 0.2;
-                        if (distanceFromCenter > threshold) {
-                            scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+                window.requestAnimationFrame(() => {
+                    const currentY = getScrollTop();
+                    const diffY = Math.abs(currentY - lastY);
+
+                    if (diffY > 15 && scrollRef.current) {
+                        const { scrollLeft } = scrollRef.current;
+                        if (scrollLeft > 0) {
+                            // Check if reels section is still on-screen
+                            // Only reset if it's scrolled far from the viewport center
+                            if (mainContainerRef.current) {
+                                const rect = mainContainerRef.current.getBoundingClientRect();
+                                const vh = window.innerHeight;
+                                const elementCenter = rect.top + rect.height / 2;
+                                const distFromCenter = Math.abs(elementCenter - vh / 2);
+
+                                if (distFromCenter > vh * 0.4) {
+                                    scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+                                }
+                            } else {
+                                scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+                            }
                         }
                     }
-                }
-                lastY = currentY;
-                ticking = false;
-            });
-            ticking = true;
-        }
-    };
 
-    scrollableParent.addEventListener('scroll', handleScroll, { passive: true });
-    return () => scrollableParent.removeEventListener('scroll', handleScroll);
-}, []);
+                    lastY = currentY;
+                    ticking = false;
+                });
+            };
+
+            target.addEventListener('scroll', handleScroll, { passive: true });
+
+            // Cleanup returns the remover
+            return () => target.removeEventListener('scroll', handleScroll);
+        };
+
+        // Use requestAnimationFrame + small timeout to ensure layout is ready
+        // in production (avoids finding the wrong parent before styles apply)
+        let cleanup = () => {};
+        const raf = requestAnimationFrame(() => {
+            const timer = setTimeout(() => {
+                cleanup = init();
+            }, 100);
+            cleanup = () => clearTimeout(timer);
+        });
+
+        return () => {
+            cancelAnimationFrame(raf);
+            cleanup();
+        };
+    }, []);
 
     const scroll = (direction) => {
         if (scrollRef.current) {
             const { scrollLeft, clientWidth } = scrollRef.current;
-            const scrollTo = direction === 'left' ? scrollLeft - clientWidth * 0.8 : scrollLeft + clientWidth * 0.8;
+            const scrollTo = direction === 'left'
+                ? scrollLeft - clientWidth * 0.8
+                : scrollLeft + clientWidth * 0.8;
             scrollRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
         }
     };
@@ -118,12 +181,13 @@ const SuggestedReels = () => {
     );
 
     return (
-        <div 
+        <div
             ref={mainContainerRef}
             className="group/main relative mb-8"
             onMouseEnter={() => setShowControls(true)}
             onMouseLeave={() => setShowControls(false)}
         >
+            {/* Header */}
             <div className="flex items-center justify-between mb-4 px-1">
                 <div className="flex flex-col">
                     <div className="flex items-center gap-1.5 mb-0.5">
@@ -131,11 +195,11 @@ const SuggestedReels = () => {
                         <h2 className="text-[11px] font-black text-white light:text-slate-900 tracking-[0.15em] uppercase">Suggested Reels</h2>
                     </div>
                     <div className="flex items-center gap-1.5 opacity-40 ml-5">
-                         <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                         <span className="text-[9px] font-bold uppercase tracking-wider">Live Feed</span>
+                        <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[9px] font-bold uppercase tracking-wider">Live Feed</span>
                     </div>
                 </div>
-                <button 
+                <button
                     onClick={() => navigate("/reels-explore")}
                     className="group/btn flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 transition-all"
                 >
@@ -172,29 +236,29 @@ const SuggestedReels = () => {
                 </AnimatePresence>
 
                 {/* Horizontal Scroll Area */}
-                <div 
+                <div
                     ref={scrollRef}
-                    className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide snap-x px-1" 
+                    className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide snap-x px-1"
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
                     {reels.map((reel, idx) => (
                         <ReelThumbnail key={reel._id} reel={reel} index={idx} />
                     ))}
-                    
-                    {/* View More Premium Card */}
+
+                    {/* View More Card */}
                     <motion.div
                         whileHover={{ y: -8, scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => navigate("/reels-explore")}
                         className="flex-shrink-0 w-40 md:w-48 h-72 md:h-80 rounded-3xl relative overflow-hidden cursor-pointer group snap-start"
                     >
-                        <div className="absolute inset-0 bg-[#0d0d12] border border-white/5 group-hover:border-purple-500/30 transition-colors bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-40" />
+                        <div className="absolute inset-0 bg-[#0d0d12] border border-white/5 group-hover:border-purple-500/30 transition-colors" />
                         <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
                             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 backdrop-blur-xl border border-white/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-2xl shadow-purple-500/10">
                                 <HiOutlineArrowRight className="text-2xl text-purple-400" />
                             </div>
-                            <h3 className="text-sm font-black text-white uppercase tracking-widest leading-tight">View<br/>Entire Feed</h3>
-                            <p className="text-[9px] text-zinc-500 font-bold mt-2 uppercase tracking-tighter">Discover 100+<br/>New Stories</p>
+                            <h3 className="text-sm font-black text-white uppercase tracking-widest leading-tight">View<br />Entire Feed</h3>
+                            <p className="text-[9px] text-zinc-500 font-bold mt-2 uppercase tracking-tighter">Discover 100+<br />New Stories</p>
                         </div>
                     </motion.div>
                 </div>
@@ -203,6 +267,7 @@ const SuggestedReels = () => {
     );
 };
 
+// ─── Reel Thumbnail (unchanged) ───────────────────────────────────────────────
 const ReelThumbnail = ({ reel, index }) => {
     const navigate = useNavigate();
     const [isHovered, setIsHovered] = useState(false);
@@ -212,16 +277,10 @@ const ReelThumbnail = ({ reel, index }) => {
 
     useEffect(() => {
         const observer = new IntersectionObserver(
-            ([entry]) => {
-                setIsVisible(entry.isIntersecting);
-            },
+            ([entry]) => setIsVisible(entry.isIntersecting),
             { threshold: 0.6 }
         );
-
-        if (containerRef.current) {
-            observer.observe(containerRef.current);
-        }
-
+        if (containerRef.current) observer.observe(containerRef.current);
         return () => observer.disconnect();
     }, []);
 
@@ -256,17 +315,12 @@ const ReelThumbnail = ({ reel, index }) => {
             onClick={() => navigate(`/reels?id=${reel._id}`)}
             className="flex-shrink-0 w-40 md:w-48 h-72 md:h-80 bg-[#0a0a0c] rounded-[2rem] overflow-hidden relative cursor-pointer transition-all snap-start group shadow-2xl shadow-black/40"
         >
-            
-            {/* Video/Image Content with fade-in */}
             {reel.mediaType === "video" ? (
                 <video
                     ref={videoRef}
                     src={reel.mediaUrl}
                     className="w-full h-full object-contain transition-all duration-500 group-hover:scale-110 no-copy"
-                    muted
-                    loop
-                    playsInline
-                    preload="metadata"
+                    muted loop playsInline preload="metadata"
                     onContextMenu={(e) => e.preventDefault()}
                     onDoubleClick={(e) => e.preventDefault()}
                     controlsList="nodownload nofullscreen noremoteplayback"
@@ -282,51 +336,39 @@ const ReelThumbnail = ({ reel, index }) => {
                 />
             )}
 
-            {/* Invisible Protection Layer */}
-            <div 
-                className="absolute inset-0 z-20 cursor-pointer" 
+            <div
+                className="absolute inset-0 z-20 cursor-pointer"
                 onContextMenu={(e) => e.preventDefault()}
                 onDoubleClick={(e) => e.preventDefault()}
             />
-            {/* Premium Badges */}
+
+            {/* Badges */}
             <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-                {/* NEW Badge */}
                 {(() => {
                     const isNew = reel.createdAt && (new Date() - new Date(reel.createdAt)) < 24 * 60 * 60 * 1000;
                     if (!isNew) return null;
                     return (
-                        <motion.div 
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ 
-                                opacity: [0.8, 1, 0.8],
-                                scale: [1, 1.05, 1],
-                            }}
-                            transition={{ 
-                                duration: 2,
-                                repeat: Infinity,
-                                ease: "easeInOut"
-                            }}
-                            className="px-3 py-1 rounded-full border border-white/40 bg-white  flex items-center justify-center min-w-[35px]"
+                        <motion.div
+                            animate={{ opacity: [0.8, 1, 0.8], scale: [1, 1.05, 1] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                            className="px-3 py-1 rounded-full border border-white/40 bg-white flex items-center justify-center min-w-[35px]"
                         >
-                            <span className="text-black  text-[7px] font-bold uppercase tracking-[0.1em]">
-                                NEW
-                            </span>
+                            <span className="text-black text-[7px] font-bold uppercase tracking-[0.1em]">NEW</span>
                         </motion.div>
                     );
                 })()}
-                
                 <span className="px-2 py-0.5 rounded-md bg-white/10 backdrop-blur-md border border-white/10 text-white text-[7px] font-black uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-all duration-300">
-                   Trending
+                    Trending
                 </span>
             </div>
 
-            {/* Metadata Overlay - Clean without gradient */}
+            {/* Metadata */}
             <div className="absolute inset-x-0 bottom-0 p-4 translate-y-4 group-hover:translate-y-0 transition-all duration-500 z-30">
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                         <div className="relative">
-                            <img 
-                                src={reel.editor?.profilePicture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop'} 
+                            <img
+                                src={reel.editor?.profilePicture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop'}
                                 alt={reel.editor?.name}
                                 className="w-6 h-6 rounded-full border border-white/20 object-cover"
                             />
@@ -342,7 +384,7 @@ const ReelThumbnail = ({ reel, index }) => {
                         </div>
                     </div>
                 </div>
-                <h3 className="text-[11px] font-bold text-white line-clamp-2 leading-tight drop-shadow-md transition-colors">
+                <h3 className="text-[11px] font-bold text-white line-clamp-2 leading-tight drop-shadow-md">
                     {reel.title}
                 </h3>
                 <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-all duration-500 delay-100">
@@ -355,19 +397,17 @@ const ReelThumbnail = ({ reel, index }) => {
                     </div>
                 </div>
             </div>
-            {/* Floating Play Indicator (Centrally Magnetic) */}
+
+            {/* Play indicator */}
             <AnimatePresence>
                 {(!isHovered && !isVisible) && reel.mediaType === "video" && (
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0, scale: 0.5 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.5 }}
                         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10"
                     >
-                        <motion.div
-                            animate={{ scale: [1, 1.2, 1] }}
-                            transition={{ repeat: Infinity, duration: 2 }}
-                        >
+                        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }}>
                             <HiPlay className="text-white text-xs ml-0.5" />
                         </motion.div>
                     </motion.div>
