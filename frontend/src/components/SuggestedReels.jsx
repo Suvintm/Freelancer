@@ -15,26 +15,51 @@ import { useAppContext } from "../context/AppContext";
 import MusicVisualizer from "./MusicVisualizer";
 import { repairUrl } from "../utils/urlHelper.jsx";
 
-// ─── Robust scrollable parent finder ─────────────────────────────────────────
-const findScrollableParent = (el) => {
-    if (!el) return null;
+// ─── PRODUCTION-SAFE scroll container finder ───────────────────────────────
+//
+// WHY THIS EXISTS:
+// In local dev (Vite), CSS is injected via <style> tags — styles are applied
+// synchronously before any timer fires. In production, CSS comes from a
+// separate <link> file loaded async. The <main overflow-y-auto> element exists
+// in the DOM immediately, but its computed style may still show overflow:visible
+// when a fixed timer (500ms) fires — so scrollTop stays 0 forever and the
+// listener never triggers. The fix: verify scrollability via scrollHeight, retry
+// if not ready yet, and ALSO listen on window as a simultaneous fallback.
+//
+// Returns an array of targets to attach listeners to (deduped).
+const resolveScrollTargets = (componentEl) => {
+    const targets = new Set();
 
-    // Priority 1: Semantic <main> tag (most reliable in this app)
-    const main = document.querySelector('main');
-    if (main) return main;
-
-    // Priority 2: Walk up the tree
-    let node = el.parentElement;
-    while (node && node !== document.body) {
+    // Check if an element is actually, currently scrollable
+    const isScrollable = (el) => {
+        if (!el || el === window) return true; // window always valid
         try {
-            const style = window.getComputedStyle(node);
-            const overflowY = style.overflowY || style.overflow;
-            if (overflowY === 'auto' || overflowY === 'scroll') return node;
-        } catch (_) {}
+            const style = window.getComputedStyle(el);
+            const oy = style.overflowY || style.overflow;
+            const canScroll = oy === "auto" || oy === "scroll";
+            const hasRoom = el.scrollHeight > el.clientHeight + 2;
+            return canScroll && hasRoom;
+        } catch {
+            return false;
+        }
+    };
+
+    // Priority 1: semantic <main> — only if actually scrollable right now
+    const mainEl = document.querySelector("main");
+    if (mainEl && isScrollable(mainEl)) targets.add(mainEl);
+
+    // Priority 2: walk up from the component itself
+    let node = componentEl?.parentElement;
+    while (node && node !== document.body) {
+        if (isScrollable(node)) { targets.add(node); break; }
         node = node.parentElement;
     }
 
-    return window;
+    // Always add window as the guaranteed fallback (catches cases where
+    // CSS hasn't applied yet and the real scroll is on document)
+    targets.add(window);
+
+    return [...targets];
 };
 
 const SuggestedReels = () => {
@@ -46,7 +71,7 @@ const SuggestedReels = () => {
     const [showControls, setShowControls] = useState(false);
 
     const { data: reels = [], isLoading: loading } = useQuery({
-        queryKey: ['homeData', 'suggested-reels', backendURL],
+        queryKey: ["homeData", "suggested-reels", backendURL],
         queryFn: async () => {
             const { data } = await axios.get(`${backendURL}/api/reels/feed?page=1&limit=12`);
             return data.reels || [];
@@ -54,82 +79,110 @@ const SuggestedReels = () => {
         staleTime: 5 * 60 * 1000,
     });
 
-    // ── Auto-reset horizontal scroll on vertical scroll ──────────────────────
+    // ── Auto-reset on vertical scroll — production-safe ────────────────────
     useEffect(() => {
-        let cleanup = () => {};
+        const listeners = []; // { target, fn } pairs to clean up
 
-        const init = () => {
-            const scrollableParent = findScrollableParent(mainContainerRef.current);
-            const target = scrollableParent || window;
+        const attachListeners = (targets) => {
+            // Deduplicate: don't attach twice to same target
+            const seen = new Set();
 
-            const getScrollTop = () =>
-                target === window ? window.scrollY : target.scrollTop;
+            const handleScroll = (() => {
+                // Each target gets its own lastY tracker
+                const lastY = new Map();
+                let ticking = false;
 
-            let lastY = getScrollTop();
-            let ticking = false;
+                return (target) => () => {
+                    if (ticking || isInteracting.current) return;
+                    ticking = true;
 
-            const handleScroll = () => {
-                if (ticking || isInteracting.current) return;
-                ticking = true;
+                    window.requestAnimationFrame(() => {
+                        const currentY =
+                            target === window ? window.scrollY : target.scrollTop;
+                        const prev = lastY.get(target) ?? currentY;
+                        const diffY = Math.abs(currentY - prev);
 
-                window.requestAnimationFrame(() => {
-                    const currentY = getScrollTop();
-                    const diffY = Math.abs(currentY - lastY);
-
-                    // If significant vertical movement occurs
-                    if (diffY > 10 && scrollRef.current) {
-                        const { scrollLeft } = scrollRef.current;
-                        
-                        if (scrollLeft > 20) {
-                            if (mainContainerRef.current) {
-                                const rect = mainContainerRef.current.getBoundingClientRect();
+                        if (diffY > 10 && scrollRef.current?.scrollLeft > 20) {
+                            const el = mainContainerRef.current;
+                            if (el) {
+                                const rect = el.getBoundingClientRect();
+                                const center = rect.top + rect.height / 2;
                                 const vh = window.innerHeight;
-                                const elementCenter = rect.top + rect.height / 2;
-                                
-                                // Only reset if the section is mostly out of the center viewport
-                                // This prevents "jumping" while the user is looking at it
-                                if (Math.abs(elementCenter - vh / 2) > vh * 0.45) {
-                                    scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+                                // Only reset when the section is well outside the viewport center
+                                if (Math.abs(center - vh / 2) > vh * 0.4) {
+                                    scrollRef.current.scrollTo({ left: 0, behavior: "smooth" });
                                 }
                             }
                         }
-                    }
 
-                    lastY = currentY;
-                    ticking = false;
-                });
-            };
+                        lastY.set(target, currentY);
+                        ticking = false;
+                    });
+                };
+            })();
 
-            target.addEventListener('scroll', handleScroll, { passive: true });
-            return () => target.removeEventListener('scroll', handleScroll);
+            targets.forEach((target) => {
+                const key = target === window ? "window" : target;
+                if (seen.has(key)) return;
+                seen.add(key);
+
+                const fn = handleScroll(target);
+                target.addEventListener("scroll", fn, { passive: true });
+                listeners.push({ target, fn });
+            });
         };
 
-        const timer = setTimeout(() => {
-            cleanup = init();
-        }, 500); // Give layout more time to settle
+        // Try immediately, then retry with backoff if <main> isn't scrollable yet.
+        // This handles the production CSS-load race condition.
+        let retries = 0;
+        const MAX_RETRIES = 8;
+        const RETRY_INTERVAL = 400; // ms
+
+        const tryAttach = () => {
+            const targets = resolveScrollTargets(mainContainerRef.current);
+
+            // If <main> is in targets (i.e. it's scrollable), we're good.
+            // If only window is in targets, retry a few times in case CSS hasn't applied.
+            const hasRealContainer = targets.some((t) => t !== window);
+
+            if (hasRealContainer || retries >= MAX_RETRIES) {
+                attachListeners(targets);
+            } else {
+                retries++;
+                setTimeout(tryAttach, RETRY_INTERVAL);
+            }
+        };
+
+        // Initial delay — give React layout + CSS paint one frame
+        const timer = setTimeout(tryAttach, 300);
 
         return () => {
             clearTimeout(timer);
-            cleanup();
+            listeners.forEach(({ target, fn }) =>
+                target.removeEventListener("scroll", fn)
+            );
         };
     }, []);
 
+    // ── Interaction flags (prevent reset while user is touching) ───────────
     const handleTouchStart = () => { isInteracting.current = true; };
     const handleTouchEnd = () => {
-        // Delay resetting interaction so the momentum scroll can finish
         setTimeout(() => { isInteracting.current = false; }, 1000);
     };
 
     const scroll = (direction) => {
         if (scrollRef.current) {
             const { scrollLeft, clientWidth } = scrollRef.current;
-            const scrollTo = direction === 'left'
-                ? scrollLeft - clientWidth * 0.8
-                : scrollLeft + clientWidth * 0.8;
-            scrollRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
+            scrollRef.current.scrollTo({
+                left: direction === "left"
+                    ? scrollLeft - clientWidth * 0.8
+                    : scrollLeft + clientWidth * 0.8,
+                behavior: "smooth",
+            });
         }
     };
 
+    // ── Skeletons ───────────────────────────────────────────────────────────
     if (loading) {
         return (
             <div className="space-y-4 py-4">
@@ -184,7 +237,7 @@ const SuggestedReels = () => {
             </div>
 
             <div className="relative">
-                {/* Desktop Controls */}
+                {/* Desktop prev/next controls */}
                 <AnimatePresence>
                     {showControls && (
                         <>
@@ -192,7 +245,7 @@ const SuggestedReels = () => {
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -10 }}
-                                onClick={() => scroll('left')}
+                                onClick={() => scroll("left")}
                                 className="hidden md:flex absolute -left-4 top-1/2 -translate-y-1/2 z-40 w-12 h-12 items-center justify-center rounded-full bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/10 hover:border-purple-500/40 text-white shadow-2xl transition-all"
                             >
                                 <HiChevronLeft className="text-xl" />
@@ -201,7 +254,7 @@ const SuggestedReels = () => {
                                 initial={{ opacity: 0, x: 10 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: 10 }}
-                                onClick={() => scroll('right')}
+                                onClick={() => scroll("right")}
                                 className="hidden md:flex absolute -right-4 top-1/2 -translate-y-1/2 z-40 w-12 h-12 items-center justify-center rounded-full bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/10 hover:border-purple-500/40 text-white shadow-2xl transition-all"
                             >
                                 <HiChevronRight className="text-xl" />
@@ -210,7 +263,7 @@ const SuggestedReels = () => {
                     )}
                 </AnimatePresence>
 
-                {/* Horizontal Scroll Area */}
+                {/* Horizontal scroll container */}
                 <div
                     ref={scrollRef}
                     onTouchStart={handleTouchStart}
@@ -218,13 +271,13 @@ const SuggestedReels = () => {
                     onMouseDown={() => { isInteracting.current = true; }}
                     onMouseUp={() => { setTimeout(() => { isInteracting.current = false; }, 1000); }}
                     className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide snap-x px-1"
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                 >
                     {reels.map((reel, idx) => (
                         <ReelThumbnail key={reel._id} reel={reel} index={idx} />
                     ))}
 
-                    {/* View More Card */}
+                    {/* View More card */}
                     <motion.div
                         whileHover={{ y: -8, scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
@@ -246,7 +299,7 @@ const SuggestedReels = () => {
     );
 };
 
-// ─── Reel Thumbnail (unchanged) ───────────────────────────────────────────────
+// ─── Reel Thumbnail ────────────────────────────────────────────────────────
 const ReelThumbnail = ({ reel, index }) => {
     const navigate = useNavigate();
     const [isHovered, setIsHovered] = useState(false);
@@ -281,6 +334,13 @@ const ReelThumbnail = ({ reel, index }) => {
             videoRef.current.play().catch(() => {});
         }
     };
+
+    const avatarSrc = (() => {
+        const pic = reel.editor?.profilePicture;
+        if (typeof pic === "string" && pic.length > 0) return repairUrl(pic);
+        if (pic?.url) return repairUrl(pic.url);
+        return "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop";
+    })();
 
     return (
         <motion.div
@@ -324,7 +384,8 @@ const ReelThumbnail = ({ reel, index }) => {
             {/* Badges */}
             <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
                 {(() => {
-                    const isNew = reel.createdAt && (new Date() - new Date(reel.createdAt)) < 24 * 60 * 60 * 1000;
+                    const isNew = reel.createdAt &&
+                        (new Date() - new Date(reel.createdAt)) < 24 * 60 * 60 * 1000;
                     if (!isNew) return null;
                     return (
                         <motion.div
@@ -341,22 +402,25 @@ const ReelThumbnail = ({ reel, index }) => {
                 </span>
             </div>
 
-            {/* Metadata */}
+            {/* Metadata overlay */}
             <div className="absolute inset-x-0 bottom-0 p-4 translate-y-4 group-hover:translate-y-0 transition-all duration-500 z-30">
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                         <div className="relative">
                             <img
-                                src={(typeof reel.editor?.profilePicture === 'string' && reel.editor.profilePicture.length > 0) 
-                                    ? repairUrl(reel.editor.profilePicture) 
-                                    : (reel.editor?.profilePicture?.url ? repairUrl(reel.editor.profilePicture.url) : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop')}
+                                src={avatarSrc}
                                 alt={reel.editor?.name}
                                 className="w-6 h-6 rounded-full border border-white/20 object-cover"
+                                onError={(e) => {
+                                    e.target.src = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop";
+                                }}
                             />
                             <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full border border-black ring-1 ring-emerald-500/50" />
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-[10px] text-white font-bold tracking-tight truncate max-w-[80px] drop-shadow-md">{reel.editor?.name}</span>
+                            <span className="text-[10px] text-white font-bold tracking-tight truncate max-w-[80px] drop-shadow-md">
+                                {reel.editor?.name}
+                            </span>
                             {reel.mediaType === "video" && (
                                 <div className="mt-0.5 scale-[0.6] origin-left opacity-70">
                                     <MusicVisualizer isPlaying={isVisible || isHovered} />
@@ -381,7 +445,7 @@ const ReelThumbnail = ({ reel, index }) => {
 
             {/* Play indicator */}
             <AnimatePresence>
-                {(!isHovered && !isVisible) && reel.mediaType === "video" && (
+                {!isHovered && !isVisible && reel.mediaType === "video" && (
                     <motion.div
                         initial={{ opacity: 0, scale: 0.5 }}
                         animate={{ opacity: 1, scale: 1 }}
