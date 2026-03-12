@@ -159,6 +159,18 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
         { $sort: { weight: -1 } },
         // Limit
         { $limit: limit },
+        // Ensure editor is an ObjectId for robust lookup (handles legacy string IDs)
+        {
+            $addFields: {
+                editor: {
+                    $cond: {
+                        if: { $eq: [{ $type: "$editor" }, "string"] },
+                        then: { $toObjectId: "$editor" },
+                        else: "$editor"
+                    }
+                }
+            }
+        },
         // Lookup editor info
         {
             $lookup: {
@@ -193,9 +205,18 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
                 likes: 1,
                 createdAt: 1,
                 editor: {
-                    _id: "$editorInfo._id",
-                    name: "$editorInfo.name",
-                    profilePicture: "$editorInfo.profilePicture",
+                    _id: { $ifNull: ["$editorInfo._id", "$editor"] },
+                    name: { $ifNull: ["$editorInfo.name", "Unknown Editor"] },
+                    profilePicture: { 
+                        $cond: {
+                            if: { $and: [
+                                { $ne: [{ $ifNull: ["$editorInfo.profilePicture", ""] }, ""] },
+                                { $eq: [{ $type: "$editorInfo.profilePicture" }, "string"] }
+                            ] },
+                            then: "$editorInfo.profilePicture",
+                            else: ""
+                        }
+                    }
                 },
                 portfolio: "$portfolioInfo",
             },

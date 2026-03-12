@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { 
     HiOutlineMapPin, 
@@ -16,10 +15,31 @@ import { useQuery } from "@tanstack/react-query";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
 import nearbyBg from "../assets/nearby.png";
+import { repairUrl } from "../utils/urlHelper.jsx";
+
+// ─── Robust scrollable parent finder (production-safe) ────────────────────────
+const findScrollableParent = (el) => {
+    if (!el) return null;
+    const main = document.querySelector('main');
+    if (main) return main;
+    let node = el.parentElement;
+    while (node && node !== document.body) {
+        try {
+            const style = window.getComputedStyle(node);
+            const overflowY = style.overflowY || style.overflow;
+            if (overflowY === 'auto' || overflowY === 'scroll') return node;
+        } catch (_) {}
+        node = node.parentElement;
+    }
+    return window;
+};
 
 const EditorsNearYouPreview = () => {
     const { user, backendURL } = useAppContext();
     const navigate = useNavigate();
+    const scrollRef = useRef(null);
+    const mainContainerRef = useRef(null);
+    const isInteracting = useRef(false);
 
     const { data: nearbyEditors = [], isLoading: loading } = useQuery({
         queryKey: ['homeData', 'nearby-editors', backendURL, user?.token],
@@ -33,6 +53,66 @@ const EditorsNearYouPreview = () => {
         staleTime: 5 * 60 * 1000, // 5 min cache
         enabled: !!user?.token,
     });
+
+    // ── Auto-reset horizontal scroll on vertical scroll ──────────────────────
+    useEffect(() => {
+        let cleanup = () => {};
+
+        const init = () => {
+            const scrollableParent = findScrollableParent(mainContainerRef.current);
+            const target = scrollableParent || window;
+
+            const getScrollTop = () =>
+                target === window ? window.scrollY : target.scrollTop;
+
+            let lastY = getScrollTop();
+            let ticking = false;
+
+            const handleScroll = () => {
+                if (ticking || isInteracting.current) return;
+                ticking = true;
+
+                window.requestAnimationFrame(() => {
+                    const currentY = getScrollTop();
+                    const diffY = Math.abs(currentY - lastY);
+
+                    if (diffY > 10 && scrollRef.current) {
+                        const { scrollLeft } = scrollRef.current;
+                        if (scrollLeft > 20 && mainContainerRef.current) {
+                            const rect = mainContainerRef.current.getBoundingClientRect();
+                            const vh = window.innerHeight;
+                            const elementCenter = rect.top + rect.height / 2;
+                            
+                            // Only reset if it's vertically distant from the viewport center
+                            if (Math.abs(elementCenter - vh / 2) > vh * 0.45) {
+                                scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+                            }
+                        }
+                    }
+
+                    lastY = currentY;
+                    ticking = false;
+                });
+            };
+
+            target.addEventListener('scroll', handleScroll, { passive: true });
+            return () => target.removeEventListener('scroll', handleScroll);
+        };
+
+        const timer = setTimeout(() => {
+            cleanup = init();
+        }, 500);
+
+        return () => {
+            clearTimeout(timer);
+            cleanup();
+        };
+    }, []);
+
+    const handleTouchStart = () => { isInteracting.current = true; };
+    const handleTouchEnd = () => {
+        setTimeout(() => { isInteracting.current = false; }, 1000);
+    };
 
     if (loading) return (
         <div className="py-2">
@@ -48,7 +128,7 @@ const EditorsNearYouPreview = () => {
     );
 
     return (
-        <div className="relative group/container">
+        <div ref={mainContainerRef} className="relative group/container">
             {/* "NEW" Badge Floating on Top Edge */}
             <div className="absolute -top-2 left-6 z-20">
                 <div className="px-3 py-1 bg-gradient-to-r from-blue-600 to-slate-900 rounded-full shadow-lg border border-white/20">
@@ -59,7 +139,14 @@ const EditorsNearYouPreview = () => {
             </div>
 
             {nearbyEditors.length > 0 ? (
-                <div className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 snap-x">
+                <div 
+                    ref={scrollRef}
+                    onTouchStart={handleTouchStart}
+                    onTouchEnd={handleTouchEnd}
+                    onMouseDown={() => { isInteracting.current = true; }}
+                    onMouseUp={() => { setTimeout(() => { isInteracting.current = false; }, 1000); }}
+                    className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 snap-x"
+                >
                     {nearbyEditors.map((editor) => (
                         <motion.div
                             key={editor._id}
@@ -70,7 +157,9 @@ const EditorsNearYouPreview = () => {
                         >
                         {/* Background Media with fade-in */}
                             <img 
-                                src={editor.profilePicture || 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?q=80&w=2071&auto=format&fit=crop'} 
+                                src={(typeof editor.profilePicture === 'string' && editor.profilePicture.length > 0)
+                                    ? repairUrl(editor.profilePicture)
+                                    : 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?q=80&w=2071&auto=format&fit=crop'} 
                                 className="absolute inset-0 w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
                                 alt=""
                                 loading="lazy"

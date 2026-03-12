@@ -13,48 +13,25 @@ import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import { useAppContext } from "../context/AppContext";
 import MusicVisualizer from "./MusicVisualizer";
+import { repairUrl } from "../utils/urlHelper.jsx";
 
 // ─── Robust scrollable parent finder ─────────────────────────────────────────
-// Works in both dev and production (handles CSS purging, SSR hydration, etc.)
 const findScrollableParent = (el) => {
     if (!el) return null;
 
-    let node = el.parentElement;
+    // Priority 1: Semantic <main> tag (most reliable in this app)
+    const main = document.querySelector('main');
+    if (main) return main;
 
+    // Priority 2: Walk up the tree
+    let node = el.parentElement;
     while (node && node !== document.body) {
         try {
             const style = window.getComputedStyle(node);
-            const overflowY = style.overflowY;
-            const overflow  = style.overflow;
-
-            // Check both overflow and overflow-y
-            const isScrollable = 
-                overflowY === 'auto'   || overflowY === 'scroll' ||
-                overflow  === 'auto'   || overflow  === 'scroll';
-
-            // Also verify the element actually HAS scrollable content
-            if (isScrollable && node.scrollHeight > node.clientHeight) {
-                return node;
-            }
-        } catch (_) {
-            // getComputedStyle can throw in some envs — skip
-        }
+            const overflowY = style.overflowY || style.overflow;
+            if (overflowY === 'auto' || overflowY === 'scroll') return node;
+        } catch (_) {}
         node = node.parentElement;
-    }
-
-    // Fallback 1: look for <main> tag (common app shell pattern)
-    const main = document.querySelector('main');
-    if (main && main.scrollHeight > main.clientHeight) return main;
-
-    // Fallback 2: find the first div/section that is actually scrolling
-    const candidates = document.querySelectorAll('div, section, article');
-    for (const candidate of candidates) {
-        if (candidate.scrollHeight > candidate.clientHeight + 10) {
-            try {
-                const ov = window.getComputedStyle(candidate).overflowY;
-                if (ov === 'auto' || ov === 'scroll') return candidate;
-            } catch (_) {}
-        }
     }
 
     return window;
@@ -65,6 +42,7 @@ const SuggestedReels = () => {
     const navigate = useNavigate();
     const scrollRef = useRef(null);
     const mainContainerRef = useRef(null);
+    const isInteracting = useRef(false);
     const [showControls, setShowControls] = useState(false);
 
     const { data: reels = [], isLoading: loading } = useQuery({
@@ -78,8 +56,8 @@ const SuggestedReels = () => {
 
     // ── Auto-reset horizontal scroll on vertical scroll ──────────────────────
     useEffect(() => {
-        // Delay so DOM is fully painted — critical for production builds
-        // where hydration and CSS application can be async
+        let cleanup = () => {};
+
         const init = () => {
             const scrollableParent = findScrollableParent(mainContainerRef.current);
             const target = scrollableParent || window;
@@ -91,29 +69,28 @@ const SuggestedReels = () => {
             let ticking = false;
 
             const handleScroll = () => {
-                if (ticking) return;
+                if (ticking || isInteracting.current) return;
                 ticking = true;
 
                 window.requestAnimationFrame(() => {
                     const currentY = getScrollTop();
                     const diffY = Math.abs(currentY - lastY);
 
-                    if (diffY > 15 && scrollRef.current) {
+                    // If significant vertical movement occurs
+                    if (diffY > 10 && scrollRef.current) {
                         const { scrollLeft } = scrollRef.current;
-                        if (scrollLeft > 0) {
-                            // Check if reels section is still on-screen
-                            // Only reset if it's scrolled far from the viewport center
+                        
+                        if (scrollLeft > 20) {
                             if (mainContainerRef.current) {
                                 const rect = mainContainerRef.current.getBoundingClientRect();
                                 const vh = window.innerHeight;
                                 const elementCenter = rect.top + rect.height / 2;
-                                const distFromCenter = Math.abs(elementCenter - vh / 2);
-
-                                if (distFromCenter > vh * 0.4) {
+                                
+                                // Only reset if the section is mostly out of the center viewport
+                                // This prevents "jumping" while the user is looking at it
+                                if (Math.abs(elementCenter - vh / 2) > vh * 0.45) {
                                     scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
                                 }
-                            } else {
-                                scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
                             }
                         }
                     }
@@ -124,26 +101,24 @@ const SuggestedReels = () => {
             };
 
             target.addEventListener('scroll', handleScroll, { passive: true });
-
-            // Cleanup returns the remover
             return () => target.removeEventListener('scroll', handleScroll);
         };
 
-        // Use requestAnimationFrame + small timeout to ensure layout is ready
-        // in production (avoids finding the wrong parent before styles apply)
-        let cleanup = () => {};
-        const raf = requestAnimationFrame(() => {
-            const timer = setTimeout(() => {
-                cleanup = init();
-            }, 100);
-            cleanup = () => clearTimeout(timer);
-        });
+        const timer = setTimeout(() => {
+            cleanup = init();
+        }, 500); // Give layout more time to settle
 
         return () => {
-            cancelAnimationFrame(raf);
+            clearTimeout(timer);
             cleanup();
         };
     }, []);
+
+    const handleTouchStart = () => { isInteracting.current = true; };
+    const handleTouchEnd = () => {
+        // Delay resetting interaction so the momentum scroll can finish
+        setTimeout(() => { isInteracting.current = false; }, 1000);
+    };
 
     const scroll = (direction) => {
         if (scrollRef.current) {
@@ -238,6 +213,10 @@ const SuggestedReels = () => {
                 {/* Horizontal Scroll Area */}
                 <div
                     ref={scrollRef}
+                    onTouchStart={handleTouchStart}
+                    onTouchEnd={handleTouchEnd}
+                    onMouseDown={() => { isInteracting.current = true; }}
+                    onMouseUp={() => { setTimeout(() => { isInteracting.current = false; }, 1000); }}
                     className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide snap-x px-1"
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
@@ -368,7 +347,9 @@ const ReelThumbnail = ({ reel, index }) => {
                     <div className="flex items-center gap-2">
                         <div className="relative">
                             <img
-                                src={reel.editor?.profilePicture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop'}
+                                src={(typeof reel.editor?.profilePicture === 'string' && reel.editor.profilePicture.length > 0) 
+                                    ? repairUrl(reel.editor.profilePicture) 
+                                    : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop'}
                                 alt={reel.editor?.name}
                                 className="w-6 h-6 rounded-full border border-white/20 object-cover"
                             />
