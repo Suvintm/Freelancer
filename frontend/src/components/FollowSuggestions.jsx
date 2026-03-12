@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaUserPlus, FaCheck, FaChevronRight, FaStar, FaUser } from "react-icons/fa";
+import { FaUserPlus, FaCheck, FaUser } from "react-icons/fa";
 import { MdVerified } from "react-icons/md";
 import { HiOutlineArrowRight, HiUserGroup } from "react-icons/hi2";
 import { repairUrl } from "../utils/urlHelper.jsx";
@@ -11,28 +11,42 @@ import { useAppContext } from "../context/AppContext";
 import { toast } from "react-toastify";
 import FollowingAnimation from "./FollowingAnimation";
 
-// ─── Robust scrollable parent finder (production-safe) ────────────────────────
-const findScrollableParent = (el) => {
-    if (!el) return null;
+// ─── PRODUCTION-SAFE scroll target resolver ───────────────────────────────
+//
+// Identical strategy as SuggestedReels:
+//  • Verify scrollability via scrollHeight (not just overflow style)
+//  • Retry loop so we survive async CSS loads in production
+//  • Always attach window as a simultaneous fallback
+//
+const resolveScrollTargets = (componentEl) => {
+    const targets = new Set();
 
-    // Priority 1: Semantic <main> tag (most reliable in this app)
-    const main = document.querySelector('main');
-    if (main) return main;
-
-    // Priority 2: Walk up the tree
-    let node = el.parentElement;
-    while (node && node !== document.body) {
+    const isScrollable = (el) => {
+        if (!el || el === window) return true;
         try {
-            const style = window.getComputedStyle(node);
-            const overflowY = style.overflowY || style.overflow;
-            if (overflowY === 'auto' || overflowY === 'scroll') return node;
-        } catch (_) {}
+            const style = window.getComputedStyle(el);
+            const oy = style.overflowY || style.overflow;
+            return (oy === "auto" || oy === "scroll") && el.scrollHeight > el.clientHeight + 2;
+        } catch {
+            return false;
+        }
+    };
+
+    const mainEl = document.querySelector("main");
+    if (mainEl && isScrollable(mainEl)) targets.add(mainEl);
+
+    let node = componentEl?.parentElement;
+    while (node && node !== document.body) {
+        if (isScrollable(node)) { targets.add(node); break; }
         node = node.parentElement;
     }
 
-    return window;
+    // window is always the guaranteed fallback
+    targets.add(window);
+    return [...targets];
 };
 
+// ─── Main Component ────────────────────────────────────────────────────────
 const FollowSuggestions = () => {
     const { user, setUser, backendURL } = useAppContext();
     const navigate = useNavigate();
@@ -42,10 +56,10 @@ const FollowSuggestions = () => {
     const isInteracting = useRef(false);
 
     const { data: suggestions = [], isLoading: loading } = useQuery({
-        queryKey: ['homeData', 'follow-suggestions', backendURL, user?.token],
+        queryKey: ["homeData", "follow-suggestions", backendURL, user?.token],
         queryFn: async () => {
             const res = await axios.get(`${backendURL}/api/user/suggestions?limit=10`, {
-                headers: { Authorization: `Bearer ${user.token}` }
+                headers: { Authorization: `Bearer ${user.token}` },
             });
             const states = {};
             (res.data.suggestions || []).forEach(s => {
@@ -59,66 +73,84 @@ const FollowSuggestions = () => {
         enabled: !!user?.token,
     });
 
-    // ── Auto-reset horizontal scroll on vertical scroll (production-safe) ────
+    // ── Auto-reset horizontal scroll on vertical scroll — production-safe ──
     useEffect(() => {
-        let cleanup = () => {};
+        const listeners = []; // { target, fn } — cleaned up on unmount
 
-        const init = () => {
-            const scrollableParent = findScrollableParent(mainContainerRef.current);
-            const target = scrollableParent || window;
-
-            const getScrollTop = () =>
-                target === window ? window.scrollY : target.scrollTop;
-
-            let lastY = getScrollTop();
+        const attachListeners = (targets) => {
+            const seen = new Set();
+            // Each target tracks its own lastY independently
+            const lastY = new Map();
             let ticking = false;
 
-            const handleScroll = () => {
-                if (ticking || isInteracting.current) return;
-                ticking = true;
+            targets.forEach((target) => {
+                const key = target === window ? "window" : target;
+                if (seen.has(key)) return;
+                seen.add(key);
 
-                window.requestAnimationFrame(() => {
-                    const currentY = getScrollTop();
-                    const diffY = Math.abs(currentY - lastY);
+                const fn = () => {
+                    if (ticking || isInteracting.current) return;
+                    ticking = true;
 
-                    if (diffY > 10 && scrollRef.current) {
-                        const { scrollLeft } = scrollRef.current;
-                        if (scrollLeft > 20 && mainContainerRef.current) {
-                            const rect = mainContainerRef.current.getBoundingClientRect();
-                            const vh = window.innerHeight;
-                            const elementCenter = rect.top + rect.height / 2;
-                            
-                            // Only reset if it's vertically distant from the center
-                            if (Math.abs(elementCenter - vh / 2) > vh * 0.45) {
-                                scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+                    window.requestAnimationFrame(() => {
+                        const currentY = target === window ? window.scrollY : target.scrollTop;
+                        const prev = lastY.get(key) ?? currentY;
+                        const diffY = Math.abs(currentY - prev);
+
+                        if (diffY > 10 && scrollRef.current?.scrollLeft > 20) {
+                            const el = mainContainerRef.current;
+                            if (el) {
+                                const rect = el.getBoundingClientRect();
+                                const center = rect.top + rect.height / 2;
+                                const vh = window.innerHeight;
+                                if (Math.abs(center - vh / 2) > vh * 0.4) {
+                                    scrollRef.current.scrollTo({ left: 0, behavior: "smooth" });
+                                }
                             }
                         }
-                    }
 
-                    lastY = currentY;
-                    ticking = false;
-                });
-            };
+                        lastY.set(key, currentY);
+                        ticking = false;
+                    });
+                };
 
-            target.addEventListener('scroll', handleScroll, { passive: true });
-            return () => target.removeEventListener('scroll', handleScroll);
+                target.addEventListener("scroll", fn, { passive: true });
+                listeners.push({ target, fn });
+            });
         };
 
-        const timer = setTimeout(() => {
-            cleanup = init();
-        }, 500);
+        // Retry loop — handles production CSS async load race condition
+        let retries = 0;
+        const MAX_RETRIES = 8;
+        const RETRY_MS = 400;
+        let retryTimer = null;
+
+        const tryAttach = () => {
+            const targets = resolveScrollTargets(mainContainerRef.current);
+            const hasRealContainer = targets.some(t => t !== window);
+
+            if (hasRealContainer || retries >= MAX_RETRIES) {
+                attachListeners(targets);
+            } else {
+                retries++;
+                retryTimer = setTimeout(tryAttach, RETRY_MS);
+            }
+        };
+
+        const initTimer = setTimeout(tryAttach, 300);
 
         return () => {
-            clearTimeout(timer);
-            cleanup();
+            clearTimeout(initTimer);
+            clearTimeout(retryTimer);
+            listeners.forEach(({ target, fn }) => target.removeEventListener("scroll", fn));
         };
     }, []);
 
+    // ── Interaction guards ─────────────────────────────────────────────────
     const handleTouchStart = () => { isInteracting.current = true; };
-    const handleTouchEnd = () => {
-        setTimeout(() => { isInteracting.current = false; }, 1000);
-    };
+    const handleTouchEnd  = () => { setTimeout(() => { isInteracting.current = false; }, 1000); };
 
+    // ── Follow / Unfollow ──────────────────────────────────────────────────
     const handleFollow = async (e, targetUser) => {
         e.stopPropagation();
         const targetId = targetUser._id;
@@ -128,30 +160,27 @@ const FollowSuggestions = () => {
 
         try {
             const res = await axios.post(`${backendURL}/api/user/follow/${targetId}`, {}, {
-                headers: { Authorization: `Bearer ${user.token}` }
+                headers: { Authorization: `Bearer ${user.token}` },
             });
 
             if (res.data.isFollowing) {
                 setFollowStates(prev => ({
                     ...prev,
-                    [targetId]: { loading: false, isFollowing: true, isPending: false, showAnimation: true }
+                    [targetId]: { loading: false, isFollowing: true, isPending: false, showAnimation: true },
                 }));
-                setUser(prevUser => ({
-                    ...prevUser,
-                    following: [...(prevUser?.following || []), targetId]
-                }));
+                setUser(prev => ({ ...prev, following: [...(prev?.following || []), targetId] }));
                 setTimeout(() => {
                     setFollowStates(prev => ({ ...prev, [targetId]: { ...prev[targetId], showAnimation: false } }));
                 }, 2000);
             } else {
                 setFollowStates(prev => ({
                     ...prev,
-                    [targetId]: { loading: false, isFollowing: false, isPending: !!res.data.isPending, showAnimation: false }
+                    [targetId]: { loading: false, isFollowing: false, isPending: !!res.data.isPending, showAnimation: false },
                 }));
                 if (!res.data.isPending) {
-                    setUser(prevUser => ({
-                        ...prevUser,
-                        following: (prevUser?.following || []).filter(id => id.toString() !== targetId.toString())
+                    setUser(prev => ({
+                        ...prev,
+                        following: (prev?.following || []).filter(id => id.toString() !== targetId.toString()),
                     }));
                 }
                 if (res.data.isPending) toast.info("Follow request sent");
@@ -163,7 +192,7 @@ const FollowSuggestions = () => {
         }
     };
 
-    // ── Loading skeleton ──
+    // ── Skeletons ──────────────────────────────────────────────────────────
     if (loading) {
         return (
             <div className="space-y-4 py-2">
@@ -185,7 +214,7 @@ const FollowSuggestions = () => {
     return (
         <div ref={mainContainerRef} className="space-y-4">
 
-            {/* ── Header ── */}
+            {/* Header */}
             <div className="flex items-center justify-between px-1">
                 <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
@@ -212,7 +241,7 @@ const FollowSuggestions = () => {
                 </button>
             </div>
 
-            {/* ── Scroll Row ── */}
+            {/* Scroll row */}
             <div
                 ref={scrollRef}
                 onTouchStart={handleTouchStart}
@@ -220,7 +249,7 @@ const FollowSuggestions = () => {
                 onMouseDown={() => { isInteracting.current = true; }}
                 onMouseUp={() => { setTimeout(() => { isInteracting.current = false; }, 1000); }}
                 className="flex gap-3 overflow-x-auto pb-3 px-1 scrollbar-hide"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
             >
                 <AnimatePresence>
                     {suggestions.map((item, idx) => {
@@ -231,12 +260,16 @@ const FollowSuggestions = () => {
                                 item={item}
                                 idx={idx}
                                 state={state}
-                                onCardClick={() => navigate(item.role === 'editor' ? `/editor/${item._id}` : `/public-profile/${item._id}`)}
+                                onCardClick={() =>
+                                    navigate(item.role === "editor"
+                                        ? `/editor/${item._id}`
+                                        : `/public-profile/${item._id}`)
+                                }
                                 onFollow={(e) => handleFollow(e, item)}
                                 onAnimationComplete={() =>
                                     setFollowStates(prev => ({
                                         ...prev,
-                                        [item._id]: { ...prev[item._id], showAnimation: false }
+                                        [item._id]: { ...prev[item._id], showAnimation: false },
                                     }))
                                 }
                             />
@@ -248,7 +281,7 @@ const FollowSuggestions = () => {
     );
 };
 
-// ─── Suggestion Card ──────────────────────────────────────────────────────────
+// ─── Suggestion Card ───────────────────────────────────────────────────────
 const SuggestionCard = ({ item, idx, state, onCardClick, onFollow, onAnimationComplete }) => {
     const [imgLoaded, setImgLoaded] = useState(false);
 
@@ -261,6 +294,7 @@ const SuggestionCard = ({ item, idx, state, onCardClick, onFollow, onAnimationCo
             onClick={onCardClick}
             className="relative flex-shrink-0 w-[148px] bg-[#0c0c10] border border-white/[0.06] rounded-2xl overflow-hidden cursor-pointer group hover:border-white/[0.12] transition-all duration-300"
         >
+            {/* Top shimmer on hover */}
             <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10" />
 
             <AnimatePresence>
@@ -270,26 +304,33 @@ const SuggestionCard = ({ item, idx, state, onCardClick, onFollow, onAnimationCo
             </AnimatePresence>
 
             <div className="p-4 flex flex-col items-center text-center">
-                {item.role === 'editor' && (
+                {item.role === "editor" && (
                     <div className="flex items-center gap-1 mb-3 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20">
                         <MdVerified className="text-blue-400 text-[9px]" />
                         <span className="text-[7px] font-black text-blue-400 uppercase tracking-widest">Editor</span>
                     </div>
                 )}
 
-                <div className={`relative mb-3 ${item.role !== 'editor' ? 'mt-2' : ''}`}>
+                <div className={`relative mb-3 ${item.role !== "editor" ? "mt-2" : ""}`}>
                     <div className="w-[60px] h-[60px] rounded-full p-[1.5px] bg-gradient-to-br from-white/10 via-white/5 to-transparent">
-                        <div className="w-full h-full rounded-full overflow-hidden bg-zinc-900">
-                                <img
-                                    src={(typeof item.profilePicture === 'string' && item.profilePicture.length > 0)
+                        <div className="w-full h-full rounded-full overflow-hidden bg-zinc-900 relative">
+                            <img
+                                src={
+                                    typeof item.profilePicture === "string" && item.profilePicture.length > 0
                                         ? repairUrl(item.profilePicture)
-                                        : (item.profilePicture?.url ? repairUrl(item.profilePicture.url) : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop')}
-                                    alt={item.name}
-                                    loading="lazy"
-                                    onLoad={() => setImgLoaded(true)}
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                    style={{ opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.4s ease' }}
-                                />
+                                        : item.profilePicture?.url
+                                        ? repairUrl(item.profilePicture.url)
+                                        : "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop"
+                                }
+                                alt={item.name}
+                                loading="lazy"
+                                onLoad={() => setImgLoaded(true)}
+                                onError={e => {
+                                    e.target.src = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop";
+                                }}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                style={{ opacity: imgLoaded ? 1 : 0, transition: "opacity 0.4s ease" }}
+                            />
                             {!imgLoaded && (
                                 <div className="absolute inset-0 bg-zinc-800 rounded-full flex items-center justify-center">
                                     <FaUser className="text-zinc-600 text-sm" />
@@ -304,7 +345,7 @@ const SuggestionCard = ({ item, idx, state, onCardClick, onFollow, onAnimationCo
                         {item.name}
                     </h3>
                     <p className="text-[9px] font-semibold text-zinc-600 uppercase tracking-wider truncate">
-                        {item.country || 'Global User'}
+                        {item.country || "Global User"}
                     </p>
                 </div>
 
@@ -314,34 +355,31 @@ const SuggestionCard = ({ item, idx, state, onCardClick, onFollow, onAnimationCo
     );
 };
 
-// ─── Follow Button ────────────────────────────────────────────────────────────
+// ─── Follow Button ─────────────────────────────────────────────────────────
 const FollowButton = ({ state, onFollow }) => {
-    if (state.loading) {
-        return (
-            <button disabled className="w-full py-2 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center">
-                <div className="w-3 h-3 border-[1.5px] border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
-            </button>
-        );
-    }
-    if (state.isFollowing) {
-        return (
-            <button
-                onClick={onFollow}
-                className="w-full py-2 rounded-xl bg-white/[0.06] border border-white/10 text-[9px] font-black text-zinc-300 uppercase tracking-wider hover:bg-red-500/10 hover:border-red-500/25 hover:text-red-400 transition-all duration-200 flex items-center justify-center gap-1.5 group/btn"
-            >
-                <FaCheck className="text-[7px] group-hover/btn:hidden" />
-                <span className="group-hover/btn:hidden">Following</span>
-                <span className="hidden group-hover/btn:inline text-[9px]">Unfollow</span>
-            </button>
-        );
-    }
-    if (state.isPending) {
-        return (
-            <button disabled className="w-full py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-[9px] font-black text-zinc-600 uppercase tracking-wider cursor-default">
-                Requested
-            </button>
-        );
-    }
+    if (state.loading) return (
+        <button disabled className="w-full py-2 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center">
+            <div className="w-3 h-3 border-[1.5px] border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
+        </button>
+    );
+
+    if (state.isFollowing) return (
+        <button
+            onClick={onFollow}
+            className="w-full py-2 rounded-xl bg-white/[0.06] border border-white/10 text-[9px] font-black text-zinc-300 uppercase tracking-wider hover:bg-red-500/10 hover:border-red-500/25 hover:text-red-400 transition-all duration-200 flex items-center justify-center gap-1.5 group/btn"
+        >
+            <FaCheck className="text-[7px] group-hover/btn:hidden" />
+            <span className="group-hover/btn:hidden">Following</span>
+            <span className="hidden group-hover/btn:inline text-[9px]">Unfollow</span>
+        </button>
+    );
+
+    if (state.isPending) return (
+        <button disabled className="w-full py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-[9px] font-black text-zinc-600 uppercase tracking-wider cursor-default">
+            Requested
+        </button>
+    );
+
     return (
         <button
             onClick={onFollow}
