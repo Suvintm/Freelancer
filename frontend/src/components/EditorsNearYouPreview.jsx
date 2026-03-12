@@ -159,7 +159,7 @@ const EditorsNearYouPreview = () => {
                             <img 
                                 src={(typeof editor.profilePicture === 'string' && editor.profilePicture.length > 0)
                                     ? repairUrl(editor.profilePicture)
-                                    : 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?q=80&w=2071&auto=format&fit=crop'} 
+                                    : (editor.profilePicture?.url ? repairUrl(editor.profilePicture.url) : 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?q=80&w=2071&auto=format&fit=crop')} 
                                 className="absolute inset-0 w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
                                 alt=""
                                 loading="lazy"

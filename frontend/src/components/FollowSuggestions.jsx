@@ -283,7 +283,7 @@ const SuggestionCard = ({ item, idx, state, onCardClick, onFollow, onAnimationCo
                                 <img
                                     src={(typeof item.profilePicture === 'string' && item.profilePicture.length > 0)
                                         ? repairUrl(item.profilePicture)
-                                        : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop'}
+                                        : (item.profilePicture?.url ? repairUrl(item.profilePicture.url) : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop')}
                                     alt={item.name}
                                     loading="lazy"
                                     onLoad={() => setImgLoaded(true)}

@@ -159,14 +159,20 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
         { $sort: { weight: -1 } },
         // Limit
         { $limit: limit },
-        // Ensure editor is an ObjectId for robust lookup (handles legacy string IDs)
+        // Ensure editor is an ObjectId for robust lookup (handles legacy string IDs and denormalized objects)
         {
             $addFields: {
-                editor: {
+                editorId: {
                     $cond: {
                         if: { $eq: [{ $type: "$editor" }, "string"] },
                         then: { $toObjectId: "$editor" },
-                        else: "$editor"
+                        else: {
+                            $cond: {
+                                if: { $eq: [{ $type: "$editor" }, "objectId"] },
+                                then: "$editor",
+                                else: { $ifNull: ["$editor._id", "$editor"] }
+                            }
+                        }
                     }
                 }
             }
@@ -175,7 +181,7 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
         {
             $lookup: {
                 from: "users",
-                localField: "editor",
+                localField: "editorId",
                 foreignField: "_id",
                 as: "editorInfo",
             },
@@ -205,16 +211,26 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
                 likes: 1,
                 createdAt: 1,
                 editor: {
-                    _id: { $ifNull: ["$editorInfo._id", "$editor"] },
-                    name: { $ifNull: ["$editorInfo.name", "Unknown Editor"] },
+                    _id: { $ifNull: ["$editorInfo._id", "$editorId"] },
+                    name: { $ifNull: ["$editorInfo.name", { $ifNull: ["$editor.name", "Unknown Editor"] }] },
                     profilePicture: { 
-                        $cond: {
-                            if: { $and: [
-                                { $ne: [{ $ifNull: ["$editorInfo.profilePicture", ""] }, ""] },
-                                { $eq: [{ $type: "$editorInfo.profilePicture" }, "string"] }
-                            ] },
-                            then: "$editorInfo.profilePicture",
-                            else: ""
+                        $let: {
+                            vars: {
+                                pic: { $ifNull: ["$editorInfo.profilePicture", "$editor.profilePicture"] }
+                            },
+                            in: {
+                                $cond: {
+                                    if: { $eq: [{ $type: "$$pic" }, "string"] },
+                                    then: "$$pic",
+                                    else: {
+                                        $cond: {
+                                            if: { $eq: [{ $type: "$$pic.url" }, "string"] },
+                                            then: "$$pic.url",
+                                            else: ""
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 },

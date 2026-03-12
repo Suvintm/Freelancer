@@ -349,7 +349,7 @@ const ReelThumbnail = ({ reel, index }) => {
                             <img
                                 src={(typeof reel.editor?.profilePicture === 'string' && reel.editor.profilePicture.length > 0) 
                                     ? repairUrl(reel.editor.profilePicture) 
-                                    : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop'}
+                                    : (reel.editor?.profilePicture?.url ? repairUrl(reel.editor.profilePicture.url) : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop')}
                                 alt={reel.editor?.name}
                                 className="w-6 h-6 rounded-full border border-white/20 object-cover"
                             />
