@@ -31,26 +31,58 @@ const SuggestedReels = () => {
         staleTime: 5 * 60 * 1000, // 5 min cache
     });
 
-    // Auto-reset horizontal scroll when scrolled away vertically (Middle-Screen Focus)
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                if (!entry.isIntersecting && scrollRef.current && scrollRef.current.scrollLeft > 0) {
-                    scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
-                }
-            },
-            { 
-                threshold: 0,
-                rootMargin: "-45% 0px -45% 0px" // Ultra-precise: reset if not dead-center
-            }
-        );
-
-        if (mainContainerRef.current) {
-            observer.observe(mainContainerRef.current);
+    // Auto-reset horizontal scroll when vertical scrolling is detected (High-Performance UX)
+  useEffect(() => {
+    const getScrollableParent = (el) => {
+        if (!el) return window;
+        let parent = el.parentElement;
+        while (parent) {
+            const { overflow, overflowY } = window.getComputedStyle(parent);
+            if (/(auto|scroll)/.test(overflow + overflowY)) return parent;
+            parent = parent.parentElement;
         }
+        return window;
+    };
 
-        return () => observer.disconnect();
-    }, []);
+    const scrollableParent = getScrollableParent(mainContainerRef.current);
+    let lastY = scrollableParent === window ? window.scrollY : scrollableParent.scrollTop;
+    let ticking = false;
+
+    const handleScroll = () => {
+        if (!ticking) {
+            window.requestAnimationFrame(() => {
+                const currentY = scrollableParent === window
+                    ? window.scrollY
+                    : scrollableParent.scrollTop;
+                const diffY = Math.abs(currentY - lastY);
+
+                if (diffY > 15 && scrollRef.current && mainContainerRef.current) {
+                    const { scrollLeft } = scrollRef.current;
+                    if (scrollLeft > 0) {
+                        // Check if the reels section is still near center of screen
+                        const rect = mainContainerRef.current.getBoundingClientRect();
+                        const viewportHeight = window.innerHeight;
+                        const elementCenter = rect.top + rect.height / 2;
+                        const screenCenter = viewportHeight / 2;
+                        const distanceFromCenter = Math.abs(elementCenter - screenCenter);
+
+                        // Only reset if the section is more than 40% away from screen center
+                        const threshold = viewportHeight * 0.2;
+                        if (distanceFromCenter > threshold) {
+                            scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+                        }
+                    }
+                }
+                lastY = currentY;
+                ticking = false;
+            });
+            ticking = true;
+        }
+    };
+
+    scrollableParent.addEventListener('scroll', handleScroll, { passive: true });
+    return () => scrollableParent.removeEventListener('scroll', handleScroll);
+}, []);
 
     const scroll = (direction) => {
         if (scrollRef.current) {
