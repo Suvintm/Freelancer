@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaUserPlus, FaCheck, FaChevronRight, FaStar, FaUser } from "react-icons/fa";
 import { MdVerified } from "react-icons/md";
+import { HiOutlineArrowRight, HiUserGroup } from "react-icons/hi2";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
@@ -22,7 +23,6 @@ const FollowSuggestions = () => {
             const res = await axios.get(`${backendURL}/api/user/suggestions?limit=10`, {
                 headers: { Authorization: `Bearer ${user.token}` }
             });
-            // Init follow states
             const states = {};
             (res.data.suggestions || []).forEach(s => {
                 const isFollowed = user?.following?.some(id => id.toString() === s._id.toString());
@@ -35,38 +35,26 @@ const FollowSuggestions = () => {
         enabled: !!user?.token,
     });
 
-    // Auto-reset horizontal scroll when scrolled away vertically (Middle-Screen Focus)
+    // Auto-reset horizontal scroll when scrolled away vertically
     useEffect(() => {
         const observer = new IntersectionObserver(
             ([entry]) => {
-                // If it starts leaving the middle focus zone (25% top/bottom margin)
                 if (!entry.isIntersecting && scrollRef.current && scrollRef.current.scrollLeft > 0) {
                     scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
                 }
             },
-            { 
-                threshold: 0,
-                rootMargin: "-45% 0px -45% 0px" // Ultra-precise: resets as soon as it leaves the center
-            }
+            { threshold: 0, rootMargin: "-45% 0px -45% 0px" }
         );
-
-        if (mainContainerRef.current) {
-            observer.observe(mainContainerRef.current);
-        }
-
+        if (mainContainerRef.current) observer.observe(mainContainerRef.current);
         return () => observer.disconnect();
     }, []);
 
     const handleFollow = async (e, targetUser) => {
         e.stopPropagation();
         const targetId = targetUser._id;
-        
         if (followStates[targetId]?.loading) return;
 
-        setFollowStates(prev => ({
-            ...prev,
-            [targetId]: { ...prev[targetId], loading: true }
-        }));
+        setFollowStates(prev => ({ ...prev, [targetId]: { ...prev[targetId], loading: true } }));
 
         try {
             const res = await axios.post(`${backendURL}/api/user/follow/${targetId}`, {}, {
@@ -76,68 +64,46 @@ const FollowSuggestions = () => {
             if (res.data.isFollowing) {
                 setFollowStates(prev => ({
                     ...prev,
-                    [targetId]: { 
-                        loading: false, 
-                        isFollowing: true, 
-                        isPending: false,
-                        showAnimation: true
-                    }
+                    [targetId]: { loading: false, isFollowing: true, isPending: false, showAnimation: true }
                 }));
-                // Sync with global user context
                 setUser(prevUser => ({
                     ...prevUser,
                     following: [...(prevUser?.following || []), targetId]
                 }));
-                
                 setTimeout(() => {
-                    setFollowStates(prev => ({
-                        ...prev,
-                        [targetId]: { ...prev[targetId], showAnimation: false }
-                    }));
+                    setFollowStates(prev => ({ ...prev, [targetId]: { ...prev[targetId], showAnimation: false } }));
                 }, 2000);
             } else {
                 setFollowStates(prev => ({
                     ...prev,
-                    [targetId]: { 
-                        loading: false, 
-                        isFollowing: false, 
-                        isPending: !!res.data.isPending,
-                        showAnimation: false
-                    }
+                    [targetId]: { loading: false, isFollowing: false, isPending: !!res.data.isPending, showAnimation: false }
                 }));
-
-                // Sync with global user context (Remove if unfollowed)
                 if (!res.data.isPending) {
                     setUser(prevUser => ({
                         ...prevUser,
                         following: (prevUser?.following || []).filter(id => id.toString() !== targetId.toString())
                     }));
                 }
-
-                if (res.data.isPending) {
-                    toast.info("Follow request sent");
-                } else {
-                    toast.info(`Unfollowed ${targetUser.name}`);
-                }
+                if (res.data.isPending) toast.info("Follow request sent");
+                else toast.info(`Unfollowed ${targetUser.name}`);
             }
         } catch (error) {
             toast.error(error.response?.data?.message || "Action failed");
-            setFollowStates(prev => ({
-                ...prev,
-                [targetId]: { ...prev[targetId], loading: false }
-            }));
+            setFollowStates(prev => ({ ...prev, [targetId]: { ...prev[targetId], loading: false } }));
         }
     };
 
+    // ── Loading skeleton ──
     if (loading) {
         return (
             <div className="space-y-4 py-2">
-                <div className="h-5 w-36 bg-white/8 rounded-lg animate-pulse" />
-                <div className="flex gap-3 overflow-hidden -mx-1 px-1">
+                <div className="flex items-center justify-between px-1">
+                    <div className="h-4 w-36 bg-white/5 rounded-lg animate-pulse" />
+                    <div className="h-4 w-16 bg-white/5 rounded-lg animate-pulse" />
+                </div>
+                <div className="flex gap-3 overflow-hidden px-1">
                     {[1, 2, 3, 4].map(i => (
-                        <div key={i} className="relative min-w-[140px] h-[188px] bg-zinc-900 rounded-2xl overflow-hidden animate-pulse">
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 shimmer" />
-                        </div>
+                        <div key={i} className="flex-shrink-0 w-[148px] h-[196px] bg-white/[0.03] rounded-2xl animate-pulse" />
                     ))}
                 </div>
             </div>
@@ -148,107 +114,184 @@ const FollowSuggestions = () => {
 
     return (
         <div ref={mainContainerRef} className="space-y-4">
+
+            {/* ── Header ── */}
             <div className="flex items-center justify-between px-1">
-                <div className="flex flex-col">
-                    <h2 className="text-[13px] font-black text-white tracking-wider uppercase">Suggested for you</h2>
-                    <p className="text-[10px] text-gray-500 font-medium">Connect with other creators</p>
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                        <HiUserGroup className="text-zinc-400 text-sm" />
+                        <h2 className="text-[11px] font-black text-white tracking-[0.18em] uppercase">
+                            Suggested for you
+                        </h2>
+                    </div>
+                    <div className="flex items-center gap-2 ml-5">
+                        <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[9px] font-semibold uppercase tracking-widest text-zinc-600">
+                            Connect with creators
+                        </span>
+                    </div>
                 </div>
-                <button 
+                <button
                     onClick={() => navigate("/follow-suggestions")}
-                    className="flex items-center gap-1 text-[11px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors"
+                    className="group flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.07] hover:border-white/[0.15] transition-all duration-200"
                 >
-                    View All
-                    <FaChevronRight className="text-[9px]" />
+                    <span className="text-[9px] font-bold text-zinc-500 group-hover:text-zinc-300 uppercase tracking-widest transition-colors">
+                        View All
+                    </span>
+                    <HiOutlineArrowRight className="text-[10px] text-zinc-600 group-hover:text-zinc-400 transition-colors" />
                 </button>
             </div>
 
-            <div 
+            {/* ── Scroll Row ── */}
+            <div
                 ref={scrollRef}
-                className="flex gap-3 overflow-x-auto pb-4 no-scrollbar -mx-1 px-1"
+                className="flex gap-3 overflow-x-auto pb-3 px-1 scrollbar-hide"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
                 <AnimatePresence>
                     {suggestions.map((item, idx) => {
                         const state = followStates[item._id] || {};
                         return (
-                            <motion.div
+                            <SuggestionCard
                                 key={item._id}
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: idx * 0.05 }}
-                                onClick={() => navigate(item.role === 'editor' ? `/editor/${item._id}` : `/public-profile/${item._id}`)}
-                                className="relative min-w-[155px] max-w-[155px] bg-[#111116] border border-white/5 rounded-2xl p-4 flex flex-col items-center text-center group cursor-pointer hover:border-white/10 transition-all overflow-hidden"
-                            >
-                                <AnimatePresence>
-                                    {state.showAnimation && (
-                                        <FollowingAnimation 
-                                            variant="local" 
-                                            onComplete={() => setFollowStates(prev => ({
-                                                ...prev,
-                                                [item._id]: { ...prev[item._id], showAnimation: false }
-                                            }))} 
-                                        />
-                                    )}
-                                </AnimatePresence>
-                                {/* Professional Editor Header */}
-                                {item.role === 'editor' && (
-                                    <div className="absolute top-2 left-0 right-0 px-3 flex items-center justify-center gap-1">
-                                        <MdVerified className="text-blue-400 text-[10px]" />
-                                        <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">Editor</span>
-                                    </div>
-                                )}
-
-                                <div className="relative mb-3 mt-4">
-                                    <img 
-                                        src={item.profilePicture} 
-                                        alt={item.name}
-                                        loading="lazy"
-                                        className="w-16 h-16 rounded-full object-cover border border-white/10 group-hover:border-white/20 transition-colors"
-                                        onLoad={e => { e.target.style.opacity = '1'; }}
-                                        style={{ opacity: 0, transition: 'opacity 0.5s ease' }}
-                                    />
-                                </div>
-
-                                <div className="w-full mb-3">
-                                    <h3 className="text-xs font-bold text-white truncate w-full">{item.name}</h3>
-                                    <p className="text-[9px] text-gray-500 font-medium truncate w-full flex items-center justify-center gap-1">
-                                         {item.country || "Global User"}
-                                    </p>
-                                </div>
-
-                                <button
-                                    onClick={(e) => handleFollow(e, item)}
-                                    disabled={state.loading || state.isPending}
-                                    className={`w-full py-1.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-2 group/btn ${
-                                        state.isFollowing 
-                                            ? "bg-white/10 text-white hover:bg-red-500/20 hover:text-red-400 border border-white/10 hover:border-red-500/30" 
-                                            : state.isPending
-                                                ? "bg-zinc-800 text-zinc-400 cursor-default"
-                                                : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/20"
-                                    }`}
-                                >
-                                    {state.loading ? (
-                                        <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    ) : state.isFollowing ? (
-                                        <>
-                                            <FaCheck className="text-[8px] group-hover/btn:hidden" />
-                                            <span className="group-hover/btn:hidden">Following</span>
-                                            <span className="hidden group-hover/btn:inline">Unfollow</span>
-                                        </>
-                                    ) : state.isPending ? (
-                                        "Requested"
-                                    ) : (
-                                        <>
-                                            <FaUserPlus className="text-[8px]" />
-                                            Follow
-                                        </>
-                                    )}
-                                </button>
-                            </motion.div>
+                                item={item}
+                                idx={idx}
+                                state={state}
+                                onCardClick={() => navigate(item.role === 'editor' ? `/editor/${item._id}` : `/public-profile/${item._id}`)}
+                                onFollow={(e) => handleFollow(e, item)}
+                                onAnimationComplete={() =>
+                                    setFollowStates(prev => ({
+                                        ...prev,
+                                        [item._id]: { ...prev[item._id], showAnimation: false }
+                                    }))
+                                }
+                            />
                         );
                     })}
                 </AnimatePresence>
             </div>
         </div>
+    );
+};
+
+// ─── Suggestion Card ──────────────────────────────────────────────────────────
+const SuggestionCard = ({ item, idx, state, onCardClick, onFollow, onAnimationComplete }) => {
+    const [imgLoaded, setImgLoaded] = useState(false);
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.05, duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+            whileHover={{ y: -3, transition: { duration: 0.2 } }}
+            onClick={onCardClick}
+            className="relative flex-shrink-0 w-[148px] bg-[#0c0c10] border border-white/[0.06] rounded-2xl overflow-hidden cursor-pointer group hover:border-white/[0.12] transition-all duration-300"
+        >
+            {/* Top shimmer line on hover */}
+            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10" />
+
+            {/* Follow animation overlay */}
+            <AnimatePresence>
+                {state.showAnimation && (
+                    <FollowingAnimation variant="local" onComplete={onAnimationComplete} />
+                )}
+            </AnimatePresence>
+
+            <div className="p-4 flex flex-col items-center text-center">
+
+                {/* Editor badge */}
+                {item.role === 'editor' && (
+                    <div className="flex items-center gap-1 mb-3 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20">
+                        <MdVerified className="text-blue-400 text-[9px]" />
+                        <span className="text-[7px] font-black text-blue-400 uppercase tracking-widest">Editor</span>
+                    </div>
+                )}
+
+                {/* Avatar */}
+                <div className={`relative mb-3 ${item.role !== 'editor' ? 'mt-2' : ''}`}>
+                    {/* Subtle ring */}
+                    <div className="w-[60px] h-[60px] rounded-full p-[1.5px] bg-gradient-to-br from-white/10 via-white/5 to-transparent">
+                        <div className="w-full h-full rounded-full overflow-hidden bg-zinc-900">
+                            <img
+                                src={item.profilePicture}
+                                alt={item.name}
+                                loading="lazy"
+                                onLoad={() => setImgLoaded(true)}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                style={{ opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.4s ease' }}
+                            />
+                            {/* Placeholder while loading */}
+                            {!imgLoaded && (
+                                <div className="absolute inset-0 bg-zinc-800 rounded-full flex items-center justify-center">
+                                    <FaUser className="text-zinc-600 text-sm" />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Name & Location */}
+                <div className="w-full mb-4">
+                    <h3 className="text-[12px] font-bold text-white truncate leading-tight mb-0.5 group-hover:text-zinc-100 transition-colors">
+                        {item.name}
+                    </h3>
+                    <p className="text-[9px] font-semibold text-zinc-600 uppercase tracking-wider truncate">
+                        {item.country || 'Global User'}
+                    </p>
+                </div>
+
+                {/* Follow button */}
+                <FollowButton state={state} onFollow={onFollow} />
+            </div>
+        </motion.div>
+    );
+};
+
+// ─── Follow Button ────────────────────────────────────────────────────────────
+const FollowButton = ({ state, onFollow }) => {
+    if (state.loading) {
+        return (
+            <button
+                disabled
+                className="w-full py-2 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center"
+            >
+                <div className="w-3 h-3 border-[1.5px] border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
+            </button>
+        );
+    }
+
+    if (state.isFollowing) {
+        return (
+            <button
+                onClick={onFollow}
+                className="w-full py-2 rounded-xl bg-white/[0.06] border border-white/10 text-[9px] font-black text-zinc-300 uppercase tracking-wider hover:bg-red-500/10 hover:border-red-500/25 hover:text-red-400 transition-all duration-200 flex items-center justify-center gap-1.5 group/btn"
+            >
+                <FaCheck className="text-[7px] group-hover/btn:hidden" />
+                <span className="group-hover/btn:hidden">Following</span>
+                <span className="hidden group-hover/btn:inline text-[9px]">Unfollow</span>
+            </button>
+        );
+    }
+
+    if (state.isPending) {
+        return (
+            <button
+                disabled
+                className="w-full py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-[9px] font-black text-zinc-600 uppercase tracking-wider cursor-default"
+            >
+                Requested
+            </button>
+        );
+    }
+
+    return (
+        <button
+            onClick={onFollow}
+            className="w-full py-2 rounded-xl bg-white text-black text-[9px] font-black uppercase tracking-wider hover:bg-zinc-100 active:scale-95 transition-all duration-150 flex items-center justify-center gap-1.5 shadow-lg shadow-white/5"
+        >
+            <FaUserPlus className="text-[8px]" />
+            Follow
+        </button>
     );
 };
 
