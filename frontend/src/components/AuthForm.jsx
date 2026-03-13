@@ -9,16 +9,16 @@ const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
 // Country list with codes
 const COUNTRIES = [
-  { code: "IN", name: "India", flag: "🇮🇳", supported: true },
-  { code: "US", name: "United States", flag: "🇺🇸", supported: false },
-  { code: "GB", name: "United Kingdom", flag: "🇬🇧", supported: false },
-  { code: "CA", name: "Canada", flag: "🇨🇦", supported: false },
-  { code: "AU", name: "Australia", flag: "🇦🇺", supported: false },
-  { code: "DE", name: "Germany", flag: "🇩🇪", supported: false },
-  { code: "FR", name: "France", flag: "🇫🇷", supported: false },
-  { code: "AE", name: "UAE", flag: "🇦🇪", supported: false },
-  { code: "SG", name: "Singapore", flag: "🇸🇬", supported: false },
-  { code: "JP", name: "Japan", flag: "🇯🇵", supported: false },
+  { code: "IN", name: "India", flag: "🇮🇳", supported: true, dialCode: "91" },
+  { code: "US", name: "United States", flag: "🇺🇸", supported: false, dialCode: "1" },
+  { code: "GB", name: "United Kingdom", flag: "🇬🇧", supported: false, dialCode: "44" },
+  { code: "CA", name: "Canada", flag: "🇨🇦", supported: false, dialCode: "1" },
+  { code: "AU", name: "Australia", flag: "🇦🇺", supported: false, dialCode: "61" },
+  { code: "DE", name: "Germany", flag: "🇩🇪", supported: false, dialCode: "49" },
+  { code: "FR", name: "France", flag: "🇫🇷", supported: false, dialCode: "33" },
+  { code: "AE", name: "UAE", flag: "🇦🇪", supported: false, dialCode: "971" },
+  { code: "SG", name: "Singapore", flag: "🇸🇬", supported: false, dialCode: "65" },
+  { code: "JP", name: "Japan", flag: "🇯🇵", supported: false, dialCode: "81" },
 ];
 
 const AuthForm = () => {
@@ -291,27 +291,29 @@ const AuthForm = () => {
                       className="w-full px-4 py-4 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-400 transition text-gray-900 placeholder:text-gray-400"
                     />
 
-                    {/* Phone Number (India Only) */}
-                    {formData.country === "IN" && (
-                      <div className="relative">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-gray-400">
-                          <span className="text-lg">🇮🇳</span>
-                          <span className="text-sm font-semibold border-r border-gray-200 pr-2">+91</span>
-                        </div>
-                        <input
-                          type="tel"
-                          name="phone"
-                          placeholder="Mobile Number"
-                          value={formData.phone}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/\D/g, "").slice(0, 10);
-                            setFormData({ ...formData, phone: val });
-                          }}
-                          required
-                          className="w-full pl-20 pr-4 py-4 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-400 transition text-gray-900 placeholder:text-gray-400"
-                        />
+                    {/* Phone Number with Country Code */}
+                    <div className="relative">
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-gray-400">
+                        <span className="text-lg">
+                          {COUNTRIES.find(c => c.code === formData.country)?.flag || "🇮🇳"}
+                        </span>
+                        <span className="text-sm font-semibold border-r border-gray-200 pr-2">
+                          +{COUNTRIES.find(c => c.code === formData.country)?.dialCode || "91"}
+                        </span>
                       </div>
-                    )}
+                      <input
+                        type="tel"
+                        name="phone"
+                        placeholder="Mobile Number"
+                        value={formData.phone}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                          setFormData({ ...formData, phone: val });
+                        }}
+                        required
+                        className="w-full pl-24 pr-4 py-4 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-400 transition text-gray-900 placeholder:text-gray-400"
+                      />
+                    </div>
                     <select
                       name="role"
                       value={formData.role}

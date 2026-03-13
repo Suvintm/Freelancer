@@ -74,12 +74,12 @@ router.get(
 
 router.post("/select-role", async (req, res) => {
     try {
-        const { token, role } = req.body;
+        const { token, role, phone, country } = req.body;
 
-        if (!token || !role) {
+        if (!token || !role || !phone || !country) {
             return res.status(400).json({
                 success: false,
-                message: "Token and role are required",
+                message: "Role, phone and country are required",
             });
         }
 
@@ -117,13 +117,13 @@ router.post("/select-role", async (req, res) => {
             });
         }
 
-        // Production Parity: Set defaults based on country (defaulting to IN if missing)
-        const country = user.country || "IN";
         const currencyMap = { IN: "INR", US: "USD", GB: "GBP", CA: "CAD", AU: "AUD" };
         const currency = currencyMap[country] || "INR";
         const paymentGateway = country === "IN" ? "razorpay" : "none";
 
         user.role = role;
+        user.phone = phone;
+        user.country = country;
         user.currency = currency;
         user.paymentGateway = paymentGateway;
         user.isVerified = true; // OAuth users are verified
@@ -143,6 +143,11 @@ router.post("/select-role", async (req, res) => {
                 contactEmail: user.email,
                 location: { country: country },
             });
+        } else {
+            // Update existing profile with new country/email if necessary
+            existingProfile.contactEmail = user.email;
+            existingProfile.location = { country: country };
+            await existingProfile.save();
         }
 
         // Generate full token

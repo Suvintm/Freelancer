@@ -97,12 +97,10 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
                         // Link Google account to existing user
                         user.googleId = googleId;
                         user.authProvider = "google";
+                        // Do not update profilePicture from Google anymore
                         // Google emails are considered verified
                         user.isVerified = true; 
                         
-                        if (!user.profilePicture || user.profilePicture.includes("flaticon.com")) {
-                            user.profilePicture = profilePicture;
-                        }
                         await user.save();
                         logger.info(`[OAuth] Linked Google account to existing user: ${email}`);
                         return done(null, user);
@@ -125,7 +123,7 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
                         name: finalName,
                         email,
                         googleId,
-                        profilePicture,
+                        profilePicture: "", // Force platform default
                         password: `OAUTH_USER_${crypto.randomBytes(8).toString("hex")}`,
                         role: "pending", // Force role selection flow
                         authProvider: "google",

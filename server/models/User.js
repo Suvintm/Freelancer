@@ -61,6 +61,11 @@ const userSchema = new mongoose.Schema(
       sparse: true,
       unique: true,
     },
+    authProvider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+    },
 
     // Status & Moderation
     isBanned: {
