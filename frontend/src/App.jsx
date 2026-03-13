@@ -5,11 +5,9 @@ import SplashScreen from "./components/SplashScreen.jsx";
 import Homepage from "./pages/Homepage.jsx";
 import ClientHome from "./pages/clientHome.jsx";
 import EditorHome from "./pages/EditorHome.jsx";
-import ChatPage from "./pages/chatpage.jsx"; // Original ChatPage
 import EditorProfilePage from "./pages/EditorProfilePage.jsx";
 import EditorMyorderspage from "./pages/EditorMyorderspage.jsx";
 import EditorProfileUpdate from "./pages/EditorProfileUpdate.jsx";
-import AddPortfolio from "./pages/addportfolio.jsx";
 import ReelUploadPage from "./pages/ReelUploadPage.jsx";
 import PublicEditorProfile from "./pages/PublicEditorProfile.jsx";
 import ReelsPage from "./pages/ReelsPage.jsx";
@@ -28,7 +26,6 @@ import MyOrders from "./pages/MyOrders.jsx";
 
 // Client Pages
 import ClientOrders from "./pages/ClientOrders.jsx";
-import ClientMessages from "./pages/ClientMessages.jsx";
 import ClientProfile from "./pages/ClientProfile.jsx";
 import SavedEditors from "./pages/SavedEditors.jsx";
 import ExploreEditorsPage from "./pages/ExploreEditorsPage.jsx";
@@ -238,7 +235,6 @@ function App() {
         <Route path="/client-kyc" element={<ProtectedRoute allowedRoles={["client"]}><ClientKYCPage /></ProtectedRoute>} />
         <Route path="/editor-analytics" element={<ProtectedRoute allowedRoles={["editor"]}><EditorAnalytics /></ProtectedRoute>} />
         <Route path="/editor-profile-update" element={<ProtectedRoute allowedRoles={["editor"]}><EditorProfileUpdate /></ProtectedRoute>} />
-        <Route path="/add-portfolio" element={<ProtectedRoute allowedRoles={["editor"]}><AddPortfolio /></ProtectedRoute>} />
         <Route path="/upload-reel" element={<ProtectedRoute allowedRoles={["editor"]}><ReelUploadPage /></ProtectedRoute>} />
         <Route path="/kyc-details" element={<ProtectedRoute allowedRoles={["editor"]}><KYCDetailsPage /></ProtectedRoute>} />
         <Route path="/location-settings" element={<ProtectedRoute allowedRoles={["editor"]}><LocationSettingsPage /></ProtectedRoute>} />
