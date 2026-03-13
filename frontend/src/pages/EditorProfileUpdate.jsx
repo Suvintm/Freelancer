@@ -8,6 +8,8 @@ import Sidebar from "../components/Sidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
 import { HiOutlineCamera, HiOutlinePlus } from "react-icons/hi2";
 import { useTheme } from "../context/ThemeContext";
+import { useQuery } from "@tanstack/react-query";
+import ProfileChecklist from "../components/ProfileChecklist.jsx";
 
 // Optional language options
 const LANGUAGE_OPTIONS = [
@@ -29,6 +31,17 @@ const EditorProfileUpdate = () => {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showHint, setShowHint] = useState(false);
+
+  const { data: completionRes } = useQuery({
+    queryKey: ['completionStatus', 'me'],
+    queryFn: async () => {
+      const { data } = await axios.get(`${backendURL}/api/profile/completion-status`, {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      });
+      return data;
+    },
+    enabled: !!user?.token,
+  });
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 1500);
@@ -97,7 +110,7 @@ const EditorProfileUpdate = () => {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
-      <main className="flex-1 md:ml-64 md:mt-16 px-4 md:px-12 py-10 flex flex-col items-center">
+      <main className="flex-1 md:ml-64 md:mt-16 px-4 md:px-12 py-4 md:py-10 flex flex-col items-center">
         {loading ? (
           <div className="w-full max-w-5xl space-y-12">
              <div className="flex items-center gap-6">
@@ -113,24 +126,24 @@ const EditorProfileUpdate = () => {
           <motion.section
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-5xl space-y-8"
+            className="w-full max-w-5xl space-y-4 md:space-y-8"
           >
             {/* ================= AVATAR SECTION ================= */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 sm:gap-12 w-full">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-12 w-full">
               {/* Left Side: Avatar + Details */}
-              <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8">
+              <div className="flex flex-row items-center gap-4 md:gap-8">
                 {/* Profile Image Circle */}
                 <div className="relative group self-center md:self-auto">
                   <div className={`absolute -inset-1.5 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity ${isDark ? "bg-black" : "bg-black"}`} />
-                  <div className={`relative p-2 rounded-full border-2 ${isDark ? "border-white bg-white/5" : "border-zinc-200 bg-zinc-50"} shadow-xl shadow-zinc-200/50`}>
+                  <div className={`relative p-1 md:p-2 rounded-full border-2 ${isDark ? "border-white bg-white/5" : "border-zinc-200 bg-zinc-50"} shadow-xl shadow-zinc-200/50`}>
                     <img
                       src={profileImage}
                       alt="Profile"
-                      className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover"
+                      className="w-20 h-20 md:w-32 md:h-32 rounded-full object-cover"
                     />
                     <label
                       htmlFor="uploadProfile"
-                      className="absolute bottom-0 right-0 p-2.5 rounded-full bg-white text-black shadow-2xl cursor-pointer hover:scale-110 active:scale-95 transition-all z-10"
+                      className="absolute bottom-0 right-0 p-1.5 md:p-2.5 rounded-full bg-white text-black shadow-2xl cursor-pointer hover:scale-110 active:scale-95 transition-all z-10"
                     >
                       <HiOutlinePlus className="w-4 h-4" />
                       <input id="uploadProfile" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
@@ -167,8 +180,8 @@ const EditorProfileUpdate = () => {
                 </div>
 
                 {/* Identity Details */}
-                <div className="flex flex-col items-center md:items-start text-center md:text-left">
-                  <h2 className={`text-2xl md:text-4xl font-black tracking-tight mb-1 ${isDark ? "text-white" : "text-zinc-900"}`}>
+                <div className="flex flex-col items-start text-left">
+                  <h2 className={`text-xl md:text-4xl font-black tracking-tight mb-0.5 ${isDark ? "text-white" : "text-zinc-900"}`}>
                     {user?.name || "Premium Member"}
                   </h2>
                   <p className={`text-sm font-medium ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>
@@ -183,15 +196,20 @@ const EditorProfileUpdate = () => {
                 disabled={uploading}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className={`flex items-center gap-3 px-4 py-2 rounded-2xl font-black text-xs tracking-wider uppercase transition-all shadow-xl ${
+                className={`flex items-center gap-2 md:gap-3 px-3 md:px-4 py-1.5 md:py-2 rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs tracking-wider uppercase transition-all shadow-xl ${
                   isDark 
                   ? "bg-white text-black hover:bg-zinc-100" 
                   : "bg-zinc-900 text-white hover:bg-black shadow-zinc-200"
                 } ${uploading ? "opacity-50 cursor-not-allowed" : ""}`}
               >
-                <HiOutlineCamera className="w-6 h-6" />
+                <HiOutlineCamera className="w-4 h-4 md:w-6 md:h-6" />
                 {uploading ? "Uploading..." : "Change Photo"}
               </motion.button>
+            </div>
+
+            {/* Profile Checklist Integration */}
+            <div className="w-full max-w-lg self-center md:self-start mt-2 md:mt-4">
+               <ProfileChecklist completionData={completionRes} />
             </div>
 
             {/* Hub Content */}

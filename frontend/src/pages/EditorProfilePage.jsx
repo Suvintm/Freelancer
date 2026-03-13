@@ -12,6 +12,7 @@ import {
   FaCalendarAlt,
   FaCheck,
   FaCheckCircle,
+  FaChevronDown,
   FaChevronRight,
   FaCode,
   FaEdit,
@@ -50,8 +51,9 @@ import SuvixScoreCard from "../components/SuvixScoreCard.jsx";
 import SuvixScoreAnalytics from "../components/SuvixScoreAnalytics.jsx";
 import AvailabilitySelector from "../components/AvailabilitySelector.jsx";
 import SoftwareExpertise from "../components/SoftwareExpertise.jsx";
- import useRefreshManager from "../hooks/useRefreshManager.js";
+import useRefreshManager from "../hooks/useRefreshManager.js";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
+import ProfileChecklist from "../components/ProfileChecklist.jsx";
 
 import _premiereIcon from "../assets/preimerepro.png";
 import _aeIcon from "../assets/adobeexpress.png";
@@ -83,14 +85,6 @@ const countryNameToCode = {
   Pakistan: "PK", Bangladesh: "BD", Indonesia: "ID", Malaysia: "MY", Philippines: "PH",
   Thailand: "TH", Vietnam: "VN", SouthKorea: "KR", Russia: "RU", Ukraine: "UA",
   Poland: "PL", Turkey: "TR", Egypt: "EG", Nigeria: "NG", SouthAfrica: "ZA",
-};
-
-// Progress ring color based on percentage
-const getProgressColor = (percent) => {
-  if (percent >= 80) return '#00c348ff'; // Green
-  if (percent >= 60) return '#61e609ff'; // Blue
-  if (percent >= 40) return '#ffa200ff'; // Amber
-  return '#EF4444'; // Red
 };
 
 const EditorProfile = () => {
@@ -349,31 +343,9 @@ const EditorProfile = () => {
             </motion.div>
           )}
 
-          {/* ==================== PROFILE COMPLETION BANNER ==================== */}
-          {completionPercent < 80 && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 mb-2 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4"
-            >
-              <div className="flex items-center gap-3 flex-1">
-                <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-                  <FaExclamationCircle className="text-amber-500 text-sm" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-white">Complete your profile</p>
-                  <p className="text-xs text-zinc-500">
-                    Your profile is {completionPercent}% complete. Reach 80% to get noticed by clients.
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => navigate('/editor-profile-update')}
-                className="flex items-center gap-2 px-4 py-2 bg-white text-black text-xs font-semibold rounded-lg hover:bg-zinc-200 transition-colors whitespace-nowrap"
-              >
-                Complete Profile <FaArrowRight className="text-[10px]" />
-              </button>
-            </motion.div>
+          {/* ==================== PROFILE COMPLETION CHECKLIST ==================== */}
+          {(targetEditorId === user?._id) && (
+            <ProfileChecklist completionData={completionRes} />
           )}
 
           {/* ==================== PROFILE HEADER (HYPER-COMPACT MOBILE OPTIMIZED) ==================== */}

@@ -25,6 +25,7 @@ import {
 import { 
   HiOutlineSquare2Stack, 
   HiOutlineCheckCircle, 
+  HiOutlinePlusCircle,
   HiOutlineEyeSlash 
 } from "react-icons/hi2";
 import { useAppContext } from "../context/AppContext";
@@ -43,6 +44,9 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+  const [showIncompleteProfileModal, setShowIncompleteProfileModal] = useState(false);
+  const [showConfirmPublishModal, setShowConfirmPublishModal] = useState(false);
+  const [portfolioToPublish, setPortfolioToPublish] = useState(null);
 
   // Reels Popup State
   const [showReelsPopup, setShowReelsPopup] = useState(false);
@@ -140,6 +144,23 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
       toast.info("✨ Already published to Reels!");
       return;
     }
+
+    // Restriction for Editors: Must have 100% profile completion
+    if (user?.role === "editor" && !user?.profileCompleted) {
+      setShowIncompleteProfileModal(true);
+      return;
+    }
+
+    // Show Confirmation Modal
+    setPortfolioToPublish(portfolioId);
+    setShowConfirmPublishModal(true);
+  };
+
+  const handleConfirmPublish = async () => {
+    if (!portfolioToPublish) return;
+    const portfolioId = portfolioToPublish;
+    setShowConfirmPublishModal(false);
+    setPortfolioToPublish(null);
     
     try {
       const res = await axios.post(
@@ -334,12 +355,12 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
                         ? 'bg-green-500 text-white cursor-default' 
                         : 'bg-white/90 text-purple-500 hover:bg-purple-50'
                     }`}
-                    title={portfolio.isPublished ? "Already on Reels" : "Push to Reels"}
+                    title={portfolio.isPublished ? "Already on Reels" : "Add to Reel"}
                   >
                     {portfolio.isPublished ? (
                       <FaCheck className="text-sm" />
                     ) : (
-                      <FaGlobe className="text-sm" />
+                      <FaPlus className="text-sm" />
                     )}
                   </motion.button>
 
@@ -503,24 +524,32 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
                   </div>
                   
                   {/* Top-Right: Status Icon (White, Small) */}
-                  {!isPublic && (
-                    <div 
-                      className="absolute top-2.5 right-2.5 z-20 flex items-center justify-center"
-                      title={isReel ? "Published to Reels" : "Private (Not on Reels)"}
+                   {!isPublic && (
+                    <button 
+                      onClick={(e) => handlePushToReel(p._id, e)}
+                      className="absolute top-1.5 right-1.5 z-30 flex items-center justify-center gap-1 px-1.5 py-0.5 bg-black/50 backdrop-blur-lg rounded-full border border-white/10 hover:bg-black/70 transition-colors"
+                      title={isReel ? "Published to Reels" : "Add to Reel"}
                     >
                       {isReel ? (
-                        <HiOutlineCheckCircle className="text-white text-[18px] drop-shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
+                        <HiOutlineCheckCircle className="text-emerald-400 text-[14px] md:text-[16px] drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
                       ) : (
-                        <HiOutlineEyeSlash className="text-white/60 text-[18px] drop-shadow-lg" />
+                        <>
+                          <HiOutlinePlusCircle className="text-white/90 text-[14px] md:text-[16px]" />
+                          <span className="hidden sm:inline text-white text-[8px] md:text-[9px] font-black uppercase tracking-wider">Reel</span>
+                        </>
                       )}
-                    </div>
+                    </button>
                   )}
                   
-                  {/* Top-Left: Double Layer Icon (Original + Edited) */}
+                   {/* Top-Left: Double Layer Icon (Original + Edited) */}
                   {(p.originalClips?.length > 0 || p.originalClip) && p.editedClip && (
-                    <div className="absolute top-2.5 left-2.5 z-20" title="Double Layer (Original + Edited)">
-                      <HiOutlineSquare2Stack className="text-white text-[18px] drop-shadow-lg" />
-                    </div>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); openReelsPopup(i); }}
+                      className="absolute top-1.5 left-1.5 z-30 bg-black/30 backdrop-blur-sm rounded-md p-0.5 hover:bg-black/50 transition-colors" 
+                      title="Double Layer (Original + Edited)"
+                    >
+                      <HiOutlineSquare2Stack className="text-white/80 text-[14px] md:text-[18px] drop-shadow-lg" />
+                    </button>
                   )}
                   
                   {/* Bottom-left: Views (if published) */}
@@ -532,13 +561,13 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
                   )}
                   
                   {/* Hover Overlay with Push to Reel button for Private items */}
-                  {!isPublic && !isReel && (
+                   {!isPublic && !isReel && (
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
                         <button
                           onClick={(e) => handlePushToReel(p._id, e)}
-                          className="px-4 py-1.5 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded-full shadow-2xl hover:bg-emerald-50 transition-colors"
+                          className="px-4 py-1.5 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded-full shadow-2xl hover:bg-zinc-100 transition-colors"
                         >
-                          Push to Reels
+                          Add to Reel
                         </button>
                     </div>
                   )}
@@ -608,6 +637,72 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
                 <motion.button whileTap={{ scale: 0.98 }} onClick={handleDeletePortfolio} className="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold">
                   Delete
                 </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+       </AnimatePresence>
+
+      {/* Incomplete Profile Modal */}
+      <AnimatePresence>
+        {showIncompleteProfileModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-md flex justify-center items-center z-[100] p-4" onClick={() => setShowIncompleteProfileModal(false)}>
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 w-full max-w-sm shadow-2xl text-center" onClick={(e) => e.stopPropagation()}>
+              <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <FaExclamationTriangle className="text-amber-500 text-3xl" />
+              </div>
+              <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Profile Incomplete</h3>
+              <p className="text-zinc-400 mb-8 text-sm leading-relaxed">
+                Please complete all required profile fields to <span className="text-white font-bold">100%</span> before you can publish portfolio items to Reels.
+              </p>
+              <div className="flex flex-col gap-3">
+                <motion.button 
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }} 
+                  onClick={() => navigate("/editor-profile-update")} 
+                  className="w-full py-4 bg-white text-black rounded-xl font-black uppercase tracking-widest text-xs shadow-lg shadow-white/5"
+                >
+                  Complete Profile
+                </motion.button>
+                <button 
+                  onClick={() => setShowIncompleteProfileModal(false)} 
+                  className="w-full py-3 text-zinc-500 font-bold uppercase tracking-widest text-[10px] hover:text-white transition-colors"
+                >
+                  Maybe Later
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+       </AnimatePresence>
+
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {showConfirmPublishModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-md flex justify-center items-center z-[100] p-4" onClick={() => setShowConfirmPublishModal(false)}>
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 w-full max-w-sm shadow-2xl text-center" onClick={(e) => e.stopPropagation()}>
+              <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <FaGlobe className="text-emerald-500 text-3xl" />
+              </div>
+              <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Ready to Publish?</h3>
+              <p className="text-zinc-400 mb-8 text-sm leading-relaxed">
+                This will publish your portfolio work to the <span className="text-white font-bold">Public Reels</span> feed for everyone to see.
+              </p>
+              <div className="flex flex-col gap-3">
+                <motion.button 
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }} 
+                  onClick={handleConfirmPublish} 
+                  className="w-full py-4 bg-emerald-500 text-white rounded-xl font-black uppercase tracking-widest text-xs shadow-lg shadow-emerald-500/20"
+                >
+                  Confirm & Publish
+                </motion.button>
+                <button 
+                  onClick={() => setShowConfirmPublishModal(false)} 
+                  className="w-full py-3 text-zinc-500 font-bold uppercase tracking-widest text-[10px] hover:text-white transition-colors"
+                >
+                  Nevermind, Skip
+                </button>
               </div>
             </motion.div>
           </motion.div>

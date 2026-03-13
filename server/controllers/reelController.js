@@ -21,6 +21,11 @@ export const publishToReel = asyncHandler(async (req, res) => {
         throw new ApiError(403, "Not authorized to publish this portfolio");
     }
 
+    // Restrict Editors to publish only if profile is 100% complete
+    if (req.user.role === 'editor' && !req.user.profileCompleted) {
+        throw new ApiError(400, "Please complete your profile (100%) before publishing to Reels");
+    }
+
     // Check if already published
     const existingReel = await Reel.findOne({ portfolio: portfolioId });
     if (existingReel) {
