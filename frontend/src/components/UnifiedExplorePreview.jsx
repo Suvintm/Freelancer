@@ -15,6 +15,7 @@ import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
+import { repairUrl } from "../utils/urlHelper.jsx";
 
 // ─── Section Header ───────────────────────────────────────────────────────────
 const SectionHeader = ({ icon: Icon, title, subLabel, link, navigate }) => (
@@ -54,9 +55,12 @@ const EditorCard = ({ item, idx, navigate }) => (
             <div className="relative mt-1">
                 <div className="w-16 h-16 rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 shadow-lg">
                     <img
-                        src={item.user?.profilePicture || item.profilePicture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop'}
+                        src={repairUrl(item.user?.profilePicture || item.profilePicture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop')}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         alt={item.user?.name || item.name}
+                        onError={(e) => {
+                            e.target.src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop';
+                        }}
                     />
                 </div>
                 {item.user?.isVerified && (
@@ -133,7 +137,7 @@ const FeaturedGigCard = ({ item, navigate }) => {
         >
             {/* Background image with zoom */}
             <motion.img
-                src={item.thumbnail || item.images?.[0] || 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?q=80&w=800&auto=format&fit=crop'}
+                src={repairUrl(item.thumbnail || item.images?.[0] || 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?q=80&w=800&auto=format&fit=crop')}
                 className="absolute inset-0 w-full h-full object-cover"
                 animate={{ scale: hovered ? 1.06 : 1 }}
                 transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
@@ -169,11 +173,14 @@ const FeaturedGigCard = ({ item, navigate }) => {
             <div className="absolute inset-x-0 bottom-0 p-5 z-10">
                 {/* Editor */}
                 <div className="flex items-center gap-2 mb-3">
-                    {item.editor?.profilePicture ? (
-                        <img src={item.editor.profilePicture} className="w-5 h-5 rounded-full border border-white/20 object-cover" alt="" />
-                    ) : (
-                        <div className="w-5 h-5 rounded-full bg-zinc-700 border border-white/10" />
-                    )}
+                    <img 
+                        src={repairUrl(item.editor?.profilePicture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=100&auto=format&fit=crop')} 
+                        className="w-5 h-5 rounded-full border border-white/20 object-cover" 
+                        alt="" 
+                        onError={(e) => {
+                            e.target.src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=100&auto=format&fit=crop';
+                        }}
+                    />
                     <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">{item.editor?.name || 'Pro Editor'}</span>
                     <div className="ml-auto flex items-center gap-1 text-zinc-600">
                         <HiOutlineClock className="text-[9px]" />
@@ -224,7 +231,7 @@ const SmallGigCard = ({ item, idx, navigate }) => {
             {/* Thumbnail */}
             <div className="relative w-[88px] flex-shrink-0 overflow-hidden rounded-l-2xl">
                 <motion.img
-                    src={item.thumbnail || item.images?.[0] || 'https://images.unsplash.com/photo-1492724441997-5dc865305da7?q=80&w=400&auto=format&fit=crop'}
+                    src={repairUrl(item.thumbnail || item.images?.[0] || 'https://images.unsplash.com/photo-1492724441997-5dc865305da7?q=80&w=400&auto=format&fit=crop')}
                     className="w-full h-full object-cover"
                     animate={{ scale: hovered ? 1.08 : 1 }}
                     transition={{ duration: 0.5 }}
@@ -246,11 +253,14 @@ const SmallGigCard = ({ item, idx, navigate }) => {
                 </div>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 min-w-0">
-                        {item.editor?.profilePicture ? (
-                            <img src={item.editor.profilePicture} className="w-4 h-4 rounded-full border border-white/15 object-cover flex-shrink-0" alt="" />
-                        ) : (
-                            <div className="w-4 h-4 rounded-full bg-zinc-800 flex-shrink-0" />
-                        )}
+                        <img 
+                            src={repairUrl(item.editor?.profilePicture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=100&auto=format&fit=crop')} 
+                            className="w-4 h-4 rounded-full border border-white/15 object-cover flex-shrink-0" 
+                            alt="" 
+                            onError={(e) => {
+                                e.target.src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=100&auto=format&fit=crop';
+                            }}
+                        />
                         <span className="text-[8px] font-semibold text-zinc-600 truncate max-w-[65px]">
                             {item.editor?.name || 'Pro Editor'}
                         </span>

@@ -1,7 +1,20 @@
 /**
  * repairUrl - Repairs mangled Cloudinary URLs from backend sanitization
  */
-export const repairUrl = (url) => {
+export const repairUrl = (input) => {
+    if (!input) return input;
+    
+    let url = "";
+    
+    // 1. Extract URL if input is an object (handles legacy denormalized data)
+    if (typeof input === "object") {
+        url = input.url || input.secure_url || input.profilePicture || input.thumbnail || "";
+        // If it's still an object (e.g. reel.editor.profilePicture was an object), recurse once
+        if (typeof url === "object") return repairUrl(url);
+    } else {
+        url = input;
+    }
+
     if (!url || typeof url !== "string") return url;
     if (!url.includes("cloudinary") && !url.includes("res_") && !url.includes("_com")) return url;
   

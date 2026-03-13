@@ -273,7 +273,7 @@ export const getUserSuggestions = asyncHandler(async (req, res) => {
       suggestions: await User.aggregate([
         { $match: matchQuery },
         { $sample: { size: parseInt(limit) } },
-        { $project: { name: 1, profilePicture: 1, role: 1, country: 1 } }
+        { $project: { name: 1, profilePicture: { $ifNull: ["$profilePicture", ""] }, role: 1, country: 1 } }
       ])
     });
   }

@@ -315,13 +315,7 @@ const SuggestionCard = ({ item, idx, state, onCardClick, onFollow, onAnimationCo
                     <div className="w-[60px] h-[60px] rounded-full p-[1.5px] bg-gradient-to-br from-white/10 via-white/5 to-transparent">
                         <div className="w-full h-full rounded-full overflow-hidden bg-zinc-900 relative">
                             <img
-                                src={
-                                    typeof item.profilePicture === "string" && item.profilePicture.length > 0
-                                        ? repairUrl(item.profilePicture)
-                                        : item.profilePicture?.url
-                                        ? repairUrl(item.profilePicture.url)
-                                        : "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop"
-                                }
+                                src={repairUrl(item.profilePicture || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop")}
                                 alt={item.name}
                                 loading="lazy"
                                 onLoad={() => setImgLoaded(true)}

@@ -170,7 +170,18 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
                             $cond: {
                                 if: { $eq: [{ $type: "$editor" }, "objectId"] },
                                 then: "$editor",
-                                else: { $ifNull: ["$editor._id", "$editor"] }
+                                else: {
+                                    $let: {
+                                        vars: { eid: { $ifNull: ["$editor._id", "$editor"] } },
+                                        in: {
+                                            $cond: {
+                                                if: { $eq: [{ $type: "$$eid" }, "string"] },
+                                                then: { $toObjectId: "$$eid" },
+                                                else: "$$eid"
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -213,26 +224,7 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
                 editor: {
                     _id: { $ifNull: ["$editorInfo._id", "$editorId"] },
                     name: { $ifNull: ["$editorInfo.name", { $ifNull: ["$editor.name", "Unknown Editor"] }] },
-                    profilePicture: { 
-                        $let: {
-                            vars: {
-                                pic: { $ifNull: ["$editorInfo.profilePicture", "$editor.profilePicture"] }
-                            },
-                            in: {
-                                $cond: {
-                                    if: { $eq: [{ $type: "$$pic" }, "string"] },
-                                    then: "$$pic",
-                                    else: {
-                                        $cond: {
-                                            if: { $eq: [{ $type: "$$pic.url" }, "string"] },
-                                            then: "$$pic.url",
-                                            else: ""
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    profilePicture: { $ifNull: ["$editorInfo.profilePicture", "$editor.profilePicture"] }
                 },
                 portfolio: "$portfolioInfo",
             },

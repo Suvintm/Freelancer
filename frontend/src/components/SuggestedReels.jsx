@@ -335,12 +335,9 @@ const ReelThumbnail = ({ reel, index }) => {
         }
     };
 
-    const avatarSrc = (() => {
-        const pic = reel.editor?.profilePicture;
-        if (typeof pic === "string" && pic.length > 0) return repairUrl(pic);
-        if (pic?.url) return repairUrl(pic.url);
-        return "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop";
-    })();
+    const avatarSrc = reel.editor?.profilePicture
+        ? repairUrl(reel.editor.profilePicture)
+        : "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2080&auto=format&fit=crop";
 
     return (
         <motion.div
@@ -357,7 +354,7 @@ const ReelThumbnail = ({ reel, index }) => {
             {reel.mediaType === "video" ? (
                 <video
                     ref={videoRef}
-                    src={reel.mediaUrl}
+                    src={repairUrl(reel.mediaUrl)}
                     className="w-full h-full object-contain transition-all duration-500 group-hover:scale-110 no-copy"
                     muted loop playsInline preload="metadata"
                     onContextMenu={(e) => e.preventDefault()}
@@ -367,7 +364,7 @@ const ReelThumbnail = ({ reel, index }) => {
                 />
             ) : (
                 <img
-                    src={reel.mediaUrl}
+                    src={repairUrl(reel.mediaUrl)}
                     alt={reel.title}
                     className="w-full h-full object-contain transition-all duration-500 group-hover:scale-110 no-copy"
                     onContextMenu={(e) => e.preventDefault()}
