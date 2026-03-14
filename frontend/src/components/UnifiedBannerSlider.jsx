@@ -228,20 +228,50 @@ const UnifiedBannerSlider = () => {
         setHorizontalIndices(newIndices);
     };
 
-    // Auto-advance Level 0 Ads (Cyclic)
+    // Total Items Calculation to ensure there's something to loop over
+    const totalItems = useMemo(() => {
+        return levels.reduce((acc, level) => acc + level.items.length, 0);
+    }, [levels]);
+
+    // Enhanced Auto-Advance Function (loops across all levels)
+    const autoAdvance = useCallback(() => {
+        if (totalItems <= 1) return; // Nothing to rotate
+        
+        const currentLevelItemsCount = levels[verticalIndex].items.length;
+        const isLastInLevel = horizontalIndices[verticalIndex] === currentLevelItemsCount - 1;
+
+        if (isLastInLevel) {
+            // Move to next vertical level
+            const nextVerticalIndex = (verticalIndex + 1) % levels.length;
+            
+            // Optimization: Only update horizontal indices if the next level isn't already at 0
+            if (horizontalIndices[nextVerticalIndex] !== 0) {
+               const newIndices = [...horizontalIndices];
+               newIndices[nextVerticalIndex] = 0;
+               setHorizontalIndices(newIndices);
+            }
+            
+            setVerticalIndex(nextVerticalIndex);
+        } else {
+            // Just move to the next item in the current level
+            handleHorizontalChange("next");
+        }
+    }, [totalItems, levels, verticalIndex, horizontalIndices, handleHorizontalChange]);
+
+    // Auto-advance Timer (Cyclic across all levels)
     useEffect(() => {
-        if (verticalIndex !== 0 || isHovered || !inView || currentLevel.items.length <= 1) return;
+        if (isHovered || !inView || totalItems <= 1) return;
         
         // Timer for images (4s)
         if (currentItem.mediaType === "image") {
-            const timeout = setTimeout(() => handleHorizontalChange("next"), 4000);
+            const timeout = setTimeout(autoAdvance, 4000);
             return () => clearTimeout(timeout);
         }
-    }, [verticalIndex, isHovered, inView, currentLevel.items.length, horizontalIndex]);
+    }, [isHovered, inView, currentItem.mediaType, autoAdvance, totalItems]);
 
     const handleVideoTimeUpdate = (e) => {
-        if (verticalIndex === 0 && !isHovered && inView && e.target.currentTime >= 4) {
-            handleHorizontalChange("next");
+        if (!isHovered && inView && e.target.currentTime >= 4) {
+            autoAdvance();
         }
     };
 
@@ -438,11 +468,11 @@ const UnifiedBannerSlider = () => {
                             />
                         ))}
                     </div>
-                    {/* Auto-advance Progress Bar (Level 0 only) */}
-                    {verticalIndex === 0 && !isHovered && (
+                    {/* Auto-advance Progress Bar (Now for all levels) */}
+                    {!isHovered && totalItems > 1 && (
                         <div className="absolute bottom-0 left-0 h-1 bg-white/20 w-full">
                             <motion.div 
-                                key={horizontalIndex}
+                                key={`${verticalIndex}-${horizontalIndex}`}
                                 initial={{ width: 0 }}
                                 animate={{ width: "100%" }}
                                 transition={{ duration: 4, ease: "linear" }}
