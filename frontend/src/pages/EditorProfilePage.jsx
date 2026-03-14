@@ -248,6 +248,15 @@ const EditorProfile = () => {
   const userData = profileData?.user || user || {};
   const isVerified = user?.kycStatus === 'verified' || profileData?.kycVerified;
   const completionPercent = completionData?.percent || 0;
+  
+  const getProgressColor = (percent) => {
+    if (percent >= 100) return '#10b981'; // Success Green
+    if (percent >= 80) return '#00c348ff'; // Green
+    if (percent >= 60) return '#61e609ff'; // Blue
+    if (percent >= 40) return '#ffa200ff'; // Amber
+    return '#EF4444'; // Red
+  };
+
   const progressColor = getProgressColor(completionPercent);
 
   // SVG circle calculations - smaller for mobile
