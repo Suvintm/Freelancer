@@ -65,8 +65,8 @@ const hudItem = {
 
 // ─── Loading Skeleton ────────────────────────────────────────────────────────
 const BannerSkeleton = () => (
-    <div className="relative w-full rounded-[2rem] overflow-hidden bg-zinc-900 border border-white/5"
-         style={{ height: 260 }}>
+    <div className="relative w-full rounded-[1.5rem] overflow-hidden bg-zinc-900 border border-white/5"
+         style={{ height: 192 }}>
         <div className="absolute inset-0"
              style={{
                  background: "linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.035) 50%,transparent 60%)",
@@ -308,8 +308,8 @@ const UnifiedBannerSlider = () => {
     return (
         <div
             ref={containerRef}
-            className="relative w-full overflow-hidden rounded-[2rem] bg-zinc-950 border border-white/6 shadow-2xl shadow-black/60 cursor-pointer select-none"
-            style={{ height: 260 }}
+            className="relative w-full overflow-hidden rounded-[1.5rem] bg-zinc-950 border border-white/6 shadow-xl shadow-black/50 cursor-pointer select-none"
+            style={{ height: 192, willChange: "transform", transform: "translateZ(0)" }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             onTouchStart={onTouchStart}
@@ -334,6 +334,7 @@ const UnifiedBannerSlider = () => {
                     animate="center"
                     exit="exit"
                     className="absolute inset-0"
+                    style={{ willChange: "opacity, transform" }}
                 >
                     {/* Skeleton until loaded */}
                     {!mediaReady && (
@@ -389,10 +390,10 @@ const UnifiedBannerSlider = () => {
                     initial="hidden"
                     animate="show"
                     exit="exit"
-                    className="absolute inset-x-0 bottom-0 p-5 pb-4 z-20 pointer-events-none"
+                    className="absolute inset-x-0 bottom-0 p-4 pb-3.5 z-20 pointer-events-none"
                 >
                     {/* Badge row */}
-                    <motion.div variants={hudItem} className="flex items-center gap-2 mb-2">
+                    <motion.div variants={hudItem} className="flex items-center gap-2 mb-1.5">
                         <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/12 backdrop-blur-md border border-white/10 text-[7.5px] font-black uppercase tracking-[0.16em] text-white">
                             <currentLevel.icon className={`${currentLevel.color} text-[9px] flex-shrink-0`} />
                             {currentItem.badge?.toUpperCase() || currentLevel.label.toUpperCase()}
@@ -407,7 +408,7 @@ const UnifiedBannerSlider = () => {
                     {/* Title */}
                     <motion.h2
                         variants={hudItem}
-                        className="text-[18px] md:text-[22px] font-black text-white leading-tight tracking-tight mb-1"
+                        className="text-[16px] md:text-[19px] font-black text-white leading-tight tracking-tight mb-1"
                         style={{ textShadow: "0 2px 12px rgba(0,0,0,0.5)" }}
                     >
                         {currentItem.title}
@@ -416,7 +417,7 @@ const UnifiedBannerSlider = () => {
                     {/* Description */}
                     <motion.p
                         variants={hudItem}
-                        className="text-[10px] text-zinc-300/80 font-medium leading-relaxed line-clamp-1 mb-3 max-w-[78%]"
+                        className="text-[9.5px] text-zinc-300/75 font-medium leading-relaxed line-clamp-1 mb-2.5 max-w-[72%]"
                     >
                         {currentItem.description}
                     </motion.p>
@@ -479,7 +480,7 @@ const UnifiedBannerSlider = () => {
 
             {/* ── CATEGORY SWITCHER — vertical column, right side ──────── */}
             <div
-                className="absolute right-3 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-2 py-2.5 px-1.5 rounded-2xl bg-black/45 backdrop-blur-xl border border-white/8 shadow-2xl"
+                className="absolute right-3 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-1.5 py-2 px-1.5 rounded-2xl bg-black/45 backdrop-blur-xl border border-white/8 shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 {levels.map((level, idx) => {
