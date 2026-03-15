@@ -1,0 +1,64 @@
+name: SuviX Verification
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  admin-server-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './admin-server/package-lock.json'
+          
+      - name: Install Dependencies
+        run: |
+          cd admin-server
+          npm ci
+          
+      - name: Run Tests
+        env:
+          NODE_ENV: test
+          JWT_SECRET: github-actions-test-secret
+          SUPER_ADMIN_EMAIL: test@suvix.com
+          SUPER_ADMIN_PASSWORD: testpass123
+        run: |
+          cd admin-server
+          npm test
+
+  main-server-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './server/package-lock.json'
+          
+      - name: Install Dependencies
+        run: |
+          cd server
+          npm ci
+          
+      - name: Run Tests
+        env:
+          NODE_ENV: test
+          JWT_SECRET: github-actions-test-secret
+          MONGO_URI: mongodb://localhost:27017/unused-but-required
+          CLOUDINARY_CLOUD_NAME: dummy
+          REDIS_URL: redis://localhost:6379
+          REDIS_TOKEN: dummy
+        run: |
+          cd server
+          npm test

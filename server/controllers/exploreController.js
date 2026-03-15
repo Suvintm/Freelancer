@@ -27,70 +27,128 @@ export const getAllEditors = asyncHandler(async (req, res) => {
 
   // ── Try cache first ────────────────────────────────────────────────────
   const cached = await withCache(cacheKey, TTL.EXPLORE_EDITORS, async () => {
-    // STEP 1: Find verified editors from User collection
-    const userQuery = {
+    
+    // 1. Get Global Filters Fast! (Cache heavily)
+    const globalFilters = await withCache(CacheKey.exploreFilters(), 3600, async () => {
+      const dbProfiles = await Profile.find({}, "skills languages location.country").lean();
+      const st = new Set(), lt = new Set(), ct = new Set();
+      dbProfiles.forEach(p => {
+        p.skills?.forEach(s => s && st.add(s.trim()));
+        p.languages?.forEach(l => l && lt.add(l.trim()));
+        if (p.location?.country) ct.add(p.location.country.trim());
+      });
+      return {
+        skills: [...st].sort(function (a, b) { return a.toLowerCase().localeCompare(b.toLowerCase()); }).slice(0, 50),
+        languages: [...lt].sort(function (a, b) { return a.toLowerCase().localeCompare(b.toLowerCase()); }).slice(0, 30),
+        countries: [...ct].sort()
+      };
+    });
+
+    // 2. Build Pipeline
+    const pipeline = [];
+
+    // Match Users
+    const userMatch = {
       role: "editor",
       isVerified: true,
       kycStatus: "verified",
-      profileCompleted: true, // Required for visibility
-      isBanned: { $ne: true },
+      profileCompleted: true,
+      isBanned: { $ne: true }
     };
-
-    const verifiedEditors = await User.find(userQuery)
-      .select("_id name email profilePicture role isVerified kycStatus createdAt profileCompletionPercent suvixScore availability")
-      .lean();
-
-    if (verifiedEditors.length === 0) {
-      return { editors: [], pagination: { page: pageNum, limit: limitNum, total: 0, pages: 0 }, filters: { skills: [], languages: [], countries: [], experience: [] } };
+    if (availability) {
+      userMatch["availability.status"] = { $in: availability.split(',').map(s => s.trim()) };
     }
+    pipeline.push({ $match: userMatch });
 
-    const verifiedUserIds = verifiedEditors.map(u => u._id);
-    let profileQuery = { user: { $in: verifiedUserIds } };
+    // Lookup Profile
+    pipeline.push({
+      $lookup: {
+        from: "profiles",
+        localField: "_id",
+        foreignField: "user",
+        as: "profile"
+      }
+    });
 
+    // Unwind Profile
+    pipeline.push({
+      $unwind: { path: "$profile", preserveNullAndEmptyArrays: true }
+    });
+
+    // Match Filters
+    const matchAnd = [];
     if (skills) {
       const skillsArray = skills.split(",").map(s => s.trim()).filter(Boolean);
-      if (skillsArray.length > 0) profileQuery.skills = { $in: skillsArray.map(s => new RegExp(s, "i")) };
+      if (skillsArray.length > 0) matchAnd.push({ "profile.skills": { $in: skillsArray.map(s => new RegExp(s, "i")) } });
     }
     if (languages) {
       const langsArray = languages.split(",").map(l => l.trim()).filter(Boolean);
-      if (langsArray.length > 0) profileQuery.languages = { $in: langsArray.map(l => new RegExp(l, "i")) };
+      if (langsArray.length > 0) matchAnd.push({ "profile.languages": { $in: langsArray.map(l => new RegExp(l, "i")) } });
     }
-    if (experience) profileQuery.experience = experience;
-    if (country) profileQuery["location.country"] = new RegExp(country, "i");
+    if (experience) matchAnd.push({ "profile.experience": experience });
+    if (country) matchAnd.push({ "profile.location.country": new RegExp(country, "i") });
 
-    let filteredUserIds = verifiedUserIds;
-    if (availability) {
-      const statusList = availability.split(',').map(s => s.trim());
-      filteredUserIds = verifiedEditors.filter(u => statusList.includes(u.availability?.status || 'available')).map(u => u._id);
-      profileQuery.user = { $in: filteredUserIds };
-    }
-
-    let allProfiles = await Profile.find(profileQuery)
-      .populate({ path: "user", select: "name email profilePicture role isVerified kycStatus createdAt profileCompletionPercent suvixScore availability" })
-      .lean();
-
-    let filteredEditors = allProfiles.filter(p => p.user !== null).map(profile => ({ ...profile, user: profile.user }));
-
-    const profileUserIds = new Set(allProfiles.map(p => p.user?._id?.toString()).filter(Boolean));
-    const hasFilters = skills || languages || experience || country;
-
-    if (!hasFilters) {
-      verifiedEditors.forEach(editor => {
-        if (availability) {
-          const statusList = availability.split(',').map(s => s.trim());
-          const uStatus = editor.availability?.status || 'available';
-          if (!statusList.includes(uStatus)) return;
-        }
-        if (!profileUserIds.has(editor._id.toString())) {
-          filteredEditors.push({ user: editor, experience: 'New', ratingStats: { averageRating: 0, totalReviews: 0 }, skills: [], hourlyRate: 0, availability: editor.availability });
-        }
+    let searchTerms = [];
+    if (search) {
+      searchTerms = search.toLowerCase().trim().split(/\s+/).filter(Boolean);
+      const searchRegex = new RegExp(searchTerms.join("|"), "i");
+      matchAnd.push({
+        $or: [
+          { name: searchRegex },
+          { "profile.skills": searchRegex },
+          { "profile.languages": searchRegex },
+          { "profile.location.country": searchRegex },
+          { "profile.about": searchRegex }
+        ]
       });
     }
 
-    if (search) {
+    if (matchAnd.length > 0) {
+      pipeline.push({ $match: { $and: matchAnd } });
+    }
+
+    // Structure as Profile > User
+    pipeline.push({
+      $addFields: {
+        "profile.user": {
+          _id: "$_id",
+          name: "$name",
+          email: "$email",
+          profilePicture: "$profilePicture",
+          role: "$role",
+          isVerified: "$isVerified",
+          kycStatus: "$kycStatus",
+          createdAt: "$createdAt",
+          profileCompletionPercent: "$profileCompletionPercent",
+          suvixScore: "$suvixScore",
+          availability: "$availability"
+        }
+      }
+    });
+
+    pipeline.push({
+      $replaceRoot: { newRoot: { $ifNull: ["$profile", { user: "$profile.user" }] } }
+    });
+
+    // Ensure array defaults
+    pipeline.push({
+      $addFields: {
+        experience: { $ifNull: ["$experience", "New"] },
+        ratingStats: { $ifNull: ["$ratingStats", { averageRating: 0, totalReviews: 0 }] },
+        skills: { $ifNull: ["$skills", []] },
+        languages: { $ifNull: ["$languages", []] },
+        hourlyRate: { $ifNull: ["$hourlyRate", 0] },
+        location: { $ifNull: ["$location", {}] }
+      }
+    });
+
+    // Execute based on sorting requirements
+    if (search && sortBy === "relevance") {
+      // Memory Scoring Flow (Fast because regex already reduced size)
+      let results = await User.aggregate(pipeline);
+      
       const searchLower = search.toLowerCase().trim();
-      const searchTerms = searchLower.split(/\s+/).filter(Boolean);
-      filteredEditors = filteredEditors.map(editor => {
+      results = results.map(editor => {
         let score = 0;
         const nameLower = (editor.user?.name || "").toLowerCase();
         if (nameLower === searchLower) score += 100;
@@ -105,27 +163,59 @@ export const getAllEditors = asyncHandler(async (req, res) => {
         });
         return { ...editor, searchScore: score };
       }).filter(editor => editor.searchScore > 0);
-      if (sortBy === "relevance") filteredEditors.sort((a, b) => b.searchScore - a.searchScore);
+      
+      results.sort((a, b) => b.searchScore - a.searchScore);
+      
+      const total = results.length;
+      return {
+        editors: results.slice(skip, skip + limitNum),
+        pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) },
+        filters: { ...globalFilters, experience: ["0-6 months", "6-12 months", "1-2 years", "2-3 years", "3-5 years", "5+ years"] }
+      };
+
+    } else {
+      // DB Sort & Pagination Flow (Massive Scale)
+      if (sortBy === "newest") {
+        pipeline.push({ $sort: { "user.createdAt": -1 } });
+      } else if (sortBy === "experience") {
+        pipeline.push({
+          $addFields: {
+            expWeight: {
+              $switch: {
+                branches: [
+                  { case: { $eq: ["$experience", "5+ years"] }, then: 6 },
+                  { case: { $eq: ["$experience", "3-5 years"] }, then: 5 },
+                  { case: { $eq: ["$experience", "2-3 years"] }, then: 4 },
+                  { case: { $eq: ["$experience", "1-2 years"] }, then: 3 },
+                  { case: { $eq: ["$experience", "6-12 months"] }, then: 2 },
+                  { case: { $eq: ["$experience", "0-6 months"] }, then: 1 }
+                ],
+                default: 0
+              }
+            }
+          }
+        });
+        pipeline.push({ $sort: { expWeight: -1, "user.createdAt": -1 } });
+      } else {
+        pipeline.push({ $sort: { "ratingStats.averageRating": -1, "user.createdAt": -1 } });
+      }
+
+      pipeline.push({
+        $facet: {
+          metadata: [{ $count: "total" }],
+          data: [{ $skip: skip }, { $limit: limitNum }]
+        }
+      });
+
+      const [aggregationResult] = await User.aggregate(pipeline);
+      const total = aggregationResult.metadata[0]?.total || 0;
+      
+      return {
+        editors: aggregationResult.data,
+        pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) },
+        filters: { ...globalFilters, experience: ["0-6 months", "6-12 months", "1-2 years", "2-3 years", "3-5 years", "5+ years"] }
+      };
     }
-
-    if (sortBy === "newest") filteredEditors.sort((a, b) => new Date(b.user?.createdAt || 0) - new Date(a.user?.createdAt || 0));
-    else if (sortBy === "experience") {
-      const expOrder = { "5+ years": 6, "3-5 years": 5, "2-3 years": 4, "1-2 years": 3, "6-12 months": 2, "0-6 months": 1, "": 0 };
-      filteredEditors.sort((a, b) => (expOrder[b.experience] || 0) - (expOrder[a.experience] || 0));
-    }
-
-    const total = filteredEditors.length;
-    const paginatedEditors = filteredEditors.slice(skip, skip + limitNum);
-    const allProfilesForFilters = await Profile.find({ user: { $in: verifiedUserIds } }).lean();
-    const uniqueSkills = [...new Set(allProfilesForFilters.flatMap(p => p.skills || []))].filter(Boolean).sort();
-    const uniqueLanguages = [...new Set(allProfilesForFilters.flatMap(p => p.languages || []))].filter(Boolean).sort();
-    const uniqueCountries = [...new Set(allProfilesForFilters.map(p => p.location?.country).filter(Boolean))].sort();
-
-    return {
-      editors: paginatedEditors,
-      pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) },
-      filters: { skills: uniqueSkills.slice(0, 50), languages: uniqueLanguages.slice(0, 30), countries: uniqueCountries, experience: ["0-6 months", "6-12 months", "1-2 years", "2-3 years", "3-5 years", "5+ years"] },
-    };
   });
 
   res.status(200).json({ success: true, ...cached });

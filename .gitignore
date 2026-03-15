@@ -56,6 +56,13 @@ Thumbs.db
 # Testing
 coverage/
 .nyc_output/
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+*_output*.txt
+*_utf8.txt
+*_error*.txt
 
 # Temp files
 *.tmp

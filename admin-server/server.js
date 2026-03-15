@@ -57,9 +57,11 @@ app.use(hpp());
 app.use(compression());
 
 // ============ DATABASE CONNECTION ============
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => logger.info("✅ Admin Server: MongoDB Connected"))
-    .catch(err => logger.error("❌ Admin Server: MongoDB Connection Error:", err));
+if (process.env.NODE_ENV !== "test") {
+    mongoose.connect(process.env.MONGO_URI)
+        .then(() => logger.info("✅ Admin Server: MongoDB Connected"))
+        .catch(err => logger.error("❌ Admin Server: MongoDB Connection Error:", err));
+}
 
 // ============ ADMIN ROUTES ============
 // Note: We DO NOT use the global 'protect' (user) middleware here.
@@ -88,6 +90,10 @@ app.use((err, req, res, next) => {
     });
 });
 
-server.listen(PORT, () => {
-    logger.info(`🚀 Admin Server (with Socket.io) running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== "test") {
+    server.listen(PORT, () => {
+        logger.info(`🚀 Admin Server (with Socket.io) running on port ${PORT}`);
+    });
+}
+
+export { app, server };

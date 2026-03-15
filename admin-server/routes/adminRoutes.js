@@ -19,7 +19,33 @@ import { upload } from "../middleware/upload.js";
 
 const router = express.Router();
 
-// Apply admin protection to all routes
+// ============ PUBLIC ROUTES ============
+/**
+ * Public endpoint to check maintenance status (no auth required)
+ */
+router.get("/maintenance-status", async (req, res) => {
+  try {
+    const { SiteSettings } = await import("../models/SiteSettings.js");
+    const settings = await SiteSettings.getSettings();
+    
+    res.status(200).json({
+      success: true,
+      maintenance: {
+        isActive: settings.maintenanceMode,
+        message: settings.maintenanceMessage,
+        endTime: settings.maintenanceEndTime,
+      },
+    });
+
+  } catch (error) {
+    res.status(200).json({
+      success: true,
+      maintenance: { isActive: false },
+    });
+  }
+});
+
+// Apply admin protection to all following routes
 router.use(protectAdmin);
 
 // ============ SUB-MODULES ============
@@ -1084,27 +1110,7 @@ router.patch("/settings", logActivity("SETTINGS_UPDATE"), async (req, res) => {
   }
 });
 
-// Public endpoint to check maintenance status (no auth required)
-router.get("/maintenance-status", async (req, res) => {
-  try {
-    const settings = await SiteSettings.getSettings();
-    
-    res.status(200).json({
-      success: true,
-      maintenance: {
-        isActive: settings.maintenanceMode,
-        message: settings.maintenanceMessage,
-        endTime: settings.maintenanceEndTime,
-      },
-    });
-
-  } catch (error) {
-    res.status(200).json({
-      success: true,
-      maintenance: { isActive: false },
-    });
-  }
-});
+// Maintenance status moved above protectAdmin to be public
 
 // ============ CONVERSATIONS / CHAT VIEWER ============
 
