@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { Message } from "./models/Message.js";
 import { Order } from "./models/Order.js";
+import { subscribe } from "./config/redisClient.js";
 
 dotenv.config();
 
@@ -328,3 +329,22 @@ export const emitMessageStatus = (orderId, messageId, status, data = {}) => {
 };
 
 export { app, io, server };
+
+// ============ REDIS CROSS-SERVER BRIDGE ============
+// Listen for events from Admin Server or other instances
+subscribe("admin:events", (payload) => {
+  const { type, userId, data } = payload;
+  console.log(`📡 Redis Broadcast Received: ${type}`);
+
+  if (type === "admin:maintenance") {
+    // Broadcast maintenance to ALL local users
+    io.emit("admin:maintenance", data);
+  } else if (type === "admin:banned" || type === "admin:unbanned") {
+    // Emit to specific user if they are connected to THIS instance
+    const socketId = userSocketMap[userId];
+    if (socketId) {
+      io.to(socketId).emit(type, data);
+      console.log(`🎯 Re-emitted ${type} to local user ${userId}`);
+    }
+  }
+});

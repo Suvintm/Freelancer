@@ -14,6 +14,7 @@ import Redis from "ioredis";
 import logger from "../utils/logger.js";
 
 let client = null;
+let subClient = null;
 export let redisAvailable = false;
 
 const connect = () => {
@@ -67,6 +68,18 @@ const connect = () => {
     });
 
     client.connect().catch(() => {});
+
+    // Initialize subscriber client for Pub/Sub
+    subClient = new Redis(redisUrl, {
+      maxRetriesPerRequest: null,
+      connectTimeout: 10000,
+      lazyConnect: true,
+      retryStrategy(times) {
+        return Math.min(times * 200, 10000);
+      },
+    });
+    subClient.connect().catch(() => {});
+
   } catch (err) {
     logger.warn(`[Redis] Init failed: ${err.message}`);
   }
@@ -161,6 +174,38 @@ const redisProxy = {
     if (!redisAvailable || !client) return Promise.resolve();
     return client.call(...args);
   },
+};
+
+// Pub/Sub Helpers
+export const publish = async (channel, message) => {
+  if (!redisAvailable || !client) return;
+  try {
+    const payload = typeof message === "string" ? message : JSON.stringify(message);
+    await client.publish(channel, payload);
+    logger.debug(`[Redis] Published to ${channel}`);
+  } catch (err) {
+    logger.warn(`[Redis] Publish failed to ${channel}: ${err.message}`);
+  }
+};
+
+export const subscribe = async (channel, callback) => {
+  if (!subClient) return;
+  try {
+    await subClient.subscribe(channel);
+    subClient.on("message", (chan, msg) => {
+      if (chan === channel) {
+        try {
+          const parsed = JSON.parse(msg);
+          callback(parsed);
+        } catch {
+          callback(msg);
+        }
+      }
+    });
+    logger.info(`[Redis] Subscribed to ${channel} ✅`);
+  } catch (err) {
+    logger.warn(`[Redis] Subscribe failed to ${channel}: ${err.message}`);
+  }
 };
 
 export default redisProxy;

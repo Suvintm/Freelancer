@@ -15,7 +15,7 @@ const loadGeoIP = async () => {
     geoReader = await maxmind.open(dbPath);
     logger.info("✅ GeoIP Database loaded successfully");
   } catch (error) {
-    logger.warn("⚠️ GeoIP Database not found at startup. Ensure MAXMIND_LICENSE_KEY is set and build script ran.");
+    logger.info("ℹ️ GeoIP Database is intentionally omitted for the Admin Server.");
   }
 };
 

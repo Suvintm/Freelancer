@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { Message } from "./models/Message.js";
 import { Order } from "./models/Order.js";
+import { publish, subscribe } from "./config/redisClient.js";
 
 dotenv.config();
 
@@ -55,9 +56,21 @@ export const emitToUser = (userId, event, data) => {
   if (socketId) {
     io.to(socketId).emit(event, data);
     console.log(`🔔 Emitted ${event} to user ${userId}`);
+    
+    // Also publish to Redis for other server instances
+    if (event === "admin:banned" || event === "admin:unbanned") {
+      publish("admin:events", { type: event, userId, data });
+    }
+    
     return true;
   }
-  console.log(`⚠️ User ${userId} not online, cannot emit ${event}`);
+  
+  // If not online locally, still publish to Redis in case they are on another instance
+  if (event === "admin:banned" || event === "admin:unbanned") {
+    publish("admin:events", { type: event, userId, data });
+    console.log(`📡 User ${userId} not local, published ${event} to Redis`);
+  }
+  
   return false;
 };
 
@@ -65,6 +78,9 @@ export const emitToUser = (userId, event, data) => {
 export const emitMaintenance = (isActive, message) => {
   io.emit("admin:maintenance", { isActive, message });
   console.log(`🔧 Broadcast maintenance mode: ${isActive}`);
+  
+  // Publish to Redis for other instance
+  publish("admin:events", { type: "admin:maintenance", data: { isActive, message } });
 };
 
 // Authenticate socket connection
@@ -328,3 +344,20 @@ export const emitMessageStatus = (orderId, messageId, status, data = {}) => {
 };
 
 export { app, io, server };
+
+// ============ REDIS CROSS-SERVER BRIDGE ============
+// This ensures that even if we scale admin-server instances, they stay in sync
+subscribe("admin:events", (payload) => {
+  const { type, userId, data } = payload;
+  console.log(`📡 Redis Broadcast Received (Admin): ${type}`);
+
+  if (type === "admin:maintenance") {
+    // If another admin instance triggered maintenance, broadcast locally too
+    io.emit("admin:maintenance", data);
+  } else if (type === "admin:banned" || type === "admin:unbanned") {
+    const socketId = userSocketMap[userId];
+    if (socketId) {
+      io.to(socketId).emit(type, data);
+    }
+  }
+});

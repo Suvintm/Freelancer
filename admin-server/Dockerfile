@@ -35,7 +35,6 @@ COPY --from=builder /app/utils ./utils
 COPY --from=builder /app/config ./config
 COPY --from=builder /app/kafka ./kafka
 COPY --from=builder /app/services ./services
-COPY --from=builder /app/geoip ./geoip
 
 # Clean up devDependencies
 RUN npm prune --production
