@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useRef, useCallback } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import { useAdmin } from "./AdminContext";
 import { toast } from "react-hot-toast";
@@ -15,10 +15,7 @@ export const SocketProvider = ({ children }) => {
   const { admin, backendURL, fetchNotifications, fetchAlerts } = useAdmin();
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState([]);
   
-  const socketRef = useRef(null);
-
   useEffect(() => {
     if (!admin) return;
 
@@ -91,17 +88,15 @@ export const SocketProvider = ({ children }) => {
     });
 
     setSocket(newSocket);
-    socketRef.current = newSocket;
 
     return () => {
       newSocket.close();
     };
-  }, [admin, backendURL]);
+  }, [admin, backendURL, fetchNotifications, fetchAlerts]);
 
   const value = {
     socket,
     isConnected,
-    onlineUsers,
   };
 
   return (

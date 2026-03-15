@@ -2,7 +2,7 @@
 // Light/dark theme, self-contained CSS variables, zero Tailwind dependency.
 // Deps: @tanstack/react-query, react-hot-toast, react-icons/hi2, ../api/adminApi, ../utils/formatters
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   HiOutlineShoppingBag,

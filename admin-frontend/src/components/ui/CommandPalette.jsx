@@ -99,12 +99,12 @@ const CommandPalette = () => {
   );
 };
 
-const CommandItem = ({ children, icon: Icon, onSelect, className = "" }) => (
+const CommandItem = ({ children, icon: IconComponent, onSelect, className = "" }) => (
   <Command.Item
     onSelect={onSelect}
     className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-sm font-medium transition-all aria-selected:bg-brand aria-selected:text-white text-secondary hover:bg-elevated ${className}`}
   >
-    <Icon size={18} className="opacity-70 group-aria-selected:opacity-100" />
+    <IconComponent size={18} className="opacity-70 group-aria-selected:opacity-100" />
     {children}
   </Command.Item>
 );

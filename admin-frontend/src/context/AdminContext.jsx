@@ -5,7 +5,7 @@
 //  2. Notifications state added for real-time bell
 //  3. Exports queryClient so pages can invalidate queries
 // ─────────────────────────────────────────────────────────────────────────────
-import { createContext, useContext, useState, useEffect, useRef } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 import { QueryClient } from "@tanstack/react-query";
 
@@ -94,7 +94,7 @@ export const AdminProvider = ({ children }) => {
   };
 
   // ── Auth actions ───────────────────────────────────────────────────────
-  const login = async (email, password, role, remember = false) => {
+  const login = async (email, password, role) => {
     try {
       const res = await adminAxios.post("/admin/auth/login", { email, password, role });
       const { token, admin: adminData } = res.data;

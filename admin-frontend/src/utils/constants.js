@@ -92,3 +92,21 @@ export const SIDEBAR_GROUPS = [
     ],
   },
 ];
+
+export const PERMISSIONS_LIST = [
+  { key: "dashboard", label: "Dashboard", desc: "View platform overview and KPIs" },
+  { key: "analytics", label: "Analytics", desc: "Detailed business metrics" },
+  { key: "payments", label: "Payments", desc: "Manage transactions and settlements" },
+  { key: "conversations", label: "Conversations", desc: "Monitor user messages" },
+  { key: "users", label: "Users", desc: "Manage clients and editors" },
+  { key: "kyc", label: "Editor KYC", desc: "Review editor verification" },
+  { key: "client_kyc", label: "Client KYC", desc: "Review client verification" },
+  { key: "orders", label: "Orders", desc: "Manage project lifecycle" },
+  { key: "gigs", label: "Gigs", desc: "Moderate service listings" },
+  { key: "advertisements", label: "Advertisements", desc: "Manage platform ads" },
+  { key: "subscriptions", label: "Subscriptions", desc: "Manage plan tiers" },
+  { key: "activity", label: "Activity Logs", desc: "Audit system actions" },
+  { key: "storage", label: "Storage Manager", desc: "Manage cloud assets" },
+  { key: "service_analytics", label: "Service", desc: "System health metrics" },
+  { key: "settings", label: "Settings", desc: "Core configuration" },
+];

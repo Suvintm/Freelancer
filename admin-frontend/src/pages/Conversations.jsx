@@ -2,14 +2,13 @@
 // Light/dark theme via CSS variables. Fully responsive. Zero Tailwind + framer-motion.
 // Deps: @tanstack/react-query, react-hot-toast, react-icons/hi2, ../api/adminApi, ../utils/formatters
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   HiOutlineChatBubbleLeftRight,
   HiOutlineMagnifyingGlass,
   HiOutlineXMark,
   HiOutlineEye,
-  HiOutlineUser,
   HiOutlinePaperClip,
   HiOutlinePhoto,
   HiOutlineVideoCamera,
@@ -24,19 +23,13 @@ import {
   HiOutlineCheck,
   HiOutlineCheckCircle,
   HiOutlineExclamationTriangle,
-  HiOutlineNoSymbol,
   HiOutlineShieldExclamation,
-  HiOutlineDocumentArrowDown,
-  HiOutlineInformationCircle,
   HiOutlineClock,
   HiOutlineArrowDownTray,
   HiOutlineBriefcase,
   HiOutlineUserGroup,
   HiMiniCheck,
-  HiOutlineHashtag,
   HiOutlineArrowTopRightOnSquare,
-  HiOutlineBellAlert,
-  HiOutlineChartBarSquare,
 } from "react-icons/hi2";
 import { toast } from "react-hot-toast";
 import { conversationsApi } from "../api/adminApi";

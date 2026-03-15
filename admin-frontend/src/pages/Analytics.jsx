@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { 
   FaChartLine, FaRupeeSign, FaUsers, FaShoppingCart, 
-  FaBriefcase, FaSync, FaCalendarAlt, FaChevronRight, FaArrowUp, FaArrowDown
+  FaBriefcase, FaSync
 } from "react-icons/fa";
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
@@ -38,7 +38,7 @@ const Analytics = () => {
     enabled: activeTab === "orders" || activeTab === "overview"
   });
 
-  const categoriesQuery = useQuery({
+  useQuery({
     queryKey: ["analytics", "categories"],
     queryFn: analyticsApi.getCategories,
     enabled: activeTab === "categories"

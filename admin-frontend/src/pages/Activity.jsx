@@ -12,7 +12,7 @@ import {
   HiOutlineFunnel,
   HiOutlineClipboardDocumentList
 } from "react-icons/hi2";
-import { activityApi } from "../api/adminApi";
+import { activityApi, adminMgmtApi } from "../api/adminApi";
 import DataTable from "../components/ui/DataTable";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";

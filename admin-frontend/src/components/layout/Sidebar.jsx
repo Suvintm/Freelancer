@@ -8,7 +8,7 @@
 // • Zero Tailwind dependency — pure inline styles + CSS variables
 // Deps: react-router-dom, framer-motion, react-icons/hi2, AdminContext
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -183,7 +183,6 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
   const NavItem = ({ item, mini }) => {
     const Icon     = item.icon;
     const badge    = getBadge(item.badgeKey);
-    const bc       = BADGE_COLORS[item.badgeVariant] || BADGE_COLORS.red;
     const isActive = location.pathname === item.to || location.pathname.startsWith(item.to + "/");
 
     const inner = (

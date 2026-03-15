@@ -301,14 +301,14 @@ const DataTable = ({
               const start = Math.max(1, Math.min((pagination.page || 1) - half, totalPages - 4));
               return start + i;
             }).filter(p => p >= 1 && p <= totalPages), "..r", totalPages]
-              .filter((p, i, arr) => {
+              .filter((p) => {
                 if (p === 1 || p === totalPages) return true;
                 if (p === "..l") return (pagination.page || 1) > 4;
                 if (p === "..r") return (pagination.page || 1) < totalPages - 3;
                 return typeof p === "number" && p >= 1 && p <= totalPages;
               })
               .filter((p, i, arr) => arr.indexOf(p) === i)
-              .map((p, i) =>
+              .map((p) =>
                 typeof p === "string" ? (
                   <span key={p} style={{ padding: "4px 8px", color: "var(--text-muted)", fontSize: 12 }}>…</span>
                 ) : (

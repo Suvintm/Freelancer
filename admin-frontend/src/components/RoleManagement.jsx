@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import {
@@ -12,24 +12,8 @@ import {
   HiOutlineShieldCheck
 } from "react-icons/hi2";
 import { rolesApi } from "../api/adminApi";
+import { PERMISSIONS_LIST } from "../utils/constants";
 
-export const PERMISSIONS_LIST = [
-  { key: "dashboard", label: "Dashboard", desc: "View platform overview and KPIs" },
-  { key: "analytics", label: "Analytics", desc: "Detailed business metrics" },
-  { key: "payments", label: "Payments", desc: "Manage transactions and settlements" },
-  { key: "conversations", label: "Conversations", desc: "Monitor user messages" },
-  { key: "users", label: "Users", desc: "Manage clients and editors" },
-  { key: "kyc", label: "Editor KYC", desc: "Review editor verification" },
-  { key: "client_kyc", label: "Client KYC", desc: "Review client verification" },
-  { key: "orders", label: "Orders", desc: "Manage project lifecycle" },
-  { key: "gigs", label: "Gigs", desc: "Moderate service listings" },
-  { key: "advertisements", label: "Advertisements", desc: "Manage platform ads" },
-  { key: "subscriptions", label: "Subscriptions", desc: "Manage plan tiers" },
-  { key: "activity", label: "Activity Logs", desc: "Audit system actions" },
-  { key: "storage", label: "Storage Manager", desc: "Manage cloud assets" },
-  { key: "service_analytics", label: "Service", desc: "System health metrics" },
-  { key: "settings", label: "Settings", desc: "Core configuration" },
-];
 
 const DEFAULT_ROLE_FORM = {
   name: "",

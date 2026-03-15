@@ -2,7 +2,7 @@
 // Light/dark theme via CSS variables. Fully responsive. Zero Tailwind + framer-motion.
 // Deps: react, react-hot-toast, react-icons/hi2, ../context/AdminContext
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { BsToggleOn, BsToggleOff } from "react-icons/bs";
 import {
   HiOutlineSpeakerWave,
@@ -296,8 +296,6 @@ const Advertisements = () => {
   // detail panel
   const [detailAd,     setDetailAd]     = useState(null);
 
-  const searchRef = useRef(null);
-
   // ── Fetch ───────────────────────────────────────────────────────────
   const loadAll = async () => {
     setLoading(true); setALoading(true);
@@ -314,7 +312,9 @@ const Advertisements = () => {
     finally { setLoading(false); setALoading(false); }
   };
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
 
   useEffect(() => {
     const h = e => { if (e.key === "Escape") { setShowModal(false); setDelConfirm(null); setDetailAd(null); } };
@@ -566,12 +566,12 @@ const Advertisements = () => {
             <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--ad-border)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div style={{ position: "relative", flex: 1, minWidth: 220 }}>
                 <HiOutlineMagnifyingGlass size={15} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--ad-text-muted)", pointerEvents: "none" }} />
-                <input ref={searchRef} type="text" placeholder="Search by title, advertiser or company…"
+                <input type="text" placeholder="Search by title, advertiser or company…"
                   value={search} onChange={e => setSearch(e.target.value)}
                   style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px 8px 36px", border: "1px solid var(--ad-input-brd)", borderRadius: 7, fontSize: 13, color: "var(--ad-text-primary)", background: "var(--ad-card)", outline: "none" }}
                   onFocus={e => e.target.style.borderColor = "var(--ad-input-focus)"}
                   onBlur={e => e.target.style.borderColor = "var(--ad-input-brd)"} />
-                {search && <button onClick={() => { setSearch(""); searchRef.current?.focus(); }} style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--ad-text-muted)", padding: 2, display: "flex" }}><HiOutlineXMark size={14} /></button>}
+                {search && <button onClick={() => { setSearch(""); }} style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--ad-text-muted)", padding: 2, display: "flex" }}><HiOutlineXMark size={14} /></button>}
               </div>
 
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
@@ -633,7 +633,7 @@ const Advertisements = () => {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column" }}>
-                {filtered.map((ad, idx) => {
+                {filtered.map((ad, _idx) => {
                   const isSel = selectedIds.includes(ad._id);
                   return (
                     <div key={ad._id} className={`ad-row${isSel ? " sel" : ""}`}
@@ -949,7 +949,7 @@ const Advertisements = () => {
                               style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", opacity: 0 }}
                               onMouseEnter={e => e.currentTarget.style.opacity = 1}
                               onMouseLeave={e => e.currentTarget.style.opacity = 0}>
-                              <HiOutlineXMark size={16} style={{ color: "#fff" }} />
+                              <HiOutlineXMark size={14} style={{ color: "#fff" }} />
                             </button>
                           </div>
                         ))}
@@ -995,7 +995,7 @@ const Advertisements = () => {
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ad-text-muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: ".06em" }}>Display Locations</div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {LOCATIONS.map(loc => {
+                        {LOCATIONS.map((loc) => {
                           const checked = form.displayLocations.includes(loc.value);
                           return (
                             <label key={loc.value} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 9, cursor: "pointer", border: `2px solid ${checked ? "var(--ad-text-primary)" : "var(--ad-border)"}`, background: checked ? "var(--ad-sel-bar)" : "var(--ad-page)", transition: "all .15s" }}>

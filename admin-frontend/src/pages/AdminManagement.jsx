@@ -42,7 +42,7 @@ import { formatDate } from "../utils/formatters";
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
-import { PERMISSIONS_LIST } from "../components/RoleManagement";
+import { PERMISSIONS_LIST } from "../utils/constants";
 import RoleManagement from "../components/RoleManagement";
 
 const PERMISSIONS = PERMISSIONS_LIST.map(p => ({
@@ -113,7 +113,7 @@ const PermDots = ({ permissions }) => {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
       <div style={{ display: "flex", gap: 3 }}>
-        {PERMISSIONS.map((p, i) => (
+        {PERMISSIONS.map((p) => (
           <div key={p.key} title={p.label} style={{ width: 8, height: 8, borderRadius: "50%", background: permissions?.[p.key] ? "#6d28d9" : "var(--am-shimmer)", border: `1px solid ${permissions?.[p.key] ? "#8b5cf6" : "var(--am-border)"}`, transition: "background .15s" }} />
         ))}
       </div>
@@ -122,10 +122,10 @@ const PermDots = ({ permissions }) => {
   );
 };
 
-const KpiCard = ({ label, value, icon: Icon, color, loading }) => (
+const KpiCard = ({ label, value, icon: _Icon, color, loading }) => (
   <div style={{ background: "var(--am-card)", border: "1px solid var(--am-border)", borderRadius: 10, padding: "14px 18px", flex: 1, minWidth: 130, display: "flex", alignItems: "center", gap: 12, boxShadow: "0 1px 3px var(--am-shadow)" }}>
     <div style={{ width: 36, height: 36, borderRadius: 9, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      <Icon size={16} style={{ color }} />
+      <_Icon size={16} style={{ color }} />
     </div>
     {loading ? (
       <div>
@@ -176,8 +176,7 @@ const AdminManagement = () => {
   const [search,     setSearch]     = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [activeTab,  setActiveTab]  = useState("admins");
-  const nameRef  = useRef(null);
-  const searchRef = useRef(null);
+  const nameRef = useRef(null);
 
   // ── Queries ───────────────────────────────────────────────────────────────
   const { data, isLoading, isFetching } = useQuery({
@@ -471,10 +470,10 @@ const AdminManagement = () => {
             <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--am-border)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div style={{ position: "relative", flex: 1, minWidth: 220 }}>
                 <HiOutlineUser size={14} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--am-text-muted)", pointerEvents: "none" }} />
-                <input ref={searchRef} type="text" placeholder="Search by name or email…"
+                <input type="text" placeholder="Search by name or email…"
                   className="am-input" style={{ paddingLeft: 34 }} value={search}
                   onChange={e => setSearch(e.target.value)} />
-                {search && <button onClick={() => { setSearch(""); searchRef.current?.focus(); }}
+                {search && <button onClick={() => { setSearch(""); }}
                   style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--am-text-muted)", padding: 2, display: "flex" }}>
                   <HiOutlineXMark size={14} />
                 </button>}
@@ -655,7 +654,7 @@ const AdminManagement = () => {
                         <FLabel required>Full Name</FLabel>
                         <div style={{ position: "relative" }}>
                           <HiOutlineUser size={15} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--am-text-muted)", pointerEvents: "none" }} />
-                          <input ref={nameRef} type="text" required className="am-input" style={{ paddingLeft: 34 }}
+                          <input type="text" required className="am-input" style={{ paddingLeft: 34 }}
                             placeholder="e.g. Sarah Johnson"
                             value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
                         </div>

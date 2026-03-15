@@ -37,7 +37,7 @@ export default [
         vars: 'all', 
         args: 'after-used', 
         ignoreRestSiblings: true,
-        varsIgnorePattern: 'React|^[A-Z]' // Ignore React and component names which might be used in JSX
+        varsIgnorePattern: 'React|^[A-Z]|motion' // Ignore React, component names, and motion
       }],
       'react-hooks/exhaustive-deps': 'warn',
       'no-empty': 'warn',
