@@ -193,6 +193,7 @@ export const subscribe = async (channel, callback) => {
   try {
     await subClient.subscribe(channel);
     subClient.on("message", (chan, msg) => {
+
       if (chan === channel) {
         try {
           const parsed = JSON.parse(msg);

@@ -1,17 +1,11 @@
 // refundController.js - Refund processing controller
 import asyncHandler from "express-async-handler";
-import Razorpay from "razorpay";
+import razorpay from "../config/razorpay.js";
 import Refund from "../models/Refund.js";
 import { Order } from "../models/Order.js";
 import User from "../models/User.js";
 import { ApiError } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
-
-// Initialize Razorpay instance
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
 
 /**
  * @desc    Initiate refund for an order

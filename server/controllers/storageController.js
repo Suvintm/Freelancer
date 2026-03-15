@@ -11,17 +11,10 @@ import { Order } from "../models/Order.js";
 import { StoragePurchase, STORAGE_PLANS, formatBytes } from "../models/StoragePurchase.js";
 import { StorageSettings } from "../models/StorageSettings.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
-import Razorpay from "razorpay";
+import razorpay from "../config/razorpay.js";
 import crypto from "crypto";
 
-// Initialize Razorpay only if keys are configured
-let razorpay = null;
-if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
-  razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-  });
-}
+// Uses singleton from config
 
 /**
  * Calculate storage used by a user

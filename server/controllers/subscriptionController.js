@@ -3,19 +3,13 @@
  * Handles subscription plans, payments, and user subscriptions
  */
 
-import Razorpay from "razorpay";
+import razorpay from "../config/razorpay.js";
 import crypto from "crypto";
 import { Subscription } from "../models/Subscription.js";
 import { SubscriptionPlan } from "../models/SubscriptionPlan.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { createNotification } from "./notificationController.js";
 import { withCache, deleteCache, CacheKey, TTL } from "../utils/cache.js";
-
-// Initialize Razorpay
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
 
 // ============ GET ALL PLANS ============
 export const getPlans = asyncHandler(async (req, res) => {
