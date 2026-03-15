@@ -5,7 +5,7 @@
 
 import express from "express";
 import protect from "../middleware/authMiddleware.js";
-import { protectAdmin } from "../middleware/adminAuth.js";
+// import { protectAdmin } from "../middleware/adminAuth.js";
 import {
   getPlans,
   getMySubscriptions,
@@ -25,9 +25,9 @@ const router = express.Router();
 // Get all available plans
 router.get("/plans", getPlans);
 
-// ============ ADMIN ROUTES (must be before protect middleware) ============
-router.post("/admin/plan", protectAdmin, upsertPlan);
-router.get("/admin/all", protectAdmin, getAllSubscriptions);
+// ============ ADMIN ROUTES (MOVED TO ADMIN-SERVER) ============
+// router.post("/admin/plan", protectAdmin, upsertPlan);
+// router.get("/admin/all", protectAdmin, getAllSubscriptions);
 
 // ============ PROTECTED ROUTES (User auth) ============
 router.use(protect);

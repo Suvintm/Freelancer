@@ -1,0 +1,358 @@
+import nodemailer from "nodemailer";
+import { Resend } from "resend";
+import logger from "./logger.js";
+
+/**
+ * Email Service for SuviX
+ * Uses Resend for production (recommended) or Gmail SMTP for local dev
+ * 
+ * IMPORTANT: Cloud providers (Render, Vercel, Railway) block SMTP ports (465, 587)
+ * Always use Resend API for production deployments!
+ */
+
+// Check if Resend should be used
+const useResend = () => {
+  // Use Resend only if:
+  // 1. API key exists
+  // 2. We're NOT explicitly asking for SMTP
+  // Force Resend in production if key exists regardless of MAIL_SERVICE
+  if (process.env.NODE_ENV === "production" && process.env.RESEND_API_KEY) return true;
+  
+  const mailService = process.env.MAIL_SERVICE || "resend";
+  return !!process.env.RESEND_API_KEY && mailService.toLowerCase() === "resend";
+};
+
+// Create SMTP transporter (for local development only)
+const createSmtpTransporter = () => {
+  const host = process.env.SMTP_HOST || "smtp.gmail.com";
+  const port = parseInt(process.env.SMTP_PORT) || 465;
+  const secure = port === 465;
+
+  logger.info(`Using Gmail SMTP: ${process.env.SMTP_USER}`);
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
+  });
+};
+
+/**
+ * Send an email
+ * Prioritizes Resend API (works on all cloud providers)
+ * Falls back to SMTP if Resend is missing or fails
+ */
+export const sendEmail = async ({ to, subject, html, text }) => {
+  let resendTried = false;
+
+  try {
+    // 1. Try Resend API first (Preferred for Production/Render)
+    if (useResend()) {
+      resendTried = true;
+      logger.info(`[Email] Sending to ${to} via Resend...`);
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      
+      const fromEmail = process.env.EMAIL_FROM || "SuviX <onboarding@resend.dev>";
+      
+      const { data, error } = await resend.emails.send({
+        from: fromEmail,
+        to: [to],
+        subject,
+        html,
+        text: text || undefined,
+      });
+
+      if (error) {
+        // If Resend fails (e.g. testing restriction), log and fall through to SMTP
+        logger.warn(`[Email] Resend API Failed: ${error.message}`);
+        logger.info("[Email] Attempting SMTP fallback...");
+      } else {
+        logger.info(`✅ [Email] Sent via Resend to ${to}`);
+        return { success: true, messageId: data.id };
+      }
+    }
+
+    // 2. Fallback to Gmail SMTP
+    const transportLabel = resendTried ? "SMTP (Fallback)" : "SMTP";
+    logger.info(`[Email] Sending to ${to} via ${transportLabel}...`);
+    
+    // Warn about cloud provider limitations if we're falling back in production
+    if (resendTried && process.env.NODE_ENV === "production") {
+      logger.warn("[Email] Falling back to SMTP in production. This may fail if Render/Vercel blocks ports 465/587.");
+    }
+
+    const transporter = createSmtpTransporter();
+
+    const mailOptions = {
+      from: process.env.SMTP_FROM || `"SuviX" <${process.env.SMTP_USER}>`,
+      to,
+      subject,
+      html,
+      text: text || html.replace(/<[^>]*>/g, ""),
+    };
+
+    // Verify connection before sending to get better error reporting
+    logger.info(`[Email] Connecting to ${process.env.SMTP_HOST || "smtp.gmail.com"}...`);
+    const info = await transporter.sendMail(mailOptions);
+    logger.info(`✅ [Email] Sent via SMTP to ${to}`);
+    
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    let errorMessage = error.message;
+    
+    // Provide better context for common errors
+    if (errorMessage.includes("timeout") || errorMessage.includes("ETIMEDOUT")) {
+      errorMessage = "Email timed out. If on Render, verify Resend settings. If local, your ISP might block SMTP ports (465/587) or your App Password might be invalid.";
+    } else if (errorMessage.includes("testing emails")) {
+      errorMessage = "Resend restriction: you can only send to yourself until you verify a domain. SMTP fallback also failed.";
+    }
+
+    logger.error(`❌ [Email] Final failure for ${to}:`, errorMessage);
+    throw new Error(errorMessage);
+  }
+};
+
+/**
+ * Send password reset email
+ */
+export const sendPasswordResetEmail = async (email, name, resetUrl) => {
+  const subject = "Reset Your Password - SuviX";
+  const year = new Date().getFullYear();
+  
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Reset Your Password - SuviX</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5; -webkit-font-smoothing: antialiased;">
+  
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f5f5f5; min-height: 100vh;">
+    <tr>
+      <td align="center" style="padding: 40px 16px;">
+        
+        <!-- Email Container -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 520px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+          
+          <!-- HEADER - Dark Black -->
+          <tr>
+            <td style="background-color: #0f0f0f; padding: 28px 32px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="vertical-align: middle;">
+                    <span style="font-size: 24px; font-weight: 700; letter-spacing: -0.5px; font-family: 'Segoe UI', Roboto, Arial, sans-serif;">
+                      <span style="color: #10b981;">Suvi</span><span style="color: #ffffff;">X</span>
+                    </span>
+                  </td>
+                  <td align="right" style="vertical-align: middle;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding-left: 20px;">
+                          <a href="https://instagram.com/suvix" style="display: inline-block; width: 24px; height: 24px; border: 1px solid #4b5563; border-radius: 50%; text-align: center; line-height: 22px; text-decoration: none;">
+                            <img src="https://cdn-icons-png.flaticon.com/16/2111/2111463.png" alt="IG" width="12" height="12" style="display: inline-block; vertical-align: middle;" />
+                          </a>
+                        </td>
+                        <td style="padding-left: 12px;">
+                          <a href="https://youtube.com/@suvix" style="display: inline-block; width: 24px; height: 24px; border: 1px solid #4b5563; border-radius: 50%; text-align: center; line-height: 22px; text-decoration: none;">
+                            <img src="https://cdn-icons-png.flaticon.com/16/1384/1384060.png" alt="YT" width="12" height="12" style="display: inline-block; vertical-align: middle;" />
+                          </a>
+                        </td>
+                        <td style="padding-left: 12px;">
+                          <a href="https://twitter.com/suvix" style="display: inline-block; width: 24px; height: 24px; border: 1px solid #4b5563; border-radius: 50%; text-align: center; line-height: 22px; text-decoration: none;">
+                            <img src="https://cdn-icons-png.flaticon.com/16/5968/5968830.png" alt="X" width="12" height="12" style="display: inline-block; vertical-align: middle;" />
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <!-- CONTENT -->
+          <tr>
+            <td style="padding: 40px 32px;">
+              
+              <p style="color: #111827; font-size: 15px; margin: 0 0 28px; line-height: 1.5;">
+                Hi <strong>${name}</strong>,
+              </p>
+              
+              <h1 style="color: #111827; font-size: 22px; font-weight: 600; margin: 0 0 16px; line-height: 1.4;">
+                Password Reset Request
+              </h1>
+              
+              <p style="color: #4b5563; font-size: 15px; margin: 0 0 28px; line-height: 1.7;">
+                We received a request to reset your password for your SuviX account. Click the button below to create a new password.
+              </p>
+              
+              <!-- CTA Button -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 0 28px;">
+                <tr>
+                  <td align="center" style="background-color: #10b981; border-radius: 6px;">
+                    <a href="${resetUrl}" target="_blank" style="display: inline-block; padding: 14px 36px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; font-family: 'Segoe UI', Roboto, Arial, sans-serif;">
+                      Reset Password
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              
+              <!-- Warning Box -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 0 0 24px;">
+                <tr>
+                  <td style="background-color: #fffbeb; border-left: 3px solid #f59e0b; padding: 14px 16px; border-radius: 0 6px 6px 0;">
+                    <p style="color: #92400e; font-size: 14px; margin: 0; line-height: 1.5;">
+                      <strong>Note:</strong> This link will expire in <strong>1 hour</strong> for security.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              
+              <p style="color: #6b7280; font-size: 14px; margin: 0 0 24px; line-height: 1.6;">
+                If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
+              </p>
+              
+              <p style="color: #9ca3af; font-size: 13px; margin: 0 0 6px;">
+                Or copy and paste this link into your browser:
+              </p>
+              <p style="margin: 0; word-break: break-all;">
+                <a href="${resetUrl}" style="color: #10b981; font-size: 13px; text-decoration: none;">${resetUrl}</a>
+              </p>
+              
+            </td>
+          </tr>
+          
+          <!-- FOOTER -->
+          <tr>
+            <td style="background-color: #fafafa; padding: 24px 32px; border-top: 1px solid #e5e7eb;">
+              <p style="color: #9ca3af; font-size: 13px; margin: 0 0 6px; text-align: center;">
+                Need help? Contact us at <a href="mailto:support@suvix.com" style="color: #10b981; text-decoration: none;">support@suvix.com</a>
+              </p>
+              <p style="color: #d1d5db; font-size: 12px; margin: 0; text-align: center;">
+                &copy; ${year} SuviX Technologies Pvt. Ltd. All rights reserved.
+              </p>
+            </td>
+          </tr>
+          
+        </table>
+        
+        <!-- Security Notice -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 520px; margin-top: 20px;">
+          <tr>
+            <td align="center">
+              <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                This is a secure, automated email from SuviX. Never share your password.
+              </p>
+            </td>
+          </tr>
+        </table>
+        
+      </td>
+    </tr>
+  </table>
+  
+</body>
+</html>`;
+  
+  const text = `Hi ${name},
+
+Password Reset Request
+
+We received a request to reset your password for your SuviX account.
+
+Click here to reset your password: ${resetUrl}
+
+Note: This link will expire in 1 hour for security.
+
+If you didn't request a password reset, you can safely ignore this email.
+
+---
+Need help? Contact us at support@suvix.com
+
+(c) ${year} SuviX Technologies Pvt. Ltd. All rights reserved.`;
+  
+  return sendEmail({ to: email, subject, html, text });
+};
+
+/**
+ * Send OTP verification email
+ */
+export const sendOTPEmail = async (email, name, otp) => {
+  const subject = `${otp} is your SuviX verification code`;
+  const year = new Date().getFullYear();
+  
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify Your Email - SuviX</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Arial, sans-serif; background-color: #f9fafb;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f9fafb; padding: 40px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 500px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e5e7eb;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background-color: #000000; padding: 32px; text-align: center;">
+              <span style="font-size: 28px; font-weight: 800; color: #ffffff; letter-spacing: -1px;">
+                <span style="color: #10b981;">Suvi</span>X
+              </span>
+            </td>
+          </tr>
+          
+          <!-- Hero Section -->
+          <tr>
+            <td style="padding: 40px 32px 32px; text-align: center;">
+              <div style="width: 64px; height: 64px; background-color: #ecfdf5; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 24px; text-align: center; line-height: 64px;">
+                <span style="font-size: 32px;">🛡️</span>
+              </div>
+              <h1 style="color: #111827; font-size: 24px; font-weight: 700; margin: 0 0 12px; letter-spacing: -0.5px;">Verify your identity</h1>
+              <p style="color: #4b5563; font-size: 16px; margin: 0; line-height: 1.6;">Hi ${name}, please use the following one-time password to complete your verification.</p>
+            </td>
+          </tr>
+          
+          <!-- OTP Box -->
+          <tr>
+            <td style="padding: 0 32px 40px; text-align: center;">
+              <div style="background-color: #f3f4f6; border-radius: 12px; padding: 24px; display: inline-block; min-width: 200px; border: 1px dashed #d1d5db;">
+                <span style="font-family: 'Courier New', Courier, monospace; font-size: 42px; font-weight: 800; letter-spacing: 8px; color: #111827;">${otp}</span>
+              </div>
+              <p style="color: #9ca3af; font-size: 14px; margin: 20px 0 0;">This code will expire in 10 minutes.</p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 32px; background-color: #fafafa; border-top: 1px solid #f3f4f6; text-align: center;">
+              <p style="color: #6b7280; font-size: 14px; margin: 0 0 12px;">If you didn't request this code, you can safely ignore this email.</p>
+              <p style="color: #9ca3af; font-size: 12px; margin: 0;">&copy; ${year} SuviX Technologies. All rights reserved.</p>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `Hi ${name}, your SuviX verification code is ${otp}. This code expires in 10 minutes.`;
+  
+  return sendEmail({ to: email, subject, html, text });
+};
+
+export default { sendEmail, sendPasswordResetEmail, sendOTPEmail };

@@ -405,24 +405,4 @@ const generateScoreTips = (components) => {
   return tips;
 };
 
-/**
- * 🔄 Admin: Force recalculate all scores
- * POST /api/suvix-score/admin/recalculate-all
- */
-export const recalculateAllScores = asyncHandler(async (req, res) => {
-  const editors = await User.find({ role: "editor" }).select("_id");
-  
-  let updated = 0;
-  for (const editor of editors) {
-    await recalculateEditorScore(editor._id);
-    updated++;
-  }
-
-  res.json({
-    success: true,
-    message: `Recalculated scores for ${updated} editors`,
-    count: updated,
-  });
-});
-
 export { TIERS };

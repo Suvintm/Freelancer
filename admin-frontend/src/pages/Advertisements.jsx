@@ -1,877 +1,1106 @@
-/**
- * Advertisements.jsx - Production-Grade Admin Advertisement Management
- * Features: Multi-step form wizard, global toggle, analytics, gallery upload
- */
+// ─── Advertisements.jsx — Production Ad Management ───────────────────────────
+// Light/dark theme via CSS variables. Fully responsive. Zero Tailwind + framer-motion.
+// Deps: react, react-hot-toast, react-icons/hi2, ../context/AdminContext
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import { BsToggleOn, BsToggleOff } from "react-icons/bs";
 import {
-  FaPlus, FaEdit, FaTrash, FaImage, FaVideo, FaEye,
-  FaMousePointer, FaToggleOn, FaToggleOff, FaExternalLinkAlt,
-  FaTimes, FaCloudUploadAlt, FaCheck, FaInstagram, FaGlobe,
-  FaFacebook, FaYoutube, FaLink, FaSync, FaChevronLeft,
-  FaChevronRight, FaAd, FaBullhorn, FaUser, FaBuilding,
-} from "react-icons/fa";
-import { HiSparkles, HiOutlineSparkles, HiCheckCircle, HiXCircle, HiClock } from "react-icons/hi2";
+  HiOutlineSpeakerWave,
+  HiOutlinePlus,
+  HiOutlinePencilSquare,
+  HiOutlineTrash,
+  HiOutlinePhoto,
+  HiOutlineVideoCamera,
+  HiOutlineEye,
+  HiOutlineCursorArrowRays,
+  HiOutlineGlobeAlt,
+  HiOutlineLink,
+  HiOutlineArrowPath,
+  HiOutlineXMark,
+  HiOutlineCheck,
+  HiOutlineCheckCircle,
+  HiOutlineExclamationCircle,
+  HiOutlineClock,
+  HiOutlineUser,
+  HiOutlineBuildingOffice,
+  HiOutlineMegaphone,
+  HiOutlineChevronLeft,
+  HiOutlineChevronRight,
+  HiOutlineHome,
+  HiOutlineCloudArrowUp,
+  HiOutlineMapPin,
+  HiOutlineBell,
+  HiOutlineMagnifyingGlass,
+  HiOutlineCalendarDays,
+  HiOutlineArrowDownTray,
+  HiOutlineChartBarSquare,
+  HiOutlineSparkles,
+  HiOutlineShieldCheck,
+  HiOutlineNoSymbol,
+  HiMiniCheck,
+  HiOutlineBoltSlash,
+  HiOutlineFunnel,
+} from "react-icons/hi2";
+import { toast } from "react-hot-toast";
 import { useAdmin } from "../context/AdminContext";
-import { toast } from "react-toastify";
 
-const DISPLAY_LOCATIONS = [
-  { value: "home_banner", label: "Home Banner (Level 0)", icon: "🏠" },
-  { value: "reels_feed", label: "Reels Feed (Between Reels)", icon: "🎬" },
-  { value: "explore_page", label: "Explore Page", icon: "🔍" },
+// ─────────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────────
+const LOCATIONS = [
+  { value: "home_banner",  label: "Home Banner",      icon: "🏠", desc: "Full-width hero carousel" },
+  { value: "reels_feed",  label: "Reels Feed",        icon: "🎬", desc: "Between video reels" },
+  { value: "explore_page",label: "Explore Page",      icon: "🔍", desc: "Discovery section" },
 ];
 
-const PRIORITY_OPTIONS = [
-  { value: "low", label: "Low", color: "bg-gray-500" },
-  { value: "medium", label: "Medium", color: "bg-blue-500" },
-  { value: "high", label: "High", color: "bg-orange-500" },
-  { value: "urgent", label: "Urgent", color: "bg-red-500" },
-];
+const PRIORITY = {
+  low:    { label: "Low",    bg: "#f1f5f9", text: "#475569", dot: "#94a3b8" },
+  medium: { label: "Medium", bg: "#eff6ff", text: "#1d4ed8", dot: "#3b82f6" },
+  high:   { label: "High",   bg: "#fff7ed", text: "#c2410c", dot: "#f97316" },
+  urgent: { label: "Urgent", bg: "#fef2f2", text: "#b91c1c", dot: "#ef4444" },
+};
 
 const STEPS = [
-  { id: 1, title: "Advertiser", icon: FaUser },
-  { id: 2, title: "Content", icon: FaBullhorn },
-  { id: 3, title: "Media", icon: FaImage },
-  { id: 4, title: "Links", icon: FaLink },
-  { id: 5, title: "Display", icon: FaEye },
+  { id: 1, label: "Advertiser", icon: HiOutlineUser },
+  { id: 2, label: "Content",    icon: HiOutlineMegaphone },
+  { id: 3, label: "Media",      icon: HiOutlinePhoto },
+  { id: 4, label: "Links",      icon: HiOutlineLink },
+  { id: 5, label: "Display",    icon: HiOutlineEye },
 ];
 
-const INITIAL_FORM = {
+const INIT = {
   advertiserName: "", advertiserEmail: "", advertiserPhone: "", companyName: "",
   title: "", tagline: "", description: "", longDescription: "",
   mediaType: "image", mediaUrl: "", thumbnailUrl: "", galleryImages: [],
   websiteUrl: "", instagramUrl: "", facebookUrl: "", youtubeUrl: "", otherUrl: "",
-  ctaText: "Learn More",
-  isActive: false,
-  isDefault: false,
-  displayLocations: ["home_banner"],
-  badge: "SPONSOR",
-  startDate: "", endDate: "",
-  priority: "medium",
-  adminNotes: "",
+  ctaText: "Learn More", isActive: false, isDefault: false,
+  displayLocations: ["home_banner"], badge: "SPONSOR",
+  startDate: "", endDate: "", priority: "medium", adminNotes: "",
   approvalStatus: "pending",
 };
 
-// ✅ Repair mangled URLs from backend sanitization (dots -> underscores & slashes -> underscores)
+// ─────────────────────────────────────────────────────────────────────────────
+// URL repair (cloudinary mangled dots→underscores)
+// ─────────────────────────────────────────────────────────────────────────────
 const repairUrl = (url) => {
-    if (!url || typeof url !== "string") return url;
-    if (!url.includes("cloudinary") && !url.includes("res_") && !url.includes("_com")) return url;
-  
-    let fixed = url;
-    
-    // 1. Restore Protocol
-    fixed = fixed.replace(/^(https?):?\/*_+/gi, "$1://");
-    
-    // 2. Restore Domain Dots
-    fixed = fixed.replace(/_+res_+cloudinary_+com/g, "res.cloudinary.com")
-                 .replace(/res_cloudinary_com/g, "res.cloudinary.com")
-                 .replace(/cloudinary_com/g, "cloudinary.com");
-
-    // 3. Fix the "Slash Mangler" in path
-    if (fixed.includes("res.cloudinary.com")) {
-        // Restore domain slash
-        fixed = fixed.replace(/res\.cloudinary\.com_+/g, "res.cloudinary.com/");
-        
-        // Fix common keywords
-        fixed = fixed.replace(/image_upload_+/g, "image/upload/")
-                     .replace(/video_upload_+/g, "video/upload/")
-                     .replace(/raw_upload_+/g, "raw/upload/");
-
-        // Fix version slash (matches /v123_ or _v123_ or v123_)
-        fixed = fixed.replace(/([/_]?v\d+)_+/g, "$1/"); 
-        
-        // Fix cloud name slash (e.g. /cloudname_image/)
-        fixed = fixed.replace(/(res\.cloudinary\.com\/[^/_]+)_+(image|video|raw|authenticated)_*/g, "$1/$2/");
-        
-        // Fix folder slashes
-        fixed = fixed.replace(/advertisements_images_+/g, "advertisements/images/")
-                     .replace(/advertisements_videos_+/g, "advertisements/videos/")
-                     .replace(/advertisements_gallery_+/g, "advertisements/gallery/");
-        
-        // Catch-all keywords
-        fixed = fixed.replace(/_+(upload|image|video|v\d+)_+/g, "/$1/");
-
-        // Restore slashes before the final filename
-        fixed = fixed.replace(/_([a-z0-9\-_]+\.(webp|jpg|jpeg|png|mp4|mov|m4v|json))/gi, "/$1");
-        
-        // Flatten double slashes
-        fixed = fixed.replace(/([^:])\/\/+/g, "$1/");
-    }
-
-    // 4. Restore Extension Dots
-    fixed = fixed.replace(/_jpg([/_?#]|$)/gi, ".jpg$1")
-                 .replace(/_jpeg([/_?#]|$)/gi, ".jpeg$1")
-                 .replace(/_png([/_?#]|$)/gi, ".png$1")
-                 .replace(/_mp4([/_?#]|$)/gi, ".mp4$1")
-                 .replace(/_webp([/_?#]|$)/gi, ".webp$1")
-                 .replace(/_json([/_?#]|$)/gi, ".json$1");
-
-    return fixed;
+  if (!url || typeof url !== "string") return url;
+  if (!url.includes("cloudinary") && !url.includes("res_")) return url;
+  let f = url;
+  f = f.replace(/^(https?):?\/*_+/gi, "$1://");
+  f = f.replace(/_+res_+cloudinary_+com/g, "res.cloudinary.com").replace(/res_cloudinary_com/g, "res.cloudinary.com");
+  if (f.includes("res.cloudinary.com")) {
+    f = f.replace(/res\.cloudinary\.com_+/g, "res.cloudinary.com/");
+    f = f.replace(/image_upload_+/g, "image/upload/").replace(/video_upload_+/g, "video/upload/");
+    f = f.replace(/([/_]?v\d+)_+/g, "$1/");
+    f = f.replace(/advertisements_images_+/g, "advertisements/images/").replace(/advertisements_videos_+/g, "advertisements/videos/");
+    f = f.replace(/_([a-z0-9\-_]+\.(webp|jpg|jpeg|png|mp4|mov))/gi, "/$1");
+    f = f.replace(/([^:])\/\/+/g, "$1/");
+  }
+  f = f.replace(/_jpg([/_?#]|$)/gi, ".jpg$1").replace(/_png([/_?#]|$)/gi, ".png$1").replace(/_mp4([/_?#]|$)/gi, ".mp4$1").replace(/_webp([/_?#]|$)/gi, ".webp$1");
+  return f;
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Atoms
+// ─────────────────────────────────────────────────────────────────────────────
+const UserAvatar = ({ src, name, size = 30 }) => {
+  const [err, setErr] = useState(false);
+  const initials = (name || "??").split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+  const palette  = ["#6d28d9","#1d4ed8","#0369a1","#15803d","#b45309","#c2410c"];
+  const bg       = palette[(name || "").charCodeAt(0) % palette.length];
+  if (!err && src) return (
+    <img src={src} alt={name} onError={() => setErr(true)} style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", border: "2px solid var(--ad-surface)", flexShrink: 0 }} />
+  );
+  return <div style={{ width: size, height: size, borderRadius: "50%", background: bg, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.36, fontWeight: 700, flexShrink: 0 }}>{initials}</div>;
+};
+
+const AdThumbnail = ({ src, type, size = 80 }) => {
+  const [err, setErr] = useState(false);
+  const h = Math.round(size * 0.6);
+  if (!err && src) return (
+    <div style={{ width: size, height: h, borderRadius: 8, overflow: "hidden", flexShrink: 0, position: "relative", background: "var(--ad-shimmer)" }}>
+      <img src={repairUrl(src)} alt="" onError={() => setErr(true)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+      {type === "video" && (
+        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <HiOutlineVideoCamera size={16} style={{ color: "#fff" }} />
+        </div>
+      )}
+    </div>
+  );
+  return (
+    <div style={{ width: size, height: h, borderRadius: 8, background: "var(--ad-shimmer)", border: "1px solid var(--ad-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <HiOutlinePhoto size={18} style={{ color: "var(--ad-text-muted)", opacity: .4 }} />
+    </div>
+  );
+};
+
+const StatusBadge = ({ ad }) => {
+  if (ad.approvalStatus === "approved" && ad.isActive)
+    return <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 9px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0" }}><span style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", animation: "ad-pulse 2s infinite" }} />LIVE</span>;
+  if (ad.approvalStatus === "rejected")
+    return <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 9px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" }}><HiOutlineXMark size={10} />REJECTED</span>;
+  if (ad.approvalStatus === "pending")
+    return <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 9px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: "#fffbeb", color: "#b45309", border: "1px solid #fde68a" }}><HiOutlineClock size={10} />PENDING</span>;
+  return <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 9px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: "var(--ad-shimmer)", color: "var(--ad-text-muted)", border: "1px solid var(--ad-border)" }}>INACTIVE</span>;
+};
+
+const PriorityBadge = ({ value }) => {
+  const cfg = PRIORITY[value] || PRIORITY.medium;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: cfg.bg, color: cfg.text, border: `1px solid ${cfg.dot}33` }}>
+      <span style={{ width: 5, height: 5, borderRadius: "50%", background: cfg.dot }} />{cfg.label}
+    </span>
+  );
+};
+
+const KpiCard = ({ label, value, icon: Icon, color, loading }) => (
+  <div style={{ background: "var(--ad-card)", border: "1px solid var(--ad-border)", borderRadius: 10, padding: "16px 18px", flex: 1, minWidth: 140, display: "flex", alignItems: "center", gap: 12, boxShadow: "0 1px 3px var(--ad-shadow)" }}>
+    <div style={{ width: 38, height: 38, borderRadius: 9, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <Icon size={17} style={{ color }} />
+    </div>
+    {loading ? (
+      <div>
+        <div style={{ height: 22, width: 44, borderRadius: 4, background: "var(--ad-shimmer)", marginBottom: 4, animation: "ad-shimmer 1.4s ease infinite" }} />
+        <div style={{ height: 11, width: 66, borderRadius: 4, background: "var(--ad-shimmer)", animation: "ad-shimmer 1.4s ease infinite" }} />
+      </div>
+    ) : (
+      <div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: "var(--ad-text-primary)", lineHeight: 1.1 }}>{value ?? 0}</div>
+        <div style={{ fontSize: 11, color: "var(--ad-text-muted)", marginTop: 2 }}>{label}</div>
+      </div>
+    )}
+  </div>
+);
+
+const GlobalToggle = ({ on, loading, onToggle }) => (
+  <div style={{ background: "var(--ad-card)", border: `1px solid ${on ? "#bbf7d0" : "var(--ad-border)"}`, borderRadius: 10, padding: "18px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", boxShadow: "0 1px 3px var(--ad-shadow)", transition: "border-color .2s" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ width: 40, height: 40, borderRadius: 10, background: on ? "#f0fdf4" : "var(--ad-shimmer)", display: "flex", alignItems: "center", justifyContent: "center", transition: "background .2s" }}>
+        <HiOutlineSparkles size={18} style={{ color: on ? "#15803d" : "var(--ad-text-muted)" }} />
+      </div>
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ad-text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
+          Internal Ads (Level 0)
+          {on && <span style={{ fontSize: 10, fontWeight: 800, padding: "1px 7px", borderRadius: 999, background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0" }}>BROADCASTING</span>}
+        </div>
+        <div style={{ fontSize: 12, color: "var(--ad-text-muted)", marginTop: 2 }}>
+          When OFF, the home banner shows only Editor and Service levels.
+        </div>
+      </div>
+    </div>
+    <button onClick={onToggle} disabled={loading} style={{
+      display: "flex", alignItems: "center", gap: 8, padding: "8px 18px",
+      borderRadius: 8, border: "none", cursor: loading ? "default" : "pointer", fontWeight: 700, fontSize: 13,
+      background: on ? "#15803d" : "#6b7280", color: "#fff",
+      opacity: loading ? .7 : 1, transition: "background .2s",
+      minWidth: 80,
+    }}>
+      {loading ? (
+        <div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(255,255,255,.4)", borderTopColor: "#fff", animation: "ad-spin 0.7s linear infinite" }} />
+      ) : on ? <BsToggleOn size={18} /> : <BsToggleOff size={18} />}
+      {on ? "ON" : "OFF"}
+    </button>
+  </div>
+);
+
+// CTR bar
+const CtrBar = ({ clicks, views }) => {
+  const v = views > 0 ? Math.min(100, Math.round((clicks / views) * 100)) : 0;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ flex: 1, height: 4, background: "var(--ad-shimmer)", borderRadius: 999, overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${v}%`, background: "#6d28d9", borderRadius: 999, transition: "width .5s" }} />
+      </div>
+      <span style={{ fontSize: 10, fontWeight: 700, color: "var(--ad-text-muted)", whiteSpace: "nowrap" }}>{v}% CTR</span>
+    </div>
+  );
+};
+
+// Upload dropzone
+const Dropzone = ({ onFile, accept, loading, label, sublabel }) => {
+  const [drag, setDrag] = useState(false);
+  return (
+    <label
+      onDragOver={e => { e.preventDefault(); setDrag(true); }}
+      onDragLeave={() => setDrag(false)}
+      onDrop={e => { e.preventDefault(); setDrag(false); if (e.dataTransfer.files[0]) onFile({ target: { files: e.dataTransfer.files } }); }}
+      style={{
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        height: 140, borderRadius: 10, cursor: loading ? "default" : "pointer",
+        border: `2px dashed ${drag ? "var(--ad-accent)" : "var(--ad-border)"}`,
+        background: drag ? "var(--ad-sel-bar)" : "var(--ad-page)",
+        transition: "all .15s",
+      }}
+    >
+      {loading ? (
+        <div style={{ width: 28, height: 28, borderRadius: "50%", border: "3px solid var(--ad-border)", borderTopColor: "var(--ad-accent)", animation: "ad-spin 0.7s linear infinite" }} />
+      ) : (
+        <>
+          <HiOutlineCloudArrowUp size={28} style={{ color: "var(--ad-text-muted)", marginBottom: 8 }} />
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ad-text-primary)" }}>{label}</div>
+          <div style={{ fontSize: 11, color: "var(--ad-text-muted)", marginTop: 3 }}>{sublabel}</div>
+        </>
+      )}
+      <input type="file" accept={accept} onChange={onFile} disabled={loading} style={{ display: "none" }} />
+    </label>
+  );
+};
+
+// Form input
+const FInput = ({ label, required, ...props }) => (
+  <div>
+    {label && <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--ad-text-muted)", marginBottom: 5, textTransform: "uppercase", letterSpacing: ".06em" }}>{label}{required && <span style={{ color: "#dc2626" }}> *</span>}</label>}
+    <input {...props} style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px", border: "1px solid var(--ad-input-brd)", borderRadius: 7, fontSize: 13, color: "var(--ad-text-primary)", background: "var(--ad-card)", outline: "none", fontFamily: "inherit", transition: "border .15s", ...props.style }}
+      onFocus={e => e.target.style.borderColor = "var(--ad-input-focus)"}
+      onBlur={e => e.target.style.borderColor = "var(--ad-input-brd)"} />
+  </div>
+);
+const FTextarea = ({ label, ...props }) => (
+  <div>
+    {label && <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--ad-text-muted)", marginBottom: 5, textTransform: "uppercase", letterSpacing: ".06em" }}>{label}</label>}
+    <textarea {...props} style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px", border: "1px solid var(--ad-input-brd)", borderRadius: 7, fontSize: 13, color: "var(--ad-text-primary)", background: "var(--ad-card)", outline: "none", fontFamily: "inherit", resize: "vertical", lineHeight: 1.55, transition: "border .15s", ...props.style }}
+      onFocus={e => e.target.style.borderColor = "var(--ad-input-focus)"}
+      onBlur={e => e.target.style.borderColor = "var(--ad-input-brd)"} />
+  </div>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main Component
+// ─────────────────────────────────────────────────────────────────────────────
 const Advertisements = () => {
   const { adminAxios } = useAdmin();
-  const [ads, setAds] = useState([]);
-  const [analytics, setAnalytics] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [editingAd, setEditingAd] = useState(null);
-  const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState(INITIAL_FORM);
-  const [uploading, setUploading] = useState(false);
-  const [uploadingGallery, setUploadingGallery] = useState(false);
-  const [filterStatus, setFilterStatus] = useState("all");
+
+  const [ads,          setAds]          = useState([]);
+  const [analytics,    setAnalytics]    = useState(null);
+  const [loading,      setLoading]      = useState(true);
+  const [aLoading,     setALoading]     = useState(true);
   const [showSuvixAds, setShowSuvixAds] = useState(true);
-  const [togglingGlobal, setTogglingGlobal] = useState(false);
+  const [toggling,     setToggling]     = useState(false);
 
-  const fetchAds = async () => {
+  // list state
+  const [search,       setSearch]       = useState("");
+  const [filter,       setFilter]       = useState("all");
+  const [selectedIds,  setSelectedIds]  = useState([]);
+
+  // modal state
+  const [showModal,    setShowModal]    = useState(false);
+  const [editingAd,    setEditingAd]    = useState(null);
+  const [step,         setStep]         = useState(1);
+  const [form,         setForm]         = useState(INIT);
+  const [uploading,    setUploading]    = useState(false);
+  const [uploadingGal, setUploadingGal] = useState(false);
+
+  // delete confirm
+  const [delConfirm,   setDelConfirm]   = useState(null);
+
+  // detail panel
+  const [detailAd,     setDetailAd]     = useState(null);
+
+  const searchRef = useRef(null);
+
+  // ── Fetch ───────────────────────────────────────────────────────────
+  const loadAll = async () => {
+    setLoading(true); setALoading(true);
     try {
-      const res = await adminAxios.get("/ads/admin/all");
-      setAds(res.data.ads || []);
-    } catch (err) {
-      toast.error("Failed to fetch advertisements");
-    } finally {
-      setLoading(false);
-    }
+      const [adsRes, analyticsRes, settingsRes] = await Promise.allSettled([
+        adminAxios.get("/admin/ads"),
+        adminAxios.get("/admin/ads/analytics"),
+        adminAxios.get("/admin/ads/settings"),
+      ]);
+      if (adsRes.status === "fulfilled")       setAds(adsRes.value.data.ads || []);
+      if (analyticsRes.status === "fulfilled") setAnalytics(analyticsRes.value.data.analytics);
+      if (settingsRes.status === "fulfilled")  setShowSuvixAds(settingsRes.value.data.settings?.showSuvixAds ?? true);
+    } catch { toast.error("Failed to load ads"); }
+    finally { setLoading(false); setALoading(false); }
   };
 
-  const fetchAnalytics = async () => {
-    try {
-      const res = await adminAxios.get("/ads/admin/analytics");
-      setAnalytics(res.data.analytics);
-    } catch (err) {
-      // Ignore analytics fetch errors
-    }
-  };
-
-  const fetchSettings = async () => {
-    try {
-      const res = await adminAxios.get("/ads/admin/settings");
-      setShowSuvixAds(res.data.settings?.showSuvixAds ?? true);
-    } catch (err) {
-      // Ignore settings fetch errors
-    }
-  };
+  useEffect(() => { loadAll(); }, []);
 
   useEffect(() => {
-    fetchAds();
-    fetchAnalytics();
-    fetchSettings();
+    const h = e => { if (e.key === "Escape") { setShowModal(false); setDelConfirm(null); setDetailAd(null); } };
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
   }, []);
 
+  // ── Handlers ──────────────────────────────────────────────────────────
   const handleGlobalToggle = async () => {
-    setTogglingGlobal(true);
+    setToggling(true);
     try {
-      const res = await adminAxios.post("/ads/admin/toggle-suvix-ads", {
-        showSuvixAds: !showSuvixAds,
-      });
+      const res = await adminAxios.post("/admin/ads/toggle-suvix-ads", { showSuvixAds: !showSuvixAds });
       setShowSuvixAds(res.data.showSuvixAds);
-      toast.success(res.data.message);
-    } catch {
-      toast.error("Failed to update setting");
-    } finally {
-      setTogglingGlobal(false);
-    }
+      toast.success(res.data.message || "Setting updated");
+    } catch { toast.error("Failed to update setting"); }
+    finally { setToggling(false); }
+  };
+
+  const handleApprovalToggle = async (ad) => {
+    const newStatus = ad.approvalStatus === "approved" ? "pending" : "approved";
+    try {
+      await adminAxios.patch(`/admin/ads/${ad._id}`, { approvalStatus: newStatus, isActive: newStatus === "approved" });
+      toast.success(newStatus === "approved" ? "Ad approved & activated" : "Ad set to pending");
+      loadAll();
+    } catch { toast.error("Failed to update approval"); }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await adminAxios.delete(`/admin/ads/${id}`);
+      toast.success("Ad deleted");
+      setDelConfirm(null);
+      setDetailAd(null);
+      loadAll();
+    } catch { toast.error("Delete failed"); }
+  };
+
+  const handleBulkApprove = async () => {
+    try {
+      await Promise.all(selectedIds.map(id => adminAxios.patch(`/admin/ads/${id}`, { approvalStatus: "approved", isActive: true })));
+      toast.success(`${selectedIds.length} ads approved`);
+      setSelectedIds([]);
+      loadAll();
+    } catch { toast.error("Bulk approve failed"); }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Delete ${selectedIds.length} ads?`)) return;
+    try {
+      await Promise.all(selectedIds.map(id => adminAxios.delete(`/admin/ads/${id}`)));
+      toast.success(`${selectedIds.length} ads deleted`);
+      setSelectedIds([]);
+      loadAll();
+    } catch { toast.error("Bulk delete failed"); }
   };
 
   const handleMediaUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const isVideo = file.type.startsWith("video/");
-    const maxSize = isVideo ? 200 * 1024 * 1024 : 10 * 1024 * 1024;
-    if (file.size > maxSize) {
-      toast.error(`File too large. Max: ${isVideo ? "200MB" : "10MB"}`);
-      return;
-    }
+    if (file.size > (isVideo ? 200 * 1024 * 1024 : 10 * 1024 * 1024)) { toast.error(isVideo ? "Max 200MB for video" : "Max 10MB for image"); return; }
     setUploading(true);
-    const fd = new FormData();
-    fd.append("media", file);
+    const fd = new FormData(); fd.append("media", file);
     try {
-      const res = await adminAxios.post("/ads/admin/upload", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await adminAxios.post("/admin/ads/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
       if (res.data.success) {
-        const cleanedMediaUrl = repairUrl(res.data.mediaUrl);
-        console.log(`[UPLOAD] Server returned: ${res.data.mediaUrl}`);
-        if (cleanedMediaUrl !== res.data.mediaUrl) {
-          console.log(`[UPLOAD] Auto-repaired locally: ${cleanedMediaUrl}`);
-        }
-        setFormData((p) => ({
-          ...p,
-          mediaType: res.data.mediaType,
-          mediaUrl: cleanedMediaUrl,
-          thumbnailUrl: repairUrl(res.data.thumbnailUrl || ""),
-        }));
-        toast.success("Media uploaded!");
+        setForm(p => ({ ...p, mediaType: res.data.mediaType, mediaUrl: repairUrl(res.data.mediaUrl), thumbnailUrl: repairUrl(res.data.thumbnailUrl || "") }));
+        toast.success("Media uploaded");
       }
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Upload failed");
-    } finally {
-      setUploading(false);
-    }
+    } catch (e) { toast.error(e.response?.data?.message || "Upload failed"); }
+    finally { setUploading(false); }
   };
 
   const handleGalleryUpload = async (e) => {
     const files = Array.from(e.target.files);
-    if (files.length === 0) return;
-    const remaining = 5 - formData.galleryImages.length;
-    if (files.length > remaining) {
-      toast.error(`You can upload ${remaining} more image(s). Max 5 total.`);
-      return;
-    }
-    setUploadingGallery(true);
-    const fd = new FormData();
-    files.forEach((f) => fd.append("images", f));
+    if (!files.length) return;
+    if (files.length > 5 - form.galleryImages.length) { toast.error(`Max 5 gallery images total`); return; }
+    setUploadingGal(true);
+    const fd = new FormData(); files.forEach(f => fd.append("images", f));
     try {
-      const res = await adminAxios.post("/ads/admin/upload-gallery", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-        const cleanedUrls = res.data.galleryImages.map(url => repairUrl(url));
-        console.log(`[GALLERY] Server returned:`, res.data.galleryImages);
-        setFormData((p) => ({
-          ...p,
-          galleryImages: [...p.galleryImages, ...cleanedUrls],
-        }));
-        toast.success(`${res.data.galleryImages.length} image(s) uploaded!`);
-      } catch (err) {
-      toast.error(err.response?.data?.message || "Gallery upload failed");
-      } finally {
-      setUploadingGallery(false);
-      }
+      const res = await adminAxios.post("/admin/ads/upload-gallery", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      setForm(p => ({ ...p, galleryImages: [...p.galleryImages, ...res.data.galleryImages.map(repairUrl)] }));
+      toast.success(`${res.data.galleryImages.length} image(s) uploaded`);
+    } catch (e) { toast.error(e.response?.data?.message || "Gallery upload failed"); }
+    finally { setUploadingGal(false); }
   };
 
   const handleSubmit = async () => {
-    if (!formData.title || !formData.mediaUrl || !formData.advertiserName) {
-      toast.error("Advertiser name, title, and media are required");
-      return;
-    }
+    if (!form.title || !form.mediaUrl || !form.advertiserName) { toast.error("Advertiser, title and media are required"); return; }
     try {
-      if (editingAd) {
-        await adminAxios.put(`/ads/${editingAd._id}`, formData);
-        toast.success("Advertisement updated!");
-      } else {
-        await adminAxios.post("/ads", formData);
-        toast.success("Advertisement created!");
-      }
-      setShowModal(false);
-      resetForm();
-      fetchAds();
-      fetchAnalytics();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to save ad");
-    }
+      if (editingAd) await adminAxios.patch(`/admin/ads/${editingAd._id}`, form);
+      else           await adminAxios.post("/admin/ads", form);
+      toast.success(editingAd ? "Ad updated!" : "Ad created!");
+      setShowModal(false); resetForm(); loadAll();
+    } catch (e) { toast.error(e.response?.data?.message || "Save failed"); }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Delete this advertisement? This cannot be undone.")) return;
-    try {
-      await adminAxios.delete(`/ads/${id}`);
-      toast.success("Advertisement deleted!");
-      fetchAds();
-      fetchAnalytics();
-    } catch {
-      toast.error("Failed to delete");
-    }
-  };
-
-  const handleApprovalToggle = async (ad) => {
-    const newStatus = ad.approvalStatus === "approved" ? "pending" : "approved";
-    const newActive = newStatus === "approved";
-    try {
-      await adminAxios.put(`/ads/${ad._id}`, {
-        approvalStatus: newStatus,
-        isActive: newActive,
-      });
-      toast.success(`Ad ${newStatus === "approved" ? "approved & activated" : "set to pending"}`);
-      fetchAds();
-    } catch {
-      toast.error("Failed to update");
-    }
-  };
-
-  const openEdit = (ad) => {
+  const openCreate = () => { resetForm(); setShowModal(true); };
+  const openEdit   = (ad) => {
     setEditingAd(ad);
-    setFormData({
-      advertiserName: ad.advertiserName || "",
-      advertiserEmail: ad.advertiserEmail || "",
-      advertiserPhone: ad.advertiserPhone || "",
-      companyName: ad.companyName || "",
-      title: ad.title || "",
-      tagline: ad.tagline || "",
-      description: ad.description || "",
-      longDescription: ad.longDescription || "",
-      mediaType: ad.mediaType || "image",
-      mediaUrl: ad.mediaUrl || "",
-      thumbnailUrl: ad.thumbnailUrl || "",
-      galleryImages: ad.galleryImages || [],
-      websiteUrl: ad.websiteUrl || "",
-      instagramUrl: ad.instagramUrl || "",
-      facebookUrl: ad.facebookUrl || "",
-      youtubeUrl: ad.youtubeUrl || "",
-      otherUrl: ad.otherUrl || "",
-      ctaText: ad.ctaText || "Learn More",
-      isActive: ad.isActive,
-      isDefault: ad.isDefault || false,
-      displayLocations: ad.displayLocations || ["home_banner"],
-      badge: ad.badge || "SPONSOR",
-      startDate: ad.startDate ? ad.startDate.slice(0, 16) : "",
-      endDate: ad.endDate ? ad.endDate.slice(0, 16) : "",
-      priority: ad.priority || "medium",
-      adminNotes: ad.adminNotes || "",
-      approvalStatus: ad.approvalStatus || "pending",
+    setForm({
+      advertiserName: ad.advertiserName || "", advertiserEmail: ad.advertiserEmail || "",
+      advertiserPhone: ad.advertiserPhone || "", companyName: ad.companyName || "",
+      title: ad.title || "", tagline: ad.tagline || "",
+      description: ad.description || "", longDescription: ad.longDescription || "",
+      mediaType: ad.mediaType || "image", mediaUrl: ad.mediaUrl || "",
+      thumbnailUrl: ad.thumbnailUrl || "", galleryImages: ad.galleryImages || [],
+      websiteUrl: ad.websiteUrl || "", instagramUrl: ad.instagramUrl || "",
+      facebookUrl: ad.facebookUrl || "", youtubeUrl: ad.youtubeUrl || "", otherUrl: ad.otherUrl || "",
+      ctaText: ad.ctaText || "Learn More", isActive: ad.isActive || false,
+      isDefault: ad.isDefault || false, displayLocations: ad.displayLocations || ["home_banner"],
+      badge: ad.badge || "SPONSOR", startDate: ad.startDate?.slice(0, 16) || "",
+      endDate: ad.endDate?.slice(0, 16) || "", priority: ad.priority || "medium",
+      adminNotes: ad.adminNotes || "", approvalStatus: ad.approvalStatus || "pending",
     });
-    setCurrentStep(1);
-    setShowModal(true);
+    setStep(1); setShowModal(true);
   };
+  const resetForm = () => { setForm(INIT); setEditingAd(null); setStep(1); };
 
-  const resetForm = () => {
-    setFormData(INITIAL_FORM);
-    setEditingAd(null);
-    setCurrentStep(1);
-  };
-
-  const filteredAds = ads.filter((ad) => {
-    if (filterStatus === "all") return true;
-    if (filterStatus === "active") return ad.isActive && ad.approvalStatus === "approved";
-    if (filterStatus === "pending") return ad.approvalStatus === "pending";
-    if (filterStatus === "inactive") return !ad.isActive;
-    if (filterStatus === "defaults") return ad.isDefault;
-    return true;
+  // ── Derived ──────────────────────────────────────────────────────────
+  const filtered = ads.filter(ad => {
+    const matchFilter =
+      filter === "all"      ? true :
+      filter === "live"     ? (ad.approvalStatus === "approved" && ad.isActive) :
+      filter === "pending"  ? ad.approvalStatus === "pending" :
+      filter === "inactive" ? !ad.isActive :
+      filter === "default"  ? ad.isDefault : true;
+    const matchSearch = !search || [ad.title, ad.advertiserName, ad.companyName].some(v => v?.toLowerCase().includes(search.toLowerCase()));
+    return matchFilter && matchSearch;
   });
+  const allSel = filtered.length > 0 && selectedIds.length === filtered.length;
+  const someSel = selectedIds.length > 0 && !allSel;
 
-  const getStatusBadge = (ad) => {
-    if (ad.approvalStatus === "approved" && ad.isActive)
-      return <span className="px-2 py-1 text-[10px] font-bold bg-green-500/20 text-green-400 rounded-full flex items-center gap-1"><HiCheckCircle /> LIVE</span>;
-    if (ad.approvalStatus === "rejected")
-      return <span className="px-2 py-1 text-[10px] font-bold bg-red-500/20 text-red-400 rounded-full flex items-center gap-1"><HiXCircle /> REJECTED</span>;
-    if (ad.approvalStatus === "pending")
-      return <span className="px-2 py-1 text-[10px] font-bold bg-amber-500/20 text-amber-400 rounded-full flex items-center gap-1"><HiClock /> PENDING</span>;
-    return <span className="px-2 py-1 text-[10px] font-bold bg-gray-500/20 text-gray-400 rounded-full">INACTIVE</span>;
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
+  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <FaAd className="text-blue-500" />
-            Advertisement Manager
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-            Manage commercial ads — home banner, reels feed, explore page
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => { fetchAds(); fetchAnalytics(); fetchSettings(); }}
-            className="p-2.5 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 rounded-xl transition-all"
-          >
-            <FaSync className="text-gray-500" />
-          </button>
-          <button
-            onClick={() => { resetForm(); setShowModal(true); }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all"
-          >
-            <FaPlus /> New Ad
-          </button>
-        </div>
-      </div>
+    <>
+      <style>{`
+        :root {
+          --ad-page:         #f8f9fa;
+          --ad-card:         #ffffff;
+          --ad-surface:      #ffffff;
+          --ad-border:       #e5e7eb;
+          --ad-row-brd:      #f3f4f6;
+          --ad-shadow:       rgba(0,0,0,.06);
+          --ad-shimmer:      #f1f3f4;
+          --ad-text-primary: #111827;
+          --ad-text-muted:   #6b7280;
+          --ad-accent:       #111827;
+          --ad-hover:        #f9fafb;
+          --ad-input-brd:    #d1d5db;
+          --ad-input-focus:  #111827;
+          --ad-btn-bg:       #ffffff;
+          --ad-btn-brd:      #d1d5db;
+          --ad-btn-text:     #374151;
+          --ad-panel-bg:     #ffffff;
+          --ad-panel-hdr:    #f8f9fa;
+          --ad-sel-bar:      #eff6ff;
+          --ad-sel-brd:      #93c5fd;
+          --ad-sel-text:     #1d4ed8;
+        }
+        @media (prefers-color-scheme: dark) {
+          :root {
+            --ad-page: #0a0a0a; --ad-card: #111111; --ad-surface: #111111;
+            --ad-border: #1f1f1f; --ad-row-brd: #191919;
+            --ad-shadow: rgba(0,0,0,.3); --ad-shimmer: #1a1a1a;
+            --ad-text-primary: #f3f4f6; --ad-text-muted: #6b7280; --ad-accent: #f3f4f6;
+            --ad-hover: #161616;
+            --ad-input-brd: #2a2a2a; --ad-input-focus: #f3f4f6;
+            --ad-btn-bg: #161616; --ad-btn-brd: #2a2a2a; --ad-btn-text: #d1d5db;
+            --ad-panel-bg: #111111; --ad-panel-hdr: #161616;
+            --ad-sel-bar: #1e3a5f; --ad-sel-brd: #1e40af; --ad-sel-text: #93c5fd;
+          }
+        }
+        .dark {
+          --ad-page: #0a0a0a; --ad-card: #111111; --ad-surface: #111111;
+          --ad-border: #1f1f1f; --ad-row-brd: #191919;
+          --ad-shadow: rgba(0,0,0,.3); --ad-shimmer: #1a1a1a;
+          --ad-text-primary: #f3f4f6; --ad-text-muted: #6b7280; --ad-accent: #f3f4f6;
+          --ad-hover: #161616;
+          --ad-input-brd: #2a2a2a; --ad-input-focus: #f3f4f6;
+          --ad-btn-bg: #161616; --ad-btn-brd: #2a2a2a; --ad-btn-text: #d1d5db;
+          --ad-panel-bg: #111111; --ad-panel-hdr: #161616;
+          --ad-sel-bar: #1e3a5f; --ad-sel-brd: #1e40af; --ad-sel-text: #93c5fd;
+        }
 
-      {/* Global Toggle */}
-      <div className="bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-2xl p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <HiSparkles className="text-amber-500" />
-              Suvix Internal Ads (Level 0)
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              When OFF, the home banner will show only Editor and Service levels. All external ads remain visible.
-            </p>
+        @keyframes ad-shimmer { 0%,100%{opacity:1} 50%{opacity:.4} }
+        @keyframes ad-pulse   { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+        @keyframes ad-spin    { to{transform:rotate(360deg)} }
+        @keyframes ad-fadeIn  { from{opacity:0} to{opacity:1} }
+        @keyframes ad-fadeUp  { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+        @keyframes ad-slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+        @keyframes ad-scaleIn { from{opacity:0;transform:scale(.95)} to{opacity:1;transform:scale(1)} }
+
+        .ad-row:hover { background: var(--ad-hover) !important; }
+        .ad-row.sel   { background: var(--ad-sel-bar) !important; }
+        .ad-act { opacity:0; transition:opacity .15s; }
+        .ad-row:hover .ad-act { opacity:1; }
+        .ad-tbtn { background:var(--ad-btn-bg); border:1px solid var(--ad-btn-brd); color:var(--ad-btn-text); cursor:pointer; border-radius:7px; font-size:13px; display:flex; align-items:center; gap:6px; padding:7px 14px; font-weight:500; transition:opacity .15s; }
+        .ad-tbtn:hover { opacity:.8; }
+        .ad-chip { padding:4px 11px; border-radius:999px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid; transition:all .15s; }
+        .ad-scroll::-webkit-scrollbar { width:4px; }
+        .ad-scroll::-webkit-scrollbar-thumb { background:var(--ad-border); border-radius:2px; }
+        .ad-grid { display:grid; gap:12px; }
+        @media (max-width:480px) { .ad-two { grid-template-columns:1fr !important; } }
+      `}</style>
+
+      <div style={{ background: "var(--ad-page)", minHeight: "100vh", fontFamily: "system-ui,-apple-system,sans-serif" }}>
+        <div style={{ maxWidth: 1300, margin: "0 auto", padding: "20px 16px", display: "flex", flexDirection: "column", gap: 18 }}>
+
+          {/* Breadcrumb */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--ad-text-muted)" }}>
+            <HiOutlineHome size={14} /><span style={{ color: "var(--ad-border)" }}>/</span>
+            <span>Admin</span><span style={{ color: "var(--ad-border)" }}>/</span>
+            <span style={{ color: "var(--ad-text-primary)", fontWeight: 600 }}>Advertisements</span>
           </div>
-          <button
-            onClick={handleGlobalToggle}
-            disabled={togglingGlobal}
-            className={`relative flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-white transition-all ${
-              showSuvixAds ? "bg-green-600 hover:bg-green-700" : "bg-gray-500 hover:bg-gray-600"
-            }`}
-          >
-            {togglingGlobal ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : showSuvixAds ? (
-              <><FaToggleOn size={18} /> ON</>
-            ) : (
-              <><FaToggleOff size={18} /> OFF</>
-            )}
-          </button>
-        </div>
-      </div>
 
-      {/* Analytics */}
-      {analytics && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {[
-            { label: "Total Ads", value: analytics.totalAds, color: "text-gray-900 dark:text-white" },
-            { label: "Live Ads", value: analytics.activeAds, color: "text-green-500" },
-            { label: "Pending Review", value: analytics.pendingAds, color: "text-amber-500" },
-            { label: "Total Views", value: analytics.totalViews, color: "text-blue-500" },
-            { label: "Overall CTR", value: analytics.avgCTR, color: "text-purple-500" },
-          ].map((stat) => (
-            <div key={stat.label} className="bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl p-4">
-              <p className="text-gray-500 dark:text-gray-400 text-xs font-medium mb-1">{stat.label}</p>
-              <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
+          {/* Page header */}
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+            <div>
+              <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--ad-text-primary)", letterSpacing: "-.3px" }}>Advertisements</h1>
+              <p style={{ margin: "3px 0 0", fontSize: 13, color: "var(--ad-text-muted)" }}>
+                Manage commercial ads across home banner, reels feed, and explore page.
+              </p>
             </div>
-          ))}
-        </div>
-      )}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button onClick={loadAll} className="ad-tbtn"><HiOutlineArrowPath size={14} style={loading ? { animation: "ad-spin .7s linear infinite" } : {}} />Refresh</button>
+              <button onClick={openCreate} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 16px", background: "var(--ad-text-primary)", border: "none", borderRadius: 7, fontSize: 13, color: "var(--ad-page)", cursor: "pointer", fontWeight: 600 }}>
+                <HiOutlinePlus size={14} /> New Ad
+              </button>
+            </div>
+          </div>
 
-      {/* Filter Tabs */}
-      <div className="flex gap-2 flex-wrap">
-        {["all", "active", "pending", "inactive", "defaults"].map((status) => (
-          <button
-            key={status}
-            onClick={() => setFilterStatus(status)}
-            className={`px-4 py-2 rounded-xl font-medium capitalize transition-all text-sm ${
-              filterStatus === status
-                ? status === "defaults" ? "bg-amber-500 text-white" : "bg-blue-600 text-white"
-                : "bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
-            }`}
-          >
-            {status === "all" ? `All (${ads.length})` : status === "defaults" ? `⭐ Defaults` : status}
-          </button>
-        ))}
-      </div>
+          {/* Global toggle */}
+          <GlobalToggle on={showSuvixAds} loading={toggling} onToggle={handleGlobalToggle} />
 
-      {/* Ads List */}
-      {filteredAds.length === 0 ? (
-        <div className="text-center py-16 bg-white dark:bg-zinc-800 rounded-2xl border border-gray-200 dark:border-zinc-700">
-          <FaAd className="text-5xl text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No Advertisements</h3>
-          <p className="text-gray-500 dark:text-gray-400 mb-4">Create your first commercial advertisement</p>
-          <button
-            onClick={() => setShowModal(true)}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium"
-          >
-            Create Ad
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredAds.map((ad) => (
-            <motion.div
-              key={ad._id}
-              layout
-              className="bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl p-4 flex items-center gap-4 hover:border-blue-500/50 transition-all"
-            >
-              {/* Thumbnail */}
-              <div className="w-24 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-700 flex-shrink-0 relative">
-                {ad.mediaType === "video" ? (
-                  <>
-                    <img src={repairUrl(ad.thumbnailUrl || ad.mediaUrl)} alt="" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                      <FaVideo className="text-white" />
-                    </div>
-                  </>
-                ) : (
-                  <img src={repairUrl(ad.mediaUrl)} alt="" className="w-full h-full object-cover" />
-                )}
+          {/* KPI cards */}
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <KpiCard label="Total Ads"     value={analytics?.totalAds   ?? ads.length}     icon={HiOutlineSpeakerWave}     color="#6d28d9" loading={aLoading} />
+            <KpiCard label="Live"          value={analytics?.activeAds  ?? ads.filter(a => a.isActive && a.approvalStatus === "approved").length} icon={HiOutlineCheckCircle} color="#15803d" loading={aLoading} />
+            <KpiCard label="Pending"       value={analytics?.pendingAds ?? ads.filter(a => a.approvalStatus === "pending").length} icon={HiOutlineClock} color="#b45309" loading={aLoading} />
+            <KpiCard label="Total Views"   value={(analytics?.totalViews ?? 0).toLocaleString()} icon={HiOutlineEye}  color="#0369a1" loading={aLoading} />
+            <KpiCard label="Total Clicks"  value={(analytics?.totalClicks ?? 0).toLocaleString()} icon={HiOutlineCursorArrowRays} color="#1d4ed8" loading={aLoading} />
+          </div>
+
+          {/* Main card */}
+          <div style={{ background: "var(--ad-card)", border: "1px solid var(--ad-border)", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 3px var(--ad-shadow)" }}>
+
+            {/* Toolbar */}
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--ad-border)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ position: "relative", flex: 1, minWidth: 220 }}>
+                <HiOutlineMagnifyingGlass size={15} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--ad-text-muted)", pointerEvents: "none" }} />
+                <input ref={searchRef} type="text" placeholder="Search by title, advertiser or company…"
+                  value={search} onChange={e => setSearch(e.target.value)}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px 8px 36px", border: "1px solid var(--ad-input-brd)", borderRadius: 7, fontSize: 13, color: "var(--ad-text-primary)", background: "var(--ad-card)", outline: "none" }}
+                  onFocus={e => e.target.style.borderColor = "var(--ad-input-focus)"}
+                  onBlur={e => e.target.style.borderColor = "var(--ad-input-brd)"} />
+                {search && <button onClick={() => { setSearch(""); searchRef.current?.focus(); }} style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--ad-text-muted)", padding: 2, display: "flex" }}><HiOutlineXMark size={14} /></button>}
               </div>
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-semibold text-gray-900 dark:text-white truncate">{ad.title}</h3>
-                  {getStatusBadge(ad)}
-                  {ad.isDefault && (
-                    <span className="px-2 py-1 text-[10px] font-bold bg-amber-500/20 text-amber-400 rounded-full">
-                      DEFAULT
-                    </span>
-                  )}
-                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold text-white ${PRIORITY_OPTIONS.find(p => p.value === ad.priority)?.color || "bg-gray-500"}`}>
-                    {ad.priority?.toUpperCase()}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                  {ad.companyName || ad.advertiserName} • {ad.displayLocations?.join(", ")}
-                </p>
-                <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                  <span className="flex items-center gap-1"><FaEye /> {ad.views}</span>
-                  <span className="flex items-center gap-1"><FaMousePointer /> {ad.clicks}</span>
-                  {ad.websiteUrl && <span className="text-blue-500 flex items-center gap-1"><FaGlobe /> Website</span>}
-                  {ad.instagramUrl && <span className="text-pink-500 flex items-center gap-1"><FaInstagram /> Instagram</span>}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => handleApprovalToggle(ad)}
-                  className={`p-2 rounded-lg transition-all text-sm font-bold ${
-                    ad.approvalStatus === "approved"
-                      ? "text-green-500 hover:bg-green-500/10"
-                      : "text-amber-500 hover:bg-amber-500/10"
-                  }`}
-                  title={ad.approvalStatus === "approved" ? "Revoke approval" : "Approve ad"}
-                >
-                  {ad.approvalStatus === "approved" ? <HiCheckCircle size={18} /> : <HiClock size={18} />}
-                </button>
-                <button
-                  onClick={() => openEdit(ad)}
-                  className="p-2 rounded-lg text-blue-500 hover:bg-blue-500/10 transition-all"
-                  title="Edit"
-                >
-                  <FaEdit />
-                </button>
-                <button
-                  onClick={() => handleDelete(ad._id)}
-                  className="p-2 rounded-lg text-red-500 hover:bg-red-500/10 transition-all"
-                  title="Delete"
-                >
-                  <FaTrash />
-                </button>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
-
-      {/* ===== CREATE/EDIT MODAL ===== */}
-      <AnimatePresence>
-        {showModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-zinc-800 sticky top-0 bg-white dark:bg-zinc-900 z-10">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                    {editingAd ? "Edit Advertisement" : "Create Advertisement"}
-                  </h2>
-                  <p className="text-xs text-gray-500 mt-0.5">Step {currentStep} of {STEPS.length} — {STEPS[currentStep - 1]?.title}</p>
-                </div>
-                <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-gray-500">
-                  <FaTimes />
-                </button>
-              </div>
-
-              {/* Step Progress */}
-              <div className="flex items-center gap-0 px-5 pt-4">
-                {STEPS.map((step, idx) => (
-                  <div key={step.id} className="flex items-center flex-1">
-                    <button
-                      onClick={() => setCurrentStep(step.id)}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all flex-shrink-0 ${
-                        currentStep === step.id
-                          ? "bg-blue-600 text-white ring-4 ring-blue-500/30"
-                          : currentStep > step.id
-                          ? "bg-green-500 text-white"
-                          : "bg-gray-200 dark:bg-zinc-700 text-gray-500"
-                      }`}
-                    >
-                      {currentStep > step.id ? <FaCheck className="text-[10px]" /> : step.id}
-                    </button>
-                    {idx < STEPS.length - 1 && (
-                      <div className={`flex-1 h-0.5 mx-1 ${currentStep > step.id ? "bg-green-500" : "bg-gray-200 dark:bg-zinc-700"}`} />
-                    )}
-                  </div>
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                {[["all","All"],["live","Live"],["pending","Pending"],["inactive","Inactive"],["default","⭐ Default"]].map(([v, l]) => (
+                  <button key={v} onClick={() => setFilter(v)} className="ad-chip"
+                    style={{ background: filter === v ? "var(--ad-text-primary)" : "transparent", color: filter === v ? "var(--ad-page)" : "var(--ad-text-muted)", borderColor: filter === v ? "var(--ad-text-primary)" : "var(--ad-border)" }}>
+                    {l}{v === "all" ? ` (${ads.length})` : ""}
+                  </button>
                 ))}
               </div>
+            </div>
 
-              {/* Step Content */}
-              <div className="p-5 space-y-4">
-                <AnimatePresence mode="wait">
-                  {/* Step 1: Advertiser Info */}
-                  {currentStep === 1 && (
-                    <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-                      <h3 className="font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2"><FaUser className="text-blue-500" /> Advertiser Information</h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Advertiser Name *</label>
-                          <input type="text" value={formData.advertiserName} onChange={e => setFormData(p => ({...p, advertiserName: e.target.value}))} placeholder="e.g. John Smith" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company Name</label>
-                          <input type="text" value={formData.companyName} onChange={e => setFormData(p => ({...p, companyName: e.target.value}))} placeholder="e.g. Nike India" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
-                          <input type="email" value={formData.advertiserEmail} onChange={e => setFormData(p => ({...p, advertiserEmail: e.target.value}))} placeholder="contact@company.com" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
-                          <input type="text" value={formData.advertiserPhone} onChange={e => setFormData(p => ({...p, advertiserPhone: e.target.value}))} placeholder="+91 98765 43210" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none" />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Admin Notes (Internal)</label>
-                        <textarea value={formData.adminNotes} onChange={e => setFormData(p => ({...p, adminNotes: e.target.value}))} rows={2} placeholder="Internal notes about this ad campaign..." className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none resize-none" />
-                      </div>
-                    </motion.div>
-                  )}
+            {/* Bulk bar */}
+            {selectedIds.length > 0 && (
+              <div style={{ padding: "9px 16px", background: "var(--ad-sel-bar)", borderBottom: `1px solid var(--ad-sel-brd)`, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", animation: "ad-fadeIn .2s ease" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 20, height: 20, borderRadius: 4, background: "#1d4ed8", display: "flex", alignItems: "center", justifyContent: "center" }}><HiMiniCheck size={12} style={{ color: "#fff" }} /></div>
+                  <span style={{ fontSize: 13, color: "var(--ad-sel-text)", fontWeight: 600 }}>{selectedIds.length} selected</span>
+                </div>
+                <button onClick={handleBulkApprove} style={{ padding: "4px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 6, fontSize: 12, fontWeight: 600, color: "#15803d", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}><HiOutlineCheck size={12} /> Approve All</button>
+                <button onClick={handleBulkDelete} style={{ padding: "4px 12px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6, fontSize: 12, fontWeight: 600, color: "#b91c1c", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}><HiOutlineTrash size={12} /> Delete All</button>
+                <button onClick={() => setSelectedIds([])} style={{ marginLeft: "auto", background: "none", border: "none", fontSize: 12, color: "var(--ad-text-muted)", cursor: "pointer" }}>Clear</button>
+              </div>
+            )}
 
-                  {/* Step 2: Ad Content */}
-                  {currentStep === 2 && (
-                    <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-                      <h3 className="font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2"><FaBullhorn className="text-blue-500" /> Ad Content</h3>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ad Title *</label>
-                        <input type="text" value={formData.title} onChange={e => setFormData(p => ({...p, title: e.target.value}))} placeholder="e.g. Summer Sale — 50% Off" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tagline (short hook)</label>
-                        <input type="text" value={formData.tagline} onChange={e => setFormData(p => ({...p, tagline: e.target.value}))} placeholder="e.g. High-end cinematic editing for your brand." className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Short Description (shown in banner)</label>
-                        <textarea value={formData.description} onChange={e => setFormData(p => ({...p, description: e.target.value}))} rows={2} placeholder="Brief description..." className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none resize-none" maxLength={300} />
-                        <p className="text-xs text-gray-400 text-right mt-1">{formData.description.length}/300</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Description (shown on Ad Details page)</label>
-                        <textarea value={formData.longDescription} onChange={e => setFormData(p => ({...p, longDescription: e.target.value}))} rows={5} placeholder="Full rich content for the advertisement details page..." className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none resize-none" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CTA Button Text</label>
-                          <input type="text" value={formData.ctaText} onChange={e => setFormData(p => ({...p, ctaText: e.target.value}))} placeholder="Learn More" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Badge Text</label>
-                          <input type="text" value={formData.badge} onChange={e => setFormData(p => ({...p, badge: e.target.value}))} placeholder="SPONSOR" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none" />
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
+            {/* Select-all row */}
+            {filtered.length > 0 && (
+              <div style={{ padding: "8px 16px", borderBottom: "1px solid var(--ad-row-brd)", display: "flex", alignItems: "center", gap: 10, background: "var(--ad-panel-hdr)" }}>
+                <input type="checkbox" checked={allSel} ref={el => { if (el) el.indeterminate = someSel; }}
+                  onChange={e => setSelectedIds(e.target.checked ? filtered.map(a => a._id) : [])}
+                  style={{ width: 15, height: 15, accentColor: "#1d4ed8", cursor: "pointer" }} />
+                <span style={{ fontSize: 12, color: "var(--ad-text-muted)" }}>
+                  {allSel ? "Deselect all" : `Select all ${filtered.length}`}
+                </span>
+              </div>
+            )}
 
-                  {/* Step 3: Media */}
-                  {currentStep === 3 && (
-                    <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-                      <h3 className="font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2"><FaImage className="text-blue-500" /> Media Upload</h3>
+            {/* Ad list */}
+            {loading ? (
+              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} style={{ height: 88, borderRadius: 9, background: "var(--ad-shimmer)", animation: "ad-shimmer 1.4s ease infinite" }} />
+                ))}
+              </div>
+            ) : filtered.length === 0 ? (
+              <div style={{ padding: "56px 0", textAlign: "center" }}>
+                <div style={{ width: 52, height: 52, borderRadius: 12, border: "2px dashed var(--ad-border)", background: "var(--ad-shimmer)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+                  <HiOutlineSpeakerWave size={22} style={{ color: "var(--ad-text-muted)", opacity: .4 }} />
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ad-text-primary)", marginBottom: 5 }}>
+                  {search || filter !== "all" ? "No ads match your filters" : "No advertisements yet"}
+                </div>
+                <div style={{ fontSize: 13, color: "var(--ad-text-muted)", marginBottom: filter === "all" && !search ? 14 : 0 }}>
+                  {search || filter !== "all" ? "Try adjusting the search or status filter." : "Create your first ad campaign."}
+                </div>
+                {filter === "all" && !search && (
+                  <button onClick={openCreate} style={{ padding: "7px 18px", background: "var(--ad-text-primary)", border: "none", borderRadius: 7, color: "var(--ad-page)", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>Create Ad</button>
+                )}
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {filtered.map((ad, idx) => {
+                  const isSel = selectedIds.includes(ad._id);
+                  return (
+                    <div key={ad._id} className={`ad-row${isSel ? " sel" : ""}`}
+                      style={{ padding: "14px 16px", borderBottom: "1px solid var(--ad-row-brd)", display: "flex", alignItems: "center", gap: 14, transition: "background .1s", cursor: "default" }}>
+                      
+                      {/* Checkbox */}
+                      <input type="checkbox" checked={isSel}
+                        onChange={e => setSelectedIds(p => e.target.checked ? [...p, ad._id] : p.filter(x => x !== ad._id))}
+                        style={{ width: 15, height: 15, accentColor: "#1d4ed8", cursor: "pointer", flexShrink: 0 }} />
 
-                      {/* Primary Media */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Primary Media (Image or Video) *</label>
-                        {formData.mediaUrl ? (
-                          <div className="relative rounded-xl overflow-hidden bg-gray-100 dark:bg-zinc-800">
-                            {formData.mediaType === "video" ? (
-                              <video src={repairUrl(formData.mediaUrl)} className="w-full h-48 object-cover" controls />
-                            ) : (
-                              <img src={repairUrl(formData.mediaUrl)} alt="Preview" className="w-full h-48 object-cover" />
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => setFormData(p => ({...p, mediaUrl: "", thumbnailUrl: ""}))}
-                              className="absolute top-2 right-2 p-2 bg-red-500 rounded-full text-white hover:bg-red-600"
-                            >
-                              <FaTimes />
-                            </button>
+                      {/* Thumbnail */}
+                      <AdThumbnail src={ad.thumbnailUrl || ad.mediaUrl} type={ad.mediaType} size={88} />
+
+                      {/* Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", marginBottom: 4 }}>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--ad-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 260 }}>{ad.title}</span>
+                          <StatusBadge ad={ad} />
+                          {ad.isDefault && <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 999, background: "#fffbeb", color: "#b45309", border: "1px solid #fde68a" }}>DEFAULT</span>}
+                          <PriorityBadge value={ad.priority} />
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--ad-text-muted)", marginBottom: 6 }}>
+                          {ad.companyName || ad.advertiserName}
+                          {ad.displayLocations?.length > 0 && <span> · {ad.displayLocations.map(l => LOCATIONS.find(x => x.value === l)?.icon || "📍").join(" ")}</span>}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--ad-text-muted)" }}>
+                            <HiOutlineEye size={12} /> {(ad.views || 0).toLocaleString()}
                           </div>
-                        ) : (
-                          <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-gray-300 dark:border-zinc-600 rounded-xl cursor-pointer hover:border-blue-500 transition-all">
-                            {uploading ? (
-                              <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                              <>
-                                <FaCloudUploadAlt className="text-4xl text-gray-400 mb-2" />
-                                <p className="text-gray-500 dark:text-gray-400 font-medium">Click to upload image or video</p>
-                                <p className="text-xs text-gray-400 mt-1">Max: 10MB image, 200MB video</p>
-                              </>
-                            )}
-                            <input type="file" accept="image/*,video/*" onChange={handleMediaUpload} className="hidden" disabled={uploading} />
-                          </label>
-                        )}
-                      </div>
-
-                      {/* Gallery Images */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Gallery Images ({formData.galleryImages.length}/5) — shown on Ad Details page
-                        </label>
-                        <div className="grid grid-cols-5 gap-2">
-                          {formData.galleryImages.map((url, idx) => (
-                            <div key={idx} className="relative aspect-square rounded-lg overflow-hidden group">
-                              <img src={repairUrl(url)} alt="" className="w-full h-full object-cover" />
-                              <button
-                                onClick={() => setFormData(p => ({...p, galleryImages: p.galleryImages.filter((_, i) => i !== idx)}))}
-                                className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all"
-                              >
-                                <FaTimes className="text-white" />
-                              </button>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--ad-text-muted)" }}>
+                            <HiOutlineCursorArrowRays size={12} /> {(ad.clicks || 0).toLocaleString()}
+                          </div>
+                          {ad.views > 0 && (
+                            <div style={{ minWidth: 100 }}>
+                              <CtrBar views={ad.views} clicks={ad.clicks} />
                             </div>
-                          ))}
-                          {formData.galleryImages.length < 5 && (
-                            <label className="aspect-square rounded-lg border-2 border-dashed border-gray-300 dark:border-zinc-600 flex items-center justify-center cursor-pointer hover:border-blue-500 transition-all">
-                              {uploadingGallery ? (
-                                <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                              ) : (
-                                <FaPlus className="text-gray-400" />
-                              )}
-                              <input type="file" accept="image/*" multiple onChange={handleGalleryUpload} className="hidden" disabled={uploadingGallery} />
-                            </label>
                           )}
                         </div>
                       </div>
-                    </motion.div>
-                  )}
 
-                  {/* Step 4: Links */}
-                  {currentStep === 4 && (
-                    <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-                      <h3 className="font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2"><FaLink className="text-blue-500" /> Links & Social</h3>
-                      {[
-                        { key: "websiteUrl", label: "Website URL", icon: FaGlobe, placeholder: "https://", color: "text-blue-500" },
-                        { key: "instagramUrl", label: "Instagram URL", icon: FaInstagram, placeholder: "https://instagram.com/...", color: "text-pink-500" },
-                        { key: "facebookUrl", label: "Facebook URL", icon: FaFacebook, placeholder: "https://facebook.com/...", color: "text-blue-600" },
-                        { key: "youtubeUrl", label: "YouTube URL", icon: FaYoutube, placeholder: "https://youtube.com/...", color: "text-red-500" },
-                        { key: "otherUrl", label: "Other URL", icon: FaExternalLinkAlt, placeholder: "https://...", color: "text-gray-500" },
-                      ].map((field) => (
-                        <div key={field.key}>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2">
-                            <field.icon className={field.color} /> {field.label}
-                          </label>
-                          <input
-                            type="url"
-                            value={formData[field.key]}
-                            onChange={(e) => setFormData(p => ({...p, [field.key]: e.target.value}))}
-                            placeholder={field.placeholder}
-                            className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none"
-                          />
+                      {/* Actions */}
+                      <div className="ad-act" style={{ display: "flex", gap: 5, alignItems: "center", flexShrink: 0 }}>
+                        <button onClick={() => setDetailAd(ad)} style={{ padding: "6px 12px", background: "var(--ad-card)", border: "1px solid var(--ad-border)", borderRadius: 7, fontSize: 12, fontWeight: 600, color: "var(--ad-text-primary)", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }} className="ad-tbtn">
+                          <HiOutlineEye size={13} />
+                        </button>
+                        <button onClick={() => handleApprovalToggle(ad)} title={ad.approvalStatus === "approved" ? "Revoke" : "Approve"}
+                          style={{ padding: "6px 10px", background: ad.approvalStatus === "approved" ? "#fffbeb" : "#f0fdf4", border: `1px solid ${ad.approvalStatus === "approved" ? "#fde68a" : "#bbf7d0"}`, borderRadius: 7, fontSize: 12, cursor: "pointer", color: ad.approvalStatus === "approved" ? "#b45309" : "#15803d" }} className="ad-tbtn">
+                          {ad.approvalStatus === "approved" ? <HiOutlineClock size={13} /> : <HiOutlineCheck size={13} />}
+                        </button>
+                        <button onClick={() => openEdit(ad)} className="ad-tbtn" style={{ padding: "6px 10px" }} title="Edit"><HiOutlinePencilSquare size={13} /></button>
+                        <button onClick={() => setDelConfirm(ad._id)} style={{ padding: "6px 10px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, color: "#b91c1c", cursor: "pointer" }} className="ad-tbtn" title="Delete"><HiOutlineTrash size={13} /></button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {/*  AD DETAIL SLIDE-OVER                                           */}
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {detailAd && (
+        <>
+          <div onClick={() => setDetailAd(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", backdropFilter: "blur(2px)", zIndex: 1000, animation: "ad-fadeIn .2s ease" }} />
+          <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(480px, 100vw)", background: "var(--ad-panel-bg)", zIndex: 1001, display: "flex", flexDirection: "column", boxShadow: "-6px 0 32px rgba(0,0,0,.18)", animation: "ad-slideIn .25s cubic-bezier(.4,0,.2,1)", borderLeft: "1px solid var(--ad-border)" }}>
+            {/* Header */}
+            <div style={{ padding: "15px 20px", borderBottom: "1px solid var(--ad-border)", background: "var(--ad-panel-hdr)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--ad-text-primary)" }}>Ad Details</div>
+                <div style={{ fontSize: 12, color: "var(--ad-text-muted)", marginTop: 1 }}>{detailAd.companyName || detailAd.advertiserName}</div>
+              </div>
+              <button onClick={() => setDetailAd(null)} style={{ width: 30, height: 30, borderRadius: 6, border: "none", background: "var(--ad-shimmer)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--ad-text-muted)" }}><HiOutlineXMark size={16} /></button>
+            </div>
+
+            {/* Body */}
+            <div className="ad-scroll" style={{ flex: 1, overflowY: "auto" }}>
+              <div style={{ animation: "ad-fadeUp .25s ease" }}>
+                {/* Media */}
+                {detailAd.mediaUrl && (
+                  <div style={{ borderBottom: "1px solid var(--ad-border)" }}>
+                    {detailAd.mediaType === "video"
+                      ? <video src={repairUrl(detailAd.mediaUrl)} controls style={{ width: "100%", maxHeight: 220, background: "#000", display: "block" }} />
+                      : <img src={repairUrl(detailAd.thumbnailUrl || detailAd.mediaUrl)} style={{ width: "100%", maxHeight: 220, objectFit: "cover", display: "block" }} alt="" />}
+                  </div>
+                )}
+
+                {/* Status + badges */}
+                <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--ad-border)", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  <StatusBadge ad={detailAd} />
+                  <PriorityBadge value={detailAd.priority} />
+                  {detailAd.isDefault && <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 999, background: "#fffbeb", color: "#b45309", border: "1px solid #fde68a" }}>DEFAULT FALLBACK</span>}
+                  {detailAd.badge && <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 9px", borderRadius: 999, background: "var(--ad-shimmer)", color: "var(--ad-text-muted)", border: "1px solid var(--ad-border)", letterSpacing: ".06em" }}>{detailAd.badge}</span>}
+                </div>
+
+                {/* Title + desc */}
+                <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--ad-border)" }}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: "var(--ad-text-primary)", marginBottom: 4, letterSpacing: "-.2px" }}>{detailAd.title}</div>
+                  {detailAd.tagline && <div style={{ fontSize: 13, color: "#6d28d9", fontWeight: 600, marginBottom: 8 }}>{detailAd.tagline}</div>}
+                  {detailAd.description && <div style={{ fontSize: 13, color: "var(--ad-text-muted)", lineHeight: 1.6 }}>{detailAd.description}</div>}
+                </div>
+
+                {/* Performance */}
+                <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--ad-border)" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ad-text-muted)", marginBottom: 12 }}>Performance</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                    {[
+                      { label: "Views",   value: (detailAd.views  || 0).toLocaleString(), icon: HiOutlineEye,            color: "#0369a1" },
+                      { label: "Clicks",  value: (detailAd.clicks || 0).toLocaleString(), icon: HiOutlineCursorArrowRays, color: "#6d28d9" },
+                      { label: "CTR",     value: detailAd.views > 0 ? `${Math.round((detailAd.clicks / detailAd.views) * 100)}%` : "0%", icon: HiOutlineChartBarSquare, color: "#15803d" },
+                    ].map((s, i) => (
+                      <div key={i} style={{ background: "var(--ad-shimmer)", border: "1px solid var(--ad-border)", borderRadius: 8, padding: "10px 8px", textAlign: "center" }}>
+                        <s.icon size={15} style={{ color: s.color, display: "block", margin: "0 auto 4px" }} />
+                        <div style={{ fontSize: 15, fontWeight: 800, color: "var(--ad-text-primary)" }}>{s.value}</div>
+                        <div style={{ fontSize: 10, color: "var(--ad-text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".05em" }}>{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Advertiser */}
+                <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--ad-border)" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ad-text-muted)", marginBottom: 10 }}>Advertiser</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 12, background: "var(--ad-shimmer)", border: "1px solid var(--ad-border)", borderRadius: 8 }}>
+                    <UserAvatar name={detailAd.advertiserName} size={36} />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ad-text-primary)" }}>{detailAd.advertiserName}</div>
+                      {detailAd.companyName && <div style={{ fontSize: 12, color: "var(--ad-text-muted)" }}>{detailAd.companyName}</div>}
+                      {detailAd.advertiserEmail && <div style={{ fontSize: 11, color: "var(--ad-text-muted)" }}>{detailAd.advertiserEmail}</div>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Display locations */}
+                <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--ad-border)" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ad-text-muted)", marginBottom: 10 }}>Display Locations</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {(detailAd.displayLocations || []).map(loc => {
+                      const l = LOCATIONS.find(x => x.value === loc);
+                      return l ? (
+                        <div key={loc} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 7, background: "var(--ad-shimmer)", border: "1px solid var(--ad-border)", fontSize: 12, fontWeight: 600, color: "var(--ad-text-primary)" }}>
+                          <span>{l.icon}</span> {l.label}
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+
+                {/* Links */}
+                {(detailAd.websiteUrl || detailAd.instagramUrl || detailAd.facebookUrl) && (
+                  <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--ad-border)" }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ad-text-muted)", marginBottom: 10 }}>Links</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {[["🌐","Website",detailAd.websiteUrl],["📸","Instagram",detailAd.instagramUrl],["📘","Facebook",detailAd.facebookUrl],["▶️","YouTube",detailAd.youtubeUrl]].map(([icon, label, url]) => url ? (
+                        <a key={label} href={url} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 11px", borderRadius: 7, background: "var(--ad-shimmer)", border: "1px solid var(--ad-border)", fontSize: 11, fontWeight: 600, color: "var(--ad-text-primary)", textDecoration: "none" }}>
+                          {icon} {label}
+                        </a>
+                      ) : null)}
+                    </div>
+                  </div>
+                )}
+
+                {/* Gallery */}
+                {detailAd.galleryImages?.length > 0 && (
+                  <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--ad-border)" }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ad-text-muted)", marginBottom: 10 }}>Gallery ({detailAd.galleryImages.length})</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))", gap: 6 }}>
+                      {detailAd.galleryImages.map((url, i) => (
+                        <div key={i} style={{ aspectRatio: "1", borderRadius: 7, overflow: "hidden", border: "1px solid var(--ad-border)" }}>
+                          <img src={repairUrl(url)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         </div>
                       ))}
-                    </motion.div>
-                  )}
+                    </div>
+                  </div>
+                )}
 
-                  {/* Step 5: Display Settings */}
-                  {currentStep === 5 && (
-                    <motion.div key="step5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-                      <h3 className="font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2"><FaEye className="text-blue-500" /> Display Settings</h3>
-
-                      {/* Display Locations */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Display Locations (where to show this ad)</label>
-                        <div className="grid grid-cols-1 gap-2">
-                          {DISPLAY_LOCATIONS.map((loc) => (
-                            <label key={loc.value} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border-2 transition-all ${formData.displayLocations.includes(loc.value) ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10" : "border-gray-200 dark:border-zinc-700"}`}>
-                              <input
-                                type="checkbox"
-                                checked={formData.displayLocations.includes(loc.value)}
-                                onChange={(e) => setFormData(p => ({
-                                  ...p,
-                                  displayLocations: e.target.checked
-                                    ? [...p.displayLocations, loc.value]
-                                    : p.displayLocations.filter(l => l !== loc.value)
-                                }))}
-                                className="accent-blue-600"
-                              />
-                              <span className="text-xl">{loc.icon}</span>
-                              <span className="font-medium text-gray-900 dark:text-white text-sm">{loc.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Priority & Approval */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority</label>
-                          <select value={formData.priority} onChange={e => setFormData(p => ({...p, priority: e.target.value}))} className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none">
-                            {PRIORITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Approval Status</label>
-                          <select value={formData.approvalStatus} onChange={e => setFormData(p => ({...p, approvalStatus: e.target.value, isActive: e.target.value === "approved"}))} className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none">
-                            <option value="pending">Pending</option>
-                            <option value="approved">Approved (Goes Live)</option>
-                            <option value="rejected">Rejected</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Scheduling */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
-                          <input type="datetime-local" value={formData.startDate} onChange={e => setFormData(p => ({...p, startDate: e.target.value}))} className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
-                          <input type="datetime-local" value={formData.endDate} onChange={e => setFormData(p => ({...p, endDate: e.target.value}))} className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none" />
-                        </div>
-                      </div>
-
-                      {/* Default Banner Toggle */}
-                      <div className={`rounded-2xl border-2 p-4 flex items-start gap-4 cursor-pointer transition-all ${formData.isDefault ? 'border-amber-400 bg-amber-50 dark:bg-amber-500/10' : 'border-gray-200 dark:border-zinc-700'}`}
-                        onClick={() => setFormData(p => ({...p, isDefault: !p.isDefault}))}
-                      >
-                        <div className={`mt-0.5 w-10 h-6 rounded-full flex items-center transition-all ${formData.isDefault ? 'bg-amber-400 justify-end' : 'bg-gray-300 dark:bg-zinc-600 justify-start'} px-0.5`}>
-                          <div className="w-5 h-5 bg-white rounded-full shadow" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-gray-900 dark:text-white text-sm">Default Banner</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            When enabled, this banner will be shown automatically as a fallback whenever there are no live commercial ads active for its location.
-                          </p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Modal Footer Navigation */}
-              <div className="flex items-center justify-between p-5 border-t border-gray-200 dark:border-zinc-800 sticky bottom-0 bg-white dark:bg-zinc-900">
-                <button
-                  onClick={() => setCurrentStep(s => Math.max(1, s - 1))}
-                  disabled={currentStep === 1}
-                  className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:opacity-40 transition-all"
-                >
-                  <FaChevronLeft /> Previous
-                </button>
-                <div className="flex items-center gap-2">
-                  {currentStep < STEPS.length ? (
-                    <button
-                      onClick={() => setCurrentStep(s => Math.min(STEPS.length, s + 1))}
-                      className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all"
-                    >
-                      Next <FaChevronRight />
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleSubmit}
-                      className="flex items-center gap-2 px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold transition-all"
-                    >
-                      <FaCheck /> {editingAd ? "Save Changes" : "Create Advertisement"}
-                    </button>
-                  )}
+                {/* Schedule + metadata */}
+                <div style={{ padding: "14px 20px 20px" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ad-text-muted)", marginBottom: 10 }}>Schedule & Details</div>
+                  {[
+                    { label: "Start Date",  value: detailAd.startDate ? new Date(detailAd.startDate).toLocaleString("en-IN") : "No start date" },
+                    { label: "End Date",    value: detailAd.endDate   ? new Date(detailAd.endDate).toLocaleString("en-IN")   : "No end date"   },
+                    { label: "CTA Text",    value: detailAd.ctaText || "Learn More" },
+                    { label: "Ad ID",       value: detailAd._id,   mono: true },
+                  ].map((r, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--ad-row-brd)" }}>
+                      <span style={{ fontSize: 13, color: "var(--ad-text-muted)" }}>{r.label}</span>
+                      <span style={{ fontSize: r.mono ? 11 : 13, fontWeight: 600, color: "var(--ad-text-primary)", fontFamily: r.mono ? "monospace" : "inherit", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.value}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: "12px 20px", borderTop: "1px solid var(--ad-border)", background: "var(--ad-panel-hdr)", display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
+              <button onClick={() => { openEdit(detailAd); setDetailAd(null); }} style={{ flex: 1, padding: "8px 0", background: "var(--ad-text-primary)", border: "none", borderRadius: 7, color: "var(--ad-page)", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <HiOutlinePencilSquare size={14} /> Edit Ad
+              </button>
+              <button onClick={() => setDelConfirm(detailAd._id)} style={{ padding: "8px 16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, color: "#b91c1c", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }} className="ad-tbtn">
+                <HiOutlineTrash size={13} />
+              </button>
+              <button onClick={() => setDetailAd(null)} className="ad-tbtn" style={{ padding: "8px 16px" }}>Close</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {/*  CREATE/EDIT WIZARD MODAL                                       */}
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {showModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", backdropFilter: "blur(2px)", zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, animation: "ad-fadeIn .15s ease" }}>
+          <div style={{ background: "var(--ad-panel-bg)", borderRadius: 14, width: "100%", maxWidth: 680, maxHeight: "92vh", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,.28)", border: "1px solid var(--ad-border)", animation: "ad-scaleIn .2s ease" }}>
+
+            {/* Modal header */}
+            <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--ad-border)", background: "var(--ad-panel-hdr)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--ad-text-primary)" }}>{editingAd ? "Edit Advertisement" : "Create Advertisement"}</div>
+                <div style={{ fontSize: 12, color: "var(--ad-text-muted)", marginTop: 2 }}>Step {step} of {STEPS.length} — {STEPS[step - 1]?.label}</div>
+              </div>
+              <button onClick={() => setShowModal(false)} style={{ width: 30, height: 30, borderRadius: 6, border: "none", background: "var(--ad-shimmer)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--ad-text-muted)" }}><HiOutlineXMark size={16} /></button>
+            </div>
+
+            {/* Step progress */}
+            <div style={{ padding: "14px 22px 0", display: "flex", alignItems: "center", gap: 0, flexShrink: 0 }}>
+              {STEPS.map((s, idx) => (
+                <div key={s.id} style={{ display: "flex", alignItems: "center", flex: 1 }}>
+                  <button onClick={() => setStep(s.id)} style={{
+                    width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                    border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 11, fontWeight: 800,
+                    background: step === s.id ? "var(--ad-text-primary)" : step > s.id ? "#15803d" : "var(--ad-shimmer)",
+                    color: step >= s.id ? "var(--ad-page)" : "var(--ad-text-muted)",
+                    boxShadow: step === s.id ? "0 0 0 3px var(--ad-sel-bar)" : "none",
+                    transition: "all .15s",
+                  }}>
+                    {step > s.id ? <HiMiniCheck size={12} /> : s.id}
+                  </button>
+                  {idx < STEPS.length - 1 && (
+                    <div style={{ flex: 1, height: 2, margin: "0 4px", borderRadius: 1, background: step > s.id ? "#15803d" : "var(--ad-border)", transition: "background .2s" }} />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Step labels (desktop only) */}
+            <div style={{ padding: "6px 22px 12px", display: "flex" }}>
+              {STEPS.map(s => (
+                <div key={s.id} style={{ flex: 1, textAlign: "center", fontSize: 9.5, fontWeight: 600, color: step === s.id ? "var(--ad-text-primary)" : "var(--ad-text-muted)", textTransform: "uppercase", letterSpacing: ".07em", transition: "color .15s" }}>{s.label}</div>
+              ))}
+            </div>
+
+            {/* Step content */}
+            <div className="ad-scroll" style={{ flex: 1, overflowY: "auto", padding: "0 22px 16px" }}>
+              <div style={{ animation: "ad-fadeUp .2s ease" }}>
+
+                {/* Step 1: Advertiser */}
+                {step === 1 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }} className="ad-two">
+                      <FInput label="Advertiser Name" required placeholder="e.g. John Smith" value={form.advertiserName} onChange={e => setForm(p => ({ ...p, advertiserName: e.target.value }))} />
+                      <FInput label="Company Name"    placeholder="e.g. Nike India"    value={form.companyName}    onChange={e => setForm(p => ({ ...p, companyName: e.target.value }))} />
+                      <FInput label="Email"           type="email" placeholder="contact@company.com" value={form.advertiserEmail} onChange={e => setForm(p => ({ ...p, advertiserEmail: e.target.value }))} />
+                      <FInput label="Phone"           placeholder="+91 98765 43210"    value={form.advertiserPhone} onChange={e => setForm(p => ({ ...p, advertiserPhone: e.target.value }))} />
+                    </div>
+                    <FTextarea label="Admin Notes (internal)" rows={2} placeholder="Internal notes about this campaign…" value={form.adminNotes} onChange={e => setForm(p => ({ ...p, adminNotes: e.target.value }))} />
+                  </div>
+                )}
+
+                {/* Step 2: Content */}
+                {step === 2 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    <FInput label="Ad Title" required placeholder="e.g. Summer Sale — 50% Off" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} />
+                    <FInput label="Tagline"  placeholder="Short hook line"               value={form.tagline} onChange={e => setForm(p => ({ ...p, tagline: e.target.value }))} />
+                    <FTextarea label="Short Description" rows={2} placeholder="Brief banner description (max 300 chars)…" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
+                    <div style={{ fontSize: 11, color: "var(--ad-text-muted)", marginTop: -8, textAlign: "right" }}>{form.description.length}/300</div>
+                    <FTextarea label="Full Description (ad detail page)" rows={4} placeholder="Rich content shown on the ad detail page…" value={form.longDescription} onChange={e => setForm(p => ({ ...p, longDescription: e.target.value }))} />
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }} className="ad-two">
+                      <FInput label="CTA Button Text" placeholder="Learn More" value={form.ctaText} onChange={e => setForm(p => ({ ...p, ctaText: e.target.value }))} />
+                      <FInput label="Badge Text"      placeholder="SPONSOR"    value={form.badge}    onChange={e => setForm(p => ({ ...p, badge: e.target.value }))} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: Media */}
+                {step === 3 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ad-text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: ".06em" }}>Primary Media <span style={{ color: "#dc2626" }}>*</span></div>
+                      {form.mediaUrl ? (
+                        <div style={{ position: "relative", borderRadius: 10, overflow: "hidden" }}>
+                          {form.mediaType === "video"
+                            ? <video src={repairUrl(form.mediaUrl)} controls style={{ width: "100%", maxHeight: 200, background: "#000", display: "block" }} />
+                            : <img src={repairUrl(form.mediaUrl)} style={{ width: "100%", maxHeight: 200, objectFit: "cover", display: "block" }} alt="" />}
+                          <button onClick={() => setForm(p => ({ ...p, mediaUrl: "", thumbnailUrl: "" }))} style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: "50%", background: "#dc2626", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+                            <HiOutlineXMark size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <Dropzone onFile={handleMediaUpload} accept="image/*,video/*" loading={uploading} label="Click or drag to upload" sublabel="Max: 10 MB image · 200 MB video" />
+                      )}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ad-text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: ".06em" }}>Gallery Images ({form.galleryImages.length}/5)</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
+                        {form.galleryImages.map((url, i) => (
+                          <div key={i} style={{ aspectRatio: "1", borderRadius: 7, overflow: "hidden", position: "relative", border: "1px solid var(--ad-border)" }}>
+                            <img src={repairUrl(url)} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" />
+                            <button onClick={() => setForm(p => ({ ...p, galleryImages: p.galleryImages.filter((_, j) => j !== i) }))}
+                              style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", opacity: 0 }}
+                              onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                              onMouseLeave={e => e.currentTarget.style.opacity = 0}>
+                              <HiOutlineXMark size={16} style={{ color: "#fff" }} />
+                            </button>
+                          </div>
+                        ))}
+                        {form.galleryImages.length < 5 && (
+                          <label style={{ aspectRatio: "1", borderRadius: 7, border: "2px dashed var(--ad-border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                            {uploadingGal ? <div style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid var(--ad-border)", borderTopColor: "var(--ad-accent)", animation: "ad-spin .7s linear infinite" }} /> : <HiOutlinePlus size={16} style={{ color: "var(--ad-text-muted)" }} />}
+                            <input type="file" accept="image/*" multiple onChange={handleGalleryUpload} disabled={uploadingGal} style={{ display: "none" }} />
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 4: Links */}
+                {step === 4 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {[
+                      { key: "websiteUrl",   label: "Website URL",   icon: "🌐", placeholder: "https://yourwebsite.com" },
+                      { key: "instagramUrl", label: "Instagram",     icon: "📸", placeholder: "https://instagram.com/..." },
+                      { key: "facebookUrl",  label: "Facebook",      icon: "📘", placeholder: "https://facebook.com/..." },
+                      { key: "youtubeUrl",   label: "YouTube",       icon: "▶️", placeholder: "https://youtube.com/..." },
+                      { key: "otherUrl",     label: "Other Link",    icon: "🔗", placeholder: "https://..." },
+                    ].map(f => (
+                      <div key={f.key}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "var(--ad-text-muted)", marginBottom: 5, textTransform: "uppercase", letterSpacing: ".06em" }}>
+                          <span>{f.icon}</span> {f.label}
+                        </label>
+                        <input type="url" placeholder={f.placeholder} value={form[f.key]}
+                          onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+                          style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px", border: "1px solid var(--ad-input-brd)", borderRadius: 7, fontSize: 13, color: "var(--ad-text-primary)", background: "var(--ad-card)", outline: "none", fontFamily: "inherit" }}
+                          onFocus={e => e.target.style.borderColor = "var(--ad-input-focus)"}
+                          onBlur={e => e.target.style.borderColor = "var(--ad-input-brd)"} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Step 5: Display */}
+                {step === 5 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    {/* Locations */}
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ad-text-muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: ".06em" }}>Display Locations</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {LOCATIONS.map(loc => {
+                          const checked = form.displayLocations.includes(loc.value);
+                          return (
+                            <label key={loc.value} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 9, cursor: "pointer", border: `2px solid ${checked ? "var(--ad-text-primary)" : "var(--ad-border)"}`, background: checked ? "var(--ad-sel-bar)" : "var(--ad-page)", transition: "all .15s" }}>
+                              <input type="checkbox" checked={checked} onChange={e => setForm(p => ({ ...p, displayLocations: e.target.checked ? [...p.displayLocations, loc.value] : p.displayLocations.filter(l => l !== loc.value) }))} style={{ width: 15, height: 15, accentColor: "#1d4ed8", cursor: "pointer" }} />
+                              <span style={{ fontSize: 18 }}>{loc.icon}</span>
+                              <div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ad-text-primary)" }}>{loc.label}</div>
+                                <div style={{ fontSize: 11, color: "var(--ad-text-muted)" }}>{loc.desc}</div>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Priority + Approval */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }} className="ad-two">
+                      <div>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--ad-text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".06em" }}>Priority</label>
+                        <select value={form.priority} onChange={e => setForm(p => ({ ...p, priority: e.target.value }))}
+                          style={{ width: "100%", padding: "9px 12px", border: "1px solid var(--ad-input-brd)", borderRadius: 7, fontSize: 13, color: "var(--ad-text-primary)", background: "var(--ad-card)", outline: "none", cursor: "pointer" }}>
+                          {Object.entries(PRIORITY).map(([v, cfg]) => <option key={v} value={v}>{cfg.label}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--ad-text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".06em" }}>Approval Status</label>
+                        <select value={form.approvalStatus} onChange={e => setForm(p => ({ ...p, approvalStatus: e.target.value, isActive: e.target.value === "approved" }))}
+                          style={{ width: "100%", padding: "9px 12px", border: "1px solid var(--ad-input-brd)", borderRadius: 7, fontSize: 13, color: "var(--ad-text-primary)", background: "var(--ad-card)", outline: "none", cursor: "pointer" }}>
+                          <option value="pending">Pending Review</option>
+                          <option value="approved">Approved — Goes Live</option>
+                          <option value="rejected">Rejected</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Schedule */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }} className="ad-two">
+                      <FInput label="Start Date" type="datetime-local" value={form.startDate} onChange={e => setForm(p => ({ ...p, startDate: e.target.value }))} />
+                      <FInput label="End Date"   type="datetime-local" value={form.endDate}   onChange={e => setForm(p => ({ ...p, endDate: e.target.value }))} />
+                    </div>
+
+                    {/* Default toggle */}
+                    <div onClick={() => setForm(p => ({ ...p, isDefault: !p.isDefault }))}
+                      style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 16px", borderRadius: 9, cursor: "pointer", border: `2px solid ${form.isDefault ? "#f59e0b" : "var(--ad-border)"}`, background: form.isDefault ? "#fffbeb" : "var(--ad-page)", transition: "all .15s" }}>
+                      <div style={{ width: 38, height: 22, borderRadius: 11, background: form.isDefault ? "#f59e0b" : "var(--ad-shimmer)", position: "relative", flexShrink: 0, marginTop: 1, transition: "background .15s" }}>
+                        <span style={{ position: "absolute", top: 2, left: form.isDefault ? 18 : 2, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left .15s", boxShadow: "0 1px 3px rgba(0,0,0,.2)" }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ad-text-primary)" }}>Default Fallback Banner</div>
+                        <div style={{ fontSize: 12, color: "var(--ad-text-muted)", marginTop: 2 }}>Shown when no live ads are active for this location.</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal footer */}
+            <div style={{ padding: "14px 22px", borderTop: "1px solid var(--ad-border)", background: "var(--ad-panel-hdr)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+              <button onClick={() => setStep(s => Math.max(1, s - 1))} disabled={step === 1}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", background: "none", border: "none", fontSize: 13, color: "var(--ad-text-muted)", cursor: step === 1 ? "default" : "pointer", opacity: step === 1 ? .3 : 1 }}>
+                <HiOutlineChevronLeft size={14} /> Previous
+              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setShowModal(false)} className="ad-tbtn">Cancel</button>
+                {step < STEPS.length ? (
+                  <button onClick={() => setStep(s => Math.min(STEPS.length, s + 1))} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 20px", background: "var(--ad-text-primary)", border: "none", borderRadius: 7, fontSize: 13, color: "var(--ad-page)", cursor: "pointer", fontWeight: 600 }}>
+                    Next <HiOutlineChevronRight size={14} />
+                  </button>
+                ) : (
+                  <button onClick={handleSubmit} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 20px", background: "#15803d", border: "none", borderRadius: 7, fontSize: 13, color: "#fff", cursor: "pointer", fontWeight: 700 }}>
+                    <HiOutlineCheck size={14} /> {editingAd ? "Save Changes" : "Create Ad"}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirm dialog */}
+      {delConfirm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", zIndex: 1200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, animation: "ad-fadeIn .15s ease" }}>
+          <div style={{ background: "var(--ad-panel-bg)", borderRadius: 12, width: "100%", maxWidth: 360, overflow: "hidden", boxShadow: "0 12px 48px rgba(0,0,0,.22)", border: "1px solid var(--ad-border)", animation: "ad-scaleIn .2s ease" }}>
+            <div style={{ padding: "20px 22px" }}>
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <HiOutlineTrash size={20} style={{ color: "#dc2626" }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--ad-text-primary)", marginBottom: 6 }}>Delete Advertisement</div>
+                  <div style={{ fontSize: 13, color: "var(--ad-text-muted)", lineHeight: 1.6 }}>This ad will be permanently removed. This action cannot be undone.</div>
+                </div>
+              </div>
+            </div>
+            <div style={{ padding: "10px 22px 18px", display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button onClick={() => setDelConfirm(null)} className="ad-tbtn">Cancel</button>
+              <button onClick={() => handleDelete(delConfirm)} style={{ padding: "8px 20px", background: "#dc2626", border: "none", borderRadius: 7, fontSize: 13, color: "#fff", cursor: "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                <HiOutlineTrash size={13} /> Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

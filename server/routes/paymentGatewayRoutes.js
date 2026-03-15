@@ -20,7 +20,7 @@
 
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
-import { protectAdmin } from "../middleware/adminAuth.js";
+// import { protectAdmin } from "../middleware/adminAuth.js";
 import { proxyToPaymentService } from "../kafka/paymentProxy.js";
 
 // ── Kept in Node (no Java needed for these) ──────────────────────
@@ -75,10 +75,10 @@ router.post("/verify", (req, res) =>
 
 /**
  * POST /api/payment-gateway/refund
- * 🔀 PROXIED → Java Payment Service (Admin only)
+ * MOVED TO ADMIN-SERVER
  */
-router.post("/refund", protectAdmin, (req, res) =>
-  proxyToPaymentService(req, res, "post", "/payments/refund")
-);
+// router.post("/refund", protectAdmin, (req, res) =>
+//   proxyToPaymentService(req, res, "post", "/payments/refund")
+// );
 
 export default router;

@@ -37,8 +37,6 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import gigRoutes from "./routes/gigRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
-import adminAuthRoutes from "./routes/adminAuthRoutes.js";
-import adminRoutes from "./routes/adminRoutes.js";
 import editorAnalyticsRoutes from "./routes/editorAnalyticsRoutes.js";
 import clientAnalyticsRoutes from "./routes/clientAnalyticsRoutes.js";
 import quickReplyRoutes from "./routes/quickReplyRoutes.js";
@@ -46,7 +44,6 @@ import checklistRoutes from "./routes/checklistRoutes.js";
 import finalDeliveryRoutes from "./routes/finalDeliveryRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import paymentGatewayRoutes from "./routes/paymentGatewayRoutes.js";
-import adminPaymentRoutes from "./routes/adminPaymentRoutes.js";
 import storageRoutes from "./routes/storageRoutes.js";
 import advertisementRoutes from "./routes/advertisementRoutes.js";
 import briefRoutes from "./routes/briefRoutes.js";
@@ -58,7 +55,6 @@ import suvixScoreRoutes from "./routes/suvixScoreRoutes.js";
 import clientKYCRoutes from "./routes/clientKYCRoutes.js";
 import refundRoutes from "./routes/refundRoutes.js";
 import locationRoutes from "./routes/locationRoutes.js";
-import adminAnalyticsRoutes from "./routes/adminAnalyticsRoutes.js";
 import jobRoutes from "./routes/jobRoutes.js";
 
 // Scheduled Jobs
@@ -292,13 +288,9 @@ app.use("/api/checklists", checklistRoutes);
 app.use("/api/delivery", finalDeliveryRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/payment-gateway", paymentGatewayRoutes);
-app.use("/api/admin/payment-settings", adminPaymentRoutes);
 app.use("/api/editor/analytics", editorAnalyticsRoutes);
 app.use("/api/storage", storageRoutes);
 app.use("/api/client/analytics", clientAnalyticsRoutes);
-app.use("/api/client/analytics", clientAnalyticsRoutes);
-// app.use("/api/ads", advertisementRoutes); // Moved above sanitization block
-
 // Open Briefs Feature Routes
 app.use("/api/briefs", briefRoutes);
 app.use("/api/proposals", proposalRoutes);
@@ -310,7 +302,6 @@ console.log("✅ Mounting Client KYC Routes at /api/client-kyc");
 app.use("/api/client-kyc", clientKYCRoutes);
 app.use("/api/refunds", refundRoutes);
 app.use("/api/location", locationRoutes);
-app.use("/api/admin/analytics", adminAnalyticsRoutes);
 app.use("/api/jobs", jobRoutes);
 
 // Badge/Achievement Routes
@@ -338,9 +329,6 @@ app.get("/api/maintenance-status", async (req, res) => {
     res.status(200).json({ success: true, maintenance: { isActive: false } });
   }
 });
-
-app.use("/api/admin/auth", adminAuthRoutes);
-app.use("/api/admin", adminRoutes);
 
 // Health check endpoint
 app.get("/", (req, res) =>

@@ -8,6 +8,22 @@ export default {
   theme: {
     extend: {
       colors: {
+        brand: 'var(--brand)',
+        'brand-light': 'var(--brand-light)',
+        surface: 'var(--bg-surface)',
+        base: 'var(--bg-base)',
+        elevated: 'var(--bg-elevated)',
+        primary: 'var(--text-primary)',
+        secondary: 'var(--text-secondary)',
+        muted: 'var(--text-muted)',
+        danger: 'var(--danger)',
+        success: 'var(--success)',
+        warning: 'var(--warning)',
+        info: 'var(--info)',
+        border: {
+          default: 'var(--border-default)',
+          elevated: 'var(--border-elevated)',
+        },
         dark: {
           900: '#050509',
           800: '#0a0a0e',

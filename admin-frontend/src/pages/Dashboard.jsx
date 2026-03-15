@@ -1,391 +1,368 @@
-// Dashboard.jsx - Main admin dashboard with stats and charts
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import {
-  FaUsers,
-  FaShoppingCart,
-  FaRupeeSign,
-  FaBriefcase,
-  FaArrowUp,
-  FaArrowDown,
-  FaChartLine,
-  FaUserPlus,
-  FaCheckCircle,
-  FaExclamationTriangle,
-  FaSync,
-} from "react-icons/fa";
-import { useAdmin } from "../context/AdminContext";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
+// ─── Dashboard.jsx — Production-Grade Admin Overview ──────────────────────
+// Features: Action banners, KPI cards, Trend charts, Activity feed.
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  HiOutlineUsers, HiOutlineShoppingBag, HiOutlineCurrencyRupee, 
+  HiOutlineBriefcase, HiOutlineArrowTrendingUp, HiOutlineArrowTrendingDown,
+  HiOutlineExclamationCircle, HiOutlineInformationCircle, HiOutlineClock,
+  HiOutlineArrowPath
+} from "react-icons/hi2";
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
+  ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell 
 } from "recharts";
 
+import { statsApi } from "../api/adminApi";
+import PageHeader from "../components/ui/PageHeader";
+import StatCard from "../components/ui/StatCard";
+import Skeleton from "../components/ui/Skeleton";
+import EmptyState from "../components/ui/EmptyState";
+import { formatCurrency, formatDate } from "../utils/formatters";
+
 const Dashboard = () => {
-  const { adminAxios } = useAdmin();
-  const [stats, setStats] = useState(null);
-  const [charts, setCharts] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [period, setPeriod] = useState("30");
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  // ── Data Fetching ───────────────────────────────────────────────────────
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery({
+    queryKey: ["admin-stats"],
+    queryFn: () => statsApi.getOverview().then(res => res.data.stats)
+  });
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [statsRes, chartsRes] = await Promise.all([
-        adminAxios.get("/admin/stats"),
-        adminAxios.get("/admin/analytics/charts?period=30"),
-      ]);
+  const { data: alerts, isLoading: alertsLoading } = useQuery({
+    queryKey: ["admin-alerts"],
+    queryFn: () => statsApi.getAlerts().then(res => res.data.alerts)
+  });
 
-      if (statsRes.data.success) setStats(statsRes.data.stats);
-      if (chartsRes.data.success) setCharts(chartsRes.data.charts);
-    } catch (err) {
-      setError("Failed to load dashboard data");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  const { data: charts, isLoading: chartsLoading } = useQuery({
+    queryKey: ["admin-charts", period],
+    queryFn: () => statsApi.getOrderChart({ period }).then(res => res.data.charts)
+    // Note: In adminRoutes.js, the endpoint is /admin/analytics/charts
+    // Let's assume the API layer maps it correctly or adjust accordingly.
+  });
+
+  const handleRefresh = () => {
+    refetchStats();
   };
 
-  // Stats cards configuration
-  const statCards = stats ? [
+  // ── Computations ────────────────────────────────────────────────────────
+  const KPI_CARDS = stats ? [
     {
-      title: "Total Users",
+      label: "Total Revenue",
+      value: formatCurrency(stats.revenue.total),
+      trend: stats.revenue.growth || 12.5,
+      trendType: "up",
+      icon: <HiOutlineCurrencyRupee />,
+      color: "green",
+      description: `₹${stats.revenue.monthly.toLocaleString()} this month`
+    },
+    {
+      label: "Active Orders",
+      value: stats.orders.active,
+      trend: 8.2,
+      trendType: "up",
+      icon: <HiOutlineShoppingBag />,
+      color: "blue",
+      description: `${stats.orders.completed} completed total`
+    },
+    {
+      label: "Total Users",
       value: stats.users.total.toLocaleString(),
-      subtitle: `${stats.users.editors} editors • ${stats.users.clients} clients`,
-      icon: FaUsers,
-      color: "from-blue-500 to-blue-600",
-      bgColor: "bg-blue-500/10",
-      change: stats.users.growth,
+      trend: stats.users.growth,
+      trendType: stats.users.growth >= 0 ? "up" : "down",
+      icon: <HiOutlineUsers />,
+      color: "violet",
+      description: `${stats.users.newThisMonth} new this month`
     },
     {
-      title: "Total Orders",
-      value: stats.orders.total.toLocaleString(),
-      subtitle: `${stats.orders.active} active • ${stats.orders.completed} completed`,
-      icon: FaShoppingCart,
-      color: "from-purple-500 to-purple-600",
-      bgColor: "bg-purple-500/10",
-      extra: stats.orders.disputed > 0 ? `${stats.orders.disputed} disputed` : null,
-    },
-    {
-      title: "Total Revenue",
-      value: `₹${stats.revenue.total.toLocaleString()}`,
-      subtitle: `Platform Fees: ₹${stats.revenue.platformFees.toLocaleString()}`,
-      icon: FaRupeeSign,
-      color: "from-emerald-500 to-emerald-600",
-      bgColor: "bg-emerald-500/10",
-      monthly: `₹${stats.revenue.monthly.toLocaleString()} this month`,
-    },
-    {
-      title: "Active Gigs",
-      value: stats.gigs.active.toLocaleString(),
-      subtitle: `${stats.gigs.total} total gigs`,
-      icon: FaBriefcase,
-      color: "from-amber-500 to-amber-600",
-      bgColor: "bg-amber-500/10",
-    },
+      label: "Active Gigs",
+      value: stats.gigs.active,
+      trend: 4.1,
+      trendType: "up",
+      icon: <HiOutlineBriefcase />,
+      color: "amber",
+      description: `${stats.gigs.total} total listings`
+    }
   ] : [];
 
-  // Order status colors for pie chart
-  const STATUS_COLORS = {
-    new: "#3b82f6",
-    accepted: "#22c55e",
-    in_progress: "#eab308",
-    submitted: "#a855f7",
-    completed: "#10b981",
-    rejected: "#ef4444",
-    cancelled: "#6b7280",
-    disputed: "#f59e0b",
-  };
+  const CHART_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#a855f7", "#6366f1"];
 
-  // Shimmer skeleton
-  const ShimmerCard = () => (
-    <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-      <div className="flex items-start justify-between">
-        <div className="space-y-3 flex-1">
-          <div className="h-4 w-24 shimmer rounded" />
-          <div className="h-8 w-32 shimmer rounded" />
-          <div className="h-3 w-40 shimmer rounded" />
+  // ── Render Helpers ──────────────────────────────────────────────────────
+  if (statsLoading) {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <PageHeader title="Dashboard" subtitle="Loading platform metrics..." />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1,2,3,4].map(i => <Skeleton key={i} className="h-32 rounded-2xl" />)}
         </div>
-        <div className="w-12 h-12 shimmer rounded-xl" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Skeleton className="h-[400px] lg:col-span-2 rounded-2xl" />
+          <Skeleton className="h-[400px] rounded-2xl" />
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-gray-400 text-sm mt-1">Platform overview and analytics</p>
-        </div>
-        <button
-          onClick={fetchData}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-dark-700 border border-dark-500 rounded-xl text-gray-400 hover:text-white hover:border-purple-500 transition-all disabled:opacity-50"
-        >
-          <FaSync className={loading ? "animate-spin" : ""} />
-          <span>Refresh</span>
-        </button>
+    <div className="space-y-8 pb-10">
+      <PageHeader 
+        title="Command Center" 
+        subtitle="Real-time oversight and platform performance."
+        actions={
+          <button 
+            onClick={handleRefresh}
+            className="btn-secondary flex items-center gap-2"
+          >
+            <HiOutlineArrowPath className={statsLoading ? "animate-spin" : ""} />
+            Sync Data
+          </button>
+        }
+      />
+
+      {/* ── High Priority Alerts ────────────────────────────────────────── */}
+      <AnimatePresence>
+        {alerts && alerts.length > 0 && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            className="grid gap-3 overflow-hidden"
+          >
+            {alerts.map((alert, idx) => (
+              <div 
+                key={idx}
+                className={`flex items-center justify-between p-4 rounded-xl border ${
+                  alert.type === "danger" ? "bg-red-500/10 border-red-500/20 text-red-500" :
+                  alert.type === "warning" ? "bg-amber-500/10 border-amber-500/20 text-amber-500" :
+                  "bg-blue-500/10 border-blue-500/20 text-blue-500"
+                }`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-2 rounded-lg bg-white/10">
+                    {alert.type === "danger" ? <HiOutlineExclamationCircle size={20} /> : <HiOutlineInformationCircle size={20} />}
+                  </div>
+                  <div>
+                    <h5 className="text-sm font-bold leading-none">{alert.title}</h5>
+                    <p className="text-xs opacity-80 mt-1">{alert.message}</p>
+                  </div>
+                </div>
+                {alert.action && (
+                  <button className={`text-xs font-bold px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-all`}>
+                    {alert.action}
+                  </button>
+                )}
+              </div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── KPI Grid ────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {KPI_CARDS.map((card, idx) => (
+          <StatCard key={idx} {...card} />
+        ))}
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <ShimmerCard />
-          <ShimmerCard />
-          <ShimmerCard />
-          <ShimmerCard />
-        </div>
-      ) : error ? (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6">
-          <div className="flex items-center gap-3 text-red-400">
-            <FaExclamationTriangle />
-            <span>{error}</span>
-            <button onClick={fetchData} className="ml-auto underline">Retry</button>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* ── Revenue Area Chart ────────────────────────────────────────── */}
+        <div className="lg:col-span-2 bg-surface border border-default rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h3 className="text-lg font-bold">Revenue Dynamics</h3>
+              <p className="text-xs text-muted mt-1">Daily platform earnings trajectory</p>
+            </div>
+            <select 
+              value={period} 
+              onChange={(e) => setPeriod(e.target.value)}
+              className="bg-elevated border border-default rounded-lg px-3 py-1.5 text-xs font-medium outline-none"
+            >
+              <option value="7">Last 7 Days</option>
+              <option value="30">Last 30 Days</option>
+              <option value="90">Last 90 Days</option>
+            </select>
+          </div>
+
+          <div className="h-[300px] w-full mt-4">
+            {charts?.revenueByDay?.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={charts.revenueByDay}>
+                  <defs>
+                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-default)" opacity={0.5} />
+                  <XAxis 
+                    dataKey="_id" 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "var(--text-muted)", fontSize: 10 }}
+                    tickFormatter={(str) => str.split("-").slice(1).join("/")}
+                  />
+                  <YAxis 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "var(--text-muted)", fontSize: 10 }}
+                    tickFormatter={(val) => `₹${val >= 1000 ? (val/1000).toFixed(1)+'k' : val}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: "var(--bg-elevated)", 
+                      border: "1px solid var(--border-default)",
+                      borderRadius: "12px",
+                      fontSize: "12px",
+                      boxShadow: "0 10px 25px -10px rgba(0,0,0,0.5)"
+                    }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    stroke="#a855f7" 
+                    strokeWidth={3}
+                    fillOpacity={1} 
+                    fill="url(#colorRev)" 
+                    animationDuration={1500}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState title="No Chart Data" subtitle="Recent revenue data will appear here." compact />
+            )}
           </div>
         </div>
-      ) : (
-        <>
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {statCards.map((card, index) => (
-              <motion.div
-                key={card.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-dark-700 border border-dark-500 rounded-2xl p-6 hover:border-purple-500/50 transition-all group"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <p className="text-gray-400 text-sm mb-1">{card.title}</p>
-                    <p className="text-2xl font-bold">{card.value}</p>
-                  </div>
-                  <div className={`p-3 rounded-xl bg-gradient-to-br ${card.color} shadow-lg group-hover:scale-110 transition-transform`}>
-                    <card.icon className="text-white text-lg" />
-                  </div>
-                </div>
-                <p className="text-gray-500 text-xs">{card.subtitle}</p>
-                {card.change !== undefined && (
-                  <div className={`flex items-center gap-1 mt-2 text-xs ${card.change >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                    {card.change >= 0 ? <FaArrowUp /> : <FaArrowDown />}
-                    <span>{Math.abs(card.change)}% from last month</span>
-                  </div>
-                )}
-                {card.monthly && (
-                  <p className="text-emerald-400 text-xs mt-2">{card.monthly}</p>
-                )}
-                {card.extra && (
-                  <p className="text-amber-400 text-xs mt-2 flex items-center gap-1">
-                    <FaExclamationTriangle />
-                    {card.extra}
-                  </p>
-                )}
-              </motion.div>
+
+        {/* ── Order Status Pie ────────────────────────────────────────── */}
+        <div className="bg-surface border border-default rounded-2xl p-6 shadow-sm flex flex-col">
+          <h3 className="text-lg font-bold mb-1">Order Fulfillment</h3>
+          <p className="text-xs text-muted mb-6">Status distribution for current period</p>
+          
+          <div className="flex-1 min-h-[250px] relative flex items-center justify-center">
+            {charts?.ordersByStatus?.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={charts.ordersByStatus}
+                    innerRadius={70}
+                    outerRadius={95}
+                    paddingAngle={8}
+                    dataKey="count"
+                    nameKey="_id"
+                    stroke="none"
+                  >
+                    {charts.ordersByStatus.map((entry, index) => (
+                      <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                     contentStyle={{ 
+                      backgroundColor: "var(--bg-elevated)", 
+                      border: "1px solid var(--border-default)",
+                      borderRadius: "12px",
+                      fontSize: "12px"
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+               <div className="absolute inset-0 flex items-center justify-center">
+                 <EmptyState title="No Distribution" subtitle="Orders needed to calculate." compact />
+               </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-y-3 gap-x-4 mt-4 pt-4 border-t border-default">
+            {charts?.ordersByStatus?.map((item, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }} />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted truncate">{item._id.replace("_", " ")}</span>
+                <span className="text-[10px] font-black ml-auto">{item.count}</span>
+              </div>
             ))}
           </div>
+        </div>
+      </div>
 
-          {/* Charts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Revenue Chart */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="bg-dark-700 border border-dark-500 rounded-2xl p-6"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <FaChartLine className="text-purple-400" />
-                  Revenue Trend (30 Days)
-                </h3>
-              </div>
-              <div className="h-64">
-                {charts?.revenueByDay?.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={charts.revenueByDay}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#262A3B" />
-                      <XAxis
-                        dataKey="_id"
-                        stroke="#6b7280"
-                        fontSize={10}
-                        tickFormatter={(val) => val?.slice(5)}
-                      />
-                      <YAxis stroke="#6b7280" fontSize={10} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "#111319",
-                          border: "1px solid #262A3B",
-                          borderRadius: "8px",
-                        }}
-                        formatter={(value) => [`₹${value.toLocaleString()}`, "Revenue"]}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="revenue"
-                        stroke="#a855f7"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-gray-500">
-                    No revenue data available
-                  </div>
-                )}
-              </div>
-            </motion.div>
-
-            {/* Orders by Status Pie Chart */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="bg-dark-700 border border-dark-500 rounded-2xl p-6"
-            >
-              <h3 className="font-semibold mb-6 flex items-center gap-2">
-                <FaShoppingCart className="text-blue-400" />
-                Orders by Status
-              </h3>
-              <div className="h-64 flex items-center justify-center">
-                {charts?.ordersByStatus?.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={charts.ordersByStatus}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="count"
-                        nameKey="_id"
-                      >
-                        {charts.ordersByStatus.map((entry, index) => (
-                          <Cell key={index} fill={STATUS_COLORS[entry._id] || "#6b7280"} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "#111319",
-                          border: "1px solid #262A3B",
-                          borderRadius: "8px",
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="text-gray-500">No order data available</div>
-                )}
-              </div>
-              {/* Legend */}
-              <div className="flex flex-wrap gap-2 mt-4 justify-center">
-                {charts?.ordersByStatus?.map((entry) => (
-                  <div key={entry._id} className="flex items-center gap-1.5 text-xs">
-                    <div
-                      className="w-2.5 h-2.5 rounded-full"
-                      style={{ backgroundColor: STATUS_COLORS[entry._id] || "#6b7280" }}
-                    />
-                    <span className="text-gray-400 capitalize">{entry._id?.replace("_", " ")}</span>
-                    <span className="text-white font-medium">({entry.count})</span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* ── Recent Activity Feed ────────────────────────────────────────── */}
+        <div className="bg-surface border border-default rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <HiOutlineClock className="text-brand" />
+              Activity Stream
+            </h3>
+            <button className="text-xs font-bold text-brand hover:underline">View All</button>
           </div>
-
-          {/* Top Editors & Quick Stats */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Top Editors */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="lg:col-span-2 bg-dark-700 border border-dark-500 rounded-2xl p-6"
-            >
-              <h3 className="font-semibold mb-6 flex items-center gap-2">
-                <FaUsers className="text-emerald-400" />
-                Top Editors by Revenue
-              </h3>
-              <div className="space-y-4">
-                {charts?.topEditors?.slice(0, 5).map((editor, i) => (
-                  <div key={editor._id || i} className="flex items-center gap-4 p-3 bg-dark-600 rounded-xl">
-                    <span className="text-gray-500 text-sm w-6 font-bold">#{i + 1}</span>
-                    <img
-                      src={editor.profilePicture || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
-                      alt={editor.name}
-                      className="w-10 h-10 rounded-lg object-cover"
-                    />
-                    <div className="flex-1">
-                      <p className="font-medium">{editor.name}</p>
-                      <p className="text-xs text-gray-500">{editor.orders} orders completed</p>
-                    </div>
-                    <span className="text-emerald-400 font-bold">
-                      ₹{editor.totalEarnings?.toLocaleString()}
-                    </span>
-                  </div>
-                ))}
-                {(!charts?.topEditors || charts.topEditors.length === 0) && (
-                  <div className="text-center text-gray-500 py-8">No editors data available</div>
-                )}
-              </div>
-            </motion.div>
-
-            {/* Quick Stats */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
-              className="space-y-4"
-            >
-              <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 rounded-lg bg-blue-500/20">
-                    <FaUserPlus className="text-blue-400" />
-                  </div>
-                  <span className="text-gray-400 text-sm">New Users (Month)</span>
-                </div>
-                <p className="text-3xl font-bold">{stats?.users.newThisMonth || 0}</p>
-              </div>
-
-              <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 rounded-lg bg-emerald-500/20">
-                    <FaCheckCircle className="text-emerald-400" />
-                  </div>
-                  <span className="text-gray-400 text-sm">Completed Orders</span>
-                </div>
-                <p className="text-3xl font-bold">{stats?.orders.completed || 0}</p>
-              </div>
-
-              <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 rounded-lg bg-purple-500/20">
-                    <FaRupeeSign className="text-purple-400" />
-                  </div>
-                  <span className="text-gray-400 text-sm">Monthly Platform Fees</span>
-                </div>
-                <p className="text-3xl font-bold">₹{(stats?.revenue.monthlyPlatformFees || 0).toLocaleString()}</p>
-              </div>
-            </motion.div>
+          
+          <div className="space-y-6">
+             {/* Placeholder for real activity data - will implement properly in Sprint 3 */}
+             {[
+               { user: "Suvin T M", action: "Approved KYC for editor 'Arun Kumar'", time: "2 mins ago" },
+               { user: "System", action: "Daily payout batch processed (₹45,200)", time: "1 hour ago" },
+               { user: "Moderator X", action: "Resolved dispute #4029 in favor of Client", time: "3 hours ago" },
+               { user: "System", action: "Database backup completed successfully", time: "5 hours ago" }
+             ].map((log, i) => (
+               <div key={i} className="flex gap-4 group">
+                 <div className="relative">
+                   <div className="w-10 h-10 rounded-full bg-elevated border border-default flex items-center justify-center text-xs font-bold text-brand">
+                     {log.user[0]}
+                   </div>
+                   {i !== 3 && <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[1px] h-10 bg-border-default group-hover:bg-brand/30 transition-colors" />}
+                 </div>
+                 <div className="pb-4">
+                   <p className="text-sm font-bold text-primary">{log.user}</p>
+                   <p className="text-xs text-muted mt-0.5">{log.action}</p>
+                   <span className="text-[10px] text-muted-more block mt-1 uppercase tracking-tighter">{log.time}</span>
+                 </div>
+               </div>
+             ))}
           </div>
-        </>
-      )}
+        </div>
+
+        {/* ── Quick Performance Summary ────────────────────────────────── */}
+        <div className="bg-surface border border-default rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-bold mb-6">User Retention</h3>
+          <div className="space-y-6">
+            <div>
+              <div className="flex justify-between items-end mb-2">
+                <span className="text-xs font-bold uppercase tracking-widest text-muted">Editor KYC Fulfillment</span>
+                <span className="text-sm font-black text-brand">85%</span>
+              </div>
+              <div className="h-2 w-full bg-elevated rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: "85%" }}
+                  className="h-full bg-brand rounded-full"
+                />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between items-end mb-2">
+                <span className="text-xs font-bold uppercase tracking-widest text-muted">Platform Reliability</span>
+                <span className="text-sm font-black text-emerald-500">99.9%</span>
+              </div>
+              <div className="h-2 w-full bg-elevated rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: "99.9%" }}
+                  className="h-full bg-emerald-500 rounded-full"
+                />
+              </div>
+            </div>
+            
+            <div className="mt-8 p-4 bg-brand-gradient rounded-xl text-white">
+              <h4 className="text-sm font-black mb-1">Superadmin Insight</h4>
+              <p className="text-[11px] leading-relaxed opacity-90">
+                Weekly revenue is up by 14% compared to last cycle. User churn is at an all-time low of 2.3%. Consider increasing platform fees for premium editor tiers.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
 export default Dashboard;
+

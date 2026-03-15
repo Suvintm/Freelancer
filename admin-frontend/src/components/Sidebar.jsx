@@ -19,7 +19,9 @@ import {
   FaCrown,
   FaUserCheck,
   FaServer,
+  FaLock,
 } from "react-icons/fa";
+import { toast } from "react-hot-toast";
 import { useAdmin } from "../context/AdminContext";
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -32,39 +34,55 @@ const Sidebar = ({ isOpen, onClose }) => {
   };
 
   const navItems = [
-    { to: "/dashboard", icon: FaTachometerAlt, label: "Dashboard" },
-    { to: "/analytics", icon: FaChartLine, label: "Analytics" },
-    { to: "/payments", icon: FaWallet, label: "Payments" },
-    { to: "/conversations", icon: FaComments, label: "Conversations" },
-    { to: "/users", icon: FaUsers, label: "Users" },
-    { to: "/kyc", icon: FaShieldAlt, label: "Editor KYC" },
-    { to: "/client-kyc", icon: FaUserCheck, label: "Client KYC" },
-    { to: "/orders", icon: FaShoppingCart, label: "Orders" },
-    { to: "/gigs", icon: FaBriefcase, label: "Gigs" },
-    { to: "/advertisements", icon: FaImage, label: "Advertisements" },
-    { to: "/subscriptions", icon: FaCrown, label: "Subscriptions" },
-    { to: "/activity", icon: FaHistory, label: "Activity Logs" },
-    { to: "/storage", icon: FaDatabase, label: "Storage Manager" },
-    { to: "/service-analytics", icon: FaServer, label: "Service Analytics" },
-    ...(isSuperAdmin ? [{ to: "/settings", icon: FaCog, label: "Settings" }] : []),
+    { to: "/dashboard", icon: FaTachometerAlt, label: "Dashboard", permissionKey: "dashboard" },
+    { to: "/analytics", icon: FaChartLine, label: "Analytics", permissionKey: "analytics" },
+    { to: "/payments", icon: FaWallet, label: "Payments", permissionKey: "payments" },
+    { to: "/conversations", icon: FaComments, label: "Conversations", permissionKey: "conversations" },
+    { to: "/users", icon: FaUsers, label: "Users", permissionKey: "users" },
+    { to: "/kyc", icon: FaShieldAlt, label: "Editor KYC", permissionKey: "kyc" },
+    { to: "/client-kyc", icon: FaUserCheck, label: "Client KYC", permissionKey: "client_kyc" },
+    { to: "/orders", icon: FaShoppingCart, label: "Orders", permissionKey: "orders" },
+    { to: "/gigs", icon: FaBriefcase, label: "Gigs", permissionKey: "gigs" },
+    { to: "/advertisements", icon: FaImage, label: "Advertisements", permissionKey: "advertisements" },
+    { to: "/subscriptions", icon: FaCrown, label: "Subscriptions", permissionKey: "subscriptions" },
+    { to: "/activity", icon: FaHistory, label: "Activity Logs", permissionKey: "activity" },
+    { to: "/storage", icon: FaDatabase, label: "Storage Manager", permissionKey: "storage" },
+    { to: "/service-analytics", icon: FaServer, label: "Service Analytics", permissionKey: "service_analytics" },
+    ...(isSuperAdmin ? [{ to: "/settings", icon: FaCog, label: "Settings", permissionKey: "settings" }] : []),
   ];
 
-  const NavItem = ({ item }) => (
-    <NavLink
-      to={item.to}
-      onClick={onClose}
-      className={({ isActive }) =>
-        `flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${
-          isActive
-            ? "bg-gradient-to-r from-purple-600/20 to-blue-600/20 text-purple-600 dark:text-purple-400 border border-purple-500/30"
-            : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-white"
-        }`
+  const NavItem = ({ item }) => {
+    const hasAccess = isSuperAdmin || !!admin?.permissions?.[item.permissionKey];
+
+    const handleClick = (e) => {
+      if (!hasAccess) {
+        e.preventDefault();
+        toast.error(`No access: ${item.label} restricted`);
+        return;
       }
-    >
-      <item.icon className="text-lg group-hover:scale-110 transition-transform" />
-      <span className="font-medium">{item.label}</span>
-    </NavLink>
-  );
+      if (onClose) onClose();
+    };
+
+    return (
+      <NavLink
+        to={item.to}
+        onClick={handleClick}
+        className={({ isActive }) =>
+          `flex items-center gap-3 px-4 py-3 rounded-xl transition-all group relative ${
+            !hasAccess
+              ? "opacity-60 cursor-not-allowed hover:bg-gray-50/50 dark:hover:bg-zinc-800/50"
+              : isActive
+              ? "bg-gradient-to-r from-purple-600/20 to-blue-600/20 text-purple-600 dark:text-purple-400 border border-purple-500/30"
+              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-white"
+          }`
+        }
+      >
+        <item.icon className={`text-lg transition-transform ${hasAccess ? "group-hover:scale-110" : ""}`} />
+        <span className="font-medium">{item.label}</span>
+        {!hasAccess && <FaLock className="absolute right-4 text-xs text-gray-400" />}
+      </NavLink>
+    );
+  };
 
   const sidebarContent = (
     <>
@@ -82,16 +100,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {/* Stats Mini Card */}
-        <div className="mb-4 p-4 bg-gradient-to-br from-purple-600/10 to-blue-600/10 rounded-xl border border-purple-500/20">
-          <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 text-sm mb-1">
-            <FaChartLine />
-            <span>Quick Stats</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">Platform Active</p>
-        </div>
-
+      <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto am-panel-scroll">
         {navItems.map((item) => (
           <NavItem key={item.to} item={item} />
         ))}

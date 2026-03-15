@@ -1,96 +1,49 @@
-/**
- * ServiceAnalytics.jsx - Service Usage Analytics Dashboard
- * 
- * Monitors usage, costs, and performance of:
- * - Cloudinary (storage, bandwidth, credits)
- * - MongoDB (collections, sizes, connections)
- * - Razorpay (transactions, revenue, fees)
- */
-
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FaCloud,
-  FaDatabase,
-  FaCreditCard,
-  FaSync,
-  FaChartLine,
-  FaImage,
-  FaVideo,
-  FaFile,
-  FaExclamationTriangle,
-  FaCheckCircle,
-  FaServer,
-  FaNetworkWired,
-  FaHdd,
-  FaClock,
-  FaExternalLinkAlt,
+  FaCloud, FaDatabase, FaCreditCard, FaSync, FaChartLine,
+  FaImage, FaVideo, FaFile, FaExclamationTriangle, FaCheckCircle,
+  FaServer, FaNetworkWired, FaHdd, FaClock, FaExternalLinkAlt
 } from "react-icons/fa";
 import {
-  HiOutlineChartBar,
-  HiOutlineCurrencyRupee,
-  HiOutlineServer,
-  HiOutlineCloud,
+  HiOutlineChartBar, HiOutlineCurrencyRupee, HiOutlineServer, HiOutlineCloud
 } from "react-icons/hi2";
-import { useAdmin } from "../context/AdminContext";
+import { analyticsApi } from "../api/adminApi";
+import PageHeader from "../components/ui/PageHeader";
+import StatCard from "../components/ui/StatCard";
 
 const ServiceAnalytics = () => {
-  const { adminAxios } = useAdmin();
   const [activeTab, setActiveTab] = useState("overview");
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
-  
-  // Data states
-  const [overviewData, setOverviewData] = useState(null);
-  const [cloudinaryData, setCloudinaryData] = useState(null);
-  const [mongoData, setMongoData] = useState(null);
-  const [razorpayData, setRazorpayData] = useState(null);
 
-  // Fetch data based on active tab
-  useEffect(() => {
-    fetchData(activeTab);
-  }, [activeTab]);
+  // ── Queries ──────────────────────────────────────────────────────────────
 
-  const fetchData = async (tab, isRefresh = false) => {
-    try {
-      if (isRefresh) setRefreshing(true);
-      else setLoading(true);
+  const overviewQuery = useQuery({
+    queryKey: ["analytics", "overview"],
+    queryFn: () => analyticsApi.getOverview().then(res => res.data.data),
+    enabled: activeTab === "overview"
+  });
 
-      let response;
-      switch (tab) {
-        case "overview":
-          response = await adminAxios.get("/admin/analytics/overview");
-          if (response.data.success) setOverviewData(response.data.data);
-          break;
-        case "cloudinary":
-          response = await adminAxios.get("/admin/analytics/cloudinary");
-          if (response.data.success) setCloudinaryData(response.data.data);
-          break;
-        case "mongodb":
-          response = await adminAxios.get("/admin/analytics/mongodb");
-          if (response.data.success) setMongoData(response.data.data);
-          break;
-        case "razorpay":
-          response = await adminAxios.get("/admin/analytics/razorpay");
-          if (response.data.success) setRazorpayData(response.data.data);
-          break;
-      }
-      setError(null);
-    } catch (err) {
-      console.error(`Failed to fetch ${tab} analytics:`, err);
-      setError(`Failed to load ${tab} analytics`);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  const cloudinaryQuery = useQuery({
+    queryKey: ["analytics", "cloudinary"],
+    queryFn: () => analyticsApi.getCloudinary().then(res => res.data.data),
+    enabled: activeTab === "cloudinary"
+  });
 
-  const handleRefresh = () => {
-    fetchData(activeTab, true);
-  };
+  const mongoQuery = useQuery({
+    queryKey: ["analytics", "mongodb"],
+    queryFn: () => analyticsApi.getMongoDB().then(res => res.data.data),
+    enabled: activeTab === "mongodb"
+  });
 
-  // Format currency
+  const razorpayQuery = useQuery({
+    queryKey: ["analytics", "razorpay"],
+    queryFn: () => analyticsApi.getRazorpay().then(res => res.data.data),
+    enabled: activeTab === "razorpay"
+  });
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -99,606 +52,428 @@ const ServiceAnalytics = () => {
     }).format(amount);
   };
 
-  // Progress bar component
-  const ProgressBar = ({ percent, color = "purple" }) => {
-    const getColor = () => {
-      if (percent > 90) return "bg-red-500";
-      if (percent > 75) return "bg-amber-500";
-      if (color === "purple") return "bg-purple-500";
-      if (color === "blue") return "bg-blue-500";
-      if (color === "emerald") return "bg-emerald-500";
-      return "bg-purple-500";
+  const ProgressBar = ({ percent, color = "violet" }) => {
+    const colorClasses = {
+      violet: "bg-brand",
+      blue: "bg-info",
+      green: "bg-success",
+      amber: "bg-warning",
+      red: "bg-danger"
     };
 
+    const displayColor = percent > 90 ? "red" : percent > 75 ? "amber" : color;
+
     return (
-      <div className="h-2 bg-dark-600 rounded-full overflow-hidden">
+      <div className="h-1.5 w-full bg-base rounded-full overflow-hidden">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${Math.min(percent, 100)}%` }}
           transition={{ duration: 0.5 }}
-          className={`h-full rounded-full ${getColor()}`}
+          className={`h-full rounded-full ${colorClasses[displayColor]}`}
         />
       </div>
     );
   };
 
-  // Tabs configuration
-  const tabs = [
-    { id: "overview", label: "Overview", icon: HiOutlineChartBar },
-    { id: "cloudinary", label: "Cloudinary", icon: HiOutlineCloud },
-    { id: "mongodb", label: "MongoDB", icon: HiOutlineServer },
-    { id: "razorpay", label: "Razorpay", icon: HiOutlineCurrencyRupee },
-  ];
+  // ── Tab Renderers ───────────────────────────────────────────────────────
 
-  // Shimmer loading state
-  const ShimmerCard = () => (
-    <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-      <div className="h-4 w-24 shimmer rounded mb-3" />
-      <div className="h-8 w-32 shimmer rounded mb-2" />
-      <div className="h-3 w-40 shimmer rounded" />
-    </div>
-  );
+  const renderOverview = () => {
+    const data = overviewQuery.data;
+    const isLoading = overviewQuery.isLoading;
+
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <StatCard 
+            title="Cloudinary" 
+            value={data?.cloudinary?.storage || "0 B"} 
+            icon={<FaCloud />} 
+            color="violet" 
+            loading={isLoading}
+          />
+          <StatCard 
+            title="MongoDB Size" 
+            value={data?.mongodb?.size || "0 B"} 
+            icon={<FaDatabase />} 
+            color="green" 
+            loading={isLoading}
+          />
+          <StatCard 
+            title="Total Revenue" 
+            value={data?.platform?.revenue || 0} 
+            prefix="₹"
+            icon={<FaCreditCard />} 
+            color="blue" 
+            loading={isLoading}
+          />
+          <StatCard 
+            title="Platform Orders" 
+            value={data?.platform?.orders || 0} 
+            icon={<FaServer />} 
+            color="amber" 
+            loading={isLoading}
+          />
+        </div>
+
+        <div className="bg-surface border border-border-default rounded-3xl p-8">
+          <h3 className="text-xl font-bold text-primary mb-6">Service Health</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { name: "Cloudinary CDN", status: "Operational", icon: FaCloud, color: "text-brand" },
+              { name: "MongoDB Atlas", status: "Operational", icon: FaDatabase, color: "text-success" },
+              { name: "Razorpay Gateway", status: data?.razorpay?.enabled ? "Operational" : "Not Linked", icon: FaCreditCard, color: data?.razorpay?.enabled ? "text-info" : "text-muted" }
+            ].map(service => (
+              <div key={service.name} className="flex items-center gap-4 p-5 bg-elevated rounded-2xl border border-border-default">
+                <div className={`p-3 rounded-xl bg-surface ${service.color}`}>
+                  <service.icon className="text-xl" />
+                </div>
+                <div>
+                  <p className="font-bold text-primary">{service.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <div className={`w-2 h-2 rounded-full ${service.status === "Operational" ? "bg-success" : "bg-muted animate-pulse"}`} />
+                    <p className="text-sm text-secondary">{service.status}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderCloudinary = () => {
+    const data = cloudinaryQuery.data;
+    const isLoading = cloudinaryQuery.isLoading;
+
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-surface border border-border-default p-6 rounded-3xl space-y-4">
+             <div className="flex justify-between items-start">
+               <span className="text-xs font-bold text-muted uppercase tracking-widest">Storage</span>
+               <FaHdd className="text-brand" />
+             </div>
+             <div>
+               <p className="text-2xl font-bold text-primary leading-none">{data?.storage?.usedFormatted}</p>
+               <p className="text-xs text-muted mt-2">of {data?.storage?.limitFormatted}</p>
+             </div>
+             <ProgressBar percent={data?.storage?.percent} />
+          </div>
+
+          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl space-y-4">
+             <div className="flex justify-between items-start">
+               <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Bandwidth</span>
+               <FaNetworkWired className="text-blue-500" />
+             </div>
+             <div>
+               <p className="text-2xl font-bold text-white leading-none">{data?.bandwidth?.usedFormatted}</p>
+               <p className="text-xs text-zinc-500 mt-2">of {data?.bandwidth?.limitFormatted}</p>
+             </div>
+             <ProgressBar percent={data?.bandwidth?.percent} color="blue" />
+          </div>
+
+          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl space-y-4">
+             <div className="flex justify-between items-start">
+               <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Credits</span>
+               <FaCreditCard className="text-emerald-500" />
+             </div>
+             <div>
+               <p className="text-2xl font-bold text-white leading-none">{data?.credits?.used}</p>
+               <p className="text-xs text-zinc-500 mt-2">of {data?.credits?.limit} credits</p>
+             </div>
+             <ProgressBar percent={data?.credits?.percent} color="green" />
+          </div>
+
+          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl space-y-4">
+             <div className="flex justify-between items-start">
+               <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Resources</span>
+               <FaImage className="text-amber-500" />
+             </div>
+             <div>
+               <p className="text-2xl font-bold text-white leading-none">{data?.resources?.total || 0}</p>
+               <p className="text-xs text-zinc-500 mt-2">Files stored</p>
+             </div>
+             <div className="flex gap-1">
+               <div className="h-1.5 flex-1 bg-blue-500 rounded-full" title="Images" />
+               <div className="h-1.5 flex-1 bg-violet-500 rounded-full" title="Videos" />
+               <div className="h-1.5 flex-1 bg-zinc-800 rounded-full" title="Raw" />
+             </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+           <div className="lg:col-span-2 bg-zinc-900 border border-zinc-800 rounded-3xl p-8">
+              <h3 className="font-bold text-white mb-6">Resource Breakdown</h3>
+              <div className="grid grid-cols-3 gap-4">
+                 <div className="p-6 bg-zinc-800/30 rounded-2xl border border-zinc-700/30 text-center">
+                    <FaImage className="mx-auto text-3xl text-blue-500 mb-2" />
+                    <p className="text-2xl font-bold text-white">{data?.resources?.images || 0}</p>
+                    <p className="text-xs text-zinc-500">Images</p>
+                 </div>
+                 <div className="p-6 bg-zinc-800/30 rounded-2xl border border-zinc-700/30 text-center">
+                    <FaVideo className="mx-auto text-3xl text-violet-500 mb-2" />
+                    <p className="text-2xl font-bold text-white">{data?.resources?.videos || 0}</p>
+                    <p className="text-xs text-zinc-500">Videos</p>
+                 </div>
+                 <div className="p-6 bg-zinc-800/30 rounded-2xl border border-zinc-700/30 text-center">
+                    <FaFile className="mx-auto text-3xl text-amber-500 mb-2" />
+                    <p className="text-2xl font-bold text-white">{data?.resources?.raw || 0}</p>
+                    <p className="text-xs text-zinc-500">Documents</p>
+                 </div>
+              </div>
+           </div>
+
+            <div className="bg-surface border border-border-default rounded-3xl p-8">
+               <h3 className="font-bold text-primary mb-6">Account Plan</h3>
+               <div className="space-y-4">
+                  <div className="flex justify-between items-center p-4 bg-brand-light rounded-2xl border border-brand/20">
+                     <span className="text-brand font-medium">{data?.plan} Plan</span>
+                     <FaExternalLinkAlt className="text-xs text-brand" />
+                  </div>
+                  <div className="p-5 bg-elevated rounded-2xl space-y-2">
+                     <p className="text-xs text-muted uppercase tracking-widest">Est. Monthly Cost</p>
+                     <p className="text-2xl font-bold text-primary">${data?.estimatedCost?.toFixed(2)}</p>
+                  </div>
+                  <p className="text-xs text-secondary px-2 italic">
+                     Based on current credit usage and free tier limits.
+                  </p>
+               </div>
+            </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMongoDB = () => {
+    const data = mongoQuery.data;
+    const isLoading = mongoQuery.isLoading;
+
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <StatCard title="Storage Used" value={data?.storage?.usedFormatted} color="green" loading={isLoading} />
+          <StatCard title="Collections" value={data?.collections?.count} color="blue" loading={isLoading} />
+          <StatCard title="Documents" value={data?.documents?.total?.toLocaleString()} color="violet" loading={isLoading} />
+          <StatCard title="Active Conn" value={data?.connections?.current} color="amber" loading={isLoading} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-surface border border-border-default rounded-3xl overflow-hidden shadow-sm">
+               <div className="p-8 border-b border-border-default flex justify-between items-center bg-elevated/20">
+                  <h3 className="font-bold text-primary">Collections Data Usage</h3>
+                  <span className="text-xs text-muted">Top 20 by size</span>
+               </div>
+               <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                     <thead className="bg-elevated/30">
+                        <tr className="text-muted text-[10px] font-bold uppercase tracking-widest">
+                           <th className="px-8 py-4">Collection</th>
+                           <th className="px-8 py-4">Docs</th>
+                           <th className="px-8 py-4">Size</th>
+                           <th className="px-8 py-4 text-right">Indices</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-border-default">
+                        {data?.collections?.details?.map(coll => (
+                           <tr key={coll.name} className="hover:bg-elevated/30 transition">
+                              <td className="px-8 py-4 font-medium text-primary text-sm">{coll.name}</td>
+                              <td className="px-8 py-4 text-secondary text-sm">{coll.count.toLocaleString()}</td>
+                              <td className="px-8 py-4 text-secondary text-sm">{coll.sizeFormatted}</td>
+                              <td className="px-8 py-4 text-secondary text-right text-sm">{coll.indexes}</td>
+                           </tr>
+                        ))}
+                     </tbody>
+                  </table>
+               </div>
+            </div>
+
+            <div className="space-y-6">
+               <div className="bg-surface border border-border-default rounded-3xl p-8 shadow-sm">
+                  <h3 className="font-bold text-primary mb-6">Storage Quota</h3>
+                  <div className="space-y-4">
+                     <div className="flex justify-between text-sm">
+                        <span className="text-muted">Quota (M0 Free)</span>
+                        <span className="text-primary font-bold">{data?.storage?.freeTierLimitFormatted || "512 MB"}</span>
+                     </div>
+                     <ProgressBar percent={data?.storage?.percentUsed || 0} color="green" />
+                     <p className="text-xs text-muted text-center">
+                        {data?.storage?.percentUsed || 0}% of Atlas free tier used
+                     </p>
+                  </div>
+               </div>
+
+               <div className="bg-surface border border-border-default rounded-3xl p-8 shadow-sm">
+                  <h3 className="font-bold text-primary mb-6">Operation Counters</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                     <div className="p-4 bg-elevated rounded-2xl border border-border-default/50">
+                        <p className="text-[10px] text-muted uppercase font-bold tracking-wider">Queries</p>
+                        <p className="text-xl font-bold text-info">{data?.operations?.queries?.toLocaleString() || 0}</p>
+                     </div>
+                     <div className="p-4 bg-elevated rounded-2xl border border-border-default/50">
+                        <p className="text-[10px] text-muted uppercase font-bold tracking-wider">Inserts</p>
+                        <p className="text-xl font-bold text-success">{data?.operations?.inserts?.toLocaleString() || 0}</p>
+                     </div>
+                     <div className="p-4 bg-elevated rounded-2xl border border-border-default/50">
+                        <p className="text-[10px] text-muted uppercase font-bold tracking-wider">Updates</p>
+                        <p className="text-xl font-bold text-warning">{data?.operations?.updates?.toLocaleString() || 0}</p>
+                     </div>
+                     <div className="p-4 bg-elevated rounded-2xl border border-border-default/50">
+                        <p className="text-[10px] text-muted uppercase font-bold tracking-wider">Deletes</p>
+                        <p className="text-xl font-bold text-danger">{data?.operations?.deletes?.toLocaleString() || 0}</p>
+                     </div>
+                  </div>
+               </div>
+            </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderRazorpay = () => {
+    const data = razorpayQuery.data;
+    const isLoading = razorpayQuery.isLoading;
+
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <StatCard title="Revenue (MTD)" value={data?.revenue?.month || 0} prefix="₹" color="blue" loading={isLoading} />
+          <StatCard title="Transactions" value={data?.transactions?.month || 0} color="violet" loading={isLoading} />
+          <StatCard title="Platform Fees" value={data?.platformFees?.month || 0} prefix="₹" color="green" loading={isLoading} />
+          <StatCard title="Refunds" value={data?.refunds?.totalAmount || 0} prefix="₹" color="red" loading={isLoading} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+           <div className="lg:col-span-2 bg-surface border border-border-default rounded-3xl p-8 shadow-sm">
+              <h3 className="font-bold text-primary mb-6">Recent Activity</h3>
+              <div className="space-y-4">
+                 {(data?.recentPayments || []).length === 0 ? (
+                    <div className="py-12 text-center">
+                       <p className="text-sm text-muted">No recent payment activity.</p>
+                    </div>
+                 ) : data?.recentPayments?.map(p => (
+                    <div key={p.id} className="flex items-center justify-between p-4 bg-elevated rounded-2xl border border-border-default">
+                       <div className="flex items-center gap-4">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${p.status === "completed" ? "bg-success/10 text-success" : "bg-muted/10 text-muted"}`}>
+                             <FaCreditCard />
+                          </div>
+                          <div>
+                             <p className="font-bold text-primary text-sm">₹{p.amount.toLocaleString()}</p>
+                             <p className="text-xs text-muted font-medium">{p.client} ➔ {p.editor}</p>
+                          </div>
+                       </div>
+                       <div className="text-right">
+                          <p className={`text-[10px] font-bold uppercase tracking-widest ${p.status === "completed" ? "text-success" : "text-muted"}`}>{p.status}</p>
+                          <p className="text-[10px] text-muted mt-1">{new Date(p.createdAt).toLocaleDateString()}</p>
+                       </div>
+                    </div>
+                 ))}
+              </div>
+           </div>
+
+           <div className="bg-surface border border-border-default rounded-3xl p-8 shadow-sm">
+              <h3 className="font-bold text-primary mb-6">Financial Overview</h3>
+              <div className="space-y-6">
+                 <div>
+                    <p className="text-[10px] text-muted uppercase font-bold tracking-widest mb-2">Total Gross Volume</p>
+                    <p className="text-3xl font-bold text-primary tracking-tight">{formatCurrency(data?.revenue?.total || 0)}</p>
+                 </div>
+                 
+                 <div className="pt-6 border-t border-border-default space-y-4">
+                    <div className="flex justify-between items-center">
+                       <span className="text-sm text-secondary font-medium">Platform Fees</span>
+                       <span className="text-sm font-bold text-success">{formatCurrency(data?.platformFees?.total || 0)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                       <span className="text-sm text-secondary font-medium">Gateway Costs (Est)</span>
+                       <span className="text-sm font-bold text-warning">-{formatCurrency(data?.razorpayFees?.estimated || 0)}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-4 bg-elevated rounded-2xl border border-border-default/50">
+                       <span className="text-sm font-bold text-primary">Net Profit</span>
+                       <span className="text-sm font-bold text-brand">{formatCurrency((data?.platformFees?.total || 0) - (data?.razorpayFees?.estimated || 0))}</span>
+                    </div>
+                 </div>
+
+                 <div className="pt-4">
+                    <a 
+                      href="https://dashboard.razorpay.com" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full py-3 bg-brand hover:bg-brand/90 text-white rounded-xl font-bold transition shadow-lg shadow-brand/20 text-sm"
+                    >
+                       Razorpay Dashboard <FaExternalLinkAlt className="text-[10px]" />
+                    </a>
+                 </div>
+              </div>
+           </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600">
-              <FaChartLine className="text-white" />
-            </div>
-            Service Analytics
-          </h1>
-          <p className="text-gray-400 text-sm mt-1">Monitor usage, costs, and performance</p>
-        </div>
+    <div className="p-6 space-y-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+        <PageHeader 
+          title="Infrastructure Monitoring" 
+          subtitle="Real-time health and usage of platform services"
+          icon={<FaChartLine className="text-brand" />}
+        />
         
         <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="flex items-center gap-2 px-4 py-2 bg-dark-700 border border-dark-500 rounded-xl text-gray-400 hover:text-white hover:border-purple-500 transition-all disabled:opacity-50"
+          onClick={() => {
+            overviewQuery.refetch();
+            cloudinaryQuery.refetch();
+            mongoQuery.refetch();
+            razorpayQuery.refetch();
+          }}
+          className="flex items-center gap-2 px-6 py-2.5 bg-surface hover:bg-elevated border border-border-default text-primary rounded-xl font-bold transition text-sm shadow-sm"
         >
-          <FaSync className={refreshing ? "animate-spin" : ""} />
-          Refresh
+          <FaSync className={(overviewQuery.isFetching || cloudinaryQuery.isFetching || mongoQuery.isFetching || razorpayQuery.isFetching) ? "animate-spin" : ""} />
+          Manual Refetch
         </button>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        {tabs.map((tab) => (
+      {/* Primary Tabs */}
+      <div className="flex border-b border-border-default bg-surface/30 px-2 rounded-t-2xl">
+        {[
+          { id: "overview", label: "Health Overview", icon: HiOutlineChartBar },
+          { id: "cloudinary", label: "Cloudinary CDN", icon: HiOutlineCloud },
+          { id: "mongodb", label: "MongoDB Atlas", icon: HiOutlineServer },
+          { id: "razorpay", label: "Razorpay Gateway", icon: HiOutlineCurrencyRupee },
+        ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
-              activeTab === tab.id
-                ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white"
-                : "bg-dark-700 border border-dark-500 text-gray-400 hover:text-white hover:border-purple-500"
-            }`}
+            className={`flex items-center gap-2 px-6 py-4 font-semibold transition whitespace-nowrap text-sm ${activeTab === tab.id ? "text-brand border-b-2 border-brand" : "text-secondary hover:text-primary hover:bg-elevated/50 rounded-t-lg"}`}
           >
-            <tab.icon className="text-lg" />
+            <tab.icon size={16} />
             {tab.label}
           </button>
         ))}
       </div>
 
-      {/* Error State */}
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4">
-          <div className="flex items-center gap-3 text-red-400">
-            <FaExclamationTriangle />
-            <span>{error}</span>
-            <button onClick={handleRefresh} className="ml-auto underline">Retry</button>
-          </div>
-        </div>
-      )}
-
-      {/* Content */}
-      <AnimatePresence mode="wait">
-        {loading ? (
-          <motion.div
-            key="loading"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
-          >
-            <ShimmerCard />
-            <ShimmerCard />
-            <ShimmerCard />
-            <ShimmerCard />
-          </motion.div>
-        ) : (
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
-            {/* === OVERVIEW TAB === */}
-            {activeTab === "overview" && overviewData && (
-              <div className="space-y-6">
-                {/* Quick Stats Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="bg-dark-700 border border-dark-500 rounded-2xl p-6 hover:border-purple-500/50 transition-all"
-                  >
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="p-3 rounded-xl bg-purple-500/20">
-                        <FaCloud className="text-purple-400 text-xl" />
-                      </div>
-                      <span className="text-gray-400 text-sm">Cloudinary Storage</span>
-                    </div>
-                    <p className="text-2xl font-bold">{overviewData.cloudinary?.storage || "0 B"}</p>
-                    <p className="text-xs text-gray-500 mt-1">Credits: {overviewData.cloudinary?.credits || 0}</p>
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="bg-dark-700 border border-dark-500 rounded-2xl p-6 hover:border-emerald-500/50 transition-all"
-                  >
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="p-3 rounded-xl bg-emerald-500/20">
-                        <FaDatabase className="text-emerald-400 text-xl" />
-                      </div>
-                      <span className="text-gray-400 text-sm">MongoDB Size</span>
-                    </div>
-                    <p className="text-2xl font-bold">{overviewData.mongodb?.size || "0 B"}</p>
-                    <p className="text-xs text-gray-500 mt-1">{overviewData.mongodb?.collections || 0} collections</p>
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="bg-dark-700 border border-dark-500 rounded-2xl p-6 hover:border-blue-500/50 transition-all"
-                  >
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="p-3 rounded-xl bg-blue-500/20">
-                        <FaCreditCard className="text-blue-400 text-xl" />
-                      </div>
-                      <span className="text-gray-400 text-sm">Total Revenue</span>
-                    </div>
-                    <p className="text-2xl font-bold">{formatCurrency(overviewData.platform?.revenue || 0)}</p>
-                    <p className="text-xs text-gray-500 mt-1">{overviewData.platform?.payments || 0} transactions</p>
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className="bg-dark-700 border border-dark-500 rounded-2xl p-6 hover:border-amber-500/50 transition-all"
-                  >
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="p-3 rounded-xl bg-amber-500/20">
-                        <FaServer className="text-amber-400 text-xl" />
-                      </div>
-                      <span className="text-gray-400 text-sm">Platform Stats</span>
-                    </div>
-                    <p className="text-2xl font-bold">{overviewData.platform?.users || 0}</p>
-                    <p className="text-xs text-gray-500 mt-1">{overviewData.platform?.orders || 0} orders</p>
-                  </motion.div>
-                </div>
-
-                {/* Service Status */}
-                <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                  <h3 className="font-semibold mb-4">Service Status</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="flex items-center gap-3 p-4 bg-dark-600 rounded-xl">
-                      <FaCheckCircle className="text-emerald-400" />
-                      <div>
-                        <p className="font-medium">Cloudinary</p>
-                        <p className="text-xs text-gray-500">Connected</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-4 bg-dark-600 rounded-xl">
-                      <FaCheckCircle className="text-emerald-400" />
-                      <div>
-                        <p className="font-medium">MongoDB</p>
-                        <p className="text-xs text-gray-500">Connected</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-4 bg-dark-600 rounded-xl">
-                      {overviewData.razorpay?.enabled ? (
-                        <FaCheckCircle className="text-emerald-400" />
-                      ) : (
-                        <FaExclamationTriangle className="text-amber-400" />
-                      )}
-                      <div>
-                        <p className="font-medium">Razorpay</p>
-                        <p className="text-xs text-gray-500">
-                          {overviewData.razorpay?.enabled ? "Connected" : "Not Configured"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* === CLOUDINARY TAB === */}
-            {activeTab === "cloudinary" && cloudinaryData && (
-              <div className="space-y-6">
-                {/* Plan Badge */}
-                <div className="flex items-center gap-3">
-                  <span className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-lg text-sm font-medium">
-                    {cloudinaryData.plan || "Free"} Plan
-                  </span>
-                  {cloudinaryData.estimatedCost > 0 && (
-                    <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-lg text-sm">
-                      Est. Cost: ${cloudinaryData.estimatedCost.toFixed(2)}/mo
-                    </span>
-                  )}
-                </div>
-
-                {/* Usage Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {/* Storage */}
-                  <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-gray-400 text-sm flex items-center gap-2">
-                        <FaHdd className="text-purple-400" /> Storage
-                      </span>
-                      <span className={`text-sm font-bold ${
-                        cloudinaryData.storage.percent > 90 ? "text-red-400" :
-                        cloudinaryData.storage.percent > 75 ? "text-amber-400" : "text-emerald-400"
-                      }`}>
-                        {cloudinaryData.storage.percent}%
-                      </span>
-                    </div>
-                    <p className="text-2xl font-bold mb-2">{cloudinaryData.storage.usedFormatted}</p>
-                    <p className="text-xs text-gray-500 mb-3">of {cloudinaryData.storage.limitFormatted}</p>
-                    <ProgressBar percent={cloudinaryData.storage.percent} color="purple" />
-                  </div>
-
-                  {/* Bandwidth */}
-                  <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-gray-400 text-sm flex items-center gap-2">
-                        <FaNetworkWired className="text-blue-400" /> Bandwidth
-                      </span>
-                      <span className={`text-sm font-bold ${
-                        cloudinaryData.bandwidth.percent > 90 ? "text-red-400" :
-                        cloudinaryData.bandwidth.percent > 75 ? "text-amber-400" : "text-emerald-400"
-                      }`}>
-                        {cloudinaryData.bandwidth.percent}%
-                      </span>
-                    </div>
-                    <p className="text-2xl font-bold mb-2">{cloudinaryData.bandwidth.usedFormatted}</p>
-                    <p className="text-xs text-gray-500 mb-3">of {cloudinaryData.bandwidth.limitFormatted}</p>
-                    <ProgressBar percent={cloudinaryData.bandwidth.percent} color="blue" />
-                  </div>
-
-                  {/* Credits */}
-                  <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-gray-400 text-sm flex items-center gap-2">
-                        <FaCreditCard className="text-emerald-400" /> Credits
-                      </span>
-                      <span className={`text-sm font-bold ${
-                        cloudinaryData.credits.percent > 90 ? "text-red-400" :
-                        cloudinaryData.credits.percent > 75 ? "text-amber-400" : "text-emerald-400"
-                      }`}>
-                        {cloudinaryData.credits.percent}%
-                      </span>
-                    </div>
-                    <p className="text-2xl font-bold mb-2">{cloudinaryData.credits.used}</p>
-                    <p className="text-xs text-gray-500 mb-3">of {cloudinaryData.credits.limit} credits</p>
-                    <ProgressBar percent={cloudinaryData.credits.percent} color="emerald" />
-                  </div>
-
-                  {/* Transformations */}
-                  <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-gray-400 text-sm flex items-center gap-2">
-                        <FaImage className="text-amber-400" /> Transforms
-                      </span>
-                      <span className={`text-sm font-bold ${
-                        cloudinaryData.transformations.percent > 90 ? "text-red-400" :
-                        cloudinaryData.transformations.percent > 75 ? "text-amber-400" : "text-emerald-400"
-                      }`}>
-                        {cloudinaryData.transformations.percent}%
-                      </span>
-                    </div>
-                    <p className="text-2xl font-bold mb-2">{cloudinaryData.transformations.used.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500 mb-3">of {cloudinaryData.transformations.limit.toLocaleString()}</p>
-                    <ProgressBar percent={cloudinaryData.transformations.percent} />
-                  </div>
-                </div>
-
-                {/* Resources Breakdown */}
-                <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                  <h3 className="font-semibold mb-4">Resource Breakdown</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="flex items-center gap-4 p-4 bg-dark-600 rounded-xl">
-                      <FaImage className="text-2xl text-blue-400" />
-                      <div>
-                        <p className="text-2xl font-bold">{cloudinaryData.resources.images || 0}</p>
-                        <p className="text-xs text-gray-500">Images</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 p-4 bg-dark-600 rounded-xl">
-                      <FaVideo className="text-2xl text-purple-400" />
-                      <div>
-                        <p className="text-2xl font-bold">{cloudinaryData.resources.videos || 0}</p>
-                        <p className="text-xs text-gray-500">Videos</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 p-4 bg-dark-600 rounded-xl">
-                      <FaFile className="text-2xl text-amber-400" />
-                      <div>
-                        <p className="text-2xl font-bold">{cloudinaryData.resources.raw || 0}</p>
-                        <p className="text-xs text-gray-500">Other Files</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Last Updated */}
-                <p className="text-xs text-gray-500 text-right">
-                  <FaClock className="inline mr-1" />
-                  Last updated: {new Date(cloudinaryData.lastUpdated).toLocaleString()}
-                </p>
-              </div>
-            )}
-
-            {/* === MONGODB TAB === */}
-            {activeTab === "mongodb" && mongoData && (
-              <div className="space-y-6">
-                {/* Database Info */}
-                <div className="flex items-center gap-3">
-                  <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-lg text-sm font-medium">
-                    {mongoData.database || "Database"}
-                  </span>
-                  <span className="px-3 py-1 bg-dark-600 text-gray-300 rounded-lg text-sm">
-                    v{mongoData.version || "Unknown"}
-                  </span>
-                </div>
-
-                {/* Storage Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-gray-400 text-sm flex items-center gap-2">
-                        <FaDatabase className="text-emerald-400" /> Data Size
-                      </span>
-                      <span className={`text-sm font-bold ${
-                        mongoData.storage.percentUsed > 90 ? "text-red-400" :
-                        mongoData.storage.percentUsed > 75 ? "text-amber-400" : "text-emerald-400"
-                      }`}>
-                        {mongoData.storage.percentUsed}%
-                      </span>
-                    </div>
-                    <p className="text-2xl font-bold mb-2">{mongoData.storage.storageSizeFormatted}</p>
-                    <p className="text-xs text-gray-500 mb-3">of {mongoData.storage.freeTierLimitFormatted} (Free Tier)</p>
-                    <ProgressBar percent={mongoData.storage.percentUsed} color="emerald" />
-                  </div>
-
-                  <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <FaHdd className="text-blue-400" />
-                      <span className="text-gray-400 text-sm">Collections</span>
-                    </div>
-                    <p className="text-2xl font-bold">{mongoData.collections.count}</p>
-                    <p className="text-xs text-gray-500 mt-1">{mongoData.documents.total.toLocaleString()} total documents</p>
-                  </div>
-
-                  <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <FaNetworkWired className="text-purple-400" />
-                      <span className="text-gray-400 text-sm">Connections</span>
-                    </div>
-                    <p className="text-2xl font-bold">{mongoData.connections.current}</p>
-                    <p className="text-xs text-gray-500 mt-1">of {mongoData.connections.available} available</p>
-                  </div>
-
-                  <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <FaServer className="text-amber-400" />
-                      <span className="text-gray-400 text-sm">Index Size</span>
-                    </div>
-                    <p className="text-2xl font-bold">{mongoData.indexes.sizeFormatted}</p>
-                    <p className="text-xs text-gray-500 mt-1">{mongoData.indexes.count} indexes</p>
-                  </div>
-                </div>
-
-                {/* Collections Table */}
-                <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                  <h3 className="font-semibold mb-4">Collections (Top 20 by Size)</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="text-left text-gray-500 border-b border-dark-500">
-                          <th className="pb-3 font-medium">Collection</th>
-                          <th className="pb-3 font-medium text-right">Documents</th>
-                          <th className="pb-3 font-medium text-right">Size</th>
-                          <th className="pb-3 font-medium text-right">Indexes</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {mongoData.collections.details?.map((coll) => (
-                          <tr key={coll.name} className="border-b border-dark-600">
-                            <td className="py-3 font-medium">{coll.name}</td>
-                            <td className="py-3 text-right text-gray-400">{coll.count.toLocaleString()}</td>
-                            <td className="py-3 text-right text-gray-400">{coll.sizeFormatted}</td>
-                            <td className="py-3 text-right text-gray-400">{coll.indexes || 0}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Operations Stats */}
-                <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                  <h3 className="font-semibold mb-4">Operation Counts (Since Server Start)</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="text-center p-4 bg-dark-600 rounded-xl">
-                      <p className="text-2xl font-bold text-blue-400">{mongoData.operations.queries.toLocaleString()}</p>
-                      <p className="text-xs text-gray-500">Queries</p>
-                    </div>
-                    <div className="text-center p-4 bg-dark-600 rounded-xl">
-                      <p className="text-2xl font-bold text-emerald-400">{mongoData.operations.inserts.toLocaleString()}</p>
-                      <p className="text-xs text-gray-500">Inserts</p>
-                    </div>
-                    <div className="text-center p-4 bg-dark-600 rounded-xl">
-                      <p className="text-2xl font-bold text-amber-400">{mongoData.operations.updates.toLocaleString()}</p>
-                      <p className="text-xs text-gray-500">Updates</p>
-                    </div>
-                    <div className="text-center p-4 bg-dark-600 rounded-xl">
-                      <p className="text-2xl font-bold text-red-400">{mongoData.operations.deletes.toLocaleString()}</p>
-                      <p className="text-xs text-gray-500">Deletes</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* === RAZORPAY TAB === */}
-            {activeTab === "razorpay" && razorpayData && (
-              <div className="space-y-6">
-                {/* Status */}
-                <div className="flex items-center gap-3">
-                  {razorpayData.razorpayEnabled ? (
-                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-lg text-sm font-medium flex items-center gap-2">
-                      <FaCheckCircle /> Connected
-                    </span>
-                  ) : (
-                    <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-lg text-sm font-medium flex items-center gap-2">
-                      <FaExclamationTriangle /> Not Configured
-                    </span>
-                  )}
-                  <a
-                    href="https://dashboard.razorpay.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm flex items-center gap-2 hover:bg-blue-500/30 transition-colors"
-                  >
-                    <FaExternalLinkAlt className="text-xs" /> Open Dashboard
-                  </a>
-                </div>
-
-                {/* Revenue Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                    <span className="text-gray-400 text-sm">Today</span>
-                    <p className="text-2xl font-bold text-emerald-400 mt-2">{formatCurrency(razorpayData.revenue.today)}</p>
-                    <p className="text-xs text-gray-500 mt-1">{razorpayData.transactions.today} transactions</p>
-                  </div>
-
-                  <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                    <span className="text-gray-400 text-sm">This Week</span>
-                    <p className="text-2xl font-bold text-blue-400 mt-2">{formatCurrency(razorpayData.revenue.week)}</p>
-                    <p className="text-xs text-gray-500 mt-1">{razorpayData.transactions.week} transactions</p>
-                  </div>
-
-                  <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                    <span className="text-gray-400 text-sm">This Month</span>
-                    <p className="text-2xl font-bold text-purple-400 mt-2">{formatCurrency(razorpayData.revenue.month)}</p>
-                    <p className="text-xs text-gray-500 mt-1">{razorpayData.transactions.month} transactions</p>
-                  </div>
-
-                  <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                    <span className="text-gray-400 text-sm">All Time</span>
-                    <p className="text-2xl font-bold mt-2">{formatCurrency(razorpayData.revenue.total)}</p>
-                    <p className="text-xs text-gray-500 mt-1">{razorpayData.transactions.total} transactions</p>
-                  </div>
-                </div>
-
-                {/* Fees & Refunds */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                    <h4 className="text-gray-400 text-sm mb-3">Platform Fees Collected</h4>
-                    <p className="text-3xl font-bold text-emerald-400">{formatCurrency(razorpayData.platformFees.total)}</p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      This month: {formatCurrency(razorpayData.platformFees.month)}
-                    </p>
-                  </div>
-
-                  <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                    <h4 className="text-gray-400 text-sm mb-3">Est. Razorpay Fees</h4>
-                    <p className="text-3xl font-bold text-amber-400">{formatCurrency(razorpayData.razorpayFees.estimated)}</p>
-                    <p className="text-xs text-gray-500 mt-2">~2.36% (2% + 18% GST)</p>
-                  </div>
-
-                  <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                    <h4 className="text-gray-400 text-sm mb-3">Refunds</h4>
-                    <p className="text-3xl font-bold text-red-400">{formatCurrency(razorpayData.refunds.totalAmount)}</p>
-                    <p className="text-xs text-gray-500 mt-2">{razorpayData.refunds.count} refunds processed</p>
-                  </div>
-                </div>
-
-                {/* Monthly Trend */}
-                {razorpayData.monthlyTrend?.length > 0 && (
-                  <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                    <h3 className="font-semibold mb-4">Revenue Trend (Last 6 Months)</h3>
-                    <div className="h-48 flex items-end justify-between gap-2">
-                      {razorpayData.monthlyTrend.map((month, i) => {
-                        const maxRevenue = Math.max(...razorpayData.monthlyTrend.map(m => m.revenue));
-                        const heightPercent = maxRevenue > 0 ? (month.revenue / maxRevenue) * 100 : 0;
-                        return (
-                          <div key={i} className="flex-1 flex flex-col items-center">
-                            <div
-                              className="w-full bg-gradient-to-t from-purple-600 to-blue-600 rounded-t-sm hover:opacity-80 transition-opacity"
-                              style={{ height: `${Math.max(20, heightPercent)}%` }}
-                              title={`${month.month}: ${formatCurrency(month.revenue)}`}
-                            />
-                            <p className="text-xs text-gray-500 mt-2">{month.month}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Recent Transactions */}
-                <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6">
-                  <h3 className="font-semibold mb-4">Recent Transactions</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="text-left text-gray-500 border-b border-dark-500">
-                          <th className="pb-3 font-medium">Client</th>
-                          <th className="pb-3 font-medium">Editor</th>
-                          <th className="pb-3 font-medium text-right">Amount</th>
-                          <th className="pb-3 font-medium text-center">Status</th>
-                          <th className="pb-3 font-medium text-right">Date</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {razorpayData.recentPayments?.map((payment) => (
-                          <tr key={payment.id} className="border-b border-dark-600">
-                            <td className="py-3">{payment.client}</td>
-                            <td className="py-3 text-gray-400">{payment.editor}</td>
-                            <td className="py-3 text-right font-medium">{formatCurrency(payment.amount)}</td>
-                            <td className="py-3 text-center">
-                              <span className={`px-2 py-1 rounded-lg text-xs ${
-                                payment.status === "completed" ? "bg-emerald-500/20 text-emerald-400" :
-                                payment.status === "pending" ? "bg-amber-500/20 text-amber-400" :
-                                "bg-red-500/20 text-red-400"
-                              }`}>
-                                {payment.status}
-                              </span>
-                            </td>
-                            <td className="py-3 text-right text-gray-500">
-                              {new Date(payment.createdAt).toLocaleDateString()}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Tab Content */}
+      <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+        {activeTab === "overview" && renderOverview()}
+        {activeTab === "cloudinary" && renderCloudinary()}
+        {activeTab === "mongodb" && renderMongoDB()}
+        {activeTab === "razorpay" && renderRazorpay()}
+      </div>
+      
+      <div className="mt-8 pt-6 border-t border-border-default flex justify-between items-center text-muted text-xs">
+         <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 font-medium">
+               <div className="w-2.5 h-2.5 rounded-full bg-success shadow-[0_0_8px_rgba(16,185,129,0.5)]" /> API Gateway
+            </div>
+            <div className="flex items-center gap-2 font-medium">
+               <div className="w-2.5 h-2.5 rounded-full bg-success shadow-[0_0_8px_rgba(16,185,129,0.5)]" /> Socket Cluster
+            </div>
+         </div>
+         <div className="flex items-center gap-2 font-medium">
+            <FaClock size={12} /> Last global sync: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+         </div>
+      </div>
     </div>
   );
 };

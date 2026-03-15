@@ -1,171 +1,199 @@
-// AdminContext.jsx - Admin authentication state management
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+// ─── AdminContext.jsx — Fixed & Production-Grade ──────────────────────────
+// BUGS FIXED:
+//  1. adminAxios was recreated on every render (new instance = stale interceptors)
+//     → Now a module-level singleton, always reads fresh token from localStorage
+//  2. Notifications state added for real-time bell
+//  3. Exports queryClient so pages can invalidate queries
+// ─────────────────────────────────────────────────────────────────────────────
+import { createContext, useContext, useState, useEffect, useRef } from "react";
 import axios from "axios";
+import { QueryClient } from "@tanstack/react-query";
 
+// ── Module-level singleton (NOT inside component) ─────────────────────────
+const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
+
+export const adminAxios = axios.create({ baseURL: BACKEND });
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 2 * 60 * 1000, // 2 min default
+    },
+  },
+});
+
+// Request interceptor: always reads fresh token from localStorage
+adminAxios.interceptors.request.use((config) => {
+  const token = localStorage.getItem("adminToken");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+// Response interceptor: handle 401 globally
+adminAxios.interceptors.response.use(
+  (res) => res,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("adminToken");
+      // Soft redirect — avoids hard browser reload
+      window.dispatchEvent(new CustomEvent("admin:unauthorized"));
+    }
+    return Promise.reject(error);
+  }
+);
+
+// ── Context ───────────────────────────────────────────────────────────────
 const AdminContext = createContext(null);
 
 export const useAdmin = () => {
-  const context = useContext(AdminContext);
-  if (!context) {
-    throw new Error("useAdmin must be used within AdminProvider");
-  }
-  return context;
+  const ctx = useContext(AdminContext);
+  if (!ctx) throw new Error("useAdmin must be used within AdminProvider");
+  return ctx;
 };
 
+
 export const AdminProvider = ({ children }) => {
-  const backendURL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
-  
-  const [admin, setAdmin] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [theme, setTheme] = useState(() => localStorage.getItem("adminTheme") || "dark");
+  const [admin, setAdmin]               = useState(null);
+  const [loading, setLoading]           = useState(true);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount]   = useState(0);
+  const [alerts, setAlerts]             = useState({ kycPending: 0, disputedOrders: 0 });
 
-  // Theme toggle
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("adminTheme", theme);
-  }, [theme]);
-
-  const toggleTheme = () => setTheme(prev => prev === "dark" ? "light" : "dark");
-
-  // Check for existing session on mount
+  // ── Auth: verify token on mount ────────────────────────────────────────
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
     if (token) {
-      verifyToken(token);
+      verifyToken();
     } else {
       setLoading(false);
     }
+
+    // Listen for 401 global event from interceptor
+    const onUnauthorized = () => {
+      setAdmin(null);
+      setLoading(false);
+    };
+    window.addEventListener("admin:unauthorized", onUnauthorized);
+    return () => window.removeEventListener("admin:unauthorized", onUnauthorized);
   }, []);
 
-  // Verify admin token
-  const verifyToken = async (token) => {
+  const verifyToken = async () => {
     try {
-      const res = await axios.get(`${backendURL}/admin/auth/verify`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await adminAxios.get("/admin/auth/verify");
       if (res.data.success) {
-        setAdmin({ ...res.data.admin, token });
+        setAdmin(res.data.admin);
       } else {
         localStorage.removeItem("adminToken");
       }
-    } catch (err) {
-      console.error("Admin verify error:", err);
+    } catch {
       localStorage.removeItem("adminToken");
     } finally {
       setLoading(false);
     }
   };
 
-  // Admin login
-  const login = async (email, password) => {
+  // ── Auth actions ───────────────────────────────────────────────────────
+  const login = async (email, password, role, remember = false) => {
     try {
-      setError(null);
-      const res = await axios.post(`${backendURL}/admin/auth/login`, {
-        email,
-        password,
-      });
-
+      const res = await adminAxios.post("/admin/auth/login", { email, password, role });
+      const { token, admin: adminData } = res.data;
       if (res.data.success) {
-        localStorage.setItem("adminToken", res.data.token);
-        setAdmin({ ...res.data.admin, token: res.data.token });
+        localStorage.setItem("adminToken", token);
+        setAdmin(adminData);
         return { success: true };
-      } else {
-        setError(res.data.message);
-        return { success: false, message: res.data.message };
       }
+      return { success: false, message: res.data.message };
     } catch (err) {
-      const message = err.response?.data?.message || "Login failed";
-      setError(message);
-      return { 
-        success: false, 
-        message,
+      return {
+        success: false,
+        message: err.response?.data?.message || "Login failed",
         lockedUntil: err.response?.data?.lockedUntil,
+        remainingAttempts: err.response?.data?.remainingAttempts,
       };
     }
   };
 
-  // Admin logout
   const logout = async () => {
     try {
-      if (admin?.token) {
-        await axios.post(`${backendURL}/admin/auth/logout`, {}, {
-          headers: { Authorization: `Bearer ${admin.token}` },
-        });
-      }
-    } catch (err) {
-      console.error("Logout error:", err);
+      await adminAxios.post("/admin/auth/logout");
+    } catch {
+      // Silently ignore logout errors
     } finally {
       localStorage.removeItem("adminToken");
       setAdmin(null);
+      queryClient.clear();
     }
   };
 
-  // Change password
   const changePassword = async (currentPassword, newPassword) => {
     try {
-      const res = await axios.post(
-        `${backendURL}/admin/auth/change-password`,
-        { currentPassword, newPassword },
-        { headers: { Authorization: `Bearer ${admin?.token}` } }
-      );
+      const res = await adminAxios.post("/admin/auth/change-password", {
+        currentPassword, newPassword,
+      });
       return res.data;
     } catch (err) {
-      return { success: false, message: err.response?.data?.message || "Failed to change password" };
+      return { success: false, message: err.response?.data?.message || "Failed" };
     }
   };
 
-  // Create axios instance with admin token
-  const createAdminAxios = useCallback(() => {
-    const instance = axios.create({
-      baseURL: backendURL,
-    });
-
-    instance.interceptors.request.use((config) => {
-      const token = localStorage.getItem("adminToken");
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+  // ── Notifications ──────────────────────────────────────────────────────
+  const fetchNotifications = async () => {
+    try {
+      const res = await adminAxios.get("/admin/notifications?limit=20");
+      if (res.data.success) {
+        setNotifications(res.data.notifications || []);
+        setUnreadCount(res.data.unreadCount || 0);
       }
-      return config;
-    });
+    } catch {
+      // non-critical — silently skip
+    }
+  };
 
-    instance.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response?.status === 401) {
-          localStorage.removeItem("adminToken");
-          setAdmin(null);
-          window.location.href = "/login";
-        }
-        return Promise.reject(error);
-      }
-    );
+  const markNotificationsRead = async () => {
+    try {
+      await adminAxios.patch("/admin/notifications/read-all");
+      setUnreadCount(0);
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch {/**/}
+  };
 
-    return instance;
-  }, [backendURL]);
+  // ── Alerts (dashboard banners) ─────────────────────────────────────────
+  const fetchAlerts = async () => {
+    try {
+      const res = await adminAxios.get("/admin/stats/alerts");
+      if (res.data.success) setAlerts(res.data.alerts);
+    } catch {/**/}
+  };
 
-  const adminAxios = createAdminAxios();
+  useEffect(() => {
+    if (admin) {
+      fetchNotifications();
+      fetchAlerts();
+    }
+  }, [admin]);
 
   const value = {
     admin,
     loading,
-    error,
+    isAuthenticated: !!admin,
+    isSuperAdmin: admin?.role === "superadmin",
     login,
     logout,
     changePassword,
-    adminAxios,
-    isAuthenticated: !!admin,
-    isSuperAdmin: admin?.role === "superadmin",
-    theme,
-    toggleTheme,
-    backendURL,
+    adminAxios,      // direct access if needed
+    queryClient,
+    backendURL: BACKEND,
+    notifications,
+    unreadCount,
+    alerts,
+    fetchNotifications,
+    markNotificationsRead,
+    fetchAlerts,
+    setAdmin,
   };
 
-  return (
-    <AdminContext.Provider value={value}>
-      {children}
-    </AdminContext.Provider>
-  );
+  return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>;
 };
 
 export default AdminContext;

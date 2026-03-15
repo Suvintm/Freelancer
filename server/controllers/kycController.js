@@ -297,56 +297,10 @@ export const lookupIFSC = asyncHandler(async (req, res) => {
   }
 });
 
-/**
- * Admin: Verify KYC (Manual verification)
- * POST /api/profile/verify-kyc/:userId
- */
-export const verifyKYC = asyncHandler(async (req, res) => {
-  const { userId } = req.params;
-  const { approve, rejectionReason } = req.body;
-  
-  // Check if requester is admin (Handled by protectAdmin middleware)
-  /* if (req.user.role !== 'admin') {
-    throw new ApiError(403, "Only admins can verify KYC");
-  } */
-  
-  const user = await User.findById(userId);
-  if (!user) {
-    throw new ApiError(404, "User not found");
-  }
-  
-  if (approve) {
-    user.kycStatus = "verified";
-    user.kycVerifiedAt = new Date();
-    user.kycRejectionReason = null;
-  } else {
-    user.kycStatus = "rejected";
-    user.kycRejectionReason = rejectionReason || "Documents could not be verified";
-  }
-  
-  user.profileCompletionPercent = calculateProfileCompletion(user);
-  await user.save();
-
-  // Audit Log
-  await KYCLog.create({
-    user: userId,
-    userRole: "editor",
-    performedBy: { adminId: req.admin._id, role: "admin" },
-    action: approve ? "verified" : "rejected",
-    reason: rejectionReason,
-  });
-  
-  res.json({
-    success: true,
-    message: approve ? "KYC verified successfully" : "KYC rejected",
-    kycStatus: user.kycStatus,
-  });
-});
-
 export default {
   getKYCStatus,
   submitKYC,
   lookupIFSC,
-  verifyKYC,
 };
+
 

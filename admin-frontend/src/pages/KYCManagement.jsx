@@ -1,571 +1,548 @@
-// KYCManagement.jsx - Admin KYC verification page
-import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { 
+  HiOutlineShieldCheck, HiOutlineUserGroup, HiOutlineClock, 
+  HiOutlineCheckCircle, HiOutlineXCircle, HiOutlineMagnifyingGlass,
+  HiOutlineEye, HiOutlineCheck, HiOutlineXMark,
+  HiOutlineBanknotes, HiOutlineIdentification,
+  HiOutlineArrowTopRightOnSquare, HiOutlineArrowPath,
+  HiOutlineFingerPrint, HiOutlineDocumentCheck
+} from "react-icons/hi2";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  FaShieldAlt,
-  FaSearch,
-  FaCheck,
-  FaTimes,
-  FaSpinner,
-  FaUser,
-  FaUniversity,
-  FaIdCard,
-  FaEye,
-  FaClock,
-  FaCheckCircle,
-  FaTimesCircle,
-  FaChevronLeft,
-  FaChevronRight,
-} from "react-icons/fa";
-import { useAdmin } from "../context/AdminContext";
-import { toast } from "react-toastify";
+import { toast } from "react-hot-toast";
+import { kycApi } from "../api/adminApi";
+import DataTable from "../components/ui/DataTable";
+import SlideOver from "../components/ui/SlideOver";
+import Skeleton from "../components/ui/Skeleton";
+import { formatDate } from "../utils/formatters";
 
-const KYCManagement = () => {
-  const { adminAxios } = useAdmin();
-  const navigate = useNavigate();
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ pending: 0, verified: 0, rejected: 0 });
-  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
-  const [statusFilter, setStatusFilter] = useState("submitted");
-  const [search, setSearch] = useState("");
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
-  const [showRejectModal, setShowRejectModal] = useState(false);
+// ─────────────────────────────────────────────────────────────────────────────
+// Atoms
+// ─────────────────────────────────────────────────────────────────────────────
 
-  // Fetch KYC stats
-  const fetchStats = useCallback(async () => {
-    try {
-      const res = await adminAxios.get("/admin/kyc/stats/summary");
-      if (res.data.success) {
-        setStats(res.data.stats);
-      }
-    } catch (error) {
-      console.error("Failed to fetch stats:", error);
-    }
-  }, [adminAxios]);
-
-  // Fetch KYC submissions
-  const fetchKYC = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await adminAxios.get("/admin/kyc/pending", {
-        params: { status: statusFilter, page: pagination.page, limit: 20 }
-      });
-      if (res.data.success) {
-        setUsers(res.data.users);
-        setPagination(res.data.pagination);
-      }
-    } catch (error) {
-      toast.error("Failed to load KYC submissions");
-    } finally {
-      setLoading(false);
-    }
-  }, [adminAxios, statusFilter, pagination.page]);
-
-  useEffect(() => {
-    fetchStats();
-    fetchKYC();
-  }, [fetchStats, fetchKYC]);
-
-  // View user details
-  const viewDetails = (userId) => {
-    navigate(`/kyc/detail/editor/${userId}`);
-  };
-
-  // Approve KYC
-  const approveKYC = async (userId) => {
-    setActionLoading(true);
-    try {
-      const res = await adminAxios.post(`/admin/kyc/${userId}/verify`, { action: "approve" });
-      if (res.data.success) {
-        toast.success("KYC approved successfully!");
-        setSelectedUser(null);
-        fetchKYC();
-        fetchStats();
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to approve KYC");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Reject KYC
-  const rejectKYC = async () => {
-    if (!rejectReason.trim()) {
-      toast.error("Please provide a rejection reason");
-      return;
-    }
-    setActionLoading(true);
-    try {
-      const res = await adminAxios.post(`/admin/kyc/${selectedUser.user._id}/verify`, {
-        action: "reject",
-        rejectionReason: rejectReason,
-      });
-      if (res.data.success) {
-        toast.success("KYC rejected");
-        setSelectedUser(null);
-        setShowRejectModal(false);
-        setRejectReason("");
-        fetchKYC();
-        fetchStats();
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to reject KYC");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Filter users by search
-  const filteredUsers = users.filter(user =>
-    user.name?.toLowerCase().includes(search.toLowerCase()) ||
-    user.email?.toLowerCase().includes(search.toLowerCase())
+const UserAvatar = ({ src, name, size = 32 }) => {
+  const [err, setErr] = useState(false);
+  const initials = (name || "??").split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+  const palette  = ["#6d28d9", "#1d4ed8", "#0369a1", "#15803d", "#b45309", "#c2410c"];
+  const bg       = palette[(name || "").charCodeAt(0) % palette.length];
+  
+  return (
+    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+      {!err && src ? (
+        <img src={src} alt={name} onError={() => setErr(true)} style={{
+          width: "100%", height: "100%", borderRadius: 10, objectFit: "cover",
+          border: "1.5px solid var(--border-subtle)",
+        }} />
+      ) : (
+        <div style={{
+          width: "100%", height: "100%", borderRadius: 10, background: bg, color: "#fff",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: size * 0.38, fontWeight: 700, border: "1.5px solid var(--border-subtle)",
+        }}>{initials}</div>
+      )}
+    </div>
   );
+};
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case "verified":
-        return <span className="px-2 py-1 text-xs font-semibold bg-emerald-500/20 text-emerald-400 rounded-full">Verified</span>;
-      case "submitted":
-      case "pending":
-        return <span className="px-2 py-1 text-xs font-semibold bg-amber-500/20 text-amber-400 rounded-full">Pending</span>;
-      case "rejected":
-        return <span className="px-2 py-1 text-xs font-semibold bg-red-500/20 text-red-400 rounded-full">Rejected</span>;
-      default:
-        return <span className="px-2 py-1 text-xs font-semibold bg-zinc-500/20 text-zinc-400 rounded-full">Not Submitted</span>;
-    }
-  };
+const StatusBadge = ({ status }) => {
+  const cfg = {
+    verified:     { label: "Verified",  color: "#15803d", bg: "rgba(21,128,61,0.1)",  border: "rgba(21,128,61,0.2)" },
+    submitted:    { label: "Pending",   color: "#b45309", bg: "rgba(180,83,9,0.1)",   border: "rgba(180,83,9,0.2)" },
+    pending:      { label: "Pending",   color: "#b45309", bg: "rgba(180,83,9,0.1)",   border: "rgba(180,83,9,0.2)" },
+    under_review: { label: "Review",    color: "#0369a1", bg: "rgba(3,105,161,0.1)",  border: "rgba(3,105,161,0.2)" },
+    rejected:     { label: "Rejected",  color: "#b91c1c", bg: "rgba(185,28,28,0.1)",  border: "rgba(185,28,28,0.2)" },
+  }[status] || { label: status, color: "#4b5563", bg: "#f3f4f6", border: "#e5e7eb" };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 5,
+      padding: "2px 10px", borderRadius: 8, fontSize: 11, fontWeight: 700,
+      background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`,
+      textTransform: "uppercase", letterSpacing: "0.02em"
+    }}>
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.color }} />
+      {cfg.label}
+    </span>
+  );
+};
+
+const StatCard = ({ label, value, icon: Icon, color, loading }) => (
+  <div className="card" style={{
+    flex: 1, minWidth: 200, padding: "18px 24px",
+    display: "flex", alignItems: "center", gap: 16,
+    border: "1px solid var(--border-subtle)",
+    background: "var(--bg-surface)",
+  }}>
+    <div style={{
+      width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+      background: `${color}12`, color: color,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: 20
+    }}>
+      <Icon />
+    </div>
+    {loading ? (
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div className="skeleton" style={{ height: 24, width: 40 }} />
+        <div className="skeleton" style={{ height: 12, width: 60 }} />
+      </div>
+    ) : (
+      <div>
+        <div style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.1 }}>
+          {(value || 0).toLocaleString()}
+        </div>
+        <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4, fontWeight: 500 }}>
+          {label}
+        </div>
+      </div>
+    )}
+  </div>
+);
+
+const KYCManagement = () => {
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState("editors"); // "editors" | "clients"
+  const [params, setParams] = useState({ page: 1, limit: 12, status: "submitted" });
+  const [selectedId, setSelectedId] = useState(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [isRejecting, setIsRejecting] = useState(false);
+
+  // ── Queries ──────────────────────────────────────────────────────────────
+
+  const editorStatsQuery = useQuery({
+    queryKey: ["kyc", "stats", "editors"],
+    queryFn: kycApi.getEditorStats,
+    enabled: activeTab === "editors"
+  });
+
+  const clientStatsQuery = useQuery({
+    queryKey: ["kyc", "stats", "clients"],
+    queryFn: kycApi.getClientStats,
+    enabled: activeTab === "clients"
+  });
+
+  const requestsQuery = useQuery({
+    queryKey: ["kyc", "requests", activeTab, params],
+    queryFn: () => activeTab === "editors" 
+      ? kycApi.getEditorRequests(params) 
+      : kycApi.getClientRequests(params),
+    keepPreviousData: true
+  });
+
+  const detailQuery = useQuery({
+    queryKey: ["kyc", "detail", activeTab, selectedId],
+    queryFn: () => activeTab === "editors"
+      ? kycApi.getEditorById(selectedId)
+      : kycApi.getClientById(selectedId),
+    enabled: !!selectedId && isDetailOpen
+  });
+
+  // ── Mutations ────────────────────────────────────────────────────────────
+
+  const verifyMutation = useMutation({
+    mutationFn: ({ id, data }) => activeTab === "editors"
+      ? kycApi.verifyEditor(id, data)
+      : kycApi.verifyClient(id, data),
+    onSuccess: (res) => {
+      toast.success(res.data.message || "Action successful");
+      queryClient.invalidateQueries(["kyc"]);
+      setIsDetailOpen(false);
+      setIsRejecting(false);
+      setRejectionReason("");
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Action failed");
+    }
+  });
+
+  // ── Handlers ─────────────────────────────────────────────────────────────
+
+  const handleAction = (action, reason = "") => {
+    if (!selectedId) return;
+    const data = activeTab === "editors" 
+      ? { action, rejectionReason: reason } 
+      : { status: action === "approve" ? "verified" : "rejected", rejectionReason: reason };
+    verifyMutation.mutate({ id: selectedId, data });
+  };
+
+  const openDetails = (id) => {
+    setSelectedId(id);
+    setIsDetailOpen(true);
+  };
+
+  // ── Columns ──────────────────────────────────────────────────────────────
+
+  const columns = useMemo(() => [
+    {
+      header: activeTab === "editors" ? "Editor" : "Client",
+      accessorKey: activeTab === "editors" ? "name" : "user",
+      cell: (user, row) => {
+        const name = activeTab === "editors" ? user?.name : row?.fullName || user?.name;
+        return (
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <UserAvatar src={user?.profilePicture} name={name} />
+            <div style={{ overflow: "hidden" }}>
+              <div style={{ fontWeight: 700, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {name}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-secondary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {user?.email}
+              </div>
+            </div>
+          </div>
+        );
+      }
+    },
+    {
+      header: "Submitted",
+      accessorKey: activeTab === "editors" ? "kycSubmittedAt" : "submittedAt",
+      cell: (date) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--text-secondary)", fontSize: 13 }}>
+          <HiOutlineClock size={14} />
+          {date ? formatDate(date) : "N/A"}
+        </div>
+      )
+    },
+    {
+      header: "KYC Status",
+      accessorKey: activeTab === "editors" ? "kycStatus" : "status",
+      cell: (status) => <StatusBadge status={status} />
+    },
+    {
+      header: "Bank Proof",
+      accessorKey: activeTab === "editors" ? "bankDetails" : "bankName",
+      cell: (bank, row) => (
+        <div style={{ fontSize: 12, color: "var(--text-secondary)", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis" }}>
+          {activeTab === "editors" ? bank?.bankName : row?.bankName || "—"}
+        </div>
+      )
+    },
+    {
+      id: "actions",
+      header: "",
+      align: "right",
+      cell: (_, row) => (
+        <button 
+          onClick={() => openDetails(row._id)}
+          style={{
+            padding: "6px 14px", borderRadius: 8, background: "var(--bg-elevated)",
+            border: "1px solid var(--border-subtle)", color: "var(--text-primary)",
+            fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+            transition: "all var(--transition)"
+          }}
+          onMouseOver={(e) => { e.currentTarget.style.borderColor = "var(--brand)"; e.currentTarget.style.color = "var(--brand)"; }}
+          onMouseOut={(e) => { e.currentTarget.style.borderColor = "var(--border-subtle)"; e.currentTarget.style.color = "var(--text-primary)"; }}
+        >
+          <HiOutlineEye size={14} /> View Details
+        </button>
+      )
+    }
+  ], [activeTab]);
+
+  const stats = activeTab === "editors" ? editorStatsQuery.data?.data?.stats : clientStatsQuery.data?.data?.stats;
+  const isStatsLoading = activeTab === "editors" ? editorStatsQuery.isLoading : clientStatsQuery.isLoading;
+
+  return (
+    <div style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 24, background: "var(--bg-page)", minHeight: "100vh" }}>
+      
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <FaShieldAlt className="text-blue-500" />
-          KYC Verification
-        </h1>
-        <p className="text-zinc-400 text-sm mt-1">Verify editor bank accounts and identity</p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <h1 style={{ fontSize: 28, fontWeight: 900, color: "var(--text-primary)", letterSpacing: "-0.03em", margin: 0 }}>
+            KYC Management
+          </h1>
+          <p style={{ color: "var(--text-secondary)", fontSize: 14, marginTop: 4 }}>
+            Review and verify user identity & banking records.
+          </p>
+        </div>
+        <button 
+          onClick={() => queryClient.invalidateQueries(["kyc"])}
+          style={{
+            display: "flex", alignItems: "center", gap: 8, padding: "8px 16px",
+            background: "var(--bg-elevated)", border: "1px solid var(--border-subtle)",
+            borderRadius: 10, color: "var(--text-secondary)", fontSize: 13, fontWeight: 600, cursor: "pointer"
+          }}
+        >
+          <HiOutlineArrowPath size={16} /> Refresh
+        </button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-              <FaClock className="text-amber-500" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white">{stats.pending}</p>
-              <p className="text-xs text-zinc-400">Pending Review</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <FaCheckCircle className="text-emerald-500" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white">{stats.verified}</p>
-              <p className="text-xs text-zinc-400">Verified</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
-              <FaTimesCircle className="text-red-500" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white">{stats.rejected}</p>
-              <p className="text-xs text-zinc-400">Rejected</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-zinc-500/10 flex items-center justify-center">
-              <FaUser className="text-zinc-500" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white">{stats.notSubmitted}</p>
-              <p className="text-xs text-zinc-400">Not Submitted</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        {/* Status Tabs */}
-        <div className="flex gap-2">
-          {[
-            { value: "submitted", label: "Pending", count: stats.pending },
-            { value: "verified", label: "Verified", count: stats.verified },
-            { value: "rejected", label: "Rejected", count: stats.rejected },
-            { value: "all", label: "All", count: stats.pending + stats.verified + stats.rejected },
-          ].map(tab => (
-            <button
-              key={tab.value}
-              onClick={() => { setStatusFilter(tab.value); setPagination(p => ({ ...p, page: 1 })); }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                statusFilter === tab.value
-                  ? "bg-blue-600 text-white"
-                  : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
-              }`}
-            >
-              {tab.label} ({tab.count})
-            </button>
-          ))}
-        </div>
-
-        {/* Search */}
-        <div className="flex-1 relative">
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-          <input
-            type="text"
-            placeholder="Search by name or email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 outline-none focus:border-blue-500"
-          />
-        </div>
-      </div>
-
-      {/* Table - Horizontal scroll on mobile */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[700px]">
-          <thead>
-            <tr className="border-b border-zinc-800">
-              <th className="text-left text-xs font-medium text-zinc-400 uppercase px-4 py-3">Editor</th>
-              <th className="text-left text-xs font-medium text-zinc-400 uppercase px-4 py-3 hidden md:table-cell">Bank Details</th>
-              <th className="text-left text-xs font-medium text-zinc-400 uppercase px-4 py-3">Status</th>
-              <th className="text-left text-xs font-medium text-zinc-400 uppercase px-4 py-3 hidden md:table-cell">Submitted</th>
-              <th className="text-center text-xs font-medium text-zinc-400 uppercase px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              [...Array(5)].map((_, i) => (
-                <tr key={i} className="border-b border-zinc-800/50 animate-pulse">
-                  <td className="px-4 py-4"><div className="h-4 bg-zinc-800 rounded w-32" /></td>
-                  <td className="px-4 py-4 hidden md:table-cell"><div className="h-4 bg-zinc-800 rounded w-40" /></td>
-                  <td className="px-4 py-4"><div className="h-4 bg-zinc-800 rounded w-20" /></td>
-                  <td className="px-4 py-4 hidden md:table-cell"><div className="h-4 bg-zinc-800 rounded w-24" /></td>
-                  <td className="px-4 py-4"><div className="h-8 bg-zinc-800 rounded w-20 mx-auto" /></td>
-                </tr>
-              ))
-            ) : filteredUsers.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="text-center py-12 text-zinc-500">
-                  No KYC submissions found
-                </td>
-              </tr>
-            ) : (
-              filteredUsers.map(user => (
-                <tr key={user._id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={user.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"}
-                        alt={user.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                      <div>
-                        <p className="text-white font-medium text-sm">{user.name}</p>
-                        <p className="text-zinc-500 text-xs">{user.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 hidden md:table-cell">
-                    <div>
-                      <p className="text-zinc-300 text-sm">{user.bankDetails?.accountHolderName || "-"}</p>
-                      <p className="text-zinc-500 text-xs">{user.bankDetails?.bankName} • {user.bankDetails?.ifscCode}</p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    {getStatusBadge(user.kycStatus)}
-                  </td>
-                  <td className="px-4 py-3 hidden md:table-cell">
-                    <p className="text-zinc-400 text-sm">
-                      {user.kycSubmittedAt ? new Date(user.kycSubmittedAt).toLocaleDateString() : "-"}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-center gap-2">
-                      <button
-                        onClick={() => viewDetails(user._id)}
-                        className="p-2 rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 transition-all"
-                        title="View Details"
-                      >
-                        <FaEye />
-                      </button>
-                      {user.kycStatus === "submitted" && (
-                        <>
-                          <button
-                            onClick={() => approveKYC(user._id)}
-                            className="p-2 rounded-lg bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 transition-all"
-                            title="Approve"
-                          >
-                            <FaCheck />
-                          </button>
-                          <button
-                            onClick={() => { viewDetails(user._id); setShowRejectModal(true); }}
-                            className="p-2 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600/30 transition-all"
-                            title="Reject"
-                          >
-                            <FaTimes />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-        </div>
-
-        {/* Pagination */}
-        {pagination.pages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-800">
-            <p className="text-sm text-zinc-400">
-              Page {pagination.page} of {pagination.pages} ({pagination.total} total)
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}
-                disabled={pagination.page === 1}
-                className="p-2 rounded-lg bg-zinc-800 text-zinc-400 disabled:opacity-50 hover:bg-zinc-700"
-              >
-                <FaChevronLeft />
-              </button>
-              <button
-                onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}
-                disabled={pagination.page === pagination.pages}
-                className="p-2 rounded-lg bg-zinc-800 text-zinc-400 disabled:opacity-50 hover:bg-zinc-700"
-              >
-                <FaChevronRight />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Details Modal */}
-      <AnimatePresence>
-        {selectedUser && !showRejectModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
-            onClick={() => setSelectedUser(null)}
+      {/* Tabs Layout */}
+      <div style={{ display: "flex", gap: 8, padding: 4, background: "var(--bg-card)", borderRadius: 12, width: "fit-content", border: "1px solid var(--border-subtle)" }}>
+        {[["editors", "Editor Verifications", HiOutlineFingerPrint], ["clients", "Client Verifications", HiOutlineShieldCheck]].map(([id, label, Icon]) => (
+          <button
+            key={id}
+            onClick={() => { setActiveTab(id); setParams({ ...params, page: 1 }); }}
+            style={{
+              display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 10,
+              fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", transition: "all 0.2s",
+              background: activeTab === id ? "var(--text-primary)" : "transparent",
+              color: activeTab === id ? "var(--bg-page)" : "var(--text-secondary)",
+            }}
           >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
+            <Icon size={16} /> {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Stats Overview */}
+      <div style={{ display: "flex", gap: 16, marginBottom: 28, flexWrap: "wrap", alignItems: "stretch" }}>
+        {(activeTab === "editors" ? [
+          { label: "Pending Reviews", value: editorStatsQuery.data?.data?.pendingCount, icon: HiOutlineClock, color: "#b45309" },
+          { label: "Verified Partners", value: editorStatsQuery.data?.data?.verifiedCount, icon: HiOutlineCheckCircle, color: "#15803d" },
+          { label: "Rejected Issues", value: editorStatsQuery.data?.data?.rejectedCount, icon: HiOutlineXCircle, color: "#b91c1c" },
+          { label: "Total Pool", value: editorStatsQuery.data?.data?.totalCount, icon: HiOutlineUserGroup, color: "#6d28d9" },
+        ] : [
+          { label: "New Submissions", value: clientStatsQuery.data?.data?.submitted, icon: HiOutlineClock, color: "#b45309" },
+          { label: "Verified Clients", value: clientStatsQuery.data?.data?.verified, icon: HiOutlineCheckCircle, color: "#15803d" },
+          { label: "Rejected Cases", value: clientStatsQuery.data?.data?.rejected, icon: HiOutlineXCircle, color: "#b91c1c" },
+          { label: "Grand Total", value: clientStatsQuery.data?.data?.total, icon: HiOutlineUserGroup, color: "#6d28d9" },
+        ]).map((s, idx) => (
+          <StatCard key={idx} {...s} loading={activeTab === "editors" ? editorStatsQuery.isLoading : clientStatsQuery.isLoading} />
+        ))}
+      </div>
+
+      {/* Main Content Area */}
+      <div className="card" style={{ border: "1px solid var(--border-subtle)", background: "var(--bg-surface)", overflow: "hidden" }}>
+        {/* Table Controls */}
+        <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", background: "rgba(0,0,0,0.01)" }}>
+          <div style={{ position: "relative", flex: 1, minWidth: 280, maxWidth: 400 }}>
+            <HiOutlineMagnifyingGlass size={16} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+            <input 
+              type="text" 
+              placeholder={`Search ${activeTab === 'editors' ? 'editors' : 'clients'} by name or email...`}
+              value={params.search || ""}
+              onChange={(e) => setParams(prev => ({ ...prev, search: e.target.value, page: 1 }))}
+              style={{
+                width: "100%", padding: "10px 14px 10px 42px", borderRadius: 10, background: "var(--bg-elevated)",
+                border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13, outline: "none"
+              }}
+            />
+          </div>
+          
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Status Filter:</span>
+            <select 
+              value={params.status}
+              onChange={(e) => setParams({ ...params, status: e.target.value, page: 1 })}
+              style={{
+                padding: "8px 12px", borderRadius: 8, background: "var(--bg-elevated)", border: "1px solid var(--border-subtle)",
+                color: "var(--text-primary)", fontSize: 13, cursor: "pointer", outline: "none"
+              }}
             >
-              {detailsLoading ? (
-                <div className="p-8 flex items-center justify-center">
-                  <FaSpinner className="animate-spin text-2xl text-blue-500" />
-                </div>
-              ) : (
-                <>
-                  {/* Header */}
-                  <div className="p-5 border-b border-zinc-800 flex items-center gap-4">
-                    <img
-                      src={selectedUser.user.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"}
-                      alt={selectedUser.user.name}
-                      className="w-16 h-16 rounded-full object-cover"
-                    />
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-white">{selectedUser.user.name}</h3>
-                      <p className="text-zinc-400 text-sm">{selectedUser.user.email}</p>
-                      {getStatusBadge(selectedUser.user.kycStatus)}
+              <option value="submitted">Pending Action</option>
+              <option value="verified">Verified Records</option>
+              <option value="rejected">Rejected Issues</option>
+              <option value="all">Full History</option>
+            </select>
+          </div>
+        </div>
+
+        <DataTable 
+          columns={columns}
+          data={activeTab === "editors" ? requestsQuery.data?.data?.users : requestsQuery.data?.data?.kycList || []}
+          loading={requestsQuery.isLoading}
+          pagination={{
+            page: params.page,
+            pageSize: params.limit,
+            total: requestsQuery.data?.data?.pagination?.total || 0,
+            onPageChange: (page) => setParams({ ...params, page })
+          }}
+        />
+      </div>
+
+      {/* Enhanced Detail SlideOver */}
+      <SlideOver
+        isOpen={isDetailOpen}
+        onClose={() => { setIsDetailOpen(false); setRejectionReason(""); setIsRejecting(false); }}
+        title="Verification Terminal"
+      >
+        {detailQuery.isLoading ? (
+          <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
+            <div className="skeleton" style={{ height: 100, borderRadius: 16 }} />
+            <div className="skeleton" style={{ height: 200, borderRadius: 16 }} />
+            <div className="skeleton" style={{ height: 300, borderRadius: 16 }} />
+          </div>
+        ) : detailQuery.data?.data ? (
+          <div style={{ padding: "24px 30px", paddingBottom: 140 }}>
+            {(() => {
+              const d = detailQuery.data.data;
+              const user = activeTab === "editors" ? d.user : d.kyc.user;
+              const kyc = activeTab === "editors" ? d.user : d.kyc;
+              const status = kyc.kycStatus || kyc.status || "pending";
+              const name = activeTab === "editors" ? user?.name : kyc?.fullName || user?.name;
+              
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+                  {/* Profile Section */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 20, padding: 20, background: "var(--bg-elevated)", borderRadius: 16, border: "1px solid var(--border-subtle)" }}>
+                    <UserAvatar src={user?.profilePicture} name={name} size={64} />
+                    <div style={{ flex: 1 }}>
+                      <h3 style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>{name}</h3>
+                      <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "2px 0 8px" }}>{user?.email}</p>
+                      <StatusBadge status={status} />
                     </div>
-                    <button onClick={() => setSelectedUser(null)} className="text-zinc-500 hover:text-white">
-                      <FaTimes />
-                    </button>
                   </div>
 
-                  {/* Bank Details */}
-                  <div className="p-5 space-y-4">
-                    <h4 className="text-sm font-semibold text-zinc-300 flex items-center gap-2">
-                      <FaUniversity className="text-blue-400" /> Bank Details
-                    </h4>
-                    <div className="grid grid-cols-2 gap-4">
+                  {/* Financial Intelligence */}
+                  <section>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                      <HiOutlineBanknotes size={18} style={{ color: "var(--brand)" }} />
+                      <h4 style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", margin: 0 }}>Banking Intelligence</h4>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       {[
-                        { label: "Account Holder", value: selectedUser.user.bankDetails?.accountHolderName },
-                        { label: "Bank Name", value: selectedUser.user.bankDetails?.bankName },
-                        { label: "Account Number", value: selectedUser.user.bankDetails?.accountNumber },
-                        { label: "IFSC Code", value: selectedUser.user.bankDetails?.ifscCode },
-                        { label: "PAN Number", value: selectedUser.user.bankDetails?.panNumber },
-                      ].map((item, idx) => (
-                        <div key={idx} className="bg-zinc-800 rounded-lg p-3">
-                          <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{item.label}</p>
-                          <p className="text-white text-sm font-medium">{item.value || "-"}</p>
+                        ["Account Holder", kyc.bankDetails?.accountHolderName || kyc.accountHolderName],
+                        ["Bank Association", kyc.bankDetails?.bankName || kyc.bankName],
+                        ["IFSC Identifier", kyc.bankDetails?.ifscCode || kyc.ifscCode],
+                        ["Account Number", kyc.bankDetails?.accountNumber || kyc.bankAccountNumberMasked || "•••• •••• ••••"]
+                      ].map(([label, val]) => (
+                        <div key={label} style={{ padding: 14, background: "var(--bg-card)", borderRadius: 12, border: "1px solid var(--border-subtle)" }}>
+                          <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>{label}</span>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginTop: 4, fontFamily: label.includes("Number") ? "monospace" : "inherit" }}>
+                            {val || "Unavailable"}
+                          </div>
                         </div>
                       ))}
                     </div>
+                  </section>
 
+                  {/* Evidence Vault */}
+                  <section>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                      <HiOutlineIdentification size={18} style={{ color: "var(--brand)" }} />
+                      <h4 style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", margin: 0 }}>Document Evidence</h4>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                      {(activeTab === "editors" ? kyc.kycDocuments : kyc.documents || []).map((doc, idx) => (
+                        <motion.div 
+                          key={idx} 
+                          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }}
+                          style={{
+                            borderRadius: 16, overflow: "hidden", border: "1px solid var(--border-subtle)", background: "#000"
+                          }}
+                        >
+                          <div style={{ padding: "10px 16px", background: "var(--bg-elevated)", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", color: "var(--text-muted)" }}>{doc.type?.replace("_", " ")}</span>
+                            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{new Date(doc.uploadedAt).toLocaleDateString()}</span>
+                          </div>
+                          <div style={{ position: "relative", aspectRatio: "16/10" }}>
+                            <img src={doc.url} alt="KYC Proof" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.8 }} />
+                            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)" }}>
+                              <a 
+                                href={doc.url} target="_blank" rel="noreferrer"
+                                style={{
+                                  padding: "10px 20px", background: "#fff", color: "#000", borderRadius: 10,
+                                  fontSize: 13, fontWeight: 800, textDecoration: "none", display: "flex", alignItems: "center", gap: 8,
+                                  boxShadow: "0 10px 25px rgba(0,0,0,0.3)"
+                                }}
+                              >
+                                <HiOutlineArrowTopRightOnSquare /> Full Spectrum View
+                              </a>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </section>
 
-                    {/* Documents */}
-                    {selectedUser.user.kycDocuments && selectedUser.user.kycDocuments.length > 0 && (
-                      <div className="bg-zinc-800 rounded-lg p-3 mt-4">
-                        <h4 className="text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wide flex items-center gap-2">
-                          <FaIdCard /> Documents
-                        </h4>
-                        <div className="flex gap-3 overflow-x-auto pb-2">
-                          {selectedUser.user.kycDocuments.map((doc, idx) => (
-                            <a 
-                              key={idx} 
-                              href={doc.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              className="block min-w-[100px] w-24 h-24 bg-zinc-700 rounded-lg overflow-hidden relative group border border-zinc-600"
-                            >
-                               {doc.url.endsWith('.pdf') ? (
-                                  <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 bg-zinc-800">
-                                    <FaFileAlt className="text-2xl mb-1" />
-                                    <span className="text-[10px]">PDF</span>
-                                  </div>
-                               ) : (
-                                  <img src={doc.url} alt={doc.type} className="w-full h-full object-cover" />
-                               )}
-                               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                                  <FaEye className="text-white" />
-                               </div>
-                               <span className="absolute bottom-0 left-0 right-0 bg-black/80 text-[9px] text-white text-center py-1 truncate uppercase font-medium">
-                                 {doc.type.replace('_', ' ')}
-                               </span>
-                            </a>
-                          ))}
-                        </div>
+                  {/* Operational History */}
+                  {d.logs?.length > 0 && (
+                    <section>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                        <HiOutlineClock size={18} style={{ color: "var(--text-muted)" }} />
+                        <h4 style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", margin: 0 }}>Audit History</h4>
                       </div>
-                    )}
-
-                    {selectedUser.user.kycRejectionReason && (
-                      <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                        <p className="text-red-400 text-sm">
-                          <strong>Rejection Reason:</strong> {selectedUser.user.kycRejectionReason}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Audit History */}
-                    {selectedUser.logs && selectedUser.logs.length > 0 && (
-                      <div className="bg-zinc-800/50 rounded-lg p-3 mt-2">
-                        <h4 className="text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wide flex items-center gap-2">
-                          <FaClock /> Audit History
-                        </h4>
-                        <div className="space-y-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
-                          {selectedUser.logs.map((log, i) => (
-                              <div key={i} className="text-xs border-l-2 pl-2 border-zinc-700">
-                                <div className="flex justify-between">
-                                  <span className={`font-medium ${
-                                    log.action === 'verified' ? 'text-emerald-400' : 
-                                    log.action === 'rejected' ? 'text-red-400' : 'text-blue-400'
-                                  }`}>{log.action.replace('_', ' ')}</span>
-                                  <span className="text-zinc-600">{new Date(log.createdAt).toLocaleDateString()}</span>
-                                </div>
-                                {log.reason && <p className="text-zinc-500 mt-0.5">{log.reason}</p>}
-                                <p className="text-zinc-600 text-[10px] mt-0.5">
-                                  By: {log.performedBy?.adminId?.name || (log.performedBy?.userId ? "User" : "System")}
-                                </p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        {d.logs.slice(0, 3).map((log, idx) => (
+                          <div key={idx} style={{ padding: 14, background: "var(--bg-elevated)", borderRadius: 12, border: "1px solid var(--border-subtle)", fontSize: 12 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <div style={{ width: 8, height: 8, borderRadius: "50%", background: log.action === "verified" ? "var(--success)" : "var(--danger)" }} />
+                              <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>Record {log.action}</span>
+                            </div>
+                            <div style={{ color: "var(--text-secondary)", marginTop: 4 }}>
+                              By {log.performedBy?.adminId?.name || "System"} • {new Date(log.createdAt).toLocaleString()}
+                            </div>
+                            {log.reason && (
+                              <div style={{ marginTop: 8, padding: 8, background: "rgba(185,28,28,0.05)", borderRadius: 6, color: "var(--danger)", fontWeight: 500 }}>
+                                Reason: {log.reason}
                               </div>
-                          ))}
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Terminal Action Bar */}
+                  <div style={{
+                    position: "absolute", bottom: 0, left: 0, right: 0, padding: "24px 30px",
+                    background: "var(--bg-panel)", borderTop: "1px solid var(--border-subtle)",
+                    display: "flex", gap: 12, backdropFilter: "blur(12px)"
+                  }}>
+                    {!isRejecting ? (
+                      <>
+                        <button 
+                          onClick={() => handleAction("approve")}
+                          disabled={verifyMutation.isPending}
+                          style={{
+                            flex: 1, padding: "14px", borderRadius: 12, background: "var(--success)",
+                            color: "#fff", border: "none", fontSize: 14, fontWeight: 800,
+                            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                            boxShadow: "0 4px 12px rgba(21,128,61,0.2)"
+                          }}
+                        >
+                          {verifyMutation.isPending ? <div className="spinner-sm" /> : <HiOutlineCheck size={18} />} Verify Account
+                        </button>
+                        <button 
+                          onClick={() => setIsRejecting(true)}
+                          disabled={verifyMutation.isPending}
+                          style={{
+                            flex: 1, padding: "14px", borderRadius: 12, background: "var(--bg-elevated)",
+                            color: "var(--danger)", border: "1px solid var(--border-subtle)", fontSize: 14, fontWeight: 800,
+                            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8
+                          }}
+                        >
+                          <HiOutlineXMark size={18} /> Flag for Rejection
+                        </button>
+                      </>
+                    ) : (
+                      <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
+                        <textarea
+                          placeholder="Provide detailed feedback for the user..."
+                          value={rejectionReason}
+                          onChange={(e) => setRejectionReason(e.target.value)}
+                          style={{
+                            width: "100%", padding: 14, borderRadius: 12, background: "var(--bg-card)",
+                            border: "1px solid var(--danger)", color: "var(--text-primary)", fontSize: 13,
+                            minHeight: 100, outline: "none"
+                          }}
+                        />
+                        <div style={{ display: "flex", gap: 10 }}>
+                          <button 
+                            onClick={() => handleAction("reject", rejectionReason)}
+                            disabled={!rejectionReason.trim() || verifyMutation.isPending}
+                            style={{ flex: 1, padding: 12, borderRadius: 10, background: "var(--danger)", color: "#fff", border: "none", fontWeight: 700, cursor: "pointer" }}
+                          >
+                            Execute Rejection
+                          </button>
+                          <button 
+                            onClick={() => setIsRejecting(false)}
+                            style={{ flex: 1, padding: 12, borderRadius: 10, background: "var(--bg-elevated)", color: "var(--text-secondary)", border: "1px solid var(--border-subtle)", fontWeight: 700, cursor: "pointer" }}
+                          >
+                            Abort
+                          </button>
                         </div>
                       </div>
                     )}
                   </div>
-
-                  {/* Actions */}
-                  {selectedUser.user.kycStatus === "submitted" && (
-                    <div className="p-5 border-t border-zinc-800 flex gap-3">
-                      <button
-                        onClick={() => { setShowRejectModal(true); }}
-                        className="flex-1 py-2.5 bg-red-600/20 text-red-400 rounded-lg font-medium hover:bg-red-600/30 transition-all"
-                      >
-                        Reject
-                      </button>
-                      <button
-                        onClick={() => approveKYC(selectedUser.user._id)}
-                        disabled={actionLoading}
-                        className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-500 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                      >
-                        {actionLoading ? <FaSpinner className="animate-spin" /> : <FaCheck />}
-                        Approve KYC
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Reject Modal */}
-      <AnimatePresence>
-        {showRejectModal && selectedUser && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
-            onClick={() => { setShowRejectModal(false); setRejectReason(""); }}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-5 border-b border-zinc-800">
-                <h3 className="text-lg font-bold text-white">Reject KYC</h3>
-                <p className="text-zinc-400 text-sm">Provide a reason for rejection</p>
-              </div>
-              <div className="p-5">
-                <textarea
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  placeholder="e.g., Bank details do not match the provided name..."
-                  rows={4}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-white placeholder:text-zinc-500 outline-none focus:border-red-500"
-                />
-              </div>
-              <div className="p-5 border-t border-zinc-800 flex gap-3">
-                <button
-                  onClick={() => { setShowRejectModal(false); setRejectReason(""); }}
-                  className="flex-1 py-2.5 bg-zinc-800 text-zinc-400 rounded-lg font-medium hover:bg-zinc-700"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={rejectKYC}
-                  disabled={actionLoading || !rejectReason.trim()}
-                  className="flex-1 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-500 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {actionLoading ? <FaSpinner className="animate-spin" /> : <FaTimes />}
-                  Reject KYC
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                </div>
+              );
+            })()}
+          </div>
+        ) : null}
+      </SlideOver>
     </div>
   );
 };

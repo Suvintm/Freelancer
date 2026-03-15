@@ -5,7 +5,6 @@ import { authorize } from "../middleware/authMiddleware.js";
 import {
   getEditorScore,
   getMyScoreBreakdown,
-  recalculateAllScores,
 } from "../controllers/suvixScoreController.js";
 
 const router = express.Router();
@@ -14,9 +13,6 @@ const router = express.Router();
 
 // Protected: Get my score breakdown (editor only)
 router.get("/my/breakdown", protect, authorize("editor"), getMyScoreBreakdown);
-
-// Admin: Force recalculate all scores
-router.post("/admin/recalculate-all", protect, authorize("admin"), recalculateAllScores);
 
 // Public: Get editor's score (must be last - catches any :editorId)
 router.get("/:editorId", getEditorScore);

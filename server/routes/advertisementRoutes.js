@@ -9,16 +9,16 @@ import {
   getSiteSettingsPublic,
   trackAdView,
   trackAdClick,
-  getAllAds,
-  createAd,
-  updateAd,
-  deleteAd,
-  reorderAds,
-  getAdAnalytics,
-  toggleSuvixAds,
-  getSiteSettingsAdmin,
+//   getAllAds,
+//   createAd,
+//   updateAd,
+//   deleteAd,
+//   reorderAds,
+//   getAdAnalytics,
+//   toggleSuvixAds,
+//   getSiteSettingsAdmin,
 } from "../controllers/advertisementController.js";
-import { protectAdmin } from "../middleware/adminAuth.js";
+// import { protectAdmin } from "../middleware/adminAuth.js";
 
 const router = express.Router();
 
@@ -40,6 +40,8 @@ const upload = multer({
 // =====================================================================
 
 // ── Admin: GET routes ────────────────────────────────────────────────
+// MOVED TO ADMIN-SERVER
+/*
 router.get("/admin/all", protectAdmin, getAllAds);
 router.get("/admin/analytics", protectAdmin, getAdAnalytics);
 router.get("/admin/settings", protectAdmin, getSiteSettingsAdmin);
@@ -54,6 +56,7 @@ router.post("/", protectAdmin, createAd);
 router.put("/admin/reorder", protectAdmin, reorderAds);
 router.put("/:id", protectAdmin, updateAd);
 router.delete("/:id", protectAdmin, deleteAd);
+*/
 
 // ── Public: Named routes (before wildcard /:id) ──────────────────────
 router.get("/settings", getSiteSettingsPublic);       // Global ad toggle (for frontend)

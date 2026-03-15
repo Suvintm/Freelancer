@@ -42,3 +42,10 @@ ehthumbs.db
 # Debug
 .npm
 .eslintcache
+
+# Build errors
+build_error_utf8.txt
+build_errors.txt
+
+# Internal Documentation
+docs/adminimplementation/
