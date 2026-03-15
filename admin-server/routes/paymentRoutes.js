@@ -13,7 +13,7 @@ import {
   getPaymentStats,
   getPaymentById,
   getReceiptData,
-} from "../../server/controllers/paymentController.js";
+} from "../controllers/paymentController.js";
 
 import { getAllPayments } from "../controllers/adminPaymentController.js";
 import { getRazorpayAnalytics as getAdminPaymentAnalytics } from "../controllers/adminAnalyticsController.js";
