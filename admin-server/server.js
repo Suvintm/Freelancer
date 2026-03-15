@@ -39,6 +39,7 @@ app.use(cors({
             "http://localhost:5174",
             "http://localhost:5175",
             "http://localhost:3000",
+            "https://adminsuvix.vercel.app"
         ].filter(Boolean);
         
         if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
