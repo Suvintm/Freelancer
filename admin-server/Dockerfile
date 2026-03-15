@@ -26,12 +26,17 @@ COPY --from=builder /app/node_modules ./node_modules
 # Copy only necessary files
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/server.js ./
+COPY --from=builder /app/socket.js ./
 COPY --from=builder /app/models ./models
 COPY --from=builder /app/routes ./routes
 COPY --from=builder /app/middleware ./middleware
 COPY --from=builder /app/controllers ./controllers
 COPY --from=builder /app/utils ./utils
-COPY --from=builder /app/socket.js ./
+COPY --from=builder /app/config ./config
+COPY --from=builder /app/jobs ./jobs
+COPY --from=builder /app/kafka ./kafka
+COPY --from=builder /app/services ./services
+COPY --from=builder /app/geoip ./geoip
 
 # Clean up devDependencies
 RUN npm prune --production
