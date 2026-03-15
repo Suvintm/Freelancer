@@ -2,7 +2,7 @@
 node_modules/
 
 # GeoIP databases
-geoip/
+# geoip/ (Removed from ignore to allow production build)
 *.mmdb
 
 # Environment variables - NEVER COMMIT THESE!
