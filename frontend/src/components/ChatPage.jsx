@@ -1153,14 +1153,16 @@ useEffect(() => {
     stopTyping(orderId);
     playPopSound(); // 🎵 Pop Sound!
 
+    const messageContent = newMessage.trim();
+    const tempId = `temp_${Date.now()}`;
+    
     try {
       const token = user?.token;
       
       // 🚀 Optimistic UI: Create temporary message
-      const tempId = `temp_${Date.now()}`;
       const optimisticMsg = {
         _id: tempId,
-        content: newMessage.trim(),
+        content: messageContent,
         type: "text",
         sender: { _id: user._id, name: user.name, profilePicture: user.profilePicture },
         createdAt: new Date().toISOString(),
@@ -1182,7 +1184,6 @@ useEffect(() => {
       setNewMessage("");
       setReplyingTo(null);
 
-      const messageContent = newMessage.trim();
       const messageData = { content: messageContent, type: "text" };
       if (optimisticMsg.replyTo) {
         messageData.replyTo = optimisticMsg.replyTo;

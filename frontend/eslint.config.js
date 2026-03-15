@@ -5,7 +5,17 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 
 export default [
   {
-    ignores: ['dist', 'node_modules'],
+    ignores: ['dist', 'node_modules', 'public/idb-keyval-umd.js'],
+  },
+  {
+    files: ['public/firebase-messaging-sw.js'],
+    languageOptions: {
+      globals: {
+        ...globals.serviceworker,
+        firebase: 'readonly',
+        idbKeyval: 'readonly',
+      },
+    },
   },
   {
     files: ['**/*.{js,jsx}'],

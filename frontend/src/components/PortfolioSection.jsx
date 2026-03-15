@@ -512,7 +512,7 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
                     {isReel && (
                       <>
                         <div className="flex items-center gap-1 text-white text-sm font-semibold">
-                          <FaHeart />
+                           <FaHeart />
                           <span>{p.likesCount || 0}</span>
                         </div>
                         <div className="flex items-center gap-1 text-white text-sm font-semibold">
@@ -597,7 +597,7 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
               <>
                 <p className="text-xs text-zinc-600 mb-4">Showcase your work</p>
                 <button
-                  onClick={() => setShowForm(true)}
+                  onClick={() => navigate("/upload-reel")}
                   className="px-4 py-2 bg-white text-black text-xs font-semibold rounded-lg hover:bg-zinc-200 transition-colors"
                 >
                   Add Portfolio

@@ -163,7 +163,14 @@ const ExploreEditors = () => {
   };
 
   // ── DATA FETCHING ──────────────────────────────────────────────────
-  const { data: editorsResponse, isLoading: editorsLoading, isFetching: editorsFetching, isError, error: queryError } = useQuery({
+  const { 
+    data: editorsResponse, 
+    isLoading: editorsLoading, 
+    isFetching: editorsFetching, 
+    isError, 
+    error: queryError,
+    refetch 
+  } = useQuery({
     queryKey: ['explore', 'editors', { 
       search: searchQuery, 
       page: pagination.page,
@@ -239,7 +246,7 @@ const ExploreEditors = () => {
           </div>
           <h3 className="text-xl font-bold text-white light:text-slate-900 mb-2">Something went wrong</h3>
           <p className="text-gray-500 light:text-slate-500 mb-6">{queryError?.message || "Error loading editors"}</p>
-          <button onClick={() => fetchEditors(1, "", filters)} className="inline-flex items-center gap-2 bg-emerald-500 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-emerald-600 transition-all">
+          <button onClick={() => refetch()} className="inline-flex items-center gap-2 bg-emerald-500 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-emerald-600 transition-all">
             Try Again
           </button>
         </div>
