@@ -19,7 +19,7 @@ const kycLogSchema = new mongoose.Schema({
   // Who performed the action?
   performedBy: {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // If user submitted/edited
-    adminId: { type: mongoose.Schema.Types.ObjectId, ref: "Admin" }, // If admin verified/rejected
+    adminId: { type: mongoose.Schema.Types.ObjectId, ref: "AdminMember" }, // If admin verified/rejected
     role: { type: String, enum: ["user", "admin", "system"], default: "user" }
   },
 

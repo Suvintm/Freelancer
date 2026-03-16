@@ -104,6 +104,8 @@ const clientKYCSchema = new mongoose.Schema(
     // === Identity Verification ===
     panNumber: {
       type: String,
+      set: encrypt,
+      get: decrypt,
       uppercase: true,
       trim: true,
       match: [/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Please provide a valid PAN number"],
@@ -135,7 +137,7 @@ const clientKYCSchema = new mongoose.Schema(
 
     verifiedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Admin",
+      ref: "AdminMember",
     },
 
     rejectionReason: {

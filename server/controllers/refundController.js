@@ -22,9 +22,9 @@ export const initiateRefund = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Order not found");
   }
 
-  // Check if payment was completed
-  if (order.paymentStatus !== "completed") {
-    throw new ApiError(400, "No payment to refund for this order");
+  // Check if payment is in a refundable state (escrow held or released)
+  if (!['escrow', 'released'].includes(order.paymentStatus)) {
+    throw new ApiError(400, `No refundable payment for this order (status: ${order.paymentStatus})`);
   }
 
   // Check if refund already exists
@@ -229,8 +229,8 @@ export const autoRefundOrder = async (orderId, reason = "order_rejected") => {
   try {
     const order = await Order.findById(orderId);
     
-    if (!order || order.paymentStatus !== "completed") {
-      logger.warn(`Cannot auto-refund order ${orderId}: No completed payment`);
+    if (!order || !['escrow', 'released'].includes(order.paymentStatus)) {
+      logger.warn(`Cannot auto-refund order ${orderId}: paymentStatus is ${order?.paymentStatus || 'N/A'}`);
       return null;
     }
 

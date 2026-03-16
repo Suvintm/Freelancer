@@ -55,6 +55,14 @@ export const paymentsApi = {
   initiateRefund: (id, data) => adminAxios.post(`/admin/payment-settings/refund/${id}`, data),
 };
 
+// ── Withdrawals (Payouts) ────────────────────────────────────────────────
+export const withdrawalsApi = {
+  getAll: (params) => adminAxios.get("/admin/withdrawals", { params }),
+  getStats: () => adminAxios.get("/admin/withdrawals/stats"),
+  getById: (id) => adminAxios.get(`/admin/withdrawals/${id}`),
+  updateStatus: (id, data) => adminAxios.patch(`/admin/withdrawals/${id}/status`, data),
+};
+
 // ── Gigs ──────────────────────────────────────────────────────────────────
 export const gigsApi = {
   getAll: (params) => adminAxios.get("/admin/gigs", { params }),

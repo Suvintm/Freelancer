@@ -6,7 +6,10 @@ import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import { createNotification } from "./notificationController.js";
 import { releasePayment } from "./paymentGatewayController.js";
 import { SiteSettings } from "../models/SiteSettings.js";
+import WalletTransaction from "../models/WalletTransaction.js";
+import { Payment } from "../models/Payment.js";
 import logger from "../utils/logger.js";
+import mongoose from "mongoose";
 
 // ============ CREATE ORDER FROM GIG ============
 export const createOrderFromGig = asyncHandler(async (req, res) => {
@@ -486,8 +489,7 @@ export const getMyOrders = asyncHandler(async (req, res) => {
   // Auto-expire any new orders past deadline
   await autoExpireNewOrders(userId, role);
   
-  // Check for overdue in-progress orders
-  await processOverdueOrders(userId, role);
+  // NOTE: Overdue order processing handled by scheduledJobs.js (runs hourly)
 
   const mongoose = (await import("mongoose")).default;
 
@@ -812,8 +814,8 @@ export const rejectOrder = asyncHandler(async (req, res) => {
     systemAction: "order_rejected",
   });
 
-  // Auto-refund if payment was completed
-  if (order.paymentStatus === "completed") {
+  // Auto-refund if payment is in escrow or released
+  if (['escrow', 'released'].includes(order.paymentStatus)) {
     try {
       const { autoRefundOrder } = await import("./refundController.js");
       await autoRefundOrder(order._id, "order_rejected");
@@ -899,75 +901,121 @@ export const submitWork = asyncHandler(async (req, res) => {
 
 // ============ COMPLETE ORDER (Auto or Client Confirm) ============
 export const completeOrder = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.params.id).populate("editor");
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  if (!order) {
-    throw new ApiError(404, "Order not found");
-  }
-
-  // Only client can manually complete
-  if (order.client.toString() !== req.user._id.toString()) {
-    throw new ApiError(403, "Not authorized");
-  }
-
-  if (order.status !== "submitted") {
-    throw new ApiError(400, "Order is not submitted yet");
-  }
-
-  // Update order status
-  order.status = "completed";
-  order.completedAt = new Date();
-  
-  // Try to release payment via Razorpay
-  let payoutResult = { status: "pending" };
   try {
-    if (order.escrowStatus === "held" && order.razorpayPaymentId) {
-      payoutResult = await releasePayment(order._id);
-      logger.info(`Payout initiated: ${order.orderNumber}, status: ${payoutResult.status}`);
-    } else {
-      // Mark as released even if no payment was held (for testing)
-      order.paymentStatus = "released";
-      order.escrowStatus = "released";
-      order.escrowReleasedAt = new Date();
-      
-      // Update editor earnings
-      await User.findByIdAndUpdate(order.editor._id, {
-        $inc: { totalEarnings: order.editorEarning },
-      });
+    const order = await Order.findById(req.params.id).populate("editor").session(session);
+
+    if (!order) {
+      throw new ApiError(404, "Order not found");
     }
-  } catch (payoutError) {
-    logger.error(`Payout failed for ${order.orderNumber}: ${payoutError.message}`);
-    // Continue with order completion, payout can be retried
+
+    // Only client can manually complete
+    if (order.client.toString() !== req.user._id.toString()) {
+      throw new ApiError(403, "Not authorized");
+    }
+
+    if (order.status !== "submitted") {
+      throw new ApiError(400, "Order is not submitted yet");
+    }
+
+    const now = new Date();
+    const clearanceDays = 7;
+    const clearanceDate = new Date(now.getTime() + clearanceDays * 24 * 60 * 60 * 1000);
+
+    // 1. Update order status
+    order.status = "completed";
+    order.completedAt = now;
+    order.paymentStatus = "released";
+    order.escrowStatus = "released";
+    order.escrowReleasedAt = now;
+    await order.save({ session });
+
+    // 2. Update editor earnings (Pending Balance)
+    const editor = await User.findById(order.editor._id).session(session);
+    const balanceBefore = editor.pendingBalance || 0;
+    
+    editor.pendingBalance = (editor.pendingBalance || 0) + order.editorEarning;
+    editor.lifetimeEarnings = (editor.lifetimeEarnings || 0) + order.editorEarning;
+    await editor.save({ session });
+
+    // 3. Create Wallet Transaction log (Pending Clearance)
+    await WalletTransaction.create([{
+      user: editor._id,
+      type: "earning",
+      amount: order.editorEarning,
+      status: "pending_clearance",
+      clearanceDate,
+      order: order._id,
+      balanceBefore,
+      balanceAfter: editor.pendingBalance,
+      description: `Earning for order ${order.orderNumber}`,
+      initiatedBy: "system"
+    }], { session });
+
+    // 4. Create Payment Document (Audit Trail)
+    await Payment.create([{
+      order: order._id,
+      client: order.client,
+      editor: editor._id,
+      amount: order.amount,
+      platformFee: order.platformFee,
+      editorEarning: order.editorEarning,
+      type: "escrow_release",
+      status: "completed",
+      orderSnapshot: {
+        orderNumber: order.orderNumber,
+        title: order.title,
+        description: order.description,
+        createdAt: order.createdAt,
+        completedAt: now,
+        deadline: order.deadline
+      },
+      completedAt: now,
+      notes: "Auto-generated on order completion"
+    }], { session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    // 5. Post-transaction actions (Notifications & Messages)
+    
+    // Create system message
+    await Message.create({
+      order: order._id,
+      sender: req.user._id,
+      type: "system",
+      content: "Order completed. Payment added to editor's pending balance (7-day clearance).",
+      systemAction: "work_completed",
+    });
+
+    // Notify editor
+    await createNotification({
+      recipient: editor._id,
+      type: "success",
+      title: "🎉 Payment Credited!",
+      message: `₹${order.editorEarning} added to pending balance for "${order.title}". Clear on ${clearanceDate.toLocaleDateString()}.`,
+      link: `/chat/${order._id}`,
+    });
+
+    logger.info(`Order completed: ${order.orderNumber}, Pending credit: ₹${order.editorEarning}`);
+
+    res.status(200).json({
+      success: true,
+      message: "Order completed. Payment credited to pending balance.",
+      order,
+      clearanceDate
+    });
+
+  } catch (error) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    session.endSession();
+    logger.error(`Order completion failed for ${req.params.id}: ${error.message}`);
+    throw error;
   }
-  
-  await order.save();
-
-  // Create system message
-  await Message.create({
-    order: order._id,
-    sender: req.user._id,
-    type: "system",
-    content: "Order completed. Payment released to editor.",
-    systemAction: "work_completed",
-  });
-
-  // Notify editor
-  await createNotification({
-    recipient: order.editor._id,
-    type: "success",
-    title: "🎉 Payment Released!",
-    message: `₹${order.editorEarning} has been released for "${order.title}"`,
-    link: `/chat/${order._id}`,
-  });
-
-  logger.info(`Order completed: ${order.orderNumber}, Payment: ₹${order.editorEarning}`);
-
-  res.status(200).json({
-    success: true,
-    message: "Order completed, payment released",
-    order,
-    payoutStatus: payoutResult.status,
-  });
 });
 
 // ============ RAISE DISPUTE ============
@@ -1243,43 +1291,16 @@ export const processOverdueRefunds = asyncHandler(async (req, res) => {
 
   for (const order of ordersToRefund) {
     try {
-      // Process Razorpay refund
-      let refundResult = null;
-      if (order.razorpayPaymentId) {
-        const Razorpay = (await import("razorpay")).default;
-        const razorpay = new Razorpay({
-          key_id: process.env.RAZORPAY_KEY_ID,
-          key_secret: process.env.RAZORPAY_KEY_SECRET,
-        });
-
-        refundResult = await razorpay.payments.refund(order.razorpayPaymentId, {
-          amount: order.amount * 100, // Full refund in paise
-          speed: "normal",
-          notes: {
-            reason: "order_overdue",
-            orderId: order._id.toString(),
-            orderNumber: order.orderNumber,
-          },
-        });
-
-        order.refundId = refundResult.id;
-        logger.info(`Razorpay refund initiated: ${refundResult.id} for order ${order.orderNumber}`);
-      }
-
-      // Update order status
-      order.overdueRefunded = true;
-      order.overdueRefundedAt = now;
-      order.refundAmount = order.amount;
-      order.refundedAt = now;
-      order.refundReason = "order_overdue";
-      order.paymentStatus = "refunded";
-      order.escrowStatus = "refunded";
-      order.status = "cancelled";
-      order.cancelledAt = now;
-      order.cancellationReason = "Order overdue - automatic refund";
-      order.chatDisabledReason = "refunded";
+      // Process Refund via Refund model logic (safely handles escrow status and audit logs)
+      const { autoRefundOrder } = await import("./refundController.js");
+      const refundResult = await autoRefundOrder(order._id, "order_overdue");
       
-      await order.save();
+      if (!refundResult.success) {
+        throw new Error(refundResult.message || "Auto-refund failed");
+      }
+      
+      order.refundId = refundResult.refundId;
+      logger.info(`Overdue refund processed via model logic: ${order.orderNumber}`);
 
       // Create system message
       await Message.create({

@@ -135,7 +135,7 @@ const clientKYCSchema = new mongoose.Schema(
 
     verifiedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Admin",
+      ref: "AdminMember",
     },
 
     rejectionReason: {

@@ -9,12 +9,12 @@ const KYCPendingBanner = () => {
 
   // If no user or verified, don't show
   // Explicitly check for client role and non-verified status
-  if (!user || user.role !== "client" || user.clientKycStatus === "verified") {
+  if (!user || user.role !== "client" || user.kycStatus === "verified") {
     return null;
   }
 
   const getStatusContent = () => {
-    switch (user.clientKycStatus) {
+    switch (user.kycStatus) {
       case "pending":
       case "under_review":
         return {

@@ -145,7 +145,7 @@ const advertisementSchema = new mongoose.Schema(
     // ========== META ==========
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Admin",
+      ref: "AdminMember",
     },
   },
   { timestamps: true }

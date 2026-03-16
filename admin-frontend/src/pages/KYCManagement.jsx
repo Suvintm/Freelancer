@@ -177,7 +177,8 @@ const KYCManagement = () => {
     {
       header: activeTab === "editors" ? "Editor" : "Client",
       accessorKey: activeTab === "editors" ? "name" : "user",
-      cell: (user, row) => {
+      cell: (row, cellValue) => {
+        const user = activeTab === "editors" ? row : cellValue;
         const name = activeTab === "editors" ? user?.name : row?.fullName || user?.name;
         return (
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -196,8 +197,7 @@ const KYCManagement = () => {
     },
     {
       header: "Submitted",
-      accessorKey: activeTab === "editors" ? "kycSubmittedAt" : "submittedAt",
-      cell: (date) => (
+      cell: (row, date) => (
         <div style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--text-secondary)", fontSize: 13 }}>
           <HiOutlineClock size={14} />
           {date ? formatDate(date) : "N/A"}
@@ -207,14 +207,14 @@ const KYCManagement = () => {
     {
       header: "KYC Status",
       accessorKey: activeTab === "editors" ? "kycStatus" : "status",
-      cell: (status) => <StatusBadge status={status} />
+      cell: (row, status) => <StatusBadge status={status} />
     },
     {
       header: "Bank Proof",
       accessorKey: activeTab === "editors" ? "bankDetails" : "bankName",
-      cell: (bank, row) => (
+      cell: (row, bank) => (
         <div style={{ fontSize: 12, color: "var(--text-secondary)", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis" }}>
-          {activeTab === "editors" ? bank?.bankName : row?.bankName || "—"}
+          {activeTab === "editors" ? bank?.bankName : bank || "—"}
         </div>
       )
     },
@@ -222,7 +222,7 @@ const KYCManagement = () => {
       id: "actions",
       header: "",
       align: "right",
-      cell: (_, row) => (
+      cell: (row) => (
         <button 
           onClick={() => openDetails(row._id)}
           style={{
@@ -414,37 +414,103 @@ const KYCManagement = () => {
                       <HiOutlineIdentification size={18} style={{ color: "var(--brand)" }} />
                       <h4 style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", margin: 0 }}>Document Evidence</h4>
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                      {(activeTab === "editors" ? kyc.kycDocuments : kyc.documents || []).map((doc, idx) => (
-                        <motion.div 
-                          key={idx} 
-                          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }}
-                          style={{
-                            borderRadius: 16, overflow: "hidden", border: "1px solid var(--border-subtle)", background: "#000"
-                          }}
-                        >
-                          <div style={{ padding: "10px 16px", background: "var(--bg-elevated)", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", color: "var(--text-muted)" }}>{doc.type?.replace("_", " ")}</span>
-                            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{new Date(doc.uploadedAt).toLocaleDateString()}</span>
-                          </div>
-                          <div style={{ position: "relative", aspectRatio: "16/10" }}>
-                            <img src={doc.url} alt="KYC Proof" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.8 }} />
-                            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)" }}>
-                              <a 
-                                href={doc.url} target="_blank" rel="noreferrer"
+                    
+                    {(() => {
+                      const docs = (activeTab === "editors" ? kyc.kycDocuments : kyc.documents) || [];
+                      const required = [
+                        { type: "id_proof", label: "Identity Proof (Aadhar/PAN/Passport)" },
+                        { type: "bank_proof", label: "Banking Proof (Passbook/Statement)" }
+                      ];
+                      
+                      return (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                          {required.map((req, idx) => {
+                            const doc = docs.find(d => d.type === req.type);
+                            
+                            if (!doc) {
+                              return (
+                                <div key={idx} style={{ 
+                                  padding: 16, borderRadius: 16, border: "1.5px dashed var(--border-subtle)", 
+                                  background: "rgba(185,28,28,0.03)", display: "flex", alignItems: "center", gap: 16 
+                                }}>
+                                  <div style={{ 
+                                    width: 48, height: 48, borderRadius: 12, background: "rgba(185,28,28,0.1)", 
+                                    color: "var(--danger)", display: "flex", alignItems: "center", justifyContent: "center" 
+                                  }}>
+                                    <HiOutlineXCircle size={24} />
+                                  </div>
+                                  <div>
+                                    <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)" }}>{req.label}</div>
+                                    <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 2, fontWeight: 600 }}>MISSING DOCUMENT</div>
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <motion.div 
+                                key={idx} 
+                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }}
                                 style={{
-                                  padding: "10px 20px", background: "#fff", color: "#000", borderRadius: 10,
-                                  fontSize: 13, fontWeight: 800, textDecoration: "none", display: "flex", alignItems: "center", gap: 8,
-                                  boxShadow: "0 10px 25px rgba(0,0,0,0.3)"
+                                  borderRadius: 16, overflow: "hidden", border: "1px solid var(--border-subtle)", background: "var(--bg-elevated)"
                                 }}
                               >
-                                <HiOutlineArrowTopRightOnSquare /> Full Spectrum View
-                              </a>
+                                <div style={{ 
+                                  padding: "12px 16px", background: "var(--bg-card)", borderBottom: "1px solid var(--border-subtle)", 
+                                  display: "flex", justifyContent: "space-between", alignItems: "center" 
+                                }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <HiOutlineCheckCircle size={16} style={{ color: "var(--success)" }} />
+                                    <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", color: "var(--text-primary)" }}>{req.label}</span>
+                                  </div>
+                                  <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 500 }}>
+                                    Update: {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : "N/A"}
+                                  </span>
+                                </div>
+                                
+                                <div style={{ position: "relative", aspectRatio: "16/6", background: "#000" }}>
+                                  {doc.url?.toLowerCase().endsWith(".pdf") ? (
+                                    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+                                      <HiOutlineIdentification size={48} style={{ color: "var(--text-muted)" }} />
+                                      <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>PDF Document</span>
+                                    </div>
+                                  ) : (
+                                    <img src={doc.url} alt={req.label} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.6 }} />
+                                  )}
+                                  
+                                  <div style={{ 
+                                    position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", 
+                                    background: "rgba(0,0,0,0.3)", backdropFilter: "blur(2px)" 
+                                  }}>
+                                    <a 
+                                      href={doc.url} target="_blank" rel="noreferrer"
+                                      style={{
+                                        padding: "10px 20px", background: "var(--brand)", color: "#fff", borderRadius: 10,
+                                        fontSize: 13, fontWeight: 800, textDecoration: "none", display: "flex", alignItems: "center", gap: 8,
+                                        boxShadow: "0 10px 25px rgba(0,0,0,0.3)", border: "none", transition: "all 0.2s"
+                                      }}
+                                    >
+                                      <HiOutlineArrowTopRightOnSquare size={16} /> Open Proof
+                                    </a>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            );
+                          })}
+
+                          {/* Handle other documents if any */}
+                          {docs.filter(d => !required.find(r => r.type === d.type)).map((doc, idx) => (
+                            <div key={`other-${idx}`} style={{ padding: 14, borderRadius: 12, border: "1px solid var(--border-subtle)", background: "var(--bg-card)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                  <HiOutlineFingerPrint size={18} style={{ color: "var(--text-muted)" }} />
+                                  <span style={{ fontSize: 13, fontWeight: 600 }}>{doc.type || "Other Document"}</span>
+                               </div>
+                               <a href={doc.url} target="_blank" rel="noreferrer" style={{ color: "var(--brand)", fontSize: 12, fontWeight: 700, textDecoration: "none" }}>View File</a>
                             </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </section>
 
                   {/* Operational History */}

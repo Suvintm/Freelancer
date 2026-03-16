@@ -126,6 +126,14 @@ export const submitKYC = asyncHandler(async (req, res) => {
   }
 
   try {
+    // Check if auto-KYC is enabled in site settings
+    const { SiteSettings } = await import("../models/SiteSettings.js");
+    const settings = await SiteSettings.getSettings();
+    
+    if (!settings.autoKycEnabled) {
+      throw new Error("Automated KYC is temporarily disabled by admin");
+    }
+
     // Create Razorpay contact if not exists
     let contactId = user.razorpayContactId;
     if (!contactId) {

@@ -68,7 +68,7 @@ const ClientKYCPage = () => {
   // Fetch existing KYC on mount
   useEffect(() => {
     fetchExistingKYC();
-  }, []);
+  }, [user?.token]);
 
   const fetchExistingKYC = async () => {
     try {
@@ -158,12 +158,22 @@ const ClientKYCPage = () => {
 
   const nextStep = () => {
     if (validateStep(step)) {
-      setStep(prev => prev + 1);
+      // Skip step 2 (Bank Details) for initial KYC
+      if (step === 1 && status === "not_started") {
+        setStep(3);
+      } else {
+        setStep(prev => prev + 1);
+      }
     }
   };
 
   const prevStep = () => {
-    setStep(prev => prev - 1);
+    // Skip step 2 (Bank Details) when going back if it was skipped
+    if (step === 3 && status === "not_started") {
+      setStep(1);
+    } else {
+      setStep(prev => prev - 1);
+    }
   };
 
   const handleSubmit = async () => {
@@ -188,7 +198,7 @@ const ClientKYCPage = () => {
         toast.success('KYC submitted successfully!');
         // Update user context
         if (setUser) {
-          setUser(prev => ({ ...prev, clientKycStatus: 'pending' }));
+          setUser(prev => ({ ...prev, kycStatus: 'pending' }));
         }
         // Update new status and existingKYC states
         setStatus('pending');
@@ -607,12 +617,18 @@ const ClientKYCPage = () => {
     );
   }
 
-  const steps = [
-    { num: 1, label: 'Personal', icon: FaUser },
-    { num: 2, label: 'Bank Info', icon: FaUniversity },
-    { num: 3, label: 'Documents', icon: FaCloudUploadAlt },
-    { num: 4, label: 'Confirm', icon: FaShieldAlt },
-  ];
+  const steps = status === "not_started" 
+    ? [
+        { num: 1, label: 'Personal', icon: FaUser },
+        { num: 3, label: 'Documents', icon: FaCloudUploadAlt },
+        { num: 4, label: 'Confirm', icon: FaShieldAlt },
+      ]
+    : [
+        { num: 1, label: 'Personal', icon: FaUser },
+        { num: 2, label: 'Bank Info', icon: FaUniversity },
+        { num: 3, label: 'Documents', icon: FaCloudUploadAlt },
+        { num: 4, label: 'Confirm', icon: FaShieldAlt },
+      ];
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] text-white">

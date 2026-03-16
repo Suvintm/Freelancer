@@ -77,6 +77,7 @@ import JobApplicantsPage from "./pages/JobApplicantsPage.jsx";
 import MyApplicationsPage from "./pages/MyApplicationsPage.jsx";
 import JobsPage from "./pages/JobsPage.jsx";
 import AdDetailsPage from "./pages/AdDetailsPage.jsx";
+import EditorWallet from "./pages/EditorWallet.jsx";
 
 import { TermsAndConditions, PrivacyPolicy, ContentProtectionPolicy, EditorCodeOfConduct } from "./pages/LegalPages";
 
@@ -260,6 +261,7 @@ function App() {
         <Route path="/subscription/plans" element={<ProtectedRoute><SubscriptionPlansPage /></ProtectedRoute>} />
         <Route path="/profile-insights" element={<ProtectedRoute><ProfileInsightsPage /></ProtectedRoute>} />
         <Route path="/storage-plans" element={<ProtectedRoute><StoragePlans /></ProtectedRoute>} />
+        <Route path="/editor-wallet" element={<ProtectedRoute allowedRoles={["editor"]}><EditorWallet /></ProtectedRoute>} />
 
         {/* ============ REDIRECTS ============ */}
         <Route path="/client-messages" element={<Navigate to="/chats" replace />} />

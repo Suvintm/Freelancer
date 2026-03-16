@@ -345,9 +345,9 @@ export const getPendingKYC = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, status } = req.query;
 
   const query = {};
-  if (status) {
+  if (status && status !== "all") {
     query.status = status;
-  } else {
+  } else if (!status) {
     query.status = { $in: ["pending", "under_review"] };
   }
 
@@ -382,7 +382,7 @@ export const getKYCDetails = asyncHandler(async (req, res) => {
   const { kycId } = req.params;
 
   const kyc = await ClientKYC.findById(kycId)
-    .populate("user", "name email profilePicture createdAt")
+    .populate("user", "name email profilePicture phone role kycStatus kycSubmittedAt kycVerifiedAt kycRejectionReason kycDocuments createdAt")
     .populate("verifiedBy", "name email");
 
   if (!kyc) {
@@ -434,8 +434,8 @@ export const verifyKYC = asyncHandler(async (req, res) => {
 
     // Update user's KYC status
     await User.findByIdAndUpdate(kyc.user, {
-      clientKycStatus: "verified",
-      clientKycVerifiedAt: new Date(),
+      kycStatus: "verified",
+      kycVerifiedAt: new Date(),
     });
 
     logger.info(`Client KYC approved: ${kyc.user} by admin ${adminId}`);
@@ -449,7 +449,7 @@ export const verifyKYC = asyncHandler(async (req, res) => {
 
     // Update user's KYC status
     await User.findByIdAndUpdate(kyc.user, {
-      clientKycStatus: "rejected",
+      kycStatus: "rejected",
     });
 
     logger.info(`Client KYC rejected: ${kyc.user} by admin ${adminId}`);

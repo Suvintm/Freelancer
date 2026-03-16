@@ -27,7 +27,7 @@ router.get("/earnings", async (req, res) => {
       {
         $group: {
           _id: null,
-          totalEarnings: { $sum: "$editorEarnings" },
+          totalEarnings: { $sum: "$editorEarning" },
           totalOrders: { $sum: 1 },
         },
       },
@@ -39,7 +39,7 @@ router.get("/earnings", async (req, res) => {
       {
         $group: {
           _id: null,
-          periodEarnings: { $sum: "$editorEarnings" },
+          periodEarnings: { $sum: "$editorEarning" },
           periodOrders: { $sum: 1 },
         },
       },
@@ -51,7 +51,7 @@ router.get("/earnings", async (req, res) => {
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$completedAt" } },
-          earnings: { $sum: "$editorEarnings" },
+          earnings: { $sum: "$editorEarning" },
           orders: { $sum: 1 },
         },
       },
@@ -64,7 +64,7 @@ router.get("/earnings", async (req, res) => {
       {
         $group: {
           _id: null,
-          pendingEarnings: { $sum: "$editorEarnings" },
+          pendingEarnings: { $sum: "$editorEarning" },
           pendingOrders: { $sum: 1 },
         },
       },
@@ -79,7 +79,7 @@ router.get("/earnings", async (req, res) => {
       {
         $group: {
           _id: null,
-          earnings: { $sum: "$editorEarnings" },
+          earnings: { $sum: "$editorEarning" },
         },
       },
     ]);
@@ -234,7 +234,7 @@ router.get("/gigs", async (req, res) => {
         $group: {
           _id: "$gig",
           orders: { $sum: 1 },
-          revenue: { $sum: "$editorEarnings" },
+          revenue: { $sum: "$editorEarning" },
           avgPrice: { $avg: "$amount" },
         },
       },
@@ -385,7 +385,7 @@ router.get("/quick-stats", async (req, res) => {
     const [monthlyEarnings, activeOrders, pendingOrders, avgRating] = await Promise.all([
       Order.aggregate([
         { $match: { editor: editorId, status: "completed", completedAt: { $gte: startOfMonth } } },
-        { $group: { _id: null, total: { $sum: "$editorEarnings" } } }
+        { $group: { _id: null, total: { $sum: "$editorEarning" } } }
       ]),
       Order.countDocuments({ editor: editorId, status: { $in: ["accepted", "in_progress"] } }),
       Order.countDocuments({ editor: editorId, status: "new" }),

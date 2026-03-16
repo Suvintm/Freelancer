@@ -125,6 +125,26 @@ const userSchema = new mongoose.Schema(
       },
     },
 
+    // Wallet & Earnings
+    walletBalance: { 
+      type: Number, 
+      default: 0,
+      min: 0 
+    },
+    pendingBalance: { 
+      type: Number, 
+      default: 0,
+      min: 0 
+    },
+    lifetimeEarnings: { 
+      type: Number, 
+      default: 0 
+    },
+    totalWithdrawn: { 
+      type: Number, 
+      default: 0 
+    },
+
     // Push Notifications
     fcmTokens: [
       {
@@ -172,6 +192,44 @@ const userSchema = new mongoose.Schema(
         country: { type: String, default: "IN" },
       },
     },
+    kycTier: { type: Number, enum: [0, 1, 2, 3], default: 0 },
+    verificationMethod: {
+      type: String,
+      enum: ["not_verified", "manual", "automatic", "semi_automatic"],
+      default: "not_verified"
+    },
+    autoVerificationResult: {
+      panCheck: {
+        status: String,       // "passed", "failed", "api_error", "skipped"
+        confidence: Number,   // 0-100 name match score
+        apiRef: String,       // Surepass request ID for audit
+        checkedAt: Date,
+        nameAtNSDL: String    // NSDL name — shown to admin for comparison
+      },
+      bankCheck: {
+        status: String,
+        accountExists: Boolean,
+        nameMatch: Number,
+        pennyDropRef: String,
+        nameAtBank: String,   // Bank's registered name — for admin comparison
+        checkedAt: Date
+      },
+      overallScore: { type: Number, min: 0, max: 100 },
+      recommendation: {
+        type: String,
+        enum: ["auto_approve", "manual_review", "auto_reject", "pending"]
+      },
+      processedAt: Date
+    },
+    riskLevel: { type: String, enum: ["low", "medium", "high", "critical"], default: "low" },
+    riskFlags: [String],
+    consentTimestamp: Date,
+    consentText: String,
+    consentIpAddress: String,
+    dataRetentionExpiry: Date,
+    kycProcessingStartedAt: Date,
+    kycAutoCheckCompletedAt: Date,
+
     razorpayContactId: String,
     razorpayFundAccountId: String,
 

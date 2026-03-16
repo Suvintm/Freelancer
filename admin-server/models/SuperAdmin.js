@@ -46,6 +46,10 @@ const superAdminSchema = new mongoose.Schema(
     lockedUntil: {
       type: Date,
     },
+    currentSessionToken: {
+      type: String,
+      select: false,
+    },
   },
   {
     timestamps: true,

@@ -62,7 +62,12 @@ const cleanAd = (ad) => {
   const adObj = ad.toObject ? ad.toObject() : ad;
   ["mediaUrl", "thumbnailUrl", "websiteUrl", "instagramUrl", "facebookUrl", "youtubeUrl", "otherUrl"]
     .forEach(f => { if (adObj[f]) adObj[f] = repairUrl(adObj[f]); });
-  if (adObj.galleryImages) adObj.galleryImages = adObj.galleryImages.map(img => repairUrl(img));
+  
+  if (adObj.galleryImages && Array.isArray(adObj.galleryImages)) {
+    adObj.galleryImages = adObj.galleryImages.map(img => repairUrl(img));
+  } else {
+    adObj.galleryImages = adObj.galleryImages || [];
+  }
   return adObj;
 };
 
@@ -89,6 +94,10 @@ router.get("/", asyncHandler(async (req, res) => {
   const total = await Advertisement.countDocuments(query);
 
   logger.info(`[ADS] Admin fetched ${ads.length} ads`);
+  if (ads.length > 0) {
+    const creators = ads.map(a => a.createdBy?.email).filter(Boolean);
+    logger.debug(`[ADS] Identified creators: ${[...new Set(creators)].join(", ")}`);
+  }
   res.json({ success: true, count: ads.length, ads: ads.map(cleanAd), pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / limit) } });
 }));
 

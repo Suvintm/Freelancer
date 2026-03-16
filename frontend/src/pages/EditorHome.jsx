@@ -138,6 +138,17 @@ const EditorHome = () => {
     enabled: !!user?.token && user?.role === "editor",
   });
 
+  const { data: walletData, isLoading: walletLoading } = useQuery({
+    queryKey: ['walletBalance'],
+    queryFn: async () => {
+      const { data } = await axios.get(`${backendURL}/api/wallet/balance`, {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      });
+      return data || { walletBalance: 0, pendingBalance: 0 };
+    },
+    enabled: !!user?.token && user?.role === "editor",
+  });
+
   // Keep derived states in sync
   useEffect(() => {
     if (editorStats && gigStats) {
@@ -161,7 +172,7 @@ const EditorHome = () => {
   }, [storageResponse]);
 
   // Unified loading state for the skeleton/loader
-  const isLoadingDerived = statsLoading || gigStatsLoading || profileLoading || completionLoading;
+  const isLoadingDerived = statsLoading || gigStatsLoading || profileLoading || completionLoading || walletLoading;
 
   useEffect(() => {
     if (!isLoadingDerived) {
@@ -249,7 +260,12 @@ const EditorHome = () => {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
             >
-              <EditorDashboard user={user} stats={stats} />
+              <EditorDashboard 
+                user={user} 
+                stats={stats} 
+                walletBalance={walletData?.wallet?.available}
+                pendingBalance={walletData?.wallet?.pending}
+              />
             </motion.div>
           )}
         </AnimatePresence>

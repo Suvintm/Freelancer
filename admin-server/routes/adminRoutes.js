@@ -142,14 +142,27 @@ router.get("/stats", requirePermission("analytics"), async (req, res) => {
 // ============ DASHBOARD ALERTS ============
 router.get("/stats/alerts", requirePermission("analytics"), async (req, res) => {
   try {
+    const { default: WithdrawalRequest } = await import("../models/WithdrawalRequest.js");
+    
     const disputedOrders = await Order.countDocuments({ status: "disputed" });
     const pendingKYC = await User.countDocuments({ role: "editor", kycStatus: "submitted" });
+    const pendingWithdrawals = await WithdrawalRequest.countDocuments({ status: "pending" });
     const pendingClientKYC = 0; // Placeholder until ClientKYC model is checked
 
     // Site settings for maintenance alert
     const settings = await SiteSettings.getSettings();
 
     const alerts = [];
+
+    if (pendingWithdrawals > 0) {
+      alerts.push({
+        type: "warning",
+        title: "Payouts Pending",
+        message: `${pendingWithdrawals} editor withdrawal requests are awaiting processing.`,
+        action: "Process",
+        link: "/withdrawals"
+      });
+    }
 
     if (disputedOrders > 0) {
       alerts.push({
@@ -187,7 +200,8 @@ router.get("/stats/alerts", requirePermission("analytics"), async (req, res) => 
       counts: {
         disputedOrders,
         pendingKYC,
-        pendingClientKYC
+        pendingClientKYC,
+        pendingWithdrawals
       }
     });
 
@@ -1080,6 +1094,7 @@ router.patch("/settings", logActivity("SETTINGS_UPDATE"), async (req, res) => {
       platformFee,
       emailNotificationsEnabled,
       allowNewRegistrations,
+      autoKycEnabled,
     } = req.body;
 
     const settings = await SiteSettings.getSettings();
@@ -1090,6 +1105,7 @@ router.patch("/settings", logActivity("SETTINGS_UPDATE"), async (req, res) => {
     if (platformFee !== undefined) settings.platformFee = platformFee;
     if (emailNotificationsEnabled !== undefined) settings.emailNotificationsEnabled = emailNotificationsEnabled;
     if (allowNewRegistrations !== undefined) settings.allowNewRegistrations = allowNewRegistrations;
+    if (autoKycEnabled !== undefined) settings.autoKycEnabled = autoKycEnabled;
     
     settings.lastUpdatedBy = req.admin._id;
     await settings.save();
@@ -1653,7 +1669,7 @@ router.get("/kyc/pending", requirePermission("users"), async (req, res) => {
 router.get("/kyc/:userId", requirePermission("users"), async (req, res) => {
   try {
     const user = await User.findById(req.params.userId)
-      .select("-password +bankDetails.accountNumber +bankDetails.panNumber");
+      .select("name email phone profilePicture role kycStatus kycSubmittedAt kycVerifiedAt kycRejectionReason kycDocuments bankDetails.accountHolderName bankDetails.bankName bankDetails.ifscCode bankDetails.accountNumber bankDetails.panNumber createdAt");
     
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
@@ -1682,6 +1698,7 @@ router.get("/kyc/:userId", requirePermission("users"), async (req, res) => {
         kycSubmittedAt: user.kycSubmittedAt,
         kycVerifiedAt: user.kycVerifiedAt,
         kycRejectionReason: user.kycRejectionReason,
+        kycDocuments: user.kycDocuments,
         bankDetails: user.bankDetails ? {
           accountHolderName: user.bankDetails.accountHolderName,
           bankName: user.bankDetails.bankName,

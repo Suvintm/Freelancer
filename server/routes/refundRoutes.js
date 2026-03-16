@@ -1,7 +1,6 @@
 // refundRoutes.js - Refund API Routes
 import express from "express";
-import protect from "../middleware/authMiddleware.js";
-import { authorize } from "../middleware/authMiddleware.js";
+import protect, { authorize } from "../middleware/authMiddleware.js";
 // import { protectAdmin } from "../middleware/adminAuth.js";
 import {
   initiateRefund,

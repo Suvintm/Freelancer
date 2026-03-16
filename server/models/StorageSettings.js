@@ -79,7 +79,7 @@ const storageSettingsSchema = new mongoose.Schema(
         // Last updated by admin
         updatedBy: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Admin",
+            ref: "AdminMember",
         },
     },
     { timestamps: true }

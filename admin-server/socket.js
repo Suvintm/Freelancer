@@ -1,42 +1,49 @@
+import "dotenv/config";
 import { Server } from "socket.io";
 import http from "http";
 import express from "express";
-import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { Message } from "./models/Message.js";
 import { Order } from "./models/Order.js";
 import { publish, subscribe } from "./config/redisClient.js";
 
-dotenv.config();
-
 const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: [
-      process.env.FRONTEND_URL,
-      "https://suvix.vercel.app",      // Vercel deployment
-      "https://suvix.netlify.app",     // Netlify if used
-      "https://suvix-frontend.onrender.com", // Render frontend if separate
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:5175",
-      "http://localhost:3000",
-    ].filter(Boolean), // Remove undefined values
+    origin: (origin, callback) => {
+      // Whitelist of allowed origins
+      const allowedOrigins = [
+        process.env.FRONTEND_URL,
+        process.env.ADMIN_URL,
+        "https://suvix.vercel.app",
+        "https://adminsuvix.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://localhost:3000",
+      ].filter(Boolean);
+
+      // Allow if no origin (e.g. mobile apps or curl) or if in whitelist or is a Vercel subdomain
+      if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
+        callback(null, true);
+      } else {
+        console.warn(`⚠️ Socket.io: Blocked connection from origin: ${origin}`);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     methods: ["GET", "POST"],
     credentials: true,
   },
   // Production-ready settings for Render
-  pingTimeout: 120000,   // 2 minutes - for slow connections
-  pingInterval: 25000,   // Ping every 25 seconds
-  upgradeTimeout: 60000, // 60s timeout for upgrade
+  pingTimeout: 120000,
+  pingInterval: 25000,
+  upgradeTimeout: 60000,
   maxHttpBufferSize: 1e8,
-  // Allow both transports
   transports: ["polling", "websocket"],
   allowUpgrades: true,
-  // Handle proxy/load balancer
   allowEIO3: true,
 });
 
@@ -317,7 +324,14 @@ io.on("connection", (socket) => {
   // ============ DISCONNECT ============
 
   socket.on("disconnect", (reason) => {
-    console.log(`❌ User disconnected: ${userId} (${socket.id}) - Reason: ${reason}`);
+    console.log(`❌ User disconnected: ${userId || "Unknown"} (${socket.id}) - Reason: ${reason}`);
+    if (reason === "ping timeout") {
+      console.log("⚠️ Ping timeout: connection lost or high latency");
+    } else if (reason === "transport close") {
+      console.log("⚠️ Transport close: browser tab closed or network failure");
+    } else if (reason === "transport error") {
+      console.log("⚠️ Transport error: possible CORS or EIO mismatch");
+    }
     delete userSocketMap[userId];
     io.emit("user:left", userId);
     io.emit("users:online", Object.keys(userSocketMap));

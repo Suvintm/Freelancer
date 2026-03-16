@@ -6,8 +6,11 @@ import { Order } from "../models/Order.js";
 import { Message } from "../models/Message.js";
 import FinalOutput from "../models/FinalOutput.js";
 import { createNotification } from "../controllers/notificationController.js";
+import User from "../models/User.js";
+import WalletTransaction from "../models/WalletTransaction.js";
 import { deleteFromCloudinary } from "../utils/cloudinaryStorage.js";
 import logger from "../utils/logger.js";
+import mongoose from "mongoose";
 
 /**
  * Cancel orders that are awaiting payment and have expired (24 hours)
@@ -161,34 +164,17 @@ export const processOverdueRefunds = async () => {
 
     logger.info(`Found ${ordersToRefund.length} orders to refund`);
 
+    // Dynamically import the auto-refund function from refundController
+    const { autoRefundOrder } = await import("../controllers/refundController.js");
+
     let refundedCount = 0;
 
     for (const order of ordersToRefund) {
       try {
-        // Process Razorpay refund
-        let refundResult = null;
-        if (order.razorpayPaymentId) {
-          const Razorpay = (await import("razorpay")).default;
-          const razorpay = new Razorpay({
-            key_id: process.env.RAZORPAY_KEY_ID,
-            key_secret: process.env.RAZORPAY_KEY_SECRET,
-          });
+        // Route through the Refund model for proper audit trail & retry logic
+        const refund = await autoRefundOrder(order._id, "order_overdue");
 
-          refundResult = await razorpay.payments.refund(order.razorpayPaymentId, {
-            amount: order.amount * 100, // Full refund in paise
-            speed: "normal",
-            notes: {
-              reason: "order_overdue",
-              orderId: order._id.toString(),
-              orderNumber: order.orderNumber,
-            },
-          });
-
-          order.refundId = refundResult.id;
-          logger.info(`Razorpay refund initiated: ${refundResult.id} for ${order.orderNumber}`);
-        }
-
-        // Update order status
+        // Update order status regardless of refund outcome
         order.overdueRefunded = true;
         order.overdueRefundedAt = now;
         order.refundAmount = order.amount;
@@ -200,6 +186,10 @@ export const processOverdueRefunds = async () => {
         order.cancelledAt = now;
         order.cancellationReason = "Order overdue - automatic refund";
         order.chatDisabledReason = "refunded";
+        
+        if (refund) {
+          order.refundId = refund.razorpayRefundId || refund._id?.toString();
+        }
         
         await order.save();
 
@@ -236,7 +226,7 @@ export const processOverdueRefunds = async () => {
         });
 
         refundedCount++;
-        logger.info(`Overdue refund processed: ${order.orderNumber}, Amount: ₹${order.amount}`);
+        logger.info(`Overdue refund processed via Refund model: ${order.orderNumber}, Amount: ₹${order.amount}`);
       } catch (refundError) {
         logger.error(`Refund failed for ${order.orderNumber}: ${refundError.message}`);
       }
@@ -316,6 +306,72 @@ export const cleanupExpiredFinalOutputs = async () => {
 };
 
 /**
+ * Process wallet clearance - Move funds from pendingBalance to walletBalance after 7 days
+ */
+export const processWalletClearance = async () => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const now = new Date();
+    
+    // Find transactions ready for clearance
+    const pendingTransactions = await WalletTransaction.find({
+      status: "pending_clearance",
+      clearanceDate: { $lte: now },
+    }).session(session);
+
+    if (pendingTransactions.length === 0) {
+      await session.commitTransaction();
+      session.endSession();
+      return { cleared: 0 };
+    }
+
+    logger.info(`Found ${pendingTransactions.length} wallet transactions ready for clearance`);
+
+    let clearedCount = 0;
+
+    for (const txn of pendingTransactions) {
+      const user = await User.findById(txn.user).session(session);
+      if (!user) {
+        logger.error(`User ${txn.user} not found for wallet clearance txn ${txn._id}`);
+        continue;
+      }
+
+      const amount = txn.amount;
+      const balanceBefore = user.walletBalance || 0;
+
+      // Atomic Balance Update
+      user.pendingBalance = Math.max(0, (user.pendingBalance || 0) - amount);
+      user.walletBalance = (user.walletBalance || 0) + amount;
+      await user.save({ session });
+
+      // Update Transaction status
+      txn.status = "cleared";
+      txn.clearedAt = now;
+      txn.balanceBefore = balanceBefore;
+      txn.balanceAfter = user.walletBalance;
+      await txn.save({ session });
+
+      clearedCount++;
+      logger.info(`Cleared ₹${amount} for user ${user._id} (Txn: ${txn._id})`);
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+    
+    return { cleared: clearedCount };
+  } catch (error) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    session.endSession();
+    logger.error("Error processing wallet clearance:", error);
+    throw error;
+  }
+};
+
+/**
  * Start the scheduled jobs
  * Runs every hour to check for expired orders and overdue orders
  */
@@ -345,6 +401,12 @@ export const startScheduledJobs = () => {
       logger.info(`Startup: Cleaned up ${result.cleaned} expired final outputs`);
     }
   });
+  
+  processWalletClearance().then(result => {
+    if (result.cleared > 0) {
+      logger.info(`Startup: Cleared ${result.cleared} wallet transactions`);
+    }
+  });
 
   // Run every hour
   const HOUR_MS = 60 * 60 * 1000;
@@ -369,6 +431,11 @@ export const startScheduledJobs = () => {
       const cleanupResult = await cleanupExpiredFinalOutputs();
       if (cleanupResult.cleaned > 0) {
         logger.info(`Scheduled: Cleaned up ${cleanupResult.cleaned} expired final outputs from R2`);
+      }
+
+      const clearanceResult = await processWalletClearance();
+      if (clearanceResult.cleared > 0) {
+        logger.info(`Scheduled: Cleared ${clearanceResult.cleared} wallet transactions`);
       }
     } catch (error) {
       logger.error("Scheduled job error:", error);

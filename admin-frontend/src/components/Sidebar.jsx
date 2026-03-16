@@ -14,6 +14,7 @@ import {
   FaChartLine,
   FaComments,
   FaWallet,
+  FaUniversity,
   FaDatabase,
   FaImage,
   FaCrown,
@@ -22,11 +23,20 @@ import {
   FaLock,
 } from "react-icons/fa";
 import { toast } from "react-hot-toast";
+import { useQuery } from "@tanstack/react-query";
+import { statsApi } from "../api/adminApi";
 import { useAdmin } from "../context/AdminContext";
 
 const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const { admin, logout, isSuperAdmin } = useAdmin();
+  
+  // Fetch counts for badges
+  const { data: alertsData } = useQuery({
+    queryKey: ["admin-sidebar-alerts"],
+    queryFn: () => statsApi.getAlerts().then(res => res.data.counts),
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
 
   const handleLogout = async () => {
     await logout();
@@ -37,9 +47,10 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: "/dashboard", icon: FaTachometerAlt, label: "Dashboard", permissionKey: "dashboard" },
     { to: "/analytics", icon: FaChartLine, label: "Analytics", permissionKey: "analytics" },
     { to: "/payments", icon: FaWallet, label: "Payments", permissionKey: "payments" },
+    { to: "/withdrawals", icon: FaUniversity, label: "Payouts", permissionKey: "payments", badgeKey: "pendingWithdrawals" },
     { to: "/conversations", icon: FaComments, label: "Conversations", permissionKey: "conversations" },
     { to: "/users", icon: FaUsers, label: "Users", permissionKey: "users" },
-    { to: "/kyc", icon: FaShieldAlt, label: "Editor KYC", permissionKey: "kyc" },
+    { to: "/kyc", icon: FaShieldAlt, label: "Editor KYC", permissionKey: "kyc", badgeKey: "pendingKYC" },
     { to: "/client-kyc", icon: FaUserCheck, label: "Client KYC", permissionKey: "client_kyc" },
     { to: "/orders", icon: FaShoppingCart, label: "Orders", permissionKey: "orders" },
     { to: "/gigs", icon: FaBriefcase, label: "Gigs", permissionKey: "gigs" },
@@ -79,7 +90,15 @@ const Sidebar = ({ isOpen, onClose }) => {
       >
         <item.icon className={`text-lg transition-transform ${hasAccess ? "group-hover:scale-110" : ""}`} />
         <span className="font-medium">{item.label}</span>
-        {!hasAccess && <FaLock className="absolute right-4 text-xs text-gray-400" />}
+        
+        {/* Badge */}
+        {hasAccess && item.badgeKey && alertsData?.[item.badgeKey] > 0 && (
+          <span className="ml-auto bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm">
+            {alertsData[item.badgeKey]}
+          </span>
+        )}
+        
+        {!hasAccess && <FaLock className={`absolute right-4 text-xs text-gray-400 ${item.badgeKey && alertsData?.[item.badgeKey] > 0 ? "hidden" : ""}`} />}
       </NavLink>
     );
   };

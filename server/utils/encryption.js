@@ -1,7 +1,13 @@
 import crypto from 'crypto';
 
-// Encryption key from env (should be 32 bytes for AES-256)
-const ENCRYPTION_KEY = process.env.KYC_ENCRYPTION_KEY || process.env.JWT_SECRET?.slice(0, 32).padEnd(32, '0') || '00000000000000000000000000000000';
+// Encryption key from env (must be 32+ chars for AES-256)
+const ENCRYPTION_KEY = process.env.KYC_ENCRYPTION_KEY;
+if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length < 32) {
+  throw new Error(
+    "FATAL: KYC_ENCRYPTION_KEY env var is required (min 32 chars). " +
+    "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+  );
+}
 const IV_LENGTH = 16;
 
 export const encrypt = (text) => {

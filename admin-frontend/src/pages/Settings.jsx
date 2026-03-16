@@ -216,19 +216,19 @@ const Settings = () => {
                             {sessionsLoading ? (
                                 [1,2].map(i => <div key={i} className="h-14 w-full bg-elevated animate-pulse rounded-xl" />)
                             ) : sessionsData?.map((sess) => (
-                                <div key={sess._id} className="p-3 bg-surface border border-default rounded-xl flex items-center justify-between">
+                                <div key={sess.id} className="p-3 bg-surface border border-default rounded-xl flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="text-muted"><HiOutlineGlobeAlt size={20}/></div>
                                         <div>
                                             <div className="text-xs font-bold text-primary">{sess.ip}</div>
-                                            <div className="text-[10px] text-muted">First used: {formatDate(sess.createdAt)}</div>
+                                            <div className="text-[10px] text-muted">Last active: {formatDate(sess.lastActive)}</div>
                                         </div>
                                     </div>
-                                    {sess.current ? (
+                                    {sess.isActive ? (
                                         <Badge label="Current" variant="blue" />
                                     ) : (
                                         <button 
-                                          onClick={() => revokeSessionMutation.mutate(sess._id)}
+                                          onClick={() => revokeSessionMutation.mutate(sess.id)}
                                           className="text-[10px] font-black text-danger hover:underline"
                                         >
                                             Revoke
@@ -257,30 +257,43 @@ const Settings = () => {
                             <HiOutlineCog6Tooth size={20} className="text-brand"/>
                             <h3 className="font-black text-primary uppercase tracking-widest text-xs">Platform Governance</h3>
                         </div>
-                        <div className="grid md:grid-cols-2 gap-8">
-                             <div className="space-y-2">
-                                <label className="text-sm font-bold text-primary block">Platform Commission Fee</label>
-                                <p className="text-xs text-muted leading-relaxed">Percentage cut taken from every completed freelance job on the network.</p>
-                                <div className="flex items-center gap-3 mt-4">
-                                    <input 
-                                      type="number" 
-                                      className="input-field w-32" 
-                                      value={settingsData?.platformFee || 10}
-                                      onChange={(e) => updateSettingsMutation.mutate({ platformFee: Number(e.target.value) })}
-                                    />
-                                    <span className="font-black text-xl text-primary">%</span>
-                                </div>
-                             </div>
-
-                             <div className="space-y-2">
-                                <label className="text-sm font-bold text-primary block">Currency Identifier</label>
-                                <p className="text-xs text-muted leading-relaxed">The primary currency used for displaying and processing payments.</p>
-                                <div className="flex items-center gap-3 mt-4">
-                                    <input type="text" className="input-field w-32 bg-elevated opacity-50 cursor-not-allowed" value="INR" disabled />
-                                    <Badge label="Locked" variant="secondary" />
-                                </div>
-                             </div>
-                        </div>
+                         <div className="grid md:grid-cols-2 gap-8">
+                              <div className="space-y-2">
+                                 <label className="text-sm font-bold text-primary block">Platform Commission Fee</label>
+                                 <p className="text-xs text-muted leading-relaxed">Percentage cut taken from every completed freelance job on the network.</p>
+                                 <div className="flex items-center gap-3 mt-4">
+                                     <input 
+                                       type="number" 
+                                       className="input-field w-32" 
+                                       value={settingsData?.platformFee || 10}
+                                       onChange={(e) => updateSettingsMutation.mutate({ platformFee: Number(e.target.value) })}
+                                     />
+                                     <span className="font-black text-xl text-primary">%</span>
+                                 </div>
+                              </div>
+ 
+                              <div className="space-y-2">
+                                 <label className="text-sm font-bold text-primary block">Automated KYC Verification</label>
+                                 <p className="text-xs text-muted leading-relaxed">If enabled, KYC submissions are instantly verified via Razorpay API. If disabled, all KYC flows to manual review.</p>
+                                 <div className="flex items-center gap-3 mt-4">
+                                    <button 
+                                        onClick={() => updateSettingsMutation.mutate({ 
+                                            autoKycEnabled: !settingsData?.autoKycEnabled 
+                                        })}
+                                        className={`relative w-12 h-6 flex items-center px-1 rounded-full transition-all ${
+                                            settingsData?.autoKycEnabled ? 'bg-success' : 'bg-surface border border-default'
+                                        }`}
+                                    >
+                                        <div className={`w-4 h-4 rounded-full shadow-sm transition-all ${
+                                            settingsData?.autoKycEnabled ? 'translate-x-6 bg-white' : 'translate-x-0 bg-muted'
+                                        }`} />
+                                    </button>
+                                    <span className={`text-[10px] font-black uppercase tracking-widest ${settingsData?.autoKycEnabled ? 'text-success' : 'text-muted'}`}>
+                                        {settingsData?.autoKycEnabled ? "Automated" : "Manual Only"}
+                                    </span>
+                                 </div>
+                              </div>
+                         </div>
                     </section>
 
                     {/* Global Communication */}

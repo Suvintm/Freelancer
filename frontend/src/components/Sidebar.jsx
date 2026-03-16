@@ -113,8 +113,8 @@ const Sidebar = ({ isOpen, onClose }) => {
       type: "group",
       children: [
         { path: "/kyc-details", icon: HiOutlineBuildingLibrary, label: "KYC Details" },
-
-        { path: "/payments", icon: HiOutlineCreditCard, label: "Payments" },
+        { path: "/editor-wallet", icon: HiOutlineCreditCard, label: "My Wallet", isNew: true },
+        { path: "/payments", icon: HiOutlineClipboardDocumentList, label: "Transaction History" },
         { path: "/location-settings", icon: HiOutlineMapPin, label: "Location Settings" },
         { path: "/legal-center", icon: HiOutlineDocumentText, label: "Legal & Terms" },
       ],

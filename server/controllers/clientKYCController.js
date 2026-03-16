@@ -160,7 +160,7 @@ export const submitKYC = asyncHandler(async (req, res) => {
 
   // Update user's client KYC status
   await User.findByIdAndUpdate(userId, {
-    clientKycStatus: "pending",
+    kycStatus: "pending",
   });
 
   logger.info(`Client KYC submitted: ${userId}`);
@@ -289,7 +289,7 @@ export const updateKYC = asyncHandler(async (req, res) => {
 
   // Update user status
   await User.findByIdAndUpdate(userId, {
-    clientKycStatus: kyc.status,
+    kycStatus: kyc.status,
   });
 
   // Audit Log
@@ -320,14 +320,14 @@ export const canProceed = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
   // Get user's KYC status
-  const user = await User.findById(userId).select("clientKycStatus name");
+  const user = await User.findById(userId).select("kycStatus name");
   
-  const isVerified = user.clientKycStatus === "verified";
+  const isVerified = user.kycStatus === "verified";
 
   res.json({
     success: true,
     canProceed: isVerified,
-    kycStatus: user.clientKycStatus,
+    kycStatus: user.kycStatus,
     message: isVerified 
       ? "KYC verified. You can proceed." 
       : "Please complete KYC verification to continue.",

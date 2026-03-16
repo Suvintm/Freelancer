@@ -61,6 +61,7 @@ const NAV = [
     label: "Finance",
     items: [
       { to: "/payments",           label: "Payments",          icon: HiOutlineBanknotes,           permission: "analytics"     }, // Financial data usually requires analytics perm or higher
+      { to: "/withdrawals",        label: "Payouts",           icon: HiOutlineCreditCard,          permission: "analytics",    badgeKey: "pendingWithdrawals", badgeVariant: "orange" },
       { to: "/subscriptions",      label: "Subscriptions",     icon: HiOutlineCreditCard,          permission: "analytics"     },
       { to: "/storage",            label: "Storage",           icon: HiOutlineCircleStack,         permission: "settings"      },
     ],

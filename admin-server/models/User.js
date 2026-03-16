@@ -125,6 +125,26 @@ const userSchema = new mongoose.Schema(
       },
     },
 
+    // Wallet & Earnings
+    walletBalance: { 
+      type: Number, 
+      default: 0,
+      min: 0 
+    },
+    pendingBalance: { 
+      type: Number, 
+      default: 0,
+      min: 0 
+    },
+    lifetimeEarnings: { 
+      type: Number, 
+      default: 0 
+    },
+    totalWithdrawn: { 
+      type: Number, 
+      default: 0 
+    },
+
     // Push Notifications
     fcmTokens: [
       {

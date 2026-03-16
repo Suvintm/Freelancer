@@ -97,6 +97,7 @@ router.post("/login", adminLoginLimiter, async (req, res) => {
 
       const token = generateAdminToken(admin);
       // Fallback variables for SuperAdmin tracking
+      admin.currentSessionToken = token;
       admin.lastLogin = new Date();
       admin.lastLoginIP = ip;
       await admin.save();
@@ -319,6 +320,59 @@ router.post("/change-password", protectAdmin, async (req, res) => {
 });
 
 // ============ UPDATE NOTIFICATION PREFS ============
+// ============ GET SESSIONS ============
+router.get("/sessions", protectAdmin, async (req, res) => {
+  try {
+    const sessions = [];
+    
+    // We only track the single active session for now
+    if (req.admin.currentSessionToken) {
+      sessions.push({
+        id: "current",
+        isActive: true,
+        ip: req.admin.lastLoginIP || "Unknown",
+        lastActive: req.admin.lastLogin || new Date(),
+        device: "Current Device",
+        location: "Current Location"
+      });
+    } else {
+      // If we are here, we are using the current valid token
+      sessions.push({
+        id: "current",
+        isActive: true,
+        ip: req.ip || "Unknown",
+        lastActive: new Date(),
+        device: "Current Device",
+        location: "Current Location"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      sessions
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch sessions" });
+  }
+});
+
+// ============ REVOKE SESSION ============
+router.delete("/sessions/:id", protectAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (id === "current") {
+      req.admin.currentSessionToken = null;
+      await req.admin.save();
+      return res.status(200).json({ success: true, message: "Session revoked successfully" });
+    }
+
+    res.status(404).json({ success: false, message: "Session not found" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to revoke session" });
+  }
+});
+
 router.patch("/notifications", protectAdmin, async (req, res) => {
   try {
     const { prefs } = req.body;

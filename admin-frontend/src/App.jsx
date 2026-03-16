@@ -31,6 +31,7 @@ import SubscriptionPlans  from "./pages/SubscriptionPlans";
 import KYCRequestDetail   from "./pages/KYCRequestDetail";
 import ServiceAnalytics   from "./pages/ServiceAnalytics";
 import AdminManagement    from "./pages/AdminManagement";
+import Withdrawals        from "./pages/Withdrawals";
 import NotFound           from "./pages/NotFound";
 
 function App() {
@@ -75,6 +76,7 @@ function App() {
                 <Route path="/analytics"         element={<Analytics />} />
                 <Route path="/service-analytics" element={<ProtectedRoute allowedRoles={["superadmin"]}><ServiceAnalytics /></ProtectedRoute>} />
                 <Route path="/payments"          element={<Payments />} />
+                <Route path="/withdrawals"       element={<Withdrawals />} />
                 
                 <Route path="/conversations"     element={<Conversations />} />
                 <Route path="/users"             element={<Users />} />

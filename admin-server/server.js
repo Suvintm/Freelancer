@@ -1,15 +1,12 @@
+import "dotenv/config";
 import express from "express";
 import mongoose from "mongoose";
-import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
 import mongoSanitize from "@exortek/express-mongo-sanitize";
 import hpp from "hpp";
 import compression from "compression";
 import logger from "./utils/logger.js";
-
-// Load env variables
-dotenv.config();
 
 // Routes
 import { app, server, io } from "./socket.js";
@@ -24,6 +21,7 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import refundRoutes from "./routes/refundRoutes.js";
 import adminAdRoutes from "./routes/adminAdRoutes.js";
 import roleRoutes from "./routes/roleRoutes.js";
+import adminWithdrawalRoutes from "./routes/adminWithdrawalRoutes.js";
 
 const PORT = process.env.PORT || 5052;
 
@@ -31,20 +29,21 @@ const PORT = process.env.PORT || 5052;
 app.use(helmet());
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow all local development origins and the production admin URL
         const allowedOrigins = [
             process.env.FRONTEND_URL,
             process.env.ADMIN_URL,
+            "https://suvix.vercel.app",
+            "https://adminsuvix.vercel.app",
             "http://localhost:5173",
             "http://localhost:5174",
             "http://localhost:5175",
-            "http://localhost:3000",
-            "https://adminsuvix.vercel.app"
+            "http://localhost:3000"
         ].filter(Boolean);
         
         if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
             return callback(null, true);
         }
+        console.warn(`⚠️ CORS: Blocked request from origin: ${origin}`);
         return callback(new Error("Not allowed by CORS"), false);
     },
     credentials: true
@@ -76,6 +75,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/refunds", refundRoutes);
 app.use("/api/admin/ads", adminAdRoutes);
 app.use("/api/admin/roles", roleRoutes);
+app.use("/api/admin/withdrawals", adminWithdrawalRoutes);
 
 // Health Check
 app.get("/health", (req, res) => res.json({ status: "healthy", service: "admin-backend", timestamp: new Date() }));
@@ -83,12 +83,18 @@ app.get("/", (req, res) => res.json({ message: "SuviX Admin Backend is running!"
 
 // ============ ERROR HANDLING ============
 app.use((err, req, res, next) => {
-    logger.error("Admin Server Error:", err.message);
+    logger.error("Admin Server Error:", {
+        message: err.message,
+        stack: err.stack,
+        url: req.originalUrl,
+        method: req.method
+    });
     res.status(err.statusCode || 500).json({
         success: false,
         message: err.message || "Internal Server Error"
     });
 });
+
 
 if (process.env.NODE_ENV !== "test") {
     server.listen(PORT, () => {

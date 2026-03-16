@@ -24,6 +24,7 @@ import {
   FaTrophy,
   FaTasks,
   FaNewspaper,
+  FaClock
 } from 'react-icons/fa';
 import { HiTrendingUp, HiSparkles } from 'react-icons/hi';
 import { 
@@ -68,7 +69,7 @@ const pieData = [
   { name: 'Pending', value: 10, color: '#F59E0B' },
 ];
 
-const EditorDashboard = ({ user, stats }) => {
+const EditorDashboard = ({ user, stats, walletBalance, pendingBalance }) => {
   const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -85,17 +86,17 @@ const EditorDashboard = ({ user, stats }) => {
   };
 
   const quickStats = [
-    { label: 'Total Orders', value: stats?.totalOrders || 0, icon: FaClipboardList, color: '#22C55E', bgColor: 'bg-emerald-500/10 light:bg-emerald-50', trend: '+12%', trendUp: true },
-    { label: 'Active Gigs', value: stats?.activeGigs || 0, icon: FaBriefcase, color: '#3B82F6', bgColor: 'bg-blue-500/10 light:bg-blue-50', trend: '+3', trendUp: true },
-    { label: 'Profile Views', value: 248, icon: FaEye, color: '#A855F7', bgColor: 'bg-purple-500/10 light:bg-purple-50', trend: '+18%', trendUp: true },
-    { label: 'Response Rate', value: '94%', icon: FaUserCheck, color: '#F59E0B', bgColor: 'bg-amber-500/10 light:bg-amber-50', trend: '-2%', trendUp: false },
+    { label: 'Available Balance', value: `₹${(walletBalance || 0).toLocaleString()}`, icon: FaWallet, color: '#22C55E', bgColor: 'bg-emerald-500/10 light:bg-emerald-50', trend: 'Live', trendUp: true },
+    { label: 'Pending Clearance', value: `₹${(pendingBalance || 0).toLocaleString()}`, icon: FaClock, color: '#F59E0B', bgColor: 'bg-amber-500/10 light:bg-amber-50', trend: '7-day', trendUp: true },
+    { label: 'Total Orders', value: stats?.totalOrders || 0, icon: FaClipboardList, color: '#3B82F6', bgColor: 'bg-blue-500/10 light:bg-blue-50', trend: '+12%', trendUp: true },
+    { label: 'Active Gigs', value: stats?.activeGigs || 0, icon: FaBriefcase, color: '#A855F7', bgColor: 'bg-purple-500/10 light:bg-purple-50', trend: '+3', trendUp: true },
   ];
 
   const quickActions = [
-    { label: 'Create Gig', icon: FaRocket, path: '/create-gig', color: '#22C55E', bgColor: 'bg-emerald-500/10 light:bg-emerald-50' },
-    { label: 'View Orders', icon: FaClipboardList, path: '/my-orders', color: '#3B82F6', bgColor: 'bg-blue-500/10 light:bg-blue-50' },
-    { label: 'Analytics', icon: FaChartLine, path: '/editor-analytics', color: '#A855F7', bgColor: 'bg-purple-500/10 light:bg-purple-50' },
-    { label: 'Payments', icon: FaWallet, path: '/payments', color: '#F59E0B', bgColor: 'bg-amber-500/10 light:bg-amber-50' },
+    { label: 'My Wallet', icon: FaWallet, path: '/editor-wallet', color: '#22C55E', bgColor: 'bg-emerald-500/10 light:bg-emerald-50' },
+    { label: 'Create Gig', icon: FaRocket, path: '/create-gig', color: '#3B82F6', bgColor: 'bg-blue-500/10 light:bg-blue-50' },
+    { label: 'View Orders', icon: FaClipboardList, path: '/my-orders', color: '#A855F7', bgColor: 'bg-purple-500/10 light:bg-purple-50' },
+    { label: 'Transaction History', icon: FaChartLine, path: '/payments', color: '#F59E0B', bgColor: 'bg-amber-500/10 light:bg-amber-50' },
   ];
 
   const recentActivity = [

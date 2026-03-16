@@ -56,6 +56,8 @@ import clientKYCRoutes from "./routes/clientKYCRoutes.js";
 import refundRoutes from "./routes/refundRoutes.js";
 import locationRoutes from "./routes/locationRoutes.js";
 import jobRoutes from "./routes/jobRoutes.js";
+import walletRoutes from "./routes/walletRoutes.js";
+import withdrawalRoutes from "./routes/withdrawalRoutes.js";
 
 // Scheduled Jobs
 import { startScheduledJobs } from "./jobs/scheduledJobs.js";
@@ -303,6 +305,8 @@ app.use("/api/client-kyc", clientKYCRoutes);
 app.use("/api/refunds", refundRoutes);
 app.use("/api/location", locationRoutes);
 app.use("/api/jobs", jobRoutes);
+app.use("/api/wallet", walletRoutes);
+app.use("/api/withdrawals", withdrawalRoutes);
 
 // Badge/Achievement Routes
 import badgeRoutes from "./routes/badgeRoutes.js";

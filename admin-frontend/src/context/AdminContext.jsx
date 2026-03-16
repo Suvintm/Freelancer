@@ -5,7 +5,7 @@
 //  2. Notifications state added for real-time bell
 //  3. Exports queryClient so pages can invalidate queries
 // ─────────────────────────────────────────────────────────────────────────────
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { QueryClient } from "@tanstack/react-query";
 
@@ -60,25 +60,7 @@ export const AdminProvider = ({ children }) => {
   const [unreadCount, setUnreadCount]   = useState(0);
   const [alerts, setAlerts]             = useState({ kycPending: 0, disputedOrders: 0 });
 
-  // ── Auth: verify token on mount ────────────────────────────────────────
-  useEffect(() => {
-    const token = localStorage.getItem("adminToken");
-    if (token) {
-      verifyToken();
-    } else {
-      setLoading(false);
-    }
-
-    // Listen for 401 global event from interceptor
-    const onUnauthorized = () => {
-      setAdmin(null);
-      setLoading(false);
-    };
-    window.addEventListener("admin:unauthorized", onUnauthorized);
-    return () => window.removeEventListener("admin:unauthorized", onUnauthorized);
-  }, []);
-
-  const verifyToken = async () => {
+  const verifyToken = useCallback(async () => {
     try {
       const res = await adminAxios.get("/admin/auth/verify");
       if (res.data.success) {
@@ -91,10 +73,27 @@ export const AdminProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // ── Auth: verify token on mount ────────────────────────────────────────
+  useEffect(() => {
+    const token = localStorage.getItem("adminToken");
+    if (token) {
+      verifyToken();
+    } else {
+      setLoading(false);
+    }
+
+    const onUnauthorized = () => {
+      setAdmin(null);
+      setLoading(false);
+    };
+    window.addEventListener("admin:unauthorized", onUnauthorized);
+    return () => window.removeEventListener("admin:unauthorized", onUnauthorized);
+  }, [verifyToken]);
 
   // ── Auth actions ───────────────────────────────────────────────────────
-  const login = async (email, password, role) => {
+  const login = useCallback(async (email, password, role) => {
     try {
       const res = await adminAxios.post("/admin/auth/login", { email, password, role });
       const { token, admin: adminData } = res.data;
@@ -112,9 +111,9 @@ export const AdminProvider = ({ children }) => {
         remainingAttempts: err.response?.data?.remainingAttempts,
       };
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await adminAxios.post("/admin/auth/logout");
     } catch {
@@ -124,9 +123,9 @@ export const AdminProvider = ({ children }) => {
       setAdmin(null);
       queryClient.clear();
     }
-  };
+  }, []);
 
-  const changePassword = async (currentPassword, newPassword) => {
+  const changePassword = useCallback(async (currentPassword, newPassword) => {
     try {
       const res = await adminAxios.post("/admin/auth/change-password", {
         currentPassword, newPassword,
@@ -135,10 +134,11 @@ export const AdminProvider = ({ children }) => {
     } catch (err) {
       return { success: false, message: err.response?.data?.message || "Failed" };
     }
-  };
+  }, []);
 
   // ── Notifications ──────────────────────────────────────────────────────
-  const fetchNotifications = async () => {
+  // ── Notifications ──────────────────────────────────────────────────────
+  const fetchNotifications = useCallback(async () => {
     try {
       const res = await adminAxios.get("/admin/notifications?limit=20");
       if (res.data.success) {
@@ -148,23 +148,26 @@ export const AdminProvider = ({ children }) => {
     } catch {
       // non-critical — silently skip
     }
-  };
+  }, []);
 
-  const markNotificationsRead = async () => {
+  const markNotificationsRead = useCallback(async () => {
     try {
       await adminAxios.patch("/admin/notifications/read-all");
       setUnreadCount(0);
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     } catch {/**/}
-  };
+  }, []);
 
   // ── Alerts (dashboard banners) ─────────────────────────────────────────
-  const fetchAlerts = async () => {
+  const fetchAlerts = useCallback(async () => {
     try {
       const res = await adminAxios.get("/admin/stats/alerts");
-      if (res.data.success) setAlerts(res.data.alerts);
+      if (res.data.success) {
+        // We use the 'counts' object for sidebar badges
+        setAlerts(res.data.counts || {});
+      }
     } catch {/**/}
-  };
+  }, []);
 
   useEffect(() => {
     if (admin) {

@@ -33,7 +33,11 @@ const SlideOver = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            style={{
+              position: "fixed", inset: 0,
+              background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
+              zIndex: 100
+            }}
           />
 
           {/* Slide Panel */}
@@ -42,30 +46,47 @@ const SlideOver = ({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className={`fixed inset-y-0 right-0 w-full ${width} bg-surface border-l border-default z-[101] shadow-2xl flex flex-col`}
+            style={{
+              position: "fixed", top: 0, bottom: 0, right: 0,
+              width: "100%", maxWidth: width === "max-w-md" ? 448 : width,
+              background: "var(--bg-surface)",
+              borderLeft: "1px solid var(--border-default)",
+              zIndex: 101, boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              display: "flex", flexDirection: "column"
+            }}
           >
             {/* Header */}
-            <div className="p-6 border-b border-default flex items-center justify-between bg-surface/80 backdrop-blur-md sticky top-0 z-10">
+            <div style={{
+              padding: 24, borderBottom: "1px solid var(--border-default)",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              background: "var(--bg-surface)", backdropFilter: "blur(12px)",
+              position: "sticky", top: 0, zIndex: 10
+            }}>
               <div>
-                <h3 className="text-lg font-bold text-primary">{title}</h3>
-                {subtitle && <p className="text-sm text-muted mt-0.5">{subtitle}</p>}
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{title}</h3>
+                {subtitle && <p style={{ fontSize: 14, color: "var(--text-muted)", margin: "4px 0 0" }}>{subtitle}</p>}
               </div>
               <button 
                 onClick={onClose}
-                className="p-2 rounded-lg hover:bg-elevated text-muted hover:text-primary transition-all"
+                style={{
+                  padding: 8, borderRadius: 8, background: "transparent", border: "none", cursor: "pointer",
+                  color: "var(--text-muted)", transition: "all 0.2s"
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.background = "var(--bg-elevated)"; e.currentTarget.style.color = "var(--text-primary)" }}
+                onMouseOut={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-muted)" }}
               >
                 <HiOutlineXMark size={24} />
               </button>
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
+            <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
               {children}
             </div>
 
             {/* Footer */}
             {footer && (
-              <div className="p-6 border-t border-default bg-elevated/50">
+              <div style={{ padding: 24, borderTop: "1px solid var(--border-default)", background: "var(--bg-elevated)" }}>
                 {footer}
               </div>
             )}

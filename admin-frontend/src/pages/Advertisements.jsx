@@ -297,7 +297,7 @@ const Advertisements = () => {
   const [detailAd,     setDetailAd]     = useState(null);
 
   // ── Fetch ───────────────────────────────────────────────────────────
-  const loadAll = async () => {
+  const loadAll = useCallback(async () => {
     setLoading(true); setALoading(true);
     try {
       const [adsRes, analyticsRes, settingsRes] = await Promise.allSettled([
@@ -310,7 +310,7 @@ const Advertisements = () => {
       if (settingsRes.status === "fulfilled")  setShowSuvixAds(settingsRes.value.data.settings?.showSuvixAds ?? true);
     } catch { toast.error("Failed to load ads"); }
     finally { setLoading(false); setALoading(false); }
-  };
+  }, [adminAxios]);
 
   useEffect(() => {
     loadAll();

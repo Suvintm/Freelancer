@@ -15,6 +15,11 @@ const siteSettingsSchema = new mongoose.Schema(
       unique: true,
       default: "global",
     },
+    // Global toggle for automated KYC verification
+    autoKycEnabled: {
+      type: Boolean,
+      default: false,
+    },
     // Global toggle to show/hide Suvix internal ad slots
     showSuvixAds: {
       type: Boolean,

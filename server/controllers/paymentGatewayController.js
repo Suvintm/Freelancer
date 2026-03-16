@@ -6,6 +6,7 @@
 import { Order } from "../models/Order.js";
 import User from "../models/User.js";
 import { SiteSettings } from "../models/SiteSettings.js";
+import { Payment } from "../models/Payment.js";
 import PaymentService, {
   isPaymentSupported,
   getCurrencyInfo,
@@ -184,6 +185,28 @@ export const verifyPayment = async (req, res) => {
     }
     await order.save();
 
+    // Create Payment record for escrow deposit
+    await Payment.create({
+      order: order._id,
+      client: order.client,
+      editor: order.editor,
+      amount: order.amount,
+      platformFee: order.platformFee,
+      editorEarning: order.editorEarning,
+      type: "escrow_deposit",
+      status: "completed",
+      transactionId: razorpay_payment_id,
+      orderSnapshot: {
+        orderNumber: order.orderNumber,
+        title: order.title,
+        description: order.description,
+        createdAt: order.createdAt,
+        deadline: order.deadline,
+      },
+      completedAt: new Date(),
+      notes: `Razorpay Payment ID: ${razorpay_payment_id}`,
+    });
+
     // Get order details for notification
     const populatedOrder = await Order.findById(order._id)
       .populate("client", "name")
@@ -325,6 +348,31 @@ async function handlePaymentCaptured(payment) {
   order.escrowStatus = "held";
   order.escrowHeldAt = new Date();
   await order.save();
+
+  // Create Payment record if it doesn't exist
+  const existingPayment = await Payment.findOne({ transactionId: payment.id });
+  if (!existingPayment) {
+    await Payment.create({
+      order: order._id,
+      client: order.client,
+      editor: order.editor,
+      amount: order.amount,
+      platformFee: order.platformFee,
+      editorEarning: order.editorEarning,
+      type: "escrow_deposit",
+      status: "completed",
+      transactionId: payment.id,
+      orderSnapshot: {
+        orderNumber: order.orderNumber,
+        title: order.title,
+        description: order.description,
+        createdAt: order.createdAt,
+        deadline: order.deadline,
+      },
+      completedAt: new Date(),
+      notes: "Created via Webhook (payment.captured)",
+    });
+  }
 }
 
 async function handlePaymentFailed(payment) {
@@ -345,6 +393,25 @@ async function handleRefundCreated(refund) {
   order.paymentStatus = "refunded";
   order.escrowStatus = "refunded";
   await order.save();
+
+  // Create Payment record for refund
+  await Payment.create({
+    order: order._id,
+    client: order.client,
+    editor: order.editor,
+    amount: refund.amount / 100,
+    platformFee: 0,
+    editorEarning: 0,
+    type: "refund",
+    status: "completed",
+    transactionId: refund.id,
+    orderSnapshot: {
+      orderNumber: order.orderNumber,
+      title: order.title,
+    },
+    completedAt: new Date(),
+    notes: `Refund for payment: ${refund.payment_id}`,
+  });
 }
 
 async function handlePayoutProcessed(payout) {
