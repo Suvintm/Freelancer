@@ -8,6 +8,10 @@ import KYCLog from "../models/KYCLog.js";
 import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
 import { RazorpayProvider } from "../services/RazorpayProvider.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
+import { emitToUser, emitMaintenance } from "../socket.js";
+import { Profile } from "../models/Profile.js";
+import { Portfolio } from "../models/Portfolio.js";
+import { calculateProfileCompletion } from "../utils/profileUtils.js";
 
 /**
  * Get KYC Status
@@ -174,7 +178,12 @@ export const submitKYC = asyncHandler(async (req, res) => {
     user.kycVerifiedAt = new Date();
 
     // Recalculate profile completion
-    user.profileCompletionPercent = calculateProfileCompletion(user);
+    const [profile, portfolioCount] = await Promise.all([
+      Profile.findOne({ user: userId }).lean(),
+      Portfolio.countDocuments({ user: userId })
+    ]);
+    user.profileCompletionPercent = calculateProfileCompletion(user, profile, portfolioCount);
+    user.profileCompleted = user.profileCompletionPercent >= 100;
 
     await user.save();
     
@@ -211,7 +220,13 @@ export const submitKYC = asyncHandler(async (req, res) => {
     if (newDocuments.length > 0) user.kycDocuments = newDocuments;
     user.kycStatus = "submitted"; // Pending manual verification
     user.kycSubmittedAt = new Date();
-    user.profileCompletionPercent = calculateProfileCompletion(user);
+    // Recalculate profile completion
+    const [profile, portfolioCount] = await Promise.all([
+      Profile.findOne({ user: userId }).lean(),
+      Portfolio.countDocuments({ user: userId })
+    ]);
+    user.profileCompletionPercent = calculateProfileCompletion(user, profile, portfolioCount);
+    user.profileCompleted = user.profileCompletionPercent >= 100;
 
     await user.save();
     
@@ -236,40 +251,7 @@ export const submitKYC = asyncHandler(async (req, res) => {
 /**
  * Calculate profile completion percentage
  */
-function calculateProfileCompletion(user) {
-  let completion = 0;
-  const weights = {
-    basicInfo: 20,
-    skills: 15,
-    portfolio: 20,
-    gig: 15,
-    kyc: 30,
-  };
 
-  // Basic info (name, bio, profile picture)
-  if (user.name && user.profilePicture) {
-    completion += weights.basicInfo * 0.6;
-  }
-  if (user.bio) {
-    completion += weights.basicInfo * 0.4;
-  }
-
-  // Skills
-  if (user.skills && user.skills.length >= 3) {
-    completion += weights.skills;
-  } else if (user.skills && user.skills.length > 0) {
-    completion += weights.skills * 0.5;
-  }
-
-  // KYC
-  if (user.kycStatus === "verified") {
-    completion += weights.kyc;
-  } else if (user.kycStatus === "submitted") {
-    completion += weights.kyc * 0.5;
-  }
-
-  return Math.round(completion);
-}
 
 /**
  * Lookup IFSC Code (Proxy to avoid CORS)

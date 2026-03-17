@@ -51,7 +51,6 @@ export const getAllEditors = asyncHandler(async (req, res) => {
     const userMatch = {
       role: "editor",
       isVerified: true,
-      kycStatus: "verified",
       profileCompleted: true,
       isBanned: { $ne: true }
     };

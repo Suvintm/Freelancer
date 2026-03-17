@@ -22,6 +22,7 @@ const iconMap = {
   about: FaFileAlt,
   skills: FaTags,
   portfolio: FaImages,
+  softwares: HiOutlineSparkles,
   experience: FaBriefcase,
   languages: FaGlobe,
   socialLinks: FaLink,
@@ -33,6 +34,7 @@ const getRedirectUrl = (section, itemId) => {
   switch (itemId) {
     case 'kycVerified': return '/kyc-details';
     case 'portfolio': return '/editor-profile?tab=portfolio';
+    case 'softwares': return '/editor-profile-update#softwares';
     default: return `/editor-profile-update#${section}`;
   }
 };
@@ -202,6 +204,9 @@ const ProfileCompletionBanner = () => {
                 {remaining === 1
                   ? 'Just 1 required field left — you\'re almost there.'
                   : `${remaining} required field${remaining > 1 ? 's' : ''} remaining to unlock full visibility.`}
+                <span className="block mt-1 text-zinc-600 font-medium italic opacity-80">
+                  * KYC is only required for withdrawals.
+                </span>
               </p>
 
               {/* Progress steps indicator */}

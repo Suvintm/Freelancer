@@ -7,6 +7,7 @@ import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
 import { createNotification } from "./notificationController.js";
+import { calculateProfileCompletion } from "../utils/profileUtils.js";
 import fs from "fs";
 
 // ============ GET PROFILE ============
@@ -308,7 +309,7 @@ export const getProfileCompletionStatus = asyncHandler(async (req, res) => {
     {
       id: "profilePicture",
       label: "Profile Photo",
-      weight: 10,
+      weight: 20,
       required: true,
       section: "basic",
       complete: user?.profilePicture && !user.profilePicture.includes("flaticon"),
@@ -316,7 +317,7 @@ export const getProfileCompletionStatus = asyncHandler(async (req, res) => {
     {
       id: "about",
       label: "Professional Bio",
-      weight: 15,
+      weight: 20,
       required: true,
       section: "about",
       complete: profile?.about && profile.about.length >= 10,
@@ -324,7 +325,7 @@ export const getProfileCompletionStatus = asyncHandler(async (req, res) => {
     {
       id: "skills",
       label: "Skills (3+)",
-      weight: 15,
+      weight: 20,
       required: true,
       section: "skills",
       complete: profile?.skills && profile.skills.length >= 3,
@@ -332,15 +333,23 @@ export const getProfileCompletionStatus = asyncHandler(async (req, res) => {
     {
       id: "portfolio",
       label: "Portfolio (2+)",
-      weight: 15,
+      weight: 20,
       required: true,
       section: "portfolio",
       complete: portfolioCount >= 2,
     },
     {
+      id: "softwares",
+      label: "Software & Tools",
+      weight: 20,
+      required: true,
+      section: "softwares",
+      complete: profile?.softwares && profile.softwares.length >= 1,
+    },
+    {
       id: "experience",
       label: "Experience",
-      weight: 10,
+      weight: 0,
       required: false,
       section: "experience",
       complete: profile?.experience && profile.experience.length > 0,
@@ -348,7 +357,7 @@ export const getProfileCompletionStatus = asyncHandler(async (req, res) => {
     {
       id: "languages",
       label: "Languages",
-      weight: 5,
+      weight: 0,
       required: false,
       section: "languages",
       complete: profile?.languages && profile.languages.length >= 1,
@@ -356,40 +365,36 @@ export const getProfileCompletionStatus = asyncHandler(async (req, res) => {
     {
       id: "socialLinks",
       label: "Social Links",
-      weight: 10,
+      weight: 0,
       required: false,
       section: "social",
       complete: (() => {
         if (!profile?.socialLinks) return false;
         const links = Object.values(profile.socialLinks).filter(v => v && v.trim().length > 0);
-        return links.length >= 1; // Lowered from 2 to 1
+        return links.length >= 1;
       })(),
     },
     {
       id: "kycVerified",
-      label: "Bank Account",
-      weight: 15,
-      required: true,
+      label: "Bank Account (KYC)",
+      weight: 0,
+      required: false,
       section: "kyc",
       complete: user?.kycStatus === "verified",
     },
     {
       id: "hourlyRate",
       label: "Hourly Rate",
-      weight: 5,
+      weight: 0,
       required: false,
       section: "rate",
       complete: profile?.hourlyRate && profile.hourlyRate.min > 0,
     },
   ];
   
-  // Calculate percentage from REQUIRED items only (5 items @ 20% each = 100%)
-  const requiredItems = items.filter(i => i.required);
-  const optionalItems = items.filter(i => !i.required);
-  const percent = requiredItems.reduce((acc, item) => acc + (item.complete ? 20 : 0), 0);
-  const optionalComplete = optionalItems.filter(i => i.complete).length;
-  
   // Update user's profileCompletionPercent in database
+  const percent = calculateProfileCompletion(user, profile, portfolioCount);
+  
   await User.findByIdAndUpdate(userId, { 
     profileCompletionPercent: percent,
     profileCompleted: percent >= 100,
