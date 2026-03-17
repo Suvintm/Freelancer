@@ -68,6 +68,7 @@ app.use("/api/admin/payment-settings", adminPaymentRoutes);
 app.use("/api/client-kyc", clientKYCRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/refunds", refundRoutes);
+app.use("/api/admin/ads", adminAdRoutes);
 
 // Apply security middleware AFTER the above routes but BEFORE ads to see if it helps.
 // Actually, let's just move mongoSanitize below the sensitive routes.
@@ -75,8 +76,7 @@ app.use(mongoSanitize());
 app.use(hpp());
 app.use(compression());
 
-app.use("/api/admin/ads", adminAdRoutes);
-app.use("/api/admin/roles", roleRoutes);
+ app.use("/api/admin/roles", roleRoutes);
 app.use("/api/admin/withdrawals", adminWithdrawalRoutes);
 app.use("/api/admin/storage", adminStorageRoutes);
 
