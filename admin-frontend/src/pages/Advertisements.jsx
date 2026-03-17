@@ -84,20 +84,32 @@ const INIT = {
 // ─────────────────────────────────────────────────────────────────────────────
 const repairUrl = (url) => {
   if (!url || typeof url !== "string") return url;
-  if (!url.includes("cloudinary") && !url.includes("res_")) return url;
-  let f = url;
-  f = f.replace(/^(https?):?\/*_+/gi, "$1://");
-  f = f.replace(/_+res_+cloudinary_+com/g, "res.cloudinary.com").replace(/res_cloudinary_com/g, "res.cloudinary.com");
-  if (f.includes("res.cloudinary.com")) {
-    f = f.replace(/res\.cloudinary\.com_+/g, "res.cloudinary.com/");
-    f = f.replace(/image_upload_+/g, "image/upload/").replace(/video_upload_+/g, "video/upload/");
-    f = f.replace(/([/_]?v\d+)_+/g, "$1/");
-    f = f.replace(/advertisements_images_+/g, "advertisements/images/").replace(/advertisements_videos_+/g, "advertisements/videos/");
-    f = f.replace(/_([a-z0-9\-_]+\.(webp|jpg|jpeg|png|mp4|mov))/gi, "/$1");
-    f = f.replace(/([^:])\/\/+/g, "$1/");
+  
+  // If it is already a clean Cloudinary URL, don't repair it
+  if (url.includes("res.cloudinary.com") && !url.includes("res_cloudinary") && !url.includes("cloudinary_com")) {
+    return url;
   }
-  f = f.replace(/_jpg([/_?#]|$)/gi, ".jpg$1").replace(/_png([/_?#]|$)/gi, ".png$1").replace(/_mp4([/_?#]|$)/gi, ".mp4$1").replace(/_webp([/_?#]|$)/gi, ".webp$1");
-  return f;
+
+  // Only repair if it looks mangled
+  if (url.includes("cloudinary") || url.includes("res_") || url.includes("_com")) {
+    let f = url;
+    f = f.replace(/^(https?):?\/*_+/gi, "$1://");
+    f = f.replace(/_+res_+cloudinary_+com/g, "res.cloudinary.com").replace(/res_cloudinary_com/g, "res.cloudinary.com");
+    if (f.includes("res.cloudinary.com")) {
+      f = f.replace(/res\.cloudinary\.com_+/g, "res.cloudinary.com/");
+      f = f.replace(/image_upload_+/g, "image/upload/").replace(/video_upload_+/g, "video/upload/");
+      f = f.replace(/([/_]?v\d+)_+/g, "$1/");
+      f = f.replace(/advertisements_images_+/g, "advertisements/images/").replace(/advertisements_videos_+/g, "advertisements/videos/");
+      
+      // Safe replacement of underscores with slashes for known path keywords
+      f = f.replace(/_+(upload|image|video|v\d+)_+/g, "/$1/");
+      
+      f = f.replace(/([^:])\/\/+/g, "$1/");
+    }
+    f = f.replace(/_jpg([/_?#]|$)/gi, ".jpg$1").replace(/_png([/_?#]|$)/gi, ".png$1").replace(/_mp4([/_?#]|$)/gi, ".mp4$1").replace(/_webp([/_?#]|$)/gi, ".webp$1");
+    return f;
+  }
+  return url;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -51,9 +51,6 @@ app.use(cors({
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-app.use(mongoSanitize());
-app.use(hpp());
-app.use(compression());
 
 // ============ DATABASE CONNECTION ============
 if (process.env.NODE_ENV !== "test") {
@@ -63,9 +60,6 @@ if (process.env.NODE_ENV !== "test") {
 }
 
 // ============ ADMIN ROUTES ============
-// Note: We DO NOT use the global 'protect' (user) middleware here.
-// Each admin route file uses its own 'protectAdmin' middleware.
-
 app.use("/api/admin/auth", adminAuthRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/admin/analytics", adminAnalyticsRoutes);
@@ -73,6 +67,13 @@ app.use("/api/admin/payment-settings", adminPaymentRoutes);
 app.use("/api/client-kyc", clientKYCRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/refunds", refundRoutes);
+
+// Apply security middleware AFTER the above routes but BEFORE ads to see if it helps.
+// Actually, let's just move mongoSanitize below the sensitive routes.
+app.use(mongoSanitize());
+app.use(hpp());
+app.use(compression());
+
 app.use("/api/admin/ads", adminAdRoutes);
 app.use("/api/admin/roles", roleRoutes);
 app.use("/api/admin/withdrawals", adminWithdrawalRoutes);

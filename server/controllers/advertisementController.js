@@ -13,73 +13,41 @@ const repairUrl = (val) => {
   if (Array.isArray(val)) return val.map(v => repairUrl(v));
   if (typeof val !== "string") return val;
 
-  // Most mangled URLs will contain cloudinary or res_
+  // If it is already a clean Cloudinary URL, don't repair it
+  if (val.includes("res.cloudinary.com") && !val.includes("res_cloudinary") && !val.includes("cloudinary_com")) {
+    return val;
+  }
+
+  // Only repair if it looks mangled
   if (val.includes("cloudinary") || val.includes("res_") || val.includes("_com")) {
-    const original = val;
     let fixed = val;
-
-    // 1. Restore Protocol and double slashes
     fixed = fixed.replace(/^(https?):?\/*_+/gi, "$1://");
-
-    // 2. Restore Domain Dots
     fixed = fixed.replace(/_+res_+cloudinary_+com/g, "res.cloudinary.com")
                  .replace(/res_cloudinary_com/g, "res.cloudinary.com")
                  .replace(/cloudinary_com/g, "cloudinary.com");
-
-    // 3. Fix the "Slash Mangler" in path
     if (fixed.includes("res.cloudinary.com")) {
-      // Restore domain slash
       fixed = fixed.replace(/res\.cloudinary\.com_+/g, "res.cloudinary.com/");
-      
-      // Fix common path keywords
       fixed = fixed.replace(/image_upload_+/g, "image/upload/")
                    .replace(/video_upload_+/g, "video/upload/")
                    .replace(/raw_upload_+/g, "raw/upload/");
-      
-      // Fix version slash (matches /v123_ or _v123_ or v123_)
       fixed = fixed.replace(/([/_]?v\d+)_+/g, "$1/"); 
-      
-      // Fix slash between cloud_name and resource_type (e.g. /cloudname_image/)
-      // Matches cloudname followed by underscore followed by resource type
       fixed = fixed.replace(/(res\.cloudinary\.com\/[^/_]+)_+(image|video|raw|authenticated)_*/g, "$1/$2/");
-      
-      // Fix portfolio/images folder mangling
       fixed = fixed.replace(/portfolio_([a-z0-9]+)_+/gi, "portfolio/$1/");
-      
-      // Fix folder slashes
       fixed = fixed.replace(/advertisements_images_+/g, "advertisements/images/")
                    .replace(/advertisements_videos_+/g, "advertisements/videos/")
                    .replace(/advertisements_gallery_+/g, "advertisements/gallery/");
-                   
-      // Catch-all: Ensure any remaining underscores before keywords like 'upload' are slashes
-      fixed = fixed.replace(/_+(upload|image|video|v\d+)_+/g, "/$1/");
-
-      // Restore slashes before the final filename if still underscores
-      fixed = fixed.replace(/_([a-z0-9\-_]+\.(webp|jpg|jpeg|png|mp4|mov|m4v|json))/gi, "/$1");
       
-      // Flatten any double slashes created by replacement (except protocol)
+      // Safe replacement of underscores with slashes for known path keywords
+      fixed = fixed.replace(/_+(upload|image|video|v\d+)_+/g, "/$1/");
+      
       fixed = fixed.replace(/([^:])\/\/+/g, "$1/");
     }
-
-    // 4. Restore Extension Dots
     fixed = fixed.replace(/_jpg([/_?#]|$)/gi, ".jpg$1")
                  .replace(/_jpeg([/_?#]|$)/gi, ".jpeg$1")
                  .replace(/_png([/_?#]|$)/gi, ".png$1")
                  .replace(/_mp4([/_?#]|$)/gi, ".mp4$1")
                  .replace(/_webp([/_?#]|$)/gi, ".webp$1")
                  .replace(/_json([/_?#]|$)/gi, ".json$1");
-
-    // Final check for end-of-string extensions
-    fixed = fixed.replace(/_jpg$/i, ".jpg")
-                 .replace(/_jpeg$/i, ".jpeg")
-                 .replace(/_png$/i, ".png")
-                 .replace(/_mp4$/i, ".mp4")
-                 .replace(/_webp$/i, ".webp");
-
-    if (original !== fixed) {
-      console.log(`[REPAIR URL] Fixed: ${original} -> ${fixed}`);
-    }
-    
     return fixed;
   }
   return val;

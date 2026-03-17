@@ -123,8 +123,8 @@ export const requirePermission = (permission) => {
 import rateLimit from "express-rate-limit";
 
 export const adminLoginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts
+  windowMs: 5 * 60 * 1000, // 15 minutes
+  max: 8, // 5 attempts
   message: {
     success: false,
     message: "Too many login attempts. Please try again after 15 minutes",
