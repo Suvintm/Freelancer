@@ -81,8 +81,9 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
                     let user = await User.findOne({ googleId });
 
                     if (user) {
-                        // User exists with Google ID - update profile picture if changed
-                        if (profilePicture && user.profilePicture !== profilePicture) {
+                        // User exists with Google ID - ONLY set Google picture if user has NO picture
+                        // Never overwrite a custom picture the user has uploaded
+                        if (profilePicture && !user.profilePicture) {
                             user.profilePicture = profilePicture;
                             await user.save();
                         }
