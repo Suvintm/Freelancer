@@ -392,13 +392,21 @@ export const getProfileCompletionStatus = asyncHandler(async (req, res) => {
     },
   ];
   
-  // Update user's profileCompletionPercent in database
+  // Split into required and optional for the response
+  const requiredItems = items.filter(i => i.required);
+  const optionalItems = items.filter(i => !i.required);
+  const optionalComplete = optionalItems.filter(i => i.complete).length;
+
+  // Use shared utility for the single source-of-truth calculation
   const percent = calculateProfileCompletion(user, profile, portfolioCount);
   
-  await User.findByIdAndUpdate(userId, { 
-    profileCompletionPercent: percent,
-    profileCompleted: percent >= 100,
-  });
+  // Update user's profileCompletionPercent in database
+  if (userId) {
+    await User.findByIdAndUpdate(userId, { 
+      profileCompletionPercent: percent,
+      profileCompleted: percent >= 100,
+    });
+  }
   
   res.status(200).json({
     success: true,
@@ -417,7 +425,7 @@ export const getProfileCompletionStatus = asyncHandler(async (req, res) => {
     })),
     message: percent >= 100 
       ? "Profile complete! You're all set to receive orders."
-      : `Complete ${requiredItems.length - requiredItems.filter(i => i.complete).length} more required field(s)`,
+      : `Complete ${requiredItems.filter(i => !i.complete).length} more required field(s)`,
   });
 });
 
