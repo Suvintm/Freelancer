@@ -54,6 +54,7 @@ import SoftwareExpertise from "../components/SoftwareExpertise.jsx";
 import useRefreshManager from "../hooks/useRefreshManager.js";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 import ProfileChecklist from "../components/ProfileChecklist.jsx";
+import FollowListModal from "../components/FollowListModal.jsx";
 
 import _premiereIcon from "../assets/preimerepro.png";
 import _aeIcon from "../assets/adobeexpress.png";
@@ -101,6 +102,7 @@ const EditorProfile = () => {
   const [searchParams] = useSearchParams();
   const { id: routeEditorId } = useParams();
   const [showRatingsModal, setShowRatingsModal] = useState(false);
+  const [followModal, setFollowModal] = useState({ isOpen: false, type: "followers" });
   
 
 
@@ -423,14 +425,20 @@ const EditorProfile = () => {
 
                   {/* Right Column (50%): Followers + Following (Centered with Icons) */}
                   <div className="w-1/2 flex flex-col justify-center gap-5 pt-1 border-l border-zinc-900 ml-1 pl-3">
-                    <div className="flex flex-col items-center">
+                    <div 
+                      onClick={() => setFollowModal({ isOpen: true, type: "followers" })}
+                      className="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity"
+                    >
                       <div className="flex items-center gap-1.5 mb-1">
                         <FaUserFriends className="text-[8px] text-zinc-600" />
                         <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Followers</span>
                       </div>
                       <span className="text-2xl font-black text-white leading-none tracking-tighter">{statsData.find(s => s.label.includes('Followers'))?.value || 0}</span>
                     </div>
-                    <div className="flex flex-col items-center">
+                    <div 
+                      onClick={() => setFollowModal({ isOpen: true, type: "following" })}
+                      className="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity"
+                    >
                       <div className="flex items-center gap-1.5 mb-1">
                         <FaUserPlus className="text-[8px] text-zinc-600" />
                         <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Following</span>
@@ -874,6 +882,15 @@ const EditorProfile = () => {
         onClose={() => setShowRatingsModal(false)}
         editorId={userData?._id}
       />
+      {/* Follow / Following Modal */}
+      <FollowListModal
+        isOpen={followModal.isOpen}
+        onClose={() => setFollowModal({ ...followModal, isOpen: false })}
+        userId={targetEditorId}
+        type={followModal.type}
+      />
+
+      {/* Profile Insights Modal Call (If any) */}
     </div>
   );
 };

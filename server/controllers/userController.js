@@ -360,6 +360,50 @@ export const handleFollowRequest = asyncHandler(async (req, res) => {
     res.status(200).json({ success: true, message: "Request rejected" });
   }
 });
+
+// @desc    Get followers list
+// @route   GET /api/user/followers/:userId
+// @access  Private
+export const getFollowers = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  const user = await User.findById(userId).populate({
+    path: "followers",
+    select: "name profilePicture role country suvixScore",
+  });
+
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  res.status(200).json({
+    success: true,
+    followers: user.followers,
+  });
+});
+
+// @desc    Get following list
+// @route   GET /api/user/following/:userId
+// @access  Private
+export const getFollowing = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  const user = await User.findById(userId).populate({
+    path: "following",
+    select: "name profilePicture role country suvixScore",
+  });
+
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  res.status(200).json({
+    success: true,
+    following: user.following,
+  });
+});
 // @desc    Search users by name
 // @route   GET /api/user/search
 // @access  Private

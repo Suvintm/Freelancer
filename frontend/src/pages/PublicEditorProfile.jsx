@@ -44,6 +44,7 @@ import EditorRatingsModal from "../components/EditorRatingsModal.jsx";
 import SuvixScoreBadge from "../components/SuvixScoreBadge.jsx";
 import KYCRequiredModal from "../components/KYCRequiredModal.jsx";
 import SoftwareExpertise from "../components/SoftwareExpertise.jsx";
+import FollowListModal from "../components/FollowListModal.jsx";
 
 import _premiereIcon from "../assets/preimerepro.png";
 import _aeIcon from "../assets/adobeexpress.png";
@@ -97,6 +98,7 @@ const PublicEditorProfile = () => {
   const [showKYCModal, setShowKYCModal] = useState(false);
   const [earnedBadges, setEarnedBadges] = useState([]);
   const [showContactRestriction, setShowContactRestriction] = useState(false);
+  const [followModal, setFollowModal] = useState({ isOpen: false, type: "followers" });
 
   const navigate = useNavigate();
   
@@ -537,13 +539,21 @@ const PublicEditorProfile = () => {
                           <MdVerified className="text-purple-400 text-[9px]" />
                         </div>
                       )}
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <FaUserFriends className="text-[8px] text-zinc-600" />
-                        <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Followers</span>
+                      <div 
+                        onClick={() => setFollowModal({ isOpen: true, type: "followers" })}
+                        className="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity"
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <FaUserFriends className="text-[8px] text-zinc-600" />
+                          <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Followers</span>
+                        </div>
+                        <span className="text-2xl font-black text-white leading-none tracking-tighter">{userData?.followers?.length || 0}</span>
                       </div>
-                      <span className="text-2xl font-black text-white leading-none tracking-tighter">{userData?.followers?.length || 0}</span>
                     </div>
-                    <div className="flex flex-col items-center">
+                    <div 
+                      onClick={() => setFollowModal({ isOpen: true, type: "following" })}
+                      className="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity"
+                    >
                       <div className="flex items-center gap-1.5 mb-1">
                         <FaUserPlus className="text-[8px] text-zinc-600" />
                         <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Following</span>
@@ -1317,8 +1327,18 @@ const PublicEditorProfile = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Follow / Following Modal */}
+      <FollowListModal
+        isOpen={followModal.isOpen}
+        onClose={() => setFollowModal({ ...followModal, isOpen: false })}
+        userId={userData?._id}
+        type={followModal.type}
+      />
     </div>
   );
+  
 };
+
 
 export default PublicEditorProfile;
