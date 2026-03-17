@@ -22,6 +22,7 @@ import refundRoutes from "./routes/refundRoutes.js";
 import adminAdRoutes from "./routes/adminAdRoutes.js";
 import roleRoutes from "./routes/roleRoutes.js";
 import adminWithdrawalRoutes from "./routes/adminWithdrawalRoutes.js";
+import adminStorageRoutes from "./routes/adminStorageRoutes.js";
 
 const PORT = process.env.PORT || 5052;
 
@@ -77,6 +78,7 @@ app.use(compression());
 app.use("/api/admin/ads", adminAdRoutes);
 app.use("/api/admin/roles", roleRoutes);
 app.use("/api/admin/withdrawals", adminWithdrawalRoutes);
+app.use("/api/admin/storage", adminStorageRoutes);
 
 // Health Check
 app.get("/health", (req, res) => res.json({ status: "healthy", service: "admin-backend", timestamp: new Date() }));

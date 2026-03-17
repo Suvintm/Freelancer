@@ -21,6 +21,7 @@ import {
   FaUserCheck,
   FaServer,
   FaLock,
+  FaCloud,
 } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -57,8 +58,9 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: "/advertisements", icon: FaImage, label: "Advertisements", permissionKey: "advertisements" },
     { to: "/subscriptions", icon: FaCrown, label: "Subscriptions", permissionKey: "subscriptions" },
     { to: "/activity", icon: FaHistory, label: "Activity Logs", permissionKey: "activity" },
-    { to: "/storage", icon: FaDatabase, label: "Storage Manager", permissionKey: "storage" },
-    { to: "/service-analytics", icon: FaServer, label: "Service Analytics", permissionKey: "service_analytics" },
+    { to: "/storage", icon: FaDatabase, label: "Storage Plans", permissionKey: "storage" },
+    { to: "/cloudinary", icon: FaCloud, label: "Cloudinary Media", permissionKey: "storage" },
+    { to: "/service-analytics", icon: FaServer, label: "Service Health", permissionKey: "service_analytics" },
     ...(isSuperAdmin ? [{ to: "/settings", icon: FaCog, label: "Settings", permissionKey: "settings" }] : []),
   ];
 

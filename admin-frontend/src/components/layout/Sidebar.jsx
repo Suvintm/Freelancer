@@ -34,6 +34,7 @@ import {
   HiOutlineXMark,
   HiOutlineBell,
   HiOutlineExclamationTriangle,
+  HiOutlineCloud,
   HiMiniChevronRight,
 } from "react-icons/hi2";
 import { useAdmin } from "../../context/AdminContext";
@@ -64,6 +65,7 @@ const NAV = [
       { to: "/withdrawals",        label: "Payouts",           icon: HiOutlineCreditCard,          permission: "analytics",    badgeKey: "pendingWithdrawals", badgeVariant: "orange" },
       { to: "/subscriptions",      label: "Subscriptions",     icon: HiOutlineCreditCard,          permission: "analytics"     },
       { to: "/storage",            label: "Storage",           icon: HiOutlineCircleStack,         permission: "settings"      },
+      { to: "/cloudinary",         label: "Cloudinary Media",  icon: HiOutlineCloud,               permission: "settings"      },
     ],
   },
   {

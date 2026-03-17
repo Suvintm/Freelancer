@@ -32,6 +32,7 @@ import KYCRequestDetail   from "./pages/KYCRequestDetail";
 import ServiceAnalytics   from "./pages/ServiceAnalytics";
 import AdminManagement    from "./pages/AdminManagement";
 import Withdrawals        from "./pages/Withdrawals";
+import CloudinaryManager from "./pages/CloudinaryManager";
 import NotFound           from "./pages/NotFound";
 
 function App() {
@@ -92,6 +93,7 @@ function App() {
                 <Route path="/storage"           element={<ProtectedRoute allowedRoles={["superadmin"]}><StorageManager /></ProtectedRoute>} />
                 <Route path="/settings"          element={<ProtectedRoute allowedRoles={["superadmin"]}><Settings /></ProtectedRoute>} />
                 <Route path="/admin-management"  element={<ProtectedRoute allowedRoles={["superadmin"]}><AdminManagement /></ProtectedRoute>} />
+                <Route path="/cloudinary"        element={<CloudinaryManager />} />
               </Route>
 
               {/* Redirects */}

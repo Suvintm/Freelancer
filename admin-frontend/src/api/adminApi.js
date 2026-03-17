@@ -117,7 +117,7 @@ export const activityApi = {
 export const storageApi = {
   getStats:     ()              => adminAxios.get("/admin/storage/stats"),
   getResources: (params)        => adminAxios.get("/admin/storage/resources", { params }),
-  deleteFile:   (publicId)      => adminAxios.delete(`/admin/storage/resource/${publicId}`),
+  deleteFile:   (publicId)      => adminAxios.delete(`/admin/storage/resource/${encodeURIComponent(publicId)}`),
   bulkDelete:   (ids)           => adminAxios.post("/admin/storage/bulk-delete", { publicIds: ids }),
 };
 
