@@ -1,5 +1,69 @@
-// Advertisement.js - Commercial advertisement model for Suvix platform
+// Advertisement.js - Production advertisement model for Suvix platform
 import mongoose from "mongoose";
+
+// ─── Sub-schemas ──────────────────────────────────────────────────────────────
+
+// Crop data from react-easy-crop (stored as percentages 0–100)
+const cropDataSchema = new mongoose.Schema({
+  x:      { type: Number, default: 0 },   // left offset %
+  y:      { type: Number, default: 0 },   // top offset %
+  width:  { type: Number, default: 100 }, // crop width %
+  height: { type: Number, default: 100 }, // crop height %
+  zoom:   { type: Number, default: 1 },   // zoom factor
+}, { _id: false });
+
+// Controls how content (text/buttons) is positioned & styled on the banner
+const layoutConfigSchema = new mongoose.Schema({
+  // Text position: 9-point grid  tl | tc | tr | ml | mc | mr | bl | bc | br
+  textPosition:      { type: String, default: "bl" },
+  // Overlay gradient direction: to-top | to-bottom | to-left | to-right | radial | none
+  overlayDirection:  { type: String, default: "to-top" },
+  // Overlay opacity: 0–100
+  overlayOpacity:    { type: Number, default: 75, min: 0, max: 100 },
+  // Overlay color (hex)
+  overlayColor:      { type: String, default: "#040408" },
+  // Title font size: sm | md | lg | xl
+  titleSize:         { type: String, default: "md" },
+  // Title font weight: bold | black | extrabold
+  titleWeight:       { type: String, default: "black" },
+  // Title color
+  titleColor:        { type: String, default: "#ffffff" },
+  // Description color
+  descColor:         { type: String, default: "rgba(212,212,216,0.75)" },
+  // Show/hide individual pieces
+  showBadge:         { type: Boolean, default: true },
+  showSponsorTag:    { type: Boolean, default: true },
+  showDescription:   { type: Boolean, default: true },
+  showProgressBar:   { type: Boolean, default: true },
+  showDetailsBtn:    { type: Boolean, default: true },
+  showMuteBtn:       { type: Boolean, default: true },
+  // Slide duration in ms (3000–15000)
+  slideDuration:     { type: Number, default: 5000 },
+  // Badge text override (defaults to ad.badge)
+  badgeText:         { type: String, default: "" },
+  // Badge background color
+  badgeColor:        { type: String, default: "rgba(255,255,255,0.12)" },
+}, { _id: false });
+
+// Primary CTA button style
+const buttonStyleSchema = new mongoose.Schema({
+  // filled | outline | ghost
+  variant:           { type: String, default: "filled" },
+  // Background color (for filled)
+  bgColor:           { type: String, default: "#ffffff" },
+  // Text color
+  textColor:         { type: String, default: "#000000" },
+  // Border color (for outline)
+  borderColor:       { type: String, default: "#ffffff" },
+  // Border radius size: sm | md | lg | full
+  radius:            { type: String, default: "md" },
+  // Icon: none | arrow | globe | instagram | chevron
+  icon:              { type: String, default: "chevron" },
+  // Icon position: left | right
+  iconPosition:      { type: String, default: "right" },
+}, { _id: false });
+
+// ─── Main Schema ──────────────────────────────────────────────────────────────
 
 const advertisementSchema = new mongoose.Schema(
   {
@@ -44,7 +108,7 @@ const advertisementSchema = new mongoose.Schema(
     },
     longDescription: {
       type: String,
-      maxlength: 5000, // For AdDetailsPage rich content
+      maxlength: 5000,
     },
 
     // ========== PRIMARY MEDIA ==========
@@ -58,12 +122,29 @@ const advertisementSchema = new mongoose.Schema(
       required: true,
     },
     thumbnailUrl: {
-      type: String, // Poster frame for videos
+      type: String,
     },
 
-    // ========== GALLERY (for AdDetailsPage) ==========
+    // ========== CROP & LAYOUT ==========
+    // Stores the admin's crop selection (percentages, not pixels — device-independent)
+    cropData: {
+      type: cropDataSchema,
+      default: () => ({}),
+    },
+    // Controls appearance of the banner overlay and text
+    layoutConfig: {
+      type: layoutConfigSchema,
+      default: () => ({}),
+    },
+    // Primary CTA button style
+    buttonStyle: {
+      type: buttonStyleSchema,
+      default: () => ({}),
+    },
+
+    // ========== GALLERY ==========
     galleryImages: {
-      type: [String], // Max 5 Cloudinary image URLs
+      type: [String],
       validate: {
         validator: (arr) => arr.length <= 5,
         message: "Maximum 5 gallery images allowed",
@@ -72,26 +153,11 @@ const advertisementSchema = new mongoose.Schema(
     },
 
     // ========== LINKS ==========
-    websiteUrl: {
-      type: String,
-      trim: true,
-    },
-    instagramUrl: {
-      type: String,
-      trim: true,
-    },
-    facebookUrl: {
-      type: String,
-      trim: true,
-    },
-    youtubeUrl: {
-      type: String,
-      trim: true,
-    },
-    otherUrl: {
-      type: String,
-      trim: true,
-    },
+    websiteUrl:   { type: String, trim: true },
+    instagramUrl: { type: String, trim: true },
+    facebookUrl:  { type: String, trim: true },
+    youtubeUrl:   { type: String, trim: true },
+    otherUrl:     { type: String, trim: true },
     ctaText: {
       type: String,
       default: "Learn More",
@@ -101,7 +167,7 @@ const advertisementSchema = new mongoose.Schema(
     // ========== DISPLAY SETTINGS ==========
     isActive: {
       type: Boolean,
-      default: false, // Starts as inactive until admin approves
+      default: false,
     },
     displayLocations: {
       type: [String],
@@ -113,9 +179,6 @@ const advertisementSchema = new mongoose.Schema(
       default: "SPONSOR",
       maxlength: 20,
     },
-    // ========== DEFAULT BANNER FLAG ==========
-    // When isDefault is true, this banner is shown as a fallback
-    // when no live commercial advertisements are active for a location.
     isDefault: {
       type: Boolean,
       default: false,
@@ -154,10 +217,10 @@ const advertisementSchema = new mongoose.Schema(
     },
 
     // ========== ANALYTICS ==========
-    views: { type: Number, default: 0 },
-    clicks: { type: Number, default: 0 },
-    reelViews: { type: Number, default: 0 },
-    exploreViews: { type: Number, default: 0 },
+    views:           { type: Number, default: 0 },
+    clicks:          { type: Number, default: 0 },
+    reelViews:       { type: Number, default: 0 },
+    exploreViews:    { type: Number, default: 0 },
     homeBannerViews: { type: Number, default: 0 },
 
     // ========== META ==========
@@ -169,7 +232,7 @@ const advertisementSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Indexes for efficient querying
+// Indexes
 advertisementSchema.index({ isActive: 1, approvalStatus: 1, order: 1 });
 advertisementSchema.index({ displayLocations: 1 });
 advertisementSchema.index({ startDate: 1, endDate: 1 });
