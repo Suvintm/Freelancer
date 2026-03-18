@@ -6,6 +6,7 @@ import { Advertisement } from "../models/Advertisement.js";
 import { SiteSettings, getSettings } from "../models/SiteSettings.js";
 import { protectAdmin, requirePermission, logActivity } from "../middleware/adminAuth.js";
 import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
+import { publish } from "../config/redisClient.js";
 import logger from "../utils/logger.js";
 
 const router = express.Router();
@@ -52,18 +53,10 @@ const repairUrl = (val) => {
       fixed = fixed.replace(/advertisements_images_+/g, "advertisements/images/")
                    .replace(/advertisements_videos_+/g, "advertisements/videos/")
                    .replace(/advertisements_gallery_+/g, "advertisements/gallery/");
-      
-      // Avoid blind underscore-to-slash conversion which breaks filenames
-      // Only do it for known path keywords
       fixed = fixed.replace(/_+(upload|image|video|v\d+)_+/g, "/$1/");
-      
       fixed = fixed.replace(/([^:])\/\/+/g, "$1/");
     }
-    fixed = fixed.replace(/_jpg([/_?#]|$)/gi, ".jpg$1")
-                 .replace(/_jpeg([/_?#]|$)/gi, ".jpeg$1")
-                 .replace(/_png([/_?#]|$)/gi, ".png$1")
-                 .replace(/_mp4([/_?#]|$)/gi, ".mp4$1")
-                 .replace(/_webp([/_?#]|$)/gi, ".webp$1");
+    fixed = fixed.replace(/_jpg([/_?#]|$)/gi, ".jpg$1").replace(/_png([/_?#]|$)/gi, ".png$1").replace(/_mp4([/_?#]|$)/gi, ".mp4$1").replace(/_webp([/_?#]|$)/gi, ".webp$1");
     return fixed;
   }
   return val;
@@ -81,6 +74,13 @@ const cleanAd = (ad) => {
     adObj.galleryImages = adObj.galleryImages || [];
   }
   return adObj;
+};
+
+// ── Helper: publish cache invalidation event to main server ──────────
+// This tells the main server's socket.js to broadcast "ads:updated" to
+// all connected frontend clients so React Query refetches immediately.
+const publishAdUpdate = async () => {
+  await publish("admin:events", { type: "ads:updated" });
 };
 
 // ── GET /api/admin/ads — List all ads (with filters) ─────────────────
@@ -106,10 +106,6 @@ router.get("/", asyncHandler(async (req, res) => {
   const total = await Advertisement.countDocuments(query);
 
   logger.info(`[ADS] Admin fetched ${ads.length} ads`);
-  if (ads.length > 0) {
-    const creators = ads.map(a => a.createdBy?.email).filter(Boolean);
-    logger.debug(`[ADS] Identified creators: ${[...new Set(creators)].join(", ")}`);
-  }
   res.json({ success: true, count: ads.length, ads: ads.map(cleanAd), pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / limit) } });
 }));
 
@@ -158,6 +154,7 @@ router.post("/toggle-suvix-ads", requirePermission("marketing"), asyncHandler(as
     { upsert: true, new: true }
   );
   SiteSettings.clearCache?.();
+  await publishAdUpdate();
   res.json({
     success: true,
     showSuvixAds: settings.showSuvixAds,
@@ -211,6 +208,7 @@ router.post("/", requirePermission("marketing"), logActivity("CREATE_AD"), async
     createdBy: req.admin._id,
   });
 
+  await publishAdUpdate();
   res.status(201).json({ success: true, ad: cleanAd(ad), message: "Advertisement created successfully" });
 }));
 
@@ -222,6 +220,8 @@ router.patch("/:id", requirePermission("marketing"), logActivity("UPDATE_AD"), a
     { new: true, runValidators: true }
   );
   if (!ad) return res.status(404).json({ success: false, message: "Ad not found" });
+
+  await publishAdUpdate();
   res.json({ success: true, ad: cleanAd(ad), message: "Advertisement updated successfully" });
 }));
 
@@ -229,6 +229,8 @@ router.patch("/:id", requirePermission("marketing"), logActivity("UPDATE_AD"), a
 router.delete("/:id", requirePermission("marketing"), logActivity("DELETE_AD"), asyncHandler(async (req, res) => {
   const ad = await Advertisement.findByIdAndDelete(req.params.id);
   if (!ad) return res.status(404).json({ success: false, message: "Ad not found" });
+
+  await publishAdUpdate();
   res.json({ success: true, message: "Advertisement deleted successfully" });
 }));
 

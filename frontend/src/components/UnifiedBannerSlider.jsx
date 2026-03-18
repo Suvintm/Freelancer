@@ -7,10 +7,11 @@ import {
     HiSpeakerWave,
     HiSpeakerXMark,
 } from "react-icons/hi2";
+import { useSocket } from "../context/SocketContext";
 import { FaAd, FaInstagram, FaGlobe, FaChevronRight } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
 // ─── URL repair (kept local — ads route bypasses global sanitizer) ───────────
@@ -86,7 +87,9 @@ const BannerSkeleton = () => (
 // ─── Main Component ───────────────────────────────────────────────────────────
 const UnifiedBannerSlider = () => {
     const { backendURL } = useAppContext();
+const { socket } = useSocket();
     const navigate       = useNavigate();
+    const queryClient    = useQueryClient();
 
     const [verticalIndex,    setVerticalIndex]    = useState(0);
     const [horizontalIndices,setHorizontalIndices]= useState([0, 0, 0]);
@@ -127,6 +130,19 @@ const UnifiedBannerSlider = () => {
         },
         staleTime: 10 * 60 * 1000,
     });
+
+    // ── Real-time ad refresh via socket ───────────────────────────────────
+    // When admin creates/updates/deletes an ad, the server emits "ads:updated".
+    // We invalidate the React Query cache so the banner refetches immediately.
+    useEffect(() => {
+        if (!socket) return;
+        const handleAdsUpdated = () => {
+            console.log("📢 ads:updated received — refetching banner ads");
+            queryClient.invalidateQueries({ queryKey: ["home-ads"] });
+        };
+        socket.on("ads:updated", handleAdsUpdated);
+        return () => socket.off("ads:updated", handleAdsUpdated);
+    }, [socket, queryClient]);
 
     // ── Build levels ──────────────────────────────────────────────────────
     const levels = useMemo(() => {

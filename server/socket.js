@@ -344,8 +344,6 @@ export { app, io, server };
 subscribe("admin:events", (payload) => {
   const { type, userId, data } = payload;
   console.log(`📡 Redis Broadcast Received: ${type}`);
-  
-
 
   if (type === "admin:maintenance") {
     // Broadcast maintenance to ALL local users
@@ -357,5 +355,12 @@ subscribe("admin:events", (payload) => {
       io.to(socketId).emit(type, data);
       console.log(`🎯 Re-emitted ${type} to local user ${userId}`);
     }
+  } else if (type === "ads:updated") {
+    // ── Ad cache invalidation ──────────────────────────────────────────
+    // Admin created/updated/deleted an ad. Tell ALL connected frontend
+    // clients to refetch ads so the banner updates instantly without
+    // waiting for the 10-minute React Query staleTime to expire.
+    console.log(`📢 Broadcasting ads:updated to all connected clients`);
+    io.emit("ads:updated");
   }
 });
