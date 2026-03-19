@@ -4,7 +4,7 @@
 // complete layoutConfig + buttonStyle to the form immediately.
 
 import React, { useState, useMemo } from "react";
-import { AD_TEMPLATES, TEMPLATE_CATEGORIES } from "./adtemplates";
+import { AD_TEMPLATES, TEMPLATE_CATEGORIES } from "./AdTemplates";
 import { HiOutlineCheck, HiOutlineSparkles } from "react-icons/hi2";
 import { FaAd, FaChevronRight, FaGlobe, FaInstagram } from "react-icons/fa";
 import { HiArrowRight } from "react-icons/hi2";
