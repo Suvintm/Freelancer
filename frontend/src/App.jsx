@@ -78,6 +78,8 @@ import MyApplicationsPage from "./pages/MyApplicationsPage.jsx";
 import JobsPage from "./pages/JobsPage.jsx";
 import AdDetailsPage from "./pages/AdDetailsPage.jsx";
 import EditorWallet from "./pages/EditorWallet.jsx";
+import AdvertisePage from "./pages/AdvertisePage.jsx";
+import AdvertiseNewPage from "./pages/Advertisenewpage.jsx";
 
 import { TermsAndConditions, PrivacyPolicy, ContentProtectionPolicy, EditorCodeOfConduct } from "./pages/LegalPages";
 
@@ -223,6 +225,8 @@ function App() {
         </Route>
 
         {/* ============ PROTECTED NON-TAB ROUTES ============ */}
+        <Route path="/advertise" element={<ProtectedRoute allowedRoles={["editor", "client"]}><AdvertisePage /></ProtectedRoute>} />
+        <Route path="/advertise/new" element={<ProtectedRoute allowedRoles={["editor", "client"]}><AdvertiseNewPage /></ProtectedRoute>} />
         <Route path="/download/:id" element={<ProtectedRoute allowedRoles={["client", "editor"]}><DownloadPage /></ProtectedRoute>} />
         <Route path="/chat/:orderId" element={<ProtectedRoute allowedRoles={["client", "editor"]}><Chatbox /></ProtectedRoute>} />
         <Route path="/jobs/:id" element={<ProtectedRoute allowedRoles={["editor", "client"]}><JobDetailsPage /></ProtectedRoute>} />
