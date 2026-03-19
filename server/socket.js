@@ -362,5 +362,9 @@ subscribe("admin:events", (payload) => {
     // waiting for the 10-minute React Query staleTime to expire.
     console.log(`📢 Broadcasting ads:updated to all connected clients`);
     io.emit("ads:updated");
+  } else if (type === "ad-previews:updated") {
+    // ── Ad Preview Media updated ──────────────────────────────────
+    console.log(`📢 Broadcasting ad-previews:updated to all connected clients`);
+    io.emit("ad-previews:updated");
   }
 });

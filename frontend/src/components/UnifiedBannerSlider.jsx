@@ -149,7 +149,7 @@ const hudItem = {
 
 // ─── Loading Skeleton ────────────────────────────────────────────────────────
 const BannerSkeleton = () => (
-    <div className="relative w-full rounded-[1.5rem] overflow-hidden bg-zinc-900 border border-white/5" style={{ height: 192 }}>
+    <div className="relative w-full rounded-[1.5rem] overflow-hidden bg-zinc-900 border border-white/5 aspect-[16/10] lg:aspect-[1.8/1]">
         <div className="absolute inset-0" style={{ background: "linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.035) 50%,transparent 60%)", backgroundSize: "200% 100%", animation: "ubShimmer 1.8s infinite" }} />
         <div className="absolute bottom-0 inset-x-0 p-6 space-y-3">
             <div className="h-2.5 w-14 bg-white/8 rounded-full animate-pulse" />
@@ -162,7 +162,7 @@ const BannerSkeleton = () => (
 );
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-const UnifiedBannerSlider = () => {
+const UnifiedBannerSlider = ({ filter = null }) => {
     const { backendURL } = useAppContext();
     const { socket }     = useSocket();
     const navigate       = useNavigate();
@@ -256,8 +256,16 @@ const UnifiedBannerSlider = () => {
             },
         ];
 
-        return adsLevel ? [adsLevel, ...base] : base;
-    }, [adsData]);
+        const all = adsLevel ? [adsLevel, ...base] : base;
+        
+        if (filter === "ads") {
+            return adsLevel ? [adsLevel] : [];
+        }
+        if (filter === "base") {
+            return base;
+        }
+        return all;
+    }, [adsData, filter]);
 
     useEffect(() => { if (verticalIndex >= levels.length) setVerticalIndex(0); }, [levels.length]);
 
@@ -362,8 +370,8 @@ const UnifiedBannerSlider = () => {
     return (
         <div
             ref={containerRef}
-            className="relative w-full overflow-hidden rounded-[1.5rem] bg-zinc-950 border border-white/6 shadow-xl shadow-black/50 cursor-pointer select-none"
-            style={{ height: 192, willChange: "transform", transform: "translateZ(0)" }}
+            className="relative w-full overflow-hidden rounded-[1.5rem] bg-zinc-950 border border-white/6 shadow-xl shadow-black/50 cursor-pointer select-none aspect-[16/10] lg:aspect-[1.8/1]"
+            style={{ willChange: "transform", transform: "translateZ(0)" }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             onTouchStart={onTouchStart}

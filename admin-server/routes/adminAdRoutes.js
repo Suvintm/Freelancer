@@ -7,9 +7,10 @@ import express from "express";
 import multer from "multer";
 import asyncHandler from "express-async-handler";
 import { Advertisement } from "../models/Advertisement.js";
+import { AdPreview } from "../models/AdPreview.js";
 import { SiteSettings, getSettings } from "../models/SiteSettings.js";
 import { protectAdmin, requirePermission, logActivity } from "../middleware/adminAuth.js";
-import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
+import { uploadToCloudinary, deleteFromCloudinary } from "../utils/uploadToCloudinary.js";
 import { publish } from "../config/redisClient.js";
 import logger from "../utils/logger.js";
 
@@ -127,6 +128,59 @@ router.post("/toggle-suvix-ads", requirePermission("marketing"), asyncHandler(as
   await publishAdUpdate();
   res.json({ success: true, showSuvixAds: settings.showSuvixAds, message: `Suvix internal ads ${settings.showSuvixAds ? "enabled" : "disabled"}` });
 }));
+
+// ── AD PREVIEW MANAGEMENT ───────────────────────────────────────────
+
+// GET /api/admin/ads/preview-media — Get current demo previews
+router.get("/preview-media", asyncHandler(async (req, res) => {
+  const previews = await AdPreview.getPreviews();
+  res.json({ success: true, previews });
+}));
+
+// PATCH /api/admin/ads/preview-media — Update demo preview
+router.patch(
+  "/preview-media",
+  requirePermission("marketing"),
+  logActivity("UPDATE_AD_PREVIEW"),
+  upload.single("media"),
+  asyncHandler(async (req, res) => {
+    const { type } = req.body; // 'homeAdBanner' or 'reelAd'
+    if (!["homeAdBanner", "reelAd"].includes(type)) {
+      return res.status(400).json({ success: false, message: "Invalid preview type. Must be 'homeAdBanner' or 'reelAd'." });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "Please upload a media file." });
+    }
+
+    const previews = await AdPreview.getPreviews();
+    const oldMedia = previews[type];
+
+    // Upload new media
+    const isVideo = req.file.mimetype.startsWith("video/");
+    const folder = isVideo ? "ad-previews/videos" : "ad-previews/images";
+    const result = await uploadToCloudinary(req.file.buffer, folder);
+
+    // Update DB
+    previews[type] = {
+      url: result.url,
+      publicId: result.public_id,
+      resourceType: isVideo ? "video" : "image"
+    };
+
+    await previews.save();
+
+    // Delete old media from Cloudinary (don't await to avoid delaying response, but handle errors)
+    if (oldMedia && oldMedia.publicId && oldMedia.publicId !== "sample" && oldMedia.publicId !== "sample_video") {
+      deleteFromCloudinary(oldMedia.publicId).catch(err => logger.error(`[CLOUDINARY] Failed to delete old ad preview: ${oldMedia.publicId}`, err));
+    }
+
+    // Notify frontend via Redis
+    await publish("admin:events", { type: "ad-previews:updated" });
+
+    res.json({ success: true, previews, message: `${type} updated successfully` });
+  })
+);
 
 // ── GET /api/admin/ads/:id ───────────────────────────────────────────
 router.get("/:id", asyncHandler(async (req, res) => {
@@ -314,5 +368,6 @@ router.post("/reorder", requirePermission("marketing"), asyncHandler(async (req,
   await publishAdUpdate();
   res.json({ success: true, message: "Ads reordered" });
 }));
+
 
 export default router;

@@ -1,10 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "../components/Sidebar.jsx";
 import ClientSidebar from "../components/ClientSidebar.jsx";
 import EditorNavbar from "../components/EditorNavbar.jsx";
 import { useAppContext } from "../context/AppContext";
+import { useSocket } from "../context/SocketContext";
+import axios from "axios";
 import {
   HiOutlineRocketLaunch,
   HiOutlineChartBarSquare,
@@ -133,9 +135,32 @@ const PricingCalculator = ({ onSelect }) => {
 // ─── Main Page ──────────────────────────────────────────────────────────────
 const AdvertisePage = () => {
   const navigate = useNavigate();
-  const { user } = useAppContext();
+  const { user, backendURL } = useAppContext();
+  const { socket } = useSocket();
+  const [previews, setPreviews] = useState(null);
   const [openFaq, setOpenFaq] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const fetchPreviews = async () => {
+    try {
+      const { data } = await axios.get(`${backendURL}/api/ad-previews`);
+      if (data.previews) setPreviews(data.previews);
+    } catch (err) { console.error("Failed to fetch ad previews", err); }
+  };
+
+  useEffect(() => {
+    fetchPreviews();
+  }, [backendURL]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleUpdate = () => {
+      console.log("🔄 Ad previews updated via socket, re-fetching...");
+      fetchPreviews();
+    };
+    socket.on("ad-previews:updated", handleUpdate);
+    return () => socket.off("ad-previews:updated", handleUpdate);
+  }, [socket]);
 
   const handleSelect = ({ placement, days }) => {
     navigate("/advertise/new", { state: { placement, days } });
@@ -210,61 +235,113 @@ const AdvertisePage = () => {
               {/* Home Banner */}
               <div className="rounded-2xl border border-white/10 overflow-hidden">
                 <div className="relative bg-[#141414]" style={{ aspectRatio: "375/192" }}>
-                  {/* Simulated banner */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                  <div className="absolute bottom-0 left-0 p-4">
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <span className="px-1.5 py-0.5 rounded text-[6px] font-black uppercase tracking-widest bg-white/10 border border-white/10 text-white/60">YOUR BRAND</span>
-                      <span className="px-1.5 py-0.5 rounded text-[6px] font-black uppercase text-white/40 border border-white/8">SPONSOR</span>
-                    </div>
-                    <p className="text-white text-sm font-black leading-tight mb-1">Your Ad Headline Here</p>
-                    <p className="text-white/40 text-[9px] mb-2.5">Your short description goes here</p>
-                    <button className="px-2.5 py-1.5 rounded-lg bg-white text-black text-[8px] font-black uppercase tracking-wider">
-                      Visit Now →
-                    </button>
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 h-px bg-white/5">
-                    <div className="h-full w-2/5 bg-white/20" />
-                  </div>
-                </div>
-                <div className="px-4 py-3 bg-[#111] border-t border-white/8">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-white">Home Banner</p>
-                      <p className="text-[10px] text-white/35 mt-0.5">Shown to every homepage visitor</p>
-                    </div>
-                    <span className="text-[10px] text-white/30 font-semibold">~10K/day</span>
-                  </div>
-                </div>
-              </div>
+                  {previews?.homeAdBanner?.url ? (
+                    previews.homeAdBanner.resourceType === "video" ? (
+                      <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" key={previews.homeAdBanner.url}>
+                        <source src={previews.homeAdBanner.url} type="video/mp4" />
+                      </video>
+                    ) : (
+                      <img src={previews.homeAdBanner.url} className="absolute inset-0 w-full h-full object-cover" alt="Banner" />
+                    )
+                  ) : (
+                    <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover">
+                      <source src="https://pixabay.com/videos/download/video-225543_medium.mp4" type="video/mp4" />
+                    </video>
+                  )}
+                  {/* Simulated banner overlay */}
+    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+    <div className="absolute bottom-0 left-0 p-4">
+      <div className="flex items-center gap-1.5 mb-2">
+        <span className="px-1.5 py-0.5 rounded text-[6px] font-black uppercase tracking-widest bg-white/10 border border-white/10 text-white/60">
+          YOUR BRAND
+        </span>
+        <span className="px-1.5 py-0.5 rounded text-[6px] font-black uppercase text-white/40 border border-white/8">
+          SPONSOR
+        </span>
+      </div>
+      <p className="text-white text-sm font-black leading-tight mb-1">
+        Your Ad Headline Here
+      </p>
+      <p className="text-white/40 text-[9px] mb-2.5">
+        Your short description goes here
+      </p>
+      <button className="px-2.5 py-1.5 rounded-lg bg-white text-black text-[8px] font-black uppercase tracking-wider">
+        Visit Now →
+      </button>
+    </div>
+
+    <div className="absolute bottom-0 left-0 right-0 h-px bg-white/5">
+      <div className="h-full w-2/5 bg-white/20" />
+    </div>
+  </div>
+
+  <div className="px-4 py-3 bg-[#111] border-t border-white/8">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-xs font-bold text-white">Home Banner</p>
+        <p className="text-[10px] text-white/35 mt-0.5">
+          Shown to every homepage visitor
+        </p>
+      </div>
+      <span className="text-[10px] text-white/30 font-semibold">~10K/day</span>
+    </div>
+  </div>
+</div>
 
               {/* Reels Feed */}
-              <div className="rounded-2xl border border-white/10 overflow-hidden">
-                <div className="flex items-center justify-center py-5 bg-[#141414]">
-                  <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a]" style={{ width: 110, height: 185 }}>
-                    <div className="absolute top-2 left-2 bg-white/8 border border-white/10 rounded px-1.5 py-0.5">
-                      <span className="text-[5px] font-black uppercase text-white/50 tracking-wider">SPONSORED</span>
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 p-2.5">
-                      <span className="block text-white text-[9px] font-black mb-1">Your Channel</span>
-                      <span className="block text-white/40 text-[8px] mb-2">Subscribe for more</span>
-                      <button className="flex items-center gap-1 px-2 py-1 rounded-md bg-white text-black text-[6px] font-black uppercase">
-                        <FaYoutube className="text-[7px]" /> Subscribe
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div className="px-4 py-3 bg-[#111] border-t border-white/8">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-white">Reels Feed</p>
-                      <p className="text-[10px] text-white/35 mt-0.5">Shown between reels content</p>
-                    </div>
-                    <span className="text-[10px] text-white/30 font-semibold">~4K/day</span>
-                  </div>
-                </div>
-              </div>
+             {/* Reels Feed */}
+<div className="rounded-2xl border border-white/10 overflow-hidden">
+      <div className="flex items-center justify-center py-5 bg-[#141414]">
+        <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a]" style={{ width: 110, height: 185 }}>
+          {previews?.reelAd?.url ? (
+            previews.reelAd.resourceType === "video" ? (
+              <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" key={previews.reelAd.url}>
+                <source src={previews.reelAd.url} type="video/mp4" />
+              </video>
+            ) : (
+              <img src={previews.reelAd.url} className="absolute inset-0 w-full h-full object-cover" alt="Reel" />
+            )
+          ) : (
+            <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover">
+              <source src="https://www.w3schools.com/html/movie.mp4" type="video/mp4" />
+            </video>
+          )}
+
+      <div className="absolute top-2 left-2 bg-white/8 border border-white/10 rounded px-1.5 py-0.5">
+        <span className="text-[5px] font-black uppercase text-white/50 tracking-wider">
+          SPONSORED
+        </span>
+      </div>
+
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
+
+      <div className="absolute bottom-0 left-0 right-0 p-2.5">
+        <span className="block text-white text-[9px] font-black mb-1">
+          Your Channel
+        </span>
+        <span className="block text-white/40 text-[8px] mb-2">
+          Subscribe for more
+        </span>
+        <button className="flex items-center gap-1 px-2 py-1 rounded-md bg-white text-black text-[6px] font-black uppercase">
+          <FaYoutube className="text-[7px]" /> Subscribe
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div className="px-4 py-3 bg-[#111] border-t border-white/8">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-xs font-bold text-white">Reels Feed</p>
+        <p className="text-[10px] text-white/35 mt-0.5">
+          Shown between reels content
+        </p>
+      </div>
+      <span className="text-[10px] text-white/30 font-semibold">~4K/day</span>
+    </div>
+  </div>
+</div>
             </div>
           </section>
 

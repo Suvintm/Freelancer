@@ -23,6 +23,7 @@ import { FaAd, FaInstagram, FaGlobe, FaChevronRight } from "react-icons/fa";
 import axios from "axios";
 import TemplateSelector from "./TemplateSelector";
 import AdRequestsTab from "./AdRequestsTab";
+import AdPreviewTab from "./AdPreviewTab";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const BANNER_ASPECT = 375 / 192;
@@ -449,6 +450,7 @@ const AdManagerPage = ({ adminURL, token }) => {
             {[
               { id: "ads",      label: "Manage Ads",  icon: HiOutlineChartBarSquare },
               { id: "requests", label: "Ad Requests",  icon: HiOutlineClipboardDocumentList },
+              { id: "preview",  label: "Preview Model", icon: HiOutlineEye },
             ].map(t => (
               <button key={t.id} onClick={() => { setPageTab(t.id); setShowForm(false); }}
                 style={{
@@ -497,6 +499,13 @@ const AdManagerPage = ({ adminURL, token }) => {
       {pageTab === "requests" && (
         <div style={{ padding: 24 }}>
           <AdRequestsTab API={API} authHeader={authHeader} showToast={showToast} />
+        </div>
+      )}
+
+      {/* ── AD PREVIEW TAB ── */}
+      {pageTab === "preview" && (
+        <div style={{ padding: 24 }}>
+          <AdPreviewTab API={API} authHeader={authHeader} showToast={showToast} />
         </div>
       )}
 
