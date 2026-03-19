@@ -21,6 +21,8 @@ import adminAdRoutes from "./routes/adminAdRoutes.js";
 import roleRoutes from "./routes/roleRoutes.js";
 import adminWithdrawalRoutes from "./routes/adminWithdrawalRoutes.js";
 import adminStorageRoutes from "./routes/adminStorageRoutes.js";
+import adminAdRequestRoutes from "./routes/adminAdRequestRoutes.js";
+
 const PORT = process.env.PORT || 5052;
 // ============ SECURITY MIDDLEWARE ============
 app.use(helmet());
@@ -61,6 +63,7 @@ app.use("/api/admin/payment-settings", adminPaymentRoutes);
 app.use("/api/client-kyc", clientKYCRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/refunds", refundRoutes);
+app.use("/api/admin/ad-requests", adminAdRequestRoutes);
 // ============ EXEMPTIONS FROM GLOBAL SANITIZATION ============
 // Ad routes must be registered BEFORE mongoSanitize — the sanitizer strips
 // dots and slashes from Cloudinary URLs, destroying them before they are saved.

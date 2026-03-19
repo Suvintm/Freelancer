@@ -22,7 +22,8 @@ import {
 import { FaAd, FaInstagram, FaGlobe, FaChevronRight } from "react-icons/fa";
 import axios from "axios";
 import TemplateSelector from "./TemplateSelector";
-
+import AdRequestsTab from "./AdRequestsTab";                          // ADD THIS
+import { HiOutlineClipboardDocumentList } from "react-icons/hi2";    // ADD THIS (already have hi2 import, add to existing)
 // ─── Config ───────────────────────────────────────────────────────────────────
 const BANNER_ASPECT = 375 / 192;
 
@@ -546,14 +547,15 @@ const AdManagerPage = ({ adminURL, token }) => {
 
   // ── Tabs ────────────────────────────────────────────────────────────────────
   const tabs = [
-    { id: "templates",  label: "Templates",  icon: HiOutlineSparkles },
-    { id: "media",      label: "Media",      icon: HiOutlinePhoto },
-    { id: "layout",     label: "Layout",     icon: HiOutlineAdjustmentsHorizontal },
-    { id: "button",     label: "Button",     icon: HiOutlineCursorArrowRipple },
-    { id: "components", label: "Components", icon: HiOutlineSquare3Stack3D },
-    { id: "schedule",   label: "Schedule",   icon: HiOutlineCalendarDays },
-    { id: "advertiser", label: "Advertiser", icon: HiOutlineUser },
-  ];
+  { id: "templates",  label: "Templates",  icon: HiOutlineSparkles },
+  { id: "media",      label: "Media",      icon: HiOutlinePhoto },
+  { id: "layout",     label: "Layout",     icon: HiOutlineAdjustmentsHorizontal },
+  { id: "button",     label: "Button",     icon: HiOutlineCursorArrowRipple },
+  { id: "components", label: "Components", icon: HiOutlineSquare3Stack3D },
+  { id: "schedule",   label: "Schedule",   icon: HiOutlineCalendarDays },
+  { id: "advertiser", label: "Advertiser", icon: HiOutlineUser },
+  { id: "requests",   label: "Ad Requests", icon: HiOutlineClipboardDocumentList }, // ADD THIS LINE
+];
 
   // ── Status badge ────────────────────────────────────────────────────────────
   const StatusBadge = ({ ad }) => {
@@ -930,6 +932,10 @@ const AdManagerPage = ({ adminURL, token }) => {
                   </Section>
                 </div>
               )}
+              {/* AD REQUESTS */}
+{activeTab === "requests" && (
+  <AdRequestsTab API={API} authHeader={authHeader} showToast={showToast} />
+)}
 
             </div>{/* end tab content */}
 

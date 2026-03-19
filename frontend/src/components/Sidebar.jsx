@@ -39,6 +39,7 @@ import {
   HiOutlineRectangleStack,
   HiOutlineVideoCamera,
   HiOutlineStar,
+ HiOutlineSpeakerWave
 } from "react-icons/hi2";
 import { FaTimes } from "react-icons/fa";
 
@@ -83,6 +84,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         { path: "/my-gigs", icon: HiOutlineRectangleStack, label: "My Gigs" },
         { path: "/reels-analytics", icon: HiOutlineChartBar, label: "Reels Analytics" },
         { path: "/briefs", icon: HiOutlineClipboardDocumentList, label: "Open Briefs", isNew: true },
+         
       ],
     },
     {
@@ -118,6 +120,13 @@ const Sidebar = ({ isOpen, onClose }) => {
         { path: "/location-settings", icon: HiOutlineMapPin, label: "Location Settings" },
         { path: "/legal-center", icon: HiOutlineDocumentText, label: "Legal & Terms" },
       ],
+    },
+    {
+      id: "advertise",
+      label: "Advertise",
+      icon: HiOutlineSpeakerWave,  // ← change this
+      path: "/advertise",
+      type: "link",
     },
     {
       id: "community",

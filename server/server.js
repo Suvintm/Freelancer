@@ -58,7 +58,8 @@ import locationRoutes from "./routes/locationRoutes.js";
 import jobRoutes from "./routes/jobRoutes.js";
 import walletRoutes from "./routes/walletRoutes.js";
 import withdrawalRoutes from "./routes/withdrawalRoutes.js";
-
+import adRequestRoutes from "./routes/adRequestRoutes.js";
+ 
 // Scheduled Jobs
 import { startScheduledJobs } from "./jobs/scheduledJobs.js";
 
@@ -230,6 +231,7 @@ app.use(passport.session());
 // 🚨 IMPORTANT: These routes are moved ABOVE mongoSanitize to prevent 
 // mangling of external URLs (which contain dots that mongoSanitize replaces with '_').
 // These routes handle their own specific validation and security.
+app.use("/api/ad-requests", adRequestRoutes);
 app.use("/api/ads", advertisementRoutes);
 app.use("/api/messages", messageRoutes); // Drive link URLs contain dots — must bypass sanitizer
 app.use("/api/auth", vpnCheckMiddleware, oauthRoutes); // OAuth codes contain dots — must bypass sanitizer
@@ -422,4 +424,4 @@ if (process.env.NODE_ENV !== "test") {
   startServer();
 }
 
-export { app, server };
+export { app, server };

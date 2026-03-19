@@ -10,6 +10,7 @@ import {
   HiOutlineRocketLaunch, HiOutlineSparkles, HiOutlineBolt,
   HiOutlineClipboardDocumentCheck, HiOutlineCheck,
   HiOutlineCurrencyRupee,
+  HiOutlineBuildingOffice2,
 } from "react-icons/hi2";
 import {
   FaYoutube, FaInstagram, FaFacebook, FaGlobe,
@@ -602,7 +603,7 @@ const AdvertiseNewPage = () => {
                 </Field>
                 <Field label="Company / Brand Name" hint="Leave blank if individual">
                   <div className="relative">
-                    <HiOutlineBuilding2 className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-zinc-500" />
+                    <HiOutlineBuildingOffice2 className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-zinc-500" />
                     <input value={form.companyName} onChange={e => setField("companyName", e.target.value)} className={`${inputCls(false)} pl-9`} placeholder="Acme Studios" />
                   </div>
                 </Field>

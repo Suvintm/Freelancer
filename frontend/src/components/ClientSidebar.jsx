@@ -35,6 +35,7 @@ import {
   HiOutlineMagnifyingGlassCircle,
   HiOutlineDocumentText,
   HiOutlineRectangleStack,
+  HiOutlineSpeakerWave,
 } from "react-icons/hi2";
 import { FaTimes } from "react-icons/fa";
 
@@ -155,14 +156,22 @@ const ClientSidebar = ({ isOpen, onClose }) => {
 
       ],
     },
-    {
-      id: "messages",
-      label: "Messages",
-      icon: HiOutlineChatBubbleLeftRight,
-      path: "/chats",
-      type: "link",
-      badge: displayUnread,
-    },
+   // ADD THIS BEFORE messages:
+{
+  id: "advertise",
+  label: "Advertise",
+  icon: HiOutlineSpeakerWave,
+  path: "/advertise",
+  type: "link",
+},
+{
+  id: "messages",
+  label: "Messages",
+  icon: HiOutlineChatBubbleLeftRight,
+  path: "/chats",
+  type: "link",
+  badge: displayUnread,
+},  
   ], [newOrdersCount, displayUnread, user?.clientKycStatus]);
 
   // Filter navigation based on search
