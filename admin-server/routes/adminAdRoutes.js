@@ -242,7 +242,7 @@ router.post(
     const cropData    = parseJSON(body.cropData);
     const layoutConfig = parseJSON(body.layoutConfig);
     const buttonStyle  = parseJSON(body.buttonStyle);
-    const displayLocations = parseJSON(body.displayLocations, ["home_banner"]);
+    const displayLocations = parseJSON(body.displayLocations, ["banners:home_0"]);
 
     const maxOrder = await Advertisement.findOne().sort({ order: -1 }).select("order");
 

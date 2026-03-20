@@ -80,8 +80,8 @@ const ClientHome = () => {
   // Persistent tab state via Zustand — survives navigation
   const mainTab = useHomeStore((s) => s.clientMainTab);
   const setMainTab = useHomeStore((s) => s.setClientMainTab);
-  const activeTab = useHomeStore((s) => s.clientActiveTab);
-  const setActiveTab = useHomeStore((s) => s.setClientActiveTab);
+  const activeTab = useHomeStore((s) => s.exploreTab);
+  const setActiveTab = useHomeStore((s) => s.setExploreTab);
 
 
   const socketContext = useSocket();
@@ -195,11 +195,21 @@ const ClientHome = () => {
         className="flex-1 md:ml-64 md:mt-16 overflow-y-auto"
       >
         <PullIndicator />
-        {/* Premium Banner at the Top - Responsive with Side Margins */}
-        <div className="px-3 md:px-8 mb-1.5 md:mb-4 max-w-7xl mx-auto">
-          <UnifiedBannerSlider />
-        </div>
         
+        {/* Home Banner - Top Level */}
+        <AnimatePresence>
+          {mainTab === "home" && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+              className="mb-4 md:mb-5 px-4 pt-2"
+            >
+              <UnifiedBannerSlider pageName="home" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Simple & Professional Tabbed Navigation - Enhanced for Light Theme */}
         <div className="px-4 mb-1.5 md:mb-4 flex justify-center">
           <div className="flex items-center gap-1 bg-white/5 light:bg-zinc-100 border border-white/10 light:border-zinc-200 p-1 rounded-2xl w-fit backdrop-blur-xl shadow-sm">

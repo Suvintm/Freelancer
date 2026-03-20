@@ -171,8 +171,8 @@ const advertisementSchema = new mongoose.Schema(
     },
     displayLocations: {
       type: [String],
-      enum: ["home_banner", "reels_feed", "explore_page"],
-      default: ["home_banner"],
+      enum: ["banners:home_0", "banners:home_1", "banners:home_2", "banners:editors", "banners:gigs", "banners:jobs", "banners:explore", "reels_feed"],
+      default: ["banners:home_0"],
     },
     badge: {
       type: String,

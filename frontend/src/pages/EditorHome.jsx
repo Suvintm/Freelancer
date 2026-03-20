@@ -78,8 +78,8 @@ const EditorHome = () => {
   // Persistent tab state via Zustand — survives navigation
   const mainTab = useHomeStore((s) => s.editorMainTab);
   const setMainTab = useHomeStore((s) => s.setEditorMainTab);
-  const exploreTab = useHomeStore((s) => s.editorExploreTab);
-  const setExploreTab = useHomeStore((s) => s.setEditorExploreTab);
+  const exploreTab = useHomeStore((s) => s.exploreTab);
+  const setExploreTab = useHomeStore((s) => s.setExploreTab);
 
 
   // ── DATA FETCHING ──────────────────────────────────────────────────
@@ -196,10 +196,20 @@ const EditorHome = () => {
         className="flex-1 md:ml-64 md:mt-16 overflow-y-auto"
       >
         <PullIndicator />
-        {/* Premium Banner Section - Single on all screens */}
-        <div className="px-3 md:px-8 mb-2 md:mb-8 max-w-7xl mx-auto">
-          <UnifiedBannerSlider />
-        </div>
+
+        {/* Home Banner - Top Level */}
+        <AnimatePresence>
+          {mainTab === "home" && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+              className="mb-4 md:mb-5 px-4 pt-2"
+            >
+              <UnifiedBannerSlider pageName="home" />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Simple & Professional Tabbed Navigation - Enhanced for Light Theme */}
         <div className="flex justify-center mb-2 md:mb-4">

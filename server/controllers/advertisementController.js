@@ -135,7 +135,8 @@ export const getActiveAds = asyncHandler(async (req, res) => {
   };
 
   if (location) {
-    query.displayLocations = { $in: [location] };
+    const locations = location.split(",");
+    query.displayLocations = { $in: locations };
   }
 
   let ads = await Advertisement.find(query)

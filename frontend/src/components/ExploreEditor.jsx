@@ -50,6 +50,8 @@ import { toast } from "react-toastify";
  
 import ExploreGigs from "./ExploreGigs.jsx";
 import AdvancedSearchBar from "./AdvancedSearchBar.jsx";
+import { useHomeStore } from "../store/homeStore";
+import CategoryBanner from "./CategoryBanner.jsx";
 
 /**
  * ExploreEditors - Professional Design
@@ -78,23 +80,12 @@ const ExploreEditors = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "editors"); // "editors" or "gigs"
+  const exploreTabFromStore = useHomeStore((s) => s.exploreTab);
+  const setExploreTabInStore = useHomeStore((s) => s.setExploreTab);
+  const activeTab = exploreTabFromStore;
+  const setActiveTab = setExploreTabInStore;
   const searchInputRef = useRef(null);
 
-  // Hero Banner Images for auto-transition
-  const heroBanners = [
-    "/hero_banner_1_1766946342128.png",
-    "/hero_banner_2_1766946358435.png",
-    "/hero_banner_3_1766946374802.png"
-  ];
-
-  // Auto-transition banner every 4 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentBannerIndex((prev) => (prev + 1) % heroBanners.length);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, []);
 
   const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, pages: 1 });
   const [filterOptions, setFilterOptions] = useState({ skills: [], languages: [], countries: [], experience: [] });
@@ -307,83 +298,15 @@ const ExploreEditors = () => {
             exit={{ opacity: 0, x: 20 }}
             transition={{ duration: 0.2 }}
           >
-      
-      {/* ============== HERO BANNER WITH IMAGE SLIDESHOW ============== */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-4 relative overflow-hidden rounded-2xl"
-      >
-        {/* Background Image Slideshow */}
-        <div className="relative h-44 md:h-52">
-          <AnimatePresence mode="wait">
-            <motion.img
-              key={currentBannerIndex}
-              src={heroBanners[currentBannerIndex]}
-              alt="Hero Banner"
-              initial={{ opacity: 0, scale: 1.1 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.8, ease: "easeInOut" }}
-              className="absolute inset-0 w-full h-full object-cover"
+            <CategoryBanner 
+              location="banners:editors" 
+              fallbackItems={[
+                { title: "Find Your Perfect Editor", description: "Connect with 850+ skilled professionals", mediaUrl: "/hero_banner_1_1766948130847.png", badge: "DISCOVER TALENT" },
+                { title: "Elite Pro Editors", description: "Hand-picked experts for your premium professionals", mediaUrl: "/hero_banner_2_1766948148873.png", badge: "PREMIUM" }
+              ]} 
             />
-          </AnimatePresence>
-          
-          {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-violet-900/30" />
-          
-          {/* Banner Content */}
-          <div className="absolute inset-0 flex flex-col justify-end p-4">
-            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-violet-500/30 backdrop-blur-sm rounded-full mb-2 w-fit">
-              <HiVideoCamera className="text-white text-[10px]" />
-              <span className="text-white text-[9px] font-semibold uppercase tracking-wide">Discover Talent</span>
-            </div>
-            <h1 className="text-xl font-bold text-white mb-0.5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              Find Your Perfect Editor
-            </h1>
-            <p className="text-white/70 text-xs">
-              Connect with {pagination.total || 0}+ skilled professionals
-            </p>
-          </div>
-          
-          {/* Banner Indicators */}
-          <div className="absolute bottom-3 right-4 flex gap-1">
-            {heroBanners.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentBannerIndex(idx)}
-                className={`w-1.5 h-1.5 rounded-full transition-all ${
-                  idx === currentBannerIndex 
-                    ? "bg-white w-4" 
-                    : "bg-white/40 hover:bg-white/60"
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-        
-        {/* Stats Strip */}
-        <div className="bg-[#0a0a0c] light:bg-white border-t border-white/10 light:border-slate-100 p-3">
-          <div className="grid grid-cols-4 gap-2">
-            {[
-              { value: `${pagination.total || 0}+`, label: "Editors", icon: HiUserGroup, color: "text-violet-400" },
-              { value: "850+", label: "Projects", icon: HiVideoCamera, color: "text-purple-400" },
-              { value: "4.8", label: "Rating", icon: FaStar, color: "text-amber-400" },
-              { value: "98%", label: "Success", icon: HiCheckCircle, color: "text-emerald-400" },
-            ].map((stat, idx) => (
-              <div key={idx} className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-0.5">
-                  <stat.icon className={`${stat.color} text-[10px]`} />
-                  <span className="text-xs font-bold text-white light:text-slate-900">{stat.value}</span>
-                </div>
-                <div className="text-[8px] text-gray-500 light:text-slate-500">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
 
-      {/* ============== PROFESSIONAL SEARCH BAR ============== */}
+            {/* ============== PROFESSIONAL SEARCH BAR ============== */}
       <div className="mb-4">
           <AdvancedSearchBar
             value={searchQuery}
@@ -818,8 +741,6 @@ const EditorCard = ({ editor, navigate, searchQuery, isSaved, onToggleFavorite }
   const availability = editor.user?.availability || { status: 'available' };
   const isBusy = availability.status === 'busy';
   const isSmallOnly = availability.status === 'small_only';
-
-
   const highlightMatch = (text, query) => {
     if (!query || !text) return text;
     const parts = text.split(new RegExp(`(${query})`, "gi"));

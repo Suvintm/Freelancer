@@ -36,6 +36,7 @@ import ClientSidebar from "../components/ClientSidebar.jsx";
 import ClientNavbar from "../components/ClientNavbar.jsx";
 import useRefreshManager from "../hooks/useRefreshManager.js";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
+import CategoryBanner from "../components/CategoryBanner.jsx";
 
 // Categories for pills
 const CATEGORY_PILLS = [
@@ -52,33 +53,30 @@ const HERO_SLIDES = [
   {
     badge: "🔥 HOT OPPORTUNITIES",
     title: "Find Your Dream Project",
-    subtitle: "Connect with 100+ clients actively hiring video editors",
-    image: "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=800&q=80",
+    description: "Connect with 100+ clients actively hiring video editors",
+    mediaUrl: "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=800&q=80",
+    mediaType: "image",
+    link: "/jobs",
+    linkText: "Browse Jobs"
   },
   {
     badge: "💰 HIGH PAYING",
     title: "Premium Projects Await",
-    subtitle: "Earn ₹50K+ on wedding and corporate video projects",
-    image: "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=800&q=80",
+    description: "Earn ₹50K+ on wedding and corporate video projects",
+    mediaUrl: "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=800&q=80",
+    mediaType: "image",
+    link: "/jobs",
+    linkText: "Earn More"
   },
   {
     badge: "🚀 REMOTE WORK",
     title: "Work From Anywhere",
-    subtitle: "70% of jobs are fully remote - edit from your comfort zone",
-    image: "https://images.unsplash.com/photo-1593062096033-9a26b09da705?w=800&q=80",
-  },
-  {
-    badge: "⭐ TOP RATED",
-    title: "Join Elite Editors",
-    subtitle: "Be part of a community with 4.8★ average client rating",
-    image: "https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800&q=80",
-  },
-  {
-    badge: "🎬 CREATIVE FREEDOM",
-    title: "Express Your Vision",
-    subtitle: "Work on exciting projects from weddings to commercials",
-    image: "https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=800&q=80",
-  },
+    description: "70% of jobs are fully remote - edit from your comfort zone",
+    mediaUrl: "https://images.unsplash.com/photo-1593062096033-9a26b09da705?w=800&q=80",
+    mediaType: "image",
+    link: "/jobs",
+    linkText: "Remote Jobs"
+  }
 ];
 
 // Browse by Specialty cards with images
@@ -168,14 +166,6 @@ const JobsPage = () => {
   }, [heroBanners.length]);
 
   // ── DATA FETCHING ──────────────────────────────────────────────────
-  const { data: bannersResponse } = useQuery({
-    queryKey: ['banners', 'jobs'],
-    queryFn: async () => {
-      const res = await axios.get(`${backendURL}/api/banners?page=jobs`);
-      return res.data.banners || [];
-    },
-    enabled: !!backendURL,
-  });
 
   const { data: jobsResponse, isLoading: jobsLoading } = useQuery({
     queryKey: ['jobs', { category: selectedCategory }],
@@ -201,22 +191,6 @@ const JobsPage = () => {
     enabled: !!backendURL && !!user?.token && isEditor,
   });
 
-  // Sync state with query data
-  useEffect(() => {
-    if (bannersResponse && bannersResponse.length > 0) {
-      const apiBanners = bannersResponse.map((b) => ({
-        badge: b.badge || "",
-        title: b.title,
-        subtitle: b.description || "",
-        image: b.mediaUrl,
-        overlayType: b.overlayType,
-        overlayOpacity: b.overlayOpacity,
-        gradientFrom: b.gradientFrom,
-        gradientTo: b.gradientTo,
-      }));
-      setHeroBanners(apiBanners);
-    }
-  }, [bannersResponse]);
 
   useEffect(() => {
     if (jobsResponse) {
@@ -320,61 +294,9 @@ const JobsPage = () => {
           )}
         </div>
 
-        {/* Hero Banner Carousel with Images */}
-        <div className="relative mb-5 rounded-2xl overflow-hidden h-[180px]">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentSlide}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.5 }}
-              className="absolute inset-0"
-            >
-              {/* Background Image */}
-              <img 
-                src={heroBanners[currentSlide]?.image} 
-                alt={heroBanners[currentSlide]?.title}
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-              {/* Dynamic Gradient Overlay */}
-              <div 
-                className="absolute inset-0"
-                style={{
-                  background: heroBanners[currentSlide]?.overlayType === "gradient"
-                    ? `linear-gradient(to right, ${heroBanners[currentSlide]?.gradientFrom || '#000'}cc, ${heroBanners[currentSlide]?.gradientTo || '#000'}80, transparent)`
-                    : heroBanners[currentSlide]?.overlayType === "solid"
-                    ? `rgba(0,0,0,${(heroBanners[currentSlide]?.overlayOpacity || 70) / 100})`
-                    : "linear-gradient(to right, rgba(0,0,0,0.8), rgba(0,0,0,0.6), transparent)"
-                }}
-              />
-              
-              <div className="relative h-full p-5 flex flex-col justify-center">
-                {heroBanners[currentSlide]?.badge && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-2 bg-violet-500/80 backdrop-blur-sm rounded-full text-white text-[9px] font-bold w-fit">
-                    {heroBanners[currentSlide].badge}
-                  </span>
-                )}
-                <h2 className="text-xl font-bold text-white mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                  {heroBanners[currentSlide]?.title}
-                </h2>
-                <p className="text-white/80 text-xs max-w-[70%]">{heroBanners[currentSlide]?.subtitle}</p>
-              </div>
-            </motion.div>
-          </AnimatePresence>
-          
-          {/* Pagination Dots */}
-          <div className="absolute bottom-3 right-4 flex gap-1.5">
-            {heroBanners.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentSlide(idx)}
-                className={`h-1.5 rounded-full transition-all ${
-                  idx === currentSlide ? "bg-white w-4" : "bg-white/40 w-1.5"
-                }`}
-              />
-            ))}
-          </div>
+        {/* Premium Banner - Category Specific */}
+        <div className="mb-5 px-1">
+          <CategoryBanner location="banners:jobs" fallbackItems={HERO_SLIDES} />
         </div>
 
         {/* Stats Row */}

@@ -36,7 +36,7 @@ const defaultForm = () => ({
   websiteUrl: "", instagramUrl: "", facebookUrl: "", youtubeUrl: "", otherUrl: "",
   ctaText: "Learn More", badge: "SPONSOR",
   isActive: true, isDefault: false,
-  displayLocations: ["home_banner"],
+  displayLocations: ["banners:home_0"],
   approvalStatus: "approved", priority: "medium", adminNotes: "",
   startDate: "", endDate: "",
   cropData: { x: 0, y: 0, width: 100, height: 100, zoom: 1 },
@@ -692,7 +692,7 @@ const AdManagerPage = ({ adminURL, token }) => {
                       <Section title="Text Position">
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5, marginBottom: 14 }}>
                           {[["tl","↖ TL"],["tc","↑ TC"],["tr","↗ TR"],["ml","← ML"],["mc","⊙ MC"],["mr","→ MR"],["bl","↙ BL"],["bc","↓ BC"],["br","↘ BR"]].map(([pos, label]) => (
-                            <button key={pos} onClick={() => setLayout("textPosition", pos)} style={{ ...toggleBtn(form.layoutConfig.textPosition === pos), fontSize: 10, padding: "6px 4px", textAlign: "center" }}>{label}</button>
+                            <button type="button" key={pos} onClick={() => setLayout("textPosition", pos)} style={{ ...toggleBtn(form.layoutConfig.textPosition === pos), fontSize: 10, padding: "6px 4px", textAlign: "center" }}>{label}</button>
                           ))}
                         </div>
                       </Section>
@@ -701,7 +701,7 @@ const AdManagerPage = ({ adminURL, token }) => {
                           <label style={labelStyle}>Direction</label>
                           <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                             {["to-top","to-bottom","to-left","to-right","radial","none"].map(d => (
-                              <button key={d} onClick={() => setLayout("overlayDirection", d)} style={{ ...toggleBtn(form.layoutConfig.overlayDirection === d), fontSize: 10 }}>{d}</button>
+                              <button type="button" key={d} onClick={() => setLayout("overlayDirection", d)} style={{ ...toggleBtn(form.layoutConfig.overlayDirection === d), fontSize: 10 }}>{d}</button>
                             ))}
                           </div>
                         </div>
@@ -711,11 +711,11 @@ const AdManagerPage = ({ adminURL, token }) => {
                       <Section title="Typography">
                         <div style={fieldGroup}>
                           <label style={labelStyle}>Title Size</label>
-                          <div style={{ display: "flex", gap: 5 }}>{["sm","md","lg","xl"].map(s => <button key={s} onClick={() => setLayout("titleSize", s)} style={{ ...toggleBtn(form.layoutConfig.titleSize === s), flex: 1 }}>{s.toUpperCase()}</button>)}</div>
+                          <div style={{ display: "flex", gap: 5 }}>{["sm","md","lg","xl"].map(s => <button type="button" key={s} onClick={() => setLayout("titleSize", s)} style={{ ...toggleBtn(form.layoutConfig.titleSize === s), flex: 1 }}>{s.toUpperCase()}</button>)}</div>
                         </div>
                         <div style={fieldGroup}>
                           <label style={labelStyle}>Title Weight</label>
-                          <div style={{ display: "flex", gap: 5 }}>{["bold","extrabold","black"].map(w => <button key={w} onClick={() => setLayout("titleWeight", w)} style={{ ...toggleBtn(form.layoutConfig.titleWeight === w), flex: 1 }}>{w}</button>)}</div>
+                          <div style={{ display: "flex", gap: 5 }}>{["bold","extrabold","black"].map(w => <button type="button" key={w} onClick={() => setLayout("titleWeight", w)} style={{ ...toggleBtn(form.layoutConfig.titleWeight === w), flex: 1 }}>{w}</button>)}</div>
                         </div>
                         <ColorInput label="Title Color" value={form.layoutConfig.titleColor} onChange={v => setLayout("titleColor", v)} />
                         <ColorInput label="Description Color" value={form.layoutConfig.descColor} onChange={v => setLayout("descColor", v)} />
@@ -735,11 +735,11 @@ const AdManagerPage = ({ adminURL, token }) => {
                       <Section title="Style">
                         <div style={fieldGroup}>
                           <label style={labelStyle}>Variant</label>
-                          <div style={{ display: "flex", gap: 5 }}>{["filled","outline","ghost"].map(v => <button key={v} onClick={() => setButton("variant", v)} style={{ ...toggleBtn(form.buttonStyle.variant === v), flex: 1, textTransform: "capitalize" }}>{v}</button>)}</div>
+                          <div style={{ display: "flex", gap: 5 }}>{["filled","outline","ghost"].map(v => <button type="button" key={v} onClick={() => setButton("variant", v)} style={{ ...toggleBtn(form.buttonStyle.variant === v), flex: 1, textTransform: "capitalize" }}>{v}</button>)}</div>
                         </div>
                         <div style={fieldGroup}>
                           <label style={labelStyle}>Radius</label>
-                          <div style={{ display: "flex", gap: 5 }}>{["sm","md","lg","full"].map(r => <button key={r} onClick={() => setButton("radius", r)} style={{ ...toggleBtn(form.buttonStyle.radius === r), flex: 1 }}>{r}</button>)}</div>
+                          <div style={{ display: "flex", gap: 5 }}>{["sm","md","lg","full"].map(r => <button type="button" key={r} onClick={() => setButton("radius", r)} style={{ ...toggleBtn(form.buttonStyle.radius === r), flex: 1 }}>{r}</button>)}</div>
                         </div>
                       </Section>
                       <Section title="Colors">
@@ -750,11 +750,11 @@ const AdManagerPage = ({ adminURL, token }) => {
                       <Section title="Icon">
                         <div style={fieldGroup}>
                           <label style={labelStyle}>Icon</label>
-                          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>{["none","arrow","globe","instagram","chevron"].map(i => <button key={i} onClick={() => setButton("icon", i)} style={toggleBtn(form.buttonStyle.icon === i)}>{i}</button>)}</div>
+                          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>{["none","arrow","globe","instagram","chevron"].map(i => <button type="button" key={i} onClick={() => setButton("icon", i)} style={toggleBtn(form.buttonStyle.icon === i)}>{i}</button>)}</div>
                         </div>
                         <div style={fieldGroup}>
                           <label style={labelStyle}>Position</label>
-                          <div style={{ display: "flex", gap: 5 }}>{["left","right"].map(p => <button key={p} onClick={() => setButton("iconPosition", p)} style={{ ...toggleBtn(form.buttonStyle.iconPosition === p), flex: 1 }}>{p}</button>)}</div>
+                          <div style={{ display: "flex", gap: 5 }}>{["left","right"].map(p => <button type="button" key={p} onClick={() => setButton("iconPosition", p)} style={{ ...toggleBtn(form.buttonStyle.iconPosition === p), flex: 1 }}>{p}</button>)}</div>
                         </div>
                       </Section>
                     </div>
@@ -772,13 +772,35 @@ const AdManagerPage = ({ adminURL, token }) => {
                       </Section>
                       <Section title="Display">
                         <div style={fieldGroup}>
-                          <label style={labelStyle}>Locations</label>
-                          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                            {["home_banner","reels_feed","explore_page"].map(loc => (
-                              <button key={loc} onClick={() => {
+                          <label style={labelStyle}>Banners Placement</label>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 12, padding: 10, background: "#050505", borderRadius: 8, border: "1px solid #111" }}>
+                            {[
+                              { id: "banners:home_0", label: "Home Level 0" },
+                              { id: "banners:home_1", label: "Home Level 1" },
+                              { id: "banners:home_2", label: "Home Level 2" },
+                              { id: "banners:editors", label: "Explore Editors" },
+                              { id: "banners:gigs",    label: "Explore Gigs" },
+                              { id: "banners:jobs",    label: "Jobs Page" },
+                              { id: "banners:explore", label: "Explore Page" },
+                            ].map(loc => (
+                              <button type="button" key={loc.id} onClick={() => {
+                                const locs = form.displayLocations.includes(loc.id) ? form.displayLocations.filter(l => l !== loc.id) : [...form.displayLocations, loc.id];
+                                setField("displayLocations", locs);
+                              }} style={{ ...toggleBtn(form.displayLocations.includes(loc.id)), textAlign: "left", padding: "8px 10px" }}>
+                                {loc.label}
+                              </button>
+                            ))}
+                          </div>
+
+                          <label style={labelStyle}>Reels Placement</label>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            {["reels_feed"].map(loc => (
+                              <button type="button" key={loc} onClick={() => {
                                 const locs = form.displayLocations.includes(loc) ? form.displayLocations.filter(l => l !== loc) : [...form.displayLocations, loc];
                                 setField("displayLocations", locs);
-                              }} style={toggleBtn(form.displayLocations.includes(loc))}>{loc.replace("_", " ")}</button>
+                              }} style={toggleBtn(form.displayLocations.includes(loc))}>
+                                {loc.replace(/_/g, " ").toUpperCase()}
+                              </button>
                             ))}
                           </div>
                         </div>
@@ -794,7 +816,7 @@ const AdManagerPage = ({ adminURL, token }) => {
                         </div>
                         <div style={fieldGroup}>
                           <label style={labelStyle}>Priority</label>
-                          <div style={{ display: "flex", gap: 5 }}>{["low","medium","high","urgent"].map(p => <button key={p} onClick={() => setField("priority", p)} style={{ ...toggleBtn(form.priority === p), flex: 1, textTransform: "capitalize" }}>{p}</button>)}</div>
+                          <div style={{ display: "flex", gap: 5 }}>{["low","medium","high","urgent"].map(p => <button type="button" key={p} onClick={() => setField("priority", p)} style={{ ...toggleBtn(form.priority === p), flex: 1, textTransform: "capitalize" }}>{p}</button>)}</div>
                         </div>
                         <div style={fieldGroup}><label style={labelStyle}>Admin Notes</label><textarea value={form.adminNotes} onChange={e => setField("adminNotes", e.target.value)} style={{ ...inputStyle, height: 56, resize: "vertical" }} placeholder="Internal notes…" /></div>
                       </Section>

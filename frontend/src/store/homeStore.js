@@ -14,17 +14,15 @@ import { create } from "zustand";
 export const useHomeStore = create((set) => ({
   // ── Client Home ──────────────────────────────────────────────────────────
   clientMainTab:   "home",      // "home" | "dashboard"
-  clientActiveTab: "editors",   // sub-tab in explore section
+  exploreTab: "editors",   // Global sub-tab in explore section ("editors" | "gigs" | "jobs")
 
   setClientMainTab:   (tab) => set({ clientMainTab: tab }),
-  setClientActiveTab: (tab) => set({ clientActiveTab: tab }),
+  setExploreTab:      (tab) => set({ exploreTab: tab }),
 
   // ── Editor Home ──────────────────────────────────────────────────────────
   editorMainTab:    "home",     // "home" | "dashboard"
-  editorExploreTab: "editors",  // sub-tab in explore section
 
   setEditorMainTab:    (tab) => set({ editorMainTab: tab }),
-  setEditorExploreTab: (tab) => set({ editorExploreTab: tab }),
 
   // ── Refresh Management ────────────────────────────────────────────────
   lastHomeRefresh:   0,      // Timestamp of last auto/manual refresh

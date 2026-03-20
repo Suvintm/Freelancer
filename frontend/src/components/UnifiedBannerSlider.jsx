@@ -176,7 +176,7 @@ const BannerSkeleton = () => (
 );
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-const UnifiedBannerSlider = ({ filter = null }) => {
+const UnifiedBannerSlider = ({ filter = null, pageName = "home" }) => {
     const { backendURL } = useAppContext();
     const { socket }     = useSocket();
     const navigate       = useNavigate();
@@ -204,15 +204,20 @@ const UnifiedBannerSlider = ({ filter = null }) => {
 
     // ── Data ──────────────────────────────────────────────────────────────
     const { data: adsData, isLoading } = useQuery({
-        queryKey: ["home-ads", backendURL],
+        queryKey: ["ads", pageName, backendURL],
         queryFn: async () => {
-            const [adsRes, settingsRes] = await Promise.all([
-                axios.get(`${backendURL}/api/ads?location=home_banner`),
-                axios.get(`${backendURL}/api/ads/settings`),
-            ]);
-            return { ads: adsRes.data.ads || [], showAds: settingsRes.data.showSuvixAds !== false };
+            // Determine locations to fetch
+            let locations = "banners:home_0";
+            if (pageName === "home")    locations = "banners:home_0,banners:home_1,banners:home_2";
+            if (pageName === "editors") locations = "banners:editors";
+            if (pageName === "gigs")    locations = "banners:gigs";
+            if (pageName === "jobs")    locations = "banners:jobs";
+            if (pageName === "explore") locations = "banners:explore";
+
+            const { data } = await axios.get(`${backendURL}/api/ads?location=${locations}`);
+            return data;
         },
-        staleTime: 10 * 60 * 1000,
+        staleTime: 60000,
     });
 
     // ── Real-time refresh ─────────────────────────────────────────────────
@@ -220,7 +225,7 @@ const UnifiedBannerSlider = ({ filter = null }) => {
         if (!socket) return;
         const handleAdsUpdated = () => {
             console.log("📢 ads:updated received — refetching banner ads");
-            queryClient.invalidateQueries({ queryKey: ["home-ads"] });
+            queryClient.invalidateQueries({ queryKey: ["ads"] });
         };
         socket.on("ads:updated", handleAdsUpdated);
         return () => socket.off("ads:updated", handleAdsUpdated);
@@ -229,79 +234,78 @@ const UnifiedBannerSlider = ({ filter = null }) => {
     // ── Build levels ──────────────────────────────────────────────────────
     const levels = useMemo(() => {
         const dbAds   = adsData?.ads || [];
-        const showAds = adsData?.showAds ?? true;
         const result = [];
 
-        // Level 0: Active Advertisements
-        if (showAds && dbAds.length > 0) {
+        // Helper to format ad for banner
+        const formatAd = (ad) => ({
+            _id:          ad._id,
+            title:        ad.title,
+            description:  ad.description || ad.tagline || "",
+            mediaUrl:     repairUrl(ad.mediaUrl),
+            mediaType:    ad.mediaType,
+            link:         ad.websiteUrl || `/ad-details/${ad._id}`,
+            linkText:     ad.ctaText || "Learn More",
+            badge:        ad.badge || "SPONSOR",
+            isExternal:   !!ad.websiteUrl,
+            isAd:         true,
+            cropData:     ad.cropData     || {},
+            layoutConfig: ad.layoutConfig || {},
+            buttonStyle:  ad.buttonStyle  || {},
+        });
+
+        // ── Level 0 ──────────────────────────────────────────────────────────
+        const level0Ads = dbAds.filter(a => a.displayLocations?.some(l => 
+            l === "banners:home_0" || l === "banners:editors" || l === "banners:gigs" || l === "banners:jobs" || l === "banners:explore" ||
+            l === "banners_home_0" || l === "banners_editors" || l === "banners_gigs" || l === "banners_jobs" || 
+            l === "home_banner_0" || l === "editors_banner" || l === "gigs_banner" || l === "jobs_banner" || l === "home_banner"
+        )).map(formatAd);
+        
+        if (level0Ads.length > 0) {
             result.push({
                 id: "home_banner_0",
                 label: "HOME BANNER LEVEL 0",
                 color: "text-amber-400",
                 icon: FaAd,
-                items: dbAds.map(ad => ({
-                    _id:          ad._id,
-                    title:        ad.title,
-                    description:  ad.description || ad.tagline || "",
-                    mediaUrl:     repairUrl(ad.mediaUrl),
-                    mediaType:    ad.mediaType,
-                    link:         ad.websiteUrl || `/ad-details/${ad._id}`,
-                    linkText:     ad.ctaText || "Learn More",
-                    badge:        ad.badge || "SPONSOR",
-                    isExternal:   !!ad.websiteUrl,
-                    isAd:         true,
-                    cropData:     ad.cropData     || {},
-                    layoutConfig: ad.layoutConfig || {},
-                    buttonStyle:  ad.buttonStyle  || {},
-                }))
+                items: level0Ads
             });
         }
 
-        // Level 1: Static Placeholder
-        result.push({
-            id: "home_banner_1",
-            label: "HOME BANNER LEVEL 1",
-            color: "text-violet-400",
-            icon: HiOutlineSparkles,
-            items: [
-                { 
-                    id: "l1-static-1", 
-                    title: "Coming Soon", 
-                    description: "Our new platform features are almost here.", 
-                    mediaUrl: "/hero_banner_1_1766946342128.png", 
-                    mediaType: "image", 
-                    link: "#", 
-                    linkText: "Stay Tuned", 
-                    badge: "STAY TUNED", 
-                    layoutConfig: {}, 
-                    buttonStyle: {}, 
-                    cropData: {} 
-                }
-            ]
-        });
+        // ── Level 1 ──────────────────────────────────────────────────────────
+        const level1Ads = dbAds.filter(a => a.displayLocations?.some(l => l === "banners:home_1" || l === "banners_home_1" || l === "home_banner_1")).map(formatAd);
+        if (level1Ads.length > 0) {
+            result.push({
+                id: "home_banner_1",
+                label: "HOME BANNER LEVEL 1",
+                color: "text-violet-400",
+                icon: HiOutlineSparkles,
+                items: level1Ads
+            });
+        }
 
-        // Level 2: Static Placeholder
-        result.push({
-            id: "home_banner_2",
-            label: "HOME BANNER LEVEL 2",
-            color: "text-emerald-400",
-            icon: HiOutlineFilm,
-            items: [
-                { 
-                    id: "l2-static-1", 
-                    title: "Premium Services", 
-                    description: "Explore our manually verified professional editors.", 
-                    mediaUrl: "/gig_banner_1_1766948855701.png", 
-                    mediaType: "image", 
-                    link: "#", 
-                    linkText: "Explore", 
-                    badge: "PREMIUM", 
-                    layoutConfig: {}, 
-                    buttonStyle: {}, 
-                    cropData: {} 
-                }
-            ]
-        });
+        // ── Level 2 ──────────────────────────────────────────────────────────
+        const level2Ads = dbAds.filter(a => a.displayLocations?.some(l => l === "banners:home_2" || l === "banners_home_2" || l === "home_banner_2")).map(formatAd);
+        if (level2Ads.length > 0) {
+            result.push({
+                id: "home_banner_2",
+                label: "HOME BANNER LEVEL 2",
+                color: "text-emerald-400",
+                icon: HiOutlineFilm,
+                items: level2Ads
+            });
+        }
+
+        if (result.length === 0) {
+            result.push({
+                id: "empty_state",
+                label: "NO BANNERS",
+                color: "text-zinc-500",
+                icon: FaAd,
+                items: [{
+                    id: "empty_1",
+                    isEmptyState: true,
+                }]
+            });
+        }
 
         return result;
     }, [adsData]);
@@ -311,6 +315,14 @@ const UnifiedBannerSlider = ({ filter = null }) => {
     const currentLevel = levels[verticalIndex] ?? levels[0];
     const hIdx         = horizontalIndices[verticalIndex] ?? 0;
     const currentItem  = currentLevel?.items[hIdx];
+
+    const displayTitle = useMemo(() => {
+        if (pageName === "home") return currentLevel?.label;
+        if (pageName === "editors") return "EXPLORE EDITOR BANNER";
+        if (pageName === "gigs")    return "GIG BANNER";
+        if (pageName === "jobs")    return "JOB BANNER";
+        return currentLevel?.label;
+    }, [pageName, currentLevel]);
 
     // Per-item resolved config
     const lc = useMemo(() => resolveLayout(currentItem?.layoutConfig), [currentItem]);
@@ -408,15 +420,7 @@ const UnifiedBannerSlider = ({ filter = null }) => {
 
     return (
         <>
-            {currentLevel.label && (
-                <div className="px-1 mb-3 flex items-center gap-2.5">
-                    <div className="w-1 h-5 bg-amber-500 rounded-full shadow-[0_0_15px_rgba(245,158,11,0.5)]" />
-                    <h2 className="text-[13px] font-black tracking-widest text-white/90 uppercase select-none">
-                        {currentLevel.label}
-                    </h2>
-                    <div className="flex-1 h-px bg-gradient-to-r from-white/20 to-transparent ml-2 opacity-50" />
-                </div>
-            )}
+
             <div
                 ref={containerRef}
                 className="relative w-full overflow-hidden rounded-[1.5rem] bg-zinc-950 border border-white/6 shadow-xl shadow-black/50 cursor-pointer select-none aspect-[16/10] lg:aspect-[1.8/1]"
@@ -427,14 +431,20 @@ const UnifiedBannerSlider = ({ filter = null }) => {
             onTouchEnd={onTouchEnd}
             onClick={handleCardClick}
         >
-            {/* ── PROGRESS BAR ─────────────────────────────────────────── */}
-            {lc.showProgressBar && (
-                <div className="absolute bottom-0 inset-x-0 h-[2px] z-50 bg-white/8">
-                    <motion.div className="h-full bg-white/60" style={{ width: `${progress}%` }} transition={{ ease: "linear" }} />
+            {currentItem.isEmptyState ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/40 z-10">
+                    <p className="text-zinc-500 text-sm font-medium">No ads or banners</p>
                 </div>
-            )}
+            ) : (
+                <>
+                    {/* ── PROGRESS BAR ─────────────────────────────────────────── */}
+                    {lc.showProgressBar && (
+                        <div className="absolute bottom-0 inset-x-0 h-[2px] z-50 bg-white/8">
+                            <motion.div className="h-full bg-white/60" style={{ width: `${progress}%` }} transition={{ ease: "linear" }} />
+                        </div>
+                    )}
 
-            {/* ── MEDIA LAYER ──────────────────────────────────────────── */}
+                    {/* ── MEDIA LAYER ──────────────────────────────────────────── */}
             <AnimatePresence mode="sync">
                 <motion.div
                     key={`media-${verticalIndex}-${hIdx}`}
@@ -484,7 +494,7 @@ const UnifiedBannerSlider = ({ filter = null }) => {
                         <motion.div variants={hudItem} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                             <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "2px 8px", borderRadius: 6, background: lc.badgeColor || "rgba(255,255,255,0.12)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.1)", fontSize: "7.5px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.16em", color: "#fff" }}>
                                 <currentLevel.icon className={`${currentLevel.color} text-[9px] flex-shrink-0`} />
-                                {(lc.badgeText || currentItem.badge || currentLevel.label).toUpperCase()}
+                                {(lc.badgeText || currentItem.badge || displayTitle).toUpperCase()}
                             </span>
                             {isAdLevel && lc.showSponsorTag && (
                                 <span style={{ padding: "2px 6px", borderRadius: 6, background: "rgba(245,158,11,0.85)", fontSize: "6.5px", fontWeight: 900, textTransform: "uppercase", color: "#fff" }}>
@@ -536,9 +546,11 @@ const UnifiedBannerSlider = ({ filter = null }) => {
                     </motion.div>
                 </motion.div>
             </AnimatePresence>
+            </>
+            )}
             
             {/* ── CATEGORY SWITCHER (Show only if > 1 level) ────────────── */}
-            {levels.length > 1 && (
+            {!currentItem.isEmptyState && levels.length > 1 && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-1.5 py-2 px-1.5 rounded-2xl bg-black/45 backdrop-blur-xl border border-white/8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
                     {levels.map((level, idx) => {
                         const active = verticalIndex === idx;
@@ -554,7 +566,7 @@ const UnifiedBannerSlider = ({ filter = null }) => {
 
 
             {/* ── SLIDE DOTS ───────────────────────────────────────────── */}
-            {currentLevel.items.length > 1 && (
+            {!currentItem.isEmptyState && currentLevel.items.length > 1 && (
                 <div className="absolute top-4 right-4 z-30 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                     {currentLevel.items.map((_, idx) => (
                         <button key={idx} onClick={() => goTo(verticalIndex, idx)} className="transition-all duration-300"

@@ -26,6 +26,7 @@ import RazorpayCheckout from "./RazorpayCheckout";
 import KYCRequiredModal from "./KYCRequiredModal";
 import AdvancedSearchBar from "./AdvancedSearchBar";
 import EmptyState from "./EmptyState";
+import CategoryBanner from "./CategoryBanner.jsx";
 
 /**
  * ExploreGigs - Professional Design
@@ -212,81 +213,13 @@ const ExploreGigs = () => {
 
   return (
     <div className="min-h-[50vh]" style={{ fontFamily: "'Inter', sans-serif" }}>
-      
-      {/* ============== HERO BANNER WITH IMAGE SLIDESHOW ============== */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-4 relative overflow-hidden rounded-2xl"
-      >
-        {/* Background Image Slideshow */}
-        <div className="relative h-44 md:h-52">
-          <AnimatePresence mode="wait">
-            <motion.img
-              key={currentBannerIndex}
-              src={gigBanners[currentBannerIndex]}
-              alt="Gig Banner"
-              initial={{ opacity: 0, scale: 1.1 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.8, ease: "easeInOut" }}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          </AnimatePresence>
-          
-          {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-violet-900/30" />
-          
-          {/* Banner Content */}
-          <div className="absolute inset-0 flex flex-col justify-end p-4">
-            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-violet-500/30 backdrop-blur-sm rounded-full mb-2 w-fit">
-              <FaShoppingCart className="text-white text-[10px]" />
-              <span className="text-white text-[9px] font-semibold uppercase tracking-wide">Gig Marketplace</span>
-            </div>
-            <h1 className="text-xl font-bold text-white mb-0.5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              Browse Creative Services
-            </h1>
-            <p className="text-white/70 text-xs">
-              {pagination.total || 0}+ professional gigs available
-            </p>
-          </div>
-          
-          {/* Banner Indicators */}
-          <div className="absolute bottom-3 right-4 flex gap-1">
-            {gigBanners.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentBannerIndex(idx)}
-                className={`w-1.5 h-1.5 rounded-full transition-all ${
-                  idx === currentBannerIndex 
-                    ? "bg-white w-4" 
-                    : "bg-white/40 hover:bg-white/60"
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-        
-        {/* Stats Strip */}
-        <div className="bg-[#0a0a0c] light:bg-white border-t border-white/10 light:border-slate-100 p-3">
-          <div className="grid grid-cols-4 gap-2">
-            {[
-              { value: `${pagination.total || 0}+`, label: "Gigs", icon: FaShoppingCart, color: "text-violet-400" },
-              { value: "500+", label: "Orders", icon: HiCheckCircle, color: "text-purple-400" },
-              { value: "4.9", label: "Rating", icon: FaStar, color: "text-amber-400" },
-              { value: "99%", label: "Success", icon: HiLightningBolt, color: "text-emerald-400" },
-            ].map((stat, idx) => (
-              <div key={idx} className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-0.5">
-                  <stat.icon className={`${stat.color} text-[10px]`} />
-                  <span className="text-xs font-bold text-white light:text-slate-900">{stat.value}</span>
-                </div>
-                <div className="text-[8px] text-gray-500 light:text-slate-500">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
+      <CategoryBanner 
+        location="banners:gigs" 
+        fallbackItems={[
+          { title: "Browse Creative Services", description: "500+ professional gigs available", mediaUrl: "/gig_banner_1_1766948855701.png", badge: "GIG MARKETPLACE" },
+          { title: "High-End Gigs", description: "Get your videos edited by verified professionals", mediaUrl: "/gig_banner_2_1766948871936.png", badge: "PRO GIGS" }
+        ]}
+      />
 
       {/* ============== BROWSE BY CATEGORY - WITH IMAGES ============== */}
       <div className="mb-4">
