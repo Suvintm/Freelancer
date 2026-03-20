@@ -164,7 +164,7 @@ const advertisementSchema = new mongoose.Schema(
     // Whole-card click behaviour
     cardLinkType: {
       type: String,
-      enum: ["none", "external", "internal"],
+      enum: ["ad_details","none", "external", "internal"],
       default: "none",
     },
     cardLink: { type: String, trim: true }, // used when cardLinkType != none
