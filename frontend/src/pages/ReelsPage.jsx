@@ -127,17 +127,9 @@ const ReelsPage = ({ isActive = true }) => {
     useEffect(() => {
         const fetchReelAds = async () => {
             try {
-                // Try fetching specifically for reels_feed
-                let res = await axios.get(`${backendURL}/api/ads?location=reels_feed`);
-                let ads = res.data.ads || [];
-                
-                // FALLBACK: If no reels_feed ads, try fetching home_banner ads just so they see something
-                if (ads.length === 0) {
-                    res = await axios.get(`${backendURL}/api/ads?location=home_banner`);
-                    ads = res.data.ads || [];
-                }
-                
-                setReelAds(ads);
+                // Fetch all active ads so "all" can be displayed in reels page as requested
+                const { data } = await axios.get(`${backendURL}/api/ads`);
+                setReelAds(data.ads || []);
             } catch (err) {
                 console.error("Ad fetch error:", err);
             }
@@ -176,18 +168,38 @@ const ReelsPage = ({ isActive = true }) => {
         const feed = [];
         let adCounter = 0;
         
+        // Console logs to help you debug in the browser console (Press F12)
+        console.log(`[Reels] Processing feed. Reels count: ${reels.length}, Ad count: ${reelAds.length}`);
+
         reels.forEach((reel, index) => {
             feed.push({ type: 'reel', content: reel, id: reel._id });
             
-            if ((index + 1) % 5 === 0 && reelAds.length > 0) {
+            // Injection logic: Roughly every 3rd reel
+            const seed = reel._id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const isAdSlot = ((index + seed) % 3 === 0) && reelAds.length > 0;
+            
+            if (isAdSlot) {
                 const adIndex = adCounter % reelAds.length;
-                const adId = `ad-slot-${index}`;
+                const adId = `ad-random-${reel._id}-${index}`;
                 if (!skippedAdIndices.has(adId)) {
+                    console.log(`[Reels] Injecting ad at index ${index}: ${reelAds[adIndex].title}`);
                     feed.push({ type: 'ad', content: reelAds[adIndex], id: adId });
                     adCounter++;
                 }
             }
         });
+
+        // GUARANTEED FALLBACK: If ads exist but none were injected in the first batch
+        if (reels.length > 2 && reelAds.length > 0 && adCounter === 0) {
+            const adId = `ad-guaranteed-0`;
+            if (!skippedAdIndices.has(adId)) {
+                // Insert after the second reel
+                console.log(`[Reels] Performing guaranteed insertion after 2nd reel.`);
+                const insertPos = 2; // Index 2 is after 2nd reel (0, 1, [AD], 2...)
+                feed.splice(insertPos, 0, { type: 'ad', content: reelAds[0], id: adId });
+            }
+        }
+
         return feed;
     }, [reels, reelAds, skippedAdIndices]);
 
