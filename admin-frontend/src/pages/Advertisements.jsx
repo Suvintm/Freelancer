@@ -1,9 +1,12 @@
 /**
- * AdManagerPage.jsx
+ * AdManagerPage.jsx (Advertisements.jsx)
  * Production admin panel — dark black theme, white/green accents only.
- * Ad Requests is a top-level page tab, not buried in the form editor.
- *
- * ENV: VITE_BACKEND_URL=http://localhost:5052/api  (already includes /api)
+ * UPDATED: Format selector (Banner Only / Reels Only / Banner + Reels)
+ * - Format picker at top of editor controls which tabs and previews appear
+ * - Reel Config tab only appears when reels format is selected
+ * - Layout/Button tabs hidden when reels-only format selected
+ * - Right preview panel splits based on selected format
+ * - Templates tab shows banner or reel templates based on format
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
@@ -24,9 +27,60 @@ import axios from "axios";
 import TemplateSelector from "./TemplateSelector";
 import AdRequestsTab from "./AdRequestsTab";
 import AdPreviewTab from "./AdPreviewTab";
+import ReelAdPreview from "../components/ReelAdPreview";
+import ReelTemplateSelector from "../components/ReelTemplateSelector";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const BANNER_ASPECT = 375 / 192;
+
+// ─── Format options ───────────────────────────────────────────────────────────
+const FORMAT_OPTIONS = [
+  {
+    id: "banner",
+    label: "Banner Only",
+    icon: "🖼️",
+    desc: "Home, explore & page banners",
+    color: "#22c55e",
+    activeBg: "rgba(34,197,94,0.1)",
+    activeBorder: "rgba(34,197,94,0.5)",
+  },
+  {
+    id: "reels",
+    label: "Reels Only",
+    icon: "🎬",
+    desc: "Shown inside the reels feed",
+    color: "#818cf8",
+    activeBg: "rgba(99,102,241,0.12)",
+    activeBorder: "rgba(99,102,241,0.5)",
+  },
+  {
+    id: "both",
+    label: "Banner + Reels",
+    icon: "✦",
+    desc: "Both banners and reels feed",
+    color: "#f59e0b",
+    activeBg: "rgba(245,158,11,0.1)",
+    activeBorder: "rgba(245,158,11,0.45)",
+  },
+];
+
+// ─── Default reelConfig ───────────────────────────────────────────────────────
+const defaultReelConfig = () => ({
+  ctaText:             "Learn More",
+  btnVariant:          "ghost",
+  btnBgColor:          "rgba(255,255,255,0.1)",
+  btnTextColor:        "#ffffff",
+  btnBorderColor:      "#ffffff",
+  btnRadius:           "md",
+  reelDescription:     "",
+  showDescription:     true,
+  showAdvertiserBadge: true,
+  overlayOpacity:      80,
+  overlayColor:        "#000000",
+  btnLinkType:         "ad_details",
+  btnLink:             "",
+  templateId:          "",
+});
 
 // ─── Default form ─────────────────────────────────────────────────────────────
 const defaultForm = () => ({
@@ -55,6 +109,7 @@ const defaultForm = () => ({
     variant: "filled", bgColor: "#ffffff", textColor: "#000000",
     borderColor: "#ffffff", radius: "md", icon: "chevron", iconPosition: "right",
   },
+  reelConfig: defaultReelConfig(),
 });
 
 // ─── URL repair ───────────────────────────────────────────────────────────────
@@ -79,7 +134,6 @@ const repairUrl = (url) => {
 const labelStyle   = { fontSize: 11, fontWeight: 600, color: "#71717a", textTransform: "uppercase", letterSpacing: "0.08em", display: "block", marginBottom: 5 };
 const inputStyle   = { width: "100%", background: "#0a0a0a", border: "1px solid #222", borderRadius: 8, padding: "8px 10px", color: "#f4f4f5", fontSize: 13, outline: "none", boxSizing: "border-box" };
 const actionBtn    = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, background: "#fff", color: "#000", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700 };
-const dangerBtn    = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, background: "transparent", color: "#ef4444", border: "1px solid #3f0f0f", cursor: "pointer", fontSize: 13, fontWeight: 600 };
 const secondaryBtn = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, background: "#111", color: "#a1a1aa", border: "1px solid #222", cursor: "pointer", fontSize: 13, fontWeight: 600 };
 const fieldGroup   = { marginBottom: 14 };
 const toggleBtn    = (active) => ({ padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer", border: active ? "1px solid rgba(255,255,255,0.3)" : "1px solid #222", background: active ? "#fff" : "#111", color: active ? "#000" : "#52525b" });
@@ -124,7 +178,7 @@ const LiveBannerPreview = ({ form, localMediaUrl }) => {
       try {
         const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
         return `rgba(${r},${g},${b},${(opacity / 100).toFixed(2)})`;
-      } catch { return `rgba(4,4,8,${(opacity/100).toFixed(2)})`; }
+      } catch { return `rgba(4,4,8,${(opacity / 100).toFixed(2)})`; }
     };
     const color = lc.overlayColor || "#040408";
     const op = lc.overlayOpacity ?? 75;
@@ -180,7 +234,7 @@ const LiveBannerPreview = ({ form, localMediaUrl }) => {
 
   return (
     <div style={{ width: "100%", maxWidth: 375, margin: "0 auto" }}>
-      <div style={{ fontSize: "10px", color: "#3f3f46", marginBottom: "8px", textAlign: "center", letterSpacing: "0.05em", textTransform: "uppercase", fontWeight: 600 }}>Live Preview · 375×192px</div>
+      <div style={{ fontSize: "10px", color: "#3f3f46", marginBottom: "8px", textAlign: "center", letterSpacing: "0.05em", textTransform: "uppercase", fontWeight: 600 }}>Banner Preview · 375×192px</div>
       <div style={{ position: "relative", width: "100%", height: 192, borderRadius: "1rem", overflow: "hidden", background: "#111", border: "1px solid #1c1c1c" }}>
         {mediaUrl ? (
           <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
@@ -276,41 +330,21 @@ const StatusBadge = ({ ad }) => {
   const now = new Date();
   const start = ad.startDate ? new Date(ad.startDate) : null;
   const end = ad.endDate ? new Date(ad.endDate) : null;
-
   const isApproved = ad.approvalStatus === "approved";
   const isRejected = ad.approvalStatus === "rejected";
   const isPending  = ad.approvalStatus === "pending";
-
   const hasStarted = !start || isNaN(start.getTime()) || start <= now;
   const notEnded   = !end || isNaN(end.getTime()) || end >= now;
   const isLive     = ad.isActive && isApproved && hasStarted && notEnded;
 
-  if (isLive) {
-    return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(34,197,94,0.12)", color: "#22c55e" }}>LIVE</span>;
-  }
-
-  if (!ad.isActive) {
-    return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(113,113,122,0.1)", color: "#52525b" }}>INACTIVE</span>;
-  }
-
-  if (isRejected) {
-    return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>REJECTED</span>;
-  }
-
-  if (isPending) {
-    return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(245,158,11,0.1)", color: "#f59e0b" }}>PENDING</span>;
-  }
-
-  // If approved and active but not live
+  if (isLive)       return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(34,197,94,0.12)",  color: "#22c55e" }}>LIVE</span>;
+  if (!ad.isActive) return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(113,113,122,0.1)", color: "#52525b" }}>INACTIVE</span>;
+  if (isRejected)   return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(239,68,68,0.1)",   color: "#ef4444" }}>REJECTED</span>;
+  if (isPending)    return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(245,158,11,0.1)",  color: "#f59e0b" }}>PENDING</span>;
   if (isApproved) {
-    if (!hasStarted) {
-      return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(96,165,250,0.1)", color: "#60a5fa" }}>SCHEDULED</span>;
-    }
-    if (!notEnded) {
-      return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>EXPIRED</span>;
-    }
+    if (!hasStarted) return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(96,165,250,0.1)",  color: "#60a5fa" }}>SCHEDULED</span>;
+    if (!notEnded)   return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(239,68,68,0.1)",   color: "#ef4444" }}>EXPIRED</span>;
   }
-
   return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(245,158,11,0.1)", color: "#f59e0b" }}>PENDING</span>;
 };
 
@@ -321,8 +355,8 @@ const AdManagerPage = ({ adminURL, token }) => {
   const [saving, setSaving]         = useState(false);
   const [editingId, setEditingId]   = useState(null);
   const [showForm, setShowForm]     = useState(false);
-  const [pageTab, setPageTab]       = useState("ads");      // top-level: "ads" | "requests"
-  const [activeTab, setActiveTab]   = useState("templates"); // form editor tabs
+  const [pageTab, setPageTab]       = useState("ads");
+  const [activeTab, setActiveTab]   = useState("templates");
   const [form, setForm]             = useState(defaultForm());
   const [localMediaFile, setLocalMediaFile] = useState(null);
   const [localMediaUrl, setLocalMediaUrl]   = useState("");
@@ -335,7 +369,30 @@ const AdManagerPage = ({ adminURL, token }) => {
   const resolvedToken = token || localStorage.getItem("adminToken");
   const authHeader    = { Authorization: `Bearer ${resolvedToken}` };
 
-  // ── Fetch ──────────────────────────────────────────────────────────────────
+  // ── Derived flags ──────────────────────────────────────────────────
+  const isReelSelected   = form.displayLocations.includes("reels_feed");
+  const isBannerSelected = form.displayLocations.some(l => l.startsWith("banners:"));
+
+  // ── Current format derived from displayLocations ──────────────────
+  const adFormat = isReelSelected && isBannerSelected ? "both"
+    : isReelSelected ? "reels"
+    : "banner";
+
+  // ── Format change handler ─────────────────────────────────────────
+  const handleFormatChange = (formatId) => {
+    if (formatId === "banner") {
+      const bannerLocs = form.displayLocations.filter(l => l.startsWith("banners:"));
+      setField("displayLocations", bannerLocs.length > 0 ? bannerLocs : ["banners:home_0"]);
+    } else if (formatId === "reels") {
+      setField("displayLocations", ["reels_feed"]);
+    } else if (formatId === "both") {
+      const bannerLocs = form.displayLocations.filter(l => l.startsWith("banners:"));
+      const base = bannerLocs.length > 0 ? bannerLocs : ["banners:home_0"];
+      setField("displayLocations", [...base, "reels_feed"]);
+    }
+  };
+
+  // ── Fetch ──────────────────────────────────────────────────────────
   const fetchAds = useCallback(async () => {
     try { setLoading(true); const { data } = await axios.get(`${API}/admin/ads`, { headers: authHeader }); setAds(data.ads || []); }
     catch { showToast("Failed to load ads", "error"); }
@@ -349,16 +406,17 @@ const AdManagerPage = ({ adminURL, token }) => {
 
   useEffect(() => { fetchAds(); fetchAnalytics(); }, []);
 
-  // ── Toast ──────────────────────────────────────────────────────────────────
+  // ── Toast ──────────────────────────────────────────────────────────
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3200);
   };
 
-  // ── Form helpers ───────────────────────────────────────────────────────────
+  // ── Form helpers ───────────────────────────────────────────────────
   const setField  = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const setLayout = (k, v) => setForm(f => ({ ...f, layoutConfig: { ...f.layoutConfig, [k]: v } }));
   const setButton = (k, v) => setForm(f => ({ ...f, buttonStyle:  { ...f.buttonStyle,  [k]: v } }));
+  const setReel   = (k, v) => setForm(f => ({ ...f, reelConfig:   { ...f.reelConfig,   [k]: v } }));
 
   const openCreate = () => {
     setForm(defaultForm()); setLocalMediaFile(null); setLocalMediaUrl(""); setGalleryFiles([]);
@@ -387,6 +445,7 @@ const AdManagerPage = ({ adminURL, token }) => {
       cropData: ad.cropData || defaultForm().cropData,
       layoutConfig: { ...defaultForm().layoutConfig, ...(ad.layoutConfig || {}) },
       buttonStyle:  { ...defaultForm().buttonStyle,  ...(ad.buttonStyle  || {}) },
+      reelConfig:   { ...defaultReelConfig(),        ...(ad.reelConfig   || {}) },
     });
     setLocalMediaFile(null); setLocalMediaUrl(""); setGalleryFiles([]);
     setEditingId(ad._id); setActiveTab("templates"); setShowForm(true);
@@ -398,10 +457,10 @@ const AdManagerPage = ({ adminURL, token }) => {
     setField("mediaType", file.type.startsWith("video/") ? "video" : "image"); e.target.value = "";
   };
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
+  // ── Submit ─────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!form.title || !form.advertiserName) { showToast("Advertiser name and title are required", "error"); return; }
-    if (!localMediaFile && !form.mediaUrl) { showToast("Please select a media file", "error"); return; }
+    if (!localMediaFile && !form.mediaUrl)   { showToast("Please select a media file", "error"); return; }
     setSaving(true);
     try {
       const fd = new FormData();
@@ -409,17 +468,19 @@ const AdManagerPage = ({ adminURL, token }) => {
       if (galleryFiles.length) galleryFiles.forEach(f => fd.append("gallery", f));
       ["advertiserName","advertiserEmail","advertiserPhone","companyName","title","tagline","description","longDescription","mediaUrl","thumbnailUrl","websiteUrl","instagramUrl","facebookUrl","youtubeUrl","otherUrl","ctaText","badge","approvalStatus","priority","adminNotes","startDate","endDate"]
         .forEach(k => { if (form[k] !== undefined && form[k] !== "") fd.append(k, form[k]); });
-      fd.append("isActive", form.isActive); fd.append("isDefault", form.isDefault);
+      fd.append("isActive",         form.isActive);
+      fd.append("isDefault",        form.isDefault);
       fd.append("displayLocations", JSON.stringify(form.displayLocations));
-      fd.append("adType", form.adType || "promotional");
-      fd.append("tags", JSON.stringify(form.tags || []));
-      fd.append("buttonLinkType", form.buttonLinkType || "ad_details");
+      fd.append("adType",           form.adType || "promotional");
+      fd.append("tags",             JSON.stringify(form.tags || []));
+      fd.append("buttonLinkType",   form.buttonLinkType || "ad_details");
       if (form.buttonLink) fd.append("buttonLink", form.buttonLink);
-      fd.append("cardLinkType", form.cardLinkType || "none");
+      fd.append("cardLinkType",     form.cardLinkType || "none");
       if (form.cardLink) fd.append("cardLink", form.cardLink);
-      fd.append("cropData", JSON.stringify(form.cropData));
-      fd.append("layoutConfig", JSON.stringify(form.layoutConfig));
-      fd.append("buttonStyle", JSON.stringify(form.buttonStyle));
+      fd.append("cropData",         JSON.stringify(form.cropData));
+      fd.append("layoutConfig",     JSON.stringify(form.layoutConfig));
+      fd.append("buttonStyle",      JSON.stringify(form.buttonStyle));
+      fd.append("reelConfig",       JSON.stringify(form.reelConfig));
       const url = editingId ? `${API}/admin/ads/${editingId}` : `${API}/admin/ads`;
       await axios[editingId ? "patch" : "post"](url, fd, { headers: { ...authHeader, "Content-Type": "multipart/form-data" } });
       showToast(editingId ? "Ad updated!" : "Ad published!");
@@ -444,23 +505,39 @@ const AdManagerPage = ({ adminURL, token }) => {
     catch { showToast("Failed to approve", "error"); }
   };
 
-  const applyTemplate = (template) => {
+  const applyBannerTemplate = (template) => {
     if (!template) { setForm(f => ({ ...f, layoutConfig: defaultForm().layoutConfig, buttonStyle: defaultForm().buttonStyle })); return; }
     setForm(f => ({ ...f, layoutConfig: { ...defaultForm().layoutConfig, ...template.layoutConfig }, buttonStyle: { ...defaultForm().buttonStyle, ...template.buttonStyle } }));
   };
 
-  // Form editor tabs (no requests here)
-  const formTabs = [
+  const applyReelTemplate = (template) => {
+    if (!template) { setForm(f => ({ ...f, reelConfig: defaultReelConfig() })); return; }
+    setForm(f => ({ ...f, reelConfig: { ...defaultReelConfig(), ...template.reelConfig } }));
+  };
+
+  // ── Form tabs — change dynamically based on format ─────────────────
+  const formTabs = useMemo(() => [
     { id: "templates",  label: "Templates",  icon: HiOutlineSparkles },
     { id: "media",      label: "Media",      icon: HiOutlinePhoto },
-    { id: "layout",     label: "Layout",     icon: HiOutlineAdjustmentsHorizontal },
-    { id: "button",     label: "Button",     icon: HiOutlineCursorArrowRipple },
+    // Layout + Button only for banner/both (not reels-only)
+    ...(adFormat !== "reels" ? [
+      { id: "layout",   label: "Layout",     icon: HiOutlineAdjustmentsHorizontal },
+      { id: "button",   label: "Button",     icon: HiOutlineCursorArrowRipple },
+    ] : []),
+    // Reel Config only when reels is part of the format
+    ...(isReelSelected ? [{ id: "reelconfig", label: "Reel Config", icon: HiOutlineVideoCamera }] : []),
     { id: "components", label: "Components", icon: HiOutlineSquare3Stack3D },
     { id: "schedule",   label: "Schedule",   icon: HiOutlineCalendarDays },
     { id: "advertiser", label: "Advertiser", icon: HiOutlineUser },
-  ];
+  ], [isReelSelected, adFormat]);
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Reset active tab when it gets removed from tab list ───────────
+  useEffect(() => {
+    if (activeTab === "reelconfig" && !isReelSelected) setActiveTab("templates");
+    if ((activeTab === "layout" || activeTab === "button") && adFormat === "reels") setActiveTab("reelconfig");
+  }, [isReelSelected, adFormat, activeTab]);
+
+  // ── Render ─────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: "100vh", background: "#000", color: "#f4f4f5", fontFamily: "'Inter', system-ui, sans-serif" }}>
 
@@ -484,22 +561,15 @@ const AdManagerPage = ({ adminURL, token }) => {
           <h1 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: "#fff" }}>Ad Manager</h1>
           <p style={{ fontSize: 11, color: "#3f3f46", margin: "2px 0 0" }}>Manage banner advertisements and incoming ad requests</p>
         </div>
-
-        {/* Top-level tabs */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ display: "flex", borderRadius: 8, overflow: "hidden", border: "1px solid #222" }}>
             {[
-              { id: "ads",      label: "Manage Ads",  icon: HiOutlineChartBarSquare },
+              { id: "ads",      label: "Manage Ads",   icon: HiOutlineChartBarSquare },
               { id: "requests", label: "Ad Requests",  icon: HiOutlineClipboardDocumentList },
               { id: "preview",  label: "Preview Model", icon: HiOutlineEye },
             ].map(t => (
               <button key={t.id} onClick={() => { setPageTab(t.id); setShowForm(false); }}
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", border: "none", whiteSpace: "nowrap",
-                  background: pageTab === t.id ? "#fff" : "#0a0a0a",
-                  color: pageTab === t.id ? "#000" : "#52525b",
-                }}>
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", border: "none", whiteSpace: "nowrap", background: pageTab === t.id ? "#fff" : "#0a0a0a", color: pageTab === t.id ? "#000" : "#52525b" }}>
                 <t.icon style={{ fontSize: 13 }} /> {t.label}
               </button>
             ))}
@@ -517,16 +587,16 @@ const AdManagerPage = ({ adminURL, token }) => {
         </div>
       </div>
 
-      {/* ── ANALYTICS BAR (only on ads tab) ── */}
+      {/* ── ANALYTICS BAR ── */}
       {pageTab === "ads" && analyticsData && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", borderBottom: "1px solid #111" }}>
           {[
-            { label: "Total",    value: analyticsData.totalAds,                    color: "#71717a" },
-            { label: "Live",     value: analyticsData.activeAds,                   color: "#22c55e" },
-            { label: "Pending",  value: analyticsData.pendingAds,                  color: "#f59e0b" },
-            { label: "Rejected", value: analyticsData.rejectedAds,                 color: "#ef4444" },
-            { label: "Views",    value: analyticsData.totalViews?.toLocaleString(), color: "#a1a1aa" },
-            { label: "CTR",      value: analyticsData.avgCTR,                      color: "#22c55e" },
+            { label: "Total",    value: analyticsData.totalAds,                     color: "#71717a" },
+            { label: "Live",     value: analyticsData.activeAds,                    color: "#22c55e" },
+            { label: "Pending",  value: analyticsData.pendingAds,                   color: "#f59e0b" },
+            { label: "Rejected", value: analyticsData.rejectedAds,                  color: "#ef4444" },
+            { label: "Views",    value: analyticsData.totalViews?.toLocaleString(),  color: "#a1a1aa" },
+            { label: "CTR",      value: analyticsData.avgCTR,                       color: "#22c55e" },
           ].map((item, i) => (
             <div key={item.label} style={{ padding: "12px 16px", textAlign: "center", borderRight: i < 5 ? "1px solid #111" : "none" }}>
               <div style={{ fontSize: 20, fontWeight: 800, color: item.color }}>{item.value ?? "—"}</div>
@@ -536,19 +606,8 @@ const AdManagerPage = ({ adminURL, token }) => {
         </div>
       )}
 
-      {/* ── AD REQUESTS PAGE ── */}
-      {pageTab === "requests" && (
-        <div style={{ padding: 24 }}>
-          <AdRequestsTab API={API} authHeader={authHeader} showToast={showToast} />
-        </div>
-      )}
-
-      {/* ── AD PREVIEW TAB ── */}
-      {pageTab === "preview" && (
-        <div style={{ padding: 24 }}>
-          <AdPreviewTab API={API} authHeader={authHeader} showToast={showToast} />
-        </div>
-      )}
+      {pageTab === "requests" && <div style={{ padding: 24 }}><AdRequestsTab API={API} authHeader={authHeader} showToast={showToast} /></div>}
+      {pageTab === "preview"  && <div style={{ padding: 24 }}><AdPreviewTab  API={API} authHeader={authHeader} showToast={showToast} /></div>}
 
       {/* ── ADS PAGE ── */}
       {pageTab === "ads" && (
@@ -574,14 +633,24 @@ const AdManagerPage = ({ adminURL, token }) => {
                             : <img src={repairUrl(ad.mediaUrl)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         )}
                         <div style={{ position: "absolute", top: 8, left: 8 }}><StatusBadge ad={ad} /></div>
-                        <div style={{ position: "absolute", top: 8, right: 8, padding: "2px 6px", borderRadius: 4, background: "rgba(0,0,0,0.7)", fontSize: 9, color: "#52525b", fontWeight: 600 }}>{ad.mediaType?.toUpperCase()}</div>
+                        <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 4 }}>
+                          {ad.displayLocations?.includes("reels_feed") && (
+                            <span style={{ padding: "2px 6px", borderRadius: 4, background: "rgba(99,102,241,0.85)", fontSize: 9, color: "#fff", fontWeight: 700 }}>REEL</span>
+                          )}
+                          {ad.displayLocations?.some(l => l.startsWith("banners:")) && (
+                            <span style={{ padding: "2px 6px", borderRadius: 4, background: "rgba(34,197,94,0.75)", fontSize: 9, color: "#fff", fontWeight: 700 }}>BANNER</span>
+                          )}
+                          <span style={{ padding: "2px 6px", borderRadius: 4, background: "rgba(0,0,0,0.7)", fontSize: 9, color: "#52525b", fontWeight: 600 }}>{ad.mediaType?.toUpperCase()}</span>
+                        </div>
                       </div>
                       <div style={{ padding: "12px 14px" }}>
                         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", color: "#f4f4f5" }}>{ad.title}</div>
                         <div style={{ fontSize: 11, color: "#52525b", marginBottom: 8 }}>{ad.advertiserName}{ad.companyName ? ` · ${ad.companyName}` : ""}</div>
                         <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 10 }}>
                           {(ad.displayLocations || []).map(loc => (
-                            <span key={loc} style={{ padding: "2px 6px", borderRadius: 4, background: "#111", fontSize: 9, color: "#3f3f46", fontWeight: 600, border: "1px solid #1a1a1a" }}>{loc.replace("_", " ").toUpperCase()}</span>
+                            <span key={loc} style={{ padding: "2px 6px", borderRadius: 4, background: loc === "reels_feed" ? "rgba(99,102,241,0.12)" : "#111", fontSize: 9, color: loc === "reels_feed" ? "#818cf8" : "#3f3f46", fontWeight: 600, border: loc === "reels_feed" ? "1px solid rgba(99,102,241,0.25)" : "1px solid #1a1a1a" }}>
+                              {loc.replace(/_/g, " ").toUpperCase()}
+                            </span>
                           ))}
                         </div>
                         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -589,7 +658,7 @@ const AdManagerPage = ({ adminURL, token }) => {
                             <HiOutlinePencil style={{ fontSize: 12 }} /> Edit
                           </button>
                           {ad.approvalStatus !== "approved" && (
-                            <button onClick={() => handleApprove(ad._id)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 10px", borderRadius: 7, background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)", cursor: "pointer", fontSize: 12 }} title="Approve">
+                            <button onClick={() => handleApprove(ad._id)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 10px", borderRadius: 7, background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)", cursor: "pointer", fontSize: 12 }}>
                               <HiOutlineCheck style={{ fontSize: 12 }} />
                             </button>
                           )}
@@ -608,22 +677,63 @@ const AdManagerPage = ({ adminURL, token }) => {
             </div>
           )}
 
-          {/* Form editor */}
+          {/* ── FORM EDITOR ── */}
           {showForm && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 400px", height: "calc(100vh - 110px)", overflow: "hidden" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 420px", height: "calc(100vh - 110px)", overflow: "hidden" }}>
 
-              {/* Left editor */}
+              {/* Left: editor */}
               <div style={{ display: "flex", flexDirection: "column", borderRight: "1px solid #111", overflow: "hidden" }}>
-                {/* Tab bar */}
+
+                {/* ── FORMAT SELECTOR ── rendered above tab bar ── */}
+                <div style={{ padding: "12px 16px", borderBottom: "1px solid #111", background: "#050505" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#3f3f46", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>
+                    Ad Format
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {FORMAT_OPTIONS.map(opt => {
+                      const isActive = adFormat === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => handleFormatChange(opt.id)}
+                          style={{
+                            flex: 1,
+                            padding: "10px 10px",
+                            borderRadius: 8,
+                            cursor: "pointer",
+                            border: isActive ? `1px solid ${opt.activeBorder}` : "1px solid #222",
+                            background: isActive ? opt.activeBg : "#0a0a0a",
+                            textAlign: "left",
+                            transition: "all 0.15s",
+                          }}
+                        >
+                          <div style={{ fontSize: 16, marginBottom: 3, lineHeight: 1 }}>{opt.icon}</div>
+                          <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 2, color: isActive ? opt.color : "#52525b" }}>
+                            {opt.label}
+                          </div>
+                          <div style={{ fontSize: 9, color: "#3f3f46", lineHeight: 1.3 }}>
+                            {opt.desc}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* ── TAB BAR ── */}
                 <div style={{ display: "flex", borderBottom: "1px solid #111", background: "#000", overflowX: "auto" }}>
                   {formTabs.map(t => (
                     <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
                       display: "flex", alignItems: "center", gap: 5, padding: "10px 14px",
                       fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em",
-                      cursor: "pointer", border: "none", whiteSpace: "nowrap",
-                      background: "transparent",
+                      cursor: "pointer", border: "none", whiteSpace: "nowrap", background: "transparent",
                       color: activeTab === t.id ? "#fff" : "#3f3f46",
                       borderBottom: activeTab === t.id ? "2px solid #fff" : "2px solid transparent",
+                      ...(t.id === "reelconfig" ? {
+                        color: activeTab === t.id ? "#818cf8" : "#4338ca",
+                        borderBottom: activeTab === t.id ? "2px solid #818cf8" : "2px solid transparent",
+                      } : {}),
                     }}>
                       <t.icon style={{ fontSize: 12 }} />{t.label}
                     </button>
@@ -631,20 +741,55 @@ const AdManagerPage = ({ adminURL, token }) => {
                   <div style={{ flex: 1 }} />
                 </div>
 
-                {/* Tab content */}
+                {/* ── TAB CONTENT ── */}
                 <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
 
+                  {/* ── TEMPLATES ── */}
                   {activeTab === "templates" && (
-                    <TemplateSelector form={form} localMediaUrl={localMediaUrl || (form.mediaType === "image" ? repairUrl(form.mediaUrl) : "")} onApply={applyTemplate} />
+                    <div>
+                      {/* Reels-only: show only reel templates */}
+                      {adFormat === "reels" && (
+                        <div>
+                          <div style={{ padding: "10px 12px", background: "rgba(99,102,241,0.08)", borderRadius: 8, border: "1px solid rgba(99,102,241,0.2)", marginBottom: 16 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", marginBottom: 3 }}>Reels-Only Mode</div>
+                            <div style={{ fontSize: 11, color: "#6366f1", lineHeight: 1.5 }}>
+                              This ad will only appear in the reels feed. Use the Reel Config tab for full styling.
+                            </div>
+                          </div>
+                          <ReelTemplateSelector reelConfig={form.reelConfig} localMediaUrl={localMediaUrl || (form.mediaType === "image" ? repairUrl(form.mediaUrl) : "")} form={form} onApply={applyReelTemplate} />
+                        </div>
+                      )}
+
+                      {/* Banner-only: show only banner templates */}
+                      {adFormat === "banner" && (
+                        <TemplateSelector form={form} localMediaUrl={localMediaUrl || (form.mediaType === "image" ? repairUrl(form.mediaUrl) : "")} onApply={applyBannerTemplate} />
+                      )}
+
+                      {/* Both: show banner templates + reel templates below */}
+                      {adFormat === "both" && (
+                        <div>
+                          <TemplateSelector form={form} localMediaUrl={localMediaUrl || (form.mediaType === "image" ? repairUrl(form.mediaUrl) : "")} onApply={applyBannerTemplate} />
+                          <div style={{ marginTop: 24, borderTop: "1px solid #111", paddingTop: 20 }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: "#818cf8", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>
+                              Reel Templates
+                            </div>
+                            <ReelTemplateSelector reelConfig={form.reelConfig} localMediaUrl={localMediaUrl || (form.mediaType === "image" ? repairUrl(form.mediaUrl) : "")} form={form} onApply={applyReelTemplate} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
 
+                  {/* ── MEDIA ── */}
                   {activeTab === "media" && (
                     <div>
                       <Section title="Primary Media">
-                        <div onClick={() => fileInputRef.current?.click()}
+                        <div
+                          onClick={() => fileInputRef.current?.click()}
                           style={{ border: "2px dashed #1a1a1a", borderRadius: 10, padding: "20px", textAlign: "center", cursor: "pointer", background: "#050505", marginBottom: 12, transition: "border-color 0.2s" }}
                           onMouseEnter={e => e.currentTarget.style.borderColor = "#333"}
-                          onMouseLeave={e => e.currentTarget.style.borderColor = "#1a1a1a"}>
+                          onMouseLeave={e => e.currentTarget.style.borderColor = "#1a1a1a"}
+                        >
                           {localMediaUrl ? (
                             <div>
                               {form.mediaType === "video"
@@ -671,19 +816,24 @@ const AdManagerPage = ({ adminURL, token }) => {
                         </div>
                         <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={handleFilePick} style={{ display: "none" }} />
                       </Section>
-                      <Section title="Crop">
-                        <CropPanel localMediaUrl={localMediaUrl || (form.mediaType === "image" ? repairUrl(form.mediaUrl) : "")} form={form} onChange={(k, v) => setField(k, v)} />
-                      </Section>
+                      {adFormat !== "reels" && (
+                        <Section title="Crop (Banner)">
+                          <CropPanel localMediaUrl={localMediaUrl || (form.mediaType === "image" ? repairUrl(form.mediaUrl) : "")} form={form} onChange={(k, v) => setField(k, v)} />
+                        </Section>
+                      )}
                       <Section title="Ad Content">
                         {[
-                          { key: "title",       label: "Title *",          ph: "India's No 1 platform" },
-                          { key: "tagline",     label: "Tagline",          ph: "Short punchy line" },
-                          { key: "ctaText",     label: "CTA Button Text",  ph: "Learn More" },
-                          { key: "badge",       label: "Badge Text",       ph: "SPONSOR" },
+                          { key: "title",   label: "Title *",  ph: "India's No 1 platform" },
+                          { key: "tagline", label: "Tagline",  ph: "Short punchy line" },
+                          { key: "ctaText", label: adFormat === "reels" ? "CTA Text (Reel)" : "Banner CTA Text", ph: "Learn More" },
+                          { key: "badge",   label: "Badge Text", ph: "SPONSOR" },
                         ].map(({ key, label, ph }) => (
                           <div key={key} style={fieldGroup}><label style={labelStyle}>{label}</label><input value={form[key]} onChange={e => setField(key, e.target.value)} style={inputStyle} placeholder={ph} /></div>
                         ))}
-                        <div style={fieldGroup}><label style={labelStyle}>Description</label><textarea value={form.description} onChange={e => setField("description", e.target.value)} style={{ ...inputStyle, height: 60, resize: "vertical" }} placeholder="One line shown on banner" /></div>
+                        <div style={fieldGroup}>
+                          <label style={labelStyle}>{adFormat === "reels" ? "Description" : "Banner Description"}</label>
+                          <textarea value={form.description} onChange={e => setField("description", e.target.value)} style={{ ...inputStyle, height: 60, resize: "vertical" }} placeholder="Description shown on ad" />
+                        </div>
                       </Section>
                       <Section title="Links">
                         {[
@@ -699,7 +849,8 @@ const AdManagerPage = ({ adminURL, token }) => {
                     </div>
                   )}
 
-                  {activeTab === "layout" && (
+                  {/* ── LAYOUT (banner/both only) ── */}
+                  {activeTab === "layout" && adFormat !== "reels" && (
                     <div>
                       <Section title="Text Position">
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5, marginBottom: 14 }}>
@@ -729,8 +880,8 @@ const AdManagerPage = ({ adminURL, token }) => {
                           <label style={labelStyle}>Title Weight</label>
                           <div style={{ display: "flex", gap: 5 }}>{["bold","extrabold","black"].map(w => <button type="button" key={w} onClick={() => setLayout("titleWeight", w)} style={{ ...toggleBtn(form.layoutConfig.titleWeight === w), flex: 1 }}>{w}</button>)}</div>
                         </div>
-                        <ColorInput label="Title Color" value={form.layoutConfig.titleColor} onChange={v => setLayout("titleColor", v)} />
-                        <ColorInput label="Description Color" value={form.layoutConfig.descColor} onChange={v => setLayout("descColor", v)} />
+                        <ColorInput label="Title Color"       value={form.layoutConfig.titleColor} onChange={v => setLayout("titleColor", v)} />
+                        <ColorInput label="Description Color" value={form.layoutConfig.descColor}  onChange={v => setLayout("descColor", v)} />
                       </Section>
                       <Section title="Badge">
                         <div style={fieldGroup}><label style={labelStyle}>Badge Override</label><input value={form.layoutConfig.badgeText} onChange={e => setLayout("badgeText", e.target.value)} style={inputStyle} placeholder="Leave blank to use Badge field" /></div>
@@ -742,9 +893,10 @@ const AdManagerPage = ({ adminURL, token }) => {
                     </div>
                   )}
 
-                  {activeTab === "button" && (
+                  {/* ── BUTTON (banner/both only) ── */}
+                  {activeTab === "button" && adFormat !== "reels" && (
                     <div>
-                      <Section title="Style">
+                      <Section title="Banner Button Style">
                         <div style={fieldGroup}>
                           <label style={labelStyle}>Variant</label>
                           <div style={{ display: "flex", gap: 5 }}>{["filled","outline","ghost"].map(v => <button type="button" key={v} onClick={() => setButton("variant", v)} style={{ ...toggleBtn(form.buttonStyle.variant === v), flex: 1, textTransform: "capitalize" }}>{v}</button>)}</div>
@@ -755,8 +907,8 @@ const AdManagerPage = ({ adminURL, token }) => {
                         </div>
                       </Section>
                       <Section title="Colors">
-                        <ColorInput label="Background" value={form.buttonStyle.bgColor}    onChange={v => setButton("bgColor", v)} />
-                        <ColorInput label="Text"       value={form.buttonStyle.textColor}  onChange={v => setButton("textColor", v)} />
+                        <ColorInput label="Background" value={form.buttonStyle.bgColor}     onChange={v => setButton("bgColor", v)} />
+                        <ColorInput label="Text"       value={form.buttonStyle.textColor}   onChange={v => setButton("textColor", v)} />
                         <ColorInput label="Border"     value={form.buttonStyle.borderColor} onChange={v => setButton("borderColor", v)} />
                       </Section>
                       <Section title="Icon">
@@ -769,119 +921,178 @@ const AdManagerPage = ({ adminURL, token }) => {
                           <div style={{ display: "flex", gap: 5 }}>{["left","right"].map(p => <button type="button" key={p} onClick={() => setButton("iconPosition", p)} style={{ ...toggleBtn(form.buttonStyle.iconPosition === p), flex: 1 }}>{p}</button>)}</div>
                         </div>
                       </Section>
-
-                       {/* Button CTA Navigation */}
-                       <Section title="Button Navigation">
-                         <div style={{ fontSize: 10, color: "#52525b", marginBottom: 10 }}>Where should the CTA button take the user?</div>
-                         <div style={fieldGroup}>
-                           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                             {[
-                               { value: "ad_details", label: "Ad Details Page", hint: "Opens /ad-details/{id}" },
-                               { value: "external",   label: "External URL",    hint: "Opens a website in a new tab" },
-                               { value: "internal",   label: "Internal Route",  hint: "Navigates within the app" },
-                               { value: "none",       label: "No Action",       hint: "Button is decorative only" },
-                             ].map(({ value, label, hint }) => (
-                               <button type="button" key={value} onClick={() => setField("buttonLinkType", value)} style={{ ...toggleBtn(form.buttonLinkType === value), textAlign: "left", padding: "7px 10px" }}>
-                                 <span style={{ fontWeight: 700, fontSize: 11, display: "block" }}>{label}</span>
-                                 <span style={{ fontSize: 9, opacity: 0.55 }}>{hint}</span>
-                               </button>
-                             ))}
-                           </div>
-                         </div>
-                         {(form.buttonLinkType === "external" || form.buttonLinkType === "internal") && (
-                           <div style={fieldGroup}>
-                             <label style={labelStyle}>{form.buttonLinkType === "external" ? "External URL" : "Internal Route"}</label>
-                             <input value={form.buttonLink} onChange={e => setField("buttonLink", e.target.value)} style={inputStyle} placeholder={form.buttonLinkType === "external" ? "https://example.com" : "/explore/editors"} />
-                             {form.buttonLinkType === "internal" && <div style={{ fontSize: 9, color: "#3f3f46", marginTop: 4 }}>Examples: /explore/editors, /jobs, /explore/gigs</div>}
-                           </div>
-                         )}
-                       </Section>
-
-                       {/* Banner Click Navigation */}
-                       <Section title="Banner Click Navigation">
-                         <div style={{ fontSize: 10, color: "#52525b", marginBottom: 10 }}>Where should clicking anywhere on the banner go? Button taps always take priority.</div>
-                         <div style={fieldGroup}>
-                           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                             {[
-                               { value: "none",     label: "No Action",      hint: "Only the button is clickable" },
-                               { value: "external", label: "External URL",   hint: "Opens a website in a new tab" },
-                               { value: "internal", label: "Internal Route", hint: "Navigates within the app" },
-                             ].map(({ value, label, hint }) => (
-                               <button type="button" key={value} onClick={() => setField("cardLinkType", value)} style={{ ...toggleBtn(form.cardLinkType === value), textAlign: "left", padding: "7px 10px" }}>
-                                 <span style={{ fontWeight: 700, fontSize: 11, display: "block" }}>{label}</span>
-                                 <span style={{ fontSize: 9, opacity: 0.55 }}>{hint}</span>
-                               </button>
-                             ))}
-                           </div>
-                         </div>
-                         {(form.cardLinkType === "external" || form.cardLinkType === "internal") && (
-                           <div style={fieldGroup}>
-                             <label style={labelStyle}>{form.cardLinkType === "external" ? "External URL" : "Internal Route"}</label>
-                             <input value={form.cardLink} onChange={e => setField("cardLink", e.target.value)} style={inputStyle} placeholder={form.cardLinkType === "external" ? "https://example.com" : "/explore/editors"} />
-                           </div>
-                         )}
-                       </Section>
+                      <Section title="Banner Button Navigation">
+                        <div style={{ fontSize: 10, color: "#52525b", marginBottom: 10 }}>Where should the banner CTA button take the user?</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                          {[
+                            { value: "ad_details", label: "Ad Details Page", hint: "Opens /ad-details/{id}" },
+                            { value: "external",   label: "External URL",    hint: "Opens a website in a new tab" },
+                            { value: "internal",   label: "Internal Route",  hint: "Navigates within the app" },
+                            { value: "none",       label: "No Action",       hint: "Button is decorative only" },
+                          ].map(({ value, label, hint }) => (
+                            <button type="button" key={value} onClick={() => setField("buttonLinkType", value)} style={{ ...toggleBtn(form.buttonLinkType === value), textAlign: "left", padding: "7px 10px" }}>
+                              <span style={{ fontWeight: 700, fontSize: 11, display: "block" }}>{label}</span>
+                              <span style={{ fontSize: 9, opacity: 0.55 }}>{hint}</span>
+                            </button>
+                          ))}
+                        </div>
+                        {(form.buttonLinkType === "external" || form.buttonLinkType === "internal") && (
+                          <div style={{ ...fieldGroup, marginTop: 10 }}>
+                            <label style={labelStyle}>{form.buttonLinkType === "external" ? "External URL" : "Internal Route"}</label>
+                            <input value={form.buttonLink} onChange={e => setField("buttonLink", e.target.value)} style={inputStyle} placeholder={form.buttonLinkType === "external" ? "https://example.com" : "/explore/editors"} />
+                          </div>
+                        )}
+                      </Section>
+                      <Section title="Banner Click Navigation">
+                        <div style={{ fontSize: 10, color: "#52525b", marginBottom: 10 }}>Where should clicking anywhere on the banner go?</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                          {[
+                            { value: "none",     label: "No Action",      hint: "Only the button is clickable" },
+                            { value: "external", label: "External URL",   hint: "Opens a website in a new tab" },
+                            { value: "internal", label: "Internal Route", hint: "Navigates within the app" },
+                          ].map(({ value, label, hint }) => (
+                            <button type="button" key={value} onClick={() => setField("cardLinkType", value)} style={{ ...toggleBtn(form.cardLinkType === value), textAlign: "left", padding: "7px 10px" }}>
+                              <span style={{ fontWeight: 700, fontSize: 11, display: "block" }}>{label}</span>
+                              <span style={{ fontSize: 9, opacity: 0.55 }}>{hint}</span>
+                            </button>
+                          ))}
+                        </div>
+                        {(form.cardLinkType === "external" || form.cardLinkType === "internal") && (
+                          <div style={{ ...fieldGroup, marginTop: 10 }}>
+                            <label style={labelStyle}>{form.cardLinkType === "external" ? "External URL" : "Internal Route"}</label>
+                            <input value={form.cardLink} onChange={e => setField("cardLink", e.target.value)} style={inputStyle} placeholder={form.cardLinkType === "external" ? "https://example.com" : "/explore/editors"} />
+                          </div>
+                        )}
+                      </Section>
                     </div>
                   )}
 
+                  {/* ── REEL CONFIG (when reels format selected) ── */}
+                  {activeTab === "reelconfig" && isReelSelected && (
+                    <div>
+                      <div style={{ padding: "10px 12px", background: "rgba(99,102,241,0.08)", borderRadius: 8, border: "1px solid rgba(99,102,241,0.2)", marginBottom: 16 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", marginBottom: 3 }}>Reel Feed Configuration</div>
+                        <div style={{ fontSize: 11, color: "#6366f1", lineHeight: 1.5 }}>
+                          {adFormat === "reels"
+                            ? "These settings control how this ad looks in the Reels feed. The Ad Details page is linked from the CTA button."
+                            : "These settings are independent from the banner. The Ad Details page is shared between both formats."
+                          }
+                        </div>
+                      </div>
+                      <Section title="Reel Templates">
+                        <ReelTemplateSelector reelConfig={form.reelConfig} localMediaUrl={localMediaUrl || (form.mediaType === "image" ? repairUrl(form.mediaUrl) : "")} form={form} onApply={applyReelTemplate} />
+                      </Section>
+                      <Section title="Reel CTA Button">
+                        <div style={fieldGroup}><label style={labelStyle}>Button Text</label><input value={form.reelConfig.ctaText} onChange={e => setReel("ctaText", e.target.value)} style={inputStyle} placeholder="Learn More" /></div>
+                        <div style={fieldGroup}>
+                          <label style={labelStyle}>Variant</label>
+                          <div style={{ display: "flex", gap: 5 }}>{["filled","outline","ghost"].map(v => <button type="button" key={v} onClick={() => setReel("btnVariant", v)} style={{ ...toggleBtn(form.reelConfig.btnVariant === v), flex: 1, textTransform: "capitalize" }}>{v}</button>)}</div>
+                        </div>
+                        <div style={fieldGroup}>
+                          <label style={labelStyle}>Radius</label>
+                          <div style={{ display: "flex", gap: 5 }}>{["sm","md","lg","full"].map(r => <button type="button" key={r} onClick={() => setReel("btnRadius", r)} style={{ ...toggleBtn(form.reelConfig.btnRadius === r), flex: 1 }}>{r}</button>)}</div>
+                        </div>
+                        <ColorInput label="Background Color" value={form.reelConfig.btnBgColor}    onChange={v => setReel("btnBgColor", v)} />
+                        <ColorInput label="Text Color"       value={form.reelConfig.btnTextColor}  onChange={v => setReel("btnTextColor", v)} />
+                        <ColorInput label="Border Color"     value={form.reelConfig.btnBorderColor} onChange={v => setReel("btnBorderColor", v)} />
+                      </Section>
+                      <Section title="Reel Button Navigation">
+                        <div style={{ fontSize: 10, color: "#52525b", marginBottom: 10 }}>
+                          Where should the reel CTA button take the user?{adFormat === "both" && " (Independent from banner)"}
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                          {[
+                            { value: "ad_details", label: "Ad Details Page", hint: "Opens /ad-details/{id} — recommended" },
+                            { value: "external",   label: "External URL",    hint: "Opens website in new tab" },
+                            { value: "internal",   label: "Internal Route",  hint: "Navigates inside app" },
+                            { value: "none",       label: "No Action",       hint: "Button is decorative" },
+                          ].map(({ value, label, hint }) => (
+                            <button type="button" key={value} onClick={() => setReel("btnLinkType", value)} style={{ ...toggleBtn(form.reelConfig.btnLinkType === value), textAlign: "left", padding: "7px 10px" }}>
+                              <span style={{ fontWeight: 700, fontSize: 11, display: "block" }}>{label}</span>
+                              <span style={{ fontSize: 9, opacity: 0.55 }}>{hint}</span>
+                            </button>
+                          ))}
+                        </div>
+                        {(form.reelConfig.btnLinkType === "external" || form.reelConfig.btnLinkType === "internal") && (
+                          <div style={{ ...fieldGroup, marginTop: 10 }}>
+                            <label style={labelStyle}>{form.reelConfig.btnLinkType === "external" ? "External URL" : "Internal Route"}</label>
+                            <input value={form.reelConfig.btnLink} onChange={e => setReel("btnLink", e.target.value)} style={inputStyle} placeholder={form.reelConfig.btnLinkType === "external" ? "https://example.com" : "/explore/editors"} />
+                          </div>
+                        )}
+                      </Section>
+                      <Section title="Reel Description">
+                        <div style={{ fontSize: 10, color: "#52525b", marginBottom: 8 }}>Shown below title in reel card (max 2 lines). Empty = fallback to main description.</div>
+                        <div style={fieldGroup}>
+                          <label style={labelStyle}>Description <span style={{ color: "#3f3f46", fontWeight: 400, textTransform: "none" }}>({(form.reelConfig.reelDescription || "").length}/120)</span></label>
+                          <textarea value={form.reelConfig.reelDescription} onChange={e => setReel("reelDescription", e.target.value.slice(0, 120))} style={{ ...inputStyle, height: 60, resize: "vertical" }} placeholder="Short description for reel feed…" maxLength={120} />
+                        </div>
+                      </Section>
+                      <Section title="Reel Bottom Overlay">
+                        <div style={fieldGroup}><label style={labelStyle}>Opacity: {form.reelConfig.overlayOpacity}%</label><input type="range" min={0} max={100} value={form.reelConfig.overlayOpacity} onChange={e => setReel("overlayOpacity", parseInt(e.target.value))} style={{ width: "100%", accentColor: "#818cf8" }} /></div>
+                        <ColorInput label="Overlay Base Color" value={form.reelConfig.overlayColor} onChange={v => setReel("overlayColor", v)} />
+                      </Section>
+                      <Section title="Reel Components">
+                        <ToggleRow label="Show Description"     value={form.reelConfig.showDescription}     onChange={v => setReel("showDescription", v)}     hint="2-line text shown below the title" />
+                        <ToggleRow label="Show Advertiser Name" value={form.reelConfig.showAdvertiserBadge} onChange={v => setReel("showAdvertiserBadge", v)} hint="Company name with verified badge" />
+                      </Section>
+                    </div>
+                  )}
+
+                  {/* ── COMPONENTS ── */}
                   {activeTab === "components" && (
                     <div>
-                      <Section title="Banner Components">
-                        <ToggleRow label="Badge Label"      value={form.layoutConfig.showBadge}       onChange={v => setLayout("showBadge", v)}       hint="SPONSOR / custom badge pill" />
-                        <ToggleRow label="Sponsor Tag"      value={form.layoutConfig.showSponsorTag}  onChange={v => setLayout("showSponsorTag", v)}  hint="Amber SPONSOR tag next to badge" />
-                        <ToggleRow label="Description"      value={form.layoutConfig.showDescription} onChange={v => setLayout("showDescription", v)} hint="Short description below title" />
-                        <ToggleRow label="Progress Bar"     value={form.layoutConfig.showProgressBar} onChange={v => setLayout("showProgressBar", v)} hint="Slide timer at bottom" />
-                        <ToggleRow label="Details Button"   value={form.layoutConfig.showDetailsBtn}  onChange={v => setLayout("showDetailsBtn", v)}  hint="Secondary Details → button" />
-                        <ToggleRow label="Mute Button"      value={form.layoutConfig.showMuteBtn}     onChange={v => setLayout("showMuteBtn", v)}     hint="Video ads only" />
+                      {adFormat !== "reels" && (
+                        <Section title="Banner Components">
+                          <ToggleRow label="Badge Label"    value={form.layoutConfig.showBadge}       onChange={v => setLayout("showBadge", v)}       hint="SPONSOR / custom badge pill" />
+                          <ToggleRow label="Sponsor Tag"    value={form.layoutConfig.showSponsorTag}  onChange={v => setLayout("showSponsorTag", v)}  hint="Amber SPONSOR tag next to badge" />
+                          <ToggleRow label="Description"    value={form.layoutConfig.showDescription} onChange={v => setLayout("showDescription", v)} hint="Short description below title" />
+                          <ToggleRow label="Progress Bar"   value={form.layoutConfig.showProgressBar} onChange={v => setLayout("showProgressBar", v)} hint="Slide timer at bottom" />
+                          <ToggleRow label="Details Button" value={form.layoutConfig.showDetailsBtn}  onChange={v => setLayout("showDetailsBtn", v)}  hint="Secondary Details → button" />
+                          <ToggleRow label="Mute Button"    value={form.layoutConfig.showMuteBtn}     onChange={v => setLayout("showMuteBtn", v)}     hint="Video ads only" />
+                        </Section>
+                      )}
+                      <Section title="Display Locations">
+                        {adFormat !== "reels" && (
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: "#3f3f46", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Banner Placements</div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, padding: 10, background: "#050505", borderRadius: 8, border: "1px solid #111" }}>
+                              {[
+                                { id: "banners:home_0",  label: "Home Level 0" },
+                                { id: "banners:home_1",  label: "Home Level 1" },
+                                { id: "banners:home_2",  label: "Home Level 2" },
+                                { id: "banners:editors", label: "Explore Editors" },
+                                { id: "banners:gigs",    label: "Explore Gigs" },
+                                { id: "banners:jobs",    label: "Jobs Page" },
+                                { id: "banners:explore", label: "Explore Page" },
+                              ].map(loc => (
+                                <button type="button" key={loc.id} onClick={() => {
+                                  const locs = form.displayLocations.includes(loc.id) ? form.displayLocations.filter(l => l !== loc.id) : [...form.displayLocations, loc.id];
+                                  setField("displayLocations", locs);
+                                }} style={{ ...toggleBtn(form.displayLocations.includes(loc.id)), textAlign: "left", padding: "8px 10px" }}>
+                                  {loc.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {adFormat !== "banner" && (
+                          <div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: "#3f3f46", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Reels Feed</div>
+                            <div style={{ padding: 10, background: "rgba(99,102,241,0.06)", borderRadius: 8, border: "1px solid rgba(99,102,241,0.2)", fontSize: 11, color: "#818cf8" }}>
+                              ✓ Reels feed placement is active
+                            </div>
+                          </div>
+                        )}
                       </Section>
-                      <Section title="Display">
+                      <Section title="Classification">
                         <div style={fieldGroup}>
-                          <label style={labelStyle}>Banners Placement</label>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 12, padding: 10, background: "#050505", borderRadius: 8, border: "1px solid #111" }}>
-                            {[
-                              { id: "banners:home_0", label: "Home Level 0" },
-                              { id: "banners:home_1", label: "Home Level 1" },
-                              { id: "banners:home_2", label: "Home Level 2" },
-                              { id: "banners:editors", label: "Explore Editors" },
-                              { id: "banners:gigs",    label: "Explore Gigs" },
-                              { id: "banners:jobs",    label: "Jobs Page" },
-                              { id: "banners:explore", label: "Explore Page" },
-                            ].map(loc => (
-                              <button type="button" key={loc.id} onClick={() => {
-                                const locs = form.displayLocations.includes(loc.id) ? form.displayLocations.filter(l => l !== loc.id) : [...form.displayLocations, loc.id];
-                                setField("displayLocations", locs);
-                              }} style={{ ...toggleBtn(form.displayLocations.includes(loc.id)), textAlign: "left", padding: "8px 10px" }}>
-                                {loc.label}
-                              </button>
-                            ))}
-                          </div>
-
-                          <label style={labelStyle}>Reels Placement</label>
-                          <div style={{ display: "flex", gap: 6 }}>
-                            {["reels_feed"].map(loc => (
-                              <button type="button" key={loc} onClick={() => {
-                                const locs = form.displayLocations.includes(loc) ? form.displayLocations.filter(l => l !== loc) : [...form.displayLocations, loc];
-                                setField("displayLocations", locs);
-                              }} style={toggleBtn(form.displayLocations.includes(loc))}>
-                                {loc.replace(/_/g, " ").toUpperCase()}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        {/* ── Classification ─────────────────────────────────── */}
-                        <div style={{ ...fieldGroup, marginBottom: 12 }}>
                           <label style={labelStyle}>Ad Type</label>
                           <select value={form.adType} onChange={e => setField("adType", e.target.value)} style={inputStyle}>
-                            {[
-                              { value: "promotional", label: "Promotional Ad" },
-                              { value: "internal",    label: "Internal Banner" },
-                            ].map(({ value, label }) => (
-                              <option key={value} value={value}>{label}</option>
-                            ))}
+                            <option value="promotional">Promotional Ad</option>
+                            <option value="internal">Internal Banner</option>
                           </select>
-                          <div style={{ fontSize: 10, color: "#3f3f46", marginTop: 4 }}>Classify this ad for reporting and filtering</div>
                         </div>
-                        <div style={{ ...fieldGroup, marginBottom: 14 }}>
+                        <div style={fieldGroup}>
                           <label style={labelStyle}>Tags</label>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 5, padding: "7px 8px", background: "#050505", borderRadius: 8, border: "1px solid #1a1a1a", minHeight: 38 }}>
                             {(form.tags || []).map((tag, i) => (
@@ -890,9 +1101,7 @@ const AdManagerPage = ({ adminURL, token }) => {
                                 <button type="button" onClick={() => setField("tags", form.tags.filter((_, idx) => idx !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: "#52525b", fontSize: 10, lineHeight: 1, padding: 0, marginLeft: 2 }}>✕</button>
                               </span>
                             ))}
-                            <input
-                              type="text"
-                              placeholder="Add tag, press Enter…"
+                            <input type="text" placeholder="Add tag, press Enter…"
                               onKeyDown={e => {
                                 if (e.key === "Enter" || e.key === ",") {
                                   e.preventDefault();
@@ -904,7 +1113,6 @@ const AdManagerPage = ({ adminURL, token }) => {
                               style={{ flex: 1, minWidth: 120, background: "none", border: "none", outline: "none", color: "#d4d4d8", fontSize: 11 }}
                             />
                           </div>
-                          <div style={{ fontSize: 10, color: "#3f3f46", marginTop: 4 }}>Press Enter or comma to add a tag (e.g. "summer-sale", "new-feature")</div>
                         </div>
                         <ToggleRow label="Active"         value={form.isActive}  onChange={v => setField("isActive", v)}  hint="Visible to users" />
                         <ToggleRow label="Default Banner" value={form.isDefault} onChange={v => setField("isDefault", v)} hint="Fallback when no live ads" />
@@ -925,36 +1133,25 @@ const AdManagerPage = ({ adminURL, token }) => {
                     </div>
                   )}
 
+                  {/* ── SCHEDULE ── */}
                   {activeTab === "schedule" && (
                     <div>
                       <Section title="Schedule">
                         <div style={fieldGroup}><label style={labelStyle}>Start Date & Time</label><input type="datetime-local" value={form.startDate} onChange={e => setField("startDate", e.target.value)} style={inputStyle} /></div>
                         <div style={fieldGroup}><label style={labelStyle}>End Date & Time</label><input type="datetime-local" value={form.endDate} onChange={e => setField("endDate", e.target.value)} style={inputStyle} /><div style={{ fontSize: 10, color: "#3f3f46", marginTop: 4 }}>Leave blank for no expiry</div></div>
                       </Section>
-                      <Section title="Status Guide">
-                        {[
-                          { color: "#22c55e", label: "LIVE",     desc: "Active + Approved + within date range" },
-                          { color: "#f59e0b", label: "PENDING",  desc: "Active but awaiting approval" },
-                          { color: "#52525b", label: "INACTIVE", desc: "isActive is off" },
-                          { color: "#ef4444", label: "REJECTED", desc: "Admin rejected this ad" },
-                        ].map(item => (
-                          <div key={item.label} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
-                            <span style={{ padding: "2px 7px", borderRadius: 4, fontSize: 9, fontWeight: 800, background: `${item.color}15`, color: item.color, flexShrink: 0 }}>{item.label}</span>
-                            <span style={{ fontSize: 12, color: "#52525b" }}>{item.desc}</span>
-                          </div>
-                        ))}
-                      </Section>
                     </div>
                   )}
 
+                  {/* ── ADVERTISER ── */}
                   {activeTab === "advertiser" && (
                     <div>
                       <Section title="Advertiser Details">
                         {[
-                          { key: "advertiserName",  label: "Name *",        ph: "John Doe" },
-                          { key: "advertiserEmail", label: "Email",         ph: "john@example.com" },
-                          { key: "advertiserPhone", label: "Phone",         ph: "+91 98765 43210" },
-                          { key: "companyName",     label: "Company",       ph: "Acme Corp" },
+                          { key: "advertiserName",  label: "Name *",  ph: "John Doe" },
+                          { key: "advertiserEmail", label: "Email",   ph: "john@example.com" },
+                          { key: "advertiserPhone", label: "Phone",   ph: "+91 98765 43210" },
+                          { key: "companyName",     label: "Company", ph: "Acme Corp" },
                         ].map(({ key, label, ph }) => (
                           <div key={key} style={fieldGroup}><label style={labelStyle}>{label}</label><input value={form[key]} onChange={e => setField(key, e.target.value)} style={inputStyle} placeholder={ph} /></div>
                         ))}
@@ -979,23 +1176,46 @@ const AdManagerPage = ({ adminURL, token }) => {
                 </div>
               </div>
 
-              {/* Right: preview */}
+              {/* ── RIGHT: SPLIT PREVIEW PANEL ── */}
               <div style={{ background: "#000", overflowY: "auto", display: "flex", flexDirection: "column", borderLeft: "1px solid #111" }}>
-                <div style={{ padding: "14px 18px", borderBottom: "1px solid #111" }}>
+                <div style={{ padding: "14px 18px", borderBottom: "1px solid #111", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: "#3f3f46", textTransform: "uppercase", letterSpacing: "0.1em" }}>Live Preview</div>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    {isBannerSelected && <span style={{ padding: "2px 7px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: "rgba(34,197,94,0.1)",   color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)" }}>BANNER</span>}
+                    {isReelSelected   && <span style={{ padding: "2px 7px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: "rgba(99,102,241,0.1)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.25)" }}>REEL</span>}
+                  </div>
                 </div>
-                <div style={{ padding: "20px 18px", flex: 1 }}>
-                  <LiveBannerPreview form={form} localMediaUrl={localMediaUrl} />
-                  <div style={{ marginTop: 16, padding: 12, background: "#0a0a0a", borderRadius: 8, border: "1px solid #111" }}>
+
+                <div style={{ padding: "20px 18px", flex: 1, display: "flex", flexDirection: "column", gap: 24 }}>
+
+                  {/* Placeholder when no format */}
+                  {!isBannerSelected && !isReelSelected && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 200, flexDirection: "column", gap: 8, color: "#3f3f46" }}>
+                      <HiOutlineRectangleGroup style={{ fontSize: 28 }} />
+                      <span style={{ fontSize: 12, textAlign: "center" }}>Select a format above to see a preview</span>
+                    </div>
+                  )}
+
+                  {isBannerSelected && <LiveBannerPreview form={form} localMediaUrl={localMediaUrl} />}
+                  {isReelSelected   && <ReelAdPreview     form={form} localMediaUrl={localMediaUrl} />}
+
+                  {/* Config summary */}
+                  <div style={{ padding: 12, background: "#0a0a0a", borderRadius: 8, border: "1px solid #111" }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: "#3f3f46", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Config</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5 }}>
                       {[
+                        { label: "Format",   value: FORMAT_OPTIONS.find(o => o.id === adFormat)?.label || adFormat },
                         { label: "Status",   value: form.isActive ? "Active" : "Inactive" },
                         { label: "Approval", value: form.approvalStatus },
                         { label: "Priority", value: form.priority },
-                        { label: "Position", value: form.layoutConfig.textPosition?.toUpperCase() },
-                        { label: "Overlay",  value: `${form.layoutConfig.overlayOpacity}%` },
-                        { label: "Duration", value: `${form.layoutConfig.slideDuration / 1000}s` },
+                        ...(isBannerSelected ? [
+                          { label: "Position", value: form.layoutConfig.textPosition?.toUpperCase() },
+                          { label: "Duration", value: `${form.layoutConfig.slideDuration / 1000}s` },
+                        ] : []),
+                        ...(isReelSelected ? [
+                          { label: "Reel CTA", value: form.reelConfig.ctaText },
+                          { label: "Reel Nav", value: form.reelConfig.btnLinkType },
+                        ] : []),
                       ].map(({ label, value }) => (
                         <div key={label} style={{ fontSize: 11 }}>
                           <span style={{ color: "#3f3f46" }}>{label}: </span>
@@ -1004,6 +1224,7 @@ const AdManagerPage = ({ adminURL, token }) => {
                       ))}
                     </div>
                   </div>
+
                 </div>
               </div>
 

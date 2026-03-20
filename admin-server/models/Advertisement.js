@@ -5,62 +5,82 @@ import mongoose from "mongoose";
 
 // Crop data from react-easy-crop (stored as percentages 0–100)
 const cropDataSchema = new mongoose.Schema({
-  x:      { type: Number, default: 0 },   // left offset %
-  y:      { type: Number, default: 0 },   // top offset %
-  width:  { type: Number, default: 100 }, // crop width %
-  height: { type: Number, default: 100 }, // crop height %
-  zoom:   { type: Number, default: 1 },   // zoom factor
+  x:      { type: Number, default: 0 },
+  y:      { type: Number, default: 0 },
+  width:  { type: Number, default: 100 },
+  height: { type: Number, default: 100 },
+  zoom:   { type: Number, default: 1 },
 }, { _id: false });
 
 // Controls how content (text/buttons) is positioned & styled on the banner
 const layoutConfigSchema = new mongoose.Schema({
-  // Text position: 9-point grid  tl | tc | tr | ml | mc | mr | bl | bc | br
   textPosition:      { type: String, default: "bl" },
-  // Overlay gradient direction: to-top | to-bottom | to-left | to-right | radial | none
   overlayDirection:  { type: String, default: "to-top" },
-  // Overlay opacity: 0–100
   overlayOpacity:    { type: Number, default: 75, min: 0, max: 100 },
-  // Overlay color (hex)
   overlayColor:      { type: String, default: "#040408" },
-  // Title font size: sm | md | lg | xl
   titleSize:         { type: String, default: "md" },
-  // Title font weight: bold | black | extrabold
   titleWeight:       { type: String, default: "black" },
-  // Title color
   titleColor:        { type: String, default: "#ffffff" },
-  // Description color
   descColor:         { type: String, default: "rgba(212,212,216,0.75)" },
-  // Show/hide individual pieces
   showBadge:         { type: Boolean, default: true },
   showSponsorTag:    { type: Boolean, default: true },
   showDescription:   { type: Boolean, default: true },
   showProgressBar:   { type: Boolean, default: true },
   showDetailsBtn:    { type: Boolean, default: true },
   showMuteBtn:       { type: Boolean, default: true },
-  // Slide duration in ms (3000–15000)
   slideDuration:     { type: Number, default: 5000 },
-  // Badge text override (defaults to ad.badge)
   badgeText:         { type: String, default: "" },
-  // Badge background color
   badgeColor:        { type: String, default: "rgba(255,255,255,0.12)" },
 }, { _id: false });
 
-// Primary CTA button style
+// Primary CTA button style (for banner)
 const buttonStyleSchema = new mongoose.Schema({
-  // filled | outline | ghost
   variant:           { type: String, default: "filled" },
-  // Background color (for filled)
   bgColor:           { type: String, default: "#ffffff" },
-  // Text color
   textColor:         { type: String, default: "#000000" },
-  // Border color (for outline)
   borderColor:       { type: String, default: "#ffffff" },
-  // Border radius size: sm | md | lg | full
   radius:            { type: String, default: "md" },
-  // Icon: none | arrow | globe | instagram | chevron
   icon:              { type: String, default: "chevron" },
-  // Icon position: left | right
   iconPosition:      { type: String, default: "right" },
+}, { _id: false });
+
+// ─── NEW: Reel feed specific config ──────────────────────────────────────────
+// Controls how the ad looks when rendered as a card inside the Reels feed.
+// Completely independent from layoutConfig / buttonStyle (which are banner-only).
+const reelConfigSchema = new mongoose.Schema({
+  // CTA button text in reel card (can differ from banner CTA)
+  ctaText:             { type: String, default: "Learn More", maxlength: 30 },
+  // Button style: filled | outline | ghost
+  btnVariant:          { type: String, default: "ghost" },
+  // Button background color (used for filled and ghost)
+  btnBgColor:          { type: String, default: "rgba(255,255,255,0.1)" },
+  // Button text color
+  btnTextColor:        { type: String, default: "#ffffff" },
+  // Button border color (used for outline)
+  btnBorderColor:      { type: String, default: "#ffffff" },
+  // Border radius key: sm | md | lg | full
+  btnRadius:           { type: String, default: "md" },
+  // Separate short description for reel card (max 120 chars, ~2 lines)
+  // If empty, falls back to ad.description then ad.tagline
+  reelDescription:     { type: String, default: "", maxlength: 120 },
+  // Show/hide description text in reel card
+  showDescription:     { type: Boolean, default: true },
+  // Show/hide advertiser name badge in reel card
+  showAdvertiserBadge: { type: Boolean, default: true },
+  // Bottom overlay gradient opacity (0–100)
+  overlayOpacity:      { type: Number, default: 80, min: 0, max: 100 },
+  // Bottom overlay gradient base color (hex)
+  overlayColor:        { type: String, default: "#000000" },
+  // CTA button navigation behaviour (independent from banner button)
+  btnLinkType: {
+    type: String,
+    enum: ["ad_details", "external", "internal", "none"],
+    default: "ad_details",
+  },
+  // URL or route used when btnLinkType is external or internal
+  btnLink:             { type: String, trim: true, default: "" },
+  // Which template ID was last applied (for UI highlighting only)
+  templateId:          { type: String, default: "" },
 }, { _id: false });
 
 // ─── Main Schema ──────────────────────────────────────────────────────────────
@@ -125,20 +145,24 @@ const advertisementSchema = new mongoose.Schema(
       type: String,
     },
 
-    // ========== CROP & LAYOUT ==========
-    // Stores the admin's crop selection (percentages, not pixels — device-independent)
+    // ========== CROP & LAYOUT (banner) ==========
     cropData: {
       type: cropDataSchema,
       default: () => ({}),
     },
-    // Controls appearance of the banner overlay and text
     layoutConfig: {
       type: layoutConfigSchema,
       default: () => ({}),
     },
-    // Primary CTA button style
     buttonStyle: {
       type: buttonStyleSchema,
+      default: () => ({}),
+    },
+
+    // ========== REEL FEED CONFIG (new) ==========
+    // Only used when displayLocations includes "reels_feed"
+    reelConfig: {
+      type: reelConfigSchema,
       default: () => ({}),
     },
 
@@ -153,21 +177,18 @@ const advertisementSchema = new mongoose.Schema(
     },
 
     // ========== NAVIGATION ==========
-    // Button (CTA) link behaviour
     buttonLinkType: {
       type: String,
       enum: ["ad_details", "external", "internal", "none"],
       default: "ad_details",
     },
-    buttonLink: { type: String, trim: true }, // used when type = external | internal
-
-    // Whole-card click behaviour
+    buttonLink: { type: String, trim: true },
     cardLinkType: {
       type: String,
-      enum: ["ad_details","none", "external", "internal"],
+      enum: ["ad_details", "none", "external", "internal"],
       default: "none",
     },
-    cardLink: { type: String, trim: true }, // used when cardLinkType != none
+    cardLink: { type: String, trim: true },
 
     websiteUrl:   { type: String, trim: true },
     instagramUrl: { type: String, trim: true },
@@ -198,7 +219,11 @@ const advertisementSchema = new mongoose.Schema(
     },
     displayLocations: {
       type: [String],
-      enum: ["banners:home_0", "banners:home_1", "banners:home_2", "banners:editors", "banners:gigs", "banners:jobs", "banners:explore", "reels_feed"],
+      enum: [
+        "banners:home_0", "banners:home_1", "banners:home_2",
+        "banners:editors", "banners:gigs", "banners:jobs", "banners:explore",
+        "reels_feed",
+      ],
       default: ["banners:home_0"],
     },
     badge: {

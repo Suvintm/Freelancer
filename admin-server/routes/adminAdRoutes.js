@@ -1,8 +1,6 @@
 // adminAdRoutes.js - Full advertisement management for admin-server
 // KEY CHANGE: Media is uploaded to Cloudinary ONLY when admin clicks "Publish Ad".
-// Previously the upload fired the moment a file was picked — now the frontend
-// holds the file in state, the admin configures everything, then one POST/PATCH
-// sends the file + all config together.
+// reelConfig is parsed as JSON and saved alongside layoutConfig/buttonStyle.
 import express from "express";
 import multer from "multer";
 import asyncHandler from "express-async-handler";
@@ -63,6 +61,7 @@ const cleanAd = (ad) => {
   });
   if (adObj.galleryImages?.length) adObj.galleryImages = adObj.galleryImages.map(img => repairUrl(img));
   else adObj.galleryImages = adObj.galleryImages || [];
+  // reelConfig has no URLs — pass through as-is
   return adObj;
 };
 
@@ -131,53 +130,37 @@ router.post("/toggle-suvix-ads", requirePermission("marketing"), asyncHandler(as
 
 // ── AD PREVIEW MANAGEMENT ───────────────────────────────────────────
 
-// GET /api/admin/ads/preview-media — Get current demo previews
+// GET /api/admin/ads/preview-media
 router.get("/preview-media", asyncHandler(async (req, res) => {
   const previews = await AdPreview.getPreviews();
   res.json({ success: true, previews });
 }));
 
-// PATCH /api/admin/ads/preview-media — Update demo preview
+// PATCH /api/admin/ads/preview-media
 router.patch(
   "/preview-media",
   requirePermission("marketing"),
   logActivity("UPDATE_AD_PREVIEW"),
   upload.single("media"),
   asyncHandler(async (req, res) => {
-    const { type } = req.body; // 'homeAdBanner' or 'reelAd'
+    const { type } = req.body;
     if (!["homeAdBanner", "reelAd"].includes(type)) {
       return res.status(400).json({ success: false, message: "Invalid preview type. Must be 'homeAdBanner' or 'reelAd'." });
     }
-
     if (!req.file) {
       return res.status(400).json({ success: false, message: "Please upload a media file." });
     }
-
     const previews = await AdPreview.getPreviews();
     const oldMedia = previews[type];
-
-    // Upload new media
     const isVideo = req.file.mimetype.startsWith("video/");
     const folder = isVideo ? "ad-previews/videos" : "ad-previews/images";
     const result = await uploadToCloudinary(req.file.buffer, folder);
-
-    // Update DB
-    previews[type] = {
-      url: result.url,
-      publicId: result.public_id,
-      resourceType: isVideo ? "video" : "image"
-    };
-
+    previews[type] = { url: result.url, publicId: result.public_id, resourceType: isVideo ? "video" : "image" };
     await previews.save();
-
-    // Delete old media from Cloudinary (don't await to avoid delaying response, but handle errors)
     if (oldMedia && oldMedia.publicId && oldMedia.publicId !== "sample" && oldMedia.publicId !== "sample_video") {
       deleteFromCloudinary(oldMedia.publicId).catch(err => logger.error(`[CLOUDINARY] Failed to delete old ad preview: ${oldMedia.publicId}`, err));
     }
-
-    // Notify frontend via Redis
     await publish("admin:events", { type: "ad-previews:updated" });
-
     res.json({ success: true, previews, message: `${type} updated successfully` });
   })
 );
@@ -190,11 +173,6 @@ router.get("/:id", asyncHandler(async (req, res) => {
 }));
 
 // ── POST /api/admin/ads — Create ad (with optional media upload) ─────
-// Media upload NOW fires here — not on file pick.
-// The frontend sends multipart/form-data with:
-//   - media (file, optional if editing with existing URL)
-//   - gallery (files[], optional)
-//   - all other fields as form fields or JSON strings
 router.post(
   "/",
   requirePermission("marketing"),
@@ -239,9 +217,10 @@ router.post(
     }
 
     // ── Parse JSON sub-objects ──
-    const cropData    = parseJSON(body.cropData);
-    const layoutConfig = parseJSON(body.layoutConfig);
-    const buttonStyle  = parseJSON(body.buttonStyle);
+    const cropData      = parseJSON(body.cropData);
+    const layoutConfig  = parseJSON(body.layoutConfig);
+    const buttonStyle   = parseJSON(body.buttonStyle);
+    const reelConfig    = parseJSON(body.reelConfig);  // ← NEW
     const displayLocations = parseJSON(body.displayLocations, ["banners:home_0"]);
 
     const maxOrder = await Advertisement.findOne().sort({ order: -1 }).select("order");
@@ -285,6 +264,7 @@ router.post(
       cropData,
       layoutConfig,
       buttonStyle,
+      reelConfig,     // ← NEW
     });
 
     await publishAdUpdate();
@@ -348,9 +328,11 @@ router.patch(
     if (body.tags !== undefined) ad.tags = parseJSON(body.tags, ad.tags);
 
     // ── JSON sub-objects — deep merge so partial updates work ──
-    if (body.cropData    !== undefined) ad.cropData    = { ...ad.cropData?.toObject?.() || ad.cropData    || {}, ...parseJSON(body.cropData) };
+    if (body.cropData     !== undefined) ad.cropData     = { ...ad.cropData?.toObject?.()     || ad.cropData     || {}, ...parseJSON(body.cropData) };
     if (body.layoutConfig !== undefined) ad.layoutConfig = { ...ad.layoutConfig?.toObject?.() || ad.layoutConfig || {}, ...parseJSON(body.layoutConfig) };
-    if (body.buttonStyle  !== undefined) ad.buttonStyle  = { ...ad.buttonStyle?.toObject?.() || ad.buttonStyle  || {}, ...parseJSON(body.buttonStyle) };
+    if (body.buttonStyle  !== undefined) ad.buttonStyle  = { ...ad.buttonStyle?.toObject?.()  || ad.buttonStyle  || {}, ...parseJSON(body.buttonStyle) };
+    // ── NEW: reelConfig deep merge ──
+    if (body.reelConfig   !== undefined) ad.reelConfig   = { ...ad.reelConfig?.toObject?.()   || ad.reelConfig   || {}, ...parseJSON(body.reelConfig) };
 
     await ad.save();
     await publishAdUpdate();
@@ -376,6 +358,5 @@ router.post("/reorder", requirePermission("marketing"), asyncHandler(async (req,
   await publishAdUpdate();
   res.json({ success: true, message: "Ads reordered" });
 }));
-
 
 export default router;
