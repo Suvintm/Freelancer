@@ -5,12 +5,26 @@
  */
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+
+//only keep required icons not extra icons
 import {
     HiOutlineBriefcase,
     HiOutlineUserGroup,
     HiArrowRight,
     HiSpeakerWave,
     HiSpeakerXMark,
+    HiOutlineSparkles,
+    HiOutlineVideoCamera,
+    HiOutlinePhoto,
+    HiOutlineAdjustmentsHorizontal,
+    HiOutlineRectangleGroup,
+    HiOutlineChartBarSquare,
+    HiOutlineCursorArrowRipple,
+    HiOutlineSquare3Stack3D,
+    HiOutlineClipboardDocumentList,
+    HiOutlineUser,
+    HiOutlineCalendarDays,
+    HiOutlineFilm,
 } from "react-icons/hi2";
 import { useSocket } from "../context/SocketContext";
 import { FaAd, FaInstagram, FaGlobe, FaChevronRight } from "react-icons/fa";
@@ -169,7 +183,7 @@ const UnifiedBannerSlider = ({ filter = null }) => {
     const queryClient    = useQueryClient();
 
     const [verticalIndex,     setVerticalIndex]     = useState(0);
-    const [horizontalIndices, setHorizontalIndices] = useState([0, 0, 0]);
+    const [horizontalIndices, setHorizontalIndices] = useState(new Array(10).fill(0));
     const [isMuted,           setIsMuted]           = useState(true);
     const [isHovered,         setIsHovered]         = useState(false);
     const [mediaReady,        setMediaReady]        = useState(false);
@@ -216,31 +230,80 @@ const UnifiedBannerSlider = ({ filter = null }) => {
     const levels = useMemo(() => {
         const dbAds   = adsData?.ads || [];
         const showAds = adsData?.showAds ?? true;
+        const result = [];
 
-        const adsLevel = showAds && dbAds.length > 0 ? {
-            id: "home_banner_0",
-            label: "HOME BANNER LEVEL 0",
-            color: "text-amber-400",
-            icon: FaAd,
-            items: dbAds.map(ad => ({
-                _id:          ad._id,
-                title:        ad.title,
-                description:  ad.description || ad.tagline || "",
-                mediaUrl:     repairUrl(ad.mediaUrl),
-                mediaType:    ad.mediaType,
-                link:         ad.websiteUrl || `/ad-details/${ad._id}`,
-                linkText:     ad.ctaText || "Learn More",
-                badge:        ad.badge || "SPONSOR",
-                isExternal:   !!ad.websiteUrl,
-                isAd:         true,
-                cropData:     ad.cropData     || {},
-                layoutConfig: ad.layoutConfig || {},
-                buttonStyle:  ad.buttonStyle  || {},
-            }))
-        } : null;
+        // Level 0: Active Advertisements
+        if (showAds && dbAds.length > 0) {
+            result.push({
+                id: "home_banner_0",
+                label: "HOME BANNER LEVEL 0",
+                color: "text-amber-400",
+                icon: FaAd,
+                items: dbAds.map(ad => ({
+                    _id:          ad._id,
+                    title:        ad.title,
+                    description:  ad.description || ad.tagline || "",
+                    mediaUrl:     repairUrl(ad.mediaUrl),
+                    mediaType:    ad.mediaType,
+                    link:         ad.websiteUrl || `/ad-details/${ad._id}`,
+                    linkText:     ad.ctaText || "Learn More",
+                    badge:        ad.badge || "SPONSOR",
+                    isExternal:   !!ad.websiteUrl,
+                    isAd:         true,
+                    cropData:     ad.cropData     || {},
+                    layoutConfig: ad.layoutConfig || {},
+                    buttonStyle:  ad.buttonStyle  || {},
+                }))
+            });
+        }
 
-        const all = adsLevel ? [adsLevel] : [];
-        return all;
+        // Level 1: Static Placeholder
+        result.push({
+            id: "home_banner_1",
+            label: "HOME BANNER LEVEL 1",
+            color: "text-violet-400",
+            icon: HiOutlineSparkles,
+            items: [
+                { 
+                    id: "l1-static-1", 
+                    title: "Coming Soon", 
+                    description: "Our new platform features are almost here.", 
+                    mediaUrl: "/hero_banner_1_1766946342128.png", 
+                    mediaType: "image", 
+                    link: "#", 
+                    linkText: "Stay Tuned", 
+                    badge: "STAY TUNED", 
+                    layoutConfig: {}, 
+                    buttonStyle: {}, 
+                    cropData: {} 
+                }
+            ]
+        });
+
+        // Level 2: Static Placeholder
+        result.push({
+            id: "home_banner_2",
+            label: "HOME BANNER LEVEL 2",
+            color: "text-emerald-400",
+            icon: HiOutlineFilm,
+            items: [
+                { 
+                    id: "l2-static-1", 
+                    title: "Premium Services", 
+                    description: "Explore our manually verified professional editors.", 
+                    mediaUrl: "/gig_banner_1_1766948855701.png", 
+                    mediaType: "image", 
+                    link: "#", 
+                    linkText: "Explore", 
+                    badge: "PREMIUM", 
+                    layoutConfig: {}, 
+                    buttonStyle: {}, 
+                    cropData: {} 
+                }
+            ]
+        });
+
+        return result;
     }, [adsData]);
 
     useEffect(() => { if (verticalIndex >= levels.length) setVerticalIndex(0); }, [levels.length]);
@@ -473,6 +536,21 @@ const UnifiedBannerSlider = ({ filter = null }) => {
                     </motion.div>
                 </motion.div>
             </AnimatePresence>
+            
+            {/* ── CATEGORY SWITCHER (Show only if > 1 level) ────────────── */}
+            {levels.length > 1 && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-1.5 py-2 px-1.5 rounded-2xl bg-black/45 backdrop-blur-xl border border-white/8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                    {levels.map((level, idx) => {
+                        const active = verticalIndex === idx;
+                        return (
+                            <button key={level.id} onClick={() => goTo(idx, 0)} title={level.label} className={`relative w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300 ${active ? "bg-white shadow-lg shadow-white/15 scale-105" : "bg-transparent hover:bg-white/10"}`}>
+                                <level.icon className={`text-[11px] ${active ? "text-black" : level.color}`} />
+                                {active && <motion.div layoutId="vertSwitcherGlow" className="absolute -inset-1 rounded-full bg-white/12 blur-md -z-10" transition={{ type: "spring", damping: 20, stiffness: 300 }} />}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
 
 
             {/* ── SLIDE DOTS ───────────────────────────────────────────── */}
