@@ -218,8 +218,8 @@ const UnifiedBannerSlider = ({ filter = null }) => {
         const showAds = adsData?.showAds ?? true;
 
         const adsLevel = showAds && dbAds.length > 0 ? {
-            id: "advertisements",
-            label: "Ads",
+            id: "home_banner_0",
+            label: "HOME BANNER LEVEL 0",
             color: "text-amber-400",
             icon: FaAd,
             items: dbAds.map(ad => ({
@@ -233,39 +233,15 @@ const UnifiedBannerSlider = ({ filter = null }) => {
                 badge:        ad.badge || "SPONSOR",
                 isExternal:   !!ad.websiteUrl,
                 isAd:         true,
-                // Per-ad config from admin builder
                 cropData:     ad.cropData     || {},
                 layoutConfig: ad.layoutConfig || {},
                 buttonStyle:  ad.buttonStyle  || {},
             }))
         } : null;
 
-        const base = [
-            {
-                id: "editors", label: "Editors", color: "text-violet-400", icon: HiOutlineUserGroup,
-                items: [
-                    { id: "explore-editors-1", title: "World-Class Talent", description: "Collaborate with 1,200+ specialized video editors globally.", mediaUrl: "/hero_banner_1_1766946342128.png", mediaType: "image", link: "/explore-editors", linkText: "Find Editor", badge: "exclusive", layoutConfig: {}, buttonStyle: {}, cropData: {} },
-                    { id: "explore-editors-2", title: "Verified Portfolio",  description: "Every editor is manually verified for quality and reliability.", mediaUrl: "/hero_banner_1_1766946342128.png", mediaType: "image", link: "/explore-editors", linkText: "Explore Now",  badge: "featured",  layoutConfig: {}, buttonStyle: {}, cropData: {} },
-                ],
-            },
-            {
-                id: "gigs", label: "Services", color: "text-emerald-400", icon: HiOutlineBriefcase,
-                items: [
-                    { id: "browse-gigs-1", title: "Professional Gigs", description: "Starting at ₹499. High-speed delivery guaranteed.", mediaUrl: "/gig_banner_1_1766948855701.png", mediaType: "image", link: "/explore-editors?tab=gigs", linkText: "Book Now", badge: "hot", layoutConfig: {}, buttonStyle: {}, cropData: {} },
-                ],
-            },
-        ];
-
-        const all = adsLevel ? [adsLevel, ...base] : base;
-        
-        if (filter === "ads") {
-            return adsLevel ? [adsLevel] : [];
-        }
-        if (filter === "base") {
-            return base;
-        }
+        const all = adsLevel ? [adsLevel] : [];
         return all;
-    }, [adsData, filter]);
+    }, [adsData]);
 
     useEffect(() => { if (verticalIndex >= levels.length) setVerticalIndex(0); }, [levels.length]);
 
@@ -368,10 +344,20 @@ const UnifiedBannerSlider = ({ filter = null }) => {
     if (!currentItem) return null;
 
     return (
-        <div
-            ref={containerRef}
-            className="relative w-full overflow-hidden rounded-[1.5rem] bg-zinc-950 border border-white/6 shadow-xl shadow-black/50 cursor-pointer select-none aspect-[16/10] lg:aspect-[1.8/1]"
-            style={{ willChange: "transform", transform: "translateZ(0)" }}
+        <>
+            {currentLevel.label && (
+                <div className="px-1 mb-3 flex items-center gap-2.5">
+                    <div className="w-1 h-5 bg-amber-500 rounded-full shadow-[0_0_15px_rgba(245,158,11,0.5)]" />
+                    <h2 className="text-[13px] font-black tracking-widest text-white/90 uppercase select-none">
+                        {currentLevel.label}
+                    </h2>
+                    <div className="flex-1 h-px bg-gradient-to-r from-white/20 to-transparent ml-2 opacity-50" />
+                </div>
+            )}
+            <div
+                ref={containerRef}
+                className="relative w-full overflow-hidden rounded-[1.5rem] bg-zinc-950 border border-white/6 shadow-xl shadow-black/50 cursor-pointer select-none aspect-[16/10] lg:aspect-[1.8/1]"
+                style={{ willChange: "transform", transform: "translateZ(0)" }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             onTouchStart={onTouchStart}
@@ -488,18 +474,6 @@ const UnifiedBannerSlider = ({ filter = null }) => {
                 </motion.div>
             </AnimatePresence>
 
-            {/* ── CATEGORY SWITCHER ────────────────────────────────────── */}
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-1.5 py-2 px-1.5 rounded-2xl bg-black/45 backdrop-blur-xl border border-white/8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                {levels.map((level, idx) => {
-                    const active = verticalIndex === idx;
-                    return (
-                        <button key={level.id} onClick={() => goTo(idx, 0)} title={level.label} className={`relative w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300 ${active ? "bg-white shadow-lg shadow-white/15 scale-105" : "bg-transparent hover:bg-white/10"}`}>
-                            <level.icon className={`text-[11px] ${active ? "text-black" : level.color}`} />
-                            {active && <motion.div layoutId="vertSwitcherGlow" className="absolute -inset-1 rounded-full bg-white/12 blur-md -z-10" transition={{ type: "spring", damping: 20, stiffness: 300 }} />}
-                        </button>
-                    );
-                })}
-            </div>
 
             {/* ── SLIDE DOTS ───────────────────────────────────────────── */}
             {currentLevel.items.length > 1 && (
@@ -513,7 +487,8 @@ const UnifiedBannerSlider = ({ filter = null }) => {
 
             <style>{`@keyframes ubShimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}`}</style>
         </div>
-    );
+    </>
+);
 };
 
 export default UnifiedBannerSlider;

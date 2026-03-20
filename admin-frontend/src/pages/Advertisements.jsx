@@ -270,16 +270,45 @@ const CropPanel = ({ localMediaUrl, form, onChange }) => {
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 const StatusBadge = ({ ad }) => {
-  const now    = new Date();
-  const isLive = ad.isActive && ad.approvalStatus === "approved" && (!ad.endDate || new Date(ad.endDate) >= now);
-  const cfg = isLive
-    ? { bg: "rgba(34,197,94,0.12)", color: "#22c55e", label: "LIVE" }
-    : ad.approvalStatus === "rejected"
-    ? { bg: "rgba(239,68,68,0.1)", color: "#ef4444", label: "REJECTED" }
-    : ad.isActive
-    ? { bg: "rgba(245,158,11,0.1)", color: "#f59e0b", label: "PENDING" }
-    : { bg: "rgba(113,113,122,0.1)", color: "#52525b", label: "INACTIVE" };
-  return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: cfg.bg, color: cfg.color }}>{cfg.label}</span>;
+  const now = new Date();
+  const start = ad.startDate ? new Date(ad.startDate) : null;
+  const end = ad.endDate ? new Date(ad.endDate) : null;
+
+  const isApproved = ad.approvalStatus === "approved";
+  const isRejected = ad.approvalStatus === "rejected";
+  const isPending  = ad.approvalStatus === "pending";
+
+  const hasStarted = !start || isNaN(start.getTime()) || start <= now;
+  const notEnded   = !end || isNaN(end.getTime()) || end >= now;
+  const isLive     = ad.isActive && isApproved && hasStarted && notEnded;
+
+  if (isLive) {
+    return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(34,197,94,0.12)", color: "#22c55e" }}>LIVE</span>;
+  }
+
+  if (!ad.isActive) {
+    return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(113,113,122,0.1)", color: "#52525b" }}>INACTIVE</span>;
+  }
+
+  if (isRejected) {
+    return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>REJECTED</span>;
+  }
+
+  if (isPending) {
+    return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(245,158,11,0.1)", color: "#f59e0b" }}>PENDING</span>;
+  }
+
+  // If approved and active but not live
+  if (isApproved) {
+    if (!hasStarted) {
+      return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(96,165,250,0.1)", color: "#60a5fa" }}>SCHEDULED</span>;
+    }
+    if (!notEnded) {
+      return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>EXPIRED</span>;
+    }
+  }
+
+  return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(245,158,11,0.1)", color: "#f59e0b" }}>PENDING</span>;
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────

@@ -196,22 +196,9 @@ const EditorHome = () => {
         className="flex-1 md:ml-64 md:mt-16 overflow-y-auto"
       >
         <PullIndicator />
-        {/* Premium Banner Section - Single on Mobile/Tablet, Split on Laptop */}
+        {/* Premium Banner Section - Single on all screens */}
         <div className="px-3 md:px-8 mb-2 md:mb-8 max-w-7xl mx-auto">
-          {/* Mobile/Tablet: One unified slider */}
-          <div className="lg:hidden">
-            <UnifiedBannerSlider />
-          </div>
-          
-          {/* Laptop/Large Screen: Split Slider (Ads on Left, Base on Right) */}
-          <div className="hidden lg:grid grid-cols-2 gap-6 items-start">
-            <div className="w-full">
-               <UnifiedBannerSlider filter="ads" />
-            </div>
-            <div className="w-full">
-               <UnifiedBannerSlider filter="base" />
-            </div>
-          </div>
+          <UnifiedBannerSlider />
         </div>
 
         {/* Simple & Professional Tabbed Navigation - Enhanced for Light Theme */}

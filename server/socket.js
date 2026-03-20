@@ -360,6 +360,12 @@ subscribe("admin:events", (payload) => {
     // Admin created/updated/deleted an ad. Tell ALL connected frontend
     // clients to refetch ads so the banner updates instantly without
     // waiting for the 10-minute React Query staleTime to expire.
+    
+    // Invalidate local Redis cache so fresh data is fetched from DB
+    import("./config/redisClient.js").then(({ delPattern }) => {
+      delPattern("ads:*").catch(err => console.error("Cache invalidation error:", err));
+    });
+
     console.log(`📢 Broadcasting ads:updated to all connected clients`);
     io.emit("ads:updated");
   } else if (type === "ad-previews:updated") {
