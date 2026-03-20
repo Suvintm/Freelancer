@@ -194,6 +194,7 @@ const UnifiedBannerSlider = ({ filter = null, pageName = "home" }) => {
     const [isHovered,         setIsHovered]         = useState(false);
     const [mediaReady,        setMediaReady]        = useState(false);
     const [mediaError,        setMediaError]        = useState(false);
+    const [showSkeleton,       setShowSkeleton]       = useState(false);
     const [inView,            setInView]            = useState(true);
     const [progress,          setProgress]          = useState(0);
     const [dragStart,         setDragStart]         = useState(null);
@@ -342,17 +343,44 @@ const UnifiedBannerSlider = ({ filter = null, pageName = "home" }) => {
     const DURATION_MS = lc.slideDuration || 5000;
     const bannerKey   = `${verticalIndex}-${hIdx}-${currentItem?._id}`;
 
+    // Calculate preload items (next and previous)
+    const preloadItems = useMemo(() => {
+        if (!currentLevel || !currentLevel.items || currentLevel.items.length <= 1) return [];
+        const len = currentLevel.items.length;
+        const next = (hIdx + 1) % len;
+        const prev = (hIdx - 1 + len) % len;
+        
+        const unique = [];
+        const seen = new Set([currentItem?._id]); // Don't preload current
+
+        [currentLevel.items[next], currentLevel.items[prev]].forEach(item => {
+            if (item && item._id && !seen.has(item._id)) {
+                unique.push(item);
+                seen.add(item._id);
+            }
+        });
+        return unique;
+    }, [currentLevel, hIdx, currentItem?._id]);
+
     useEffect(() => { 
         setMediaReady(false); 
         setMediaError(false);
+        setShowSkeleton(false);
         
+        // Only show skeleton if it takes more than 150ms to load (prevents flashing for cached items)
+        const skeletonTimer = setTimeout(() => {
+            if (!mediaReady) setShowSkeleton(true);
+        }, 150);
+
         // FAILSAFE: If media doesn't load in 4s, clear the "loading" state anyway
-        // to prevent permanent black boxes.
         const failsafeTimer = setTimeout(() => {
             setMediaReady(true);
         }, 4000);
 
-        return () => clearTimeout(failsafeTimer);
+        return () => {
+            clearTimeout(skeletonTimer);
+            clearTimeout(failsafeTimer);
+        };
     }, [bannerKey]);
 
     // ── Progress ticker ───────────────────────────────────────────────────
@@ -487,7 +515,12 @@ const UnifiedBannerSlider = ({ filter = null, pageName = "home" }) => {
                     className="absolute inset-0"
                     style={{ willChange: "opacity, transform" }}
                 >
-                    {!mediaReady && <div className="absolute inset-0 bg-zinc-900 z-10" />}
+                    {/* Only show loading overlay if media is not ready and skeleton timer triggered */}
+                    {!mediaReady && showSkeleton && (
+                        <div className="absolute inset-0 bg-zinc-900 z-10 animate-pulse flex items-center justify-center">
+                            <div className="w-8 h-8 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
+                        </div>
+                    )}
 
                     <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
                         {currentItem.mediaType === "video" ? (
@@ -614,6 +647,17 @@ const UnifiedBannerSlider = ({ filter = null, pageName = "home" }) => {
             )}
 
             <style>{`@keyframes ubShimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}`}</style>
+            
+            {/* ── HIDDEN PRELOADER ─────────────────────────────────────── */}
+            <div className="hidden" aria-hidden="true">
+                {preloadItems.map((item) => (
+                    item.mediaType === "video" ? (
+                        <video key={`preload-vid-${item._id}`} src={item.mediaUrl} preload="auto" muted />
+                    ) : (
+                        <img key={`preload-img-${item._id}`} src={item.mediaUrl} alt="" />
+                    )
+                ))}
+            </div>
         </div>
     </>
 );
