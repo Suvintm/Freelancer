@@ -152,7 +152,23 @@ const advertisementSchema = new mongoose.Schema(
       default: [],
     },
 
-    // ========== LINKS ==========
+    // ========== NAVIGATION ==========
+    // Button (CTA) link behaviour
+    buttonLinkType: {
+      type: String,
+      enum: ["ad_details", "external", "internal", "none"],
+      default: "ad_details",
+    },
+    buttonLink: { type: String, trim: true }, // used when type = external | internal
+
+    // Whole-card click behaviour
+    cardLinkType: {
+      type: String,
+      enum: ["none", "external", "internal"],
+      default: "none",
+    },
+    cardLink: { type: String, trim: true }, // used when cardLinkType != none
+
     websiteUrl:   { type: String, trim: true },
     instagramUrl: { type: String, trim: true },
     facebookUrl:  { type: String, trim: true },

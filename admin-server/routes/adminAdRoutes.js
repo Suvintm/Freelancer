@@ -277,6 +277,10 @@ router.post(
       order:          (maxOrder?.order || 0) + 1,
       adminNotes:     body.adminNotes,
       approvalStatus: body.approvalStatus || "pending",
+      buttonLinkType: body.buttonLinkType || "ad_details",
+      buttonLink:     body.buttonLink || "",
+      cardLinkType:   body.cardLinkType || "none",
+      cardLink:       body.cardLink || "",
       createdBy:      req.admin._id,
       cropData,
       layoutConfig,
@@ -333,6 +337,7 @@ router.patch(
       "websiteUrl","instagramUrl","facebookUrl","youtubeUrl","otherUrl","ctaText",
       "badge","adminNotes","approvalStatus","priority","order",
       "startDate","endDate","adType",
+      "buttonLinkType","buttonLink","cardLinkType","cardLink",
     ];
     scalarFields.forEach(f => { if (body[f] !== undefined) ad[f] = body[f]; });
 

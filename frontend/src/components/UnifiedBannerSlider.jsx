@@ -238,19 +238,22 @@ const UnifiedBannerSlider = ({ filter = null, pageName = "home" }) => {
 
         // Helper to format ad for banner
         const formatAd = (ad) => ({
-            _id:          ad._id,
-            title:        ad.title,
-            description:  ad.description || ad.tagline || "",
-            mediaUrl:     repairUrl(ad.mediaUrl),
-            mediaType:    ad.mediaType,
-            link:         ad.websiteUrl || `/ad-details/${ad._id}`,
-            linkText:     ad.ctaText || "Learn More",
-            badge:        ad.badge || "SPONSOR",
-            isExternal:   !!ad.websiteUrl,
-            isAd:         true,
-            cropData:     ad.cropData     || {},
-            layoutConfig: ad.layoutConfig || {},
-            buttonStyle:  ad.buttonStyle  || {},
+            _id:            ad._id,
+            title:          ad.title,
+            description:    ad.description || ad.tagline || "",
+            mediaUrl:       repairUrl(ad.mediaUrl),
+            mediaType:      ad.mediaType,
+            linkText:       ad.ctaText || "Learn More",
+            badge:          ad.badge || "SPONSOR",
+            isAd:           true,
+            cropData:       ad.cropData     || {},
+            layoutConfig:   ad.layoutConfig || {},
+            buttonStyle:    ad.buttonStyle  || {},
+            // Navigation
+            buttonLinkType: ad.buttonLinkType || "ad_details",
+            buttonLink:     ad.buttonLink || "",
+            cardLinkType:   ad.cardLinkType || "none",
+            cardLink:       ad.cardLink || "",
         });
 
         // ── Level 0 ──────────────────────────────────────────────────────────
@@ -385,8 +388,21 @@ const UnifiedBannerSlider = ({ filter = null, pageName = "home" }) => {
     };
 
     const handleCardClick = () => {
-        if (!currentItem?.link) return;
-        currentItem.link.startsWith("http") ? window.open(currentItem.link, "_blank") : navigate(currentItem.link);
+        const { cardLinkType, cardLink } = currentItem;
+        if (!cardLinkType || cardLinkType === "none") return; // nothing happens
+        if (cardLinkType === "external" && cardLink) { window.open(cardLink, "_blank"); return; }
+        if (cardLinkType === "internal" && cardLink) { navigate(cardLink); return; }
+    };
+
+    const handleButtonClick = (e) => {
+        e.stopPropagation(); // CRITICAL: never let this bubble to card click
+        const item = currentItem;
+        if (!item) return;
+        const { buttonLinkType, buttonLink, _id } = item;
+        if (!buttonLinkType || buttonLinkType === "none") return;
+        if (buttonLinkType === "ad_details") { navigate(`/ad-details/${_id}`); return; }
+        if (buttonLinkType === "external" && buttonLink) { window.open(buttonLink, "_blank"); return; }
+        if (buttonLinkType === "internal" && buttonLink) { navigate(buttonLink); return; }
     };
 
     // ── Derived styles — MUST be before any early returns ────────────────
@@ -519,7 +535,7 @@ const UnifiedBannerSlider = ({ filter = null, pageName = "home" }) => {
                     {/* CTA row */}
                     <motion.div variants={hudItem} style={{ display: "flex", alignItems: "center", gap: 6, pointerEvents: "auto" }}>
                         <button
-                            onClick={(e) => { e.stopPropagation(); currentItem.link.startsWith("http") ? window.open(currentItem.link, "_blank") : navigate(currentItem.link); }}
+                            onClick={handleButtonClick}
                             style={btnBaseStyle}
                             onMouseEnter={e => { e.currentTarget.style.opacity = "0.85"; e.currentTarget.style.transform = "scale(0.97)"; }}
                             onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "scale(1)"; }}

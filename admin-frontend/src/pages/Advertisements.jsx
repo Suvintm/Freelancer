@@ -38,6 +38,8 @@ const defaultForm = () => ({
   isActive: true, isDefault: false,
   displayLocations: ["banners:home_0"],
   adType: "promotional", tags: [],
+  buttonLinkType: "ad_details", buttonLink: "",
+  cardLinkType: "none", cardLink: "",
   approvalStatus: "approved", priority: "medium", adminNotes: "",
   startDate: "", endDate: "",
   cropData: { x: 0, y: 0, width: 100, height: 100, zoom: 1 },
@@ -376,6 +378,8 @@ const AdManagerPage = ({ adminURL, token }) => {
       isActive: ad.isActive ?? true, isDefault: ad.isDefault || false,
       displayLocations: ad.displayLocations || ["banners:home_0"],
       adType: ad.adType || "promotional", tags: ad.tags || [],
+      buttonLinkType: ad.buttonLinkType || "ad_details", buttonLink: ad.buttonLink || "",
+      cardLinkType: ad.cardLinkType || "none", cardLink: ad.cardLink || "",
       approvalStatus: ad.approvalStatus || "approved", priority: ad.priority || "medium",
       adminNotes: ad.adminNotes || "",
       startDate: ad.startDate ? ad.startDate.slice(0, 16) : "",
@@ -409,6 +413,10 @@ const AdManagerPage = ({ adminURL, token }) => {
       fd.append("displayLocations", JSON.stringify(form.displayLocations));
       fd.append("adType", form.adType || "promotional");
       fd.append("tags", JSON.stringify(form.tags || []));
+      fd.append("buttonLinkType", form.buttonLinkType || "ad_details");
+      if (form.buttonLink) fd.append("buttonLink", form.buttonLink);
+      fd.append("cardLinkType", form.cardLinkType || "none");
+      if (form.cardLink) fd.append("cardLink", form.cardLink);
       fd.append("cropData", JSON.stringify(form.cropData));
       fd.append("layoutConfig", JSON.stringify(form.layoutConfig));
       fd.append("buttonStyle", JSON.stringify(form.buttonStyle));
@@ -761,6 +769,58 @@ const AdManagerPage = ({ adminURL, token }) => {
                           <div style={{ display: "flex", gap: 5 }}>{["left","right"].map(p => <button type="button" key={p} onClick={() => setButton("iconPosition", p)} style={{ ...toggleBtn(form.buttonStyle.iconPosition === p), flex: 1 }}>{p}</button>)}</div>
                         </div>
                       </Section>
+
+                       {/* Button CTA Navigation */}
+                       <Section title="Button Navigation">
+                         <div style={{ fontSize: 10, color: "#52525b", marginBottom: 10 }}>Where should the CTA button take the user?</div>
+                         <div style={fieldGroup}>
+                           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                             {[
+                               { value: "ad_details", label: "Ad Details Page", hint: "Opens /ad-details/{id}" },
+                               { value: "external",   label: "External URL",    hint: "Opens a website in a new tab" },
+                               { value: "internal",   label: "Internal Route",  hint: "Navigates within the app" },
+                               { value: "none",       label: "No Action",       hint: "Button is decorative only" },
+                             ].map(({ value, label, hint }) => (
+                               <button type="button" key={value} onClick={() => setField("buttonLinkType", value)} style={{ ...toggleBtn(form.buttonLinkType === value), textAlign: "left", padding: "7px 10px" }}>
+                                 <span style={{ fontWeight: 700, fontSize: 11, display: "block" }}>{label}</span>
+                                 <span style={{ fontSize: 9, opacity: 0.55 }}>{hint}</span>
+                               </button>
+                             ))}
+                           </div>
+                         </div>
+                         {(form.buttonLinkType === "external" || form.buttonLinkType === "internal") && (
+                           <div style={fieldGroup}>
+                             <label style={labelStyle}>{form.buttonLinkType === "external" ? "External URL" : "Internal Route"}</label>
+                             <input value={form.buttonLink} onChange={e => setField("buttonLink", e.target.value)} style={inputStyle} placeholder={form.buttonLinkType === "external" ? "https://example.com" : "/explore/editors"} />
+                             {form.buttonLinkType === "internal" && <div style={{ fontSize: 9, color: "#3f3f46", marginTop: 4 }}>Examples: /explore/editors, /jobs, /explore/gigs</div>}
+                           </div>
+                         )}
+                       </Section>
+
+                       {/* Banner Click Navigation */}
+                       <Section title="Banner Click Navigation">
+                         <div style={{ fontSize: 10, color: "#52525b", marginBottom: 10 }}>Where should clicking anywhere on the banner go? Button taps always take priority.</div>
+                         <div style={fieldGroup}>
+                           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                             {[
+                               { value: "none",     label: "No Action",      hint: "Only the button is clickable" },
+                               { value: "external", label: "External URL",   hint: "Opens a website in a new tab" },
+                               { value: "internal", label: "Internal Route", hint: "Navigates within the app" },
+                             ].map(({ value, label, hint }) => (
+                               <button type="button" key={value} onClick={() => setField("cardLinkType", value)} style={{ ...toggleBtn(form.cardLinkType === value), textAlign: "left", padding: "7px 10px" }}>
+                                 <span style={{ fontWeight: 700, fontSize: 11, display: "block" }}>{label}</span>
+                                 <span style={{ fontSize: 9, opacity: 0.55 }}>{hint}</span>
+                               </button>
+                             ))}
+                           </div>
+                         </div>
+                         {(form.cardLinkType === "external" || form.cardLinkType === "internal") && (
+                           <div style={fieldGroup}>
+                             <label style={labelStyle}>{form.cardLinkType === "external" ? "External URL" : "Internal Route"}</label>
+                             <input value={form.cardLink} onChange={e => setField("cardLink", e.target.value)} style={inputStyle} placeholder={form.cardLinkType === "external" ? "https://example.com" : "/explore/editors"} />
+                           </div>
+                         )}
+                       </Section>
                     </div>
                   )}
 
