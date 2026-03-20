@@ -49,7 +49,13 @@ const repairUrl = (url) => {
         fixed = fixed.replace(/_+(upload|image|video|v\d+)_+/g, "/$1/");
         fixed = fixed.replace(/_([a-z0-9\-_]+\.(webp|jpg|jpeg|png|mp4|mov|m4v|json))/gi, "/$1");
         fixed = fixed.replace(/([^:])\/\/+/g, "$1/");
+    // Final check: if it still has many underscores and is definitely a Cloudinary URL, it's likely mangled
+    if (fixed.includes("res.cloudinary.com") && fixed.split('_').length > 5) {
+         fixed = fixed.replace(/_+/g, '/');
+         fixed = fixed.replace(/(https?):\/+/g, '$1://');
+         fixed = fixed.replace(/([^:])\/\/+/g, "$1/");
     }
+}
     fixed = fixed.replace(/_jpg([/_?#]|$)/gi, ".jpg$1").replace(/_jpeg([/_?#]|$)/gi, ".jpeg$1").replace(/_png([/_?#]|$)/gi, ".png$1").replace(/_mp4([/_?#]|$)/gi, ".mp4$1").replace(/_webp([/_?#]|$)/gi, ".webp$1");
     return fixed;
 };
@@ -187,6 +193,7 @@ const UnifiedBannerSlider = ({ filter = null, pageName = "home" }) => {
     const [isMuted,           setIsMuted]           = useState(true);
     const [isHovered,         setIsHovered]         = useState(false);
     const [mediaReady,        setMediaReady]        = useState(false);
+    const [mediaError,        setMediaError]        = useState(false);
     const [inView,            setInView]            = useState(true);
     const [progress,          setProgress]          = useState(0);
     const [dragStart,         setDragStart]         = useState(null);
@@ -333,8 +340,20 @@ const UnifiedBannerSlider = ({ filter = null, pageName = "home" }) => {
     const cd = currentItem?.cropData || {};
 
     const DURATION_MS = lc.slideDuration || 5000;
+    const bannerKey   = `${verticalIndex}-${hIdx}-${currentItem?._id}`;
 
-    useEffect(() => { setMediaReady(false); }, [verticalIndex, hIdx]);
+    useEffect(() => { 
+        setMediaReady(false); 
+        setMediaError(false);
+        
+        // FAILSAFE: If media doesn't load in 4s, clear the "loading" state anyway
+        // to prevent permanent black boxes.
+        const failsafeTimer = setTimeout(() => {
+            setMediaReady(true);
+        }, 4000);
+
+        return () => clearTimeout(failsafeTimer);
+    }, [bannerKey]);
 
     // ── Progress ticker ───────────────────────────────────────────────────
     const advance = useCallback(() => {
@@ -473,20 +492,23 @@ const UnifiedBannerSlider = ({ filter = null, pageName = "home" }) => {
                     <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
                         {currentItem.mediaType === "video" ? (
                             <video
-                                key={currentItem.mediaUrl}
+                                key={`vid-${bannerKey}`}
                                 src={currentItem.mediaUrl}
                                 autoPlay={inView} loop muted={isMuted} playsInline crossOrigin="anonymous"
                                 onTimeUpdate={handleVideoTimeUpdate}
                                 onLoadedData={() => setMediaReady(true)}
+                                onError={() => { setMediaError(true); setMediaReady(true); }}
                                 ref={(el) => { if (el) { inView ? el.play().catch(() => {}) : el.pause(); } }}
                                 style={{ ...cropStyle, opacity: mediaReady ? 1 : 0, transition: "opacity 0.5s ease" }}
                             />
                         ) : (
                             <img
+                                key={`img-${bannerKey}`}
                                 src={currentItem.mediaUrl}
                                 alt={currentItem.title}
                                 crossOrigin="anonymous"
                                 onLoad={() => setMediaReady(true)}
+                                onError={() => { setMediaError(true); setMediaReady(true); }}
                                 style={{ ...cropStyle, opacity: mediaReady ? 1 : 0, transition: "opacity 0.5s ease" }}
                             />
                         )}
