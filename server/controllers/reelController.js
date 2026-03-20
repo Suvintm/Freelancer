@@ -232,8 +232,46 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
                     profilePicture: { $ifNull: ["$editorInfo.profilePicture", "$editor.profilePicture"] }
                 },
                 portfolio: "$portfolioInfo",
+                latestLikerIds: { $slice: [{ $ifNull: ["$likes", []] }, -3] },
             },
         },
+        // Lookup latest likers info
+        {
+            $lookup: {
+                from: "users",
+                localField: "latestLikerIds",
+                foreignField: "_id",
+                as: "latestLikersInfo",
+            },
+        },
+        // Final projection to clean up output
+        {
+            $project: {
+                _id: 1,
+                title: 1,
+                description: 1,
+                mediaUrl: 1,
+                mediaType: 1,
+                likesCount: 1,
+                viewsCount: 1,
+                commentsCount: 1,
+                createdAt: 1,
+                editor: 1,
+                portfolio: 1,
+                likes: 1,
+                latestLikers: {
+                    $map: {
+                        input: "$latestLikersInfo",
+                        as: "liker",
+                        in: {
+                            _id: "$$liker._id",
+                            name: "$$liker.name",
+                            profilePicture: "$$liker.profilePicture"
+                        }
+                    }
+                }
+            }
+        }
     ];
 
     let reels = await Reel.aggregate(pipeline);

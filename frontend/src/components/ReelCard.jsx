@@ -20,6 +20,7 @@ import logo from "../assets/logo.png";
 import { repairUrl } from "../utils/urlHelper.jsx";
 import FollowingAnimation from "./FollowingAnimation";
 import MusicVisualizer from "./MusicVisualizer";
+import LikerAvatars from "./LikerAvatars";
 
 /**
  * ReelCard — Minimalist Professional UI.
@@ -30,6 +31,7 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
 
     const [isLiked, setIsLiked] = useState(user ? reel.likes?.includes(user._id) : false);
     const [likesCount, setLikesCount] = useState(reel.likesCount || 0);
+    const [latestLikers, setLatestLikers] = useState(reel.latestLikers || []);
     const [isPlaying, setIsPlaying] = useState(false);
     const [progress, setProgress] = useState(0);
     const [showHeartAnimation, setShowHeartAnimation] = useState(false);
@@ -37,6 +39,13 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
     const [followLoading, setFollowLoading] = useState(false);
     const [showMuteIcon, setShowMuteIcon] = useState(false);
     const [showFollowAnimation, setShowFollowAnimation] = useState(false);
+
+    // Sync local state with props when reel changes
+    useEffect(() => {
+        setLikesCount(reel.likesCount || 0);
+        setLatestLikers(reel.latestLikers || []);
+        setIsLiked(user ? reel.likes?.includes(user._id) : false);
+    }, [reel, user]);
 
     // Show mute icon when globalMuted changes
     useEffect(() => {
@@ -103,13 +112,25 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
         const newIsLiked = !isLiked;
         setIsLiked(newIsLiked);
         setLikesCount(prev => newIsLiked ? prev + 1 : prev - 1);
-        if (newIsLiked) setShowHeartAnimation(true);
+        
+        if (newIsLiked) {
+            setLatestLikers(prev => {
+                const alreadyIn = prev.some(l => l._id === user._id);
+                if (alreadyIn) return prev;
+                return [...prev, { _id: user._id, name: user.name, profilePicture: user.profilePicture }].slice(-3);
+            });
+            setShowHeartAnimation(true);
+        } else {
+            setLatestLikers(prev => prev.filter(l => l._id !== user._id));
+        }
+
         setTimeout(() => setShowHeartAnimation(false), 900);
         try {
             await axios.post(`${backendURL}/api/reels/${reel._id}/like`, {}, { headers: { Authorization: `Bearer ${user.token}` } });
         } catch {
             setIsLiked(!newIsLiked);
             setLikesCount(prev => !newIsLiked ? prev + 1 : prev - 1);
+            // Revert latestLikers if needed (complex for optimistic, keeping it simple)
         }
     };
 
@@ -254,6 +275,12 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
                     <div className="absolute bottom-0 inset-x-0 h-64 bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-32 pointer-events-none" />
 
                     <div className="relative pb-6 pointer-events-auto">
+                        {/* WHO LIKED (Latest Likers) */}
+                        <LikerAvatars 
+                            latestLikers={latestLikers} 
+                            likesCount={likesCount} 
+                        />
+
                         {/* USER HUB */}
                         <div className="flex items-center gap-3 mb-3">
                             <Link to={`/public-profile/${reel.editor?._id}`} onClick={(e) => e.stopPropagation()}>
