@@ -164,6 +164,17 @@ const advertisementSchema = new mongoose.Schema(
       maxlength: 30,
     },
 
+    // ========== CLASSIFICATION ==========
+    adType: {
+      type: String,
+      enum: ["promotional", "internal"],
+      default: "promotional",
+    },
+    tags: {
+      type: [String],
+      default: [],
+    },
+
     // ========== DISPLAY SETTINGS ==========
     isActive: {
       type: Boolean,

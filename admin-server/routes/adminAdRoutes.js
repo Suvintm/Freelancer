@@ -268,6 +268,8 @@ router.post(
       isActive:     body.isActive === "true" || body.isActive === true,
       isDefault:    body.isDefault === "true" || body.isDefault === true,
       displayLocations,
+      adType:         body.adType || "promotional",
+      tags:           parseJSON(body.tags, []),
       badge:          body.badge || "SPONSOR",
       startDate:      body.startDate,
       endDate:        body.endDate,
@@ -330,7 +332,7 @@ router.patch(
       "title","tagline","description","longDescription",
       "websiteUrl","instagramUrl","facebookUrl","youtubeUrl","otherUrl","ctaText",
       "badge","adminNotes","approvalStatus","priority","order",
-      "startDate","endDate",
+      "startDate","endDate","adType",
     ];
     scalarFields.forEach(f => { if (body[f] !== undefined) ad[f] = body[f]; });
 
@@ -338,6 +340,7 @@ router.patch(
     if (body.isActive  !== undefined) ad.isActive  = body.isActive  === "true" || body.isActive  === true;
     if (body.isDefault !== undefined) ad.isDefault = body.isDefault === "true" || body.isDefault === true;
     if (body.displayLocations !== undefined) ad.displayLocations = parseJSON(body.displayLocations, ad.displayLocations);
+    if (body.tags !== undefined) ad.tags = parseJSON(body.tags, ad.tags);
 
     // ── JSON sub-objects — deep merge so partial updates work ──
     if (body.cropData    !== undefined) ad.cropData    = { ...ad.cropData?.toObject?.() || ad.cropData    || {}, ...parseJSON(body.cropData) };

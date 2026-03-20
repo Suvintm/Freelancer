@@ -37,6 +37,7 @@ const defaultForm = () => ({
   ctaText: "Learn More", badge: "SPONSOR",
   isActive: true, isDefault: false,
   displayLocations: ["banners:home_0"],
+  adType: "promotional", tags: [],
   approvalStatus: "approved", priority: "medium", adminNotes: "",
   startDate: "", endDate: "",
   cropData: { x: 0, y: 0, width: 100, height: 100, zoom: 1 },
@@ -373,7 +374,8 @@ const AdManagerPage = ({ adminURL, token }) => {
       facebookUrl: ad.facebookUrl || "", youtubeUrl: ad.youtubeUrl || "", otherUrl: ad.otherUrl || "",
       ctaText: ad.ctaText || "Learn More", badge: ad.badge || "SPONSOR",
       isActive: ad.isActive ?? true, isDefault: ad.isDefault || false,
-      displayLocations: ad.displayLocations || ["home_banner"],
+      displayLocations: ad.displayLocations || ["banners:home_0"],
+      adType: ad.adType || "promotional", tags: ad.tags || [],
       approvalStatus: ad.approvalStatus || "approved", priority: ad.priority || "medium",
       adminNotes: ad.adminNotes || "",
       startDate: ad.startDate ? ad.startDate.slice(0, 16) : "",
@@ -405,6 +407,8 @@ const AdManagerPage = ({ adminURL, token }) => {
         .forEach(k => { if (form[k] !== undefined && form[k] !== "") fd.append(k, form[k]); });
       fd.append("isActive", form.isActive); fd.append("isDefault", form.isDefault);
       fd.append("displayLocations", JSON.stringify(form.displayLocations));
+      fd.append("adType", form.adType || "promotional");
+      fd.append("tags", JSON.stringify(form.tags || []));
       fd.append("cropData", JSON.stringify(form.cropData));
       fd.append("layoutConfig", JSON.stringify(form.layoutConfig));
       fd.append("buttonStyle", JSON.stringify(form.buttonStyle));
@@ -803,6 +807,44 @@ const AdManagerPage = ({ adminURL, token }) => {
                               </button>
                             ))}
                           </div>
+                        </div>
+                        {/* ── Classification ─────────────────────────────────── */}
+                        <div style={{ ...fieldGroup, marginBottom: 12 }}>
+                          <label style={labelStyle}>Ad Type</label>
+                          <select value={form.adType} onChange={e => setField("adType", e.target.value)} style={inputStyle}>
+                            {[
+                              { value: "promotional", label: "Promotional Ad" },
+                              { value: "internal",    label: "Internal Banner" },
+                            ].map(({ value, label }) => (
+                              <option key={value} value={value}>{label}</option>
+                            ))}
+                          </select>
+                          <div style={{ fontSize: 10, color: "#3f3f46", marginTop: 4 }}>Classify this ad for reporting and filtering</div>
+                        </div>
+                        <div style={{ ...fieldGroup, marginBottom: 14 }}>
+                          <label style={labelStyle}>Tags</label>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, padding: "7px 8px", background: "#050505", borderRadius: 8, border: "1px solid #1a1a1a", minHeight: 38 }}>
+                            {(form.tags || []).map((tag, i) => (
+                              <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 999, background: "#18181b", border: "1px solid #27272a", fontSize: 11, color: "#a1a1aa" }}>
+                                {tag}
+                                <button type="button" onClick={() => setField("tags", form.tags.filter((_, idx) => idx !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: "#52525b", fontSize: 10, lineHeight: 1, padding: 0, marginLeft: 2 }}>✕</button>
+                              </span>
+                            ))}
+                            <input
+                              type="text"
+                              placeholder="Add tag, press Enter…"
+                              onKeyDown={e => {
+                                if (e.key === "Enter" || e.key === ",") {
+                                  e.preventDefault();
+                                  const val = e.target.value.trim().toLowerCase().replace(/\s+/g, "-");
+                                  if (val && !(form.tags || []).includes(val)) setField("tags", [...(form.tags || []), val]);
+                                  e.target.value = "";
+                                }
+                              }}
+                              style={{ flex: 1, minWidth: 120, background: "none", border: "none", outline: "none", color: "#d4d4d8", fontSize: 11 }}
+                            />
+                          </div>
+                          <div style={{ fontSize: 10, color: "#3f3f46", marginTop: 4 }}>Press Enter or comma to add a tag (e.g. "summer-sale", "new-feature")</div>
                         </div>
                         <ToggleRow label="Active"         value={form.isActive}  onChange={v => setField("isActive", v)}  hint="Visible to users" />
                         <ToggleRow label="Default Banner" value={form.isDefault} onChange={v => setField("isDefault", v)} hint="Fallback when no live ads" />
