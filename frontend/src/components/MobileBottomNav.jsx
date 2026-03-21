@@ -30,11 +30,11 @@ import {
 const MobileBottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAppContext();
+  const { user, isHeaderFooterHidden } = useAppContext();
   const { theme } = useTheme();
 
-  // Don't render if not logged in
-  if (!user) return null;
+  // Don't render if not logged in OR if hidden by global overlay (like StoryViewer)
+  if (!user || isHeaderFooterHidden) return null;
 
   // Don't render on chat pages (individual chat view) OR Reels scrolling page
   const hidePaths = ["/chat/", "/reels", "/editors-near-you"];

@@ -1,6 +1,63 @@
-import React, { memo } from "react";
+import React, { memo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HiOutlineSparkles, HiOutlinePlus } from "react-icons/hi2";
+import StoryViewer from "./StoryViewer";
+
+// Enhanced Mock Data for Production-level Story Experience
+const ENRICHED_STORY_DATA = [
+  { 
+    id: 'me', 
+    name: "My Story", 
+    image: "https://i.pravatar.cc/150?u=me", 
+    isUser: true,
+    stories: [{ id: 's0', url: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800", time: "Just now" }]
+  },
+  { 
+    id: 1, 
+    name: "Alex Rivera", 
+    image: "https://i.pravatar.cc/150?u=1", 
+    active: true,
+    stories: [
+      { id: 's1', url: "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=800", time: "2h" },
+      { id: 's2', url: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800", time: "1h" }
+    ]
+  },
+  { 
+    id: 2, 
+    name: "Sarah Chen", 
+    image: "https://i.pravatar.cc/150?u=2", 
+    active: true,
+    stories: [
+      { id: 's3', url: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800", time: "5h" }
+    ]
+  },
+  { 
+    id: 3, 
+    name: "Marc J.", 
+    image: "https://i.pravatar.cc/150?u=3", 
+    active: true,
+    stories: [
+      { id: 's4', url: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800", time: "12h" },
+      { id: 's5', url: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800", time: "10h" }
+    ]
+  },
+  { 
+    id: 4, 
+    name: "Elena S.", 
+    image: "https://i.pravatar.cc/150?u=4", 
+    active: true,
+    stories: [
+      { id: 's6', url: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800", time: "8h" }
+    ]
+  },
+  { 
+    id: 5, 
+    name: "VFX Master", 
+    image: "https://i.pravatar.cc/150?u=5", 
+    active: false,
+    stories: [{ id: 's7', url: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800", time: "1d" }]
+  },
+];
 
 // Optimized Individual Story Item to prevent unnecessary re-renders
 const StoryItem = memo(({ story, idx, isLoading, onClick }) => {
@@ -9,7 +66,7 @@ const StoryItem = memo(({ story, idx, isLoading, onClick }) => {
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: idx * 0.03 }}
-      onClick={() => onClick(story.id)}
+      onClick={() => onClick(story, idx)}
       className="flex-shrink-0 flex flex-col items-center gap-1 group cursor-pointer will-change-transform"
     >
       {/* Circle Wrapper - Static Parent */}
@@ -86,26 +143,22 @@ const StoryItem = memo(({ story, idx, isLoading, onClick }) => {
 });
 
 const StoryCarousel = memo(({ stories = [] }) => {
-  const [loadingStoryId, setLoadingStoryId] = React.useState(null);
+  const [loadingStoryId, setLoadingStoryId] = useState(null);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [activeUserIndex, setActiveUserIndex] = useState(0);
 
-  // Mock stories
-  const defaultStories = [
-    { id: 'me', name: "My Story", image: null, isUser: true },
-    { id: 1, name: "Alex Rivera", image: "https://i.pravatar.cc/150?u=1", active: true },
-    { id: 2, name: "Sarah Chen", image: "https://i.pravatar.cc/150?u=2", active: true },
-    { id: 3, name: "Marc J.", image: "https://i.pravatar.cc/150?u=3", active: true },
-    { id: 4, name: "Elena S.", image: "https://i.pravatar.cc/150?u=4", active: true },
-    { id: 5, name: "VFX Master", image: "https://i.pravatar.cc/150?u=5", active: false },
-    { id: 6, name: "Neo", image: "https://i.pravatar.cc/150?u=6", active: false },
-    { id: 7, name: "Mika", image: "https://i.pravatar.cc/150?u=7", active: false },
-  ];
+  const displayStories = stories.length > 0 ? stories : ENRICHED_STORY_DATA;
 
-  const displayStories = stories.length > 0 ? stories : defaultStories;
-
-  const handleStoryClick = (id) => {
+  const handleStoryClick = (story, idx) => {
     if (loadingStoryId) return;
-    setLoadingStoryId(id);
-    setTimeout(() => setLoadingStoryId(null), 1200);
+    setLoadingStoryId(story.id);
+    
+    // Simulate opening story/loading
+    setTimeout(() => {
+      setLoadingStoryId(null);
+      setActiveUserIndex(idx);
+      setIsViewerOpen(true);
+    }, 1200);
   };
 
   return (
@@ -133,6 +186,14 @@ const StoryCarousel = memo(({ stories = [] }) => {
           />
         ))}
       </div>
+
+      {/* Story Viewer Overlay */}
+      <StoryViewer 
+        isOpen={isViewerOpen}
+        initialUserIndex={activeUserIndex}
+        users={displayStories}
+        onClose={() => setIsViewerOpen(false)}
+      />
     </div>
   );
 });

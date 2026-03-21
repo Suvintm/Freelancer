@@ -13,6 +13,7 @@ export const AppProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [geoBlocked, setGeoBlocked] = useState(null); // 'REGION_BLOCKED' or 'VPN_DETECTED'
+  const [isHeaderFooterHidden, setIsHeaderFooterHidden] = useState(false);
 
   const fetchNotifications = async () => {
     if (!user?.token) return;
@@ -194,6 +195,8 @@ export const AppProvider = ({ children }) => {
         logout,
         geoBlocked,
         setGeoBlocked,
+        isHeaderFooterHidden,
+        setIsHeaderFooterHidden,
       }}
     >
       {children}
