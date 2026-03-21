@@ -1,83 +1,8 @@
 import React, { memo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { HiOutlineSparkles, HiOutlinePlus } from "react-icons/hi2";
-import StoryViewer from "./StoryViewer";
-
-// Enhanced Mock Data for Production-level Story Experience
-const ENRICHED_STORY_DATA = [
-  { 
-    id: 'me', 
-    name: "My Story", 
-    image: "https://i.pravatar.cc/150?u=me", 
-    isUser: true,
-    stories: [{ id: 's0', url: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800", time: "Just now" }]
-  },
-  { 
-    id: 1, 
-    name: "Alex Rivera", 
-    image: "https://i.pravatar.cc/150?u=1", 
-    active: true,
-    stories: [
-      { 
-        id: 's1', 
-        url: "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=800", 
-        time: "2h",
-        comments: [
-          { id: 'c1', userName: "DesignBot", userAvatar: "https://i.pravatar.cc/150?u=11", text: "That lighting is insane! 🔥", time: "1h" },
-          { id: 'c2', userName: "PixelPerfect", userAvatar: "https://i.pravatar.cc/150?u=12", text: "Tutorial soon?", time: "45m" }
-        ]
-      },
-      { 
-        id: 's2', 
-        url: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800", 
-        time: "1h",
-        comments: []
-      }
-    ]
-  },
-  { 
-    id: 2, 
-    name: "Sarah Chen", 
-    image: "https://i.pravatar.cc/150?u=2", 
-    active: true,
-    stories: [
-      { 
-        id: 's3', 
-        url: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800", 
-        time: "5h",
-        comments: [
-          { id: 'c3', userName: "CodeRunner", userAvatar: "https://i.pravatar.cc/150?u=15", text: "Clean setup Sarah!", time: "2h" }
-        ]
-      }
-    ]
-  },
-  { 
-    id: 3, 
-    name: "Marc J.", 
-    image: "https://i.pravatar.cc/150?u=3", 
-    active: true,
-    stories: [
-      { id: 's4', url: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800", time: "12h" },
-      { id: 's5', url: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800", time: "10h" }
-    ]
-  },
-  { 
-    id: 4, 
-    name: "Elena S.", 
-    image: "https://i.pravatar.cc/150?u=4", 
-    active: true,
-    stories: [
-      { id: 's6', url: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800", time: "8h" }
-    ]
-  },
-  { 
-    id: 5, 
-    name: "VFX Master", 
-    image: "https://i.pravatar.cc/150?u=5", 
-    active: false,
-    stories: [{ id: 's7', url: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800", time: "1d" }]
-  },
-];
+import { ENRICHED_STORY_DATA } from "../utils/storiesData";
 
 // Optimized Individual Story Item to prevent unnecessary re-renders
 const StoryItem = memo(({ story, idx, isLoading, onClick }) => {
@@ -87,7 +12,7 @@ const StoryItem = memo(({ story, idx, isLoading, onClick }) => {
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: idx * 0.03 }}
       onClick={() => onClick(story, idx)}
-      className="flex-shrink-0 flex flex-col items-center gap-1 group cursor-pointer will-change-transform"
+      className="flex-shrink-0 flex flex-col items-center gap-1 group cursor-pointer border-none bg-transparent"
     >
       {/* Circle Wrapper - Static Parent */}
       <div className="relative w-[52px] h-[52px] md:w-[60px] md:h-[60px] flex items-center justify-center transition-transform duration-300 group-hover:scale-105 group-active:scale-95">
@@ -164,8 +89,7 @@ const StoryItem = memo(({ story, idx, isLoading, onClick }) => {
 
 const StoryCarousel = memo(({ stories = [] }) => {
   const [loadingStoryId, setLoadingStoryId] = useState(null);
-  const [isViewerOpen, setIsViewerOpen] = useState(false);
-  const [activeUserIndex, setActiveUserIndex] = useState(0);
+  const navigate = useNavigate();
 
   const displayStories = stories.length > 0 ? stories : ENRICHED_STORY_DATA;
 
@@ -176,8 +100,8 @@ const StoryCarousel = memo(({ stories = [] }) => {
     // Simulate opening story/loading
     setTimeout(() => {
       setLoadingStoryId(null);
-      setActiveUserIndex(idx);
-      setIsViewerOpen(true);
+      // NAVIGATE TO THE STORY PAGE WITH ID
+      navigate(`/stories/${story.id}`);
     }, 1200);
   };
 
@@ -206,14 +130,6 @@ const StoryCarousel = memo(({ stories = [] }) => {
           />
         ))}
       </div>
-
-      {/* Story Viewer Overlay */}
-      <StoryViewer 
-        isOpen={isViewerOpen}
-        initialUserIndex={activeUserIndex}
-        users={displayStories}
-        onClose={() => setIsViewerOpen(false)}
-      />
     </div>
   );
 });

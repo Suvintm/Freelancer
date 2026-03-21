@@ -80,6 +80,7 @@ import AdDetailsPage from "./pages/AdDetailsPage.jsx";
 import EditorWallet from "./pages/EditorWallet.jsx";
 import AdvertisePage from "./pages/AdvertisePage.jsx";
 import AdvertiseNewPage from "./pages/Advertisenewpage.jsx";
+import StoriesPage from "./pages/StoriesPage.jsx";
 
 import { TermsAndConditions, PrivacyPolicy, ContentProtectionPolicy, EditorCodeOfConduct } from "./pages/LegalPages";
 
@@ -266,6 +267,7 @@ function App() {
         <Route path="/profile-insights" element={<ProtectedRoute><ProfileInsightsPage /></ProtectedRoute>} />
         <Route path="/storage-plans" element={<ProtectedRoute><StoragePlans /></ProtectedRoute>} />
         <Route path="/editor-wallet" element={<ProtectedRoute allowedRoles={["editor"]}><EditorWallet /></ProtectedRoute>} />
+        <Route path="/stories/:userId" element={<StoriesPage />} />
 
         {/* ============ REDIRECTS ============ */}
         <Route path="/client-messages" element={<Navigate to="/chats" replace />} />
