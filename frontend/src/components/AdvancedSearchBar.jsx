@@ -1,7 +1,19 @@
-import { useState, useRef, useEffect } from "react";
-import { FaSearch, FaTimes, FaHistory, FaFire, FaLightbulb } from "react-icons/fa";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { FaSearch, FaTimes } from "react-icons/fa";
+import { 
+  HiOutlineHome, 
+  HiOutlineShoppingCart, 
+  HiOutlineRectangleStack, 
+  HiOutlineUser, 
+  HiOutlineCreditCard, 
+  HiOutlineChatBubbleLeftRight, 
+  HiOutlineChartBar,
+  HiOutlineMagnifyingGlassCircle,
+  HiOutlineDocumentPlus,
+  HiOutlineSpeakerWave,
+  HiOutlineSparkles
+} from "react-icons/hi2";
 import { AnimatePresence, motion } from "framer-motion";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 
@@ -9,19 +21,14 @@ const AdvancedSearchBar = ({
   value, 
   onChange, 
   placeholder = "Search...", 
-  recentSearches = [], 
   onSearch, 
-  suggestionType, // "editors", "gigs", or "users"
   className = "",
   variant = "default" // "default" or "pill"
 }) => {
-  const { backendURL } = useAppContext();
+  const { user } = useAppContext();
   const navigate = useNavigate();
   const [isFocused, setIsFocused] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [apiSuggestions, setApiSuggestions] = useState([]);
   const inputRef = useRef(null);
-  const debounceTimer = useRef(null);
 
   // Keyboard shortcut (Cmd/Ctrl + K)
   useEffect(() => {
@@ -35,58 +42,70 @@ const AdvancedSearchBar = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Fetch suggestions
+  // Auto-hide and Scroll-to-hide effects
   useEffect(() => {
-    if (!value || value.length < 2 || !suggestionType) {
-      setApiSuggestions([]);
-      return;
-    }
+    if (!isFocused) return;
 
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    // 1. Hide on scroll
+    const handleScroll = () => setIsFocused(false);
+    
+    // 2. Auto-hide after 8s of inactivity
+    const timer = setTimeout(() => setIsFocused(false), 8000);
 
-    debounceTimer.current = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const endpoint = suggestionType === "users"
-          ? `${backendURL}/api/user/search`
-          : suggestionType === "editors" 
-          ? `${backendURL}/api/explore/suggestions` 
-          : `${backendURL}/api/gigs/suggestions`;
-        
-        const res = await axios.get(`${endpoint}?query=${value}`);
-        if (res.data.success) {
-          const results = suggestionType === "users" ? res.data.users : res.data.suggestions;
-          setApiSuggestions(results || []);
-        }
-      } finally {
-        setLoading(false);
-      }
-    }, 300);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      clearTimeout(timer);
+    };
+  }, [isFocused]);
 
-    return () => clearTimeout(debounceTimer.current);
-  }, [value, suggestionType, backendURL]);
+  // Navigation Data based on Role
+  const navItems = useMemo(() => {
+    const role = user?.role || 'editor';
+    const items = {
+      editor: [
+        { label: "Dashboard", icon: HiOutlineHome, path: "/editor-home", color: "text-blue-400" },
+        { label: "Orders", icon: HiOutlineShoppingCart, path: "/my-orders", color: "text-emerald-400" },
+        { label: "Gigs", icon: HiOutlineRectangleStack, path: "/my-gigs", color: "text-purple-400" },
+        { label: "Messages", icon: HiOutlineChatBubbleLeftRight, path: "/messages", color: "text-pink-400" },
+        { label: "Wallet", icon: HiOutlineCreditCard, path: "/wallet", color: "text-amber-400" },
+        { label: "Analytics", icon: HiOutlineChartBar, path: "/reels-analytics", color: "text-indigo-400" },
+        { label: "Profile", icon: HiOutlineUser, path: "/editor-profile", color: "text-zinc-400" },
+      ],
+      client: [
+        { label: "Dashboard", icon: HiOutlineHome, path: "/client-home", color: "text-blue-400" },
+        { label: "Find Editors", icon: HiOutlineMagnifyingGlassCircle, path: "/explore-editors", color: "text-emerald-400" },
+        { label: "Post Brief", icon: HiOutlineDocumentPlus, path: "/create-brief", color: "text-purple-400" },
+        { label: "My Orders", icon: HiOutlineShoppingCart, path: "/client-orders", color: "text-pink-400" },
+        { label: "Chats", icon: HiOutlineChatBubbleLeftRight, path: "/chats", color: "text-indigo-400" },
+        { label: "Payments", icon: HiOutlineCreditCard, path: "/payments", color: "text-amber-400" },
+        { label: "Advertise", icon: HiOutlineSpeakerWave, path: "/advertise", color: "text-orange-400" },
+        { label: "Profile", icon: HiOutlineUser, path: "/client-profile", color: "text-zinc-400" },
+      ]
+    };
+    return items[role] || items.editor;
+  }, [user?.role]);
 
   const handleClear = () => {
     onChange("");
-    setApiSuggestions([]);
     inputRef.current?.focus();
   };
 
-  const handleSuggestionClick = (term) => {
-    onChange(term);
-    onSearch && onSearch(term);
+  const handleNavClick = (path) => {
+    navigate(path);
     setIsFocused(false);
   };
 
   return (
-    <div className={`relative z-30 ${className} flex items-center justify-center`}>
+    <div className={`relative z-30 ${className} flex flex-col items-center justify-center`}>
       {/* Search Input Container */}
       <div 
-        className={`relative flex items-center w-[80%] transition-all duration-300 ${
+        className={`relative flex items-center w-[95%] md:w-[80%] transition-all duration-300 ${
           variant === 'pill' ? 'rounded-full' : ''
         } ${
           isFocused 
-            ? variant === 'pill' ? "scale-[1.01] shadow-2xl shadow-black/10" : "scale-[1.01] shadow-xl shadow-violet-500/10" 
+            ? "scale-[1.01] shadow-2xl shadow-black/10" 
             : "hover:bg-white/5"
         }`}
       >
@@ -128,7 +147,6 @@ const AdvancedSearchBar = ({
 
         {/* Right Actions */}
         <div className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-          {/* Clear Button */}
           {value && (
             <motion.button
               initial={{ opacity: 0, scale: 0.8 }}
@@ -143,7 +161,6 @@ const AdvancedSearchBar = ({
             </motion.button>
           )}
 
-          {/* Improved GO Button with Brand Gradient */}
           {variant === 'pill' && (
             <motion.button
               whileHover={{ scale: 1.1, boxShadow: "0 0 15px rgba(99, 102, 241, 0.4)" }}
@@ -154,110 +171,43 @@ const AdvancedSearchBar = ({
               GO
             </motion.button>
           )}
-
-          {/* Keyboard Shortcut Hint (Hidden in Pill Variant) */}
-          {!value && !isFocused && variant !== 'pill' && (
-            <div className="hidden md:flex items-center gap-1 px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[10px] text-gray-500 font-mono">
-              <span>⌘</span><span>K</span>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Suggestions Dropdown */}
+      {/* Navigation Carousel - Integrated into flow (Relative) */}
       <AnimatePresence>
         {isFocused && (
           <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.98 }}
-            transition={{ duration: 0.2 }}
-            className={`absolute top-full left-0 right-0 z-50 mt-3 bg-[#121216] light:bg-white border border-white/10 light:border-slate-200 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-3xl mx-auto ${variant === 'pill' ? 'w-[80%]' : 'w-full'}`}
+            initial={{ height: 0, opacity: 0, marginTop: 0 }}
+            animate={{ height: "auto", opacity: 1, marginTop: 8 }}
+            exit={{ height: 0, opacity: 0, marginTop: 0 }}
+            transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+            className={`overflow-hidden ${variant === 'pill' ? 'w-[95%] md:w-[80%]' : 'w-full'}`}
           >
-            {/* Live API Suggestions */}
-            {apiSuggestions.length > 0 && (
-              <div className="p-2 border-b border-white/5 light:border-slate-100">
-                <div className="px-3 py-2 text-[10px] font-semibold text-emerald-500 light:text-emerald-600 uppercase tracking-widest flex items-center gap-2">
-                  <FaLightbulb /> {loading ? "Searching..." : "Suggestions"}
-                  {loading && <div className="ml-auto w-3 h-3 border border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />}
-                </div>
-                <div className="flex flex-col gap-1 px-1">
-                  {apiSuggestions.map((item, idx) => (
-                    <button
-                      key={idx}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
-                        if (suggestionType === "users") {
-                          navigate(item.role === 'editor' ? `/editor/${item._id}` : `/public-profile/${item._id}`);
-                        } else {
-                          handleSuggestionClick(item.text);
-                        }
-                      }}
-                      className="px-3 py-2 rounded-lg hover:bg-white/5 light:hover:bg-slate-50 text-sm text-gray-300 light:text-slate-700 text-left transition-colors flex items-center gap-2"
-                    >
-                      {suggestionType === "users" && item.profilePicture ? (
-                        <img src={item.profilePicture} className="w-6 h-6 rounded-full object-cover mr-1" alt="" />
-                      ) : (
-                        <span className={`w-1.5 h-1.5 rounded-full ${item.type === 'skill' || item.type === 'category' ? 'bg-blue-400' : 'bg-emerald-400'}`} />
-                      )}
-                      
-                      <span dangerouslySetInnerHTML={{ 
-                        __html: (suggestionType === "users" ? item.name : item.text).replace(new RegExp(`(${value})`, 'gi'), '<span class="text-white light:text-black font-semibold">$1</span>') 
-                      }} />
-                      
-                      {item.role && <span className="text-[10px] text-gray-600 light:text-slate-400 ml-auto uppercase bg-white/5 light:bg-slate-100 px-1.5 py-0.5 rounded">{item.role}</span>}
-                    </button>
-                  ))}
-                </div>
+            <div className="bg-zinc-950 border border-white/10 rounded-2xl py-2 shadow-2xl">
+              {/* Horizontal Scrollable Carousel - Ultra Compact */}
+              <div className="flex overflow-x-auto gap-2 px-3 no-scrollbar scroll-smooth">
+                {navItems.map((item, idx) => (
+                  <motion.button
+                    key={item.path}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: idx * 0.03 + 0.2 }}
+                    whileHover={{ y: -2, scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => handleNavClick(item.path)}
+                    className="flex-shrink-0 w-16 py-2 flex flex-col items-center justify-center gap-1.5 group transition-all duration-300"
+                  >
+                    <div className={`w-7 h-7 rounded-lg bg-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-500 ${item.color}`}>
+                      <item.icon className="text-base" />
+                    </div>
+                    <span className="text-[7px] font-medium text-white group-hover:text-amber-400 transition-colors uppercase tracking-tight">
+                      {item.label}
+                    </span>
+                  </motion.button>
+                ))}
               </div>
-            )}
-
-            {/* Recent Searches Section */}
-            {recentSearches.length > 0 && (
-              <div className="p-2 border-b border-white/5 light:border-slate-100">
-                <div className="px-3 py-2 text-[10px] font-semibold text-gray-500 light:text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  <FaHistory className="text-violet-400" /> Recent
-                </div>
-                <div className="flex flex-wrap gap-2 px-2">
-                  {recentSearches.slice(0, 3).map((term, idx) => (
-                    <button
-                      key={idx}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => handleSuggestionClick(term)}
-                      className="px-3 py-1.5 rounded-lg bg-white/5 light:bg-slate-100/80 hover:bg-white/10 light:hover:bg-slate-200 border border-white/5 light:border-slate-200 text-xs text-gray-300 light:text-slate-700 transition-colors"
-                    >
-                      {term}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Popular/Trending Section */}
-            {!value && (
-              <div className="p-2">
-                <div className="px-3 py-2 text-[10px] font-semibold text-gray-500 light:text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  <FaFire className="text-amber-500" /> Popular
-                </div>
-                <div className="grid grid-cols-2 gap-1 p-1">
-                  {["Wedding Video", "Reels Editor", "Gaming Montage", "VFX Artist"].map((term) => (
-                    <button
-                      key={term}
-                      onMouseDown={(e) => e.preventDefault()} // Prevent blur
-                      onClick={() => handleSuggestionClick(term)}
-                      className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/5 light:hover:bg-slate-50 text-left group transition-colors"
-                    >
-                      <span className="text-sm text-gray-400 light:text-slate-600 group-hover:text-white light:group-hover:text-violet-600 transition-colors">
-                        {term}
-                      </span>
-                      <span className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all text-gray-500">
-                        ↗
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
