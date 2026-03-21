@@ -49,15 +49,33 @@ export const getProfile = asyncHandler(async (req, res) => {
   }
 
   // Fetch Portfolios manually (since they might not be linked in profile array)
-  const portfolios = await Portfolio.find({ user: userId }).sort({ uploadedAt: -1 });
+  const portfolios = await Portfolio.find({ user: userId }).sort({ uploadedAt: -1 }).lean();
 
   logger.info(`Fetching profile for user: ${userId}`);
   logger.info(`Found ${portfolios.length} portfolios for user ${userId}`);
-  profile.portfolio = portfolios;
 
   // Fetch Reel Stats
-  const reels = await Reel.find({ editor: userId, isPublished: true });
+  const reels = await Reel.find({ editor: userId, isPublished: true }).lean();
   logger.info(`Found ${reels.length} published reels for user ${userId}`);
+  
+  // Attach reel metrics to portfolios directly in memory
+  const portfoliosWithReelStatus = portfolios.map(p => {
+    const matchingReel = reels.find(r => r.portfolio?.toString() === p._id.toString());
+    if (matchingReel) {
+       return {
+           ...p,
+           isPublished: true,
+           reelId: matchingReel._id,
+           likesCount: matchingReel.likesCount || 0,
+           viewsCount: matchingReel.viewsCount || 0,
+           commentsCount: matchingReel.commentsCount || 0
+       };
+    }
+    return { ...p, isPublished: false };
+  });
+
+  profile.portfolio = portfoliosWithReelStatus;
+
   const totalReels = reels.length;
   const totalViews = reels.reduce((acc, reel) => acc + (reel.viewsCount || 0), 0);
   const totalLikes = reels.reduce((acc, reel) => acc + (reel.likesCount || 0), 0);

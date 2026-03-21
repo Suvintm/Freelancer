@@ -34,7 +34,7 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import ReelPreviewModal from "./ReelPreviewModal";
 
-const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) => {
+const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false, profileOwner = null }) => {
   const { user, backendURL } = useAppContext();
   const navigate = useNavigate();
 
@@ -616,6 +616,7 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false }) =
             initialIndex={reelsIndex}
             isPortfolioMode={true}
             onClose={() => setShowReelsPopup(false)} 
+            portfolioOwner={profileOwner}
           />
         )}
       </AnimatePresence>

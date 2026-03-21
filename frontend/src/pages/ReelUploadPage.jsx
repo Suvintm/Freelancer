@@ -146,7 +146,7 @@ const ReelUploadPage = () => {
 
       toast.success("Reel uploaded successfully!");
       // Redirect to the newly created portfolio/reel
-      navigate("/editor-profile", { state: { openPortfolioId: data.portfolio._id } });
+      navigate(user?.role === "client" ? "/client-profile" : "/editor-profile", { state: { openPortfolioId: data.portfolio._id } });
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to upload reel");
       setLoading(false);

@@ -31,7 +31,8 @@ const ReelPreviewModal = ({
     initialIndex = 0,
     onClose, 
     onCommentClick, 
-    isPortfolioMode = false 
+    isPortfolioMode = false,
+    portfolioOwner = null
 }) => {
     const { user, backendURL } = useAppContext();
     const { globalMuted, setGlobalMuted } = useReelsContext();
@@ -56,7 +57,7 @@ const ReelPreviewModal = ({
     const [showComments, setShowComments] = useState(false);
 
     // --- Identification Logic (Moved to Top) ---
-    const editor = isPortfolioMode ? (reel.user || user) : reel.editor;
+    const editor = isPortfolioMode ? (portfolioOwner || reel.user || user) : reel.editor;
     const editorId = editor?._id;
     const isOwnContent = user?._id === editorId;
 
@@ -98,6 +99,14 @@ const ReelPreviewModal = ({
             videoRef.current.muted = globalMuted;
         }
     }, [globalMuted]);
+
+    // Fetch initial follow status
+    useEffect(() => {
+        if (!user || user._id === editorId) return;
+        axios.get(`${backendURL}/api/users/follow/status/${editorId}`, {
+            headers: { Authorization: `Bearer ${user.token}` },
+        }).then((res) => setIsFollowing(res.data.isFollowing)).catch(() => {});
+    }, [user, editorId, backendURL]);
 
     // Reset loader when media changes
     useEffect(() => {
@@ -422,24 +431,26 @@ const ReelPreviewModal = ({
 
                         {isPortfolioMode && (
                             <>
-                                <div className="mt-4 flex gap-2 pointer-events-auto">
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); setViewType("edited"); }}
-                                        className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border ${
-                                            viewType === "edited" ? "bg-white text-black border-white" : "bg-black/40 text-white/70 border-white/20 hover:bg-black/60"
-                                        }`}
-                                    >
-                                        Edited Clip
-                                    </button>
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); setViewType("original"); }}
-                                        className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border ${
-                                            viewType === "original" ? "bg-white text-black border-white" : "bg-black/40 text-white/70 border-white/20 hover:bg-black/60"
-                                        }`}
-                                    >
-                                        Original Clip
-                                    </button>
-                                </div>
+                                {((reel.originalClips && reel.originalClips.length > 0) || reel.originalClip) && (
+                                    <div className="mt-4 flex gap-2 pointer-events-auto">
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); setViewType("edited"); }}
+                                            className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border ${
+                                                viewType === "edited" ? "bg-white text-black border-white" : "bg-black/40 text-white/70 border-white/20 hover:bg-black/60"
+                                            }`}
+                                        >
+                                            Edited Clip
+                                        </button>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); setViewType("original"); }}
+                                            className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border ${
+                                                viewType === "original" ? "bg-white text-black border-white" : "bg-black/40 text-white/70 border-white/20 hover:bg-black/60"
+                                            }`}
+                                        >
+                                            Original Clip
+                                        </button>
+                                    </div>
+                                )}
 
                                 {/* Original Clips Counter Badge */}
                                 <AnimatePresence>
@@ -578,7 +589,9 @@ const ReelPreviewModal = ({
                                     <Link to={`/public-profile/${editor?._id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-white text-[14px] tracking-tight hover:underline text-shadow whitespace-nowrap">
                                         {editor?.name}
                                     </Link>
-                                    <span className="px-1.5 py-0.5 bg-white/20 text-[8px] font-bold rounded border border-white/10 text-white/90 shrink-0">EDITOR</span>
+                                    <span className="px-1.5 py-0.5 bg-white/20 text-[8px] font-bold rounded border border-white/10 text-white/90 shrink-0">
+                                        {(editor?.role || "editor").toUpperCase()}
+                                    </span>
                                     
                                     {!isOwnContent && (
                                         <button

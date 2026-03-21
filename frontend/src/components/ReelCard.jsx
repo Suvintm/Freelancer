@@ -293,7 +293,9 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
                                     <Link to={`/public-profile/${reel.editor?._id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-white text-[14px] tracking-tight hover:underline text-shadow whitespace-nowrap">
                                         {reel.editor?.name}
                                     </Link>
-                                    <span className="px-1.5 py-0.5 bg-white/20 text-[8px] font-bold rounded border border-white/10 text-white/90 shrink-0">EDITOR</span>
+                                    <span className="px-1.5 py-0.5 bg-white/20 text-[8px] font-bold rounded border border-white/10 text-white/90 shrink-0">
+                                        {(reel.editor?.role || "editor").toUpperCase()}
+                                    </span>
                                     
                                     {!isOwnReel && (
                                         <button

@@ -244,7 +244,7 @@ function App() {
         <Route path="/editor-analytics" element={<ProtectedRoute allowedRoles={["editor"]}><EditorAnalytics /></ProtectedRoute>} />
         <Route path="/editor-profile-update" element={<ProtectedRoute allowedRoles={["editor"]}><EditorProfileUpdate /></ProtectedRoute>} />
         <Route path="/client/profile-update" element={<ProtectedRoute allowedRoles={["client"]}><ClientProfileUpdate /></ProtectedRoute>} />
-        <Route path="/upload-reel" element={<ProtectedRoute allowedRoles={["editor"]}><ReelUploadPage /></ProtectedRoute>} />
+        <Route path="/upload-reel" element={<ProtectedRoute allowedRoles={["editor", "client"]}><ReelUploadPage /></ProtectedRoute>} />
         <Route path="/kyc-details" element={<ProtectedRoute allowedRoles={["editor"]}><KYCDetailsPage /></ProtectedRoute>} />
         <Route path="/location-settings" element={<ProtectedRoute allowedRoles={["editor"]}><LocationSettingsPage /></ProtectedRoute>} />
         <Route path="/suvix-score" element={<ProtectedRoute allowedRoles={["editor"]}><SuvixScorePage /></ProtectedRoute>} />

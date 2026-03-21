@@ -703,7 +703,7 @@ const PublicEditorProfile = () => {
                 transition={{ duration: 0.15 }}
                 className="w-full"
               >
-                <PortfolioSection portfolios={profile.portfolio} isPublic={true} />
+                <PortfolioSection portfolios={profile.portfolio} isPublic={true} profileOwner={profile.user} />
               </motion.div>
             )}
 

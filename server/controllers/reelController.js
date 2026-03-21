@@ -229,7 +229,8 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
                 editor: {
                     _id: { $ifNull: ["$editorInfo._id", "$editorId"] },
                     name: { $ifNull: ["$editorInfo.name", { $ifNull: ["$editor.name", "Unknown Editor"] }] },
-                    profilePicture: { $ifNull: ["$editorInfo.profilePicture", "$editor.profilePicture"] }
+                    profilePicture: { $ifNull: ["$editorInfo.profilePicture", "$editor.profilePicture"] },
+                    role: { $ifNull: ["$editorInfo.role", "editor"] }
                 },
                 portfolio: "$portfolioInfo",
                 latestLikerIds: { $slice: [{ $ifNull: ["$likes", []] }, -3] },
@@ -303,7 +304,7 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
 // ============ GET SINGLE REEL ============
 export const getReel = asyncHandler(async (req, res) => {
     const reel = await Reel.findById(req.params.id)
-        .populate("editor", "name email profilePicture")
+        .populate("editor", "name email profilePicture role")
         .populate("portfolio");
 
     if (!reel) {
@@ -574,7 +575,7 @@ export const getReelsByEditor = asyncHandler(async (req, res) => {
 
     const [reels, total] = await Promise.all([
         Reel.find({ editor: userId, isPublished: true })
-            .populate("editor", "name profilePicture")
+            .populate("editor", "name profilePicture role")
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit),
