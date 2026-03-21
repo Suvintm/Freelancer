@@ -29,12 +29,12 @@ adPreviewSchema.statics.getPreviews = async function() {
     previews = await this.create({
       key: "default_previews",
       homeAdBanner: {
-        url: "https://res.cloudinary.com/demo/image/upload/v1625218315/sample.jpg",
+        url: "https://images.unsplash.com/photo-1626785774573-4b799315345d?q=80&w=2071&auto=format&fit=crop",
         publicId: "sample",
         resourceType: "image",
       },
       reelAd: {
-        url: "https://res.cloudinary.com/demo/video/upload/v1625218315/sample.mp4",
+        url: "https://www.w3schools.com/html/movie.mp4",
         publicId: "sample_video",
         resourceType: "video",
       },

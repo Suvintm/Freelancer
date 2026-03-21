@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 import { useAppContext } from "../context/AppContext";
 import { useSocket } from "../context/SocketContext";
+import { repairUrl } from "../utils/urlHelper";
 import axios from "axios";
 import {
   HiOutlineRocketLaunch,
@@ -233,11 +234,25 @@ const AdvertisePage = () => {
                 <div className="relative bg-[#141414]" style={{ aspectRatio: "375/192" }}>
                   {previews?.homeAdBanner?.url ? (
                     previews.homeAdBanner.resourceType === "video" ? (
-                      <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" key={previews.homeAdBanner.url}>
-                        <source src={previews.homeAdBanner.url} type="video/mp4" />
-                      </video>
+                      <video 
+                        src={repairUrl(previews.homeAdBanner.url)}
+                        autoPlay loop muted playsInline 
+                        className="absolute inset-0 w-full h-full object-cover" 
+                        key={repairUrl(previews.homeAdBanner.url)}
+                        onError={(e) => {
+                          e.target.src = "https://pixabay.com/videos/download/video-225543_medium.mp4";
+                          e.target.load();
+                        }}
+                      />
                     ) : (
-                      <img src={previews.homeAdBanner.url} className="absolute inset-0 w-full h-full object-cover" alt="Banner" />
+                      <img 
+                        src={repairUrl(previews.homeAdBanner.url)} 
+                        className="absolute inset-0 w-full h-full object-cover" 
+                        alt="Banner" 
+                        onError={(e) => {
+                          e.target.src = "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=1000&auto=format&fit=crop";
+                        }}
+                      />
                     )
                   ) : (
                     <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover">
@@ -292,11 +307,25 @@ const AdvertisePage = () => {
         <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a]" style={{ width: 110, height: 185 }}>
           {previews?.reelAd?.url ? (
             previews.reelAd.resourceType === "video" ? (
-              <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" key={previews.reelAd.url}>
-                <source src={previews.reelAd.url} type="video/mp4" />
-              </video>
+              <video 
+                src={repairUrl(previews.reelAd.url)}
+                autoPlay loop muted playsInline 
+                className="absolute inset-0 w-full h-full object-cover" 
+                key={repairUrl(previews.reelAd.url)}
+                onError={(e) => {
+                  e.target.src = "https://www.w3schools.com/html/movie.mp4";
+                  e.target.load();
+                }}
+              />
             ) : (
-              <img src={previews.reelAd.url} className="absolute inset-0 w-full h-full object-cover" alt="Reel" />
+              <img 
+                src={repairUrl(previews.reelAd.url)} 
+                className="absolute inset-0 w-full h-full object-cover" 
+                alt="Reel" 
+                onError={(e) => {
+                  e.target.src = "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?q=80&w=1000&auto=format&fit=crop";
+                }}
+              />
             )
           ) : (
             <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover">
