@@ -228,14 +228,17 @@ const ClientHome = () => {
                 <button
                   key={tab.id}
                   onClick={() => setMainTab(tab.id)}
-                  className={`relative flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-bold transition-all duration-300 z-10 ${
-                    isActive ? "text-white light:text-zinc-900" : "text-zinc-500 hover:text-zinc-300 light:text-zinc-400 light:hover:text-zinc-600"
+                  className={`relative flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-black transition-all duration-300 z-10 ${
+                    isActive ? "text-zinc-900 light:text-white" : "text-zinc-500 hover:text-zinc-300 light:text-zinc-400 light:hover:text-zinc-600"
                   }`}
                 >
-                  <tab.icon className={`w-3.5 h-3.5 ${isActive ? 'text-white light:text-zinc-900' : 'text-zinc-500'}`} />
+                  <tab.icon className={`w-3.5 h-3.5 ${isActive ? 'text-zinc-900 light:text-white' : 'text-zinc-500'}`} />
                   {tab.label}
                   {isActive && (
-                    <div className="absolute inset-0 bg-white/10 light:bg-white rounded-xl -z-10 shadow-sm" />
+                    <motion.div 
+                      layoutId="clientActiveTab"
+                      className="absolute inset-0 bg-white light:bg-zinc-950 rounded-xl -z-10 shadow-sm" 
+                    />
                   )}
                 </button>
               );
