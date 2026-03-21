@@ -186,7 +186,7 @@ const ClientProfile = () => {
   const strokeWidth = 5;
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
-  const progressColor = "#A855F7"; // Purple
+  const progressColor = "#c084fc"; // Light Purple
   // For a full circle border:
   const strokeDashoffset = 0;
   const strokeDasharray = circumference; // Solid circle
@@ -272,7 +272,7 @@ const ClientProfile = () => {
                     <div className="w-full text-center">
                       <h1 className="text-base font-bold text-white tracking-tight flex items-center justify-center gap-1 leading-none mb-2.5 break-all">
                         {user?.name || "Your Name"}
-                        <MdVerified className="text-blue-500 text-sm shrink-0" />
+                        <MdVerified className="text-purple-500 text-sm shrink-0" />
                       </h1>
                       <button
                         onClick={() => navigate("/client/profile-update")}
@@ -364,7 +364,7 @@ const ClientProfile = () => {
                 <div className="hidden md:flex items-center gap-8 mb-6">
                   <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-2.5">
                     {user?.name}
-                    <MdVerified className="text-blue-500" />
+                    <MdVerified className="text-purple-500" />
                   </h1>
                   <div className="flex gap-8">
                     <button onClick={() => navigate(`/connections/${user?._id}?tab=followers`)} className="hover:opacity-80 transition-all flex items-center gap-2">

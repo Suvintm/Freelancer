@@ -387,7 +387,7 @@ const PublicEditorProfile = () => {
   const strokeWidth = 5;
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
-  const progressColor = userData?.role === 'editor' ? "white" : "#A855F7"; // White for Editor, Purple for Client
+  const progressColor = userData?.role === 'editor' ? "white" : "#c084fc"; // White for Editor, Light Purple for Client
   const strokeDashoffset = 0;
   const strokeDasharray = circumference + 2; // Slight overlap to ensure a solid circle
 
@@ -448,7 +448,7 @@ const PublicEditorProfile = () => {
                       <h1 className="text-base font-bold text-white tracking-tight flex items-center justify-center gap-1 leading-none mb-2.5 break-all">
                         {userData?.name}
                         {userData?.role === 'editor' && <MdVerified className="text-blue-500 text-sm shrink-0" />}
-                        {userData?.role === 'client' && <MdVerified className="text-blue-500 text-sm shrink-0" />}
+                        {userData?.role === 'client' && <MdVerified className="text-purple-500 text-sm shrink-0" />}
                       </h1>
                       {!isOwner && (
                         <button
@@ -527,7 +527,7 @@ const PublicEditorProfile = () => {
                   <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-2.5">
                     {userData?.name}
                     {userData?.role === 'editor' && <MdVerified className="text-blue-500" />}
-                    {userData?.role === 'client' && <MdVerified className="text-blue-500" />}
+                    {userData?.role === 'client' && <MdVerified className="text-purple-500" />}
                   </h1>
                   <div className="flex gap-8">
                     <button onClick={() => navigate(`/connections/${userData?._id}?tab=followers`)} className="hover:opacity-80 transition-all flex items-center gap-2">
