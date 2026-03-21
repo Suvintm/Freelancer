@@ -90,12 +90,12 @@ const AdvancedSearchBar = ({
             : "hover:bg-white/5"
         }`}
       >
-        <div className={`absolute left-5 md:left-6 top-1/2 -translate-y-1/2 transition-colors ${
+        <div className={`absolute left-5 md:left-6 top-1/2 -translate-y-1/2 transition-all duration-300 z-20 ${
           isFocused 
-            ? variant === 'pill' ? "text-orange-500" : "text-violet-400" 
-            : "text-gray-400"
+            ? variant === 'pill' ? "text-indigo-600 scale-110" : "text-violet-400" 
+            : "text-zinc-400"
         }`}>
-          <FaSearch className={variant === 'pill' ? "text-lg" : "text-base"} />
+          <FaSearch className={variant === 'pill' ? "text-base" : "text-sm"} />
         </div>
 
         <input
@@ -111,12 +111,12 @@ const AdvancedSearchBar = ({
             }
           }}
           placeholder={placeholder}
-          className={`w-full py-2.5 md:py-3 pl-11 md:pl-14 pr-20 md:pr-24 transition-all duration-300 focus:outline-none ${
+          className={`w-full py-2.5 md:py-3 pl-11 md:pl-14 pr-16 md:pr-20 transition-all duration-500 focus:outline-none ${
             variant === 'pill'
-              ? `rounded-full text-sm md:text-base text-zinc-800 placeholder:text-zinc-400 border-2 ${
+              ? `rounded-full text-xs md:text-sm text-zinc-950 placeholder:text-zinc-400 border border-white/10 shadow-lg ${
                   isFocused 
-                    ? "bg-white border-orange-500 ring-4 ring-orange-500/10" 
-                    : "bg-white border-zinc-200 light:border-zinc-300"
+                    ? "bg-white border-white ring-4 ring-indigo-500/10 shadow-indigo-500/20" 
+                    : "bg-white/95 border-transparent"
                 }`
               : `bg-white/5 backdrop-blur-md border rounded-2xl text-sm md:text-base text-white placeholder:text-gray-500 ${
                   isFocused
@@ -143,13 +143,13 @@ const AdvancedSearchBar = ({
             </motion.button>
           )}
 
-          {/* GO Button for Pill Variant */}
+          {/* Improved GO Button with Brand Gradient */}
           {variant === 'pill' && (
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.1, boxShadow: "0 0 15px rgba(99, 102, 241, 0.4)" }}
+              whileTap={{ scale: 0.9 }}
               onClick={() => onSearch && onSearch(value)}
-              className="w-8 h-8 rounded-full bg-[#FF4500] flex items-center justify-center text-white text-[10px] md:text-xs font-black shadow-lg shadow-orange-500/20 tracking-tighter"
+              className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 flex items-center justify-center text-white text-[9px] font-black shadow-xl shadow-indigo-500/20 tracking-tighter uppercase transition-all duration-300"
             >
               GO
             </motion.button>
