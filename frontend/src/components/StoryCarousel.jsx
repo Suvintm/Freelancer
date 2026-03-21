@@ -18,8 +18,21 @@ const ENRICHED_STORY_DATA = [
     image: "https://i.pravatar.cc/150?u=1", 
     active: true,
     stories: [
-      { id: 's1', url: "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=800", time: "2h" },
-      { id: 's2', url: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800", time: "1h" }
+      { 
+        id: 's1', 
+        url: "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=800", 
+        time: "2h",
+        comments: [
+          { id: 'c1', userName: "DesignBot", userAvatar: "https://i.pravatar.cc/150?u=11", text: "That lighting is insane! 🔥", time: "1h" },
+          { id: 'c2', userName: "PixelPerfect", userAvatar: "https://i.pravatar.cc/150?u=12", text: "Tutorial soon?", time: "45m" }
+        ]
+      },
+      { 
+        id: 's2', 
+        url: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800", 
+        time: "1h",
+        comments: []
+      }
     ]
   },
   { 
@@ -28,7 +41,14 @@ const ENRICHED_STORY_DATA = [
     image: "https://i.pravatar.cc/150?u=2", 
     active: true,
     stories: [
-      { id: 's3', url: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800", time: "5h" }
+      { 
+        id: 's3', 
+        url: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800", 
+        time: "5h",
+        comments: [
+          { id: 'c3', userName: "CodeRunner", userAvatar: "https://i.pravatar.cc/150?u=15", text: "Clean setup Sarah!", time: "2h" }
+        ]
+      }
     ]
   },
   { 
