@@ -19,7 +19,7 @@ import logo from "../assets/logo.png";
  * - Navigation on CTA click (btnLinkType: ad_details | external | internal | none)
  * - Show/hide advertiser badge and description
  */
-const ReelAdCard = ({ ad, onSkip }) => {
+const ReelAdCard = ({ ad, onSkip, isActive=true, globalMuted=true, setGlobalMuted }) => {
   const { backendURL } = useAppContext();
   const navigate = useNavigate();
   const videoRef = useRef(null);
@@ -27,10 +27,13 @@ const ReelAdCard = ({ ad, onSkip }) => {
   const [canSkip, setCanSkip]             = useState(false);
   const [skipCountdown, setSkipCountdown] = useState(3);
   const [viewed, setViewed]               = useState(false);
-  const [muted, setMuted]                 = useState(true);
   const [progress, setProgress]           = useState(0);
   const [isPlaying, setIsPlaying]         = useState(true);
   const [showMuteIcon, setShowMuteIcon]   = useState(false);
+
+  // Sync with global mute state
+  const muted = globalMuted;
+  const setMuted = setGlobalMuted;
 
   // ── reelConfig with safe fallbacks ──────────────────────────────────
   const rc = useMemo(() => ({
@@ -137,12 +140,31 @@ const ReelAdCard = ({ ad, onSkip }) => {
     }
   }, [ad?._id, backendURL, viewed]);
 
+  // ── Video Playback Management ──────────────────────────────────
+  useEffect(() => {
+    if (ad?.mediaType !== "video" || !videoRef.current) return;
+    
+    if (isActive) {
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.error("[ReelAdCard] Auto-play prevented:", error);
+        });
+      }
+      setIsPlaying(true);
+    } else {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+  }, [isActive, ad?.mediaType]);
+
   // ── Skip timer ───────────────────────────────────────────────────────
   useEffect(() => {
+    if (!isActive) return; // Only count down if active
     if (skipCountdown <= 0) { setCanSkip(true); return; }
     const t = setTimeout(() => setSkipCountdown(s => s - 1), 1000);
     return () => clearTimeout(t);
-  }, [skipCountdown]);
+  }, [skipCountdown, isActive]);
 
   // ── Progress bar for video ───────────────────────────────────────────
   useEffect(() => {
@@ -202,7 +224,6 @@ const ReelAdCard = ({ ad, onSkip }) => {
             ref={videoRef}
             src={repairedMediaUrl}
             className="w-full h-full object-contain"
-            autoPlay
             muted={muted}
             loop
             playsInline

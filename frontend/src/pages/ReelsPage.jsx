@@ -44,6 +44,7 @@ const ReelsPage = ({ isActive = true }) => {
     const [activeReel, setActiveReel] = useState(null);
     const [reelAds, setReelAds] = useState([]);
     const [skippedAdIndices, setSkippedAdIndices] = useState(new Set());
+    const [targetAd, setTargetAd] = useState(null);
 
     const containerRef = useRef(null);
     const observerRef = useRef(null);
@@ -66,15 +67,23 @@ const ReelsPage = ({ isActive = true }) => {
  
             let fetchedReels = data.reels;
  
-            // If it's the first page and we have a target ID, fetch that specific reel first
+            // If it's the first page and we have a target ID, fetch that specific item first
             if (!loadMore && pageNum === 1 && targetReelId) {
                 try {
-                    const { data: specificReelData } = await axios.get(`${backendURL}/api/reels/${targetReelId}`);
-                    if (specificReelData.reel) {
-                        fetchedReels = [specificReelData.reel, ...fetchedReels];
+                    if (targetReelId.startsWith("ad_")) {
+                        const actualAdId = targetReelId.replace("ad_", "");
+                        const { data: adData } = await axios.get(`${backendURL}/api/ads/${actualAdId}`);
+                        if (adData.ad) {
+                            setTargetAd(adData.ad);
+                        }
+                    } else {
+                        const { data: specificReelData } = await axios.get(`${backendURL}/api/reels/${targetReelId}`);
+                        if (specificReelData.reel) {
+                            fetchedReels = [specificReelData.reel, ...fetchedReels];
+                        }
                     }
                 } catch (specificErr) {
-                    console.error("[Reels] Error fetching target reel:", specificErr.message);
+                    console.error("[Reels] Error fetching target item:", specificErr.message);
                 }
             }
  
@@ -117,6 +126,7 @@ const ReelsPage = ({ isActive = true }) => {
                 // It's a brand new target or different from what we had at the top. RESET.
                 setLoading(true);
                 setReels([]);
+                setTargetAd(null); // Clear previous target ad
                 setActiveReelIndex(0);
                 containerRef.current?.scrollTo({ top: 0, behavior: "instant" });
                 fetchReels(1, false);
@@ -191,6 +201,11 @@ const ReelsPage = ({ isActive = true }) => {
         
         // Console logs to help you debug in the browser console (Press F12)
         console.log(`[Reels] Processing feed. Reels count: ${reels.length}, Ad count: ${reelAds.length}`);
+        
+        // 1. If we have a deep-linked ad, prepend it
+        if (targetAd && targetReelId === `ad_${targetAd._id}`) {
+             feed.push({ type: 'ad', content: targetAd, id: `ad-target-${targetAd._id}` });
+        }
 
         reels.forEach((reel, index) => {
             feed.push({ type: 'reel', content: reel, id: reel._id });
@@ -201,6 +216,14 @@ const ReelsPage = ({ isActive = true }) => {
             
             if (isAdSlot) {
                 const adIndex = adCounter % reelAds.length;
+                const ad = reelAds[adIndex];
+                
+                // Skip if this ad is already the deep-linked target at the top
+                if (targetAd && ad._id === targetAd._id) {
+                    adCounter++;
+                    return;
+                }
+
                 const adId = `ad-random-${reel._id}-${index}`;
                 if (!skippedAdIndices.has(adId)) {
                     console.log(`[Reels] Injecting ad at index ${index}: ${reelAds[adIndex].title}`);
@@ -231,12 +254,14 @@ const ReelsPage = ({ isActive = true }) => {
         setActiveReelIndex(index);
         savePosition(index);
 
-        // Sync URL with the active reel (Instagram-style shareability)
+        // Sync URL with the active item (Instagram-style shareability)
         const item = combinedFeed[index];
-        if (item?.type === 'reel' && item.content?._id) {
+        if (item && item.id) {
             const currentUrl = new URL(window.location.href);
-            if (currentUrl.searchParams.get("id") !== item.content._id) {
-                currentUrl.searchParams.set("id", item.content._id);
+            const stableId = item.type === 'ad' ? `ad_${item.content._id}` : item.content._id;
+            
+            if (currentUrl.searchParams.get("id") !== stableId) {
+                currentUrl.searchParams.set("id", stableId);
                 // Use replaceState to update URL without triggering a full re-render or re-fetch
                 window.history.replaceState(null, '', currentUrl.pathname + currentUrl.search);
             }
@@ -395,6 +420,9 @@ const ReelsPage = ({ isActive = true }) => {
                             ) : (
                                 <ReelAdCard
                                     ad={item.content}
+                                    isActive={isActive && index === activeReelIndex}
+                                    globalMuted={globalMuted}
+                                    setGlobalMuted={setGlobalMuted}
                                     onSkip={() => setSkippedAdIndices(prev => new Set([...prev, item.id]))}
                                 />
                             )}
