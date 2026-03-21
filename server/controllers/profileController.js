@@ -90,7 +90,8 @@ export const updateProfile = asyncHandler(async (req, res) => {
     hourlyRate,
     availability,
     responseTime,
-    followSettings
+    followSettings,
+    name // username
   } = req.body;
 
   const profile = await Profile.findOne({ user: req.user._id });
@@ -194,30 +195,43 @@ export const updateProfile = asyncHandler(async (req, res) => {
     profile.responseTime = responseTime;
   }
 
-  // Update followSettings (Manual Approval)
-  let manualApproval = undefined;
-  if (followSettings) {
-    if (typeof followSettings === 'string') {
-      try {
-        const parsed = JSON.parse(followSettings);
-        manualApproval = parsed.manualApproval;
-      } catch (e) {
-        // Fallback for direct field or other formats
-        manualApproval = req.body['followSettings[manualApproval]'];
-      }
-    } else {
-      manualApproval = followSettings.manualApproval;
+  // Update User fields (name/username, followSettings)
+  const userUpdate = {};
+  
+  if (name !== undefined && name.trim().toLowerCase() !== req.user.name.toLowerCase()) {
+    const username = name.trim();
+    // Check uniqueness
+    const existing = await User.findOne({ 
+      name: { $regex: new RegExp(`^${username}$`, "i") },
+      _id: { $ne: req.user._id }
+    });
+    if (existing) {
+      throw new ApiError(400, "This username is already taken.");
     }
-  } else if (req.body['followSettings[manualApproval]'] !== undefined) {
-    manualApproval = req.body['followSettings[manualApproval]'];
+    userUpdate.name = username;
+    logger.info(`Updating username for user ${req.user._id} to ${username}`);
   }
 
-  if (manualApproval !== undefined) {
-    const isManual = String(manualApproval) === 'true';
-    await User.findByIdAndUpdate(req.user._id, { 
-      'followSettings.manualApproval': isManual 
-    });
-    logger.info(`Updated manualApproval to ${isManual} for user ${req.user._id}`);
+  // Robust manualApproval extraction
+  let finalManualApproval = undefined;
+  if (followSettings) {
+    try {
+      const parsed = typeof followSettings === 'string' ? JSON.parse(followSettings) : followSettings;
+      finalManualApproval = parsed.manualApproval;
+    } catch (e) {
+      finalManualApproval = req.body['followSettings[manualApproval]'];
+    }
+  } else if (req.body['followSettings[manualApproval]'] !== undefined) {
+    finalManualApproval = req.body['followSettings[manualApproval]'];
+  }
+
+  if (finalManualApproval !== undefined) {
+    userUpdate['followSettings.manualApproval'] = String(finalManualApproval) === 'true';
+  }
+
+  if (Object.keys(userUpdate).length > 0) {
+    await User.findByIdAndUpdate(req.user._id, userUpdate);
+    logger.info(`Updated user fields for ${req.user._id}: ${JSON.stringify(userUpdate)}`);
   }
 
   // Handle certifications upload

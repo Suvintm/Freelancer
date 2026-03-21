@@ -53,15 +53,15 @@ const SectionHeader = ({ icon: Icon, title, subtitle, simple, isDark }) => (
       <Icon className={simple ? "w-4 h-4" : "w-5 h-5"} />
     </div>
     <div>
-      <h3 className={`${simple ? "text-sm" : "text-base"} font-black tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{title}</h3>
-      <p className={`${simple ? "text-[8px]" : "text-[10px]"} font-bold uppercase tracking-wider ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{subtitle}</p>
+      <h3 className={`${simple ? "text-sm" : "text-base"} font-normal tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{title}</h3>
+      <p className={`${simple ? "text-[8px]" : "text-[10px]"} font-normal uppercase tracking-wider ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{subtitle}</p>
     </div>
   </div>
 );
 
 const InputWrapper = ({ label, required, children, error, isDark }) => (
   <div className="space-y-2">
-    <label className={`text-[11px] font-black uppercase tracking-wider flex items-center gap-1 ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>
+    <label className={`text-[11px] font-normal uppercase tracking-wider flex items-center gap-1 ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>
       {label} {required && <span className="text-emerald-500">*</span>}
     </label>
     {children}
@@ -92,17 +92,19 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
     existingCertifications: [],
     manualApproval: user?.followSettings?.manualApproval || false,
     softwares: [],
+    name: user?.name || "",
     socialLinks: {
       youtube: "",
       instagram: "",
       tiktok: "",
       twitter: "",
-      linkedin: ""
+      linkedin: "",
+      website: ""
     }
   });
 
   useEffect(() => {
-    setCountries(countryList().getData());
+    setCountries([{ label: "India", value: "India" }]);
     fetchProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -128,12 +130,14 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
           p?.certifications?.filter((c) => c?.image) || [],
         manualApproval: p?.user?.followSettings?.manualApproval || false,
         softwares: p?.softwares || [],
+        name: p?.user?.name || "",
         socialLinks: {
           youtube: p?.socialLinks?.youtube || "",
           instagram: p?.socialLinks?.instagram || "",
           tiktok: p?.socialLinks?.tiktok || "",
           twitter: p?.socialLinks?.twitter || "",
-          linkedin: p?.socialLinks?.linkedin || ""
+          linkedin: p?.socialLinks?.linkedin || "",
+          website: p?.socialLinks?.website || ""
         }
       }));
     } catch (err) {
@@ -283,6 +287,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
       formPayload.append("followSettings", JSON.stringify({ manualApproval: formData.manualApproval }));
       formPayload.append("softwares", JSON.stringify(formData.softwares));
       formPayload.append("socialLinks", JSON.stringify(formData.socialLinks));
+      formPayload.append("name", formData.name);
 
       formData.certifications.forEach((file) => {
         formPayload.append("certifications", file);
@@ -346,6 +351,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
     { id: "tiktok", label: "TikTok", icon: FaTiktok, color: "#FFFFFF" },
     { id: "twitter", label: "X / Twitter", icon: FaSquareXTwitter, color: "#FFFFFF" },
     { id: "linkedin", label: "LinkedIn", icon: FaLinkedin, color: "#0A66C2" },
+    { id: "website", label: "Website / Portfolio", icon: HiOutlineLink, color: "#10B981" },
   ];
 
   if (loading) {
@@ -369,20 +375,22 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
           {/* Left Column: Basic Info & Social */}
           <div className="space-y-6">
             {/* Availability & Account Status - NEW */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-0 transition-all"
-            >
-              <SectionHeader simple icon={HiOutlineShieldCheck} title="Availability & Access" subtitle="Sync with sidebar" isDark={isDark} />
-              <div className="flex items-center justify-between p-4 rounded-2xl border bg-black/20 border-white/5">
-                <div>
-                  <h4 className="text-sm font-black text-white">Editor Availability</h4>
-                  <p className="text-[10px] text-zinc-500 font-medium mt-1">Updates both here and Sidebar</p>
+            {user?.role === 'editor' && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-0 transition-all"
+              >
+                <SectionHeader simple icon={HiOutlineShieldCheck} title="Availability & Access" subtitle="Sync with sidebar" isDark={isDark} />
+                <div className="flex items-center justify-between p-4 rounded-2xl border bg-black/20 border-white/5">
+                  <div>
+                    <h4 className="text-sm font-normal text-white">Editor Availability</h4>
+                    <p className="text-[10px] text-zinc-500 font-normal mt-1">Updates both here and Sidebar</p>
+                  </div>
+                  <AvailabilitySelector />
                 </div>
-                <AvailabilitySelector />
-              </div>
-            </motion.div>
+              </motion.div>
+            )}
 
             {/* Basic Info Card - Simple Version */}
             <motion.div 
@@ -403,10 +411,26 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
                     className={`w-full p-4 rounded-2xl border text-sm transition-all outline-none resize-none ${isDark ? "bg-black/40 border-white/5 text-white focus:border-emerald-500/50" : "bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-emerald-500"}`}
                     placeholder="Describe your editing style, niche, and what makes you unique..."
                   />
-                  <div className={`text-[10px] text-right font-bold ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
+                  <div className={`text-[10px] text-right font-normal ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
                     {formData.about.length}/1000
                   </div>
                 </InputWrapper>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <InputWrapper label="Username" required isDark={isDark}>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-normal text-emerald-500">@</span>
+                      <input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleChange}
+                        className={`w-full pl-9 pr-4 py-3.5 rounded-2xl border text-sm font-normal transition-all outline-none ${isDark ? "bg-black/40 border-white/5 text-white focus:border-emerald-500/50" : "bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-emerald-500"}`}
+                        placeholder="username"
+                      />
+                    </div>
+                  </InputWrapper>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <InputWrapper label="Contact Email" required isDark={isDark}>
@@ -530,7 +554,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
                           key={opt}
                           type="button"
                           onClick={() => setFormData({ ...formData, experience: opt })}
-                          className={`px-4 py-3 rounded-xl text-xs font-bold transition-all border ${formData.experience === opt 
+                          className={`px-4 py-3 rounded-xl text-xs font-normal transition-all border ${formData.experience === opt 
                             ? "bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/20" 
                             : (isDark ? "bg-black/40 border-white/5 text-zinc-400 hover:border-white/10" : "bg-white border-zinc-200 text-zinc-600 hover:border-zinc-300")
                           }`}
@@ -587,7 +611,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
                           style={{ color: formData.softwares.includes(tool.name) ? tool.color : (isDark ? "#52525b" : "#9ca3af") }}
                         />
                       )}
-                      <span className={`text-[8px] font-black uppercase tracking-widest text-center ${formData.softwares.includes(tool.name) ? "text-emerald-500" : "text-zinc-500"}`}>
+                      <span className={`text-[8px] font-normal uppercase tracking-widest text-center ${formData.softwares.includes(tool.name) ? "text-emerald-500" : "text-zinc-500"}`}>
                         {tool.name}
                       </span>
                       {formData.softwares.includes(tool.name) && (
@@ -733,7 +757,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
                               setFormData({ ...formData, skills: [...formData.skills, skill] });
                             }
                           }}
-                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-normal border transition-all ${
                             formData.skills.includes(skill)
                             ? "opacity-30 grayscale cursor-default"
                             : (isDark ? "bg-transparent border-white/5 text-zinc-500 hover:border-emerald-500/30 hover:text-emerald-500" : "bg-white border-zinc-100 text-zinc-400 hover:border-emerald-500 hover:text-emerald-600")
@@ -784,7 +808,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
-                        className={`px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-2 border transition-colors ${
+                        className={`px-3 py-1.5 rounded-xl text-[11px] font-normal flex items-center gap-2 border transition-colors ${
                           isDark ? "bg-zinc-100 border-zinc-200 text-black" : "bg-zinc-900 border-zinc-800 text-white"
                         }`}
                       >
@@ -821,8 +845,8 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-all ${isDark ? "bg-emerald-500/10 text-emerald-500 group-hover:scale-110" : "bg-emerald-50 text-emerald-600 group-hover:scale-110"}`}>
                       <HiOutlineCloudArrowUp className="w-8 h-8" />
                     </div>
-                    <p className={`text-sm font-black ${isDark ? "text-white" : "text-zinc-900"}`}>Upload Certificates</p>
-                    <p className={`text-[10px] font-bold mt-1 ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>PNG, JPG or WEBP (Max 5MB)</p>
+                    <p className={`text-sm font-normal ${isDark ? "text-white" : "text-zinc-900"}`}>Upload Certificates</p>
+                    <p className={`text-[10px] font-normal mt-1 ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>PNG, JPG or WEBP (Max 5MB)</p>
                   </div>
 
                   {(formData.existingCertifications.length > 0 || formData.certifications.length > 0) && (

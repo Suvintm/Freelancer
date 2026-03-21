@@ -8,6 +8,7 @@ import EditorHome from "./pages/EditorHome.jsx";
 import EditorProfilePage from "./pages/EditorProfilePage.jsx";
 import EditorMyorderspage from "./pages/EditorMyorderspage.jsx";
 import EditorProfileUpdate from "./pages/EditorProfileUpdate.jsx";
+import ClientProfileUpdate from "./pages/ClientProfileUpdate.jsx";
 import ReelUploadPage from "./pages/ReelUploadPage.jsx";
 import PublicEditorProfile from "./pages/PublicEditorProfile.jsx";
 import ReelsPage from "./pages/ReelsPage.jsx";
@@ -81,6 +82,7 @@ import EditorWallet from "./pages/EditorWallet.jsx";
 import AdvertisePage from "./pages/AdvertisePage.jsx";
 import AdvertiseNewPage from "./pages/Advertisenewpage.jsx";
 import StoriesPage from "./pages/StoriesPage.jsx";
+import ConnectionsPage from "./pages/ConnectionsPage.jsx";
 
 import { TermsAndConditions, PrivacyPolicy, ContentProtectionPolicy, EditorCodeOfConduct } from "./pages/LegalPages";
 
@@ -241,6 +243,7 @@ function App() {
         <Route path="/client-kyc" element={<ProtectedRoute allowedRoles={["client"]}><ClientKYCPage /></ProtectedRoute>} />
         <Route path="/editor-analytics" element={<ProtectedRoute allowedRoles={["editor"]}><EditorAnalytics /></ProtectedRoute>} />
         <Route path="/editor-profile-update" element={<ProtectedRoute allowedRoles={["editor"]}><EditorProfileUpdate /></ProtectedRoute>} />
+        <Route path="/client/profile-update" element={<ProtectedRoute allowedRoles={["client"]}><ClientProfileUpdate /></ProtectedRoute>} />
         <Route path="/upload-reel" element={<ProtectedRoute allowedRoles={["editor"]}><ReelUploadPage /></ProtectedRoute>} />
         <Route path="/kyc-details" element={<ProtectedRoute allowedRoles={["editor"]}><KYCDetailsPage /></ProtectedRoute>} />
         <Route path="/location-settings" element={<ProtectedRoute allowedRoles={["editor"]}><LocationSettingsPage /></ProtectedRoute>} />
@@ -268,6 +271,7 @@ function App() {
         <Route path="/storage-plans" element={<ProtectedRoute><StoragePlans /></ProtectedRoute>} />
         <Route path="/editor-wallet" element={<ProtectedRoute allowedRoles={["editor"]}><EditorWallet /></ProtectedRoute>} />
         <Route path="/stories/:userId" element={<StoriesPage />} />
+        <Route path="/connections/:userId" element={<ProtectedRoute><ConnectionsPage /></ProtectedRoute>} />
 
         {/* ============ REDIRECTS ============ */}
         <Route path="/client-messages" element={<Navigate to="/chats" replace />} />
