@@ -11,7 +11,8 @@ import {
   HiOutlineMagnifyingGlassCircle,
   HiOutlineDocumentPlus,
   HiOutlineSpeakerWave,
-  HiOutlineSparkles
+  HiOutlineSparkles,
+  HiOutlineChevronRight
 } from "react-icons/hi2";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -20,14 +21,15 @@ import { useAppContext } from "../context/AppContext";
 const AdvancedSearchBar = ({ 
   value, 
   onChange, 
-  placeholder = "Search...", 
   onSearch, 
   className = "",
-  variant = "default" // "default" or "pill"
+  variant = "pill" // "default" or "pill"
 }) => {
   const { user } = useAppContext();
   const navigate = useNavigate();
   const [isFocused, setIsFocused] = useState(false);
+  const [activeWordIndex, setActiveWordIndex] = useState(0);
+  const [showScrollHint, setShowScrollHint] = useState(true);
   const inputRef = useRef(null);
 
   // Keyboard shortcut (Cmd/Ctrl + K)
@@ -47,10 +49,16 @@ const AdvancedSearchBar = ({
     if (!isFocused) return;
 
     // 1. Hide on scroll
-    const handleScroll = () => setIsFocused(false);
+    const handleScroll = () => {
+      setIsFocused(false);
+      inputRef.current?.blur();
+    };
     
     // 2. Auto-hide after 8s of inactivity
-    const timer = setTimeout(() => setIsFocused(false), 8000);
+    const timer = setTimeout(() => {
+      setIsFocused(false);
+      inputRef.current?.blur();
+    }, 8000);
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     
@@ -65,27 +73,38 @@ const AdvancedSearchBar = ({
     const role = user?.role || 'editor';
     const items = {
       editor: [
-        { label: "Dashboard", icon: HiOutlineHome, path: "/editor-home", color: "text-blue-400" },
+        { label: "Home", icon: HiOutlineHome, path: "/editor-home", color: "text-blue-400" },
+        { label: "Reels", icon: HiOutlineSparkles, path: "/reels", color: "text-amber-400" },
+        { label: "Profile", icon: HiOutlineUser, path: "/editor-profile", color: "text-zinc-400" },
         { label: "Orders", icon: HiOutlineShoppingCart, path: "/my-orders", color: "text-emerald-400" },
         { label: "Gigs", icon: HiOutlineRectangleStack, path: "/my-gigs", color: "text-purple-400" },
-        { label: "Messages", icon: HiOutlineChatBubbleLeftRight, path: "/messages", color: "text-pink-400" },
-        { label: "Wallet", icon: HiOutlineCreditCard, path: "/wallet", color: "text-amber-400" },
         { label: "Analytics", icon: HiOutlineChartBar, path: "/reels-analytics", color: "text-indigo-400" },
-        { label: "Profile", icon: HiOutlineUser, path: "/editor-profile", color: "text-zinc-400" },
+        { label: "Messages", icon: HiOutlineChatBubbleLeftRight, path: "/chats", color: "text-pink-400" },
+        { label: "Wallet", icon: HiOutlineCreditCard, path: "/editor-wallet", color: "text-amber-400" },
       ],
       client: [
-        { label: "Dashboard", icon: HiOutlineHome, path: "/client-home", color: "text-blue-400" },
-        { label: "Find Editors", icon: HiOutlineMagnifyingGlassCircle, path: "/explore-editors", color: "text-emerald-400" },
-        { label: "Post Brief", icon: HiOutlineDocumentPlus, path: "/create-brief", color: "text-purple-400" },
-        { label: "My Orders", icon: HiOutlineShoppingCart, path: "/client-orders", color: "text-pink-400" },
+        { label: "Home", icon: HiOutlineHome, path: "/client-home", color: "text-blue-400" },
+        { label: "Reels", icon: HiOutlineSparkles, path: "/reels", color: "text-amber-400" },
+        { label: "Profile", icon: HiOutlineUser, path: "/client-profile", color: "text-zinc-400" },
+        { label: "Orders", icon: HiOutlineShoppingCart, path: "/client-orders", color: "text-emerald-400" },
+        { label: "Editors", icon: HiOutlineMagnifyingGlassCircle, path: "/explore-editors", color: "text-purple-400" },
+        { label: "Briefs", icon: HiOutlineDocumentPlus, path: "/create-brief", color: "text-pink-400" },
         { label: "Chats", icon: HiOutlineChatBubbleLeftRight, path: "/chats", color: "text-indigo-400" },
         { label: "Payments", icon: HiOutlineCreditCard, path: "/payments", color: "text-amber-400" },
         { label: "Advertise", icon: HiOutlineSpeakerWave, path: "/advertise", color: "text-orange-400" },
-        { label: "Profile", icon: HiOutlineUser, path: "/client-profile", color: "text-zinc-400" },
       ]
     };
     return items[role] || items.editor;
   }, [user?.role]);
+
+  // Cycle dynamic placeholder words
+  useEffect(() => {
+    if (navItems.length === 0) return;
+    const timer = setInterval(() => {
+      setActiveWordIndex((prev) => (prev + 1) % navItems.length);
+    }, 2500);
+    return () => clearInterval(timer);
+  }, [navItems.length]);
 
   const handleClear = () => {
     onChange("");
@@ -111,39 +130,75 @@ const AdvancedSearchBar = ({
       >
         <div className={`absolute left-5 md:left-6 top-1/2 -translate-y-1/2 transition-all duration-300 z-20 ${
           isFocused 
-            ? variant === 'pill' ? "text-indigo-600 scale-110" : "text-violet-400" 
+            ? variant === 'pill' ? "text-indigo-600" : "text-violet-400" 
             : "text-zinc-400"
         }`}>
-          <FaSearch className={variant === 'pill' ? "text-base" : "text-sm"} />
+          <motion.div
+            animate={{ 
+              scale: isFocused ? [1, 1.15, 1] : [1, 1.05, 1],
+              opacity: isFocused ? 1 : 0.7
+            }}
+            transition={{ 
+              duration: isFocused ? 1.5 : 3, 
+              repeat: Infinity, 
+              ease: "easeInOut" 
+            }}
+          >
+            <FaSearch className={variant === 'pill' ? "text-base" : "text-sm"} />
+          </motion.div>
         </div>
 
         <input
           ref={inputRef}
           type="text"
+          readOnly
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onFocus={() => setIsFocused(true)}
+          onClick={() => setIsFocused(true)}
           onBlur={() => setTimeout(() => setIsFocused(false), 200)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && onSearch) {
               onSearch(value);
             }
           }}
-          placeholder={placeholder}
-          className={`w-full py-2.5 md:py-3 pl-11 md:pl-14 pr-16 md:pr-20 transition-all duration-500 focus:outline-none ${
+          placeholder=""
+          className={`w-full py-2.5 md:py-3 pl-11 md:pl-14 pr-16 md:pr-20 transition-all duration-500 focus:outline-none cursor-pointer ${
             variant === 'pill'
-              ? `rounded-full text-xs md:text-sm text-zinc-950 placeholder:text-zinc-400 border border-white/10 shadow-lg ${
+              ? `rounded-full text-xs md:text-sm text-zinc-950 border border-white/10 shadow-lg ${
                   isFocused 
                     ? "bg-white border-white ring-4 ring-indigo-500/10 shadow-indigo-500/20" 
                     : "bg-white/95 border-transparent"
                 }`
-              : `bg-white/5 backdrop-blur-md border rounded-2xl text-sm md:text-base text-white placeholder:text-gray-500 ${
+              : `bg-white/5 backdrop-blur-md border rounded-2xl text-sm md:text-base text-white ${
                   isFocused
                     ? "border-violet-500/40 ring-4 ring-violet-500/5 bg-black/40"
                     : "border-white/5 hover:border-white/10"
                 }`
           }`}
         />
+
+        {/* Animated Dynamic Placeholder */}
+        {!value && (
+          <div className="absolute left-11 md:left-14 top-1/2 -translate-y-1/2 pointer-events-none flex items-center overflow-hidden h-6">
+            <span className="text-[11px] md:text-xs text-zinc-400 whitespace-nowrap">Are looking for "</span>
+            <div className="relative h-full flex flex-col justify-center mx-0.5">
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={activeWordIndex}
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -20, opacity: 0 }}
+                  transition={{ duration: 0.5, ease: "circOut" }}
+                  className="text-[11px] md:text-xs font-bold text-indigo-600 light:text-indigo-500 whitespace-nowrap"
+                >
+                  {navItems[activeWordIndex]?.label}
+                </motion.span>
+              </AnimatePresence>
+            </div>
+            <span className="text-[11px] md:text-xs text-zinc-400 whitespace-nowrap">"?</span>
+          </div>
+        )}
 
         {/* Right Actions */}
         <div className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
@@ -181,32 +236,63 @@ const AdvancedSearchBar = ({
             initial={{ height: 0, opacity: 0, marginTop: 0 }}
             animate={{ height: "auto", opacity: 1, marginTop: 8 }}
             exit={{ height: 0, opacity: 0, marginTop: 0 }}
-            transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-            className={`overflow-hidden ${variant === 'pill' ? 'w-[95%] md:w-[80%]' : 'w-full'}`}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className={`overflow-visible ${variant === 'pill' ? 'w-[95%] md:w-[80%]' : 'w-full'}`}
           >
-            <div className="bg-zinc-950 border border-white/10 rounded-2xl py-2 shadow-2xl">
-              {/* Horizontal Scrollable Carousel - Ultra Compact */}
-              <div className="flex overflow-x-auto gap-2 px-3 no-scrollbar scroll-smooth">
+            <div className="relative pt-6 pb-2 group/nav overflow-visible">
+              {/* Horizontal Scrollable Carousel - Minimalist */}
+              <div 
+                onScroll={() => setShowScrollHint(false)}
+                className="flex overflow-x-auto gap-1 px-4 no-scrollbar scroll-smooth relative z-0"
+              >
                 {navItems.map((item, idx) => (
                   <motion.button
                     key={item.path}
-                    initial={{ opacity: 0, scale: 0.9 }}
+                    initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: idx * 0.03 + 0.2 }}
-                    whileHover={{ y: -2, scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    transition={{ delay: idx * 0.03 + 0.1 }}
+                    whileInView={{ scale: 1.15 }}
+                    viewport={{ once: false, amount: 0.8 }}
+                    whileHover={{ y: -4, scale: 1.2 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={() => handleNavClick(item.path)}
-                    className="flex-shrink-0 w-16 py-2 flex flex-col items-center justify-center gap-1.5 group transition-all duration-300"
+                    className="flex-shrink-0 w-16 py-3 flex flex-col items-center justify-center gap-2 group/item"
                   >
-                    <div className={`w-7 h-7 rounded-lg bg-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-500 ${item.color}`}>
-                      <item.icon className="text-base" />
+                    {/* Raw Icon */}
+                    <div className={`text-xl md:text-2xl transition-all duration-300 drop-shadow-sm ${item.color}`}>
+                      <item.icon />
                     </div>
-                    <span className="text-[7px] font-medium text-white group-hover:text-amber-400 transition-colors uppercase tracking-tight">
+
+                    {/* Label */}
+                    <span className="text-[7px] font-bold text-zinc-400 group-hover/item:text-white transition-colors uppercase tracking-[0.05em] text-center">
                       {item.label}
                     </span>
                   </motion.button>
                 ))}
+
+                {/* Fading Edge Hint */}
+                <div className="sticky right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-black/40 to-transparent pointer-events-none z-10" />
               </div>
+
+              {/* Animated Scroll Hint Icon */}
+              <AnimatePresence>
+                {showScrollHint && navItems.length >= 5 && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="absolute top-1 right-3 z-20 pointer-events-none flex items-center gap-1 bg-indigo-600/90 backdrop-blur-sm px-2 py-0.5 rounded-full shadow-lg"
+                  >
+                    <span className="text-[5px] font-black text-white uppercase tracking-widest">Explore</span>
+                    <motion.div
+                      animate={{ x: [0, 3, 0] }}
+                      transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+                    >
+                      <HiOutlineChevronRight className="text-white text-[8px]" />
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         )}
