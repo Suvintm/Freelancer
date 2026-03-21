@@ -48,6 +48,7 @@ import KYCPendingBanner from "../components/KYCPendingBanner.jsx";
 import HomeExploreContainer from "../components/HomeExploreContainer.jsx";
 import ClientDashboard from "../components/ClientDashboard.jsx";
 import UnifiedBannerSlider from "../components/UnifiedBannerSlider.jsx";
+import SuvixHeroIntro from "../components/SuvixHeroIntro.jsx";
 import reelIcon from "../assets/reelicon.png";
 import { useHomeStore } from "../store/homeStore";
 import useRefreshManager from "../hooks/useRefreshManager.js";
@@ -196,19 +197,24 @@ const ClientHome = () => {
       >
         <PullIndicator />
         
-        {/* Home Banner - Top Level */}
-        <AnimatePresence>
-          {mainTab === "home" && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
-              className="mb-4 md:mb-5 px-4 pt-2"
-            >
+        {/* SuviX Hero Section - Two Column Grid */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-2 md:mb-8 px-4 pt-0 md:pt-2"
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left Side: Suvix Introduction */}
+            <div className="hidden lg:block lg:col-span-5">
+              <SuvixHeroIntro userType="client" userName={user?.name} />
+            </div>
+
+            {/* Right Side: Featured Showcase */}
+            <div className="lg:col-span-7 flex flex-col">
               <UnifiedBannerSlider pageName="home" />
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+          </div>
+        </motion.div>
 
         {/* Simple & Professional Tabbed Navigation - Enhanced for Light Theme */}
         <div className="px-4 mb-1.5 md:mb-4 flex justify-center">
