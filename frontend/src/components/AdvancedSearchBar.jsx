@@ -17,8 +17,43 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
+import React from "react";
 
-const AdvancedSearchBar = ({ 
+// Optimized Sub-component for the dynamic placeholder to prevent full search bar re-renders
+const DynamicPlaceholder = React.memo(({ items }) => {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (items.length === 0) return;
+    const timer = setInterval(() => {
+      setIndex((prev) => (prev + 1) % items.length);
+    }, 2500);
+    return () => clearInterval(timer);
+  }, [items.length]);
+
+  return (
+    <div className="absolute left-11 md:left-14 top-1/2 -translate-y-1/2 pointer-events-none flex items-center overflow-hidden h-6">
+      <span className="text-[11px] md:text-xs text-zinc-400 whitespace-nowrap">Are looking for "</span>
+      <div className="relative h-full flex flex-col justify-center mx-0.5">
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={index}
+            initial={{ y: 15, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -15, opacity: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="text-[11px] md:text-xs font-bold text-indigo-600 light:text-indigo-500 whitespace-nowrap"
+          >
+            {items[index]?.label}
+          </motion.span>
+        </AnimatePresence>
+      </div>
+      <span className="text-[11px] md:text-xs text-zinc-400 whitespace-nowrap">"?</span>
+    </div>
+  );
+});
+
+const AdvancedSearchBar = React.memo(({ 
   value, 
   onChange, 
   onSearch, 
@@ -28,7 +63,6 @@ const AdvancedSearchBar = ({
   const { user } = useAppContext();
   const navigate = useNavigate();
   const [isFocused, setIsFocused] = useState(false);
-  const [activeWordIndex, setActiveWordIndex] = useState(0);
   const [showScrollHint, setShowScrollHint] = useState(true);
   const inputRef = useRef(null);
 
@@ -97,14 +131,8 @@ const AdvancedSearchBar = ({
     return items[role] || items.editor;
   }, [user?.role]);
 
-  // Cycle dynamic placeholder words
-  useEffect(() => {
-    if (navItems.length === 0) return;
-    const timer = setInterval(() => {
-      setActiveWordIndex((prev) => (prev + 1) % navItems.length);
-    }, 2500);
-    return () => clearInterval(timer);
-  }, [navItems.length]);
+  // Placeholder loop moved to sub-component for performance
+
 
   const handleClear = () => {
     onChange("");
@@ -178,27 +206,9 @@ const AdvancedSearchBar = ({
           }`}
         />
 
-        {/* Animated Dynamic Placeholder */}
-        {!value && (
-          <div className="absolute left-11 md:left-14 top-1/2 -translate-y-1/2 pointer-events-none flex items-center overflow-hidden h-6">
-            <span className="text-[11px] md:text-xs text-zinc-400 whitespace-nowrap">Are looking for "</span>
-            <div className="relative h-full flex flex-col justify-center mx-0.5">
-              <AnimatePresence mode="wait">
-                <motion.span
-                  key={activeWordIndex}
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -20, opacity: 0 }}
-                  transition={{ duration: 0.5, ease: "circOut" }}
-                  className="text-[11px] md:text-xs font-bold text-indigo-600 light:text-indigo-500 whitespace-nowrap"
-                >
-                  {navItems[activeWordIndex]?.label}
-                </motion.span>
-              </AnimatePresence>
-            </div>
-            <span className="text-[11px] md:text-xs text-zinc-400 whitespace-nowrap">"?</span>
-          </div>
-        )}
+        {/* Animated Dynamic Placeholder - Now a performance-optimized sub-component */}
+        {!value && <DynamicPlaceholder items={navItems} />}
+
 
         {/* Right Actions */}
         <div className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
@@ -299,6 +309,6 @@ const AdvancedSearchBar = ({
       </AnimatePresence>
     </div>
   );
-};
+});
 
 export default AdvancedSearchBar;
