@@ -101,7 +101,6 @@ const EditorProfile = () => {
   const [searchParams] = useSearchParams();
   const { id: routeEditorId } = useParams();
   const [showRatingsModal, setShowRatingsModal] = useState(false);
-  const [followModal, setFollowModal] = useState({ isOpen: false, type: "followers" });
   
 
 
@@ -261,11 +260,12 @@ const EditorProfile = () => {
   const progressColor = getProgressColor(completionPercent);
 
   // SVG circle calculations - smaller for mobile
-  const size = 90;
-  const strokeWidth = 3;
+  const size = 100; // Increased size to match ClientProfile if needed, but let's keep 100 for desktop
+  const strokeWidth = 5;
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
-  const strokeDashoffset = circumference - (completionPercent / 100) * circumference;
+  const strokeDashoffset = 0;
+  const strokeDasharray = circumference;
 
   const tabs = [
     { id: "portfolio", label: "Portfolio", icon: FaImages },
@@ -342,7 +342,7 @@ const EditorProfile = () => {
                 </div>
                 <span className="text-xs font-medium text-emerald-400">Profile Insights PRO</span>
                 <span className="text-[10px] text-zinc-400">•</span>
-                <span className={`text-xs font-semibold ${daysRemaining <= 7 ? 'text-amber-400' : 'text-zinc-300'}`}>
+                <span className={`text-xs font-normal ${daysRemaining <= 7 ? 'text-amber-400' : 'text-zinc-300'}`}>
                   {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} left
                 </span>
                 {insightsSubscription?.status === 'trial' && (
@@ -373,14 +373,14 @@ const EditorProfile = () => {
                     viewBox={`0 0 ${size + 8} ${size + 8}`}
                   >
                     <circle cx={(size + 8) / 2} cy={(size + 8) / 2} r={radius + 4} fill="none" stroke="#1a1a1a" strokeWidth={strokeWidth} />
-                    <circle cx={(size + 8) / 2} cy={(size + 8) / 2} r={radius + 4} fill="none" stroke={progressColor} strokeWidth={strokeWidth} strokeLinecap="round" strokeDasharray={circumference + 25} strokeDashoffset={strokeDashoffset + 12} />
+                    <circle cx={(size + 8) / 2} cy={(size + 8) / 2} r={radius + 4} fill="none" stroke={progressColor} strokeWidth={strokeWidth} />
                   </svg>
                   <div className="relative rounded-full p-[4px] bg-zinc-900 ring-2 ring-black w-[108px] h-[108px]">
                     <div className="w-full h-full rounded-full overflow-hidden bg-zinc-950">
                       <img src={userData?.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} alt="Profile" className="w-full h-full object-cover" />
                     </div>
                   </div>
-                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-[10px] font-black text-white shadow-xl z-20 border border-black/40" style={{ backgroundColor: progressColor }}>
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-[10px] font-normal text-white shadow-xl z-20 border border-black/40" style={{ backgroundColor: progressColor }}>
                     {completionPercent}%
                   </div>
                 </div>
@@ -399,7 +399,7 @@ const EditorProfile = () => {
                         viewBox={`0 0 ${size + 8} ${size + 8}`}
                       >
                         <circle cx={(size + 8) / 2} cy={(size + 8) / 2} r={radius + 4} fill="none" stroke="#1a1a1a" strokeWidth={strokeWidth + 2} />
-                        <circle cx={(size + 8) / 2} cy={(size + 8) / 2} r={radius + 4} fill="none" stroke={progressColor} strokeWidth={strokeWidth + 2} strokeLinecap="round" strokeDasharray={circumference + 25} strokeDashoffset={strokeDashoffset + 12} />
+                        <circle cx={(size + 8) / 2} cy={(size + 8) / 2} r={radius + 4} fill="none" stroke={progressColor} strokeWidth={strokeWidth + 2} />
                       </svg>
                       <div className="relative rounded-full p-[2px] bg-zinc-900 ring-1 ring-black w-18 h-18">
                         <div className="w-full h-full rounded-full overflow-hidden bg-zinc-950">
@@ -408,13 +408,13 @@ const EditorProfile = () => {
                       </div>
                     </div>
                     <div className="w-full text-center">
-                      <h1 className="text-base font-black text-white tracking-tight flex items-center justify-center gap-1 leading-none mb-2.5 break-all">
+                      <h1 className="text-base font-bold text-white tracking-tight flex items-center justify-center gap-1 leading-none mb-2.5 break-all">
                         {userData?.name || "Your Name"}
                         {isVerified && <MdVerified className="text-blue-500 text-sm shrink-0" />}
                       </h1>
                       <button
                         onClick={() => navigate("/editor-profile-update")}
-                        className="w-full py-2 bg-white text-black text-[10px] font-black rounded-md uppercase tracking-wide flex items-center justify-center gap-1"
+                        className="w-full py-2 bg-white text-black text-[10px] font-normal rounded-md uppercase tracking-wide flex items-center justify-center gap-1"
                       >
                         <FaEdit size={8} /> EDIT
                       </button>
@@ -424,37 +424,37 @@ const EditorProfile = () => {
                   {/* Right Column (50%): Followers + Following (Centered with Icons) */}
                   <div className="w-1/2 flex flex-col justify-center gap-5 pt-1 border-l border-zinc-900 ml-1 pl-3">
                     <div 
-                      onClick={() => setFollowModal({ isOpen: true, type: "followers" })}
+                      onClick={() => navigate(`/connections/${userData?._id}?tab=followers`)}
                       className="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity"
                     >
                       <div className="flex items-center gap-1.5 mb-1">
                         <FaUserFriends className="text-[8px] text-zinc-600" />
-                        <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Followers</span>
+                        <span className="text-[9px] font-normal text-zinc-500 uppercase tracking-widest">Followers</span>
                       </div>
-                      <span className="text-2xl font-black text-white leading-none tracking-tighter">{statsData.find(s => s.label.includes('Followers'))?.value || 0}</span>
+                      <span className="text-2xl font-normal text-white leading-none tracking-tighter">{userData?.followers?.length || 0}</span>
                     </div>
                     <div 
-                      onClick={() => setFollowModal({ isOpen: true, type: "following" })}
+                      onClick={() => navigate(`/connections/${userData?._id}?tab=following`)}
                       className="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity"
                     >
                       <div className="flex items-center gap-1.5 mb-1">
                         <FaUserPlus className="text-[8px] text-zinc-600" />
-                        <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Following</span>
+                        <span className="text-[9px] font-normal text-zinc-500 uppercase tracking-widest">Following</span>
                       </div>
-                      <span className="text-2xl font-black text-white leading-none tracking-tighter">{statsData.find(s => s.label.includes('Following'))?.value || 0}</span>
+                      <span className="text-2xl font-normal text-white leading-none tracking-tighter">{userData?.following?.length || 0}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Desktop Name/Edit Row (Hidden on Mobile) */}
                 <div className="hidden md:flex items-center gap-5 mb-6">
-                  <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
+                  <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-2.5">
                     {userData?.name || "Your Name"}
                     {isVerified && <MdVerified className="text-blue-500" />}
                   </h1>
                   <button
                     onClick={() => navigate("/editor-profile-update")}
-                    className="flex items-center gap-2 px-6 py-2 bg-white text-black text-xs font-black rounded-full uppercase tracking-widest hover:bg-zinc-200 transition-all hover:scale-105 active:scale-95"
+                    className="flex items-center gap-2 px-6 py-2 bg-white text-black text-xs font-normal rounded-full uppercase tracking-widest hover:bg-zinc-200 transition-all hover:scale-105 active:scale-95"
                   >
                     <FaEdit className="text-[12px]" />
                     Edit Profile
@@ -475,9 +475,9 @@ const EditorProfile = () => {
                       <div key={stat.label} className="flex flex-col items-center flex-1">
                         <div className="flex items-center gap-0.5 mb-0.5">
                           {icons[label]}
-                          <span className="hidden xs:inline text-[7px] font-black text-zinc-600 uppercase">{label}</span>
+                          <span className="hidden xs:inline text-[7px] font-normal text-zinc-600 uppercase">{label}</span>
                         </div>
-                        <div className="text-[10px] md:text-xl font-black text-white">
+                        <div className="text-[10px] md:text-xl font-normal text-white">
                           {stat.locked ? <FaLock className="text-[8px] text-zinc-800" /> : stat.value}
                         </div>
                       </div>
@@ -488,11 +488,11 @@ const EditorProfile = () => {
                 {/* Bio & Professional Indicators (Mobile Compact) */}
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[9px] md:text-base font-black text-zinc-300 uppercase">
+                    <span className="text-[9px] md:text-base font-normal text-zinc-300 uppercase">
                       {userData?.role === "editor" ? "PRO VIDEO EDITOR" : "CLIENT"}
                     </span>
                     {profileData?.experience && (
-                      <span className="px-1.5 py-0.5 bg-zinc-900/50 text-zinc-500 text-[7px] md:text-[10px] font-black rounded border border-zinc-800 uppercase">
+                      <span className="px-1.5 py-0.5 bg-zinc-900/50 text-zinc-500 text-[7px] md:text-[10px] font-normal rounded border border-zinc-800 uppercase">
                         {profileData.experience}
                       </span>
                     )}
@@ -506,7 +506,7 @@ const EditorProfile = () => {
                             ? (
                               <>
                                 {profileData.about.split(' ').slice(0, 4).join(' ')}... 
-                                <button onClick={() => setActiveTab("about")} className="text-white font-black ml-1 uppercase text-[8px] mr-2">more</button>
+                                <button onClick={() => setActiveTab("about")} className="text-white font-normal ml-1 uppercase text-[8px] mr-2">more</button>
                               </>
                             ) : profileData.about
                           }
@@ -536,7 +536,7 @@ const EditorProfile = () => {
                                   <FaBriefcase className="text-zinc-500 text-[10px]" />
                                 </div>
                               )}
-                              <span className="text-[7px] font-black text-zinc-600 uppercase tracking-tight text-center leading-none w-full truncate">
+                              <span className="text-[7px] font-normal text-zinc-600 uppercase tracking-tight text-center leading-none w-full truncate">
                                 {name.split(' ')[0]}
                               </span>
                             </div>
@@ -547,7 +547,7 @@ const EditorProfile = () => {
                   )}
 
                   {/* Integrated Location Section */}
-                  <div className="flex flex-wrap items-center gap-3 pt-2 mt-2 border-t border-zinc-900/50 text-zinc-500 text-[8px] md:text-[11px] font-black uppercase tracking-tight">
+                  <div className="flex flex-wrap items-center gap-3 pt-2 mt-2 border-t border-zinc-900/50 text-zinc-500 text-[8px] md:text-[11px] font-normal uppercase tracking-tight">
                     {profileData.location?.country && (
                       <div className="flex items-center gap-1">
                         <FaMapMarkerAlt size={7} /> <span>{profileData.location.country}</span>
@@ -578,7 +578,7 @@ const EditorProfile = () => {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`
-                      relative px-2.5 py-1.5 rounded-md text-[10px] md:text-sm font-black uppercase tracking-widest transition-all flex items-center gap-1.5 z-10
+                      relative px-2.5 py-1.5 rounded-md text-[10px] md:text-sm font-normal uppercase tracking-widest transition-all flex items-center gap-1.5 z-10
                       ${isActive 
                         ? "text-black" 
                         : "text-zinc-500 hover:text-zinc-300"
@@ -617,7 +617,7 @@ const EditorProfile = () => {
                           <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
                             <FaUser className="text-zinc-400 text-xs" />
                           </div>
-                          <h3 className="text-sm font-semibold text-white">About</h3>
+                          <h3 className="text-sm font-normal text-white">About</h3>
                         </div>
                         <p className="text-zinc-400 text-sm leading-relaxed">
                           {profileData.about}
@@ -632,7 +632,7 @@ const EditorProfile = () => {
                           <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
                             <FaCode className="text-zinc-400 text-xs" />
                           </div>
-                          <h3 className="text-sm font-semibold text-white">Skills</h3>
+                          <h3 className="text-sm font-normal text-white">Skills</h3>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {profileData.skills.map((skill, i) => (
@@ -654,7 +654,7 @@ const EditorProfile = () => {
                           <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
                             <FaGlobe className="text-zinc-400 text-xs" />
                           </div>
-                          <h3 className="text-sm font-semibold text-white">Languages</h3>
+                          <h3 className="text-sm font-normal text-white">Languages</h3>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {profileData.languages.map((lang, i) => (
@@ -676,7 +676,7 @@ const EditorProfile = () => {
                           <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
                             <FaBriefcase className="text-zinc-400 text-xs" />
                           </div>
-                          <h3 className="text-sm font-semibold text-white">Software Expertise</h3>
+                          <h3 className="text-sm font-normal text-white">Software Expertise</h3>
                         </div>
                         <SoftwareExpertise softwares={profileData.softwares} />
                       </div>
@@ -689,7 +689,7 @@ const EditorProfile = () => {
                           <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
                             <FaAward className="text-zinc-400 text-xs" />
                           </div>
-                          <h3 className="text-sm font-semibold text-white">Certifications</h3>
+                          <h3 className="text-sm font-normal text-white">Certifications</h3>
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                           {profileData.certifications.map((cert, i) => (
@@ -721,7 +721,7 @@ const EditorProfile = () => {
                   <div className="space-y-4">
                     <SuvixScoreCard />
                     <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4">
-                      <h4 className="text-sm font-semibold text-white mb-3">Quick Links</h4>
+                      <h4 className="text-sm font-normal text-white mb-3">Quick Links</h4>
                       <div className="space-y-2">
                         {[
                           { label: 'Analytics', icon: FaRocket, path: '/editor-analytics' },
@@ -745,7 +745,7 @@ const EditorProfile = () => {
 
                     {/* Badges */}
                     <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4">
-                      <h4 className="text-sm font-semibold text-white mb-3">Badges</h4>
+                      <h4 className="text-sm font-normal text-white mb-3">Badges</h4>
                       <div className="flex flex-wrap gap-2">
                         {[
                           { icon: FaStar, label: 'Top Rated', active: true },
@@ -769,7 +769,7 @@ const EditorProfile = () => {
 
                     {/* Performance */}
                     <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4">
-                      <h4 className="text-sm font-semibold text-white mb-3">Performance</h4>
+                      <h4 className="text-sm font-normal text-white mb-3">Performance</h4>
                       <div className="space-y-3">
                         <div>
                           <div className="flex justify-between items-center mb-1">
@@ -880,13 +880,7 @@ const EditorProfile = () => {
         onClose={() => setShowRatingsModal(false)}
         editorId={userData?._id}
       />
-      {/* Follow / Following Modal */}
-      <FollowListModal
-        isOpen={followModal.isOpen}
-        onClose={() => setFollowModal({ ...followModal, isOpen: false })}
-        userId={targetEditorId}
-        type={followModal.type}
-      />
+      {/* Editor Ratings Modal */}
 
       {/* Profile Insights Modal Call (If any) */}
     </div>

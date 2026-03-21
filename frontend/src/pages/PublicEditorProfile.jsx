@@ -382,11 +382,12 @@ const PublicEditorProfile = () => {
     ? allTabs.filter(tab => ["portfolio", "about"].includes(tab.id))
     : allTabs;
   // Progress ring config for clients
+  // Progress ring config
   const size = 100;
   const strokeWidth = 5;
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
-  const progressColor = "#A855F7"; // Purple
+  const progressColor = userData?.role === 'editor' ? "white" : "#A855F7"; // White for Editor, Purple for Client
   const strokeDashoffset = 0;
   const strokeDasharray = circumference + 2; // Slight overlap to ensure a solid circle
 
@@ -446,7 +447,7 @@ const PublicEditorProfile = () => {
                     <div className="w-full text-center">
                       <h1 className="text-base font-bold text-white tracking-tight flex items-center justify-center gap-1 leading-none mb-2.5 break-all">
                         {userData?.name}
-                        {userData?.role === 'editor' && isVerified && <HiCheckBadge className="text-emerald-500 text-sm shrink-0" />}
+                        {userData?.role === 'editor' && <MdVerified className="text-blue-500 text-sm shrink-0" />}
                         {userData?.role === 'client' && <MdVerified className="text-blue-500 text-sm shrink-0" />}
                       </h1>
                       {!isOwner && (
@@ -464,30 +465,60 @@ const PublicEditorProfile = () => {
                           {followLoading ? "..." : isFollowing ? "Following" : isPending ? "Requested" : "Follow"}
                         </button>
                       )}
+                      
+                      {/* Editor Specific: Contact Button (Mobile) */}
+                      {!isOwner && userData?.role === 'editor' && (
+                        <button
+                          onClick={() => setRequestModalOpen(true)}
+                          className="w-full mt-2 py-2 bg-emerald-600 text-white rounded-md text-[10px] font-normal uppercase tracking-wide flex items-center justify-center gap-1.5 hover:bg-emerald-500 transition-all active:scale-95"
+                        >
+                          <FaEnvelope className="text-[8px]" /> Contact
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  <div className="w-1/2 flex flex-col justify-center gap-5 pt-1 border-l border-zinc-900 ml-1 pl-3">
+                  <div className="w-1/2 flex flex-col justify-center gap-4 pt-1 border-l border-zinc-900 ml-1 pl-3">
                     <button 
                       onClick={() => navigate(`/connections/${userData?._id}?tab=followers`)}
                       className="flex flex-col items-center hover:opacity-80 transition-all"
                     >
-                      <div className="flex items-center gap-1.5 mb-1">
+                      <div className="flex items-center gap-1.5 mb-0.5">
                         <FaUserFriends className="text-[8px] text-zinc-600" />
-                        <span className="text-[9px] font-normal text-zinc-500 uppercase tracking-widest">Followers</span>
+                        <span className="text-[8px] font-normal text-zinc-500 uppercase tracking-widest">Followers</span>
                       </div>
-                      <span className="text-2xl font-normal text-white leading-none tracking-tighter">{userData?.followers?.length || 0}</span>
+                      <span className="text-xl font-normal text-white leading-none tracking-tighter">{userData?.followers?.length || 0}</span>
                     </button>
                     <button 
                       onClick={() => navigate(`/connections/${userData?._id}?tab=following`)}
                       className="flex flex-col items-center hover:opacity-80 transition-all"
                     >
-                      <div className="flex items-center gap-1.5 mb-1">
+                      <div className="flex items-center gap-1.5 mb-0.5">
                         <FaUserPlus className="text-[8px] text-zinc-600" />
-                        <span className="text-[9px] font-normal text-zinc-500 uppercase tracking-widest">Following</span>
+                        <span className="text-[8px] font-normal text-zinc-500 uppercase tracking-widest">Following</span>
                       </div>
-                      <span className="text-2xl font-normal text-white leading-none tracking-tighter">{userData?.following?.length || 0}</span>
+                      <span className="text-xl font-normal text-white leading-none tracking-tighter">{userData?.following?.length || 0}</span>
                     </button>
+
+                    {/* Editor Professional Stats (Mobile - Relocated) */}
+                    {userData?.role === 'editor' && (
+                      <div className="flex flex-col gap-4 border-t border-zinc-900 pt-3 mt-1">
+                        <div className="flex flex-col items-center">
+                          <div className="flex items-center gap-1 mb-0.5">
+                            <FaStar className="text-[8px] text-amber-500/80" />
+                            <span className="text-[8px] text-zinc-500 uppercase tracking-widest font-normal">Rating</span>
+                          </div>
+                          <span className="text-lg font-normal text-white leading-none">{profile?.ratingStats?.averageRating?.toFixed(1) || "0.0"}</span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                          <div className="flex items-center gap-1 mb-0.5">
+                            <FaBriefcase className="text-[8px] text-blue-500/80" />
+                            <span className="text-[8px] text-zinc-500 uppercase tracking-widest font-normal">Projects</span>
+                          </div>
+                          <span className="text-lg font-normal text-white leading-none">{profile?.totalCompletedOrders || 0}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -495,7 +526,7 @@ const PublicEditorProfile = () => {
                 <div className="hidden md:flex items-center gap-8 mb-6">
                   <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-2.5">
                     {userData?.name}
-                    {userData?.role === 'editor' && isVerified && <HiCheckBadge className="text-emerald-500" />}
+                    {userData?.role === 'editor' && <MdVerified className="text-blue-500" />}
                     {userData?.role === 'client' && <MdVerified className="text-blue-500" />}
                   </h1>
                   <div className="flex gap-8">
@@ -519,51 +550,101 @@ const PublicEditorProfile = () => {
                       {followLoading ? "..." : isFollowing ? "Following" : isPending ? "Requested" : "Follow"}
                     </button>
                   )}
+
+                   {/* Editor Specific: Contact Button (Desktop) */}
+                  {!isOwner && userData?.role === 'editor' && (
+                    <button
+                      onClick={() => setRequestModalOpen(true)}
+                      className="px-8 py-2.5 bg-emerald-600 text-white rounded-lg text-xs font-normal uppercase tracking-widest hover:bg-emerald-500 transition-all active:scale-95 flex items-center gap-2"
+                    >
+                      <FaEnvelope /> Contact
+                    </button>
+                  )}
                 </div>
 
+                {/* Desktop Professional Stats Row - Relocated */}
+                {userData?.role === 'editor' && (
+                  <div className="hidden md:flex items-center gap-8 mb-6 pt-4 border-t border-zinc-900/50">
+                    <div className="flex items-center gap-2.5">
+                      <FaStar className="text-xs text-amber-500" />
+                      <div className="flex flex-col">
+                        <span className="text-lg font-normal text-white leading-none">{profile?.ratingStats?.averageRating?.toFixed(1) || "0.0"}</span>
+                        <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-normal">Average Rating</span>
+                      </div>
+                    </div>
+                    <div className="w-px h-8 bg-zinc-900/80 mx-2" />
+                    <div className="flex items-center gap-2.5">
+                      <FaBriefcase className="text-xs text-blue-500" />
+                      <div className="flex flex-col">
+                        <span className="text-lg font-normal text-white leading-none">{profile?.totalCompletedOrders || 0}</span>
+                        <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-normal">Projects Done</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Common Bio Section */}
-                <div className="space-y-4">
-                  <div className={`${userData?.role === 'client' ? 'text-[11px] md:text-sm' : 'text-xs md:text-sm'} font-normal text-zinc-400 leading-tight whitespace-pre-wrap max-w-2xl`}>
-                    {profile?.about || "I am a content creator looking for top editors."}
+                {/* Common Bio Section */}
+                <div className="flex flex-col gap-1.5">
+                  <div className={`${userData?.role === 'client' ? 'text-[11px] md:text-sm' : 'text-[10px] md:text-sm'} font-normal text-zinc-400 leading-tight whitespace-pre-wrap max-w-2xl mb-1`}>
+                    {profile?.about || (userData?.role === 'client' ? "I am a content creator looking for top editors." : "Professional video editor.")}
                   </div>
 
-                  {/* Social Icons Strip (Brand Colors) */}
+                  {/* Software Carousel (Editor Only) */}
+                  {userData?.role === 'editor' && profile?.softwares?.length > 0 && (
+                    <div className="flex gap-1.5 overflow-x-auto scrollbar-hide w-full" style={{ scrollbarWidth: 'none' }}>
+                      {profile.softwares.map((sw) => {
+                        const icon = SW_ICON_MAP[sw];
+                        return (
+                          <div key={sw} className="flex-shrink-0 flex items-center justify-center w-8 h-8 bg-zinc-950 border border-zinc-900 rounded-md group hover:border-zinc-700 transition-colors">
+                            {icon ? (
+                              <img src={icon} alt={sw} className="w-4 h-4 object-contain opacity-80 group-hover:opacity-100 transition-opacity" title={sw} />
+                            ) : (
+                              <FaCode className="text-zinc-600 text-xs" />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Social Icons Carousel (Brand Colors) */}
                   {profile?.socialLinks && Object.values(profile.socialLinks).some(link => link) && (
-                    <div className="flex flex-wrap gap-2.5 md:gap-4 pt-1">
+                    <div className="flex gap-2 overflow-x-auto scrollbar-hide w-full" style={{ scrollbarWidth: 'none' }}>
                       {profile.socialLinks.youtube && (
-                        <a href={profile.socialLinks.youtube} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-zinc-900 shadow-lg shadow-black/5 text-[#FF0000] hover:bg-[#FF0000]/10 transition-all">
-                          <FaYoutube size={16} />
+                        <a href={profile.socialLinks.youtube} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-md bg-zinc-900 shadow-sm text-[#FF0000] hover:bg-[#FF0000]/10 transition-all">
+                          <FaYoutube size={14} />
                         </a>
                       )}
                       {profile.socialLinks.instagram && (
-                        <a href={profile.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-zinc-900 shadow-lg shadow-black/5 text-[#E4405F] hover:bg-[#E4405F]/10 transition-all">
-                          <FaInstagram size={16} />
+                        <a href={profile.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-md bg-zinc-900 shadow-sm text-[#E4405F] hover:bg-[#E4405F]/10 transition-all">
+                          <FaInstagram size={14} />
                         </a>
                       )}
                       {profile.socialLinks.tiktok && (
-                        <a href={profile.socialLinks.tiktok} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-zinc-900 shadow-lg shadow-black/5 text-white hover:bg-white/10 transition-all">
-                          <FaTiktok size={16} />
+                        <a href={profile.socialLinks.tiktok} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-md bg-zinc-900 shadow-sm text-white hover:bg-white/10 transition-all">
+                          <FaTiktok size={14} />
                         </a>
                       )}
                       {profile.socialLinks.twitter && (
-                        <a href={profile.socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-zinc-900 shadow-lg shadow-black/5 text-[#1DA1F2] hover:bg-[#1DA1F2]/10 transition-all">
-                          <FaTwitter size={16} />
+                        <a href={profile.socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-md bg-zinc-900 shadow-sm text-[#1DA1F2] hover:bg-[#1DA1F2]/10 transition-all">
+                          <FaTwitter size={14} />
                         </a>
                       )}
                       {profile.socialLinks.linkedin && (
-                        <a href={profile.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-zinc-900 shadow-lg shadow-black/5 text-[#0077B5] hover:bg-[#0077B5]/10 transition-all">
-                          <FaLinkedin size={16} />
+                        <a href={profile.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-md bg-zinc-900 shadow-sm text-[#0077B5] hover:bg-[#0077B5]/10 transition-all">
+                          <FaLinkedin size={14} />
                         </a>
                       )}
                       {profile.socialLinks.website && (
-                        <a href={profile.socialLinks.website} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-zinc-900 shadow-lg shadow-black/5 text-[#10B981] hover:bg-[#10B981]/10 transition-all">
-                          <FaGlobe size={16} />
+                        <a href={profile.socialLinks.website} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-md bg-zinc-900 shadow-sm text-[#10B981] hover:bg-[#10B981]/10 transition-all">
+                          <FaGlobe size={14} />
                         </a>
                       )}
                     </div>
                   )}
 
-                  <div className="flex flex-wrap items-center gap-3 pt-2 mt-1 border-t border-zinc-900/50 text-zinc-600 text-[9px] font-normal uppercase tracking-tight">
+                  <div className="flex flex-wrap items-center gap-3 pt-1.5 mt-1 border-t border-zinc-900/50 text-zinc-600 text-[8px] font-normal uppercase tracking-tight">
                     <div className="flex items-center gap-1">
                       <FaMapMarkerAlt size={8} /> <span>{profile.location?.country?.toUpperCase() || "INDIA"}</span>
                     </div>
@@ -577,8 +658,9 @@ const PublicEditorProfile = () => {
           </motion.div>
 
           {/* ==================== TABS ==================== */}
-          <div className="flex justify-center mb-2.5">
-            <div className="inline-flex bg-zinc-950/80 border border-zinc-900 rounded-lg p-1 relative">
+          <div className="w-full px-4 mb-2.5 overflow-hidden">
+            <div className="flex overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none' }}>
+              <div className="inline-flex bg-zinc-950/80 border border-zinc-900 rounded-lg p-1 relative mx-auto min-w-max shrink-0">
               {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
@@ -606,6 +688,7 @@ const PublicEditorProfile = () => {
                 );
               })}
             </div>
+           </div>
           </div>
 
           {/* ==================== TAB CONTENT ==================== */}
@@ -618,7 +701,7 @@ const PublicEditorProfile = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.15 }}
-                className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 md:p-5"
+                className="w-full"
               >
                 <PortfolioSection portfolios={profile.portfolio} isPublic={true} />
               </motion.div>
