@@ -11,6 +11,7 @@ import { FaStar, FaRing, FaPlay, FaYoutube, FaMicrophone, FaMagic, FaPalette, Fa
 import PromoBanner from "./PromoBanner";
 import UnifiedBannerSlider from "./UnifiedBannerSlider";
 import AdvancedSearchBar from "./AdvancedSearchBar";
+import StoryCarousel from "./StoryCarousel";
 import SuggestedReels from "./SuggestedReels";
 import KYCPendingBanner from "./KYCPendingBanner";
 import ProfileCompletionBanner from "./ProfileCompletionBanner";
@@ -33,7 +34,10 @@ const HomeExploreContainer = ({ searchQuery, setSearchQuery, recentSearches, act
                 <ProfileCompletionBanner />
             </div>
 
-            <div className="px-4 pb-4">
+            {/* FEATURED STORIES - Instagram Style */}
+            <StoryCarousel />
+
+            <div className="px-4 pb-2">
                 <div className="max-w-3xl mx-auto">
                     <AdvancedSearchBar
                         value={searchQuery}
