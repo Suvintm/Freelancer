@@ -62,6 +62,9 @@ const FollowSuggestionsPage = () => {
         try { return JSON.parse(localStorage.getItem("suvix_recent_people") || "[]"); }
         catch { return []; }
     });
+    const [globalSearchResults, setGlobalSearchResults] = useState([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const searchTimeoutRef = useRef(null);
 
     // Filters (only apply to the grid, NOT to the dropdown)
     const [activeFilter, setActiveFilter] = useState("all");
@@ -97,21 +100,48 @@ const FollowSuggestionsPage = () => {
 
     useEffect(() => { fetchSuggestions(); }, [fetchSuggestions]);
 
-    // ── Live autocomplete — fires as user types, ignores filters ───────────
+    // ── Live autocomplete — fires as user types, hits global search API ───────────
     useEffect(() => {
-        const q = rawQuery.trim().toLowerCase();
-        if (!q) { setLiveResults([]); return; }
+        const q = rawQuery.trim();
+        if (!q) { 
+            setLiveResults([]); 
+            setGlobalSearchResults([]); // clear grid search too
+            return; 
+        }
 
-        const matches = suggestions
-            .filter(u =>
-                u.name?.toLowerCase().includes(q) ||
-                u.country?.toLowerCase().includes(q) ||
-                u.skills?.some(s => s.toLowerCase().includes(q))
-            )
-            .slice(0, 6);  // max 6 in dropdown
-        setLiveResults(matches);
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+        
+        searchTimeoutRef.current = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const { data } = await axios.get(`${backendURL}/api/user/search?query=${encodeURIComponent(q)}`, {
+                    headers: user?.token ? { Authorization: `Bearer ${user.token}` } : {}
+                });
+                const list = data.users || [];
+                setLiveResults(list.slice(0, 6)); // Dropdown max 6
+                setGlobalSearchResults(list);
+                
+                // Update follow states for new users
+                setFollowStates(prev => {
+                    const newStates = { ...prev };
+                    list.forEach(s => {
+                        if (!newStates[s._id]) {
+                            const isFollowed = user?.following?.some(id => id.toString() === s._id.toString());
+                            newStates[s._id] = { loading: false, isFollowing: !!isFollowed, isPending: false };
+                        }
+                    });
+                    return newStates;
+                });
+            } catch (err) {
+                console.error("Search failed:", err);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 400); // 400ms debounce
+
         setShowDropdown(true);
-    }, [rawQuery, suggestions]);
+        return () => clearTimeout(searchTimeoutRef.current);
+    }, [rawQuery, backendURL, user]);
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -189,16 +219,14 @@ const FollowSuggestionsPage = () => {
     };
 
     // ── Grid — filtered + sorted (uses committedQ, not rawQuery) ───────────
-    const displayed = suggestions
+    const baseList = committedQ ? globalSearchResults : suggestions;
+    const displayed = baseList
         .filter(u => {
             if (activeFilter !== "all" && u.role !== activeFilter) return false;
+            // The global API search handles name/skill searching, but if we're filtering locally in the baseline suggestions we keep this:
             if (!committedQ) return true;
-            const q = committedQ.toLowerCase();
-            return (
-                u.name?.toLowerCase().includes(q) ||
-                u.country?.toLowerCase().includes(q) ||
-                u.skills?.some(s => s.toLowerCase().includes(q))
-            );
+            // For global search results we just return true because the backend did the search
+            return true;
         })
         .sort((a, b) => {
             if (activeSort === "popular") return (b.followersCount || 0) - (a.followersCount || 0);
@@ -228,7 +256,7 @@ const FollowSuggestionsPage = () => {
                         </motion.button>
                         <div className="flex-1 min-w-0">
                             <p className="text-[8px] font-black uppercase tracking-[0.22em] text-zinc-700">SuviX</p>
-                            <h1 className="text-base font-black text-white leading-none tracking-tight">Discover People</h1>
+                            <h1 className="text-base font-black text-white leading-none tracking-tight">Explore Users</h1>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <AnimatePresence>
