@@ -100,28 +100,49 @@ const ReelsPage = ({ isActive = true }) => {
             setLoadingMore(false);
             setRefreshing(false);
         }
-    }, [backendURL]);
+    }, [backendURL, updateCache, appendToCache, targetReelId]);
 
     // ─────────────────────────────────────────────────────────────
     // ON MOUNT — restore from cache if valid, else fresh fetch
     // ─────────────────────────────────────────────────────────────
     useEffect(() => {
-        if (isCacheValid() && !targetReelId) {
+        // Since ReelsPage is inside a persistent TabSwitcher, we only re-init when it becomes active
+        if (!isActive) return;
+
+        if (targetReelId) {
+            // CASE 1: We have a specific target reel from the URL
+            const currentFirstId = (reels.length > 0) ? reels[0]._id : null;
+            
+            if (targetReelId !== currentFirstId) {
+                // It's a brand new target or different from what we had at the top. RESET.
+                setLoading(true);
+                setReels([]);
+                setActiveReelIndex(0);
+                containerRef.current?.scrollTo({ top: 0, behavior: "instant" });
+                fetchReels(1, false);
+            } else {
+                // Target is already at index 0, but we might be scrolled away within the same mount!
+                // Force scroll to top (handles scroll persistence in the TabSwitcher environment)
+                setActiveReelIndex(0);
+                containerRef.current?.scrollTo({ top: 0, behavior: "instant" });
+            }
+        } else if (isCacheValid() && reels.length === 0) {
+            // CASE 2: Regular visit (no target), restore from global cache
             setReels(feedCache.current);
             setPage(pageCache.current);
             setLoading(false);
 
-            // Restore scroll position to where the user was
             const savedIndex = activeIndexCache.current;
             setTimeout(() => {
-                const el = document.getElementById(`reel-${savedIndex}`);
+                const el = document.getElementById(`feed-item-${savedIndex}`);
                 el?.scrollIntoView({ behavior: "instant", block: "start" });
                 setActiveReelIndex(savedIndex);
             }, 50);
-        } else {
+        } else if (!isCacheValid() || reels.length === 0) {
+            // CASE 3: Fresh fetch (cache expired or empty state)
             fetchReels(1, false);
         }
-    }, []);
+    }, [isActive, targetReelId, fetchReels, isCacheValid, reels.length]);
 
     // Fetch ads for reels feed
     useEffect(() => {
@@ -209,6 +230,17 @@ const ReelsPage = ({ isActive = true }) => {
     useReelObserver(combinedFeed.length, (index) => {
         setActiveReelIndex(index);
         savePosition(index);
+
+        // Sync URL with the active reel (Instagram-style shareability)
+        const item = combinedFeed[index];
+        if (item?.type === 'reel' && item.content?._id) {
+            const currentUrl = new URL(window.location.href);
+            if (currentUrl.searchParams.get("id") !== item.content._id) {
+                currentUrl.searchParams.set("id", item.content._id);
+                // Use replaceState to update URL without triggering a full re-render or re-fetch
+                window.history.replaceState(null, '', currentUrl.pathname + currentUrl.search);
+            }
+        }
     }, "feed-item");
 
     // ─────────────────────────────────────────────────────────────

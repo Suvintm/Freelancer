@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useState } from "react";
+import { createContext, useContext, useRef, useState, useCallback } from "react";
 
 /**
  * ReelsContext — Global state that survives navigation.
@@ -26,25 +26,25 @@ export const ReelsProvider = ({ children }) => {
     /**
      * Returns true if the feed cache is still fresh enough to use.
      */
-    const isCacheValid = () => {
+    const isCacheValid = useCallback(() => {
         if (!lastFetchTime.current || feedCache.current.length === 0) return false;
         return Date.now() - lastFetchTime.current < CACHE_DURATION_MS;
-    };
+    }, []);
 
     /**
      * Saves a new batch of reels to the cache.
      */
-    const updateCache = (reels, page) => {
+    const updateCache = useCallback((reels, page) => {
         feedCache.current = reels;
         pageCache.current = page;
         lastFetchTime.current = Date.now();
-    };
+    }, []);
 
     /**
      * Appends more reels to the existing cache (infinite scroll).
      * Automatically handles deduplication by _id.
      */
-    const appendToCache = (newReels, page) => {
+    const appendToCache = useCallback((newReels, page) => {
         const combined = [...feedCache.current, ...newReels];
         // Deduplicate by _id to ensure no components render with duplicate keys
         const unique = Array.from(new Map(combined.map(r => [r._id, r])).values());
@@ -52,25 +52,25 @@ export const ReelsProvider = ({ children }) => {
         feedCache.current = unique;
         pageCache.current = page;
         lastFetchTime.current = Date.now();
-    };
+    }, []);
 
     /**
      * Invalidates the cache, forcing a fresh fetch on next visit.
      */
-    const invalidateCache = () => {
+    const invalidateCache = useCallback(() => {
         feedCache.current = [];
         lastFetchTime.current = null;
         pageCache.current = 1;
         activeIndexCache.current = 0;
         scrollPositionCache.current = 0;
-    };
+    }, []);
 
     /**
      * Updates the remembered scroll position (active reel index).
      */
-    const savePosition = (index) => {
+    const savePosition = useCallback((index) => {
         activeIndexCache.current = index;
-    };
+    }, []);
 
     return (
         <ReelsContext.Provider

@@ -1,32 +1,57 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   HiArrowLeft,
-  HiSpeakerWave,
-  HiSpeakerXMark,
-  HiPlay,
-  HiPause,
   HiOutlineGlobeAlt,
   HiOutlineCalendarDays,
-  HiOutlineTag,
   HiOutlineCheckBadge,
   HiOutlineArrowTopRightOnSquare,
-  HiOutlinePhoto,
+  HiOutlineXMark,
+  HiOutlineHeart,
+  HiOutlineShare,
+  HiOutlineRocketLaunch,
+  HiOutlineCheckCircle,
+  HiOutlineArrowRight,
+  HiOutlineSparkles,
+  HiOutlineBuildingOffice2,
   HiChevronLeft,
   HiChevronRight,
+  HiOutlinePhone,
+  HiOutlineEnvelope,
+  HiOutlineMapPin,
+  HiOutlineUsers,
+  HiOutlineClock,
+  HiOutlineSpeakerWave,
+  HiOutlineSpeakerXMark,
+  HiOutlinePlay,
 } from "react-icons/hi2";
-import { FaInstagram, FaFacebook, FaYoutube } from "react-icons/fa";
+import {
+  FaInstagram,
+  FaFacebook,
+  FaYoutube,
+  FaPlay,
+  FaPause,
+  FaVolumeMute,
+  FaVolumeUp,
+  FaForward,
+  FaBackward,
+  FaExpand,
+  FaCompress,
+  FaGlobe,
+  FaWhatsapp,
+  FaChevronRight,
+} from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
 import axios from "axios";
 
-// ─── URL repair (same as UnifiedBannerSlider) ────────────────────────────────
+// ─── URL repair ───────────────────────────────────────────────────────────────
 const repairUrl = (url) => {
   if (!url || typeof url !== "string") return url;
   if (!url.includes("cloudinary") && !url.includes("res_") && !url.includes("_com")) return url;
   let fixed = url;
   fixed = fixed.replace(/^(https?):?\/*_+/gi, "$1://");
-  fixed = fixed.replace(/_+res_+cloudinary_+com/g, "res.cloudinary.com").replace(/res_cloudinary_com/g, "res.cloudinary.com");
+  fixed = fixed.replace(/_+res_+cloudinary_+com/g, "res.cloudinary.com").replace(/res_cloudinary_com/g, "res.cloudinary.com").replace(/cloudinary_com/g, "cloudinary.com");
   if (fixed.includes("res.cloudinary.com")) {
     fixed = fixed.replace(/res\.cloudinary\.com_+/g, "res.cloudinary.com/");
     fixed = fixed.replace(/image_upload_+/g, "image/upload/").replace(/video_upload_+/g, "video/upload/");
@@ -38,129 +63,150 @@ const repairUrl = (url) => {
   return fixed;
 };
 
-// ─── Overlay gradient builder (mirrors UnifiedBannerSlider) ─────────────────
-const buildOverlay = (lc = {}) => {
-  const hexToRgba = (hex, opacity) => {
-    try {
-      const r = parseInt(hex.slice(1, 3), 16);
-      const g = parseInt(hex.slice(3, 5), 16);
-      const b = parseInt(hex.slice(5, 7), 16);
-      return `rgba(${r},${g},${b},${(opacity / 100).toFixed(2)})`;
-    } catch { return `rgba(4,4,8,${(opacity / 100).toFixed(2)})`; }
-  };
-  const color = lc.overlayColor || "#040408";
-  const op = lc.overlayOpacity ?? 75;
-  const dirs = {
-    "to-top":    `linear-gradient(to top, ${hexToRgba(color, op)} 0%, ${hexToRgba(color, Math.round(op * 0.35))} 42%, transparent 75%)`,
-    "to-bottom": `linear-gradient(to bottom, ${hexToRgba(color, op)} 0%, transparent 75%)`,
-    "to-left":   `linear-gradient(to left, ${hexToRgba(color, op)} 0%, transparent 75%)`,
-    "to-right":  `linear-gradient(to right, ${hexToRgba(color, op)} 0%, transparent 75%)`,
-    "radial":    `radial-gradient(ellipse at center, transparent 30%, ${hexToRgba(color, op)} 100%)`,
-    "none":      "none",
-  };
-  return dirs[lc.overlayDirection] || dirs["to-top"];
+const fmt = (s) => {
+  if (!s || isNaN(s)) return "0:00";
+  const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2, "0")}`;
 };
 
-// ─── Banner Ad Preview (exact replica of live banner) ───────────────────────
-const BannerAdPreview = ({ ad }) => {
-  const lc = ad.layoutConfig || {};
-  const bs = ad.buttonStyle || {};
+// ─── Video Player ─────────────────────────────────────────────────────────────
+const VideoPlayer = ({ src }) => {
+  const videoRef    = useRef(null);
+  const trackRef    = useRef(null);
+  const containerRef = useRef(null);
 
-  const resolvedLc = {
-    textPosition: lc.textPosition ?? "bl",
-    overlayDirection: lc.overlayDirection ?? "to-top",
-    overlayOpacity: lc.overlayOpacity ?? 75,
-    overlayColor: lc.overlayColor ?? "#040408",
-    titleSize: lc.titleSize ?? "md",
-    titleWeight: lc.titleWeight ?? "black",
-    titleColor: lc.titleColor ?? "#ffffff",
-    descColor: lc.descColor ?? "rgba(212,212,216,0.75)",
-    showBadge: lc.showBadge ?? true,
-    showSponsorTag: lc.showSponsorTag ?? true,
-    showDescription: lc.showDescription ?? true,
-    showProgressBar: lc.showProgressBar ?? true,
-    badgeText: lc.badgeText ?? "",
-    badgeColor: lc.badgeColor ?? "rgba(255,255,255,0.12)",
+  const [playing,    setPlaying]    = useState(false);
+  const [muted,      setMuted]      = useState(false);
+  const [progress,   setProgress]   = useState(0);
+  const [duration,   setDuration]   = useState(0);
+  const [currentTime,setCurrentTime]= useState(0);
+  const [buffered,   setBuffered]   = useState(0);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [volume,     setVolume]     = useState(1);
+  const [jumpLabel,  setJumpLabel]  = useState(null);
+
+  // Pause when scrolled out of view
+  useEffect(() => {
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting && videoRef.current && !videoRef.current.paused) {
+        videoRef.current.pause(); setPlaying(false);
+      }
+    }, { threshold: 0.25 });
+    if (containerRef.current) io.observe(containerRef.current);
+    return () => io.disconnect();
+  }, []);
+
+  const togglePlay = () => {
+    if (!videoRef.current) return;
+    if (videoRef.current.paused) { videoRef.current.play(); setPlaying(true); }
+    else { videoRef.current.pause(); setPlaying(false); }
   };
 
-  const resolvedBs = {
-    variant: bs.variant ?? "filled",
-    bgColor: bs.bgColor ?? "#ffffff",
-    textColor: bs.textColor ?? "#000000",
-    borderColor: bs.borderColor ?? "#ffffff",
-    radius: bs.radius ?? "md",
-    icon: bs.icon ?? "chevron",
-    iconPosition: bs.iconPosition ?? "right",
+  const skip = (sec) => {
+    if (!videoRef.current) return;
+    videoRef.current.currentTime = Math.max(0, Math.min(duration, videoRef.current.currentTime + sec));
+    setJumpLabel(sec > 0 ? `+${sec}s` : `${sec}s`);
+    setTimeout(() => setJumpLabel(null), 600);
   };
 
-  const posMap = {
-    tl: { justifyContent: "flex-start", alignItems: "flex-start" },
-    tc: { justifyContent: "flex-start", alignItems: "center" },
-    tr: { justifyContent: "flex-start", alignItems: "flex-end" },
-    ml: { justifyContent: "center",     alignItems: "flex-start" },
-    mc: { justifyContent: "center",     alignItems: "center" },
-    mr: { justifyContent: "center",     alignItems: "flex-end" },
-    bl: { justifyContent: "flex-end",   alignItems: "flex-start" },
-    bc: { justifyContent: "flex-end",   alignItems: "center" },
-    br: { justifyContent: "flex-end",   alignItems: "flex-end" },
+  const seekTo = (e) => {
+    const rect = trackRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    if (videoRef.current) videoRef.current.currentTime = pct * duration;
   };
-  const flex = posMap[resolvedLc.textPosition] || posMap["bl"];
 
-  const titleFS = { sm: "13px", md: "16px", lg: "20px", xl: "24px" }[resolvedLc.titleSize] || "16px";
-  const titleFW = { bold: 700, black: 900, extrabold: 800 }[resolvedLc.titleWeight] || 900;
-  const rad = { sm: "6px", md: "8px", lg: "12px", full: "999px" }[resolvedBs.radius] || "8px";
+  const onTimeUpdate = () => {
+    const v = videoRef.current; if (!v) return;
+    setCurrentTime(v.currentTime);
+    setProgress(v.duration ? (v.currentTime / v.duration) * 100 : 0);
+    if (v.buffered.length > 0) setBuffered((v.buffered.end(v.buffered.length - 1) / v.duration) * 100);
+  };
 
-  const btnStyle = (() => {
-    const base = { display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 14px", fontSize: "10px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", cursor: "pointer", borderRadius: rad, border: "none" };
-    if (resolvedBs.variant === "filled")  return { ...base, background: resolvedBs.bgColor, color: resolvedBs.textColor };
-    if (resolvedBs.variant === "outline") return { ...base, background: "transparent", color: resolvedBs.borderColor, border: `1.5px solid ${resolvedBs.borderColor}` };
-    if (resolvedBs.variant === "ghost")   return { ...base, background: "rgba(255,255,255,0.1)", color: "#fff" };
-    return base;
-  })();
+  const onLoadedMetadata = () => { if (videoRef.current) setDuration(videoRef.current.duration); };
 
-  const overlayBg = buildOverlay(resolvedLc);
-  const mediaUrl = repairUrl(ad.mediaUrl);
+  const toggleMute = () => {
+    if (!videoRef.current) return;
+    videoRef.current.muted = !muted; setMuted(!muted);
+  };
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) { containerRef.current?.requestFullscreen(); setFullscreen(true); }
+    else { document.exitFullscreen(); setFullscreen(false); }
+  };
 
   return (
-    <div style={{ position: "relative", width: "100%", borderRadius: "1.5rem", overflow: "hidden", background: "#09090b", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 32px 64px rgba(0,0,0,0.7)" }}>
-      {/* Aspect ratio: 375×192 */}
-      <div style={{ paddingBottom: `${(192 / 375) * 100}%`, position: "relative" }}>
-        <div style={{ position: "absolute", inset: 0 }}>
-          {ad.mediaType === "video" ? (
-            <video src={mediaUrl} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          ) : (
-            <img src={mediaUrl} alt={ad.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          )}
-          {/* Overlay */}
-          <div style={{ position: "absolute", inset: 0, background: overlayBg }} />
-          {/* Progress bar */}
-          {resolvedLc.showProgressBar && (
-            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: "rgba(255,255,255,0.08)" }}>
-              <div style={{ width: "35%", height: "100%", background: "rgba(255,255,255,0.6)" }} />
-            </div>
-          )}
-          {/* Content HUD */}
-          <div style={{ position: "absolute", inset: 0, padding: "16px 16px 14px", display: "flex", flexDirection: "column", ...flex }}>
-            {resolvedLc.showBadge && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, background: resolvedLc.badgeColor, backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.1)", fontSize: "7.5px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.16em", color: "#fff" }}>
-                  {(resolvedLc.badgeText || ad.badge || "SPONSOR").toUpperCase()}
-                </span>
-                {resolvedLc.showSponsorTag && (
-                  <span style={{ padding: "2px 6px", borderRadius: 6, background: "rgba(245,158,11,0.85)", fontSize: "6.5px", fontWeight: 900, textTransform: "uppercase", color: "#fff" }}>SPONSOR</span>
-                )}
+    <div ref={containerRef} className="w-full bg-black overflow-hidden" style={{ borderRadius: "1rem" }}>
+      {/* Video */}
+      <div className="relative cursor-pointer" onClick={togglePlay}>
+        <video
+          ref={videoRef}
+          src={src}
+          style={{ width: "100%", maxHeight: "60vh", objectFit: "contain", display: "block", background: "#000" }}
+          onTimeUpdate={onTimeUpdate}
+          onLoadedMetadata={onLoadedMetadata}
+          onEnded={() => setPlaying(false)}
+          playsInline preload="metadata"
+        />
+        {/* Jump hint */}
+        <AnimatePresence>
+          {jumpLabel && (
+            <motion.div initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="bg-black/55 backdrop-blur-sm text-white text-sm font-black px-4 py-2 rounded-xl border border-white/10">
+                {jumpLabel}
               </div>
-            )}
-            <h2 style={{ fontSize: titleFS, fontWeight: titleFW, color: resolvedLc.titleColor, lineHeight: 1.2, letterSpacing: "-0.02em", margin: "0 0 4px", textShadow: "0 2px 12px rgba(0,0,0,0.5)", maxWidth: "80%", textAlign: flex.alignItems === "flex-end" ? "right" : flex.alignItems === "center" ? "center" : "left" }}>
-              {ad.title}
-            </h2>
-            {resolvedLc.showDescription && ad.description && (
-              <p style={{ fontSize: "9.5px", color: resolvedLc.descColor, fontWeight: 500, lineHeight: 1.5, margin: "0 0 10px", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", maxWidth: "72%" }}>
-                {ad.description || ad.tagline}
-              </p>
-            )}
-            <button style={btnStyle} onClick={() => ad.links?.website && window.open(ad.links.website, "_blank")}>
-              {ad.ctaText || "Learn More"} ›
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {/* Center play/pause tap indicator */}
+        {!playing && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-14 h-14 rounded-full bg-black/40 backdrop-blur border border-white/15 flex items-center justify-center">
+              <FaPlay className="text-white text-base ml-1" />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Controls bar — below video, not on top */}
+      <div className="px-4 pt-2.5 pb-3 bg-[#0a0a0a] border-t border-white/6">
+        {/* Progress track */}
+        <div ref={trackRef} className="relative h-1 bg-white/10 rounded-full cursor-pointer mb-2.5 group" onClick={seekTo}>
+          <div className="absolute inset-y-0 left-0 bg-white/20 rounded-full" style={{ width: `${buffered}%` }} />
+          <div className="absolute inset-y-0 left-0 bg-white rounded-full" style={{ width: `${progress}%` }} />
+          <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity" style={{ left: `${progress}%` }} />
+        </div>
+
+        {/* Controls row */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {/* Skip back */}
+            <button onClick={() => skip(-2)} className="text-white/40 hover:text-white transition-colors">
+              <FaBackward className="text-xs" />
+            </button>
+            {/* Play/pause */}
+            <button onClick={togglePlay} className="text-white hover:text-white/80 transition-colors">
+              {playing ? <FaPause className="text-sm" /> : <FaPlay className="text-sm ml-0.5" />}
+            </button>
+            {/* Skip forward */}
+            <button onClick={() => skip(2)} className="text-white/40 hover:text-white transition-colors">
+              <FaForward className="text-xs" />
+            </button>
+            {/* Time */}
+            <span className="text-white/30 text-[10px] font-mono tabular-nums">
+              {fmt(currentTime)} / {fmt(duration)}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Mute */}
+            <button onClick={toggleMute} className="text-white/40 hover:text-white transition-colors">
+              {muted || volume === 0 ? <FaVolumeMute className="text-xs" /> : <FaVolumeUp className="text-xs" />}
+            </button>
+            {/* Fullscreen */}
+            <button onClick={toggleFullscreen} className="text-white/40 hover:text-white transition-colors">
+              {fullscreen ? <FaCompress className="text-xs" /> : <FaExpand className="text-xs" />}
             </button>
           </div>
         </div>
@@ -169,324 +215,488 @@ const BannerAdPreview = ({ ad }) => {
   );
 };
 
-// ─── Gallery Viewer ──────────────────────────────────────────────────────────
-const GalleryViewer = ({ images }) => {
-  const [current, setCurrent] = useState(0);
-  if (!images?.length) return null;
+// ─── Lightbox ─────────────────────────────────────────────────────────────────
+const Lightbox = ({ items, startIndex, onClose }) => {
+  const [current, setCurrent] = useState(startIndex);
+
+  useEffect(() => {
+    const fn = (e) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight") setCurrent(c => (c + 1) % items.length);
+      if (e.key === "ArrowLeft")  setCurrent(c => (c - 1 + items.length) % items.length);
+    };
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+  }, [items.length, onClose]);
+
+  const item = items[current];
 
   return (
-    <div>
-      {/* Main image */}
-      <div className="relative rounded-2xl overflow-hidden bg-zinc-900 border border-white/5" style={{ aspectRatio: "16/9" }}>
-        <AnimatePresence mode="wait">
-          <motion.img
-            key={current}
-            src={repairUrl(images[current])}
-            alt=""
-            initial={{ opacity: 0, scale: 1.03 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.97 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full h-full object-cover"
-          />
-        </AnimatePresence>
-        {images.length > 1 && (
-          <>
-            <button onClick={() => setCurrent(p => (p - 1 + images.length) % images.length)} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-xl bg-black/50 backdrop-blur border border-white/10 text-white hover:bg-white hover:text-black transition-all">
-              <HiChevronLeft className="text-sm" />
-            </button>
-            <button onClick={() => setCurrent(p => (p + 1) % images.length)} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-xl bg-black/50 backdrop-blur border border-white/10 text-white hover:bg-white hover:text-black transition-all">
-              <HiChevronRight className="text-sm" />
-            </button>
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-              {images.map((_, i) => (
-                <button key={i} onClick={() => setCurrent(i)} style={{ width: i === current ? 18 : 5, height: 5, borderRadius: 99, background: i === current ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.3)", transition: "all 0.2s" }} />
-              ))}
-            </div>
-          </>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[200] bg-black/96 backdrop-blur-2xl flex items-center justify-center"
+      onClick={onClose}>
+      <button onClick={onClose}
+        className="absolute top-4 right-4 z-10 w-9 h-9 flex items-center justify-center rounded-xl bg-white/6 border border-white/10 text-white/50 hover:text-white transition-all">
+        <HiOutlineXMark className="text-base" />
+      </button>
+      <span className="absolute top-4 left-1/2 -translate-x-1/2 text-white/20 text-[10px] font-bold uppercase tracking-widest">
+        {current + 1} / {items.length}
+      </span>
+      <div className="relative w-full max-w-4xl max-h-[85vh] flex items-center justify-center px-14" onClick={e => e.stopPropagation()}>
+        {item.type === "video" ? (
+          <video key={current} src={item.url} autoPlay controls style={{ maxWidth: "100%", maxHeight: "80vh", borderRadius: 12 }} />
+        ) : (
+          <img src={item.url} alt="" style={{ maxWidth: "100%", maxHeight: "80vh", borderRadius: 12, objectFit: "contain" }} />
         )}
       </div>
-      {/* Thumbnails */}
-      {images.length > 1 && (
-        <div className="flex gap-2 mt-3">
-          {images.map((img, i) => (
-            <button key={i} onClick={() => setCurrent(i)} className={`flex-1 rounded-xl overflow-hidden border-2 transition-all ${i === current ? "border-indigo-500" : "border-transparent opacity-50 hover:opacity-80"}`} style={{ aspectRatio: "16/9" }}>
-              <img src={repairUrl(img)} alt="" className="w-full h-full object-cover" />
-            </button>
+      {items.length > 1 && (
+        <>
+          <button onClick={e => { e.stopPropagation(); setCurrent(c => (c - 1 + items.length) % items.length); }}
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-xl bg-white/6 border border-white/10 text-white/50 hover:text-white transition-all">
+            <HiChevronLeft className="text-base" />
+          </button>
+          <button onClick={e => { e.stopPropagation(); setCurrent(c => (c + 1) % items.length); }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-xl bg-white/6 border border-white/10 text-white/50 hover:text-white transition-all">
+            <HiChevronRight className="text-base" />
+          </button>
+        </>
+      )}
+      {items.length > 1 && (
+        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-1.5">
+          {items.map((_, i) => (
+            <button key={i} onClick={e => { e.stopPropagation(); setCurrent(i); }}
+              style={{ width: i === current ? 18 : 5, height: 4, borderRadius: 99, background: i === current ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.2)", transition: "all 0.2s" }} />
           ))}
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Gallery Strip ────────────────────────────────────────────────────────────
+const GalleryStrip = ({ items }) => {
+  const [lightboxIdx, setLightboxIdx] = useState(null);
+  if (!items?.length) return null;
+
+  return (
+    <>
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">
+          Gallery · {items.length} item{items.length !== 1 ? "s" : ""}
+        </p>
+        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+          {items.map((item, i) => (
+            <button key={i} onClick={() => setLightboxIdx(i)}
+              className="relative flex-shrink-0 rounded-xl overflow-hidden bg-[#111] border border-white/8 hover:border-white/20 transition-all"
+              style={{ width: 120, height: 76 }}>
+              {item.type === "video" ? (
+                <>
+                  <video src={item.url} muted playsInline preload="metadata" style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    onMouseEnter={e => e.target.play()} onMouseLeave={e => { e.target.pause(); e.target.currentTime = 0; }} />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/35">
+                    <div className="w-6 h-6 rounded-full bg-white/15 backdrop-blur flex items-center justify-center">
+                      <FaPlay className="text-white text-[8px] ml-0.5" />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <img src={item.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+      <AnimatePresence>
+        {lightboxIdx !== null && <Lightbox items={items} startIndex={lightboxIdx} onClose={() => setLightboxIdx(null)} />}
+      </AnimatePresence>
+    </>
+  );
+};
+
+// ─── Row item for sidebar details ─────────────────────────────────────────────
+const DetailRow = ({ label, value, color = "text-white/60" }) => (
+  <div className="flex items-center justify-between py-2.5 border-b border-white/5 last:border-0">
+    <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">{label}</span>
+    <span className={`text-xs font-semibold ${color}`}>{value}</span>
+  </div>
+);
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
 const AdDetailsPage = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
+  const { id }         = useParams();
+  const navigate       = useNavigate();
   const { backendURL } = useAppContext();
-  const [ad, setAd] = useState(null);
+
+  const [ad,      setAd]      = useState(null);
   const [loading, setLoading] = useState(true);
+  const [liked,   setLiked]   = useState(false);
+  const [copied,  setCopied]  = useState(false);
 
   useEffect(() => {
-    const fetchAd = async () => {
+    (async () => {
       try {
         const res = await axios.get(`${backendURL}/api/ads/${id}`);
         if (res.data.success && res.data.ad) {
           const a = res.data.ad;
+          const gallery = (a.galleryImages || [])
+            .map(repairUrl).filter(Boolean)
+            .map(url => ({ url, type: /\.(mp4|mov|m4v|webm)$/i.test(url) ? "video" : "image" }));
+
           setAd({
+            _id:             a._id,
             title:           a.title,
+            tagline:         a.tagline || "",
             description:     a.description || a.tagline || "",
             longDescription: a.longDescription || "",
             mediaUrl:        repairUrl(a.mediaUrl),
             mediaType:       a.mediaType,
             badge:           a.badge || "SPONSOR",
-            ctaText:         a.ctaText || "Learn More",
-            companyName:     a.companyName || a.advertiserName || "",
+            ctaText:         a.ctaText || "Visit Now",
+            companyName:     a.companyName || "",
             advertiserName:  a.advertiserName || "",
+            advertiserEmail: a.advertiserEmail || "",
+            advertiserPhone: a.advertiserPhone || "",
+            priority:        a.priority || "medium",
             startDate:       a.startDate,
             endDate:         a.endDate,
             displayLocations: a.displayLocations || [],
-            priority:        a.priority || "medium",
-            layoutConfig:    a.layoutConfig || {},
-            buttonStyle:     a.buttonStyle || {},
-            gallery:         (a.galleryImages || []).map(repairUrl).filter(Boolean),
-            links: {
-              website:   a.websiteUrl   || null,
-              instagram: a.instagramUrl || null,
-              facebook:  a.facebookUrl  || null,
-              youtube:   a.youtubeUrl   || null,
-              other:     a.otherUrl     || null,
-            },
+            gallery,
+            websiteUrl:   a.websiteUrl   || null,
+            instagramUrl: a.instagramUrl || null,
+            facebookUrl:  a.facebookUrl  || null,
+            youtubeUrl:   a.youtubeUrl   || null,
+            otherUrl:     a.otherUrl     || null,
+            views:        a.views        || null,
+            clicks:       a.clicks       || null,
+            // From backend later:
+            businessCategory: a.businessCategory || null,
+            establishedYear:  a.establishedYear  || null,
+            teamSize:         a.teamSize         || null,
+            location:         a.location         || null,
+            highlights:       a.highlights       || [],
+            rating:           a.rating           || null,
+            reviewCount:      a.reviewCount       || null,
           });
+
+          axios.post(`${backendURL}/api/ads/${a._id}/view`, { location: "ad_details" }).catch(() => {});
         }
-      } catch (err) {
-        console.error("Failed to fetch ad:", err);
+      } catch (e) {
+        console.error(e);
       } finally {
         setLoading(false);
       }
-    };
-    fetchAd();
+    })();
     window.scrollTo(0, 0);
   }, [id, backendURL]);
 
+  const handleCTA = () => {
+    if (!ad) return;
+    axios.post(`${backendURL}/api/ads/${ad._id}/click`).catch(() => {});
+    const url = ad.websiteUrl || ad.instagramUrl || ad.otherUrl;
+    if (url) window.open(url, "_blank");
+  };
+
+  const handleShare = () => {
+    if (navigator.share) { navigator.share({ title: ad?.title, url: window.location.href }).catch(() => {}); return; }
+    navigator.clipboard.writeText(window.location.href).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+
+  // ── Loading ───────────────────────────────────────────────────────
   if (loading) return (
-    <div className="min-h-screen bg-[#070709] flex items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
-        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
-        <p className="text-zinc-600 text-sm font-medium tracking-wider uppercase">Loading</p>
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.9, ease: "linear" }}
+          className="w-7 h-7 rounded-full border-2 border-white border-t-transparent" />
+        <p className="text-white/20 text-[10px] font-bold uppercase tracking-[0.2em]">Loading</p>
       </div>
     </div>
   );
 
   if (!ad) return (
-    <div className="min-h-screen bg-[#070709] flex items-center justify-center text-zinc-500 flex-col gap-4">
-      <p className="text-lg font-semibold">Ad not found</p>
-      <button onClick={() => navigate(-1)} className="text-sm text-indigo-400 hover:text-indigo-300 underline">Go back</button>
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4 text-white/30">
+      <p className="text-sm font-semibold">Ad not found</p>
+      <button onClick={() => navigate(-1)} className="text-xs text-white/40 hover:text-white underline transition-colors">Go back</button>
     </div>
   );
 
-  const hasLinks = Object.values(ad.links).some(Boolean);
-  const hasGallery = ad.gallery?.length > 0;
-  const hasLongDesc = ad.longDescription?.trim().length > 0;
+  const hasLongDesc   = ad.longDescription?.trim().length > 0;
+  const hasGallery    = ad.gallery?.length > 0;
+  const hasHighlights = ad.highlights?.length > 0;
+  const expiryText    = ad.endDate ? new Date(ad.endDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "No expiry";
 
-  const linkItems = [
-    { key: "website",   label: "Official Website", icon: HiOutlineGlobeAlt,  href: ad.links.website,   color: "hover:bg-white hover:text-black",            bg: "bg-white/5" },
-    { key: "instagram", label: "Instagram",         icon: FaInstagram,        href: ad.links.instagram, color: "hover:bg-[#E1306C] hover:border-[#E1306C]",  bg: "bg-[#E1306C]/10 border-[#E1306C]/20" },
-    { key: "facebook",  label: "Facebook",          icon: FaFacebook,         href: ad.links.facebook,  color: "hover:bg-[#1877F2] hover:border-[#1877F2]",  bg: "bg-[#1877F2]/10 border-[#1877F2]/20" },
-    { key: "youtube",   label: "YouTube",           icon: FaYoutube,          href: ad.links.youtube,   color: "hover:bg-[#FF0000] hover:border-[#FF0000]",  bg: "bg-[#FF0000]/10 border-[#FF0000]/20" },
-    { key: "other",     label: "More Info",         icon: HiOutlineArrowTopRightOnSquare, href: ad.links.other, color: "hover:bg-zinc-700", bg: "bg-white/5" },
+  const socialLinks = [
+    { label: "Website",   icon: FaGlobe,     href: ad.websiteUrl,   cls: "hover:border-white/25 hover:text-white" },
+    { label: "Instagram", icon: FaInstagram, href: ad.instagramUrl, cls: "hover:border-[#E1306C]/40 hover:text-[#E1306C]" },
+    { label: "Facebook",  icon: FaFacebook,  href: ad.facebookUrl,  cls: "hover:border-[#1877F2]/40 hover:text-[#1877F2]" },
+    { label: "YouTube",   icon: FaYoutube,   href: ad.youtubeUrl,   cls: "hover:border-[#FF0000]/40 hover:text-[#FF0000]" },
+    { label: "More Info", icon: HiOutlineArrowTopRightOnSquare, href: ad.otherUrl, cls: "hover:border-white/25 hover:text-white" },
   ].filter(l => l.href);
 
+  const priorityColor = { urgent: "text-red-400", high: "text-orange-400", medium: "text-amber-400", low: "text-white/30" }[ad.priority] || "text-white/30";
+
   return (
-    <div className="min-h-screen bg-[#070709] text-white" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+    <div className="min-h-screen bg-black text-white" style={{ fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif" }}>
 
-      {/* Ambient background glow */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[400px] rounded-full opacity-[0.04]" style={{ background: "radial-gradient(circle, #6366f1, transparent 70%)" }} />
-        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full opacity-[0.03]" style={{ background: "radial-gradient(circle, #a855f7, transparent 70%)" }} />
-      </div>
+      {/* ── NAV ── */}
+      <header className="sticky top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-2xl border-b border-white/6">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-13 flex items-center justify-between gap-3" style={{ height: 52 }}>
+          <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-white/35 hover:text-white transition-colors text-sm font-medium">
+            <HiArrowLeft className="text-sm" /> Back
+          </button>
 
-      {/* ── STICKY HEADER ── */}
-      <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5 py-4">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-zinc-900/80 backdrop-blur-xl border border-white/8 rounded-xl text-zinc-300 hover:text-white hover:bg-zinc-800/80 transition-all text-sm font-semibold"
-        >
-          <HiArrowLeft className="text-base" /> Back
-        </button>
-        <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900/80 backdrop-blur-xl border border-white/8 rounded-xl">
-          <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">Sponsored</span>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/8 border border-amber-500/15">
+            <div className="w-1 h-1 rounded-full bg-amber-400 animate-pulse" />
+            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-amber-400/70">Sponsored</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button onClick={() => setLiked(l => !l)}
+              className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all text-xs ${liked ? "bg-white/5 border-white/15 text-white" : "bg-transparent border-white/8 text-white/25 hover:text-white/60 hover:border-white/15"}`}>
+              <HiOutlineHeart />
+            </button>
+            <button onClick={handleShare}
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-white/8 text-white/25 hover:text-white/60 hover:border-white/15 transition-all text-xs">
+              {copied ? <HiOutlineCheckBadge className="text-white/50" /> : <HiOutlineShare />}
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* ── MAIN CONTENT ── */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-24 pb-20">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-5">
+        <div className="space-y-4">
 
-        {/* ── BANNER AD DISPLAY — exact live banner replica ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="mb-8"
-        >
-          <BannerAdPreview ad={ad} />
-        </motion.div>
+          {/* ── MEDIA ── */}
+          <div className="rounded-2xl overflow-hidden border border-white/8">
+            {ad.mediaType === "video"
+              ? <VideoPlayer src={ad.mediaUrl} />
+              : (
+                <div className="bg-black">
+                  <img src={ad.mediaUrl} alt={ad.title}
+                    style={{ width: "100%", maxHeight: "60vh", objectFit: "contain", display: "block", background: "#000" }} />
+                </div>
+              )
+            }
+          </div>
 
-        {/* ── TWO-COLUMN LAYOUT ── */}
-        <div className="grid lg:grid-cols-[1fr_300px] gap-6">
+          {/* ── GALLERY ── */}
+          {hasGallery && <GalleryStrip items={ad.gallery} />}
 
-          {/* ── LEFT: Main Content ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="space-y-5"
-          >
+          {/* ── MAIN GRID ── */}
+          <div className="grid lg:grid-cols-[1fr_280px] gap-4">
 
-            {/* Title card */}
-            <div className="bg-zinc-900/60 border border-white/6 rounded-2xl p-6">
-              <div className="flex items-start justify-between gap-4 mb-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/25 text-amber-400 text-[10px] font-bold uppercase tracking-widest">
-                    {ad.badge}
-                  </span>
-                  {ad.companyName && (
-                    <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/8 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
-                      {ad.companyName}
+            {/* LEFT */}
+            <div className="space-y-3">
+
+              {/* Title block */}
+              <div className="rounded-2xl bg-[#111] border border-white/8 p-5">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/8 text-[9px] font-black uppercase tracking-widest text-white/40">
+                      {ad.badge}
                     </span>
+                    {ad.businessCategory && (
+                      <span className="px-2 py-0.5 rounded-md bg-white/4 border border-white/6 text-[9px] font-semibold text-white/30">
+                        {ad.businessCategory}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 text-white/25 flex-shrink-0">
+                    <HiOutlineCheckBadge className="text-xs" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Verified</span>
+                  </div>
+                </div>
+
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight leading-tight mb-2">{ad.title}</h1>
+
+                {ad.tagline && ad.tagline !== ad.description && (
+                  <p className="text-white/35 text-sm italic mb-2">"{ad.tagline}"</p>
+                )}
+
+                {ad.description && (
+                  <p className="text-white/40 text-sm leading-relaxed">{ad.description}</p>
+                )}
+
+                {/* Stats */}
+                {(ad.views || ad.clicks || ad.rating) && (
+                  <div className="flex items-center gap-5 mt-4 pt-4 border-t border-white/6">
+                    {ad.views && (
+                      <div>
+                        <p className="text-sm font-black text-white">{ad.views.toLocaleString()}</p>
+                        <p className="text-[9px] text-white/25 uppercase tracking-wider">Views</p>
+                      </div>
+                    )}
+                    {ad.clicks && (
+                      <div>
+                        <p className="text-sm font-black text-white">{ad.clicks.toLocaleString()}</p>
+                        <p className="text-[9px] text-white/25 uppercase tracking-wider">Clicks</p>
+                      </div>
+                    )}
+                    {ad.rating && (
+                      <div>
+                        <p className="text-sm font-black text-white">{ad.rating} ★ {ad.reviewCount ? `(${ad.reviewCount})` : ""}</p>
+                        <p className="text-[9px] text-white/25 uppercase tracking-wider">Rating</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Highlights */}
+              {hasHighlights && (
+                <div className="rounded-2xl bg-[#111] border border-white/8 p-5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Highlights</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {ad.highlights.map((h, i) => (
+                      <div key={i} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/3 border border-white/6">
+                        <HiOutlineCheckCircle className="text-white/25 text-sm flex-shrink-0" />
+                        <span className="text-xs text-white/50 font-medium">{h}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Long description */}
+              {hasLongDesc && (
+                <div className="rounded-2xl bg-[#111] border border-white/8 p-5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">About</p>
+                  <div className="text-white/40 text-sm leading-[1.85] whitespace-pre-line">{ad.longDescription}</div>
+                </div>
+              )}
+
+              {/* Social links */}
+              {socialLinks.length > 0 && (
+                <div className="rounded-2xl bg-[#111] border border-white/8 p-5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Links</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {socialLinks.map(({ label, icon: Icon, href, cls }) => (
+                      <a key={label} href={href} target="_blank" rel="noreferrer"
+                        onClick={() => axios.post(`${backendURL}/api/ads/${ad._id}/click`).catch(() => {})}
+                        className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/3 border border-white/8 text-white/40 text-xs font-semibold transition-all group ${cls}`}>
+                        <div className="flex items-center gap-2.5">
+                          <Icon className="text-sm" /> {label}
+                        </div>
+                        <HiOutlineArrowTopRightOnSquare className="text-xs opacity-40 group-hover:opacity-100 transition-opacity" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Advertise CTA */}
+              <div className="rounded-2xl bg-[#111] border border-white/8 p-5">
+                <div className="flex items-start gap-4">
+                  <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+                    <HiOutlineRocketLaunch className="text-white/35 text-sm" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-black text-white mb-1">Advertise on SuviX</p>
+                    <p className="text-xs text-white/30 leading-relaxed mb-3">Reach 10,000+ video creators, editors, and clients. Transparent pricing, no hidden fees.</p>
+                    <div className="grid grid-cols-3 gap-2 mb-3 pb-3 border-b border-white/6">
+                      {[{ v: "10K+", l: "Creators" }, { v: "50K+", l: "Impressions" }, { v: "₹499", l: "Starting" }].map(({ v, l }) => (
+                        <div key={l}>
+                          <p className="text-sm font-black text-white">{v}</p>
+                          <p className="text-[9px] text-white/25 uppercase tracking-wider">{l}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <button onClick={() => navigate("/advertise")}
+                      className="flex items-center gap-1.5 text-xs font-black text-white/40 hover:text-white transition-colors">
+                      Request Ad Placement <HiOutlineArrowRight className="text-xs" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* RIGHT SIDEBAR */}
+            <div className="space-y-3">
+
+              {/* CTA */}
+              <button onClick={handleCTA}
+                className="w-full py-3 rounded-xl font-black text-sm text-black bg-white hover:bg-white/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                {ad.ctaText} <FaChevronRight className="text-xs" />
+              </button>
+
+              {/* Ad info */}
+              <div className="rounded-2xl bg-[#111] border border-white/8 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-1">Ad Info</p>
+                <div>
+                  <DetailRow label="Priority" value={ad.priority?.charAt(0).toUpperCase() + ad.priority?.slice(1)} color={priorityColor} />
+                  <DetailRow label="Expires" value={expiryText} />
+                  {ad.displayLocations?.length > 0 && (
+                    <DetailRow label="Placement" value={ad.displayLocations.map(l => l.replace("banners:", "").replace(/_/g, " ")).join(", ")} />
                   )}
                 </div>
-                <div className="flex items-center gap-1.5 text-emerald-400 flex-shrink-0">
-                  <HiOutlineCheckBadge className="text-base" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Verified</span>
-                </div>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-tight mb-3">
-                {ad.title}
-              </h1>
-              {ad.description && (
-                <p className="text-zinc-400 text-sm leading-relaxed">
-                  {ad.description}
-                </p>
-              )}
-            </div>
 
-            {/* Long description */}
-            {hasLongDesc && (
-              <div className="bg-zinc-900/60 border border-white/6 rounded-2xl p-6">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-4">About this Ad</h3>
-                <div className="text-zinc-300 text-sm leading-[1.8] whitespace-pre-line">
-                  {ad.longDescription}
-                </div>
-              </div>
-            )}
-
-            {/* Gallery */}
-            {hasGallery && (
-              <div className="bg-zinc-900/60 border border-white/6 rounded-2xl p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <HiOutlinePhoto className="text-zinc-400 text-base" />
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Gallery</h3>
-                </div>
-                <GalleryViewer images={ad.gallery} />
-              </div>
-            )}
-
-          </motion.div>
-
-          {/* ── RIGHT: Sidebar ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
-            className="space-y-4"
-          >
-
-            {/* CTA button */}
-            {ad.links.website && (
-              <a href={ad.links.website} target="_blank" rel="noreferrer" className="block w-full py-4 text-center rounded-xl font-bold text-sm uppercase tracking-widest transition-all active:scale-95 hover:opacity-90" style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", color: "#fff", boxShadow: "0 8px 24px rgba(99,102,241,0.35)" }}>
-                {ad.ctaText || "Visit Now"} →
-              </a>
-            )}
-
-            {/* Ad details */}
-            <div className="bg-zinc-900/60 border border-white/6 rounded-2xl p-5 space-y-3">
-              <h4 className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 mb-3">Ad Details</h4>
-              {[
-                { icon: HiOutlineTag, label: "Priority", value: ad.priority?.charAt(0).toUpperCase() + ad.priority?.slice(1), color: { urgent: "text-red-400", high: "text-orange-400", medium: "text-yellow-400", low: "text-zinc-400" }[ad.priority] || "text-zinc-400" },
-                { icon: HiOutlineCalendarDays, label: "Runs until", value: ad.endDate ? new Date(ad.endDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "No expiry" },
-                ...(ad.displayLocations?.length ? [{ icon: HiOutlineGlobeAlt, label: "Placement", value: ad.displayLocations.map(l => l.replace("_", " ")).join(", ") }] : []),
-              ].map(({ icon: Icon, label, value, color }) => (
-                <div key={label} className="flex items-center justify-between py-2 border-b border-white/4 last:border-0">
-                  <div className="flex items-center gap-2 text-zinc-500">
-                    <Icon className="text-sm" />
-                    <span className="text-xs font-medium">{label}</span>
-                  </div>
-                  <span className={`text-xs font-semibold capitalize ${color || "text-zinc-300"}`}>{value}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Links */}
-            {linkItems.length > 0 && (
-              <div className="bg-zinc-900/60 border border-white/6 rounded-2xl p-5">
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 mb-3">Connect</h4>
-                <div className="space-y-2">
-                  {linkItems.map(({ key, label, icon: Icon, href, color, bg }) => (
-                    <a
-                      key={key}
-                      href={href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={`flex items-center justify-between p-3 ${bg} border border-white/5 rounded-xl text-white text-xs font-semibold ${color} transition-all group`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Icon className="text-sm" />
-                        {label}
-                      </div>
-                      <HiOutlineArrowTopRightOnSquare className="text-xs opacity-40 group-hover:opacity-100 transition-opacity" />
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Advertiser info */}
-            {ad.advertiserName && (
-              <div className="bg-zinc-900/60 border border-white/6 rounded-2xl p-5">
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 mb-3">Advertiser</h4>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center text-indigo-400 font-black text-sm">
-                    {ad.advertiserName.charAt(0).toUpperCase()}
+              {/* Advertiser */}
+              {(ad.advertiserName || ad.companyName) && (
+                <div className="rounded-2xl bg-[#111] border border-white/8 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-3">Advertiser</p>
+                  <div className="flex items-center gap-3 mb-3 pb-3 border-b border-white/6">
+                    <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center font-black text-sm text-white/40 flex-shrink-0">
+                      {(ad.advertiserName || ad.companyName).charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-white/80 truncate">{ad.advertiserName || ad.companyName}</p>
+                      {ad.companyName && ad.advertiserName && (
+                        <p className="text-xs text-white/30 truncate">{ad.companyName}</p>
+                      )}
+                    </div>
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-zinc-200">{ad.advertiserName}</p>
-                    {ad.companyName && <p className="text-xs text-zinc-500">{ad.companyName}</p>}
+                    {ad.location         && <DetailRow label="Location" value={ad.location} />}
+                    {ad.establishedYear  && <DetailRow label="Est."     value={ad.establishedYear} />}
+                    {ad.teamSize         && <DetailRow label="Team"     value={ad.teamSize} />}
+                    {ad.advertiserEmail  && <DetailRow label="Email"    value={ad.advertiserEmail} color="text-white/50" />}
+                    {ad.advertiserPhone  && <DetailRow label="Phone"    value={ad.advertiserPhone} color="text-white/50" />}
                   </div>
                 </div>
+              )}
+
+              {/* Trust signals */}
+              <div className="rounded-2xl bg-[#111] border border-white/8 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-3">Why Trust This?</p>
+                {[
+                  "Verified advertiser on SuviX",
+                  "Ad reviewed by our team",
+                  "Real business, real product",
+                ].map((t, i) => (
+                  <div key={i} className="flex items-center gap-2.5 py-2 border-b border-white/5 last:border-0">
+                    <HiOutlineCheckCircle className="text-white/20 text-xs flex-shrink-0" />
+                    <span className="text-xs text-white/30">{t}</span>
+                  </div>
+                ))}
               </div>
-            )}
 
-            {/* Promote CTA */}
-            <div className="bg-gradient-to-br from-indigo-950/50 to-purple-950/50 border border-indigo-500/15 rounded-2xl p-5 text-center">
-              <p className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-1">Want to advertise?</p>
-              <p className="text-[11px] text-zinc-500 mb-4 leading-relaxed">Reach thousands of video creators on SuviX</p>
-              <button
-                onClick={() => navigate("/contact")}
-                className="w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/10 transition-all"
-              >
-                Contact Ad Team
-              </button>
             </div>
-
-          </motion.div>
+          </div>
         </div>
-      </main>
+      </div>
+
+      {/* ── MOBILE STICKY CTA ── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-black/90 backdrop-blur-2xl border-t border-white/6 px-4 py-3 flex gap-2.5">
+        <button onClick={() => navigate(-1)}
+          className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-white/35 flex-shrink-0">
+          <HiArrowLeft className="text-sm" />
+        </button>
+        <button onClick={handleCTA}
+          className="flex-1 h-11 rounded-xl font-black text-sm text-black bg-white hover:bg-white/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+          {ad.ctaText} <FaChevronRight className="text-xs" />
+        </button>
+      </div>
+
+      <div className="lg:hidden h-20" />
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
+        ::-webkit-scrollbar { display: none; }
+        * { -webkit-tap-highlight-color: transparent; }
+        input[type=range] { -webkit-appearance: none; height: 3px; border-radius: 99px; background: rgba(255,255,255,0.1); cursor: pointer; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%; background: white; cursor: pointer; }
       `}</style>
     </div>
   );
