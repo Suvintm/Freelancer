@@ -6,8 +6,7 @@ import {
   FaInbox,
 } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
-import Sidebar from "../components/Sidebar.jsx";
-import EditorNavbar from "../components/EditorNavbar.jsx";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 
 // Mock orders data - Replace with actual API calls later
@@ -39,11 +38,7 @@ const EditorMyorderspage = () => {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-100">
-      {/* Sidebar */}
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-      {/* Navbar */}
-      <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       {/* Main Content */}
       <main className="flex-1 px-4 md:px-6 py-6 md:ml-64 md:mt-16">

@@ -19,6 +19,7 @@ import axios from "axios";
 import PaymentCard from "../components/PaymentCard";
 import PaymentDetailModal from "../components/PaymentDetailModal";
 import ClientWalletSection from "../components/ClientWalletSection";
+import UnifiedNavigation from "../components/UnifiedNavigation";
 import { toast } from "react-toastify";
 
 const backendURL = import.meta.env.VITE_BACKEND_URL;
@@ -39,6 +40,7 @@ const PaymentsPage = () => {
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("transactions"); // transactions | wallet
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Fetch payments
   const fetchPayments = async () => {
@@ -95,9 +97,12 @@ const PaymentsPage = () => {
   const isEditor = user?.role === "editor";
 
   return (
-    <div className="min-h-screen bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-black/90 light:bg-white/90 backdrop-blur-md border-b border-white/10 light:border-slate-200">
+    <div className="min-h-screen bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+      
+      <main className="flex-1 md:ml-64 md:mt-16 overflow-y-auto">
+        {/* Header */}
+        <div className="sticky top-0 z-50 bg-black/90 light:bg-white/90 backdrop-blur-md border-b border-white/10 light:border-slate-200">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4 mb-4">
             <button
@@ -338,13 +343,13 @@ const PaymentsPage = () => {
 
       </div>
 
-      {/* Payment Detail Modal */}
       <PaymentDetailModal
         isOpen={!!selectedPayment}
         onClose={() => setSelectedPayment(null)}
         paymentId={selectedPayment?._id}
         isEditor={isEditor}
       />
+      </main>
     </div>
   );
 };

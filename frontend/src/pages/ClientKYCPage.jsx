@@ -12,8 +12,7 @@ import {
 import { HiSparkles, HiBadgeCheck } from 'react-icons/hi';
 import { toast } from "react-toastify";
 import KYCRequiredModal from "../components/KYCRequiredModal";
-import ClientSidebar from "../components/ClientSidebar.jsx";
-import ClientNavbar from "../components/ClientNavbar.jsx";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 import { useAppContext } from '../context/AppContext';
 import './ClientKYCPage.css';
 
@@ -632,8 +631,7 @@ const ClientKYCPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] text-white">
-      <ClientSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <ClientNavbar onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       
       <main className="flex-1 flex flex-col md:ml-64 transition-all duration-300">
         <div className="kyc-page__container p-4 md:p-8 mt-16 md:mt-0">

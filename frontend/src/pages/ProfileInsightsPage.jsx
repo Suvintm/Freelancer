@@ -18,8 +18,7 @@ import {
 import { FaCrown, FaBuilding, FaEdit } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import Sidebar from "../components/Sidebar";
-import EditorNavbar from "../components/EditorNavbar";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 import { useSubscription } from "../context/SubscriptionContext";
 import { useAppContext } from "../context/AppContext";
 
@@ -127,8 +126,7 @@ const ProfileInsightsPage = () => {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <main className="md:ml-64 pt-20 md:pt-24 px-4 md:px-8 pb-12">
         <div className="max-w-5xl mx-auto">

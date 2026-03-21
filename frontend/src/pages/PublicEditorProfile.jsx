@@ -37,8 +37,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import ReactCountryFlag from "react-country-flag";
 import { toast } from "react-toastify";
 
-import Sidebar from "../components/Sidebar.jsx";
-import EditorNavbar from "../components/EditorNavbar.jsx";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 import PortfolioSection from "../components/PortfolioSection.jsx";
 import EditorRatingsModal from "../components/EditorRatingsModal.jsx";
 import SuvixScoreBadge from "../components/SuvixScoreBadge.jsx";
@@ -413,8 +412,7 @@ const PublicEditorProfile = () => {
 
   return (
     <div className="min-h-screen bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <main className="md:ml-64 pt-4 md:pt-14 px-3 md:px-6 pb-10">
         <div className="max-w-5xl mx-auto">

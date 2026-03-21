@@ -28,8 +28,7 @@ import {
 import { HiSparkles } from 'react-icons/hi2';
 import { useAppContext } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
-import Sidebar from '../components/Sidebar';
-import EditorNavbar from '../components/EditorNavbar';
+import UnifiedNavigation from '../components/UnifiedNavigation.jsx';
 import axios from 'axios';
 
 // Popular Indian Banks with first letter icon (since external logos may not load)
@@ -329,10 +328,9 @@ const KYCDetailsPage = () => {
 
   return (
     <div className="flex min-h-screen bg-[#09090B] light:bg-[#FAFAFA] transition-colors overflow-x-hidden">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       
       <div className="flex-1 md:ml-64 flex flex-col min-w-0 overflow-x-hidden">
-        <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
 
         <div className="flex-1 px-2 py-2 sm:px-4 sm:py-3 md:p-6 w-full max-w-[600px] mx-auto mt-12 md:mt-16 pb-20 md:pb-6 min-w-0">
           {/* Header */}

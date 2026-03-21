@@ -14,8 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 import axios from "axios";
 import { toast } from "react-toastify";
-import ClientSidebar from "../components/ClientSidebar.jsx";
-import ClientNavbar from "../components/ClientNavbar.jsx";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 
 const SavedEditors = () => {
   const navigate = useNavigate();
@@ -79,8 +78,7 @@ const SavedEditors = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] text-white">
-        <ClientSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <ClientNavbar onMenuClick={() => setSidebarOpen(true)} />
+        <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
         <main className="flex-1 flex items-center justify-center md:ml-64 md:mt-20">
           <div className="flex flex-col items-center">
             <motion.div
@@ -97,8 +95,7 @@ const SavedEditors = () => {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
-      <ClientSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <ClientNavbar onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <main className="flex-1 px-4 md:px-8 py-6 md:ml-64 md:mt-20">
         {/* Header */}

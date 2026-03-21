@@ -27,8 +27,7 @@ import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
-import Sidebar from "../components/Sidebar.jsx";
-import EditorNavbar from "../components/EditorNavbar.jsx";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 
 // Default banner for gigs without custom banner
 const DEFAULT_GIG_BANNER = "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=400&q=80";
@@ -144,8 +143,7 @@ const MyGigs = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col md:flex-row bg-[#09090B] light:bg-[#FAFAFA] text-white light:text-slate-900 transition-colors">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
+        <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
         <main className="flex-1 flex items-center justify-center md:ml-64 mt-14 md:mt-20">
           <div className="flex flex-col items-center">
             <motion.div
@@ -162,8 +160,7 @@ const MyGigs = () => {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#09090B] light:bg-[#FAFAFA] text-white light:text-slate-900 transition-colors overflow-x-hidden">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <main className="flex-1 px-3 py-3 md:px-8 md:py-6 md:ml-64 mt-12 md:mt-16 pb-24 md:pb-8 min-w-0 overflow-x-hidden">
         {/* Header */}

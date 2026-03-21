@@ -1,9 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import Sidebar from "../components/Sidebar.jsx";
-import ClientSidebar from "../components/ClientSidebar.jsx";
-import EditorNavbar from "../components/EditorNavbar.jsx";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 import { useAppContext } from "../context/AppContext";
 import axios from "axios";
 import {
@@ -611,13 +609,10 @@ const AdvertiseNewPage = () => {
     } finally { setSaving(false); }
   };
 
-  const SidebarComponent = user?.role === "client" ? ClientSidebar : Sidebar;
 
-  // ── Success ──────────────────────────────────────────────────────────────────
   if (submitResult) return (
     <div className="min-h-screen bg-black text-white flex flex-col md:flex-row">
-      <SidebarComponent isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       <main className="flex-1 md:ml-64 md:mt-16 flex items-center justify-center px-4 py-16">
         <motion.div initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} className="max-w-sm w-full">
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background:G.bg, border:`1px solid ${G.border}` }}>

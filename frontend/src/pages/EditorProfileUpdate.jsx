@@ -4,8 +4,7 @@ import { useAppContext } from "../context/AppContext";
 import axios from "axios";
 import UpdateProfile from "../components/UpdateProfile";
 import { useNavigate } from "react-router-dom";
-import Sidebar from "../components/Sidebar.jsx";
-import EditorNavbar from "../components/EditorNavbar.jsx";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 import { HiOutlineCamera, HiOutlinePlus } from "react-icons/hi2";
 import { useTheme } from "../context/ThemeContext";
 import { useQuery } from "@tanstack/react-query";
@@ -107,8 +106,7 @@ const EditorProfileUpdate = () => {
 
   return (
     <div className={`min-h-screen transition-colors duration-200 ${isDark ? "bg-[#000000]" : "bg-white"} text-white light:text-slate-900 flex flex-col`}>
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <main className="flex-1 md:ml-64 md:mt-16 px-4 md:px-12 py-4 md:py-10 flex flex-col items-center">
         {loading ? (

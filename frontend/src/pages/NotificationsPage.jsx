@@ -24,10 +24,7 @@ import { useTheme } from "../context/ThemeContext";
 import { useSocket } from "../context/SocketContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
-import EditorNavbar from "../components/EditorNavbar";
-import Sidebar from "../components/Sidebar";
-import ClientNavbar from "../components/ClientNavbar";
-import ClientSidebar from "../components/ClientSidebar";
+import UnifiedNavigation from "../components/UnifiedNavigation";
 
 const HighlightText = ({ text, highlight }) => {
   if (!highlight?.trim()) return <span>{text}</span>;
@@ -291,19 +288,10 @@ const NotificationsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#000000] flex text-zinc-900 dark:text-zinc-100" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      {isEditor ? (
-        <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-      ) : (
-        <ClientSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-      )}
+    <div className="min-h-screen bg-white dark:bg-[#000000] text-zinc-900 dark:text-zinc-100" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+      <UnifiedNavigation sidebarOpen={isSidebarOpen} setSidebarOpen={setIsSidebarOpen} />
 
-      <div className="flex-1 md:ml-64 transition-all flex flex-col min-w-0">
-        {isEditor ? (
-          <EditorNavbar onMenuClick={() => setIsSidebarOpen(true)} />
-        ) : (
-          <ClientNavbar onMenuClick={() => setIsSidebarOpen(true)} />
-        )}
+      <div className="md:ml-64 transition-all min-w-0">
 
         <main className="flex-1 w-full max-w-2xl mx-auto py-6 px-4 md:px-0">
           {/* Header Section */}

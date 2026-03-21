@@ -26,8 +26,7 @@ import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
-import ClientSidebar from "../components/ClientSidebar.jsx";
-import ClientNavbar from "../components/ClientNavbar.jsx";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 
 const STATUS_CONFIG = {
   new: { 
@@ -197,8 +196,7 @@ const ClientOrders = () => {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#030303] light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-300" style={{ fontFamily: "'Inter', sans-serif" }}>
-      <ClientSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <ClientNavbar onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <main className="flex-1 px-4 md:px-6 py-5 md:ml-64 md:mt-20">
         {/* Header */}

@@ -5,6 +5,9 @@
 
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAppContext } from "../context/AppContext";
+import { useSocket } from "../context/SocketContext";
+import { useTheme } from "../context/ThemeContext";
 import {
   FaBars,
   FaBell,
@@ -15,8 +18,6 @@ import {
 } from "react-icons/fa";
 import { HiOutlineSun, HiOutlineMoon } from "react-icons/hi2";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAppContext } from "../context/AppContext";
-import { useTheme } from "../context/ThemeContext";
 import lightLogo from "../assets/lightlogo.png";
 import darkLogo from "../assets/darklogo.png";
 import RefreshButton from "./RefreshButton";
@@ -24,8 +25,12 @@ import RefreshButton from "./RefreshButton";
 const ClientNavbar = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAppContext();
+  const { user, logout, unreadCount } = useAppContext();
+  const { totalUnread, unreadNotifications } = useSocket() || {};
   const { theme, toggleTheme } = useTheme();
+
+  const notificationBadge = (unreadCount || 0) + (unreadNotifications || 0);
+
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
 
@@ -114,9 +119,11 @@ const ClientNavbar = ({ onMenuClick }) => {
             className="relative p-2.5 rounded-xl bg-white/5 light:bg-slate-50 hover:bg-white/10 light:hover:bg-slate-100 border border-white/10 light:border-slate-200 transition-all"
           >
             <FaBell className="text-gray-400 light:text-slate-500" />
-            <span className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-[#050509] light:border-white">
-              3
-            </span>
+            {notificationBadge > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-[#050509] light:border-white">
+                {notificationBadge > 9 ? "9+" : notificationBadge}
+              </span>
+            )}
           </button>
 
           {/* Profile */}
@@ -250,9 +257,11 @@ const ClientNavbar = ({ onMenuClick }) => {
             className="relative p-2 rounded-xl bg-white/5 light:bg-slate-50 hover:bg-white/10 light:hover:bg-slate-100 transition-all"
           >
             <FaBell className="text-lg text-gray-400 light:text-slate-600" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center bg-red-500 text-white text-[9px] font-bold rounded-full border-2 border-[#050509] light:border-white">
-              3
-            </span>
+            {notificationBadge > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center bg-red-500 text-white text-[9px] font-bold rounded-full border-2 border-[#050509] light:border-white">
+                {notificationBadge > 9 ? "9+" : notificationBadge}
+              </span>
+            )}
           </button>
 
           {/* PROFILE */}

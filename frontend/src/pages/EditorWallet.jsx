@@ -20,6 +20,7 @@ import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 import axios from "axios";
 import { toast } from "react-toastify";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 import WithdrawalModal from "../components/WithdrawalModal";
 import EditorKYCForm from "../components/EditorKYCForm";
 
@@ -345,6 +346,7 @@ const EditorWallet = () => {
   const [showWD,  setShowWD]  = useState(false);
   const [showKYC, setShowKYC] = useState(false);
   const [tab,     setTab]     = useState("earnings");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hidden,  setHidden]  = useState(false);
 
   const load = async () => {
@@ -395,9 +397,18 @@ const EditorWallet = () => {
       `}</style>
 
       <div style={{ minHeight:"100vh", background:"#030305", fontFamily:"'DM Sans',sans-serif", color:"#fff", paddingBottom:100 }}>
+        <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-        {/* ── TOP BAR ── */}
-        <div style={{ position:"sticky", top:0, zIndex:60, background:"rgba(3,3,5,0.9)", backdropFilter:"blur(22px)", WebkitBackdropFilter:"blur(22px)", borderBottom:"1px solid rgba(255,255,255,0.06)", padding:"14px 20px" }}>
+        <div className="md:ml-64 transition-all">
+          {/* ── TOP BAR ── */}
+          <div style={{ position:"sticky", top:"64px", zIndex:30, background:"rgba(3,3,5,0.9)", backdropFilter:"blur(22px)", WebkitBackdropFilter:"blur(22px)", borderBottom:"1px solid rgba(255,255,255,0.06)", padding:"14px 20px" }}>
+            <style>{`
+              @media (max-width: 767px) {
+                div[style*="top: 64px"] {
+                  top: 0 !important;
+                }
+              }
+            `}</style>
           <div style={{ maxWidth:520, margin:"0 auto", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
             <div>
               <div style={{ fontSize:20, fontWeight:900, letterSpacing:-0.5 }}>Wallet</div>
@@ -555,6 +566,7 @@ const EditorWallet = () => {
             </div>
           </div>
 
+          </div>
         </div>
       </div>
 

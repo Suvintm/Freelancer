@@ -41,8 +41,7 @@ import { useAppContext } from "../context/AppContext";
 import { useNavigate, useSearchParams, useParams } from "react-router-dom";
 import ReactCountryFlag from "react-country-flag";
 
-import Sidebar from "../components/Sidebar.jsx";
-import EditorNavbar from "../components/EditorNavbar.jsx";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 import PortfolioSection from "../components/PortfolioSection.jsx";
 import GigsSection from "../components/GigsSection.jsx";
 import EditorRatingsModal from "../components/EditorRatingsModal.jsx";
@@ -316,8 +315,7 @@ const EditorProfile = () => {
 
   return (
     <div className="h-full flex flex-col bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200" style={{ fontFamily: "'Inter', sans-serif" }}>
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <main 
         ref={scrollContainerRef}

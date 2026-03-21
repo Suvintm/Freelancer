@@ -30,8 +30,7 @@ import {
 import { HiOutlineSparkles, HiOutlineMapPin, HiOutlineArrowRight, HiOutlineChartBar } from "react-icons/hi2";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
-import Sidebar from "../components/Sidebar.jsx";
-import EditorNavbar from "../components/EditorNavbar.jsx";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 import ExploreEditor from "../components/ExploreEditor.jsx";
 import ExploreGigs from "../components/ExploreGigs.jsx";
 import Loader from "../components/Loader.jsx";
@@ -187,8 +186,7 @@ const EditorHome = () => {
 
   return (
     <div className="h-full flex flex-col md:flex-row bg-[#050509] light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200" style={{ fontFamily: "'Inter', sans-serif" }}>
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       
       <main 
         ref={mainContainerRef}

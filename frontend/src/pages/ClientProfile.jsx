@@ -31,8 +31,7 @@ import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 import axios from "axios";
 import { toast } from "react-toastify";
-import ClientSidebar from "../components/ClientSidebar.jsx";
-import ClientNavbar from "../components/ClientNavbar.jsx";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 import PortfolioSection from "../components/PortfolioSection.jsx";
  import useRefreshManager from "../hooks/useRefreshManager.js";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
@@ -142,9 +141,8 @@ const ClientProfile = () => {
 
   if (loading && !hasLoadedOnce.current) {
     return (
-      <div className="min-h-screen flex flex-col md:flex-row bg-[#050509] text-white">
-        <ClientSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <ClientNavbar onMenuClick={() => setSidebarOpen(true)} />
+      <div className="min-h-screen flex flex-col bg-[#050509] text-white">
+        <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
         <main className="flex-1 flex items-center justify-center md:ml-64 md:mt-20">
           <div className="flex flex-col items-center">
             <motion.div
@@ -161,8 +159,7 @@ const ClientProfile = () => {
 
   return (
     <div className="h-full flex flex-col bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
-      <ClientSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <ClientNavbar onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <main 
         ref={scrollContainerRef}

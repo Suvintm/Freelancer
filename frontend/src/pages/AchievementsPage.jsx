@@ -27,8 +27,7 @@ import { FaCrown } from "react-icons/fa";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { useTheme } from "../context/ThemeContext";
-import Sidebar from "../components/Sidebar";
-import EditorNavbar from "../components/EditorNavbar";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 
 // Map badge icons to components
 const BADGE_ICONS = {
@@ -115,8 +114,7 @@ const AchievementsPage = () => {
       }`}
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <main className="flex-1 px-4 md:px-8 py-6 md:ml-64 md:mt-16">
         {/* Header */}

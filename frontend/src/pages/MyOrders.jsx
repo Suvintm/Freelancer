@@ -37,10 +37,7 @@ import { useTheme } from "../context/ThemeContext";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
-import Sidebar from "../components/Sidebar.jsx";
-import EditorNavbar from "../components/EditorNavbar.jsx";
-import ClientSidebar from "../components/ClientSidebar.jsx";
-import ClientNavbar from "../components/ClientNavbar.jsx";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 
 // Status configuration with gradient colors
 const STATUS_CONFIG = {
@@ -677,8 +674,6 @@ const MyOrders = () => {
       return new Date(b.lastActivityAt || b.createdAt) - new Date(a.lastActivityAt || a.createdAt);
     });
 
-  const SidebarComponent = isEditor ? Sidebar : ClientSidebar;
-  const NavbarComponent = isEditor ? EditorNavbar : ClientNavbar;
 
   return (
     <div 
@@ -687,8 +682,7 @@ const MyOrders = () => {
       }`}
       style={{ fontFamily: "'Manrope', sans-serif" }}
     >
-      <SidebarComponent isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <NavbarComponent onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <main className="flex-1 px-4 py-4 pt-[72px] md:pt-6 md:ml-64 md:mt-20 pb-24 md:px-6">
         {/* Header */}

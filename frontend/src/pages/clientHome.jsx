@@ -39,8 +39,7 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { useSocket } from "../context/SocketContext";
-import ClientSidebar from "../components/ClientSidebar.jsx";
-import ClientNavbar from "../components/ClientNavbar.jsx";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 import ExploreEditor from "../components/ExploreEditor.jsx";
 import ExploreGigs from "../components/ExploreGigs.jsx";
 import Loader from "../components/Loader.jsx";
@@ -186,8 +185,7 @@ const ClientHome = () => {
       className="h-full flex flex-col md:flex-row bg-[#09090B] light:bg-[#FAFAFA] text-white light:text-zinc-900"
       style={{ fontFamily: "'Manrope', sans-serif" }}
     >
-      <ClientSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <ClientNavbar onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       
       <main 
         ref={mainContainerRef}

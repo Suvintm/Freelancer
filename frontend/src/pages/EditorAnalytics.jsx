@@ -29,12 +29,13 @@ import {
   BarChart,
   Bar,
 } from "recharts";
-import Navbar from "../components/Navbar";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 
 const EditorAnalytics = () => {
   const { backendURL, token } = useAppContext();
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("30");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("earnings");
   
   const [earnings, setEarnings] = useState(null);
@@ -452,8 +453,8 @@ const EditorAnalytics = () => {
 
   return (
     <div className="min-h-screen bg-[#050509] light:bg-slate-50 transition-colors duration-200">
-      <Navbar />
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+      <div className="max-w-7xl mx-auto px-4 py-8 md:ml-64 md:mt-20">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>

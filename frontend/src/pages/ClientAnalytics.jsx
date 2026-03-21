@@ -27,11 +27,12 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import Navbar from "../components/Navbar";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 
 const ClientAnalytics = () => {
   const { backendURL, token } = useAppContext();
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [analytics, setAnalytics] = useState(null);
 
   const COLORS = ["#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#6366f1", "#ec4899"];
@@ -111,8 +112,8 @@ const ClientAnalytics = () => {
 
   return (
     <div className="min-h-screen bg-[#050509] light:bg-slate-50 transition-colors duration-200">
-      <Navbar />
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+      <div className="max-w-7xl mx-auto px-4 py-8 md:ml-64 md:mt-20">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>

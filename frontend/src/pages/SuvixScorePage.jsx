@@ -10,8 +10,7 @@ import {
 } from 'react-icons/fa';
 import { HiSparkles, HiTrendingUp, HiLightningBolt } from 'react-icons/hi';
 import { useAppContext } from '../context/AppContext';
-import Sidebar from '../components/Sidebar';
-import EditorNavbar from '../components/EditorNavbar';
+import UnifiedNavigation from '../components/UnifiedNavigation.jsx';
 import './SuvixScorePage.css';
 
 // Tier Configuration
@@ -67,8 +66,7 @@ const SuvixScorePage = () => {
   if (loading) {
     return (
       <div className="suvix-page">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
+        <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
         <main className="suvix-page__main">
           <div className="suvix-page__loading">
             <motion.div 
@@ -88,8 +86,7 @@ const SuvixScorePage = () => {
   if (error || !scoreData) {
     return (
       <div className="suvix-page">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
+        <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
         <main className="suvix-page__main">
           <div className="suvix-page__error">
             <FaExclamationTriangle />
@@ -109,8 +106,7 @@ const SuvixScorePage = () => {
 
   return (
     <div className="suvix-page">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       
       <main className="suvix-page__main">
         <div className="suvix-page__container">

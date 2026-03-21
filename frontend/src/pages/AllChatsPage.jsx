@@ -24,8 +24,7 @@ import { useAppContext } from "../context/AppContext";
 import { useSocket } from "../context/SocketContext";
 import axios from "axios";
 import { toast } from "react-toastify";
-import Sidebar from "../components/Sidebar.jsx";
-import EditorNavbar from "../components/EditorNavbar.jsx";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 
 // Status configuration for different order states
 const STATUS_CONFIG = {
@@ -246,8 +245,7 @@ const AllChatsPage = () => {
   if (loading && !hasLoadedOnce.current) {
     return (
       <div className="min-h-screen bg-black text-white">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
+        <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
         <main className="flex-1 px-4 md:px-6 py-6 pt-24 md:ml-64">
            <div className="space-y-4">
              <div className="h-8 w-48 bg-zinc-900 rounded mb-6" />
@@ -260,8 +258,7 @@ const AllChatsPage = () => {
 
   return (
     <div className="h-full flex flex-col bg-black text-white selection:bg-white/10" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <main 
         ref={scrollContainerRef}

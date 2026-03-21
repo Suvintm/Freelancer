@@ -19,8 +19,7 @@ import {
 } from "react-icons/hi2";
 import { FaBolt, FaWhatsapp, FaInstagram, FaTwitter, FaLinkedin } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
-import Sidebar from "../components/Sidebar.jsx";
-import EditorNavbar from "../components/EditorNavbar.jsx";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 import axios from "axios";
 import { toast } from "react-toastify";
 import HiringLetterModal from "../components/HiringLetterModal.jsx";
@@ -99,8 +98,7 @@ const MyApplicationsPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#09090B] text-white">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <main className="flex-1 px-4 md:px-8 py-6 pt-20 md:pt-6 md:ml-64 md:mt-16">
         {/* Header */}

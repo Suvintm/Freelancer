@@ -30,10 +30,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useAppContext } from "../context/AppContext";
 import { useTheme } from "../context/ThemeContext";
-import Sidebar from "../components/Sidebar.jsx";
-import EditorNavbar from "../components/EditorNavbar.jsx";
-import ClientSidebar from "../components/ClientSidebar.jsx";
-import ClientNavbar from "../components/ClientNavbar.jsx";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 import useRefreshManager from "../hooks/useRefreshManager.js";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 import CategoryBanner from "../components/CategoryBanner.jsx";
@@ -247,16 +244,13 @@ const JobsPage = () => {
     </div>
   );
 
-  const SidebarComponent = isEditor ? Sidebar : ClientSidebar;
-  const NavbarComponent = isEditor ? EditorNavbar : ClientNavbar;
 
   return (
     <div 
       className={`h-full flex flex-col md:flex-row ${isDark ? 'bg-[#09090B] text-white' : 'bg-[#FAFAFA] text-zinc-900'}`}
       style={{ fontFamily: "'Manrope', sans-serif" }}
     >
-      <SidebarComponent isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <NavbarComponent onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       
       <main 
         ref={scrollContainerRef}

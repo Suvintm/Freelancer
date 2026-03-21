@@ -17,8 +17,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
-import Sidebar from "../components/Sidebar.jsx";
-import EditorNavbar from "../components/EditorNavbar.jsx";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 
 const ReelsAnalytics = () => {
     const { user, backendURL } = useAppContext();
@@ -87,8 +86,7 @@ const ReelsAnalytics = () => {
 
     return (
         <div className="min-h-screen bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
-            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-            <EditorNavbar onMenuClick={() => setSidebarOpen(true)} />
+            <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
             <main className="md:ml-64 pt-6 md:pt-20 lg:pt-24 px-4 md:px-6 pb-10">
                 <div className="max-w-6xl mx-auto">

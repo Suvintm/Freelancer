@@ -24,10 +24,7 @@ import {
 } from "react-icons/hi2";
 import { FaBolt, FaUsers, FaWhatsapp, FaInstagram, FaTwitter, FaLinkedin, FaYoutube, FaGlobe } from "react-icons/fa";
 import { useAppContext } from "../context/AppContext";
-import Sidebar from "../components/Sidebar.jsx";
-import EditorNavbar from "../components/EditorNavbar.jsx";
-import ClientSidebar from "../components/ClientSidebar.jsx";
-import ClientNavbar from "../components/ClientNavbar.jsx";
+import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 import axios from "axios";
 import { toast } from "react-toastify";
 
@@ -181,9 +178,6 @@ const JobDetailsPage = () => {
     return { text: `${days} days left`, color: "text-emerald-400" };
   };
 
-  const isEditor = user?.role === "editor";
-  const SidebarComponent = isEditor ? Sidebar : ClientSidebar;
-  const NavbarComponent = isEditor ? EditorNavbar : ClientNavbar;
 
   if (loading) {
     return (
@@ -214,8 +208,7 @@ const JobDetailsPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#09090B] text-white">
-      <SidebarComponent isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <NavbarComponent onMenuClick={() => setSidebarOpen(true)} />
+      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <main className="flex-1 px-4 md:px-8 py-6 pt-20 md:pt-6 md:ml-64 md:mt-16">
         {/* Back Button */}
