@@ -70,6 +70,7 @@ import ChatMediaGallery from "./ChatMediaGallery";
 import axios from "axios";
 import { toast } from "react-toastify";
 import chattexture from "../assets/chattexture.png";
+import ReactiveBackground from "./ReactiveBackground";
 
 // Simple "Pop" sound base64 (short, pleasant notification sound)
 const POP_SOUND = "data:audio/mpeg;base64,SUQzBAAAAAABAFRYWFgAAAASAAADbWFqb3JfYnJhbmQAZGFzaABUWFhYAAAAEQAAA21pbm9yX3ZlcnNpb24AMABUWFhYAAAAHAAAA2NvbXBhdGlibGVfYnJhbmRzAGlzbzZtcDQxAFRTU0UAAAAPAAADTGF2ZjU5LjI3LjEwMAAAAAAAAAAAAAAA//uQZAAAAAAAALAAAA4AAALAAAAOBAAA/wAA//uQZACAAAB8AAAAwAAAfAAAAOA";
@@ -711,6 +712,10 @@ const ChatPage = () => {
 
   // --- Overdue Countdown Timer State ---
   const [graceCountdown, setGraceCountdown] = useState("");
+  
+  // AI Background Animation State
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef(null);
   
   // Live countdown effect for overdue orders
   useEffect(() => {
@@ -1648,9 +1653,12 @@ useEffect(() => {
 
   return (
     <div 
-      className={`flex flex-col h-screen font-sans overflow-hidden no-copy ${theme === 'dark' ? 'bg-[#0a0a0c] text-white' : 'bg-white text-[#262626]'}`}
+      className={`flex flex-col h-screen font-sans overflow-hidden no-copy relative ${theme === 'dark' ? 'bg-[#010101] text-white' : 'bg-white text-[#262626]'}`}
       onContextMenu={(e) => e.preventDefault()}
     >
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <ReactiveBackground isActive={isTyping} />
+      </div>
       
       {/* 1. Fixed Header - Instagram DM Style */}
       <header className={`fixed top-0 left-0 right-0 z-50 ${theme === 'dark' ? 'bg-[#0a0a0c] border-b border-white/10' : 'bg-white border-b border-[#DBDBDB]'}`}>
@@ -2344,19 +2352,16 @@ useEffect(() => {
       {/* 2. Messages Area (Textured Background) - with padding for fixed header/footer */}
       <div 
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden p-4 pt-8 sm:pt-32 pb-32 space-y-2 relative no-copy"
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 pt-8 sm:pt-32 pb-32 space-y-2 relative no-copy z-10"
         onContextMenu={(e) => e.preventDefault()}
         style={{
-          backgroundImage: `url(${chattexture})`,
-          backgroundSize: "cover",
-          backgroundRepeat: "repeat",
-          backgroundAttachment: "fixed",
+          background: "transparent",
           opacity: initialScrollFinished ? 1 : 0,
           transition: "opacity 0.2s ease-in-out"
         }}
       >
-        {/* Light overlay for readability */}
-        <div className={`fixed inset-0 pointer-events-none z-0 ${theme === 'dark' ? 'bg-[#0a0a0c]/95' : 'bg-white/95'}`} />
+        {/* Balanced overlay for readability - Darker for glow visibility */}
+        <div className={`fixed inset-0 pointer-events-none z-[-1] ${theme === 'dark' ? 'bg-black/20' : 'bg-white/70'} backdrop-blur-[2px]`} />
 
         <div className="relative z-20 flex flex-col gap-1 pb-4">
           {/* Sentinel for infinite scroll — triggers loadOlderMessages when visible */}
@@ -2882,15 +2887,27 @@ useEffect(() => {
              {isRecordingVoice ? (
                <div className="flex-1">
                  <VoiceRecorder 
-                   onSend={handleSendVoice} 
-                   onCancel={() => setIsRecordingVoice(false)} 
+                   onSend={(blob, duration) => {
+                     handleSendVoice(blob, duration);
+                     setIsTyping(false);
+                   }} 
+                   onCancel={() => {
+                     setIsRecordingVoice(false);
+                     setIsTyping(false);
+                   }} 
                  />
                </div>
              ) : (
                <div className={`flex-1 flex items-center gap-2 rounded-[24px] px-3 sm:px-4 py-1.5 sm:py-2 border focus-within:border-[#C13584] transition ${theme === 'dark' ? 'bg-white/10 border-white/20' : 'bg-white border-[#DBDBDB]'}`}>
                    <textarea
                       value={newMessage}
-                      onChange={(e) => { setNewMessage(e.target.value); startTyping(orderId); }}
+                      onChange={(e) => { 
+                        setNewMessage(e.target.value); 
+                        startTyping(orderId);
+                        setIsTyping(true);
+                        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                        typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 2000);
+                      }}
                       onBlur={() => stopTyping(orderId)}
                       onKeyDown={(e) => { if(e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
                       placeholder="Message..."
@@ -2986,7 +3003,7 @@ useEffect(() => {
                        </div>
                        
                        {/* Voice Message */}
-                       <button onClick={() => setIsRecordingVoice(true)} className={`p-2 rounded-full transition ${theme === 'dark' ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200'}`}>
+                       <button onClick={() => { setIsRecordingVoice(true); setIsTyping(true); }} className={`p-2 rounded-full transition ${theme === 'dark' ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200'}`}>
                          <FaMicrophone className="text-sm" />
                        </button>
                      </div>
