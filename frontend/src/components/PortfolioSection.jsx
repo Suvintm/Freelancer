@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaPlus,
@@ -39,9 +40,6 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false, pro
   const navigate = useNavigate();
 
   const [portfolios, setPortfolios] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [fetchingPortfolios, setFetchingPortfolios] = useState(true);
-
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [showIncompleteProfileModal, setShowIncompleteProfileModal] = useState(false);
@@ -54,63 +52,60 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false, pro
   const [reelsMuted, setReelsMuted] = useState(false);
   const reelsVideoRef = useRef(null);
 
-  const fetchPortfolios = async () => {
-    if (!user) return;
-    setFetchingPortfolios(true);
-    try {
+  const { data: portfoliosData, isLoading: fetchingPortfolios } = useQuery({
+    queryKey: ["portfolios", isPublic ? profileOwner?._id : "me"],
+    queryFn: async () => {
+      // If it's public and we have initialPortfolios, return them (but react-query will still manage them)
+      if (isPublic && initialPortfolios) return initialPortfolios;
+
       const { data } = await axios.get(`${backendURL}/api/portfolio`, {
         withCredentials: true,
         headers: { Authorization: `Bearer ${user?.token}` },
       });
 
-      let portfoliosData = Array.isArray(data) ? data : data.portfolios || [];
+      let items = Array.isArray(data) ? data : data.portfolios || [];
 
-      // Fetch engagement metrics for each portfolio
-      const portfoliosWithMetrics = await Promise.all(portfoliosData.map(async (p) => {
-        try {
-          const { data: checkData } = await axios.get(
-            `${backendURL}/api/reels/check/${p._id}`,
-            { headers: { Authorization: `Bearer ${user?.token}` } }
-          );
-
-          if (checkData.isPublished && checkData.reelId) {
-            const { data: reelData } = await axios.get(
-              `${backendURL}/api/reels/${checkData.reelId}`
+      // Fetch engagement metrics for each portfolio item (waterfall but better than nothing for now)
+      // Ideally backend should provide this.
+      const enriched = await Promise.all(
+        items.map(async (p) => {
+          try {
+            const { data: checkData } = await axios.get(
+              `${backendURL}/api/reels/check/${p._id}`,
+              { headers: { Authorization: `Bearer ${user?.token}` } }
             );
-            return {
-              ...p,
-              isPublished: true,
-              reelId: checkData.reelId,
-              likesCount: reelData.reel.likesCount || 0,
-              viewsCount: reelData.reel.viewsCount || 0,
-              commentsCount: reelData.reel.commentsCount || 0
-            };
+
+            if (checkData.isPublished && checkData.reelId) {
+              const { data: reelData } = await axios.get(
+                `${backendURL}/api/reels/${checkData.reelId}`
+              );
+              return {
+                ...p,
+                isPublished: true,
+                reelId: checkData.reelId,
+                likesCount: reelData.reel.likesCount || 0,
+                viewsCount: reelData.reel.viewsCount || 0,
+                commentsCount: reelData.reel.commentsCount || 0,
+              };
+            }
+            return { ...p, isPublished: false };
+          } catch (e) {
+            return p;
           }
-          return { ...p, isPublished: false };
-        } catch (e) {
-          return p;
-        }
-      }));
+        })
+      );
+      return enriched;
+    },
+    enabled: !!user?.token || (isPublic && !!profileOwner?._id),
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+  });
 
-      setPortfolios(portfoliosWithMetrics);
-    } catch (err) {
-      toast.error("Failed to load portfolios");
-      setPortfolios([]);
-    } finally {
-      setFetchingPortfolios(false);
-    }
-  };
-
+  // Keep local portfolios state in sync with react-query (for optimistic deletes/updates if needed)
   useEffect(() => {
-    if (isPublic) {
-      if (initialPortfolios) {
-        setPortfolios(initialPortfolios);
-      }
-      setFetchingPortfolios(false);
-    } else {
-      fetchPortfolios();
+    if (portfoliosData) {
+      setPortfolios(portfoliosData);
     }
-  }, [user, isPublic, initialPortfolios]);
+  }, [portfoliosData]);
 
 
   const confirmDelete = (id, e) => {

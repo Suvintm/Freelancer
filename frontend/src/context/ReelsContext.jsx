@@ -10,7 +10,7 @@ import { createContext, useContext, useRef, useState, useCallback } from "react"
 
 const ReelsContext = createContext(null);
 
-const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
 export const ReelsProvider = ({ children }) => {
     // Feed cache — persists between navigations

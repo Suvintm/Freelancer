@@ -53,9 +53,12 @@ const ReelsPage = ({ isActive = true }) => {
     // ─────────────────────────────────────────────────────────────
     // FETCH REELS
     // ─────────────────────────────────────────────────────────────
-    const fetchReels = useCallback(async (pageNum = 1, loadMore = false) => {
+    const fetchReels = useCallback(async (pageNum = 1, isLoadMore = false) => {
         try {
-            const excludeIdsArr = loadMore
+            // Support background refresh: only set loading true if we have nothing to show
+            if (!isLoadMore && pageNum === 1 && reels.length === 0) setLoading(true);
+            
+            const excludeIdsArr = isLoadMore
                 ? feedCache.current.map((r) => r._id)
                 : (targetReelId ? [targetReelId] : []);
             
@@ -68,7 +71,7 @@ const ReelsPage = ({ isActive = true }) => {
             let fetchedReels = data.reels;
  
             // If it's the first page and we have a target ID, fetch that specific item first
-            if (!loadMore && pageNum === 1 && targetReelId) {
+            if (!isLoadMore && pageNum === 1 && targetReelId) {
                 try {
                     if (targetReelId.startsWith("ad_")) {
                         const actualAdId = targetReelId.replace("ad_", "");
@@ -87,7 +90,7 @@ const ReelsPage = ({ isActive = true }) => {
                 }
             }
  
-            if (loadMore) {
+            if (isLoadMore) {
                 // Deduplicate by _id to prevent duplicate key errors
                 const combined = [...feedCache.current, ...fetchedReels];
                 const uniqueReels = Array.from(new Map(combined.map(r => [r._id, r])).values());
