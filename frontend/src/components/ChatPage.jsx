@@ -37,6 +37,7 @@ import {
   FaReceipt,
   FaPlus,
   FaClock,
+  FaChevronDown,
 } from "react-icons/fa";
 import { 
   HiOutlineClipboardDocumentList, 
@@ -715,7 +716,23 @@ const ChatPage = () => {
   
   // AI Background Animation State
   const [isTyping, setIsTyping] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const typingTimeoutRef = useRef(null);
+
+  const handleScroll = () => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    // Show button if more than 300px from bottom
+    const isScrolledUp = container.scrollHeight - container.scrollTop - container.clientHeight > 300;
+    setShowScrollButton(isScrolledUp);
+  };
+
+  const scrollToBottom = () => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+    }
+  };
   
   // Live countdown effect for overdue orders
   useEffect(() => {
@@ -2353,6 +2370,7 @@ useEffect(() => {
       <div 
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto overflow-x-hidden p-4 pt-8 sm:pt-32 pb-32 space-y-2 relative no-copy z-10"
+        onScroll={handleScroll}
         onContextMenu={(e) => e.preventDefault()}
         style={{
           background: "transparent",
@@ -2852,6 +2870,25 @@ useEffect(() => {
       ) : (
         /* Normal Chat Footer - Instagram DM Style */
         <>
+        {/* Scroll To Bottom Button */}
+        <AnimatePresence>
+          {showScrollButton && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.5, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.5, y: 20 }}
+              onClick={scrollToBottom}
+              className={`fixed bottom-24 left-1/2 -translate-x-1/2 z-40 p-2.5 rounded-full shadow-xl border backdrop-blur-md transition-all active:scale-95 ${
+                theme === 'dark' 
+                  ? 'bg-zinc-900/80 border-white/20 text-white hover:bg-zinc-800' 
+                  : 'bg-white/90 border-zinc-200 text-zinc-600 hover:bg-gray-50'
+              }`}
+            >
+              <FaChevronDown className="text-sm animate-bounce" />
+            </motion.button>
+          )}
+        </AnimatePresence>
+
         {/* Backdrop for footer popups */}
         {(showMediaMenu || showAttachmentMenu) && (
           <div 
