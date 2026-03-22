@@ -1657,7 +1657,7 @@ useEffect(() => {
       onContextMenu={(e) => e.preventDefault()}
     >
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <ReactiveBackground isActive={isTyping} />
+        <ReactiveBackground isAlwaysActive={true} />
       </div>
       
       {/* 1. Fixed Header - Instagram DM Style */}

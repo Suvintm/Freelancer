@@ -3,12 +3,11 @@ import { motion } from 'framer-motion';
 
 /**
  * Shared Reactive Background component
- * Idle   → blobs sit dim at bottom corners
- * Active → blobs swell up, saturate, fill screen
- * Exactly matches the ChatGPT voice UI color behavior
+ * - isActive (bool): For reactive behavior (Idle <-> Active)
+ * - isAlwaysActive (bool): For continuous, non-stop animation (Chat Page)
  */
-const ReactiveBackground = ({ isActive }) => {
-  // Blue blob — more movement to fill screen
+const ReactiveBackground = ({ isActive, isAlwaysActive }) => {
+  // --- BASE STATES ---
   const blueIdle = {
     scale: 1.5,
     opacity: 0.55,
@@ -22,7 +21,6 @@ const ReactiveBackground = ({ isActive }) => {
     x: '-20%',
   };
 
-  // Pink/magenta blob — more movement to fill screen
   const pinkIdle = {
     scale: 1.6,
     opacity: 0.60,
@@ -36,9 +34,33 @@ const ReactiveBackground = ({ isActive }) => {
     x: '20%',
   };
 
-  const transition = {
-    duration: 0.6, // High smooth speed "ramp" effect
-    ease: [0.33, 1, 0.68, 1], // very snappy
+  // --- CONTINUOUS FLOATING ANIMATIONS (For Chat Page) ---
+  // Increased range and variety for "dancing" effect
+  const blueFloating = {
+    x: ['-20%', '-10%', '-30%', '-20%', '-15%', '-20%'],
+    y: ['-45%', '-35%', '-55%', '-40%', '-50%', '-45%'],
+    scale: [2.8, 3.2, 2.5, 3.0, 2.7, 2.8],
+    opacity: [0.95, 0.8, 0.95, 0.85, 1, 0.95],
+  };
+
+  const pinkFloating = {
+    x: ['20%', '35%', '10%', '25%', '15%', '20%'],
+    y: ['-50%', '-40%', '-65%', '-45%', '-55%', '-50%'],
+    scale: [3.0, 2.6, 3.4, 3.1, 2.8, 3.0],
+    opacity: [0.90, 1, 0.8, 0.95, 0.85, 0.90],
+  };
+
+  // Reactive transition (snappy)
+  const reactiveTransition = {
+    duration: 0.6,
+    ease: [0.33, 1, 0.68, 1],
+  };
+
+  // Continuous transition (Faster and more dynamic)
+  const floatingTransition = {
+    duration: 5, // Faster "ramp" loop
+    repeat: Infinity,
+    ease: "linear", // Linear with keyframes often feels more "dancing"
   };
 
   return (
@@ -50,13 +72,13 @@ const ReactiveBackground = ({ isActive }) => {
         overflow: 'hidden',
         pointerEvents: 'none',
         zIndex: 0,
-        background: '#010101', // Pure black base for maximum pop
+        background: '#010101',
       }}
     >
-      {/* ── Deep royal blue — bottom-left ────────────────── */}
+      {/* ── Deep royal blue ─────────────────────────────── */}
       <motion.div
-        animate={isActive ? blueActive : blueIdle}
-        transition={transition}
+        animate={isAlwaysActive ? blueFloating : (isActive ? blueActive : blueIdle)}
+        transition={isAlwaysActive ? floatingTransition : reactiveTransition}
         style={{
           position: 'absolute',
           bottom: '-10%',
@@ -72,10 +94,10 @@ const ReactiveBackground = ({ isActive }) => {
         }}
       />
 
-      {/* ── Deep rose / magenta — bottom-right ───────────── */}
+      {/* ── Deep rose / magenta ─────────────────────────── */}
       <motion.div
-        animate={isActive ? pinkActive : pinkIdle}
-        transition={transition}
+        animate={isAlwaysActive ? pinkFloating : (isActive ? pinkActive : pinkIdle)}
+        transition={isAlwaysActive ? floatingTransition : reactiveTransition}
         style={{
           position: 'absolute',
           bottom: '-10%',
@@ -110,13 +132,14 @@ const ReactiveBackground = ({ isActive }) => {
         }}
       />
 
-      {/* ── Top dark fade ────────────────────────────────── */}
+      {/* ── Top black overlay (Covering top 60%) ─────────── */}
       <div
         style={{
           position: 'absolute',
           top: 0, left: 0, right: 0,
-          height: '30%',
-          background: 'linear-gradient(to bottom, rgba(1,1,1,0.5) 0%, transparent 100%)',
+          height: '65%', // Covers more than half
+          background: 'linear-gradient(to bottom, #010101 0%, #010101 40%, rgba(1,1,1,0.8) 70%, transparent 100%)',
+          zIndex: 10, // Above the blobs
         }}
       />
 
@@ -125,7 +148,8 @@ const ReactiveBackground = ({ isActive }) => {
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(1,1,1,0.2) 100%)',
+          background: 'radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(1,1,1,0.4) 100%)',
+          zIndex: 11,
         }}
       />
     </div>
