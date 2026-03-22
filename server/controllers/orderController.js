@@ -265,6 +265,98 @@ export const verifyRequestPayment = asyncHandler(async (req, res) => {
   });
 });
 
+// ============ VERIFY REQUEST PAYMENT CALLBACK (For Mobile/Redirect) ============
+export const verifyRequestPaymentCallback = asyncHandler(async (req, res) => {
+  const { orderId } = req.query;
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+  // Find order
+  const order = await Order.findById(orderId)
+    .populate("editor", "name profilePicture")
+    .populate("client", "name profilePicture");
+
+  if (!order) {
+    return res.redirect(`${process.env.FRONTEND_URL}/payment-failed?error=order_not_found`);
+  }
+
+  // If already verified (e.g. by Webhook or previous attempt), just redirect
+  if (["new", "accepted", "in_progress"].includes(order.status)) {
+    return res.redirect(
+      `${process.env.FRONTEND_URL}/request-payment-success?orderNumber=${order.orderNumber}&orderId=${order._id}`
+    );
+  }
+
+  // Verify Razorpay signature
+  const crypto = await import("crypto");
+  const body = razorpay_order_id + "|" + razorpay_payment_id;
+  const expectedSignature = crypto
+    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+    .update(body)
+    .digest("hex");
+
+  if (expectedSignature !== razorpay_signature) {
+    return res.redirect(`${process.env.FRONTEND_URL}/payment-failed?error=invalid_signature`);
+  }
+
+  // Update order status
+  order.status = "new";
+  order.paymentStatus = "escrow";
+  order.escrowStatus = "held";
+  order.escrowHeldAt = new Date();
+  order.razorpayPaymentId = razorpay_payment_id;
+  order.razorpaySignature = razorpay_signature;
+  await order.save();
+
+  // Create payment record
+  await Payment.create({
+    order: order._id,
+    client: order.client._id,
+    editor: order.editor._id,
+    amount: order.amount,
+    platformFee: order.platformFee,
+    editorEarning: order.editorEarning,
+    type: "escrow_deposit",
+    status: "completed",
+    transactionId: razorpay_payment_id,
+    orderSnapshot: {
+      orderNumber: order.orderNumber,
+      title: order.title,
+      description: order.description,
+      createdAt: order.createdAt,
+      deadline: order.deadline,
+    },
+    completedAt: new Date(),
+    notes: "Created via Mobile Redirect (Callback)",
+  });
+
+  // Create system message
+  await Message.create({
+    order: order._id,
+    sender: order.client._id,
+    type: "system",
+    content: `💰 New paid project request (verified via Redirect): "${order.title}" (₹${order.amount})`,
+    systemAction: "order_created",
+  });
+
+  // Notify editor
+  await createNotification({
+    recipient: order.editor._id,
+    type: "success",
+    title: "💰 New Paid Request!",
+    message: `${order.client.name} sent you a paid request - "${order.title}" for ₹${order.amount}`,
+    link: "/chats",
+    metaData: {
+      type: "new_order",
+      orderId: order._id,
+    },
+  });
+
+  // Redirect to success page
+  res.redirect(
+    `${process.env.FRONTEND_URL}/request-payment-success?orderNumber=${order.orderNumber}&orderId=${order._id}&title=${encodeURIComponent(order.title)}&amount=${order.amount}&editorName=${encodeURIComponent(order.editor.name)}&transactionId=${razorpay_payment_id}`
+  );
+});
+
 // ============ PROCESS OVERDUE IN-PROGRESS ORDERS (INTERNAL) ============
 // Runs when fetching orders to detect and handle overdue situations
 const processOverdueOrders = async (userId, role) => {

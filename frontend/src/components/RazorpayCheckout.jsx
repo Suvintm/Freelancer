@@ -113,6 +113,8 @@ const RazorpayCheckout = ({
         name: 'SuviX',
         description: `Order: ${orderDetails.title || orderDetails.orderNumber || orderId}`,
         order_id: order.id,
+        callback_url: `${backendURL}/api/payment-gateway/callback?orderId=${orderId}`,
+        redirect: true,
         prefill: {
           name: prefill?.name || user?.name || '',
           email: prefill?.email || user?.email || '',

@@ -269,6 +269,8 @@ const PublicEditorProfile = () => {
         name: "SuviX",
         description: `Project Request: ${order.title}`,
         order_id: razorpay.orderId,
+        callback_url: `${backendURL}/api/orders/request/callback?orderId=${order._id}`,
+        redirect: true,
         handler: async (response) => {
           try {
             // Verify payment

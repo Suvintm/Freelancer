@@ -27,6 +27,7 @@ import { proxyToPaymentService } from "../kafka/paymentProxy.js";
 import {
   getPaymentConfig,
   handleWebhook,
+  verifyPaymentCallback,
 } from "../controllers/paymentGatewayController.js";
 
 // ── Commented out — migrated to Java Payment Service ─────────────
@@ -45,6 +46,11 @@ const router = express.Router();
  * Razorpay calls this directly. HMAC verification happens here.
  */
 router.post("/webhook/razorpay", express.raw({ type: "application/json" }), handleWebhook);
+
+/**
+ * Public Callback for Razorpay redirects (Mobile)
+ */
+router.post("/callback", verifyPaymentCallback);
 
 // ==================== PROTECTED ROUTES ====================
 router.use(authMiddleware);

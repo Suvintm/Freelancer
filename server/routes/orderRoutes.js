@@ -3,6 +3,7 @@ import {
   createOrderFromGig,
   createRequestPaymentOrder,
   verifyRequestPayment,
+  verifyRequestPaymentCallback,
   getMyOrders,
   getOrder,
   acceptOrder,
@@ -24,7 +25,10 @@ import { createGigOrderValidator, disputeValidator, extendDeadlineValidator } fr
 
 const router = express.Router();
 
-// All routes are protected
+// ========== PUBLIC CALLBACK (For Razorpay Redirects) ==========
+router.post("/request/callback", verifyRequestPaymentCallback);
+
+// All other routes are protected
 router.use(authMiddleware);
 
 // ========== SPECIFIC ROUTES FIRST (before /:id) ==========

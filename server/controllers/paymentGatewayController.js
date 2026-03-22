@@ -293,6 +293,129 @@ export const verifyPayment = async (req, res) => {
 };
 
 /**
+ * Verify payment callback (For Mobile/Redirect)
+ */
+export const verifyPaymentCallback = async (req, res) => {
+  try {
+    const { orderId } = req.query;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+    // Find order
+    const order = await Order.findById(orderId)
+      .populate("client", "name")
+      .populate("editor", "name")
+      .populate("gig", "title");
+
+    if (!order) {
+      return res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/payment-failed?error=order_not_found`);
+    }
+
+    // If already processed, just redirect to my orders
+    if (["new", "accepted", "in_progress"].includes(order.status)) {
+      return res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/my-orders?status=new&payment=success`);
+    }
+
+    // Verify payment with provider
+    const provider = new RazorpayProvider();
+    const verification = await provider.verifyPayment({
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+    });
+
+    if (!verification.success) {
+      order.paymentStatus = "failed";
+      await order.save();
+      return res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/payment-failed?error=verification_failed`);
+    }
+
+    // Update order with payment success
+    order.razorpayPaymentId = razorpay_payment_id;
+    order.razorpaySignature = razorpay_signature;
+    order.paymentStatus = "escrow";
+    order.escrowStatus = "held";
+    order.escrowHeldAt = new Date();
+    order.paidAt = new Date();
+    
+    if (order.status === "awaiting_payment") {
+      order.status = "accepted";
+    } else {
+      order.status = "new";
+    }
+    await order.save();
+
+    // Create Payment record
+    await Payment.create({
+      order: order._id,
+      client: order.client._id,
+      editor: order.editor._id,
+      amount: order.amount,
+      platformFee: order.platformFee,
+      editorEarning: order.editorEarning,
+      type: "escrow_deposit",
+      status: "completed",
+      transactionId: razorpay_payment_id,
+      orderSnapshot: {
+        orderNumber: order.orderNumber,
+        title: order.title,
+        description: order.description,
+        createdAt: order.createdAt,
+        deadline: order.deadline,
+      },
+      completedAt: new Date(),
+      notes: `Razorpay Payment ID: ${razorpay_payment_id} (Mobile Callback)`,
+    });
+
+    // Create system message
+    const MessageClass = (await import("../models/Message.js")).Message || (await import("../models/Message.js")).default;
+    if (order.type === "request") {
+      await MessageClass.create({
+        order: order._id,
+        sender: order.client._id,
+        type: "system",
+        content: `✅ Payment of ₹${order.amount} confirmed via Mobile Redirect! Chat is now enabled.`,
+        systemAction: "payment_confirmed",
+      });
+    } else {
+      await MessageClass.create({
+        order: order._id,
+        sender: order.client._id,
+        type: "system",
+        content: `Payment of ₹${order.amount} confirmed via Mobile Redirect. Order created for "${order.title}"`,
+        systemAction: "payment_confirmed",
+      });
+    }
+
+    // Notify editor
+    const { createNotification } = await import("./notificationController.js");
+    await createNotification({
+      recipient: order.editor._id,
+      type: "success",
+      title: "💰 Payment Received!",
+      message: `${order.client?.name || "A client"} paid ₹${order.amount} for "${order.title}". Start working!`,
+      link: `/chat/${order._id}`,
+      metaData: {
+        orderId: order._id,
+        senderId: order.client._id,
+        type: "new_order"
+      }
+    });
+
+    // Increment gig orders count
+    if (order.gig) {
+      const { Gig: GigModel } = await import("../models/Gig.js");
+      await GigModel.findByIdAndUpdate(order.gig, { $inc: { totalOrders: 1 } });
+    }
+
+    // Redirect to my orders
+    res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/my-orders?status=new&payment=success`);
+  } catch (error) {
+    console.error("❌ Callback verify error:", error);
+    res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/payment-failed?error=internal_error`);
+  }
+};
+
+/**
  * Razorpay Webhook Handler
  * Handles async payment events from Razorpay
  */
