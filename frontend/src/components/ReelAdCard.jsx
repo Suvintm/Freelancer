@@ -209,7 +209,7 @@ const ReelAdCard = ({ ad, onSkip, isActive=true, globalMuted=true, setGlobalMute
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="relative w-full h-full bg-black overflow-hidden select-none"
+      className="h-full aspect-[9/16] max-w-full bg-black mx-auto overflow-hidden select-none relative flex items-center justify-center shadow-[0_0_100px_rgba(0,0,0,0.5)]"
       onClick={(e) => { e.stopPropagation(); setMuted(!muted); }}
       onMouseDown={() => { if (videoRef.current) { videoRef.current.pause(); setIsPlaying(false); } }}
       onMouseUp={() => { if (videoRef.current) { videoRef.current.play(); setIsPlaying(true); } }}

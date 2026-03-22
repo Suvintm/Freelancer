@@ -407,7 +407,7 @@ const ReelsPage = ({ isActive = true }) => {
                             key={item.id}
                             id={`feed-item-${index}`}
                             ref={isLast ? lastReelRef : null}
-                            className="w-full h-screen snap-start snap-always relative flex-shrink-0"
+                            className="w-full h-screen snap-start snap-always relative flex-shrink-0 flex items-center justify-center bg-black"
                         >
                             {item.type === 'reel' ? (
                                 <ReelCard

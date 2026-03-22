@@ -159,7 +159,7 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
     const isOwnReel = user?._id === reel.editor?._id;
 
     return (
-        <div className="w-full h-full bg-black relative flex items-center justify-center overflow-hidden">
+        <div className="h-full aspect-[9/16] max-w-full bg-black relative flex items-center justify-center overflow-hidden mx-auto shadow-[0_0_100px_rgba(0,0,0,0.5)]">
             <div 
                 className="absolute inset-0 cursor-pointer" 
                 onClick={(e) => { e.stopPropagation(); setGlobalMuted(!globalMuted); }}
