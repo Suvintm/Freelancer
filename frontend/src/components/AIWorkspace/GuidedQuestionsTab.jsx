@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiArrowRight, HiArrowLeft, HiCheck } from 'react-icons/hi';
+import axios from 'axios';
+import { toast } from 'react-toastify';
+import { useAppContext } from '../../context/AppContext';
 import EditorMatchCard from './EditorMatchCard';
 
 // ── Data ─────────────────────────────────────────────────────
@@ -131,11 +134,7 @@ const ProcessingState = () => {
 };
 
 // ── Results View ─────────────────────────────────────────────
-const ResultsView = ({ onReset }) => {
-  const MOCK_EDITORS = [
-    { _id: 'r1', name: 'Arjun Mehta', rating: 4.9, reviewCount: 124, skills: ['Cinematic', 'Color Grading'], suvixScore: { total: 94, tier: 'elite' }, availability: { status: 'available' } },
-    { _id: 'r2', name: 'Riya Sharma', rating: 4.8, reviewCount: 89, skills: ['Storytelling', 'VFX'], suvixScore: { total: 87, tier: 'expert' }, availability: { status: 'available' } },
-  ];
+const ResultsView = ({ onReset, editors = [] }) => {
 
   return (
     <div style={{ height: '100%', overflowY: 'auto', padding: '16px 16px 32px' }}>
@@ -149,9 +148,14 @@ const ResultsView = ({ onReset }) => {
         </motion.div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {MOCK_EDITORS.map((editor, i) => (
-            <EditorMatchCard key={editor._id} editor={editor} matchScore={95 - i * 4} reason="Direct skill match" compact={false} animationDelay={i * 0.1} />
+          {editors.map((editor, i) => (
+            <EditorMatchCard key={editor._id} editor={editor} matchScore={editor.matchScore || (95 - i * 4)} reason={editor.reason || "Direct skill match"} compact={false} animationDelay={i * 0.1} />
           ))}
+          {editors.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: 'rgba(255,255,255,0.3)' }}>
+              No perfect matches found. Try adjusting your vibe or software preferences.
+            </div>
+          )}
         </div>
 
         <div style={{ textAlign: 'center', marginTop: 24 }}>
@@ -165,10 +169,12 @@ const ResultsView = ({ onReset }) => {
 };
 
 const GuidedQuestionsTab = () => {
+  const { user, backendURL } = useAppContext();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({ projectType: '', softwares: [], vibe: [], budget: '', deadline: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [results, setResults] = useState([]);
 
   const toggle = (key, val, limit = 99) => {
     setAnswers(prev => {
@@ -179,10 +185,38 @@ const GuidedQuestionsTab = () => {
     });
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step < 4) { setStep(s => s + 1); return; }
+    
     setIsSubmitting(true);
-    setTimeout(() => { setIsSubmitting(false); setShowResults(true); }, 2500);
+    try {
+      let currentSessionId = localStorage.getItem('suvix_ai_session_id');
+      
+      // 1. Create session if none exists
+      if (!currentSessionId) {
+        const { data: sData } = await axios.post(`${backendURL}/api/ai-workspace/sessions`, 
+          { sessionType: 'guided' },
+          { headers: { Authorization: `Bearer ${user.token}` } }
+        );
+        currentSessionId = sData.sessionId;
+        localStorage.setItem('suvix_ai_session_id', currentSessionId);
+      }
+
+      // 2. Submit matching request
+      const { data } = await axios.post(`${backendURL}/api/ai-workspace/sessions/${currentSessionId}/match`,
+        answers,
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+
+      setResults(data.editors || []);
+      setShowResults(true);
+    } catch (err) {
+      console.error("Guided Match failed:", err);
+      toast.error("Matching engine is currently offline. Please try again later.");
+      localStorage.removeItem('suvix_ai_session_id');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderStep = () => {
@@ -238,7 +272,7 @@ const GuidedQuestionsTab = () => {
   };
 
   if (isSubmitting) return <ProcessingState />;
-  if (showResults) return <ResultsView onReset={() => { setShowResults(false); setStep(0); setAnswers({ projectType: '', softwares: [], vibe: [], budget: '', deadline: '' }); }} />;
+  if (showResults) return <ResultsView editors={results} onReset={() => { setShowResults(false); setStep(0); setAnswers({ projectType: '', softwares: [], vibe: [], budget: '', deadline: '' }); }} />;
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '16px 16px' }}>

@@ -16,7 +16,7 @@ export const getProfile = asyncHandler(async (req, res) => {
   const viewerId = req.user?._id?.toString() || req.user?._id || req.user?.id;
 
   let profile = await Profile.findOne({ user: userId })
-    .populate("user", "name email role profilePicture kycStatus followers following suvixId followSettings clientKycStatus availability")
+    .populate("user", "name email role profilePicture kycStatus followers following suvixId followSettings clientKycStatus availability aiProfile")
     .lean();
 
   if (!profile) {
@@ -49,33 +49,15 @@ export const getProfile = asyncHandler(async (req, res) => {
   }
 
   // Fetch Portfolios manually (since they might not be linked in profile array)
-  const portfolios = await Portfolio.find({ user: userId }).sort({ uploadedAt: -1 }).lean();
+  const portfolios = await Portfolio.find({ user: userId }).sort({ uploadedAt: -1 });
 
   logger.info(`Fetching profile for user: ${userId}`);
   logger.info(`Found ${portfolios.length} portfolios for user ${userId}`);
+  profile.portfolio = portfolios;
 
   // Fetch Reel Stats
-  const reels = await Reel.find({ editor: userId, isPublished: true }).lean();
+  const reels = await Reel.find({ editor: userId, isPublished: true });
   logger.info(`Found ${reels.length} published reels for user ${userId}`);
-  
-  // Attach reel metrics to portfolios directly in memory
-  const portfoliosWithReelStatus = portfolios.map(p => {
-    const matchingReel = reels.find(r => r.portfolio?.toString() === p._id.toString());
-    if (matchingReel) {
-       return {
-           ...p,
-           isPublished: true,
-           reelId: matchingReel._id,
-           likesCount: matchingReel.likesCount || 0,
-           viewsCount: matchingReel.viewsCount || 0,
-           commentsCount: matchingReel.commentsCount || 0
-       };
-    }
-    return { ...p, isPublished: false };
-  });
-
-  profile.portfolio = portfoliosWithReelStatus;
-
   const totalReels = reels.length;
   const totalViews = reels.reduce((acc, reel) => acc + (reel.viewsCount || 0), 0);
   const totalLikes = reels.reduce((acc, reel) => acc + (reel.likesCount || 0), 0);
@@ -109,7 +91,8 @@ export const updateProfile = asyncHandler(async (req, res) => {
     availability,
     responseTime,
     followSettings,
-    name // username
+    name, // username
+    aiProfile // AI Smart Matching data
   } = req.body;
 
   const profile = await Profile.findOne({ user: req.user._id });
@@ -247,6 +230,28 @@ export const updateProfile = asyncHandler(async (req, res) => {
     userUpdate['followSettings.manualApproval'] = String(finalManualApproval) === 'true';
   }
 
+  // AI Profile Update
+  if (aiProfile !== undefined) {
+    let parsedAI = aiProfile;
+    if (typeof aiProfile === 'string') {
+      try {
+        parsedAI = JSON.parse(aiProfile);
+      } catch (e) {
+        logger.error("Failed to parse aiProfile JSON", e);
+      }
+    }
+    
+    // Convert softwareProficiency Map from plain object if needed
+    if (parsedAI.softwareProficiency && typeof parsedAI.softwareProficiency === 'object' && !Array.isArray(parsedAI.softwareProficiency)) {
+      userUpdate.aiProfile = {
+        ...parsedAI,
+        lastAiUpdate: new Date()
+      };
+    } else {
+      userUpdate.aiProfile = parsedAI;
+    }
+  }
+
   if (Object.keys(userUpdate).length > 0) {
     await User.findByIdAndUpdate(req.user._id, userUpdate);
     logger.info(`Updated user fields for ${req.user._id}: ${JSON.stringify(userUpdate)}`);
@@ -309,7 +314,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
 
   // Return populated profile
   const populatedProfile = await Profile.findOne({ user: req.user._id })
-    .populate("user", "name email role profileCompleted profilePicture followSettings")
+    .populate("user", "name email role profileCompleted profilePicture followSettings aiProfile")
     .populate("portfolio");
 
   logger.info(`Profile updated for user: ${req.user._id}`);

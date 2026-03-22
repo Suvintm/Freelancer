@@ -261,6 +261,18 @@ const userSchema = new mongoose.Schema(
       },
       lastCalculated: Date,
     },
+
+    // AI Workspace Profiling (For Editors)
+    aiProfile: {
+      aiKeywords: [String],
+      aiDescription: { type: String, default: "" },
+      videoStyles: [String], // e.g., ['cinematic', 'minimalist', 'vfx', 'vlog', 'corporate']
+      softwareProficiency: {
+        type: Map,
+        of: Number, // 1-5 scale (e.g., {'Premiere Pro': 5, 'After Effects': 3})
+      },
+      lastAiUpdate: Date,
+    },
   },
   {
     timestamps: true,

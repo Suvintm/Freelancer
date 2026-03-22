@@ -43,6 +43,11 @@ import photoshopIcon from "../assets/photoshop.png";
 import canvaIcon from "../assets/canvalogo.png";
 import vnIcon from "../assets/Vnlogo.png";
 
+const ALL_VIDEO_STYLES = [
+  "Cinematic", "Vlog", "Gaming", "Corporate", "Wedding", "Documentary", 
+  "Commercial/Ads", "Short-form/Reels", "Music Video", "Educational", "Minimalist", "High-Energy"
+];
+
 const SectionHeader = ({ icon: Icon, title, subtitle, simple, isDark }) => (
   <div className={`flex items-center gap-3 ${simple ? "mb-4" : "mb-6"}`}>
     <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
@@ -100,6 +105,12 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
       twitter: "",
       linkedin: "",
       website: ""
+    },
+    aiProfile: {
+      aiKeywords: [],
+      aiDescription: "",
+      videoStyles: [],
+      softwareProficiency: {} // { 'Premiere Pro': 5, ... }
     }
   });
 
@@ -138,6 +149,12 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
           twitter: p?.socialLinks?.twitter || "",
           linkedin: p?.socialLinks?.linkedin || "",
           website: p?.socialLinks?.website || ""
+        },
+        aiProfile: {
+          aiKeywords: p?.user?.aiProfile?.aiKeywords || [],
+          aiDescription: p?.user?.aiProfile?.aiDescription || "",
+          videoStyles: p?.user?.aiProfile?.videoStyles || [],
+          softwareProficiency: p?.user?.aiProfile?.softwareProficiency || {}
         }
       }));
     } catch (err) {
@@ -287,6 +304,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
       formPayload.append("followSettings", JSON.stringify({ manualApproval: formData.manualApproval }));
       formPayload.append("softwares", JSON.stringify(formData.softwares));
       formPayload.append("socialLinks", JSON.stringify(formData.socialLinks));
+      formPayload.append("aiProfile", JSON.stringify(formData.aiProfile));
       formPayload.append("name", formData.name);
 
       formData.certifications.forEach((file) => {
@@ -306,6 +324,12 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
       setFormData((prev) => ({
         ...prev,
         softwares: res.data.profile.softwares || [],
+        aiProfile: {
+          aiKeywords: res.data.profile.user.aiProfile?.aiKeywords || [],
+          aiDescription: res.data.profile.user.aiProfile?.aiDescription || "",
+          videoStyles: res.data.profile.user.aiProfile?.videoStyles || [],
+          softwareProficiency: res.data.profile.user.aiProfile?.softwareProficiency || {}
+        },
         certifications: [],
         existingCertifications:
           res.data.profile.certifications?.filter((c) => c?.image) || [],
@@ -316,6 +340,29 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
     } finally {
       setUpdating(false);
     }
+  };
+
+  const updateAiProfile = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      aiProfile: {
+        ...prev.aiProfile,
+        [field]: value
+      }
+    }));
+  };
+
+  const setSoftwareProficiency = (software, level) => {
+    setFormData(prev => ({
+      ...prev,
+      aiProfile: {
+        ...prev.aiProfile,
+        softwareProficiency: {
+          ...prev.aiProfile.softwareProficiency,
+          [software]: level
+        }
+      }
+    }));
   };
 
   const handleKeyPress = (e, action) => {
@@ -878,6 +925,93 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
                     </div>
                   )}
                 </div>
+              </motion.div>
+            )}
+
+            {/* AI Smart Matching Hub - RESTORED */}
+            {user?.role === 'editor' && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-6 rounded-[32px] border bg-emerald-500/[0.03] border-emerald-500/10 transition-all space-y-8"
+              >
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-500/20 text-emerald-500">
+                    <HiOutlineSparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-wider text-emerald-500">AI Optimization Hub</h3>
+                    <p className="text-[10px] text-zinc-500">Power your discovery</p>
+                  </div>
+                </div>
+                
+                {/* AI Description */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">AI Assistant Brief</label>
+                  <p className="text-[10px] text-zinc-500 mb-2 leading-relaxed italic">
+                    Tell SuviX AI exactly what kind of projects you excel at.
+                  </p>
+                  <textarea
+                    value={formData.aiProfile.aiDescription}
+                    onChange={(e) => updateAiProfile('aiDescription', e.target.value)}
+                    rows="4"
+                    className={`w-full p-4 rounded-2xl border text-sm transition-all outline-none resize-none ${isDark ? "bg-black/40 border-white/5 text-white focus:border-emerald-500/50" : "bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-emerald-500"}`}
+                    placeholder="e.g. My primary focus is high-end cinematic wedding films..."
+                  />
+                </div>
+
+                {/* AI Style Specialization */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Style Specialization</label>
+                   <div className="flex flex-wrap gap-2">
+                    {ALL_VIDEO_STYLES.map(style => (
+                      <button
+                        key={style}
+                        type="button"
+                        onClick={() => {
+                          const current = formData.aiProfile.videoStyles;
+                          const updated = current.includes(style)
+                            ? current.filter(s => s !== style)
+                            : [...current, style];
+                          updateAiProfile('videoStyles', updated);
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-[10px] font-black border transition-all ${
+                          formData.aiProfile.videoStyles.includes(style)
+                          ? "bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20"
+                          : (isDark ? "bg-black/40 border-white/5 text-zinc-500 hover:border-white/10" : "bg-white border-zinc-200 text-zinc-400 hover:border-zinc-300")
+                        }`}
+                      >
+                        {style}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Software Proficiency */}
+                {formData.softwares.length > 0 && (
+                  <div className="space-y-4 pt-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Software Proficiency (1-10)</label>
+                    <div className="space-y-4 pt-2">
+                      {formData.softwares.map(soft => (
+                        <div key={soft} className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500">{soft}</span>
+                            <span className="text-[10px] font-black text-white bg-emerald-500 px-2 rounded-md">{formData.aiProfile.softwareProficiency[soft] || 5}</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="1"
+                            max="10"
+                            step="1"
+                            value={formData.aiProfile.softwareProficiency[soft] || 5}
+                            onChange={(e) => setSoftwareProficiency(soft, parseInt(e.target.value))}
+                            className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
           </div>

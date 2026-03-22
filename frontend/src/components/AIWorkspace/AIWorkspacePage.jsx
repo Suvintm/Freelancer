@@ -233,26 +233,29 @@ const AIWorkspacePage = () => {
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
-          onClick={() => setShowHistory(true)}
+          onClick={() => {
+            localStorage.removeItem('suvix_ai_session_id');
+            window.location.reload(); // Simple way to reset state across tabs
+          }}
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 6,
-            padding: '6px 12px',
+            padding: '6px 14px',
             borderRadius: 8,
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.07)',
-            fontSize: 9,
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            fontSize: 10,
             fontWeight: 600,
-            letterSpacing: '0.08em',
+            letterSpacing: '0.04em',
             textTransform: 'uppercase',
-            color: 'rgba(255,255,255,0.4)',
+            color: 'rgba(255,255,255,0.8)',
             cursor: 'pointer',
             whiteSpace: 'nowrap',
           }}
         >
-          <FaHistory style={{ fontSize: 9 }} />
-          <span className="hidden sm:inline">Sessions</span>
+          <FaHistory style={{ fontSize: 10 }} />
+          <span>New Chat</span>
         </motion.button>
       </header>
 

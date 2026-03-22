@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaPaperPlane } from 'react-icons/fa';
+import { useAppContext } from '../../context/AppContext';
+import axios from 'axios';
+import { toast } from 'react-toastify';
 import EditorMatchCard from './EditorMatchCard';
 
 // ─────────────────────────────────────────────────────────────────
@@ -156,6 +159,20 @@ const MessageBubble = ({ msg }) => {
             ))}
           </div>
         )}
+
+        {/* No Results Message */}
+        {msg.searchPerformed && (!msg.editors || msg.editors.length === 0) && (
+          <div style={{ 
+            fontSize: 12, 
+            color: 'rgba(255,255,255,0.3)', 
+            padding: '4px 8px',
+            background: 'rgba(255,255,255,0.03)',
+            borderRadius: 8,
+            border: '1px dashed rgba(255,255,255,0.1)'
+          }}>
+            No matching editors found for these specific requirements.
+          </div>
+        )}
       </div>
     </motion.div>
   );
@@ -208,6 +225,7 @@ const SuggestionChip = ({ label, onClick }) => (
 //                          so AIWorkspacePage can drive the bg
 // ─────────────────────────────────────────────────────────────────
 const NaturalChatTab = ({ onTypingChange }) => {
+  const { user, backendURL } = useAppContext();
   const [messages,  setMessages]  = useState([
     {
       id: 1,
@@ -268,68 +286,47 @@ const NaturalChatTab = ({ onTypingChange }) => {
     // ── isTyping = true → triggers background swell animation ──
     setIsTyping(true);
 
-    // ── TODO: replace with real API call ───────────────────────
-    // axios.post(`/api/ai-workspace/sessions/${sessionId}/chat`, { message: text })
-    //   .then(res => {
-    //     setMessages(prev => [...prev, res.data.message]);
-    //     setIsTyping(false);  // ← background calms back down
-    //   })
-    //   .catch(() => setIsTyping(false));
-    // ──────────────────────────────────────────────────────────
+    const handleChat = async () => {
+      try {
+        let currentSessionId = localStorage.getItem('suvix_ai_session_id');
+        
+        // 1. Create session if none exists
+        if (!currentSessionId) {
+          const { data: sData } = await axios.post(`${backendURL}/api/ai-workspace/sessions`, 
+            { sessionType: 'chat' },
+            { headers: { Authorization: `Bearer ${user.token}` } }
+          );
+          currentSessionId = sData.sessionId;
+          localStorage.setItem('suvix_ai_session_id', currentSessionId);
+        }
 
-    // Static simulation — 2.2s delay
-    setTimeout(() => {
-      const assistantMsg = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content:
-          'Based on what you described, I found editors who match your project well. Here are the top recommendations:',
-        timestamp: new Date(),
-        editors: [
-          {
-            _id: 'e1',
-            name: 'Arjun Mehta',
-            rating: 4.9,
-            reviewCount: 124,
-            skills: ['Cinematic', 'Color Grading', 'DaVinci Resolve'],
-            suvixScore: { total: 94, tier: 'elite' },
-            availability: { status: 'available' },
-            matchScore: 96,
-            reason:
-              'Arjun specialises in cinematic edits and has delivered 40+ projects in this exact style.',
-          },
-          {
-            _id: 'e2',
-            name: 'Riya Sharma',
-            rating: 4.8,
-            reviewCount: 89,
-            skills: ['Storytelling', 'Premiere Pro', 'Wedding Films'],
-            suvixScore: { total: 87, tier: 'expert' },
-            availability: { status: 'available' },
-            matchScore: 91,
-            reason:
-              "Riya's narrative storytelling perfectly matches your emotional brief.",
-          },
-          {
-            _id: 'e3',
-            name: 'Dev Nair',
-            rating: 4.7,
-            reviewCount: 56,
-            skills: ['Color Grading', 'Motion Graphics'],
-            suvixScore: { total: 78, tier: 'professional' },
-            availability: { status: 'small_only' },
-            matchScore: 84,
-            reason:
-              'Dev delivers fast with strong color work — ideal if your deadline is tight.',
-          },
-        ],
-      };
+        // 2. Send message to backend
+        const { data } = await axios.post(`${backendURL}/api/ai-workspace/sessions/${currentSessionId}/chat`,
+          { message: text },
+          { headers: { Authorization: `Bearer ${user?.token}` } }
+        );
 
-      setMessages(prev => [...prev, assistantMsg]);
-      // ── isTyping = false → background calms back down ──────
-      setIsTyping(false);
-    }, 2200);
-  }, [input, isTyping]);
+        const assistantMsg = {
+          id: Date.now() + 1,
+          role: 'assistant',
+          content: data.message.content,
+          timestamp: new Date(),
+          editors: data.message.editors,
+          searchPerformed: data.message.searchPerformed
+        };
+
+        setMessages(prev => [...prev, assistantMsg]);
+      } catch (err) {
+        console.error("AI Chat failed:", err);
+        toast.error("AI Assistant is unavailable. Please try again later.");
+        localStorage.removeItem('suvix_ai_session_id'); // Clear potentially stale session
+      } finally {
+        setIsTyping(false);
+      }
+    };
+
+    handleChat();
+  }, [input, isTyping, user?.token, backendURL]);
 
   // Suggestion texts — same vibe as the video
   const suggestions = [
@@ -567,7 +564,7 @@ const NaturalChatTab = ({ onTypingChange }) => {
                 letterSpacing: '0.02em',
               }}
             >
-              Claude-powered · Enter to send
+              Groq-powered · Enter to send
             </span>
             {charCount > 400 && (
               <span

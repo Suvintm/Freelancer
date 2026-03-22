@@ -60,6 +60,7 @@ import walletRoutes from "./routes/walletRoutes.js";
 import withdrawalRoutes from "./routes/withdrawalRoutes.js";
 import adRequestRoutes from "./routes/adRequestRoutes.js";
 import adPreviewRoutes from "./routes/adPreviewRoutes.js";
+import aiRoutes from "./routes/aiworkspace/aiRoutes.js";
  
 // Scheduled Jobs
 import { startScheduledJobs } from "./jobs/scheduledJobs.js";
@@ -311,6 +312,7 @@ app.use("/api/location", locationRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/withdrawals", withdrawalRoutes);
+app.use("/api/ai-workspace", aiRoutes);
 
 // Badge/Achievement Routes
 import badgeRoutes from "./routes/badgeRoutes.js";
@@ -387,6 +389,15 @@ const connectDB = async (retries = 5) => {
       maxPoolSize: 10,
     });
     logger.info("MongoDB connected successfully");
+
+    // Production AI - Create Text Indexes for rapid matching
+    const db = mongoose.connection.db;
+    await Promise.all([
+      db.collection("profiles").createIndex({ about: "text", skills: "text", softwares: "text" }),
+      db.collection("users").createIndex({ bio: "text", name: "text" }),
+      db.collection("reels").createIndex({ title: "text", description: "text", hashtags: "text" })
+    ]);
+    logger.info("Production AI text indexes verified/created ✅");
     return true;
   } catch (error) {
     logger.error(`MongoDB connection failed: ${error.message}`);
