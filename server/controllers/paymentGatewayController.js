@@ -248,7 +248,7 @@ export const verifyPayment = async (req, res) => {
       metaData: {
         orderId: order._id,
         senderId: order.client,
-        type: "payment_received"
+        type: "new_order"
       }
     });
 
@@ -340,13 +340,30 @@ export const handleWebhook = async (req, res) => {
 
 // Webhook handlers
 async function handlePaymentCaptured(payment) {
-  const order = await Order.findOne({ razorpayOrderId: payment.order_id });
+  const order = await Order.findOne({ razorpayOrderId: payment.order_id })
+    .populate("client", "name email")
+    .populate("editor", "name email");
+    
   if (!order) return;
+
+  // If already processed, don't duplicate logic
+  const wasAlreadyProcessed = ["new", "accepted", "in_progress"].includes(order.status);
 
   order.razorpayPaymentId = payment.id;
   order.paymentStatus = "escrow";
   order.escrowStatus = "held";
   order.escrowHeldAt = new Date();
+  order.paidAt = order.paidAt || new Date();
+
+  // Update status if it's currently in a pending state
+  if (!wasAlreadyProcessed) {
+    if (order.status === "awaiting_payment") {
+      order.status = "accepted";
+    } else if (order.status === "pending_payment") {
+      order.status = "new";
+    }
+  }
+
   await order.save();
 
   // Create Payment record if it doesn't exist
@@ -354,8 +371,8 @@ async function handlePaymentCaptured(payment) {
   if (!existingPayment) {
     await Payment.create({
       order: order._id,
-      client: order.client,
-      editor: order.editor,
+      client: order.client._id,
+      editor: order.editor._id,
       amount: order.amount,
       platformFee: order.platformFee,
       editorEarning: order.editorEarning,
@@ -372,6 +389,50 @@ async function handlePaymentCaptured(payment) {
       completedAt: new Date(),
       notes: "Created via Webhook (payment.captured)",
     });
+  }
+
+  // If we just transitioned the status, send notifications and messages
+  if (!wasAlreadyProcessed) {
+    // Create system message
+    const { Message } = await import("../models/Message.js");
+    if (order.type === "request") {
+      await Message.create({
+        order: order._id,
+        sender: order.client._id,
+        type: "system",
+        content: `✅ Payment of ₹${order.amount} confirmed via Webhook! Chat is now enabled. ${order.editor?.name || "Editor"}, you can start working.`,
+        systemAction: "payment_confirmed",
+      });
+    } else {
+      await Message.create({
+        order: order._id,
+        sender: order.client._id,
+        type: "system",
+        content: `Payment of ₹${order.amount} confirmed via Webhook. Order created for "${order.title}"`,
+        systemAction: "payment_confirmed",
+      });
+    }
+
+    // Notify editor
+    const { createNotification } = await import("./notificationController.js");
+    await createNotification({
+      recipient: order.editor._id,
+      type: "success",
+      title: "💰 Payment Received!",
+      message: `${order.client?.name || "A client"} paid ₹${order.amount} for "${order.title}" (Verified via Webhook).`,
+      link: `/chat/${order._id}`,
+      metaData: {
+        orderId: order._id,
+        senderId: order.client._id,
+        type: "new_order"
+      }
+    });
+
+    // Increment gig orders count
+    if (order.gig) {
+      const { Gig } = await import("../models/Gig.js");
+      await Gig.findByIdAndUpdate(order.gig, { $inc: { totalOrders: 1 } });
+    }
   }
 }
 

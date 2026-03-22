@@ -34,7 +34,7 @@ import { FaShoppingCart, FaEnvelope, FaRupeeSign, FaRegImage, FaVideo, FaFile } 
 import { useAppContext } from "../context/AppContext";
 import { useSocket } from "../context/SocketContext";
 import { useTheme } from "../context/ThemeContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
@@ -576,6 +576,16 @@ const MyOrders = () => {
   const totalEarnings = orders
     .filter(o => o.status === "completed")
     .reduce((sum, o) => sum + (o.editorEarning || o.amount || 0), 0);
+
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const status = params.get("status");
+    if (status) {
+      setStatusFilter(status);
+    }
+  }, [location.search]);
 
   // Real-time updates
   useEffect(() => {

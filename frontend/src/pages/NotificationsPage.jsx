@@ -272,7 +272,7 @@ const NotificationsPage = () => {
     }
 
     const getIconData = () => {
-      if (title.includes("order") || title.includes("payment")) 
+      if (notification.metaData?.type === "new_order" || title.includes("order") || title.includes("payment")) 
         return { icon: HiOutlineSparkles, bg: "bg-emerald-500", shadow: "shadow-emerald-500/20" };
       if (title.includes("kyc") || title.includes("verified")) 
         return { icon: HiOutlineShieldCheck, bg: "bg-blue-500", shadow: "shadow-blue-500/20" };
@@ -412,7 +412,7 @@ const NotificationsPage = () => {
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
-                          className={`group relative px-6 py-5 flex items-center gap-4 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-all border-b last:border-0 border-zinc-100 dark:border-zinc-800 ${!n.isRead ? "bg-emerald-50/20 dark:bg-emerald-500/5" : ""} cursor-pointer`}
+                          className={`group relative px-6 py-5 flex items-center gap-4 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-all border-b last:border-0 border-zinc-100 dark:border-zinc-800 ${!n.isRead ? "bg-emerald-50/20 dark:bg-emerald-500/5" : ""} ${n.metaData?.type === 'new_order' ? "ring-1 ring-inset ring-emerald-500/30 bg-emerald-500/[0.03] dark:bg-emerald-500/[0.05]" : ""} cursor-pointer`}
                           onClick={() => {
                             if (isSelectMode) {
                               toggleSelect(n._id);
@@ -538,6 +538,32 @@ const NotificationsPage = () => {
                                   className="px-4 py-1.5 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-[10px] font-black rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all whitespace-nowrap"
                                 >
                                   Start Conversation
+                                </button>
+                              </div>
+                            )}
+
+                            {/* New Order Actions */}
+                            {n.metaData?.type === "new_order" && n.metaData?.orderId && (
+                              <div className="flex items-center gap-2 mt-3 overflow-x-auto no-scrollbar pb-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!n.isRead) markAsRead(n._id);
+                                    navigate("/my-orders?status=new");
+                                  }}
+                                  className="px-4 py-1.5 bg-emerald-500 text-white text-[10px] font-black rounded-lg hover:opacity-90 transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-1.5 whitespace-nowrap"
+                                >
+                                  View Request List
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!n.isRead) markAsRead(n._id);
+                                    navigate(`/chat/${n.metaData.orderId}`);
+                                  }}
+                                  className="px-4 py-1.5 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-[10px] font-black rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all whitespace-nowrap"
+                                >
+                                  Open Chat
                                 </button>
                               </div>
                             )}

@@ -242,6 +242,10 @@ export const verifyRequestPayment = asyncHandler(async (req, res) => {
     title: "💰 New Paid Request!",
     message: `${req.user.name} sent you a paid request - "${order.title}" for ₹${order.amount}`,
     link: "/chats",
+    metaData: {
+      type: "new_order",
+      orderId: order._id,
+    },
   });
 
   logger.info(`Request payment verified: ${order.orderNumber}`);
