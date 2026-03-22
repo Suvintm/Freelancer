@@ -83,6 +83,7 @@ import AdvertisePage from "./pages/AdvertisePage.jsx";
 import AdvertiseNewPage from "./pages/Advertisenewpage.jsx";
 import StoriesPage from "./pages/StoriesPage.jsx";
 import ConnectionsPage from "./pages/ConnectionsPage.jsx";
+import AIWorkspacePage from "./components/AIWorkspace/AIWorkspacePage.jsx";
 
 import { TermsAndConditions, PrivacyPolicy, ContentProtectionPolicy, EditorCodeOfConduct } from "./pages/LegalPages";
 
@@ -272,6 +273,10 @@ function App() {
         <Route path="/editor-wallet" element={<ProtectedRoute allowedRoles={["editor"]}><EditorWallet /></ProtectedRoute>} />
         <Route path="/stories/:userId" element={<StoriesPage />} />
         <Route path="/connections/:userId" element={<ProtectedRoute><ConnectionsPage /></ProtectedRoute>} />
+        
+        {/* ============ AI WORKSPACE ============ */}
+        <Route path="/ai-workspace" element={<ProtectedRoute allowedRoles={["client"]}><AIWorkspacePage /></ProtectedRoute>} />
+        <Route path="/ai-workspace/:sessionId" element={<ProtectedRoute allowedRoles={["client"]}><AIWorkspacePage /></ProtectedRoute>} />
 
         {/* ============ REDIRECTS ============ */}
         <Route path="/client-messages" element={<Navigate to="/chats" replace />} />
