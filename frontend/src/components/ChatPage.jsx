@@ -2862,185 +2862,155 @@ useEffect(() => {
             }}
           />
         )}
-        <footer className={`fixed bottom-0 left-0 right-0 px-4 py-3 pb-6 z-50 ${theme === 'dark' ? 'bg-[#0a0a0c] border-t border-white/10' : 'bg-white border-t border-[#DBDBDB]'}`} style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
-         {/* Reply Preview Context */}
-         <AnimatePresence>
-            {replyingTo && (
-                <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className={`flex items-center justify-between border-l-4 border-[#C13584] p-3 rounded-t-xl mb-2 ${theme === 'dark' ? 'bg-white/10' : 'bg-[#EFEFEF]'}`}
-                >
-                    <div className="overflow-hidden">
-                        <p className="text-xs text-[#C13584] font-bold">Replying to {replyingTo.sender?.name || "User"}</p>
-                        <p className={`text-sm truncate ${theme === 'dark' ? 'text-gray-400' : 'text-[#8e8e8e]'}`}>{replyingTo.content || "Media"}</p>
-                    </div>
-                    <button onClick={() => setReplyingTo(null)} className={`p-1 rounded-full ${theme === 'dark' ? 'hover:bg-white/10 text-white' : 'hover:bg-black/5 text-[#262626]'}`}><FaTimes /></button>
-                </motion.div>
-            )}
-         </AnimatePresence>
-         
-         <div className="flex items-end gap-2 max-w-4xl mx-auto">
-
-             {/* Text Input or Voice Recorder */}
-             {isRecordingVoice ? (
-               <div className="flex-1">
-                 <VoiceRecorder 
-                   onSend={(blob, duration) => {
-                     handleSendVoice(blob, duration);
-                     setIsTyping(false);
-                   }} 
-                   onCancel={() => {
-                     setIsRecordingVoice(false);
-                     setIsTyping(false);
-                   }} 
-                 />
-               </div>
-             ) : (
-               <div className={`flex-1 flex items-center gap-2 rounded-[24px] px-3 sm:px-4 py-1.5 sm:py-2 border focus-within:border-[#C13584] transition ${theme === 'dark' ? 'bg-white/10 border-white/20' : 'bg-white border-[#DBDBDB]'}`}>
-                   <textarea
-                      value={newMessage}
-                      onChange={(e) => { 
-                        setNewMessage(e.target.value); 
-                        startTyping(orderId);
-                        setIsTyping(true);
-                        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-                        typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 2000);
-                      }}
-                      onBlur={() => stopTyping(orderId)}
-                      onKeyDown={(e) => { if(e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-                      placeholder="Message..."
-                      rows={1}
-                      className={`flex-1 bg-transparent outline-none resize-none max-h-32 py-1 scrollbar-hide text-sm sm:text-[15px] ${theme === 'dark' ? 'text-white placeholder:text-gray-400' : 'text-[#262626] placeholder:text-[#8e8e8e]'}`} 
-                   />
-                   {/* Right side - Attachment (+) icon + mic when no text */}
-                   {!newMessage.trim() && (
-                     <div className="flex items-center gap-1">
-                       {/* Single Attachment (+) - Opens WhatsApp style menu */}
-                       <div className="relative">
-                         <button 
-                           onClick={() => setShowAttachmentMenu(!showAttachmentMenu)} 
-                           className={`p-2 rounded-full transition-all duration-300 ${
-                             showAttachmentMenu 
-                               ? 'bg-white text-black rotate-45' 
-                               : (theme === 'dark' ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200')
-                           }`}
-                         >
-                           <FaPlus className="text-sm" />
-                         </button>
-                         
-                         {/* WhatsApp Style Attachment Options - Pop Animation */}
-                         <AnimatePresence>
-                           {showAttachmentMenu && (
-                             <motion.div
-                               initial={{ opacity: 0, scale: 0.5, y: 10, x: -20 }}
-                               animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
-                               exit={{ opacity: 0, scale: 0.5, y: 10, x: -20 }}
-                               className={`absolute bottom-12 right-0 p-3 rounded-2xl shadow-2xl flex flex-col gap-3 z-[100] min-w-[160px] ${
-                                 theme === 'dark' ? 'bg-[#1a1a1c]/95 border border-white/10' : 'bg-white border border-zinc-200'
-                               } backdrop-blur-xl`}
-                             >
-                               {/* Row 1: Photo & Video */}
-                               <div className="grid grid-cols-3 gap-3">
-                                 <button 
-                                   onClick={() => { imageInputRef.current?.click(); setShowAttachmentMenu(false); }}
-                                   className="flex flex-col items-center gap-1 group"
-                                 >
-                                   <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform">
-                                     <HiPhoto className="w-5 h-5" />
-                                   </div>
-                                   <span className="text-[10px] font-bold text-zinc-400">Photo</span>
-                                 </button>
-                                 <button 
-                                   onClick={() => { videoInputRef.current?.click(); setShowAttachmentMenu(false); }}
-                                   className="flex flex-col items-center gap-1 group"
-                                  >
-                                   <div className="w-10 h-10 rounded-full bg-pink-500 flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform">
-                                     <HiVideoCamera className="w-5 h-5" />
-                                   </div>
-                                   <span className="text-[10px] font-bold text-zinc-400">Video</span>
-                                 </button>
-                                 <button 
-                                   onClick={() => { docInputRef.current?.click(); setShowAttachmentMenu(false); }}
-                                   className="flex flex-col items-center gap-1 group"
-                                  >
-                                   <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform">
-                                     <HiDocumentText className="w-5 h-5" />
-                                   </div>
-                                   <span className="text-[10px] font-bold text-zinc-400">File</span>
-                                 </button>
-                               </div>
-
-                               {/* Special Row: Delivery/Drive */}
-                               <div className="border-t border-white/5 pt-2 flex flex-col gap-2">
-                                 {user?.role === "editor" && (
-                                   <button 
-                                     onClick={() => { finalDeliveryInputRef.current?.click(); setShowAttachmentMenu(false); }}
-                                     className={`flex items-center gap-3 p-2 rounded-xl transition ${theme === 'dark' ? 'hover:bg-white/5' : 'hover:bg-zinc-50'}`}
-                                   >
-                                     <div className="w-8 h-8 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center text-white">
-                                       <HiSparkles className="w-4 h-4" />
-                                     </div>
-                                     <span className="text-xs font-bold text-zinc-300">Final Delivery</span>
-                                   </button>
-                                 )}
-                                 {user?.role === "client" && (
-                                   <button 
-                                     onClick={() => { setShowDriveLinkModal(true); setShowAttachmentMenu(false); }}
-                                     className={`flex items-center gap-3 p-2 rounded-xl transition ${theme === 'dark' ? 'hover:bg-white/5' : 'hover:bg-zinc-50'}`}
-                                   >
-                                     <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 flex items-center justify-center text-white">
-                                       <HiLink className="w-4 h-4" />
-                                     </div>
-                                     <span className="text-xs font-bold text-zinc-300">Footage Link</span>
-                                   </button>
-                                 )}
-                               </div>
-                             </motion.div>
-                           )}
-                         </AnimatePresence>
-                       </div>
-                       
-                       {/* Voice Message */}
-                       <button onClick={() => { setIsRecordingVoice(true); setIsTyping(true); }} className={`p-2 rounded-full transition ${theme === 'dark' ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200'}`}>
-                         <FaMicrophone className="text-sm" />
-                       </button>
+        <footer className={`fixed bottom-0 left-0 right-0 px-4 py-3 pb-6 z-50 ${theme === 'dark' ? 'bg-[#050508]/15 border-t border-white/5 backdrop-blur-xl' : 'bg-white/80 border-t border-[#DBDBDB] backdrop-blur-lg'}`} style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
+          {/* Reply Preview Context */}
+          <AnimatePresence>
+             {replyingTo && (
+                 <motion.div
+                     initial={{ height: 0, opacity: 0 }}
+                     animate={{ height: "auto", opacity: 1 }}
+                     exit={{ height: 0, opacity: 0 }}
+                     className={`flex items-center justify-between border-l-4 border-[#C13584] p-3 rounded-t-xl mb-2 ${theme === 'dark' ? 'bg-white/10' : 'bg-[#EFEFEF]'}`}
+                 >
+                     <div className="overflow-hidden">
+                         <p className="text-xs text-[#C13584] font-bold">Replying to {replyingTo.sender?.name || "User"}</p>
+                         <p className={`text-sm truncate ${theme === 'dark' ? 'text-gray-400' : 'text-[#8e8e8e]'}`}>{replyingTo.content || "Media"}</p>
                      </div>
-                   )}
-               </div>
+                     <button onClick={() => setReplyingTo(null)} className={`p-1 rounded-full ${theme === 'dark' ? 'hover:bg-white/10 text-white' : 'hover:bg-black/5 text-[#262626]'}`}><FaTimes /></button>
+                 </motion.div>
              )}
-             
-             {/* Quick Replies Popup */}
-             <AnimatePresence>
-               {showQuickReplies && (
-                 <QuickRepliesMenu 
-                   replies={quickReplies}
-                   onSelect={(reply) => {
-                     setNewMessage(reply.content);
-                     setShowQuickReplies(false);
-                   }}
-                   onClose={() => setShowQuickReplies(false)}
-                 />
-               )}
-             </AnimatePresence>
+          </AnimatePresence>
+          
+          <div className="flex items-end gap-2 max-w-4xl mx-auto">
 
-             {/* Send Button - Only show when there's text */}
-             {newMessage.trim() && (
-               <button 
-                  onClick={handleSendMessage}
-                  disabled={!newMessage.trim() || isRecordingVoice}
-                  className="text-[#0095F6] font-semibold text-[15px] hover:text-[#00376B] transition"
-               >
-                  {sending ? <div className="w-5 h-5 border-2 border-[#0095F6]/30 border-t-[#0095F6] rounded-full animate-spin" /> : "Send"}
-               </button>
-             )}
-         </div>
+              {/* Text Input or Voice Recorder */}
+              {isRecordingVoice ? (
+                <div className="flex-1">
+                  <VoiceRecorder 
+                    onSend={(blob, duration) => {
+                      handleSendVoice(blob, duration);
+                      setIsTyping(false);
+                      setIsRecordingVoice(false);
+                    }} 
+                    onCancel={() => {
+                      setIsRecordingVoice(false);
+                      setIsTyping(false);
+                    }} 
+                  />
+                </div>
+              ) : (
+                <div className={`flex-1 flex items-center gap-2 rounded-[14px] px-3 sm:px-4 py-1.5 sm:py-2 border transition duration-200 ${theme === 'dark' ? 'bg-white/5 border-white/10 focus-within:border-white/20 backdrop-blur-md' : 'bg-zinc-50 border-zinc-200 focus-within:border-zinc-300'}`}>
+                    {/* Plus button inside */}
+                    <div className="relative">
+                      <button 
+                        onClick={() => setShowAttachmentMenu(!showAttachmentMenu)} 
+                        className={`p-1.5 rounded-lg transition-all duration-300 ${
+                          showAttachmentMenu 
+                            ? 'bg-white text-black rotate-45 shadow-lg' 
+                            : (theme === 'dark' ? 'text-white/40 hover:text-white hover:bg-white/5' : 'text-zinc-400 hover:text-zinc-600')
+                        }`}
+                      >
+                        <FaPlus className="text-sm" />
+                      </button>
+                      
+                      <AnimatePresence>
+                        {showAttachmentMenu && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                            className={`absolute bottom-12 left-0 p-3 rounded-2xl shadow-2xl flex flex-col gap-3 z-[100] min-w-[220px] ${
+                              theme === 'dark' ? 'bg-[#1a1a1c]/95 border border-white/10' : 'bg-white border border-zinc-200'
+                            } backdrop-blur-xl`}
+                          >
+                            <div className="grid grid-cols-3 gap-3">
+                              <button onClick={() => { imageInputRef.current?.click(); setShowAttachmentMenu(false); }} className="flex flex-col items-center gap-1 group">
+                                <div className="w-10 h-10 rounded-full bg-blue-500/80 flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform"><HiPhoto className="w-5 h-5" /></div>
+                                <span className="text-[10px] font-bold text-zinc-400">Photo</span>
+                              </button>
+                              <button onClick={() => { videoInputRef.current?.click(); setShowAttachmentMenu(false); }} className="flex flex-col items-center gap-1 group">
+                                <div className="w-10 h-10 rounded-full bg-pink-500/80 flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform"><HiVideoCamera className="w-5 h-5" /></div>
+                                <span className="text-[10px] font-bold text-zinc-400">Video</span>
+                              </button>
+                              <button onClick={() => { docInputRef.current?.click(); setShowAttachmentMenu(false); }} className="flex flex-col items-center gap-1 group">
+                                <div className="w-10 h-10 rounded-full bg-purple-500/80 flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform"><HiDocumentText className="w-5 h-5" /></div>
+                                <span className="text-[10px] font-bold text-zinc-400">File</span>
+                              </button>
+                            </div>
 
-         {/* Hidden Inputs */}
-         <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} />
-         <input type="file" ref={videoInputRef} className="hidden" accept="video/*" onChange={handleFileSelect} />
-         <input type="file" ref={docInputRef} className="hidden" accept="*" onChange={handleFileSelect} />
+                            <div className="border-t border-white/5 pt-2 flex flex-col gap-1">
+                              {user?.role === "editor" && (
+                                <button onClick={() => { finalDeliveryInputRef.current?.click(); setShowAttachmentMenu(false); }} className={`flex items-center gap-3 p-2 rounded-xl transition ${theme === 'dark' ? 'hover:bg-white/5 text-zinc-300' : 'hover:bg-zinc-50 text-zinc-600'}`}>
+                                  <div className="w-8 h-8 rounded-full bg-emerald-500/80 flex items-center justify-center text-white"><HiSparkles className="w-4 h-4" /></div>
+                                  <span className="text-xs font-bold">Final Delivery</span>
+                                </button>
+                              )}
+                              {user?.role === "client" && (
+                                <button onClick={() => { setShowDriveLinkModal(true); setShowAttachmentMenu(false); }} className={`flex items-center gap-3 p-2 rounded-xl transition ${theme === 'dark' ? 'hover:bg-white/5 text-zinc-300' : 'hover:bg-zinc-50 text-zinc-600'}`}>
+                                  <div className="w-8 h-8 rounded-full bg-blue-500/80 flex items-center justify-center text-white"><HiLink className="w-4 h-4" /></div>
+                                  <span className="text-xs font-bold">Footage Link</span>
+                                </button>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    <textarea
+                       value={newMessage}
+                       onChange={(e) => { 
+                         setNewMessage(e.target.value); 
+                         startTyping(orderId);
+                         setIsTyping(true);
+                         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                         typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 2000);
+                       }}
+                       onBlur={() => stopTyping(orderId)}
+                       onKeyDown={(e) => { if(e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
+                       placeholder="Message..."
+                       rows={1}
+                       className={`flex-1 bg-transparent outline-none resize-none max-h-32 py-1 scrollbar-hide text-sm sm:text-[15px] ${theme === 'dark' ? 'text-white placeholder:text-white/20' : 'text-[#262626] placeholder:text-[#8e8e8e]'}`} 
+                    />
+
+                    {/* Right side - Mic or Send */}
+                    {!newMessage.trim() ? (
+                      <button onClick={() => { setIsRecordingVoice(true); setIsTyping(true); }} className={`p-1.5 rounded-lg transition ${theme === 'dark' ? 'text-white/40 hover:text-white hover:bg-white/5' : 'text-zinc-400 hover:text-zinc-600'}`}>
+                        <FaMicrophone className="text-sm" />
+                      </button>
+                    ) : (
+                      <motion.button
+                        whileTap={{ scale: 0.88 }}
+                        onClick={handleSendMessage}
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                          theme === 'dark' ? 'bg-white text-black' : 'bg-black text-white'
+                        }`}
+                      >
+                        <FaPaperPlane className="text-[10px] ml-0.5" />
+                      </motion.button>
+                    )}
+                </div>
+              )}
+              
+              {/* Quick Replies Popup */}
+              <AnimatePresence>
+                {showQuickReplies && (
+                  <QuickRepliesMenu 
+                    replies={quickReplies}
+                    onSelect={(reply) => {
+                      setNewMessage(reply.content);
+                      setShowQuickReplies(false);
+                    }}
+                    onClose={() => setShowQuickReplies(false)}
+                  />
+                )}
+              </AnimatePresence>
+          </div>
+
+          {/* Hidden Inputs */}
+          <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} />
+          <input type="file" ref={videoInputRef} className="hidden" accept="video/*" onChange={handleFileSelect} />
+          <input type="file" ref={docInputRef} className="hidden" accept="*" onChange={handleFileSelect} />
         </footer>
         </>
       )}
