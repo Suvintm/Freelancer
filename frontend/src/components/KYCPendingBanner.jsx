@@ -37,7 +37,7 @@ const KYCPendingBanner = () => {
       default: // not_started
         return {
           title: "Complete Your KYC",
-          message: "Verify your identity to unlock refunds, wallet withdrawals, and order placement. It only takes a minute.",
+          message: "Verify your identity to unlock refunds and wallet withdrawals. It only takes a minute.",
           bgColor: "from-amber-600 to-orange-600",
           icon: FaShieldAlt,
           action: "Verify Now"

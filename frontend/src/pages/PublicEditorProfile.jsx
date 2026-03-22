@@ -230,11 +230,7 @@ const PublicEditorProfile = () => {
       return;
     }
 
-    // Check client KYC status before proceeding
-    if (user?.role === "client" && user?.clientKycStatus !== "verified") {
-      setShowKYCModal(true);
-      return;
-    }
+    // Check client KYC status before proceeding - REMOVED
 
     try {
       setSubmittingRequest(true);

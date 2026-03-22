@@ -28,9 +28,9 @@ const router = express.Router();
 router.use(authMiddleware);
 
 // ========== SPECIFIC ROUTES FIRST (before /:id) ==========
-// Create orders - REQUIRE KYC
-router.post("/gig", requireClientKYC, createGigOrderValidator, createOrderFromGig);
-router.post("/request/create-payment", requireClientKYC, createRequestPaymentOrder);
+// Create orders - KYC NO LONGER REQUIRED
+router.post("/gig", createGigOrderValidator, createOrderFromGig);
+router.post("/request/create-payment", createRequestPaymentOrder);
 router.post("/request/verify-payment", verifyRequestPayment);
 
 // Get orders - stats must come before /:id

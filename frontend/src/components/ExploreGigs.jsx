@@ -182,10 +182,6 @@ const ExploreGigs = () => {
   const handlePaymentFailure = (error) => { toast.error(error?.description || "Payment failed. Please try again."); };
   const handlePaymentClose = () => { setShowPayment(false); toast.info("Payment cancelled. Your order is saved - pay anytime from My Orders."); };
   const openOrderModal = (gig) => {
-    if (user?.role === "client" && user?.clientKycStatus !== "verified") {
-      setShowKYCModal(true);
-      return;
-    }
     setSelectedGig(gig);
     setShowOrderModal(true);
   };
