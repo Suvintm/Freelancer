@@ -53,12 +53,7 @@ const ExplorePage = () => {
         <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       </div>
 
-      <main 
-        ref={scrollContainerRef}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        className="flex-1 lg:ml-64 relative flex flex-col h-screen overflow-hidden"
-      >
+      <main className="flex-1 lg:ml-64 relative flex flex-col h-screen overflow-hidden">
         <PullIndicator />
         
         {/* Sticky Tab Bar - Black & White Theme, Smaller Size */}
@@ -96,7 +91,12 @@ const ExplorePage = () => {
         </div>
 
         {/* Tab Content Container */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide pb-20">
+        <div 
+          ref={scrollContainerRef}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          className="flex-1 overflow-y-auto scrollbar-hide pb-20"
+        >
           <AnimatePresence>
             <motion.div
               key={activeTab}
