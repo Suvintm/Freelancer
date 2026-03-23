@@ -174,6 +174,45 @@ const redisProxy = {
     if (!redisAvailable || !client) return Promise.resolve();
     return client.call(...args);
   },
+
+  // ── Redis Sorted Set helpers (used by scoreboard algorithm) ────────────────
+  /**
+   * Add/update a member's score in a sorted set.
+   * Used to maintain the real-time reel score board.
+   * O(log N)
+   */
+  zAdd: (key, score, member) => {
+    if (!redisAvailable || !client) return Promise.resolve();
+    return client.zadd(key, score, member);
+  },
+
+  /**
+   * Get top-K members by score (highest first). O(log N + K)
+   * @param {string} key
+   * @param {number} start - 0-based start index
+   * @param {number} stop  - 0-based stop index (-1 = all)
+   * @returns {Promise<string[]>} array of member strings
+   */
+  zRevRange: (key, start, stop) => {
+    if (!redisAvailable || !client) return Promise.resolve([]);
+    return client.zrevrange(key, start, stop);
+  },
+
+  /**
+   * Get the score of a specific member. O(log N)
+   */
+  zScore: (key, member) => {
+    if (!redisAvailable || !client) return Promise.resolve(null);
+    return client.zscore(key, member);
+  },
+
+  /**
+   * Get sorted set size. O(1)
+   */
+  zCard: (key) => {
+    if (!redisAvailable || !client) return Promise.resolve(0);
+    return client.zcard(key);
+  },
 };
 
 // Pub/Sub Helpers

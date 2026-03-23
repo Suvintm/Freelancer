@@ -7,6 +7,13 @@ import logger from "../utils/logger.js";
 import { createNotification } from "./notificationController.js";
 import mongoose from "mongoose";
 import { getCache, setCache, delPattern } from "../config/redisClient.js";
+import redisClient, { redisAvailable } from "../config/redisClient.js";
+import { weightedReservoirSample, compositeScore } from "../utils/reelScorer.js";
+import { markSeen, hasSeen, clearSeen } from "../utils/reelBloomFilter.js";
+
+// Scoreboard Redis key — persistent global sorted set of reel scores
+const SCORE_BOARD_KEY = "reels:score:board";
+const SCORE_BOARD_TTL = 60 * 60 * 24; // 24 hours
 
 // ============ PUBLISH PORTFOLIO AS REEL ============
 export const publishToReel = asyncHandler(async (req, res) => {
@@ -103,226 +110,154 @@ export const unpublishReel = asyncHandler(async (req, res) => {
     });
 });
 
-// ============ GET REELS FEED (Instagram-Style Algorithm) ============
+// ============ GET REELS FEED (DSA-Optimized: Wilson Score + Reservoir Sampling + Bloom Filter) ============
 export const getReelsFeed = asyncHandler(async (req, res) => {
-    const page = parseInt(req.query.page) || 1;
+    const page  = parseInt(req.query.page)  || 1;
     const limit = parseInt(req.query.limit) || 10;
     const targetReelId = req.query.id;
+    const userId = req.user?._id?.toString() || null;
+
+    // Legacy exclude-IDs support (kept for frontend backward-compat)
     let excludeIds = req.query.exclude ? req.query.exclude.split(",").filter(id => id) : [];
 
-    console.log(`[FEED] Fetching reels - page: ${page}, limit: ${limit}, excluding: ${excludeIds.length} reels, target: ${targetReelId || 'none'}`);
+    console.log(`[FEED] Fetching - page:${page} limit:${limit} user:${userId || 'anon'} target:${targetReelId || 'none'}`);
 
-    // ── CACHE CHECK ──────────────────────────────────────────────────
-    // Create a stable cache key. We sort excludeIds to ensure the same set leads to the same key.
-    const excludeKeySnippet = excludeIds.length > 0 ? excludeIds.sort().join('|').substring(0, 50) : 'none';
-    const cacheKey = `reels:feed:v3:p${page}:l${limit}:e${excludeKeySnippet}`;
-    
-    const cachedData = await getCache(cacheKey);
-    if (cachedData && !targetReelId) {
-        return res.status(200).json(cachedData);
+    // ── STEP 1: Simple cache for anonymous / page-1 requests ──────────────────
+    // We still cache page-1 anonymous feeds as a hot path.
+    const anonCacheKey = `reels:feed:v4:p${page}:l${limit}`;
+    if (!userId && !targetReelId) {
+        const cached = await getCache(anonCacheKey);
+        if (cached) return res.status(200).json(cached);
     }
 
-    // Convert exclude IDs to ObjectIds
     const excludeObjectIds = excludeIds
         .filter(id => mongoose.Types.ObjectId.isValid(id))
         .map(id => new mongoose.Types.ObjectId(id));
 
-    // Build aggregation pipeline for weighted random
-    const pipeline = [
-        // Match published reels, exclude already seen (if any)
-        {
-            $match: {
-                isPublished: true,
-                ...(excludeObjectIds.length > 0 && { _id: { $nin: excludeObjectIds } }),
-            },
-        },
-        // Add weight based on freshness, engagement, and randomness
-        {
-            $addFields: {
-                // Freshness score (higher for newer reels - exponential decay)
-                freshnessScore: {
-                    $divide: [
-                        1,
-                        {
-                            $add: [
-                                1,
-                                {
-                                    $divide: [
-                                        { $subtract: [new Date(), "$createdAt"] },
-                                        86400000, // milliseconds in a day
-                                    ],
-                                },
-                            ],
-                        },
-                    ],
-                },
-                // Engagement score (weighted: comments > likes > views)
-                engagementScore: {
-                    $add: [
-                        { $multiply: [{ $ifNull: ["$likesCount", 0] }, 5] },
-                        { $multiply: [{ $ifNull: ["$commentsCount", 0] }, 10] },
-                        { $multiply: [{ $ifNull: ["$viewsCount", 0] }, 1] },
-                    ],
-                },
-            },
-        },
-        // Calculate total weight with strong random factor for variety
-        {
-            $addFields: {
-                weight: {
-                    $add: [
-                        { $multiply: ["$freshnessScore", 40] },
-                        { $multiply: ["$engagementScore", 0.1] },
-                        { $multiply: [{ $rand: {} }, 50] }, // Strong random factor for variety
-                    ],
-                },
-            },
-        },
-        // Sort by weight (randomized)
-        { $sort: { weight: -1 } },
-        // Limit
-        { $limit: limit },
-        // Ensure editor is an ObjectId for robust lookup (handles legacy string IDs and denormalized objects)
+    // ── STEP 2: Try Redis Sorted Set as candidate pool (O(log N) lookup) ──────
+    // If the scoreboard has enough candidates, skip the heavy DB aggregation.
+    let candidateReels = [];
+    const boardSize = redisAvailable ? await redisClient.zCard(SCORE_BOARD_KEY) : 0;
+
+    if (boardSize >= limit * 3) {
+        // Pull top 100 candidates from the sorted set (fast, O(log N + 100))
+        const topIds = await redisClient.zRevRange(SCORE_BOARD_KEY, 0, 99);
+        if (topIds.length > 0) {
+            const validIds = topIds
+                .filter(id => mongoose.Types.ObjectId.isValid(id))
+                .map(id => new mongoose.Types.ObjectId(id));
+
+            // Fetch lightweight projection from DB (IDs already known, so it's a point lookup)
+            candidateReels = await Reel.find(
+                { _id: { $in: validIds }, isPublished: true },
+                { _id: 1, likesCount: 1, viewsCount: 1, commentsCount: 1, createdAt: 1,
+                  mediaUrl: 1, mediaType: 1, title: 1, description: 1, editor: 1, portfolio: 1, likes: 1 }
+            ).lean();
+
+            logger.debug(`[FEED] Scoreboard hit: ${candidateReels.length} candidates from Redis`);
+        }
+    }
+
+    // ── STEP 3: Fall back to DB aggregation if scoreboard is cold ──────────────
+    if (candidateReels.length < limit) {
+        logger.debug('[FEED] Scoreboard cold or small — falling back to DB aggregation');
+        const dbMatch = {
+            isPublished: true,
+            ...(excludeObjectIds.length > 0 && { _id: { $nin: excludeObjectIds } }),
+        };
+        // Lightweight projection — no lookup joins yet, just the data needed to score
+        candidateReels = await Reel.find(dbMatch, {
+            _id: 1, likesCount: 1, viewsCount: 1, commentsCount: 1, createdAt: 1,
+            mediaUrl: 1, mediaType: 1, title: 1, description: 1, editor: 1, portfolio: 1, likes: 1
+        }).limit(200).lean(); // Cap at 200 candidates for reservoir safety
+    }
+
+    // ── STEP 4: Bloom Filter — filter out already-seen reels ──────────────────
+    // O(k) per reel — k=3 Redis GETBIT calls per item
+    let filteredCandidates = candidateReels;
+    if (userId) {
+        const seenChecks = await Promise.all(
+            candidateReels.map(r => hasSeen(userId, r._id.toString()))
+        );
+        filteredCandidates = candidateReels.filter((_, i) => !seenChecks[i]);
+
+        // If bloom filter removed too many, reset it (feed wrap-around)
+        if (filteredCandidates.length < limit && candidateReels.length >= limit) {
+            logger.debug(`[FEED] Bloom filter wrapped — clearing seen history for user ${userId}`);
+            await clearSeen(userId);
+            filteredCandidates = candidateReels;
+        }
+    }
+
+    // ── STEP 5: Weighted Reservoir Sampling — diversity-aware selection ────────
+    // A-Chao algorithm: O(N log K) time, O(K) space
+    const sampledReels = weightedReservoirSample(filteredCandidates, limit, compositeScore);
+
+    // ── STEP 6: If target reel requested, prepend it ───────────────────────────
+    let finalReels = sampledReels;
+    if (targetReelId && !targetReelId.startsWith("ad_")) {
+        try {
+            if (!finalReels.some(r => r._id.toString() === targetReelId)) {
+                const targetReel = await Reel.findById(targetReelId)
+                    .populate("editor", "name email profilePicture role")
+                    .populate("portfolio")
+                    .lean();
+                if (targetReel) finalReels = [targetReel, ...finalReels.slice(0, limit - 1)];
+            }
+        } catch { /* ignore */ }
+    }
+
+    // ── STEP 7: Full population (editor + portfolio) via targeted lookups ──────
+    const reelIds = finalReels.map(r => r._id);
+    const populatedReels = await Reel.aggregate([
+        { $match: { _id: { $in: reelIds } } },
         {
             $addFields: {
                 editorId: {
                     $cond: {
                         if: { $eq: [{ $type: "$editor" }, "string"] },
                         then: { $toObjectId: "$editor" },
-                        else: {
-                            $cond: {
-                                if: { $eq: [{ $type: "$editor" }, "objectId"] },
-                                then: "$editor",
-                                else: {
-                                    $let: {
-                                        vars: { eid: { $ifNull: ["$editor._id", "$editor"] } },
-                                        in: {
-                                            $cond: {
-                                                if: { $eq: [{ $type: "$$eid" }, "string"] },
-                                                then: { $toObjectId: "$$eid" },
-                                                else: "$$eid"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        else: { $cond: { if: { $eq: [{ $type: "$editor" }, "objectId"] }, then: "$editor", else: { $ifNull: ["$editor._id", "$editor"] } } }
                     }
                 }
             }
         },
-        // Lookup editor info
-        {
-            $lookup: {
-                from: "users",
-                localField: "editorId",
-                foreignField: "_id",
-                as: "editorInfo",
-            },
-        },
+        { $lookup: { from: "users", localField: "editorId", foreignField: "_id", as: "editorInfo" } },
         { $unwind: { path: "$editorInfo", preserveNullAndEmptyArrays: true } },
-        // Lookup portfolio
-        {
-            $lookup: {
-                from: "portfolios",
-                localField: "portfolio",
-                foreignField: "_id",
-                as: "portfolioInfo",
-            },
-        },
+        { $lookup: { from: "portfolios", localField: "portfolio", foreignField: "_id", as: "portfolioInfo" } },
         { $unwind: { path: "$portfolioInfo", preserveNullAndEmptyArrays: true } },
-        // Project final shape
         {
             $project: {
-                _id: 1,
-                title: 1,
-                description: 1,
-                mediaUrl: 1,
-                mediaType: 1,
-                likesCount: 1,
-                viewsCount: 1,
-                commentsCount: 1,
-                likes: 1,
-                createdAt: 1,
+                _id: 1, title: 1, description: 1, mediaUrl: 1, mediaType: 1,
+                likesCount: 1, viewsCount: 1, commentsCount: 1, createdAt: 1, likes: 1,
                 editor: {
                     _id: { $ifNull: ["$editorInfo._id", "$editorId"] },
-                    name: { $ifNull: ["$editorInfo.name", { $ifNull: ["$editor.name", "Unknown Editor"] }] },
-                    profilePicture: { $ifNull: ["$editorInfo.profilePicture", "$editor.profilePicture"] },
+                    name: { $ifNull: ["$editorInfo.name", "Unknown Editor"] },
+                    profilePicture: { $ifNull: ["$editorInfo.profilePicture", null] },
                     role: { $ifNull: ["$editorInfo.role", "editor"] }
                 },
                 portfolio: "$portfolioInfo",
-                latestLikerIds: { $slice: [{ $ifNull: ["$likes", []] }, -3] },
-            },
-        },
-        // Lookup latest likers info
-        {
-            $lookup: {
-                from: "users",
-                localField: "latestLikerIds",
-                foreignField: "_id",
-                as: "latestLikersInfo",
-            },
-        },
-        // Final projection to clean up output
-        {
-            $project: {
-                _id: 1,
-                title: 1,
-                description: 1,
-                mediaUrl: "$mediaUrl",
-                mediaType: 1,
-                likesCount: 1,
-                viewsCount: 1,
-                commentsCount: 1,
-                createdAt: 1,
-                editor: 1,
-                portfolio: 1,
-                likes: 1,
-                latestLikers: {
-                    $map: {
-                        input: "$latestLikersInfo",
-                        as: "liker",
-                        in: {
-                            _id: "$$liker._id",
-                            name: "$$liker.name",
-                            profilePicture: "$$liker.profilePicture"
-                        }
-                    }
-                }
             }
         }
-    ];
+    ]);
 
-    let reels = await Reel.aggregate(pipeline);
-    
-    // If no reels found with exclusions, fetch without exclusions (infinite loop)
-    if (reels.length === 0 && excludeObjectIds.length > 0) {
-        console.log('[FEED] No new reels found, fetching random without exclusions...');
-        pipeline[0].$match = { isPublished: true }; // Remove exclusion
-        reels = await Reel.aggregate(pipeline);
-    }
+    // Preserve reservoir sample order (aggregate doesn't preserve input order)
+    const reelMap = new Map(populatedReels.map(r => [r._id.toString(), r]));
+    const orderedReels = reelIds.map(id => reelMap.get(id.toString())).filter(Boolean);
 
     const total = await Reel.countDocuments({ isPublished: true });
-
     const responseData = {
         success: true,
-        reels,
-        pagination: {
-            page,
-            limit,
-            total,
-            // Always hasMore = true for infinite scroll (unless 0 reels exist)
-            hasMore: total > 0,
-        },
+        reels: orderedReels,
+        pagination: { page, limit, total, hasMore: total > 0 },
     };
 
-    console.log(`[FEED] Returning ${reels.length} reels. Total in DB: ${total}. Cache Key: ${cacheKey}`);
-
-    // Set cache (TTL: 2 minutes)
-    if (!targetReelId && reels.length > 0) {
-        await setCache(cacheKey, responseData, 120);
+    // Cache anonymous page-1 feeds (high traffic, low personalization)
+    if (!userId && !targetReelId && orderedReels.length > 0) {
+        await setCache(anonCacheKey, responseData, 60); // 60s TTL for anon feeds
     }
 
+    logger.info(`[FEED] Returning ${orderedReels.length} reels. Candidates: ${candidateReels.length}. BoardSize: ${boardSize}`);
     res.status(200).json(responseData);
 });
 
@@ -354,19 +289,21 @@ export const toggleLike = asyncHandler(async (req, res) => {
     const isLiked = reel.likes.includes(userId);
 
     if (isLiked) {
-        // Unlike
         reel.likes = reel.likes.filter((id) => id.toString() !== userId.toString());
     } else {
-        // Like
         reel.likes.push(userId);
     }
 
     reel.likesCount = reel.likes.length;
     await reel.save();
 
-    // Invalidate local cache for this specific feed page if necessary
-    // (Optional: simple delPattern is safer for variety)
-    await delPattern("reels:feed:*");
+    // ── DSA: Sorted Set Scoreboard update (O(log N)) ─────────────────────────
+    // Instead of nuking the entire feed cache, we update only this reel's score
+    // in the Redis Sorted Set. The next feed request will get fresh scores
+    // without any DB round trip for ranking.
+    const updatedScore = compositeScore(reel);
+    redisClient.zAdd(SCORE_BOARD_KEY, updatedScore, reel._id.toString()).catch(() => {});
+    redisClient.expire(SCORE_BOARD_KEY, SCORE_BOARD_TTL).catch(() => {});
 
     res.status(200).json({
         success: true,
@@ -382,7 +319,7 @@ export const toggleLike = asyncHandler(async (req, res) => {
             sender: userId,
             title: "New Like! ❤️",
             message: `${req.user.name} liked your reel "${reel.title}"`,
-            link: `/reels?id=${reel._id}`, // Default link, but we'll handle it specially in UI
+            link: `/reels?id=${reel._id}`,
             metaData: {
                 reelId: reel._id,
                 thumbnail: reel.mediaUrl,
@@ -396,10 +333,8 @@ export const toggleLike = asyncHandler(async (req, res) => {
 // ============ INCREMENT VIEW COUNT ============
 export const incrementView = asyncHandler(async (req, res) => {
     const reelId = req.params.id;
+    const userId = req.user?._id?.toString() || null;
     
-    console.log(`[VIEW] Attempting to increment view for reel: ${reelId}`);
-    
-    // Simply increment view count - no complex tracking to ensure it works
     const reel = await Reel.findByIdAndUpdate(
         reelId,
         { $inc: { viewsCount: 1 } },
@@ -407,11 +342,21 @@ export const incrementView = asyncHandler(async (req, res) => {
     );
 
     if (!reel) {
-        console.log(`[VIEW] Reel not found: ${reelId}`);
         return res.status(404).json({ success: false, message: "Reel not found" });
     }
 
-    console.log(`[VIEW] Successfully incremented. New viewsCount: ${reel.viewsCount}`);
+    // ── DSA: Bloom Filter — Mark this reel as seen for this user ─────────────
+    // O(k) — k=3 Redis SETBIT calls. Prevents this reel from showing again
+    // in the personalized feed until the user has cycled through all reels.
+    if (userId) {
+        markSeen(userId, reelId).catch(() => {});
+    }
+
+    // ── DSA: Sorted Set Scoreboard update (O(log N)) ─────────────────────────
+    // Update the reel's position in the global score board without cache invalidation.
+    const updatedScore = compositeScore(reel);
+    redisClient.zAdd(SCORE_BOARD_KEY, updatedScore, reelId).catch(() => {});
+    redisClient.expire(SCORE_BOARD_KEY, SCORE_BOARD_TTL).catch(() => {});
 
     res.status(200).json({
         success: true,
