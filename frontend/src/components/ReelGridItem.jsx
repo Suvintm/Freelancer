@@ -59,6 +59,7 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
                 <video 
                     ref={videoRef}
                     src={mediaUrl} 
+                    poster={mediaUrl ? mediaUrl.replace(/\.[^./\\]+$/, ".jpg") : ""}
                     className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110"
                     muted 
                     playsInline

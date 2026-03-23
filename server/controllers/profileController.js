@@ -9,11 +9,30 @@ import logger from "../utils/logger.js";
 import { createNotification } from "./notificationController.js";
 import { calculateProfileCompletion } from "../utils/profileUtils.js";
 import fs from "fs";
+import { getCache, setCache, delCache } from "../config/redisClient.js";
 
 // ============ GET PROFILE ============
 export const getProfile = asyncHandler(async (req, res) => {
   const userId = req.params.userId || req.user?._id || req.user?.id;
   const viewerId = req.user?._id?.toString() || req.user?._id || req.user?.id;
+
+  // ── CACHE CHECK ──────────────────────────────────────────────────
+  const cacheKey = `profile:v2:${userId}`;
+  const cachedData = await getCache(cacheKey);
+  if (cachedData) {
+    // Background visit recording even on cache hit
+    if (viewerId && viewerId !== userId.toString()) {
+        ProfileVisit.recordVisit({
+            profileOwner: userId,
+            visitor: req.user._id,
+            visitorName: req.user.name,
+            visitorPicture: req.user.profilePicture,
+            visitorRole: req.user.role,
+            source: req.query.source || "direct",
+        }).catch(() => {});
+    }
+    return res.status(200).json(cachedData);
+  }
 
   let profile = await Profile.findOne({ user: userId })
     .populate("user", "name email role profilePicture kycStatus followers following suvixId followSettings clientKycStatus availability aiProfile")
@@ -62,7 +81,7 @@ export const getProfile = asyncHandler(async (req, res) => {
   const totalViews = reels.reduce((acc, reel) => acc + (reel.viewsCount || 0), 0);
   const totalLikes = reels.reduce((acc, reel) => acc + (reel.likesCount || 0), 0);
 
-  res.status(200).json({
+  const responseData = {
     success: true,
     message: "Profile fetched successfully.",
     profile,
@@ -72,7 +91,12 @@ export const getProfile = asyncHandler(async (req, res) => {
       totalViews,
       totalLikes,
     },
-  });
+  };
+
+  // Set cache (TTL: 2 minutes)
+  await setCache(cacheKey, responseData, 120);
+
+  res.status(200).json(responseData);
 });
 
 // ============ UPDATE PROFILE ============
@@ -318,6 +342,9 @@ export const updateProfile = asyncHandler(async (req, res) => {
     .populate("portfolio");
 
   logger.info(`Profile updated for user: ${req.user._id}`);
+
+  // Invalidate cache
+  await delCache(`profile:v2:${req.user._id}`);
 
   res.status(200).json({
     success: true,

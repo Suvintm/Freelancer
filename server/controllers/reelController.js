@@ -6,6 +6,7 @@ import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
 import { createNotification } from "./notificationController.js";
 import mongoose from "mongoose";
+import { getCache, setCache, delPattern } from "../config/redisClient.js";
 
 // ============ PUBLISH PORTFOLIO AS REEL ============
 export const publishToReel = asyncHandler(async (req, res) => {
@@ -65,6 +66,9 @@ export const publishToReel = asyncHandler(async (req, res) => {
         link: "/reels",
     });
 
+    // Invalidate reels feed cache
+    await delPattern("reels:feed:*");
+
     res.status(201).json({
         success: true,
         message: "Portfolio published to reels!",
@@ -90,6 +94,9 @@ export const unpublishReel = asyncHandler(async (req, res) => {
 
     logger.info(`Reel ${reelId} unpublished`);
 
+    // Invalidate reels feed cache
+    await delPattern("reels:feed:*");
+
     res.status(200).json({
         success: true,
         message: "Reel unpublished successfully",
@@ -100,9 +107,20 @@ export const unpublishReel = asyncHandler(async (req, res) => {
 export const getReelsFeed = asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
+    const targetReelId = req.query.id;
     let excludeIds = req.query.exclude ? req.query.exclude.split(",").filter(id => id) : [];
 
-    console.log(`[FEED] Fetching reels - page: ${page}, limit: ${limit}, excluding: ${excludeIds.length} reels`);
+    console.log(`[FEED] Fetching reels - page: ${page}, limit: ${limit}, excluding: ${excludeIds.length} reels, target: ${targetReelId || 'none'}`);
+
+    // ── CACHE CHECK ──────────────────────────────────────────────────
+    // Create a stable cache key. We sort excludeIds to ensure the same set leads to the same key.
+    const excludeKeySnippet = excludeIds.length > 0 ? excludeIds.sort().join('|').substring(0, 50) : 'none';
+    const cacheKey = `reels:feed:v3:p${page}:l${limit}:e${excludeKeySnippet}`;
+    
+    const cachedData = await getCache(cacheKey);
+    if (cachedData && !targetReelId) {
+        return res.status(200).json(cachedData);
+    }
 
     // Convert exclude IDs to ObjectIds
     const excludeObjectIds = excludeIds
@@ -251,7 +269,7 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
                 _id: 1,
                 title: 1,
                 description: 1,
-                mediaUrl: 1,
+                mediaUrl: "$mediaUrl",
                 mediaType: 1,
                 likesCount: 1,
                 viewsCount: 1,
@@ -286,9 +304,7 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
 
     const total = await Reel.countDocuments({ isPublished: true });
 
-    console.log(`[FEED] Returning ${reels.length} reels. Total in DB: ${total}`);
-
-    res.status(200).json({
+    const responseData = {
         success: true,
         reels,
         pagination: {
@@ -298,7 +314,16 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
             // Always hasMore = true for infinite scroll (unless 0 reels exist)
             hasMore: total > 0,
         },
-    });
+    };
+
+    console.log(`[FEED] Returning ${reels.length} reels. Total in DB: ${total}. Cache Key: ${cacheKey}`);
+
+    // Set cache (TTL: 2 minutes)
+    if (!targetReelId && reels.length > 0) {
+        await setCache(cacheKey, responseData, 120);
+    }
+
+    res.status(200).json(responseData);
 });
 
 // ============ GET SINGLE REEL ============
@@ -338,6 +363,10 @@ export const toggleLike = asyncHandler(async (req, res) => {
 
     reel.likesCount = reel.likes.length;
     await reel.save();
+
+    // Invalidate local cache for this specific feed page if necessary
+    // (Optional: simple delPattern is safer for variety)
+    await delPattern("reels:feed:*");
 
     res.status(200).json({
         success: true,
@@ -502,6 +531,9 @@ export const addComment = asyncHandler(async (req, res) => {
     // Update comments count for the reel
     reel.commentsCount = await Comment.countDocuments({ reel: req.params.id });
     await reel.save();
+
+    // Invalidate cache
+    await delPattern("reels:feed:*");
 
     const populatedComment = await Comment.findById(comment._id).populate(
         "user",

@@ -9,6 +9,7 @@ import { FaInstagram, FaGlobe, FaChevronRight } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
+import { repairUrl } from "../utils/urlHelper.jsx";
 import logo from "../assets/logo.png";
 
 /**
@@ -19,7 +20,7 @@ import logo from "../assets/logo.png";
  * - Navigation on CTA click (btnLinkType: ad_details | external | internal | none)
  * - Show/hide advertiser badge and description
  */
-const ReelAdCard = ({ ad, onSkip, isActive=true, globalMuted=true, setGlobalMuted }) => {
+const ReelAdCard = ({ ad, onSkip, isActive=true, isPreloading=false, globalMuted=true, setGlobalMuted }) => {
   const { backendURL } = useAppContext();
   const navigate = useNavigate();
   const videoRef = useRef(null);
@@ -109,26 +110,6 @@ const ReelAdCard = ({ ad, onSkip, isActive=true, globalMuted=true, setGlobalMute
     const t = setTimeout(() => setShowMuteIcon(false), 800);
     return () => clearTimeout(t);
   }, [muted]);
-
-  // ── URL repair ───────────────────────────────────────────────────────
-  const repairUrl = (url) => {
-    if (!url || typeof url !== "string") return url;
-    if (!url.includes("cloudinary") && !url.includes("res_") && !url.includes("_com")) return url;
-    let fixed = url;
-    fixed = fixed.replace(/^(https?):?\/*_+/gi, "$1://");
-    fixed = fixed.replace(/_+res_+cloudinary_+com/g, "res.cloudinary.com")
-                 .replace(/res_cloudinary_com/g, "res.cloudinary.com")
-                 .replace(/cloudinary_com/g, "cloudinary.com");
-    if (fixed.includes("res.cloudinary.com")) {
-      fixed = fixed.replace(/res\.cloudinary\.com_+/g, "res.cloudinary.com/");
-      fixed = fixed.replace(/image_upload_+/g, "image/upload/").replace(/video_upload_+/g, "video/upload/").replace(/raw_upload_+/g, "raw/upload/");
-      fixed = fixed.replace(/([/_]?v\d+)_+/g, "$1/");
-      fixed = fixed.replace(/(res\.cloudinary\.com\/[^/_]+)_+(image|video|raw|authenticated)_*/g, "$1/$2/");
-      fixed = fixed.replace(/_([a-z0-9\-_]+\.(webp|jpg|jpeg|png|mp4|mov|m4v|json))/gi, "/$1");
-      fixed = fixed.replace(/([^:])\/\/+/g, "$1/");
-    }
-    return fixed;
-  };
 
   const repairedMediaUrl = useMemo(() => repairUrl(ad?.mediaUrl), [ad?.mediaUrl]);
 
@@ -223,14 +204,22 @@ const ReelAdCard = ({ ad, onSkip, isActive=true, globalMuted=true, setGlobalMute
           <video
             ref={videoRef}
             src={repairedMediaUrl}
+            poster={repairedMediaUrl ? repairedMediaUrl.replace(/\.[^./\\]+$/, ".jpg") : ""}
             className="w-full h-full object-contain"
             muted={muted}
             loop
             playsInline
+            preload={isActive || isPreloading ? "auto" : "metadata"}
+            crossOrigin="anonymous"
             controlsList="nodownload"
           />
         ) : (
-          <img src={repairedMediaUrl} alt="" className="w-full h-full object-contain" />
+          <img 
+            src={repairedMediaUrl} 
+            alt="" 
+            className="w-full h-full object-contain" 
+            crossOrigin="anonymous"
+          />
         )}
 
         {/* Mute/Unmute Indicator */}

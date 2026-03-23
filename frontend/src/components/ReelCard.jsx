@@ -26,7 +26,7 @@ import LikerAvatars from "./LikerAvatars";
  * ReelCard — Minimalist Professional UI.
  * Tightened overlay, refined typography, and sleek follow button.
  */
-const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted }) => {
+const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, setGlobalMuted }) => {
     const { user, backendURL } = useAppContext();
 
     const [isLiked, setIsLiked] = useState(user ? reel.likes?.includes(user._id) : false);
@@ -170,17 +170,25 @@ const ReelCard = ({ reel, isActive, onCommentClick, globalMuted, setGlobalMuted 
                 onContextMenu={(e) => e.preventDefault()}
             >
                 {reel.mediaType === "video" ? (
-                    <video 
-                        ref={videoRef} 
+                <video 
+                    ref={videoRef} 
+                    src={repairUrl(reel.mediaUrl)} 
+                    poster={repairUrl(reel.mediaUrl) ? repairUrl(reel.mediaUrl).replace(/\.[^./\\]+$/, ".jpg") : ""}
+                    className="w-full h-full object-contain" 
+                    loop 
+                    playsInline 
+                    muted={globalMuted} 
+                    preload={isActive || isPreloading ? "auto" : "metadata"}
+                    crossOrigin="anonymous"
+                    controlsList="nodownload" 
+                />
+                ) : (
+                    <img 
                         src={repairUrl(reel.mediaUrl)} 
                         className="w-full h-full object-contain" 
-                        loop 
-                        playsInline 
-                        muted={globalMuted} 
-                        controlsList="nodownload" 
+                        alt="" 
+                        crossOrigin="anonymous"
                     />
-                ) : (
-                    <img src={repairUrl(reel.mediaUrl)} className="w-full h-full object-contain" alt="" />
                 )}
             {/* Mute/Unmute Indicator Overlay */}
             <AnimatePresence>

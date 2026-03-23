@@ -34,6 +34,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import ReelPreviewModal from "./ReelPreviewModal";
+import { repairUrl } from "../utils/urlHelper.jsx";
 
 const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false, profileOwner = null }) => {
   const { user, backendURL } = useAppContext();
@@ -287,17 +288,20 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false, pro
             {coverIsVideo ? (
               <video
                 ref={videoRef}
-                src={coverClip}
+                src={repairUrl(coverClip)}
+                poster={repairUrl(coverClip)?.replace(/\.mp4(\?.*)?$/i, ".jpg")}
                 className="w-full h-full object-contain"
                 muted
                 loop
                 playsInline
+                crossOrigin="anonymous"
               />
             ) : (
               <img
-                src={coverClip}
+                src={repairUrl(coverClip)}
                 alt={portfolio.title}
                 className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110"
+                crossOrigin="anonymous"
               />
             )}
 
@@ -487,15 +491,19 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false, pro
                   {/* Thumbnail */}
                   {coverIsVideo ? (
                     <video
-                      src={coverClip}
+                      src={repairUrl(coverClip)}
+                      poster={repairUrl(coverClip)?.replace(/\.mp4(\?.*)?$/i, ".jpg")}
                       className="w-full h-full object-contain"
                       muted
+                      playsInline
+                      crossOrigin="anonymous"
                     />
                   ) : (
                     <img
-                      src={coverClip}
+                      src={repairUrl(coverClip)}
                       alt={p.title}
                       className="w-full h-full object-contain"
+                      crossOrigin="anonymous"
                     />
                   )}
                   

@@ -124,20 +124,25 @@ const ReelsPage = ({ isActive = true }) => {
         if (targetReelId) {
             // CASE 1: We have a specific target reel from the URL
             const currentFirstId = (reels.length > 0) ? reels[0]._id : null;
+            const isAlreadyInFeed = reels.some(r => r._id === targetReelId);
             
-            if (targetReelId !== currentFirstId) {
-                // It's a brand new target or different from what we had at the top. RESET.
+            if (targetReelId !== currentFirstId && !isAlreadyInFeed) {
+                // It's a brand new target that we don't have. RESET.
                 setLoading(true);
                 setReels([]);
-                setTargetAd(null); // Clear previous target ad
+                setTargetAd(null); 
                 setActiveReelIndex(0);
                 containerRef.current?.scrollTo({ top: 0, behavior: "instant" });
                 fetchReels(1, false);
-            } else {
-                // Target is already at index 0, but we might be scrolled away within the same mount!
-                // Force scroll to top (handles scroll persistence in the TabSwitcher environment)
-                setActiveReelIndex(0);
-                containerRef.current?.scrollTo({ top: 0, behavior: "instant" });
+            } else if (isAlreadyInFeed && reels[activeReelIndex]?._id !== targetReelId) {
+                // If it's already in feed, we don't need to fetch, but we might want 
+                // to scroll to it if we just arrived via a deep link while already mounted.
+                const foundIndex = reels.findIndex(r => r._id === targetReelId);
+                if (foundIndex !== -1 && foundIndex !== activeReelIndex) {
+                    setActiveReelIndex(foundIndex);
+                    const el = document.getElementById(`feed-item-${foundIndex}`);
+                    el?.scrollIntoView({ behavior: "instant", block: "start" });
+                }
             }
         } else if (isCacheValid() && reels.length === 0) {
             // CASE 2: Regular visit (no target), restore from global cache
@@ -202,8 +207,6 @@ const ReelsPage = ({ isActive = true }) => {
         const feed = [];
         let adCounter = 0;
         
-        // Console logs to help you debug in the browser console (Press F12)
-        console.log(`[Reels] Processing feed. Reels count: ${reels.length}, Ad count: ${reelAds.length}`);
         
         // 1. If we have a deep-linked ad, prepend it
         if (targetAd && targetReelId === `ad_${targetAd._id}`) {
@@ -229,7 +232,6 @@ const ReelsPage = ({ isActive = true }) => {
 
                 const adId = `ad-random-${reel._id}-${index}`;
                 if (!skippedAdIndices.has(adId)) {
-                    console.log(`[Reels] Injecting ad at index ${index}: ${reelAds[adIndex].title}`);
                     feed.push({ type: 'ad', content: reelAds[adIndex], id: adId });
                     adCounter++;
                 }
@@ -241,7 +243,6 @@ const ReelsPage = ({ isActive = true }) => {
             const adId = `ad-guaranteed-0`;
             if (!skippedAdIndices.has(adId)) {
                 // Insert after the second reel
-                console.log(`[Reels] Performing guaranteed insertion after 2nd reel.`);
                 const insertPos = 2; // Index 2 is after 2nd reel (0, 1, [AD], 2...)
                 feed.splice(insertPos, 0, { type: 'ad', content: reelAds[0], id: adId });
             }
@@ -416,6 +417,7 @@ const ReelsPage = ({ isActive = true }) => {
                                 <ReelCard
                                     reel={item.content}
                                     isActive={isActive && index === activeReelIndex}
+                                    isPreloading={index === activeReelIndex + 1}
                                     onCommentClick={handleCommentClick}
                                     globalMuted={globalMuted}
                                     setGlobalMuted={setGlobalMuted}
@@ -424,6 +426,7 @@ const ReelsPage = ({ isActive = true }) => {
                                 <ReelAdCard
                                     ad={item.content}
                                     isActive={isActive && index === activeReelIndex}
+                                    isPreloading={index === activeReelIndex + 1}
                                     globalMuted={globalMuted}
                                     setGlobalMuted={setGlobalMuted}
                                     onSkip={() => setSkippedAdIndices(prev => new Set([...prev, item.id]))}

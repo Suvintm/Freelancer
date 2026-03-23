@@ -356,19 +356,23 @@ const ReelPreviewModal = ({
                         >
                             {isVideo ? (
                                 <>
-                                    <video
-                                        key={mediaUrl} 
-                                        ref={videoRef}
-                                        src={mediaUrl}
-                                        className="w-full h-full object-contain pointer-events-none"
-                                        autoPlay
-                                        loop
-                                        playsInline
-                                        muted={globalMuted}
-                                        controlsList="nodownload"
-                                        onLoadedData={() => setIsLoaded(true)}
-                                        onTimeUpdate={updateProgress}
-                                    />
+                                    {mediaUrl && (
+                                        <video
+                                            key={mediaUrl}
+                                            ref={videoRef}
+                                            src={mediaUrl}
+                                            poster={mediaUrl?.replace(/\.mp4(\?.*)?$/i, ".jpg")}
+                                            className="w-full h-full object-contain pointer-events-none"
+                                            autoPlay
+                                            loop
+                                            playsInline
+                                            muted={globalMuted}
+                                            crossOrigin="anonymous"
+                                            controlsList="nodownload"
+                                            onLoadedData={() => setIsLoaded(true)}
+                                            onTimeUpdate={updateProgress}
+                                        />
+                                    )}
                                     {!isLoaded && (
                                         <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/50">
                                             <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />

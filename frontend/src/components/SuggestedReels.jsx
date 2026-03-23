@@ -161,25 +161,30 @@ const ReelThumbnail = memo(({ reel, index, priority }) => {
                     {!videoReady && (
                         <div className="absolute inset-0 bg-zinc-900 animate-pulse z-0" />
                     )}
-                    <video
-                        ref={videoRef}
-                        src={repairUrl(reel.mediaUrl)}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        muted loop playsInline
-                        preload={priority ? "auto" : "metadata"}
-                        onCanPlay={() => setVideoReady(true)}
-                        onContextMenu={(e) => e.preventDefault()}
-                        controlsList="nodownload nofullscreen noremoteplayback"
-                        disablePictureInPicture
-                        style={{ opacity: videoReady ? 1 : 0, transition: "opacity 0.4s ease" }}
-                    />
+                    {reel.mediaUrl && (
+                        <video
+                            ref={videoRef}
+                            src={repairUrl(reel.mediaUrl)}
+                            poster={repairUrl(reel.mediaUrl)?.replace(/\.mp4(\?.*)?$/i, ".jpg")}
+                            className="absolute inset-0 w-full h-full object-cover"
+                            muted loop playsInline
+                            crossOrigin="anonymous"
+                            preload={priority ? "auto" : "metadata"}
+                            onCanPlay={() => setVideoReady(true)}
+                            onContextMenu={(e) => e.preventDefault()}
+                            controlsList="nodownload nofullscreen noremoteplayback"
+                            disablePictureInPicture
+                            style={{ opacity: videoReady ? 1 : 0, transition: "opacity 0.4s ease" }}
+                        />
+                    )}
                 </>
             ) : (
                 <img
-                    src={imgError ? FALLBACK_AVATAR : repairUrl(reel.mediaUrl)}
+                    src={imgError || !reel.mediaUrl ? FALLBACK_AVATAR : repairUrl(reel.mediaUrl)}
                     alt={reel.title}
                     loading={priority ? "eager" : "lazy"}
                     onError={() => setImgError(true)}
+                    crossOrigin="anonymous"
                     className="absolute inset-0 w-full h-full object-cover"
                 />
             )}

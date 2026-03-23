@@ -3,6 +3,7 @@ import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import { createNotification } from "./notificationController.js";
 import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
 import logger from "../utils/logger.js";
+import { getCache, setCache, delPattern } from "../config/redisClient.js";
 
 // ============ CREATE GIG ============
 export const createGig = asyncHandler(async (req, res) => {
@@ -49,6 +50,9 @@ export const createGig = asyncHandler(async (req, res) => {
 
   logger.info(`Gig created: ${gig._id} by editor: ${req.user._id}`);
 
+  // Invalidate gigs cache
+  await delPattern("gigs:*");
+
   res.status(201).json({
     success: true,
     message: "Gig created successfully",
@@ -60,6 +64,14 @@ export const createGig = asyncHandler(async (req, res) => {
 export const getAllGigs = asyncHandler(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = Math.min(parseInt(req.query.limit) || 12, 50);
+  
+  // ── CACHE CHECK ──────────────────────────────────────────────────
+  const cacheKey = `gigs:list:p${page}:l${limit}:c${req.query.category || 'all'}:s${req.query.search || 'none'}:so${req.query.sort || 'newest'}`;
+  const cachedData = await getCache(cacheKey);
+  if (cachedData) {
+    return res.status(200).json(cachedData);
+  }
+
   const skip = (page - 1) * limit;
 
   // Build query
@@ -100,7 +112,7 @@ export const getAllGigs = asyncHandler(async (req, res) => {
     Gig.countDocuments(query),
   ]);
 
-  res.status(200).json({
+  const responseData = {
     success: true,
     gigs,
     pagination: {
@@ -109,7 +121,12 @@ export const getAllGigs = asyncHandler(async (req, res) => {
       total,
       pages: Math.ceil(total / limit),
     },
-  });
+  };
+
+  // Set cache (TTL: 2 minutes)
+  await setCache(cacheKey, responseData, 120);
+
+  res.status(200).json(responseData);
 });
 
 // ============ GET SINGLE GIG ============
@@ -176,6 +193,9 @@ export const updateGig = asyncHandler(async (req, res) => {
 
   logger.info(`Gig updated: ${gig._id}`);
 
+  // Invalidate gigs cache
+  await delPattern("gigs:*");
+
   res.status(200).json({
     success: true,
     message: "Gig updated successfully",
@@ -199,6 +219,9 @@ export const deleteGig = asyncHandler(async (req, res) => {
 
   logger.info(`Gig deleted: ${req.params.id}`);
 
+  // Invalidate gigs cache
+  await delPattern("gigs:*");
+
   res.status(200).json({
     success: true,
     message: "Gig deleted successfully",
@@ -219,6 +242,9 @@ export const toggleGigStatus = asyncHandler(async (req, res) => {
 
   gig.isActive = !gig.isActive;
   await gig.save();
+
+  // Invalidate gigs cache
+  await delPattern("gigs:*");
 
   const status = gig.isActive ? "activated" : "paused";
   

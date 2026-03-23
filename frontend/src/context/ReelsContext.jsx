@@ -21,7 +21,7 @@ export const ReelsProvider = ({ children }) => {
     const scrollPositionCache = useRef(0);
 
     // Global preferences
-    const [globalMuted, setGlobalMuted] = useState(false); // Start unmuted
+    const [globalMuted, setGlobalMuted] = useState(true); // Start muted for reliable browser autoplay
 
     /**
      * Returns true if the feed cache is still fresh enough to use.
