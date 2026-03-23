@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     FaHeart,
@@ -55,6 +55,7 @@ const ReelPreviewModal = ({
     const [followLoading, setFollowLoading] = useState(false);
     const [showFollowAnimation, setShowFollowAnimation] = useState(false);
     const [showComments, setShowComments] = useState(false);
+    const watchStartRef = useRef(null);
 
     // --- Identification Logic (Moved to Top) ---
     const editor = isPortfolioMode ? (portfolioOwner || reel.user || user) : reel.editor;
@@ -179,6 +180,46 @@ const ReelPreviewModal = ({
             setProgress(p);
         }
     };
+
+    const sendWatchTime = useCallback(() => {
+        if (!watchStartRef.current || !user || !reel) return;
+        const targetId = reel.reelId || reel._id;
+        
+        // Don't track unpublished samples in portfolio mode
+        if (isPortfolioMode && !reel.isPublished) return;
+        // Only track "Edited" view as a recommendation sample
+        if (viewType !== "edited") return;
+
+        const elapsed = Math.round((Date.now() - watchStartRef.current) / 1000);
+        const duration = videoRef.current?.duration || 0;
+        const pct = duration ? Math.round((videoRef.current.currentTime / duration) * 100) : 0;
+
+        // — Send watch completion signal —
+        if (elapsed >= 1) {
+            axios.post(
+                `${backendURL}/api/reels/${targetId}/watch-time`,
+                { seconds: elapsed, watchPercent: pct },
+                { headers: { Authorization: `Bearer ${user.token}` } }
+            ).catch(() => {});
+        }
+
+        // — Send skip signal if user left in < 2 seconds (negative signal) —
+        if (elapsed < 2 && isVideo) {
+            axios.post(
+                `${backendURL}/api/reels/${targetId}/skip`,
+                {},
+                { headers: { Authorization: `Bearer ${user.token}` } }
+            ).catch(() => {});
+        }
+
+        watchStartRef.current = null;
+    }, [user, reel, isVideo, viewType, isPortfolioMode, backendURL]);
+
+    // Handle watch start and cleanup
+    useEffect(() => {
+        watchStartRef.current = Date.now();
+        return () => sendWatchTime();
+    }, [currentIndex, viewType, sendWatchTime]);
 
     const handleLike = async (e) => {
         e.stopPropagation();

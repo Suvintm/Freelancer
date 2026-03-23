@@ -8,8 +8,9 @@ import { createNotification } from "./notificationController.js";
 import mongoose from "mongoose";
 import { getCache, setCache, delPattern } from "../config/redisClient.js";
 import redisClient, { redisAvailable } from "../config/redisClient.js";
-import { weightedReservoirSample, compositeScore } from "../utils/reelScorer.js";
+import { weightedReservoirSample, compositeScore, enforceCreatorDiversity } from "../utils/reelScorer.js";
 import { markSeen, hasSeen, clearSeen } from "../utils/reelBloomFilter.js";
+import { trackInterest, getUserInterests } from "../utils/userInterestTracker.js";
 
 // Scoreboard Redis key — persistent global sorted set of reel scores
 const SCORE_BOARD_KEY = "reels:score:board";
@@ -151,7 +152,8 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
             candidateReels = await Reel.find(
                 { _id: { $in: validIds }, isPublished: true },
                 { _id: 1, likesCount: 1, viewsCount: 1, commentsCount: 1, createdAt: 1,
-                  mediaUrl: 1, mediaType: 1, title: 1, description: 1, editor: 1, portfolio: 1, likes: 1 }
+                  mediaUrl: 1, mediaType: 1, title: 1, description: 1, editor: 1, portfolio: 1, likes: 1,
+                  avgCompletionRate: 1, completionSampleCount: 1, skipCount: 1, reWatchCount: 1, hashtags: 1 }
             ).lean();
 
             logger.debug(`[FEED] Scoreboard hit: ${candidateReels.length} candidates from Redis`);
@@ -168,8 +170,9 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
         // Lightweight projection — no lookup joins yet, just the data needed to score
         candidateReels = await Reel.find(dbMatch, {
             _id: 1, likesCount: 1, viewsCount: 1, commentsCount: 1, createdAt: 1,
-            mediaUrl: 1, mediaType: 1, title: 1, description: 1, editor: 1, portfolio: 1, likes: 1
-        }).limit(200).lean(); // Cap at 200 candidates for reservoir safety
+            mediaUrl: 1, mediaType: 1, title: 1, description: 1, editor: 1, portfolio: 1, likes: 1,
+            avgCompletionRate: 1, completionSampleCount: 1, skipCount: 1, reWatchCount: 1, hashtags: 1
+        }).limit(200).lean();
     }
 
     // ── STEP 4: Bloom Filter — filter out already-seen reels ──────────────────
@@ -189,12 +192,41 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
         }
     }
 
+    // ── STEP 1.5: Fetch Social Graph for personalization ──────────────────────
+    // Get the Set of editor IDs the user follows. Cached 10 mins per user.
+    // Used to give a 1.5× boost to reels from followed creators.
+    let followedIds = null;
+    if (userId) {
+        const socialCacheKey = `user:following:${userId}`;
+        let followedSet = await getCache(socialCacheKey);
+        if (!followedSet) {
+            // Pull from User model (following array)
+            const userDoc = await mongoose.model('User').findById(userId, { following: 1 }).lean();
+            followedSet = userDoc?.following?.map(id => id.toString()) || [];
+            await setCache(socialCacheKey, followedSet, 600); // Cache 10 min
+        }
+        followedIds = new Set(followedSet);
+        logger.debug(`[FEED] Social graph: user ${userId} follows ${followedIds.size} editors`);
+    }
+
+    // ── STEP 1.7: Fetch User Interest Vector for ranking ──────────────────────
+    let userInterests = null;
+    if (userId) {
+        userInterests = await getUserInterests(userId);
+        logger.debug(`[FEED] Personalization: user ${userId} has ${Object.keys(userInterests).length} affinity signals`);
+    }
+
     // ── STEP 5: Weighted Reservoir Sampling — diversity-aware selection ────────
     // A-Chao algorithm: O(N log K) time, O(K) space
-    const sampledReels = weightedReservoirSample(filteredCandidates, limit, compositeScore);
+    // Pass followedIds for social graph boost AND userInterests for personalization boost
+    const sampledReels = weightedReservoirSample(filteredCandidates, limit * 2, (r) => compositeScore(r, followedIds, userInterests));
+
+    // ── STEP 5b: Creator Diversity — max 2 reels from same editor per batch ────
+    // Instagram rule: you shouldn't see 3+ reels from the same creator in one scroll
+    const diverseReels = enforceCreatorDiversity(sampledReels, 2).slice(0, limit);
 
     // ── STEP 6: If target reel requested, prepend it ───────────────────────────
-    let finalReels = sampledReels;
+    let finalReels = diverseReels;
     if (targetReelId && !targetReelId.startsWith("ad_")) {
         try {
             if (!finalReels.some(r => r._id.toString() === targetReelId)) {
@@ -345,7 +377,10 @@ export const incrementView = asyncHandler(async (req, res) => {
         return res.status(404).json({ success: false, message: "Reel not found" });
     }
 
-    // ── DSA: Bloom Filter — Mark this reel as seen for this user ─────────────
+    // ── DSA: Bloom Filter — Mark this reel as seen for this user ─────────────    // Track Interest (weight 5 for a Like)
+    if (!isLiked && req.user) {
+        trackInterest(req.user._id, reel.hashtags, reel.editor, 5);
+    }
     // O(k) — k=3 Redis SETBIT calls. Prevents this reel from showing again
     // in the personalized feed until the user has cycled through all reels.
     if (userId) {
@@ -669,7 +704,9 @@ export const getReelTags = asyncHandler(async (req, res) => {
     });
 });
 
-// ============ TRACK WATCH TIME ============
+// ============ TRACK WATCH TIME — Bayesian Completion Averaging ============
+// This is the most important signal. We update a rolling Bayesian average of
+// how much of this reel users actually watch (0.0-1.0). Also tracks re-watches.
 export const trackWatchTime = asyncHandler(async (req, res) => {
     const { id: reelId } = req.params;
     const { seconds, watchPercent } = req.body;
@@ -679,24 +716,94 @@ export const trackWatchTime = asyncHandler(async (req, res) => {
         return res.status(400).json({ success: false, message: "Invalid watch time" });
     }
 
-    // Update or create interaction record
+    const completion = Math.max(0, Math.min(1, (watchPercent || 0) / 100));
+
+    // Update ReelInteraction record for per-user tracking
+    const existingInteraction = await ReelInteraction.findOne({ user: userId, reel: reelId });
+    const isRewatch = !!existingInteraction;
+
     await ReelInteraction.findOneAndUpdate(
         { user: userId, reel: reelId },
-        { 
-            $set: { 
-                watchPercent: watchPercent || 0,
-                watched: true,
-                updatedAt: new Date()
-            },
-            $inc: { watchTimeSeconds: seconds }
+        {
+            $set:  { watchPercent: completion * 100, watched: true, updatedAt: new Date() },
+            $inc:  { watchTimeSeconds: seconds },
         },
         { upsert: true, new: true }
     );
 
-    // Also update reel's total watch time stat
-    await Reel.findByIdAndUpdate(reelId, {
-        $inc: { watchTimeSeconds: seconds }
-    });
+    // -- Bayesian Running Average Update for avgCompletionRate --
+    // Formula: new_avg = (old_avg * n + new_sample) / (n + 1)
+    // Using MongoDB $inc on sampleCount and computing server-side average:
+    const reel = await Reel.findById(reelId);
+    if (reel) {
+        const oldAvg = reel.avgCompletionRate || 0;
+        const oldN   = reel.completionSampleCount || 0;
+        const newN   = oldN + 1;
+        const newAvg = ((oldAvg * oldN) + completion) / newN;
+
+        const updateFields = {
+            avgCompletionRate:      newAvg,
+            completionSampleCount:  newN,
+            $inc: {
+                watchTimeSeconds: seconds,
+                reWatchCount: isRewatch ? 1 : 0,
+            },
+        };
+
+        await Reel.findByIdAndUpdate(reelId, {
+            avgCompletionRate:     newAvg,
+            completionSampleCount: newN,
+            $inc: {
+                watchTimeSeconds: seconds,
+                reWatchCount: isRewatch ? 1 : 0,
+            },
+        });
+
+        // Track Interest (weight depends on completion %)
+        if (req.user) {
+            const interestWeight = completion >= 0.8 ? 2 : (completion >= 0.3 ? 1 : 0);
+            if (interestWeight > 0) {
+                trackInterest(req.user._id, reel.hashtags, reel.editor, interestWeight);
+            }
+        }
+
+        // Recompute and cache recommendation score in DB + Redis Sorted Set
+        const updatedReel = { ...reel.toObject(), avgCompletionRate: newAvg, completionSampleCount: newN };
+        const newScore = compositeScore(updatedReel);
+        await Reel.findByIdAndUpdate(reelId, { recommendationScore: newScore });
+        redisClient.zAdd(SCORE_BOARD_KEY, newScore, reelId.toString()).catch(() => {});
+        redisClient.expire(SCORE_BOARD_KEY, SCORE_BOARD_TTL).catch(() => {});
+
+        logger.debug(`[WATCH] Reel ${reelId}: completion=${(completion*100).toFixed(0)}%, newAvg=${(newAvg*100).toFixed(1)}%, score=${newScore.toFixed(3)}`);
+    }
+
+    res.status(200).json({ success: true });
+});
+
+// ============ TRACK SKIP — Negative Signal ============
+// Called when a user scrolls past a reel in < 2 seconds (strong "not interested" signal)
+// Used by Instagram and TikTok as a heavy negative ranking factor.
+export const trackSkip = asyncHandler(async (req, res) => {
+    const { id: reelId } = req.params;
+    const userId = req.user?._id?.toString() || null;
+
+    const reel = await Reel.findByIdAndUpdate(
+        reelId,
+        { $inc: { skipCount: 1 } },
+        { new: true }
+    );
+
+    if (!reel) return res.status(404).json({ success: false, message: "Reel not found" });
+
+    // Also mark as seen in Bloom Filter (skipped = definitely seen)
+    if (userId) {
+        markSeen(userId, reelId).catch(() => {});
+    }
+
+    // Recompute score with updated skip count (penalizes ranking)
+    const newScore = compositeScore(reel);
+    await Reel.findByIdAndUpdate(reelId, { recommendationScore: newScore });
+    redisClient.zAdd(SCORE_BOARD_KEY, newScore, reelId.toString()).catch(() => {});
 
     res.status(200).json({ success: true });
 });

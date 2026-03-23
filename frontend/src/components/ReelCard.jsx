@@ -99,11 +99,29 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
     const sendWatchTime = useCallback(() => {
         if (!watchStartRef.current || !user) return;
         const elapsed = Math.round((Date.now() - watchStartRef.current) / 1000);
-        if (elapsed < 1) return;
-        const pct = videoRef.current?.duration ? Math.round((videoRef.current.currentTime / videoRef.current.duration) * 100) : 0;
-        axios.post(`${backendURL}/api/reels/${reel._id}/watch-time`, { seconds: elapsed, watchPercent: pct }, { headers: { Authorization: `Bearer ${user.token}` } }).catch(() => {});
+        const duration = videoRef.current?.duration || 0;
+        const pct = duration ? Math.round((videoRef.current.currentTime / duration) * 100) : 0;
+
+        // — Send watch completion signal (Instagram's #1 ranking signal) —
+        if (elapsed >= 1) {
+            axios.post(
+                `${backendURL}/api/reels/${reel._id}/watch-time`,
+                { seconds: elapsed, watchPercent: pct },
+                { headers: { Authorization: `Bearer ${user.token}` } }
+            ).catch(() => {});
+        }
+
+        // — Send skip signal if user left in < 2 seconds (negative signal) —
+        if (elapsed < 2 && reel.mediaType === 'video') {
+            axios.post(
+                `${backendURL}/api/reels/${reel._id}/skip`,
+                {},
+                { headers: { Authorization: `Bearer ${user.token}` } }
+            ).catch(() => {});
+        }
+
         watchStartRef.current = null;
-    }, [user, reel._id, backendURL]);
+    }, [user, reel._id, reel.mediaType, backendURL]);
 
     useEffect(() => () => sendWatchTime(), [sendWatchTime]);
 

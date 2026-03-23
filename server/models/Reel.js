@@ -86,6 +86,39 @@ const reelSchema = new mongoose.Schema(
             type: Boolean,
             default: false
         },
+
+        // ── Recommendation Engine Signals ────────────────────────────────────
+        // Instagram-style: watch completion is the single strongest ranking signal.
+        // We track a running Bayesian average of completion rate across all viewers.
+
+        /** Rolling average watch completion (0.0–1.0). Updated via trackWatchTime. */
+        avgCompletionRate: {
+            type: Number,
+            default: 0,
+            min: 0,
+            max: 1,
+        },
+        /** How many completion samples have been averaged in (for Bayesian update). */
+        completionSampleCount: {
+            type: Number,
+            default: 0,
+        },
+        /** Times users skipped this reel very quickly (< 2 seconds). Negative signal. */
+        skipCount: {
+            type: Number,
+            default: 0,
+        },
+        /** Number of loop-backs / re-watches detected. Strong positive signal. */
+        reWatchCount: {
+            type: Number,
+            default: 0,
+        },
+        /** Pre-computed composite recommendation score (cached, updated on interaction). */
+        recommendationScore: {
+            type: Number,
+            default: 0,
+            index: true,
+        },
     },
     { timestamps: true }
 );
@@ -95,6 +128,8 @@ reelSchema.index({ createdAt: -1 });
 reelSchema.index({ viewsCount: -1 });
 reelSchema.index({ likesCount: -1 });
 reelSchema.index({ portfolio: 1, editor: 1 });
+reelSchema.index({ recommendationScore: -1, createdAt: -1 }); // Social graph feed
+reelSchema.index({ editor: 1, isPublished: 1, createdAt: -1 }); // Per-editor feed
 
 // Virtual for checking if user liked
 reelSchema.methods.isLikedBy = function (userId) {

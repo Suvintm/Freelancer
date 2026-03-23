@@ -12,6 +12,7 @@ import {
     checkPublished,
     getMyReelsAnalytics,
     trackWatchTime,
+    trackSkip,
     getReelTags,
     toggleCommentLike,
 } from "../controllers/reelController.js";
@@ -62,7 +63,10 @@ router.post("/:id/comments/:commentId/like", toggleCommentLike);
 // Get my reels analytics (for editor dashboard)
 router.get("/analytics/my-reels", getMyReelsAnalytics);
 
-// Track watch time
+// Track watch time (completion %)
 router.post("/:id/watch-time", trackWatchTime);
+
+// Track skip (fast scroll-past < 2s) — negative signal
+router.post("/:id/skip", trackSkip);
 
 export default router;

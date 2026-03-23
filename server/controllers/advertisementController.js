@@ -5,6 +5,8 @@ import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
 import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
 import { getCache, setCache, delPattern } from "../config/redisClient.js";
+import { rankAdsWithBandit, updateBanditScore } from "../utils/adBandit.js";
+import { checkFrequencyCap, incrementFrequency, checkPacing, consumePacingToken } from "../utils/adPacing.js";
 
 // ✅ Robust Utility to repair URLs mangled by security sanitizers
 // Handles both dot mangling (res_cloudinary_com) and slash mangling (.com_cloudname)
@@ -162,11 +164,39 @@ export const getActiveAds = asyncHandler(async (req, res) => {
       .select("-adminNotes -advertiserEmail -advertiserPhone -createdBy -__v");
   }
 
-  const cleanedAds = ads.map(ad => cleanAd(ad));
-  const payload = { success: true, count: ads.length, ads: cleanedAds, hasDefaults: ads.some(a => a.isDefault) };
+  // ── STEP 2: Rank Ads with Bandit (UCB1) ─────────────────────────────────
+  const rankedAds = await rankAdsWithBandit(ads, location);
 
-  // Cache for 10 minutes
-  await setCache(cacheKey, payload, 600);
+  // ── STEP 3: Apply Frequency Cap & Pacing (Personalized Filter) ──────────
+  // Per-user frequency capping (O(1) Redis check)
+  const userId = req.user?._id?.toString();
+  let filteredAds = rankedAds;
+
+  if (userId) {
+    const checks = await Promise.all(rankedAds.map(ad => checkFrequencyCap(userId, ad._id.toString())));
+    filteredAds = rankedAds.filter((_, i) => !checks[i]);
+    
+    // If cap removes too many, fall back to ranked list (safety)
+    if (filteredAds.length === 0 && rankedAds.length > 0) {
+        filteredAds = rankedAds.slice(0, 5);
+    }
+  }
+
+  // Final Pacing Check
+  const pacingChecks = await Promise.all(filteredAds.map(ad => checkPacing(ad._id.toString())));
+  const finalAds = filteredAds.filter((_, i) => !pacingChecks[i]);
+
+  const cleanedAds = finalAds.map(ad => cleanAd(ad));
+  const payload = { 
+    success: true, 
+    count: finalAds.length, 
+    ads: cleanedAds, 
+    hasDefaults: finalAds.some(a => a.isDefault),
+    isPersonalized: !!userId
+  };
+
+  // Cache for 10 minutes (Slightly shorter for dynamic bandit)
+  await setCache(cacheKey, payload, 300);
 
   res.status(200).json(payload);
 });
@@ -203,12 +233,24 @@ export const trackAdView = asyncHandler(async (req, res) => {
   else if (location === "home_banner") update.$inc.homeBannerViews = 1;
 
   await Advertisement.findByIdAndUpdate(id, update);
+
+  // ── DSA: Update Bandit & Pacing State ─────────────
+  updateBanditScore(id, location, 'view').catch(() => {});
+  consumePacingToken(id).catch(() => {});
+  if (req.user?._id) {
+    incrementFrequency(req.user._id.toString(), id).catch(() => {});
+  }
+
   res.status(200).json({ success: true });
 });
 
 // ============ PUBLIC: TRACK CLICK ============
 export const trackAdClick = asyncHandler(async (req, res) => {
   await Advertisement.findByIdAndUpdate(req.params.id, { $inc: { clicks: 1 } });
+  
+  // ── DSA: Update Bandit Score (Positive signal) ────
+  updateBanditScore(req.params.id, req.query.location || 'all', 'click').catch(() => {});
+
   res.status(200).json({ success: true });
 });
 
