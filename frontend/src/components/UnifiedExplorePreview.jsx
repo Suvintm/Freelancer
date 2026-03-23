@@ -131,7 +131,7 @@ const FeaturedGigCard = ({ item, navigate }) => {
             transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
             onHoverStart={() => setHovered(true)}
             onHoverEnd={() => setHovered(false)}
-            onClick={() => navigate(`/explore-editors?tab=gigs`)}
+            onClick={() => navigate(`/explore/gigs`)}
             className="relative rounded-2xl overflow-hidden cursor-pointer bg-zinc-900 row-span-2"
             style={{ minHeight: '380px' }}
         >
@@ -224,7 +224,7 @@ const SmallGigCard = ({ item, idx, navigate }) => {
             transition={{ delay: 0.1 + idx * 0.08, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
             onHoverStart={() => setHovered(true)}
             onHoverEnd={() => setHovered(false)}
-            onClick={() => navigate(`/explore-editors?tab=gigs`)}
+            onClick={() => navigate(`/explore/gigs`)}
             className="relative rounded-2xl overflow-hidden cursor-pointer flex group"
             style={{ height: '110px' }}
         >
@@ -300,7 +300,7 @@ const GigSection = ({ gigs, navigate }) => {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.45 }}
                     whileHover={{ x: 3 }}
-                    onClick={() => navigate('/explore-editors?tab=gigs')}
+                    onClick={() => navigate('/explore/gigs')}
                     className="group flex items-center justify-between px-4 py-3 rounded-2xl border border-dashed border-white/[0.08] hover:border-white/[0.18] bg-transparent hover:bg-white/[0.02] transition-all duration-200"
                 >
                     <span className="text-[9px] font-black text-zinc-700 group-hover:text-zinc-400 uppercase tracking-[0.2em] transition-colors">
@@ -365,7 +365,7 @@ const UnifiedExplorePreview = () => {
                     icon={HiUserGroup}
                     title="Featured Editors"
                     subLabel="Elite Talent"
-                    link="/explore-editors?tab=editors"
+                    link="/explore/editors"
                     navigate={navigate}
                 />
                 {loading ? <SkeletonEditors /> : (
@@ -383,7 +383,7 @@ const UnifiedExplorePreview = () => {
                     icon={HiBriefcase}
                     title="Elite Gigs"
                     subLabel="Top Services"
-                    link="/explore-editors?tab=gigs"
+                    link="/explore/gigs"
                     navigate={navigate}
                 />
                 {loading ? <SkeletonGigs /> : <GigSection gigs={gigs} navigate={navigate} />}
@@ -394,7 +394,7 @@ const UnifiedExplorePreview = () => {
                 <motion.button
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.97 }}
-                    onClick={() => navigate('/explore-editors')}
+                    onClick={() => navigate('/explore')}
                     className="group flex items-center gap-2.5 px-7 py-3 rounded-full bg-white/[0.06] border border-white/10 hover:bg-white/[0.10] hover:border-white/20 transition-all duration-200"
                 >
                     <span className="text-[10px] font-black text-zinc-300 uppercase tracking-[0.2em]">

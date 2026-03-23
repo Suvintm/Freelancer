@@ -93,7 +93,7 @@ const reelMatchesSearch = (reel, query) => {
 };
 
 // ─── Main Component ────────────────────────────────────────────────────────
-const ReelsExplore = () => {
+const ReelsExplore = ({ isTab = false }) => {
     const { backendURL } = useAppContext();
     const navigate = useNavigate();
 
@@ -222,79 +222,83 @@ const ReelsExplore = () => {
     const isFiltering = !!debouncedQ || !!selectedTag;
 
     return (
-        <div className="min-h-screen bg-[#050509] text-white">
+        <div className={`w-full ${isTab ? "" : "min-h-screen bg-[#050509]"} text-white`}>
 
-            {/* ── STICKY HEADER ──────────────────────────────────────────── */}
-            <header className="sticky top-0 z-[90] bg-[#050509]/92 backdrop-blur-2xl border-b border-white/[0.04]">
-                <div className="max-w-5xl mx-auto px-4 pt-3 pb-2.5 space-y-2.5">
+            {/* ── STICKY HEADER (Hidden if in unified Explore tab) ──────────────────────────────────────────── */}
+            {!isTab && (
+                <header className="sticky top-0 z-[90] bg-[#050509]/92 backdrop-blur-2xl border-b border-white/[0.04]">
+                    <div className="max-w-5xl mx-auto px-4 pt-3 pb-2.5 space-y-2.5">
 
-                    {/* Back + search */}
-                    <div className="flex items-center gap-2.5">
-                        <button
-                            onClick={() => navigate(-1)}
-                            className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-zinc-400 hover:text-white transition-colors flex-shrink-0"
-                        >
-                            <HiOutlineChevronLeft className="text-sm" />
-                        </button>
+                        {/* Back + search */}
+                        <div className="flex items-center gap-2.5">
+                            <button
+                                onClick={() => navigate(-1)}
+                                className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-zinc-400 hover:text-white transition-colors flex-shrink-0"
+                            >
+                                <HiOutlineChevronLeft className="text-sm" />
+                            </button>
 
-                        <div className="flex-1 relative flex items-center">
-                            <HiOutlineMagnifyingGlass className="absolute left-3.5 text-zinc-500 text-sm pointer-events-none z-10" />
-                            <input
-                                ref={searchRef}
-                                type="text"
-                                placeholder="Search title, tag, editor…"
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                                className="w-full bg-white/[0.06] border border-white/[0.08] rounded-full pl-9 pr-9 py-2 text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/[0.18] focus:bg-white/[0.08] transition-all duration-200"
+                            <div className="flex-1 relative flex items-center">
+                                <HiOutlineMagnifyingGlass className="absolute left-3.5 text-zinc-500 text-sm pointer-events-none z-10" />
+                                <input
+                                    ref={searchRef}
+                                    type="text"
+                                    placeholder="Search title, tag, editor…"
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    className="w-full bg-white/[0.06] border border-white/[0.08] rounded-full pl-9 pr-9 py-2 text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/[0.18] focus:bg-white/[0.08] transition-all duration-200"
+                                />
+                                <AnimatePresence>
+                                    {searchQuery && (
+                                        <motion.button
+                                            initial={{ opacity: 0, scale: 0.7 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.7 }}
+                                            onClick={() => { setSearchQuery(""); searchRef.current?.focus(); }}
+                                            className="absolute right-3 text-zinc-500 hover:text-white transition-colors z-10"
+                                        >
+                                            <HiOutlineXMark className="text-sm" />
+                                        </motion.button>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        </div>
+
+                        {/* Tag pills */}
+                        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-0.5">
+                            <TagPill label="All" icon={<HiOutlineSparkles />} active={!selectedTag} onClick={() => setSelectedTag(null)} />
+                            <TagPill
+                                label="Trending"
+                                icon={<FaFire className="text-orange-400" />}
+                                active={selectedTag === "__trending__"}
+                                onClick={() => setSelectedTag(selectedTag === "__trending__" ? null : "__trending__")}
                             />
-                            <AnimatePresence>
-                                {searchQuery && (
-                                    <motion.button
-                                        initial={{ opacity: 0, scale: 0.7 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.7 }}
-                                        onClick={() => { setSearchQuery(""); searchRef.current?.focus(); }}
-                                        className="absolute right-3 text-zinc-500 hover:text-white transition-colors z-10"
-                                    >
-                                        <HiOutlineXMark className="text-sm" />
-                                    </motion.button>
-                                )}
-                            </AnimatePresence>
+                            {tags.slice(0, 16).map(tag => (
+                                <TagPill
+                                    key={tag}
+                                    label={tag}
+                                    active={selectedTag === tag}
+                                    onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
+                                />
+                            ))}
                         </div>
                     </div>
+                </header>
+            )}
 
-                    {/* Tag pills */}
-                    <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-0.5">
-                        <TagPill label="All" icon={<HiOutlineSparkles />} active={!selectedTag} onClick={() => setSelectedTag(null)} />
-                        <TagPill
-                            label="Trending"
-                            icon={<FaFire className="text-orange-400" />}
-                            active={selectedTag === "__trending__"}
-                            onClick={() => setSelectedTag(selectedTag === "__trending__" ? null : "__trending__")}
-                        />
-                        {tags.slice(0, 16).map(tag => (
-                            <TagPill
-                                key={tag}
-                                label={tag}
-                                active={selectedTag === tag}
-                                onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
-                            />
-                        ))}
+            {/* ── PAGE HEADING (Hidden if in unified Explore tab) ───────────────────────────────────────────── */}
+            {!isTab && (
+                <div className="max-w-5xl mx-auto px-4 pt-5 pb-3 flex items-center justify-between">
+                    <div>
+                        <p className="text-[9px] font-black uppercase tracking-[0.22em] text-zinc-700 mb-0.5">SuviX</p>
+                        <h1 className="text-xl font-black text-white leading-none tracking-tight">Explore Reels</h1>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">Live</span>
                     </div>
                 </div>
-            </header>
-
-            {/* ── PAGE HEADING ───────────────────────────────────────────── */}
-            <div className="max-w-5xl mx-auto px-4 pt-5 pb-3 flex items-center justify-between">
-                <div>
-                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-zinc-700 mb-0.5">SuviX</p>
-                    <h1 className="text-xl font-black text-white leading-none tracking-tight">Explore Reels</h1>
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">Live</span>
-                </div>
-            </div>
+            )}
 
             {/* ── MAIN ───────────────────────────────────────────────────── */}
             <main className="max-w-5xl mx-auto px-2 sm:px-4 pb-20">

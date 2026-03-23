@@ -65,6 +65,13 @@ const Sidebar = ({ isOpen, onClose }) => {
       type: "link",
     },
     {
+      id: "explore",
+      label: "Explore",
+      icon: HiOutlineMagnifyingGlass,
+      path: "/explore",
+      type: "link",
+    },
+    {
       id: "orders",
       label: "Orders & Tasks",
       icon: HiOutlineClipboardDocumentList,

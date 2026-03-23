@@ -29,7 +29,7 @@ import MyOrders from "./pages/MyOrders.jsx";
 import ClientOrders from "./pages/ClientOrders.jsx";
 import ClientProfile from "./pages/ClientProfile.jsx";
 import SavedEditors from "./pages/SavedEditors.jsx";
-import ExploreEditorsPage from "./pages/ExploreEditorsPage.jsx";
+import ExplorePage from "./pages/ExplorePage.jsx";
 
 // OAuth Pages
 import OAuthSuccess from "./pages/OAuthSuccess.jsx";
@@ -102,7 +102,7 @@ const TabSwitcher = () => {
   // Define tabs configuration
   const tabs = useMemo(() => [
     { id: "home", path: user?.role === "client" ? "/client-home" : "/editor-home", component: user?.role === "client" ? ClientHome : EditorHome },
-    { id: "explore", path: "/explore-editors", component: ExploreEditorsPage },
+    { id: "explore", path: "/explore", component: ExplorePage },
     { id: "nearby", path: "/editors-near-you", component: LocalEditorsNetworkPage },
     { id: "reels", path: "/reels", component: ReelsPage },
     { id: "jobs", path: "/jobs", component: JobsPage },
@@ -110,8 +110,10 @@ const TabSwitcher = () => {
     { id: "profile", path: user?.role === "client" ? "/client-profile" : "/editor-profile", component: user?.role === "client" ? ClientProfile : EditorProfilePage },
   ], [user?.role]);
 
-  // Current active tab ID
-  const activeTabId = tabs.find(t => t.path === location.pathname)?.id;
+  // Current active tab ID - modified to handle sub-routes (like /explore/reelsfeed)
+  const activeTabId = tabs.find(t => 
+    location.pathname === t.path || (t.id === "explore" && location.pathname.startsWith("/explore"))
+  )?.id;
 
   // Track which tabs have been visited (Lazy Load)
   useEffect(() => {
@@ -219,7 +221,8 @@ function App() {
         <Route element={<ProtectedRoute><TabSwitcher /></ProtectedRoute>}>
           <Route path="/client-home" element={null} />
           <Route path="/editor-home" element={null} />
-          <Route path="/explore-editors" element={null} />
+          <Route path="/explore" element={null} />
+          <Route path="/explore/:tab" element={null} />
           <Route path="/editors-near-you" element={null} />
           <Route path="/reels" element={null} />
           <Route path="/jobs" element={null} />
@@ -264,7 +267,7 @@ function App() {
         <Route path="/my-proposals" element={<ProtectedRoute allowedRoles={["editor"]}><MyProposalsPage /></ProtectedRoute>} />
         <Route path="/ad-details/:id" element={<AdDetailsPage />} />
         <Route path="/reels-analytics" element={<ProtectedRoute><ReelsAnalytics /></ProtectedRoute>} />
-        <Route path="/reels-explore" element={<ProtectedRoute><ReelsExplore /></ProtectedRoute>} />
+        <Route path="/reels-explore" element={<Navigate to="/explore/reelsfeed" replace />} />
         <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
         <Route path="/payment-success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
         <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />

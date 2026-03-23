@@ -587,7 +587,7 @@ const SuggestedReels = () => {
                 <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => navigate("/reels-explore")}
+                    onClick={() => navigate("/explore/reelsfeed")}
                     className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 transition-all"
                 >
                     <span className="text-[9px] font-black text-zinc-400 group-hover:text-white uppercase tracking-[0.14em] transition-colors">
@@ -649,7 +649,7 @@ const SuggestedReels = () => {
                             priority={idx < 3}
                         />
                     ))}
-                    <ViewMoreCard onClick={() => navigate("/reels-explore")} />
+                    <ViewMoreCard onClick={() => navigate("/explore/reelsfeed")} />
                 </div>
 
                 {/* "Back to start" pill — appears when auto-reset fires */}

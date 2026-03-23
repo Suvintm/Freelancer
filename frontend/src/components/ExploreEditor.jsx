@@ -1257,13 +1257,24 @@ const EditorCardSkeleton = () => (
 // ─────────────────────────────────────────────────────────────────
 // MAIN COMPONENT: ExploreEditors
 // ─────────────────────────────────────────────────────────────────
-const ExploreEditors = () => {
+const ExploreEditors = ({ initialTab = "editors", isTab = false }) => {
   const { backendURL, user } = useAppContext();
   const navigate = useNavigate();
 
-  // Tab state
-  const activeTab = useHomeStore(s => s.exploreTab);
-  const setActiveTab = useHomeStore(s => s.setExploreTab);
+  // Tab state synchronization
+  const activeTabInternal = useHomeStore(s => s.exploreTab);
+  const setExploreTabInternal = useHomeStore(s => s.setExploreTab);
+
+  // Sync with initialTab only once on mount to avoid infinite loops
+  useEffect(() => {
+    if (initialTab && activeTabInternal !== initialTab) {
+      setExploreTabInternal(initialTab);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); 
+
+  const activeTab = useMemo(() => isTab ? initialTab : activeTabInternal, [isTab, initialTab, activeTabInternal]);
+  const setActiveTab = setExploreTabInternal;
 
   // Editors state
   const [editors, setEditors] = useState([]);
@@ -1425,29 +1436,31 @@ const ExploreEditors = () => {
   return (
     <div className="min-h-screen px-3 py-2 pb-24" style={{ fontFamily: "'Inter', sans-serif" }}>
 
-      {/* ═══ TAB SWITCHER ═══ */}
-      <div className="flex justify-center mb-4">
-        <div className="flex p-1 rounded-full" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          {[
-            { id: "editors", label: "Editors",  Icon: FaUsers },
-            { id: "gigs",    label: "Gigs",     Icon: FaShoppingBag },
-          ].map(tab => (
-            <motion.button
-              key={tab.id}
-              whileTap={{ scale: 0.94 }}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-5 py-2 rounded-full text-xs font-bold transition-all ${
-                activeTab === tab.id
-                  ? "bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30"
-                  : "text-gray-400 hover:text-white"
-              }`}
-            >
-              <tab.Icon className="text-[10px]" />
-              {tab.label}
-            </motion.button>
-          ))}
+      {/* ═══ TAB SWITCHER (Hidden if in unified Explore tab) ═══ */}
+      {!isTab && (
+        <div className="flex justify-center mb-4">
+          <div className="flex p-1 rounded-full" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            {[
+              { id: "editors", label: "Editors",  Icon: FaUsers },
+              { id: "gigs",    label: "Gigs",     Icon: FaShoppingBag },
+            ].map(tab => (
+              <motion.button
+                key={tab.id}
+                whileTap={{ scale: 0.94 }}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 px-5 py-2 rounded-full text-xs font-bold transition-all ${
+                  activeTab === tab.id
+                    ? "bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30"
+                    : "text-gray-400 hover:text-white"
+                }`}
+              >
+                <tab.Icon className="text-[10px]" />
+                {tab.label}
+              </motion.button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ═══ TAB CONTENT ═══ */}
       <AnimatePresence mode="wait">
@@ -1458,18 +1471,22 @@ const ExploreEditors = () => {
         ) : (
           <motion.div key="editors" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}>
 
-            {/* 1. HERO ADS BANNER */}
-            <CategoryBanner
-              location="banners:editors"
-              fallbackItems={[
-                { title: "Find Your Perfect Editor", description: "Connect with 850+ skilled professionals", mediaUrl: "/hero_banner_1_1766948130847.png", badge: "DISCOVER TALENT" },
-                { title: "Elite Pro Editors", description: "Hand-picked experts for premium projects", mediaUrl: "/hero_banner_2_1766948148873.png", badge: "PREMIUM" }
-              ]}
-            />
+            {/* 1. HERO ADS BANNER (Hidden in tab mode to reduce clutter) */}
+            {!isTab && (
+              <div className="mb-6">
+                <CategoryBanner
+                  location="banners:editors"
+                  fallbackItems={[
+                    { title: "Find Your Perfect Editor", description: "Connect with 850+ skilled professionals", mediaUrl: "/hero_banner_1_1766948130847.png", badge: "DISCOVER TALENT" },
+                    { title: "Elite Pro Editors", description: "Hand-picked experts for premium projects", mediaUrl: "/hero_banner_2_1766948148873.png", badge: "PREMIUM" }
+                  ]}
+                />
+              </div>
+            )}
 
-            {/* 2. AI SMART MATCH BANNER (Entry point) */}
-            <div className="mb-8">
-              <SmartMatchBanner />
+            {/* 2. AI SMART MATCH BANNER (Entry point) - Always visible */}
+            <div className="mb-8 px-1">
+               <SmartMatchBanner />
             </div>
 
             {/* 3. LIVE PLATFORM STATS */}
@@ -1613,12 +1630,6 @@ const ExploreEditors = () => {
                           isSaved={savedEditors.includes(editor.user?._id)}
                           onToggleFavorite={(e) => toggleFavorite(e, editor.user?._id)}
                         />
-                        {/* Inject AI matching banner for discovery mid-scroll */}
-                        {i === 5 && (
-                          <div className="col-span-full my-4">
-                            <SmartMatchBanner />
-                          </div>
-                        )}
                       </React.Fragment>
                     ))}
                   </div>

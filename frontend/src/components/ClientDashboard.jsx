@@ -118,7 +118,7 @@ const ClientDashboard = ({ user, stats, activeProjects, getStatusStyle }) => {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
                         <button 
-                            onClick={() => navigate('/explore-editors')}
+                            onClick={() => navigate('/explore/editors')}
                             className="p-6 bg-white/5 hover:bg-white/10 border border-white/10 rounded-3xl transition-all group text-left"
                         >
                             <HiOutlineUserGroup className="w-8 h-8 text-violet-400 mb-4 group-hover:scale-110 transition-transform" />

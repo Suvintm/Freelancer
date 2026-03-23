@@ -113,12 +113,19 @@ const ClientSidebar = ({ isOpen, onClose }) => {
       type: "link",
     },
     {
+      id: "explore",
+      label: "Explore",
+      icon: HiOutlineMagnifyingGlass,
+      path: "/explore",
+      type: "link",
+    },
+    {
       id: "hiring",
       label: "Hiring",
       icon: HiOutlineUserGroup,
       type: "group",
       children: [
-        { path: "/explore-editors", icon: HiOutlineMagnifyingGlassCircle, label: "Explore Editors" },
+        { path: "/explore/editors", icon: HiOutlineMagnifyingGlassCircle, label: "Explore Editors" },
         { path: "/saved-editors", icon: HiOutlineHeart, label: "Saved Editors" },
         { path: "/editors-near-you", icon: HiOutlineMapPin, label: "Editors Near You" },
       ],

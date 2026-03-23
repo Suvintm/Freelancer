@@ -121,7 +121,7 @@ const AdvancedSearchBar = React.memo(({
         { label: "Reels", icon: HiOutlineSparkles, path: "/reels", color: "text-amber-400" },
         { label: "Profile", icon: HiOutlineUser, path: "/client-profile", color: "text-zinc-400" },
         { label: "Orders", icon: HiOutlineShoppingCart, path: "/client-orders", color: "text-emerald-400" },
-        { label: "Editors", icon: HiOutlineMagnifyingGlassCircle, path: "/explore-editors", color: "text-purple-400" },
+        { label: "Editors", icon: HiOutlineMagnifyingGlassCircle, path: "/explore/editors", color: "text-purple-400" },
         { label: "Briefs", icon: HiOutlineDocumentPlus, path: "/create-brief", color: "text-pink-400" },
         { label: "Chats", icon: HiOutlineChatBubbleLeftRight, path: "/chats", color: "text-indigo-400" },
         { label: "Payments", icon: HiOutlineCreditCard, path: "/payments", color: "text-amber-400" },
