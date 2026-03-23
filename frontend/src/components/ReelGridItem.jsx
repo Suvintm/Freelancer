@@ -75,6 +75,25 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
                 />
             )}
 
+            {/* NEW Reel Ring Highlight */}
+            {(() => {
+                const isNew = reel.createdAt && (new Date() - new Date(reel.createdAt)) < 24 * 60 * 60 * 1000;
+                if (!isNew) return null;
+                return (
+                    <motion.div 
+                        animate={{ 
+                            boxShadow: [
+                                "inset 0 0 0 0.5px rgba(255,255,255,0.1)",
+                                "inset 0 0 0 2px rgba(255,255,255,0.4)",
+                                "inset 0 0 0 0.5px rgba(255,255,255,0.1)"
+                            ] 
+                        }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                        className="absolute inset-0 z-10 pointer-events-none rounded-xl"
+                    />
+                );
+            })()}
+
             {/* Content Overlay */}
             <div className={`absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-3 ${isHolding ? "opacity-0" : "opacity-100"}`}>
                 <div className="flex items-center justify-between">

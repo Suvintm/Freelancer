@@ -95,7 +95,7 @@ const reelMatchesSearch = (reel, query) => {
 };
 
 // ─── Main Component ────────────────────────────────────────────────────────
-const ReelsExplore = ({ isTab = false }) => {
+const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
     const { backendURL } = useAppContext();
     const navigate = useNavigate();
 
@@ -112,6 +112,12 @@ const ReelsExplore = ({ isTab = false }) => {
     const [showComments, setShowComments] = useState(false);
     const [activeReel, setActiveReel]   = useState(null);
     const [showScrollTop, setShowScrollTop] = useState(false);
+    const [isReady, setIsReady]         = useState(false);
+
+    useEffect(() => {
+        const t = setTimeout(() => setIsReady(true), 300);
+        return () => clearTimeout(t);
+    }, []);
 
     const searchRef = useRef(null);
 
@@ -223,8 +229,19 @@ const ReelsExplore = ({ isTab = false }) => {
 
     const isFiltering = !!debouncedQ || !!selectedTag;
 
+    if (!isReady) {
+        return (
+            <div className={`w-full ${isTab ? "" : "min-h-screen bg-[#050509]"} p-6 space-y-8 animate-pulse`}>
+                <div className="h-10 bg-white/5 rounded-full w-3/4 mx-auto mb-10" />
+                <div className="grid grid-cols-3 gap-3">
+                    {[1,2,3].map(i => <div key={i} className="aspect-[9/16] bg-white/5 rounded-2xl" />)}
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className={`w-full ${isTab ? "" : "min-h-screen bg-[#050509]"} text-white`}>
+        <div className={`w-full ${isTab ? "" : "min-h-screen bg-[#050509]"} text-white ${isSwiping ? "pointer-events-none" : ""}`}>
 
             {/* ── STICKY HEADER (Hidden if in unified Explore tab) ──────────────────────────────────────────── */}
             {!isTab && (
@@ -303,12 +320,15 @@ const ReelsExplore = ({ isTab = false }) => {
             )}
 
             {/* ── MAIN CONTENT ─────────────────────────────────────────────────────────────── */}
-            <div className={`max-w-5xl mx-auto ${isTab ? "px-0" : "px-4"} py-4`}>
+            <div className={`max-w-5xl mx-auto px-3.5 py-4`}>
                 
                 {/* 🆕 Trending 3D Carousel (Only show when not searching) */}
                 {!isFiltering && (
                     <div className="mb-2">
-                        <TrendingReelsCarousel reels={reels} />
+                        <TrendingReelsCarousel 
+                            reels={reels} 
+                            isSwiping={isSwiping}
+                        />
                     </div>
                 )}
 

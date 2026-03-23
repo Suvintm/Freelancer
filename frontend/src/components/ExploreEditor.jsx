@@ -1257,8 +1257,14 @@ const EditorCardSkeleton = () => (
 // ─────────────────────────────────────────────────────────────────
 // MAIN COMPONENT: ExploreEditors
 // ─────────────────────────────────────────────────────────────────
-const ExploreEditors = ({ initialTab = "editors", isTab = false }) => {
+const ExploreEditors = ({ initialTab = "editors", isTab = false, isSwiping = false }) => {
   const { backendURL, user } = useAppContext();
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setIsReady(true), 300);
+    return () => clearTimeout(t);
+  }, []);
   const navigate = useNavigate();
 
   // Tab state synchronization
@@ -1433,8 +1439,21 @@ const ExploreEditors = ({ initialTab = "editors", isTab = false }) => {
   }
 
   // ─── RENDER ───
+  if (!isReady) {
+    return (
+      <div className="p-8 space-y-10 animate-pulse bg-black min-h-screen">
+        <div className="h-14 bg-white/5 rounded-2xl w-full" />
+        <div className="grid grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => <div key={i} className="h-28 bg-white/5 rounded-3xl" />)}
+        </div>
+        <div className="h-72 bg-white/5 rounded-[2.5rem] w-full" />
+        <div className="h-32 bg-white/5 rounded-2xl w-full" />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen px-3 py-2 pb-24" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className={`min-h-screen px-3 py-2 pb-24 ${isSwiping ? "pointer-events-none" : ""}`} style={{ fontFamily: "'Inter', sans-serif" }}>
 
       {/* ═══ TAB SWITCHER (Hidden if in unified Explore tab) ═══ */}
       {!isTab && (

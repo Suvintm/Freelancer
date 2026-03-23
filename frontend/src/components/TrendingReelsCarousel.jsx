@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { repairUrl } from "../utils/urlHelper.jsx";
 
-const TrendingReelsCarousel = ({ reels = [] }) => {
+const TrendingReelsCarousel = ({ reels = [], isSwiping = false }) => {
   const navigate = useNavigate();
   const rafRef = useRef(null);
   const angleRef = useRef(0);
@@ -41,27 +41,44 @@ const TrendingReelsCarousel = ({ reels = [] }) => {
   const count = trendingReels.length;
   const theta = count > 0 ? 360 / count : 0;
 
-  // ── Auto-rotate ────────────────────────────────────────────────────────────
+  const [isReady, setIsReady] = useState(false);
+
   useEffect(() => {
-    if (count === 0) return;
+    // Defer heavy animation until tab transition is likely finished
+    const t = setTimeout(() => setIsReady(true), 350);
+    return () => clearTimeout(t);
+  }, []);
+
+  // ── Auto-rotate & Momentum ────────────────────────────────────────────────
+  useEffect(() => {
+    if (count === 0 || !isReady || isSwiping) {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      return;
+    }
     let lastTs = null;
 
     const tick = (ts) => {
+      if (lastTs === null) lastTs = ts;
+      const dt = ts - lastTs;
+      lastTs = ts;
+
       if (!isDragging.current) {
-        if (lastTs !== null) {
-          angleRef.current += 0.018 * (ts - lastTs); // ~smooth ~1rpm
-          setRenderAngle(angleRef.current);
+        // Apply velocity decay (momentum)
+        if (Math.abs(velocityRef.current) > 0.01) {
+          angleRef.current += velocityRef.current * dt;
+          velocityRef.current *= 0.95; // Decay factor
+        } else {
+          // Slow constant rotation when no momentum
+          angleRef.current += 0.018 * dt;
         }
-        lastTs = ts;
-      } else {
-        lastTs = null;
+        setRenderAngle(angleRef.current);
       }
       rafRef.current = requestAnimationFrame(tick);
     };
 
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [count]);
+  }, [count, isReady, isSwiping]);
 
   // ── Drag / touch ───────────────────────────────────────────────────────────
   const onPointerDown = (e) => {
@@ -89,7 +106,8 @@ const TrendingReelsCarousel = ({ reels = [] }) => {
   const onPointerUp = () => {
     if (!isDragging.current) return;
     isDragging.current = false;
-    angleRef.current += velocityRef.current * -80; // momentum flick
+    // The velocity is already being updated in onPointerMove
+    // We just let the tick function take over with the current velocity
   };
 
   if (count === 0) return null;
@@ -117,6 +135,16 @@ const TrendingReelsCarousel = ({ reels = [] }) => {
         width: radius * 1.4, height: radius * 0.8, borderRadius: "50%",
         background: "radial-gradient(ellipse at 50% 50%, rgba(18, 25, 150, 1) 0%, transparent 75%)",
         filter: "blur(30px)",
+      }} />
+
+      {/* ── Background Pulsing Ring ── */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none" style={{
+        width: radius * 2.2, height: radius * 2.2,
+        borderRadius: "50%",
+        border: "1px solid rgba(255,255,255,0.03)",
+        boxShadow: "0 0 40px rgba(130, 60, 255, 0.05)",
+        animation: "pulseRing 4s infinite ease-in-out",
+        opacity: 0.4
       }} />
 
       {/* ── 3D Stage ──────────────────────────────────────────────────────── */}
@@ -204,6 +232,18 @@ const TrendingReelsCarousel = ({ reels = [] }) => {
                       background: "linear-gradient(135deg,rgba(255,255,255,0.09) 0%,transparent 55%)",
                       pointerEvents: "none" }} />
                   )}
+
+                  {/* Pulsing Highlight Ring for front card */}
+                  {frontness > 0.88 && (
+                    <div style={{
+                      position: "absolute", inset: -2,
+                      borderRadius: 16,
+                      border: "2px solid rgba(255,255,255,0.4)",
+                      boxShadow: "0 0 15px rgba(255,255,255,0.3)",
+                      animation: "cardRingPulse 2s infinite ease-in-out",
+                      pointerEvents: "none"
+                    }} />
+                  )}
                 </div>
 
                 {/* ── Floating Profile popup (identity) ── */}
@@ -255,6 +295,14 @@ const TrendingReelsCarousel = ({ reels = [] }) => {
         @keyframes trendPulse {
           0%, 100% { opacity: 1; transform: scale(1); }
           50%       { opacity: 0.45; transform: scale(0.8); }
+        }
+        @keyframes pulseRing {
+          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.2; }
+          50%       { transform: translate(-50%, -50%) scale(1.1); opacity: 0.4; }
+        }
+        @keyframes cardRingPulse {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50%       { opacity: 1; transform: scale(1.02); }
         }
       `}</style>
     </div>
