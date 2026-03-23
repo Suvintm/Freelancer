@@ -7,6 +7,7 @@ import {
     HiOutlineSparkles,
     HiOutlineXMark,
     HiOutlineArrowUp,
+    HiOutlineFire,
 } from "react-icons/hi2";
 import { FaFire } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
@@ -15,6 +16,7 @@ import { useAppContext } from "../context/AppContext";
 import ReelGridItem from "../components/ReelGridItem.jsx";
 import ReelPreviewModal from "../components/ReelPreviewModal.jsx";
 import ReelCommentsDrawer from "../components/ReelCommentsDrawer";
+import TrendingReelsCarousel from "../components/TrendingReelsCarousel.jsx";
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 const INITIAL_LIMIT = 18;
@@ -300,8 +302,15 @@ const ReelsExplore = ({ isTab = false }) => {
                 </div>
             )}
 
-            {/* ── MAIN ───────────────────────────────────────────────────── */}
-            <main className="max-w-5xl mx-auto px-2 sm:px-4 pb-20">
+            {/* ── MAIN CONTENT ─────────────────────────────────────────────────────────────── */}
+            <div className={`max-w-5xl mx-auto ${isTab ? "px-0" : "px-4"} py-4`}>
+                
+                {/* 🆕 Trending 3D Carousel (Only show when not searching) */}
+                {!isFiltering && (
+                    <div className="mb-2">
+                        <TrendingReelsCarousel reels={reels} />
+                    </div>
+                )}
 
                 {/* Filter strip */}
                 <AnimatePresence>
@@ -407,7 +416,7 @@ const ReelsExplore = ({ isTab = false }) => {
                         </div>
                     </>
                 )}
-            </main>
+            </div>
 
             {/* ── MODALS ─────────────────────────────────────────────────── */}
             <AnimatePresence>
