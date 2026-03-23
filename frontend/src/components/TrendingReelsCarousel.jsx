@@ -104,18 +104,18 @@ const TrendingReelsCarousel = ({ reels = [] }) => {
 
       {/* ── Atmospheric dark bg with pink + blue glow ─────────────────────── */}
       <div className="absolute inset-0 pointer-events-none" style={{
-        background: "radial-gradient(ellipse 80% 65% at 50% 60%, rgba(22,6,55,0.92) 0%, rgba(8,12,48,0.78) 40%, transparent 72%)",
+        background: "radial-gradient(ellipse 80% 65% at 50% 60%, rgba(57, 24, 123, 0.92) 0%, rgba(8,12,48,0.78) 40%, transparent 72%)",
       }} />
       <div className="absolute pointer-events-none" style={{
         left: "50%", top: "50%", transform: "translate(-50%, -52%)",
         width: radius * 2.8, height: radius * 1.2, borderRadius: "50%",
-        background: "radial-gradient(ellipse at 50% 50%, rgba(200,60,255,0.16) 0%, rgba(60,30,200,0.10) 50%, transparent 78%)",
+        background: "radial-gradient(ellipse at 50% 50%, rgba(55, 0, 255, 1) 0%, rgba(60,30,200,0.10) 50%, transparent 78%)",
         filter: "blur(22px)",
       }} />
       <div className="absolute pointer-events-none" style={{
         left: "30%", top: "55%", transform: "translate(-50%, -50%)",
         width: radius * 1.4, height: radius * 0.8, borderRadius: "50%",
-        background: "radial-gradient(ellipse at 50% 50%, rgba(40,80,255,0.13) 0%, transparent 75%)",
+        background: "radial-gradient(ellipse at 50% 50%, rgba(18, 25, 150, 1) 0%, transparent 75%)",
         filter: "blur(30px)",
       }} />
 
@@ -191,7 +191,7 @@ const TrendingReelsCarousel = ({ reels = [] }) => {
                       </p>
                     )}
                     {reel.title && (
-                      <p style={{ fontSize: 9.5, fontWeight: 700, color: "#fff", margin: 0, lineHeight: 1.25,
+                      <p style={{ fontSize: 9.5, fontWeight: 400, color: "#ffffffad", margin: 0, lineHeight: 1.25,
                         display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                         {reel.title}
                       </p>
@@ -211,26 +211,24 @@ const TrendingReelsCarousel = ({ reels = [] }) => {
                   position: "absolute",
                   top: -24, left: "50%",
                   transform: "translateX(-50%)",
-                  display: "flex", alignItems: "center", gap: 6,
+                  display: "flex", alignItems: "center", gap: 5,
                   // Smooth popup/popout based on frontness
                   opacity: Math.max(0, (frontness - 0.78) * 4.5), 
                   scale: 0.8 + Math.min(0.2, (frontness - 0.78) * 1.5),
                   pointerEvents: "none",
                   transition: "opacity 0.2s ease-out, scale 0.2s ease-out",
-                  padding: "4px 10px",
-                  borderRadius: 20,
-                  background: "#000000", // Solid Deep Black
-                  border: "1px solid rgba(255,255,255,0.08)"
+                  padding: "4px 0",
+                  background: "transparent" // Removed background
                 }}>
-                  <div className="w-4 h-4 rounded-full overflow-hidden border border-white/20 shrink-0">
+                  <div className="w-4 h-4 rounded-full overflow-hidden border border-white/20 shrink-0 shadow-[0_2px_10px_rgba(0,0,0,0.5)]">
                     <img 
-                      src={repairUrl(reel.user?.profilePicture || reel.editor?.avatar) || `https://ui-avatars.com/api/?name=${reel.user?.username || reel.editor?.name || "User"}&background=random&color=fff`} 
+                      src={repairUrl(reel.editor?.profilePicture) || ` `} 
                       className="w-full h-full object-cover"
                       alt=""
                     />
                   </div>
-                  <span className="text-[9px] font-normal text-white/90 uppercase tracking-wider whitespace-nowrap">
-                    {reel.user?.username || reel.editor?.name || "Suvix"}
+                  <span className="text-[8px]  text-white lowercase tracking-[0.14em] whitespace-nowrap drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                    {reel.editor?.name || ""}
                   </span>
                 </div>
               </div>
