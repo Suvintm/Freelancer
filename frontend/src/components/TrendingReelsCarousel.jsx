@@ -205,6 +205,34 @@ const TrendingReelsCarousel = ({ reels = [] }) => {
                       pointerEvents: "none" }} />
                   )}
                 </div>
+
+                {/* ── Floating Profile popup (identity) ── */}
+                <div style={{
+                  position: "absolute",
+                  top: -24, left: "50%",
+                  transform: "translateX(-50%)",
+                  display: "flex", alignItems: "center", gap: 6,
+                  // Smooth popup/popout based on frontness
+                  opacity: Math.max(0, (frontness - 0.78) * 4.5), 
+                  scale: 0.8 + Math.min(0.2, (frontness - 0.78) * 1.5),
+                  pointerEvents: "none",
+                  transition: "opacity 0.2s ease-out, scale 0.2s ease-out",
+                  padding: "4px 10px",
+                  borderRadius: 20,
+                  background: "#000000", // Solid Deep Black
+                  border: "1px solid rgba(255,255,255,0.08)"
+                }}>
+                  <div className="w-4 h-4 rounded-full overflow-hidden border border-white/20 shrink-0">
+                    <img 
+                      src={repairUrl(reel.user?.profilePicture || reel.editor?.avatar) || `https://ui-avatars.com/api/?name=${reel.user?.username || reel.editor?.name || "User"}&background=random&color=fff`} 
+                      className="w-full h-full object-cover"
+                      alt=""
+                    />
+                  </div>
+                  <span className="text-[9px] font-normal text-white/90 uppercase tracking-wider whitespace-nowrap">
+                    {reel.user?.username || reel.editor?.name || "Suvix"}
+                  </span>
+                </div>
               </div>
             );
           })}
