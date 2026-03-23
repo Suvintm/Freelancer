@@ -263,6 +263,7 @@ function App() {
         <Route path="/brief/:id" element={<ProtectedRoute allowedRoles={["editor", "client"]}><BriefDetailPage /></ProtectedRoute>} />
         <Route path="/my-proposals" element={<ProtectedRoute allowedRoles={["editor"]}><MyProposalsPage /></ProtectedRoute>} />
         <Route path="/ad-details/:id" element={<AdDetailsPage />} />
+        <Route path="/reels-analytics" element={<ProtectedRoute><ReelsAnalytics /></ProtectedRoute>} />
         <Route path="/reels-explore" element={<ProtectedRoute><ReelsExplore /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
         <Route path="/payment-success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />

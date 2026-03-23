@@ -31,12 +31,12 @@ export const trackInterest = async (userId, tags = [], editorId = null, weight =
     // Increment tag interests
     tags.forEach(tag => {
         const cleanTag = tag.replace('#', '').toLowerCase();
-        pipeline.hIncrBy(key, `t:${cleanTag}`, weight);
+        pipeline.hincrby(key, `t:${cleanTag}`, weight);
     });
 
     // Increment creator interest
     if (editorId) {
-        pipeline.hIncrBy(key, `e:${editorId}`, weight);
+        pipeline.hincrby(key, `e:${editorId}`, weight);
     }
 
     // Set TTL to auto-expire cold data

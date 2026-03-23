@@ -377,10 +377,7 @@ export const incrementView = asyncHandler(async (req, res) => {
         return res.status(404).json({ success: false, message: "Reel not found" });
     }
 
-    // ── DSA: Bloom Filter — Mark this reel as seen for this user ─────────────    // Track Interest (weight 5 for a Like)
-    if (!isLiked && req.user) {
-        trackInterest(req.user._id, reel.hashtags, reel.editor, 5);
-    }
+    // ── DSA: Bloom Filter — Mark this reel as seen for this user ─────────────
     // O(k) — k=3 Redis SETBIT calls. Prevents this reel from showing again
     // in the personalized feed until the user has cycled through all reels.
     if (userId) {
@@ -627,7 +624,8 @@ export const getMyReelsAnalytics = asyncHandler(async (req, res) => {
     const reels = await Reel.find({ editor: userId })
         .populate("portfolio", "title")
         .sort({ createdAt: -1 })
-        .select("title description mediaUrl mediaType viewsCount likesCount commentsCount watchTimeSeconds uniqueViewers createdAt isPublished");
+        .select("title description mediaUrl mediaType viewsCount likesCount commentsCount watchTimeSeconds uniqueViewers avgCompletionRate completionSampleCount skipCount reWatchCount recommendationScore hashtags createdAt isPublished")
+        .lean();
     
     // Calculate aggregate stats
     const totalViews = reels.reduce((sum, r) => sum + (r.viewsCount || 0), 0);
@@ -636,11 +634,27 @@ export const getMyReelsAnalytics = asyncHandler(async (req, res) => {
     const totalWatchTime = reels.reduce((sum, r) => sum + (r.watchTimeSeconds || 0), 0);
     const uniqueReach = new Set(reels.flatMap(r => r.uniqueViewers || [])).size;
     
+    const avgCompletion = reels.length > 0
+        ? (reels.reduce((sum, r) => sum + (r.avgCompletionRate || 0), 0) / reels.length).toFixed(2)
+        : 0;
+
     // Calculate engagement rate (likes + comments) / views * 100
     const engagementRate = totalViews > 0 
         ? (((totalLikes + totalComments) / totalViews) * 100).toFixed(2) 
         : 0;
     
+    // Summary payload
+    const summary = {
+        totalReels: reels.length,
+        totalViews,
+        totalLikes,
+        totalComments,
+        totalWatchTime,
+        uniqueReach,
+        avgCompletion: parseFloat(avgCompletion),
+        engagementRate: parseFloat(engagementRate)
+    };
+
     // Format reels for response (remove uniqueViewers array for privacy)
     const formattedReels = reels.map(r => ({
         _id: r._id,

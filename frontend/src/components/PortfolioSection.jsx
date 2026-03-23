@@ -27,7 +27,8 @@ import {
   HiOutlineSquare2Stack, 
   HiOutlineCheckCircle, 
   HiOutlinePlusCircle,
-  HiOutlineEyeSlash 
+  HiOutlineEyeSlash,
+  HiOutlineChartBar
 } from "react-icons/hi2";
 import { useAppContext } from "../context/AppContext";
 import axios from "axios";
@@ -528,20 +529,34 @@ const PortfolioSection = ({ portfolios: initialPortfolios, isPublic = false, pro
                   
                   {/* Top-Right: Status Icon (White, Small) */}
                    {!isPublic && (
-                    <button 
-                      onClick={(e) => handlePushToReel(p._id, e)}
-                      className="absolute top-1.5 right-1.5 z-30 flex items-center justify-center gap-1 px-1.5 py-0.5 bg-black/50 backdrop-blur-lg rounded-full border border-white/10 hover:bg-black/70 transition-colors"
-                      title={isReel ? "Published to Reels" : "Add to Reel"}
-                    >
-                      {isReel ? (
-                        <HiOutlineCheckCircle className="text-emerald-400 text-[14px] md:text-[16px] drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
-                      ) : (
-                        <>
-                          <HiOutlinePlusCircle className="text-white/90 text-[14px] md:text-[16px]" />
-                          <span className="hidden sm:inline text-white text-[8px] md:text-[9px] font-black uppercase tracking-wider">Reel</span>
-                        </>
+                    <div className="absolute top-1.5 right-1.5 z-30 flex flex-col gap-1.5">
+                       {/* Status Button */}
+                       <button 
+                        onClick={(e) => handlePushToReel(p._id, e)}
+                        className="flex items-center justify-center gap-1 px-1.5 py-1.5 bg-black/50 backdrop-blur-lg rounded-full border border-white/10 hover:bg-black/70 transition-colors"
+                        title={isReel ? "Published to Reels" : "Add to Reel"}
+                      >
+                        {isReel ? (
+                          <HiOutlineCheckCircle className="text-emerald-400 text-[14px] md:text-[16px] drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+                        ) : (
+                          <>
+                            <HiOutlinePlusCircle className="text-white/90 text-[14px] md:text-[16px]" />
+                            <span className="hidden sm:inline text-white text-[8px] md:text-[9px] font-black uppercase tracking-wider ml-1">Reel</span>
+                          </>
+                        )}
+                      </button>
+
+                      {/* Stats Button (Only if Reel) */}
+                      {isReel && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); navigate(`/reels-analytics?id=${p.reelId}`); }}
+                          className="flex items-center justify-center p-1.5 bg-white text-black rounded-full shadow-xl hover:scale-110 transition-transform"
+                          title="View Analytics"
+                        >
+                          <HiOutlineChartBar className="text-[14px] md:text-[16px]" />
+                        </button>
                       )}
-                    </button>
+                    </div>
                   )}
                   
                    {/* Top-Left: Double Layer Icon (Original + Edited) */}

@@ -175,6 +175,16 @@ const redisProxy = {
     return client.call(...args);
   },
 
+  setbit: (key, offset, value) => {
+    if (!redisAvailable || !client) return Promise.resolve(0);
+    return client.setbit(key, offset, value);
+  },
+
+  getbit: (key, offset) => {
+    if (!redisAvailable || !client) return Promise.resolve(0);
+    return client.getbit(key, offset);
+  },
+
   // ── Redis Sorted Set helpers (used by scoreboard algorithm) ────────────────
   /**
    * Add/update a member's score in a sorted set.
@@ -212,6 +222,43 @@ const redisProxy = {
   zCard: (key) => {
     if (!redisAvailable || !client) return Promise.resolve(0);
     return client.zcard(key);
+  },
+
+  /**
+   * Return a redis pipeline.
+   */
+  pipeline: () => {
+    if (!redisAvailable || !client) {
+      // Return a mock pipeline that does nothing if Redis is down
+      const mock = {
+        setbit: () => mock,
+        getbit: () => mock,
+        incr: () => mock,
+        expire: () => mock,
+        hincrby: () => mock, // standard ioredis name
+        hIncrBy: () => mock, 
+        exec: () => Promise.resolve([]),
+      };
+      return mock;
+    }
+    return client.pipeline();
+  },
+
+  // ── Redis Hash helpers (used by Bandit/Pacing) ──────────────────────────
+  /**
+   * Increment a hash field. O(1)
+   */
+  hIncrBy: (key, field, increment) => {
+    if (!redisAvailable || !client) return Promise.resolve(0);
+    return client.hincrby(key, field, increment);
+  },
+
+  /**
+   * Get all fields/values from a hash. O(N) where N is field count.
+   */
+  hGetAll: (key) => {
+    if (!redisAvailable || !client) return Promise.resolve({});
+    return client.hgetall(key);
   },
 };
 

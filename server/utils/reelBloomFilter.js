@@ -69,10 +69,11 @@ export const markSeen = async (userId, reelId) => {
     try {
         const positions = getBitPositions(String(reelId));
         // Execute all SETBIT commands in a pipeline for efficiency
-        const pipeline = redisClient.call('pipeline') || null;
+        const pipeline = redisClient.pipeline();
         for (const pos of positions) {
-            await redisClient.call('SETBIT', key, pos, 1);
+            pipeline.setbit(key, pos, 1);
         }
+        await pipeline.exec();
         // Refresh TTL on access (sliding window)
         await redisClient.expire(key, BLOOM_TTL);
     } catch (err) {
@@ -95,7 +96,7 @@ export const hasSeen = async (userId, reelId) => {
         const positions = getBitPositions(String(reelId));
         // Check all K bit positions
         const bits = await Promise.all(
-            positions.map(pos => redisClient.call('GETBIT', key, pos))
+            positions.map(pos => redisClient.getbit(key, pos))
         );
         // Only "seen" if ALL K bits are 1
         return bits.every(bit => bit === 1);
