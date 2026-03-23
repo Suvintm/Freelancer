@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import SplashScreen from "./components/SplashScreen.jsx";
 import Homepage from "./pages/Homepage.jsx";
 import ClientHome from "./pages/clientHome.jsx";
@@ -124,24 +124,30 @@ const TabSwitcher = () => {
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#FAFAFA] dark:bg-[#09090B]">
-      {tabs.map((tab) => {
-        const isMounted = mountedTabs.has(tab.id);
-        const isActive = activeTabId === tab.id;
+      <AnimatePresence mode="wait">
+        {tabs.map((tab) => {
+          const isMounted = mountedTabs.has(tab.id);
+          const isActive = activeTabId === tab.id;
 
-        if (!isMounted) return null;
+          if (!isMounted || !isActive) return null;
 
-        return (
-          <div
-            key={tab.id}
-className={`absolute inset-0 w-full h-full bg-[#FAFAFA] dark:bg-[#09090B] overflow-hidden ${isActive ? "z-10" : "-z-10"}`}            style={{
-              display: isActive ? "block" : "none",
-              pointerEvents: isActive ? "auto" : "none"
-            }}
-          >
-            <tab.component isActive={isActive} />
-          </div>
-        );
-      })}
+          return (
+            <motion.div
+              key={tab.id}
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.02 }}
+              transition={{ 
+                duration: 0.25, 
+                ease: [0.23, 1, 0.32, 1] 
+              }}
+              className="absolute inset-0 w-full h-full bg-[#FAFAFA] dark:bg-[#09090B] overflow-hidden z-10"
+            >
+              <tab.component isActive={isActive} />
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
     </div>
   );
 };
@@ -295,4 +301,3 @@ function App() {
   );
 }
 export default App;
-

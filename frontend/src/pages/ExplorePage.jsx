@@ -19,6 +19,8 @@ import {
   useMotionValue,
   useTransform,
   animate,
+  useVelocity,
+  useSpring,
 } from "framer-motion";
 import {
   HiOutlineVideoCamera,
@@ -122,6 +124,20 @@ const ExplorePage = () => {
   // `indicatorX` is a MotionValue<string> → "0%" / "100%" / "200%"
   const indicatorX = useTransform(indicatorRaw, (v) => `${v}%`);
 
+  // Liquid Stretchy Effect: scaleX increases based on velocity
+  const xVelocity = useVelocity(x);
+  const indicatorScaleX = useSpring(
+    useTransform(xVelocity, [-2000, 0, 2000], [1.5, 1, 1.5]),
+    { stiffness: 600, damping: 60 }
+  );
+
+  // Tab Bar Background Hue Shift
+  const tabBarBg = useTransform(
+    indicatorRaw,
+    [0, 100, 200],
+    ["rgba(0,0,0,0.8)", "rgba(10,5,20,0.8)", "rgba(5,15,10,0.8)"]
+  );
+
   // ── Swipe state ──────────────────────────────────────────────────────────
   const [isSwiping, setIsSwiping] = useState(false);
   // ref copy so we can read it synchronously in onDragEnd without closure issues
@@ -172,7 +188,10 @@ const ExplorePage = () => {
         <PullIndicator />
 
         {/* ── Tab Bar ───────────────────────────────────────────────────── */}
-        <div className="flex-shrink-0 sticky top-0 z-[100] bg-black/80 backdrop-blur-xl border-b border-white/[0.05]">
+        <motion.div 
+          className="flex-shrink-0 sticky top-0 z-[100] backdrop-blur-xl border-b border-white/[0.05]"
+          style={{ backgroundColor: tabBarBg }}
+        >
           <div className="max-w-5xl mx-auto px-4 py-2.5 flex justify-center">
             <div
               className="relative flex p-1 rounded-xl w-fit min-w-[280px]"
@@ -186,13 +205,14 @@ const ExplorePage = () => {
                * FIX #1: indicatorX is now a pre-computed MotionValue (not a hook called in render)
                */}
               <motion.div
-                className="absolute top-1 bottom-1 rounded-lg pointer-events-none"
+                className="absolute top-1 bottom-1 rounded-lg pointer-events-none origin-center"
                 style={{
                   width:      `calc(${100 / TAB_COUNT}% - 4px)`,
                   left:       "2px",
                   x:          indicatorX,
+                  scaleX:     indicatorScaleX,
                   background: "#ffffff",
-                  boxShadow:  "0 0 15px rgba(255,255,255,0.10)",
+                  boxShadow:  "0 0 15px rgba(255,255,255,0.15)",
                 }}
               />
 
@@ -219,7 +239,7 @@ const ExplorePage = () => {
               })}
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* ── Swipeable content container ──────────────────────────────── */}
         <div
@@ -282,27 +302,41 @@ const ExplorePage = () => {
                   : controls;
             }}
           >
-            {TABS.map((t, i) => (
-              <div
-                key={t.id}
-                ref={(el) => { scrollRefs.current[i] = el; }}
-                className="h-full overflow-y-auto scrollbar-hide shrink-0 pb-20"
-                style={{ width: `${100 / TAB_COUNT}%` }}
-                onTouchStart={activeIndex === i ? handleTouchStart : undefined}
-                onTouchEnd={activeIndex === i ? handleTouchEnd : undefined}
-              >
-                {t.id === "reelsfeed" && (
-                  <ReelsExplore isTab isSwiping={isSwiping} />
-                )}
-                {(t.id === "editors" || t.id === "gigs") && (
-                  <ExploreEditor
-                    initialTab={t.id}
-                    isTab
-                    isSwiping={isSwiping}
-                  />
-                )}
-              </div>
-            ))}
+            {TABS.map((t, i) => {
+              const isActive = activeIndex === i;
+              return (
+                <div
+                  key={t.id}
+                  ref={(el) => { scrollRefs.current[i] = el; }}
+                  className="h-full overflow-y-auto scrollbar-hide shrink-0 pb-20"
+                  style={{ width: `${100 / TAB_COUNT}%` }}
+                  onTouchStart={activeIndex === i ? handleTouchStart : undefined}
+                  onTouchEnd={activeIndex === i ? handleTouchEnd : undefined}
+                >
+                  <motion.div
+                    initial={false}
+                    animate={{ 
+                      scale: isActive ? 1 : 0.98,
+                      opacity: isActive ? 1 : 0.6,
+                      filter: isActive ? "blur(0px)" : "blur(2px)"
+                    }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    className="h-full w-full"
+                  >
+                    {t.id === "reelsfeed" && (
+                      <ReelsExplore isTab isSwiping={isSwiping} />
+                    )}
+                    {(t.id === "editors" || t.id === "gigs") && (
+                      <ExploreEditor
+                        initialTab={t.id}
+                        isTab
+                        isSwiping={isSwiping}
+                      />
+                    )}
+                  </motion.div>
+                </div>
+              );
+            })}
           </motion.div>
         </div>
       </main>
