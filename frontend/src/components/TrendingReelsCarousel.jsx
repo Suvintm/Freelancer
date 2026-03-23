@@ -90,24 +90,28 @@ const TrendingReelsCarousel = ({ reels = [] }) => {
   const containerH = isMobile ? 255 : 330;
 
   return (
-    <div className="relative w-full overflow-hidden select-none" style={{ height: containerH }}>
+    <div className="relative w-full overflow-hidden select-none" style={{ height: containerH, background: '#010101' }}>
 
-      {/* ── Atmospheric dark bg with pink + blue glow ─────────────────────── */}
-      <div className="absolute inset-0 pointer-events-none" style={{
-        background: "radial-gradient(ellipse 80% 65% at 50% 60%, rgba(22,6,55,0.92) 0%, rgba(8,12,48,0.78) 40%, transparent 72%)",
-      }} />
-      <div className="absolute pointer-events-none" style={{
-        left: "50%", top: "50%", transform: "translate(-50%, -52%)",
-        width: radius * 2.8, height: radius * 1.2, borderRadius: "50%",
-        background: "radial-gradient(ellipse at 50% 50%, rgba(200,60,255,0.16) 0%, rgba(60,30,200,0.10) 50%, transparent 78%)",
-        filter: "blur(22px)",
-      }} />
-      <div className="absolute pointer-events-none" style={{
-        left: "30%", top: "55%", transform: "translate(-50%, -50%)",
-        width: radius * 1.4, height: radius * 0.8, borderRadius: "50%",
-        background: "radial-gradient(ellipse at 50% 50%, rgba(40,80,255,0.13) 0%, transparent 75%)",
-        filter: "blur(30px)",
-      }} />
+      {/* ── Precise Pink-Blue Center Spotlight (Boosted Visibility) ── */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+        {/* Vibrant Mixture: Pink Core fading into Blue */}
+        <div 
+          className="absolute"
+          style={{
+            top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: radius * 3.4, height: radius * 2.0,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(236, 72, 153, 0.45) 0%, rgba(59, 130, 246, 0.55) 25%, rgba(29, 78, 216, 0.35) 60%, transparent 85%)',
+            filter: 'blur(75px)',
+            animation: 'breatheCenter 8s ease-in-out infinite'
+          }}
+        />
+
+        {/* Top/Bottom Black Overlays (Reduced to h-10) */}
+        <div className="absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-[#010101] to-transparent z-[5]" />
+        <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-[#010101] to-transparent z-[5]" />
+      </div>
 
       {/* ── 3D Stage ──────────────────────────────────────────────────────── */}
       <div
@@ -219,6 +223,10 @@ const TrendingReelsCarousel = ({ reels = [] }) => {
         @keyframes trendPulse {
           0%, 100% { opacity: 1; transform: scale(1); }
           50%       { opacity: 0.45; transform: scale(0.8); }
+        }
+        @keyframes breatheCenter {
+          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+          50%       { transform: translate(-50%, -50%) scale(1.15); opacity: 0.9; }
         }
       `}</style>
     </div>
