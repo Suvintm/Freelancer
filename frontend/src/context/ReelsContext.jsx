@@ -86,8 +86,18 @@ export const ReelsProvider = ({ children }) => {
     const lastFetchTime = useRef(null);
     const scrollPositionCache = useRef(0);
 
-    // Global preferences — start muted for reliable browser autoplay
-    const [globalMuted, setGlobalMuted] = useState(true);
+    // Global preferences — Persistent across sessions
+    const [globalMuted, _setGlobalMuted] = useState(() => {
+        const saved = localStorage.getItem("reels_global_muted");
+        // Default to false (unmuted) as requested by user, unless they've explicitly muted before
+        return saved === null ? false : saved === "true";
+    });
+
+    const setGlobalMuted = useCallback((val) => {
+        const newValue = typeof val === 'function' ? val(globalMuted) : val;
+        _setGlobalMuted(newValue);
+        localStorage.setItem("reels_global_muted", String(newValue));
+    }, [globalMuted]);
 
     // Backward-compat: expose feedCache.current as an array (used by ReelsPage)
     // This is a computed ref so consumers get array-like access
