@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { FixedSizeList as List } from "react-window";
 import { FaArrowLeft, FaSpinner } from "react-icons/fa";
 import { HiOutlineChevronLeft } from "react-icons/hi2";
 import { BiRefresh } from "react-icons/bi";
@@ -11,7 +12,6 @@ import ReelCard from "../components/ReelCard";
 import ReelSkeleton from "../components/ReelSkeleton";
 import ReelAdCard from "../components/ReelAdCard";
 import ReelCommentsDrawer from "../components/ReelCommentsDrawer";
-import useReelObserver from "../hooks/useReelObserver";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 import logo from "../assets/logo.png";
 
@@ -45,10 +45,18 @@ const ReelsPage = ({ isActive = true }) => {
     const [reelAds, setReelAds] = useState([]);
     const [skippedAdIndices, setSkippedAdIndices] = useState(new Set());
     const [targetAd, setTargetAd] = useState(null);
+    const [windowHeight, setWindowHeight] = useState(window.innerHeight);
 
-    const containerRef = useRef(null);
+    const listRef = useRef(null);
     const observerRef = useRef(null);
     const viewedReelsRef = useRef(new Set());
+
+    // Track window height for FixedSizeList
+    useEffect(() => {
+        const handleResize = () => setWindowHeight(window.innerHeight);
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
 
     // ─────────────────────────────────────────────────────────────
     // FETCH REELS
@@ -140,8 +148,7 @@ const ReelsPage = ({ isActive = true }) => {
                 const foundIndex = reels.findIndex(r => r._id === targetReelId);
                 if (foundIndex !== -1 && foundIndex !== activeReelIndex) {
                     setActiveReelIndex(foundIndex);
-                    const el = document.getElementById(`feed-item-${foundIndex}`);
-                    el?.scrollIntoView({ behavior: "instant", block: "start" });
+                    listRef.current?.scrollToItem(foundIndex, "start");
                 }
             }
         } else if (isCacheValid() && reels.length === 0) {
@@ -152,8 +159,7 @@ const ReelsPage = ({ isActive = true }) => {
 
             const savedIndex = activeIndexCache.current;
             setTimeout(() => {
-                const el = document.getElementById(`feed-item-${savedIndex}`);
-                el?.scrollIntoView({ behavior: "instant", block: "start" });
+                listRef.current?.scrollToItem(savedIndex, "start");
                 setActiveReelIndex(savedIndex);
             }, 50);
         } else if (!isCacheValid() || reels.length === 0) {
@@ -252,48 +258,38 @@ const ReelsPage = ({ isActive = true }) => {
     }, [reels, reelAds, skippedAdIndices]);
 
     // ─────────────────────────────────────────────────────────────
-    // PER-REEL INTERSECTION OBSERVER — accurate active detection
+    // REACT-WINDOW SCROLL HANDLER (Replaces useReelObserver)
     // ─────────────────────────────────────────────────────────────
-    useReelObserver(combinedFeed.length, (index) => {
-        setActiveReelIndex(index);
-        savePosition(index);
+    const handleScroll = useCallback(({ scrollOffset }) => {
+        if (loading) return;
 
-        // Sync URL with the active item (Instagram-style shareability)
-        const item = combinedFeed[index];
-        if (item && item.id) {
-            const currentUrl = new URL(window.location.href);
-            const stableId = item.type === 'ad' ? `ad_${item.content._id}` : item.content._id;
-            
-            if (currentUrl.searchParams.get("id") !== stableId) {
-                currentUrl.searchParams.set("id", stableId);
-                // Use replaceState to update URL without triggering a full re-render or re-fetch
-                window.history.replaceState(null, '', currentUrl.pathname + currentUrl.search);
+        // Calculate currently snapped index
+        const index = Math.round(scrollOffset / windowHeight);
+        
+        if (index !== activeReelIndex && index >= 0 && index < combinedFeed.length) {
+            setActiveReelIndex(index);
+            savePosition(index);
+
+            // Sync URL
+            const item = combinedFeed[index];
+            if (item && item.id) {
+                const currentUrl = new URL(window.location.href);
+                const stableId = item.type === 'ad' ? `ad_${item.content._id}` : item.content._id;
+                
+                if (currentUrl.searchParams.get("id") !== stableId) {
+                    currentUrl.searchParams.set("id", stableId);
+                    window.history.replaceState(null, '', currentUrl.pathname + currentUrl.search);
+                }
+            }
+
+            // Trigger Infinite Scroll if nearing the end (e.g., 3 items away)
+            if (index >= combinedFeed.length - 3 && hasMore && !loadingMore) {
+                loadMore();
             }
         }
-    }, "feed-item");
+    }, [windowHeight, activeReelIndex, combinedFeed, loading, hasMore, loadingMore, savePosition]);
 
-    // ─────────────────────────────────────────────────────────────
-    // INFINITE SCROLL — last reel observer
-    // ─────────────────────────────────────────────────────────────
-    const lastReelRef = useCallback(
-        (node) => {
-            if (loadingMore || loading) return;
-            if (observerRef.current) observerRef.current.disconnect();
-
-            observerRef.current = new IntersectionObserver(
-                ([entry]) => {
-                    if (entry.isIntersecting) {
-                        loadMore();
-                    }
-                },
-                { threshold: 0.5 }
-            );
-
-            if (node) observerRef.current.observe(node);
-        },
-        [loadingMore, loading, hasMore, page, reels]
-    );
-
+    // Cleanup infinite scroll loadMore function
     const loadMore = async () => {
         if (loadingMore) return;
         setLoadingMore(true);
@@ -313,11 +309,13 @@ const ReelsPage = ({ isActive = true }) => {
     // ─────────────────────────────────────────────────────────────
     // PULL-TO-REFRESH
     // ─────────────────────────────────────────────────────────────
+    // Pass the outerRef from react-window to usePullToRefresh
+    const outerRef = useRef(null);
     const { handleTouchStart, handleTouchEnd, PullIndicator } = usePullToRefresh(
         async () => {
             await handleRefresh();
         }, 
-        containerRef
+        outerRef
     );
 
     const handleRefresh = async () => {
@@ -330,7 +328,7 @@ const ReelsPage = ({ isActive = true }) => {
         await fetchReels(1, false);
 
         // Scroll back to top
-        containerRef.current?.scrollTo({ top: 0, behavior: "instant" });
+        listRef.current?.scrollToItem(0, "start");
     };
 
     // ─────────────────────────────────────────────────────────────
@@ -383,7 +381,6 @@ const ReelsPage = ({ isActive = true }) => {
 
             {/* ── FEED ── */}
             <motion.div
-                ref={containerRef}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
                 animate={{ 
@@ -392,54 +389,65 @@ const ReelsPage = ({ isActive = true }) => {
                     borderRadius: showComments ? "20px" : "0px",
                 }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="flex-1 overflow-y-auto snap-y snap-mandatory scrollbar-hide touch-pan-y origin-top bg-black h-full"
+                className="flex-1 overflow-hidden origin-top bg-black h-full relative"
             >
                 {/* Skeleton — shown only on first load */}
                 {loading && (
-                    <>
+                    <div className="absolute inset-0 overflow-hidden">
                         <ReelSkeleton />
-                        <ReelSkeleton />
-                    </>
+                    </div>
                 )}
 
-                {/* Combined Feed (Reels + Ads) */}
-                {!loading && combinedFeed.map((item, index) => {
-                    const isLast = index === combinedFeed.length - 1;
-                    
-                    return (
-                        <div
-                            key={item.id}
-                            id={`feed-item-${index}`}
-                            ref={isLast ? lastReelRef : null}
-                            className="w-full h-screen snap-start snap-always relative flex-shrink-0 flex items-center justify-center bg-black"
-                        >
-                            {item.type === 'reel' ? (
-                                <ReelCard
-                                    reel={item.content}
-                                    isActive={isActive && index === activeReelIndex}
-                                    isPreloading={index === activeReelIndex + 1}
-                                    onCommentClick={handleCommentClick}
-                                    globalMuted={globalMuted}
-                                    setGlobalMuted={setGlobalMuted}
-                                />
-                            ) : (
-                                <ReelAdCard
-                                    ad={item.content}
-                                    isActive={isActive && index === activeReelIndex}
-                                    isPreloading={index === activeReelIndex + 1}
-                                    globalMuted={globalMuted}
-                                    setGlobalMuted={setGlobalMuted}
-                                    onSkip={() => setSkippedAdIndices(prev => new Set([...prev, item.id]))}
-                                />
-                            )}
-                        </div>
-                    );
-                })}
+                {/* Combined Feed (Reels + Ads) via React-Window */}
+                {!loading && combinedFeed.length > 0 && (
+                    <List
+                        ref={listRef}
+                        outerRef={outerRef}
+                        className="scrollbar-hide snap-y snap-mandatory touch-pan-y"
+                        height={windowHeight}
+                        itemCount={combinedFeed.length}
+                        itemSize={windowHeight}
+                        width="100%"
+                        onScroll={handleScroll}
+                        style={{ overflowX: 'hidden' }}
+                    >
+                        {({ index, style }) => {
+                            const item = combinedFeed[index];
+                            if (!item) return null;
 
-                {/* Loading more spinner (bottom) */}
+                            return (
+                                <div style={style} className="snap-start snap-always w-full h-full bg-black">
+                                    {item.type === 'reel' ? (
+                                        <ReelCard
+                                            reel={item.content}
+                                            isActive={isActive && index === activeReelIndex}
+                                            isPreloading={index === activeReelIndex + 1 || index === activeReelIndex - 1} // Preload adjacent
+                                            onCommentClick={handleCommentClick}
+                                            globalMuted={globalMuted}
+                                            setGlobalMuted={setGlobalMuted}
+                                        />
+                                    ) : (
+                                        <ReelAdCard
+                                            ad={item.content}
+                                            isActive={isActive && index === activeReelIndex}
+                                            isPreloading={index === activeReelIndex + 1 || index === activeReelIndex - 1}
+                                            globalMuted={globalMuted}
+                                            setGlobalMuted={setGlobalMuted}
+                                            onSkip={() => setSkippedAdIndices(prev => new Set([...prev, item.id]))}
+                                        />
+                                    )}
+                                </div>
+                            );
+                        }}
+                    </List>
+                )}
+
+                {/* Loading more spinner (overlay at bottom) */}
                 {loadingMore && (
-                    <div className="w-full h-24 flex items-center justify-center bg-black">
-                        <FaSpinner className="text-white text-2xl animate-spin" />
+                    <div className="absolute bottom-4 w-full flex items-center justify-center z-50 pointer-events-none">
+                        <div className="bg-black/50 p-2 rounded-full backdrop-blur-md">
+                            <FaSpinner className="text-white text-xl animate-spin" />
+                        </div>
                     </div>
                 )}
 

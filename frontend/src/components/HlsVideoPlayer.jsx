@@ -1,0 +1,142 @@
+import React, { useEffect, useRef, useState, useMemo } from 'react';
+import Hls from 'hls.js';
+
+// Helper to convert standard Cloudinary MP4 URLs to HLS (sp_auto) streams
+const getHlsUrl = (url) => {
+  if (!url || typeof url !== 'string') return url;
+  // If already an HLS or has streaming profile, return as is
+  if (url.includes('sp_auto') || url.includes('.m3u8')) return url;
+
+  // Expected Cloudinary format: https://res.cloudinary.com/<name>/video/upload/v<version>/<filename>.mp4
+  const uploadIndex = url.indexOf('/upload/');
+  if (uploadIndex === -1) return url;
+
+  const baseUrl = url.substring(0, uploadIndex + 8);
+  const remainingParams = url.substring(uploadIndex + 8);
+
+  // Insert sp_auto and change extension to .m3u8
+  let hlsUrl = `${baseUrl}sp_hd/${remainingParams}`; // Using sp_hd for better mobile profiles
+  hlsUrl = hlsUrl.replace(/\.(mp4|webm|mov|avi)$/i, '.m3u8');
+
+  return hlsUrl;
+};
+
+const HlsVideoPlayer = React.forwardRef(({
+  src,
+  poster,
+  autoPlay = false,
+  muted = true,
+  loop = true,
+  className = "",
+  isActive = true, // Used by IntersectionObserver/Virtualization to pause off-screen
+  onPlaying,
+  onPause,
+  onEnded,
+  objectFit = "cover"
+}, ref) => {
+  const internalRef = useRef(null);
+  const videoRef = (ref && typeof ref !== 'function') ? ref : internalRef;
+  const hlsRef = useRef(null);
+  const [isReady, setIsReady] = useState(false);
+
+  // Memoize the optimal URL
+  const streamUrl = useMemo(() => getHlsUrl(src), [src]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !streamUrl) return;
+
+    const isHlsUrl = streamUrl.includes('.m3u8');
+
+    // 1. Initialize HLS.js for supported browsers (Chrome, Firefox, Windows Edge)
+    if (isHlsUrl && Hls.isSupported()) {
+      const hls = new Hls({
+        startLevel: -1, // Auto start based on bandwidth
+        capLevelToPlayerSize: true, // Don't download 4K for a 300px phone
+        maxBufferLength: 30, // 30 seconds max buffer
+      });
+
+      hlsRef.current = hls;
+      hls.loadSource(streamUrl);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        setIsReady(true);
+        if (autoPlay && isActive) {
+          video.play().catch(e => console.warn("HLS play blocked:", e));
+        }
+      });
+    } 
+    // 2. Fallback for Safari (iOS natively supports HLS via the video tag)
+    else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = streamUrl;
+      video.addEventListener('loadedmetadata', () => {
+        setIsReady(true);
+        if (autoPlay && isActive) {
+          video.play().catch(e => console.warn("Safari HLS play blocked:", e));
+        }
+      });
+    } 
+    // 3. Absolute fallback (Standard MP4)
+    else {
+      video.src = src; // Original source
+      setIsReady(true);
+    }
+
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+      }
+    };
+  }, [streamUrl]);
+
+  // Handle Play/Pause based on 'isActive' prop (Virtualization Hook)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !isReady) return;
+
+    if (isActive && autoPlay) {
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((e) => console.warn("Auto-play prevented", e));
+      }
+    } else if (!isActive) {
+      video.pause();
+    }
+  }, [isActive, autoPlay, isReady]);
+
+  return (
+    <div className={`relative w-full h-full bg-black overflow-hidden ${className}`}>
+      {/* Skeleton / Blur Poster before video is ready */}
+      {(!isReady || !isActive) && poster && (
+        <img
+          src={poster}
+          alt="Video Poster"
+          className="absolute inset-0 w-full h-full object-cover z-0 filter blur-sm transition-opacity duration-300 pointer-events-none"
+          style={{ opacity: isReady ? 0 : 1 }}
+        />
+      )}
+
+      <video
+        ref={(node) => {
+            internalRef.current = node;
+            if (typeof ref === 'function') ref(node);
+            else if (ref) ref.current = node;
+        }}
+        poster={poster} // Native fallback poster
+        className="w-full h-full z-10 relative"
+        style={{ objectFit }}
+        muted={muted}
+        loop={loop}
+        playsInline // Crucial for iOS Safari inline playback!
+        onPlaying={onPlaying}
+        onPause={onPause}
+        onEnded={onEnded}
+        crossOrigin="anonymous"
+        controlsList="nodownload"
+      />
+    </div>
+  );
+});
+
+export default React.memo(HlsVideoPlayer);

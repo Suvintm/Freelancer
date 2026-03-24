@@ -21,6 +21,7 @@ import { repairUrl } from "../utils/urlHelper.jsx";
 import FollowingAnimation from "./FollowingAnimation";
 import MusicVisualizer from "./MusicVisualizer";
 import LikerAvatars from "./LikerAvatars";
+import HlsVideoPlayer from "./HlsVideoPlayer";
 
 /**
  * ReelCard — Minimalist Professional UI.
@@ -65,37 +66,6 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
         }).then((res) => setIsFollowing(res.data.isFollowing)).catch(() => {});
     }, [user, reel.editor?._id, backendURL]);
 
-    useEffect(() => {
-        if (!videoRef.current || reel.mediaType !== "video") return;
-        if (isActive) {
-            videoRef.current.muted = globalMuted;
-            videoRef.current.play().then(() => {
-                setIsPlaying(true);
-                watchStartRef.current = Date.now();
-            }).catch(() => setIsPlaying(false));
-        } else {
-            sendWatchTime();
-            videoRef.current.pause();
-            videoRef.current.currentTime = 0;
-            setIsPlaying(false);
-            setProgress(0);
-        }
-    }, [isActive]);
-
-    useEffect(() => {
-        if (videoRef.current) videoRef.current.muted = globalMuted;
-    }, [globalMuted]);
-
-    useEffect(() => {
-        if (!isActive) return;
-        progressTimerRef.current = setInterval(() => {
-            if (videoRef.current?.duration) {
-                setProgress((videoRef.current.currentTime / videoRef.current.duration) * 100);
-            }
-        }, 100);
-        return () => clearInterval(progressTimerRef.current);
-    }, [isActive]);
-
     const sendWatchTime = useCallback(() => {
         if (!watchStartRef.current || !user) return;
         const elapsed = Math.round((Date.now() - watchStartRef.current) / 1000);
@@ -122,6 +92,33 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
 
         watchStartRef.current = null;
     }, [user, reel._id, reel.mediaType, backendURL]);
+
+    useEffect(() => {
+        if (!videoRef.current || reel.mediaType !== "video") return;
+        if (isActive) {
+            videoRef.current.muted = globalMuted;
+        } else {
+            sendWatchTime();
+            // Reset for when we scroll back
+            videoRef.current.currentTime = 0;
+            setIsPlaying(false);
+            setProgress(0);
+        }
+    }, [isActive, globalMuted, reel.mediaType, sendWatchTime]);
+
+    useEffect(() => {
+        if (videoRef.current) videoRef.current.muted = globalMuted;
+    }, [globalMuted]);
+
+    useEffect(() => {
+        if (!isActive) return;
+        progressTimerRef.current = setInterval(() => {
+            if (videoRef.current?.duration) {
+                setProgress((videoRef.current.currentTime / videoRef.current.duration) * 100);
+            }
+        }, 100);
+        return () => clearInterval(progressTimerRef.current);
+    }, [isActive]);
 
     useEffect(() => () => sendWatchTime(), [sendWatchTime]);
 
@@ -188,18 +185,22 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
                 onContextMenu={(e) => e.preventDefault()}
             >
                 {reel.mediaType === "video" ? (
-                <video 
-                    ref={videoRef} 
-                    src={repairUrl(reel.mediaUrl)} 
-                    poster={repairUrl(reel.mediaUrl) ? repairUrl(reel.mediaUrl).replace(/\.[^./\\]+$/, ".jpg") : ""}
-                    className="w-full h-full object-contain" 
-                    loop 
-                    playsInline 
-                    muted={globalMuted} 
-                    preload={isActive || isPreloading ? "auto" : "metadata"}
-                    crossOrigin="anonymous"
-                    controlsList="nodownload" 
-                />
+                    <HlsVideoPlayer 
+                        ref={videoRef} 
+                        src={repairUrl(reel.mediaUrl)} 
+                        poster={repairUrl(reel.mediaUrl) ? repairUrl(reel.mediaUrl).replace(/\.[^./\\]+$/, ".jpg") : ""}
+                        className="w-full h-full" 
+                        objectFit="contain"
+                        loop 
+                        autoPlay={isActive}
+                        isActive={isActive || isPreloading}
+                        muted={globalMuted}
+                        onPlaying={() => {
+                            setIsPlaying(true);
+                            if (!watchStartRef.current) watchStartRef.current = Date.now();
+                        }}
+                        onPause={() => setIsPlaying(false)}
+                    />
                 ) : (
                     <img 
                         src={repairUrl(reel.mediaUrl)} 

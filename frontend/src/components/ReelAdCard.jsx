@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { repairUrl } from "../utils/urlHelper.jsx";
+import HlsVideoPlayer from "./HlsVideoPlayer";
 import logo from "../assets/logo.png";
 
 /**
@@ -125,16 +126,7 @@ const ReelAdCard = ({ ad, onSkip, isActive=true, isPreloading=false, globalMuted
   useEffect(() => {
     if (ad?.mediaType !== "video" || !videoRef.current) return;
     
-    if (isActive) {
-      const playPromise = videoRef.current.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(error => {
-          console.error("[ReelAdCard] Auto-play prevented:", error);
-        });
-      }
-      setIsPlaying(true);
-    } else {
-      videoRef.current.pause();
+    if (!isActive) {
       setIsPlaying(false);
     }
   }, [isActive, ad?.mediaType]);
@@ -201,17 +193,18 @@ const ReelAdCard = ({ ad, onSkip, isActive=true, isPreloading=false, globalMuted
       {/* ── MEDIA LAYER ── */}
       <div className="absolute inset-0">
         {ad.mediaType === "video" ? (
-          <video
+          <HlsVideoPlayer
             ref={videoRef}
             src={repairedMediaUrl}
             poster={repairedMediaUrl ? repairedMediaUrl.replace(/\.[^./\\]+$/, ".jpg") : ""}
-            className="w-full h-full object-contain"
+            className="w-full h-full"
+            objectFit="contain"
             muted={muted}
             loop
-            playsInline
-            preload={isActive || isPreloading ? "auto" : "metadata"}
-            crossOrigin="anonymous"
-            controlsList="nodownload"
+            isActive={isActive || isPreloading}
+            autoPlay={isActive}
+            onPlaying={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
           />
         ) : (
           <img 
