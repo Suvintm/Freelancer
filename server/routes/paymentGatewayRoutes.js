@@ -23,19 +23,15 @@ import authMiddleware from "../middleware/authMiddleware.js";
 // import { protectAdmin } from "../middleware/adminAuth.js";
 import { proxyToPaymentService } from "../kafka/paymentProxy.js";
 
-// ── Kept in Node (no Java needed for these) ──────────────────────
+// ── RESTORED: Native Node (Java is not ready due to Kafka) ──────────────
 import {
   getPaymentConfig,
   handleWebhook,
   verifyPaymentCallback,
+  createPaymentOrder,
+  verifyPayment,
+  processRefund,
 } from "../controllers/paymentGatewayController.js";
-
-// ── Commented out — migrated to Java Payment Service ─────────────
-// import {
-//   createPaymentOrder,   // → Java: PaymentController.createOrder()
-//   verifyPayment,        // → Java: PaymentController.verifyPayment()
-//   processRefund,        // → Java: RefundService.processRefund()
-// } from "../controllers/paymentGatewayController.js";
 
 const router = express.Router();
 
@@ -57,27 +53,25 @@ router.use(authMiddleware);
 
 /**
  * GET /api/payment-gateway/config
- * Returns Razorpay key for frontend — stays in Node.js (just env var).
  */
 router.get("/config", getPaymentConfig);
 
 /**
  * POST /api/payment-gateway/create-order
- * 🔀 PROXIED → Java Payment Service
- * Creates Razorpay order and returns orderId for frontend popup.
+ * Uses native Node.js Razorpay logic
  */
-router.post("/create-order", (req, res) =>
-  proxyToPaymentService(req, res, "post", "/payments/create-order")
-);
+router.post("/create-order", createPaymentOrder);
 
 /**
  * POST /api/payment-gateway/verify
- * 🔀 PROXIED → Java Payment Service
- * Verifies HMAC, saves Payment record, publishes Kafka event.
+ * Uses native Node.js Razorpay logic
  */
-router.post("/verify", (req, res) =>
-  proxyToPaymentService(req, res, "post", "/payments/verify")
-);
+router.post("/verify", verifyPayment);
+
+/**
+ * POST /api/payment-gateway/refund
+ */
+router.post("/refund", processRefund);
 
 /**
  * POST /api/payment-gateway/refund

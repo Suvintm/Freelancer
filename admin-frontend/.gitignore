@@ -49,3 +49,6 @@ build_errors.txt
 
 # Internal Documentation
 docs/adminimplementation/
+
+.vercel
+.env*.local

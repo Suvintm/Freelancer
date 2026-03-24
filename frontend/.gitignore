@@ -31,3 +31,6 @@ dist-ssr
 # BUT allow example templates (these should be committed)
 !.env.example
 !.env.example.*
+
+.vercel
+.env*.local
