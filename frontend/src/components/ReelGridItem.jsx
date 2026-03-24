@@ -42,7 +42,7 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
             layout
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="relative aspect-[9/16] group cursor-pointer overflow-hidden rounded-xl bg-zinc-900"
+            className="relative aspect-[9/16] group cursor-pointer overflow-hidden bg-zinc-900"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => {
                 setIsHovered(false);
@@ -60,7 +60,7 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
                     ref={videoRef}
                     src={mediaUrl} 
                     poster={mediaUrl ? mediaUrl.replace(/\.[^./\\]+$/, ".jpg") : ""}
-                    className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     muted 
                     playsInline
                     loop
@@ -69,7 +69,7 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
             ) : (
                 <img 
                     src={mediaUrl} 
-                    className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     alt={reel.title}
                     crossOrigin="anonymous"
                     decoding="async"
@@ -82,13 +82,13 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
                 if (!isNew) return null;
                 return (
                     <div 
-                        className="absolute inset-0 z-10 pointer-events-none rounded-xl animate-ring-glow will-change-[box-shadow]"
+                        className="absolute inset-0 z-10 pointer-events-none animate-ring-glow will-change-[box-shadow]"
                     />
                 );
             })()}
 
             {/* Content Overlay */}
-            <div className={`absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-3 ${isHolding ? "opacity-0" : "opacity-100"}`}>
+            <div className={`absolute inset-0 flex flex-col justify-end p-3 transition-opacity duration-300 ${isHolding ? "opacity-0" : "opacity-100"}`}>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                         <HiHeart className="text-white text-xs opacity-80" />

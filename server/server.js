@@ -154,6 +154,9 @@ app.use(helmet({
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   process.env.ADMIN_URL,
+  "https://suvix.in",
+  "https://admin.suvix.in",
+  "https://api.suvix.in",
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
@@ -171,8 +174,8 @@ app.use(
         return callback(null, true);
       }
 
-      // Allow ANY Vercel preview URL (*.vercel.app)
-      if (origin.endsWith(".vercel.app")) {
+      // Allow ANY Vercel preview URL (*.vercel.app) or suvix.in subdomains
+      if (origin.endsWith(".vercel.app") || origin.endsWith(".suvix.in")) {
         return callback(null, true);
       }
 

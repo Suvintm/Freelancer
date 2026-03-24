@@ -31,6 +31,8 @@ app.use(cors({
         const allowedOrigins = [
             process.env.FRONTEND_URL,
             process.env.ADMIN_URL,
+            "https://suvix.in",
+            "https://admin.suvix.in",
             "https://suvix.vercel.app",
             "https://adminsuvix.vercel.app",
             "http://localhost:5173",
@@ -39,7 +41,7 @@ app.use(cors({
             "http://localhost:3000"
         ].filter(Boolean);
         
-        if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
+        if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".vercel.app") || origin.endsWith(".suvix.in")) {
             return callback(null, true);
         }
         console.warn(`⚠️ CORS: Blocked request from origin: ${origin}`);

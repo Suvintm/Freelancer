@@ -24,7 +24,7 @@ const LOAD_MORE_LIMIT = 12;
 // ─── Skeleton Card ─────────────────────────────────────────────────────────
 const SkeletonCard = () => (
     <div
-        className="rounded-2xl bg-white/[0.04] overflow-hidden relative w-full"
+        className="bg-white/[0.04] overflow-hidden relative w-full"
         style={{ aspectRatio: "9/14" }}
     >
         <div className="absolute inset-0 overflow-hidden">
@@ -231,7 +231,7 @@ const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
                 <div className="h-10 bg-white/5 rounded-full w-full max-w-md mx-auto mb-8" />
                 <div className="grid grid-cols-3 gap-3">
                     {[1,2,3,4,5,6].map(i => (
-                        <div key={i} className="aspect-[9/16] bg-white/5 rounded-xl block" />
+                        <div key={i} className="aspect-[9/16] bg-white/5 block" />
                     ))}
                 </div>
             </div>
@@ -362,7 +362,7 @@ const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
 
                 {/* Skeletons */}
                 {loading && (
-                    <div className="grid grid-cols-3 md:grid-cols-4 gap-1.5 sm:gap-2.5">
+                    <div className="grid grid-cols-3 md:grid-cols-4 gap-[1px]">
                         {Array.from({ length: 12 }, (_, i) => <SkeletonCard key={i} />)}
                     </div>
                 )}
@@ -397,7 +397,7 @@ const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
                 {/* Grid — 3 cols mobile, 4 cols desktop */}
                 {!loading && filteredReels.length > 0 && (
                     <>
-                        <div className="grid grid-cols-3 md:grid-cols-4 gap-1.5 sm:gap-2.5">
+                        <div className="grid grid-cols-3 md:grid-cols-4 gap-[1px]">
                             {filteredReels.map((reel, idx) => (
                                 <motion.div
                                     key={reel._id}
