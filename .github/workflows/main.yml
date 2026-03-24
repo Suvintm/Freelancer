@@ -38,6 +38,7 @@ jobs:
         env:
           NODE_ENV: test
           JWT_SECRET: github-actions-secret-test
+          KYC_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef"
 
       - name: Run E2E Tests (Frontend Only)
         if: matrix.service == 'frontend'
