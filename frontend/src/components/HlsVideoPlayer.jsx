@@ -58,8 +58,6 @@ const HlsVideoPlayer = React.forwardRef(({
         startLevel: -1, 
         capLevelToPlayerSize: true, 
         // INSTAGRAM-STYLE PRELOADING PROFILES
-        // If it's just adjacent (preloading), ONLY download the first 2 seconds to make it ready for instant playback.
-        // If it's the active reel being watched, buffer a full 15 seconds ahead.
         maxBufferLength: isPreloading ? 2 : 15, 
         maxMaxBufferLength: isPreloading ? 3 : 30,
         maxBufferSize: isPreloading ? 2 * 1000 * 1000 : 20 * 1000 * 1000, // 2MB preload limit vs 20MB active limit
@@ -77,12 +75,6 @@ const HlsVideoPlayer = React.forwardRef(({
         const heights = hls.levels.map(l => l.height).filter(Boolean);
         const uniqueHeights = [...new Set(heights)].sort((a,b) => b - a);
         if (onAvailableQualities) onAvailableQualities(uniqueHeights);
-
-        if (autoPlay && isActive) {
-          video.play().catch(e => {
-              if (e.name !== 'AbortError') console.warn("HLS play blocked:", e);
-          });
-        }
       });
 
       hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
@@ -97,11 +89,7 @@ const HlsVideoPlayer = React.forwardRef(({
       video.src = streamUrl;
       video.addEventListener('loadedmetadata', () => {
         setIsReady(true);
-        if (autoPlay && isActive) {
-          video.play().catch(e => {
-              if (e.name !== 'AbortError') console.warn("Safari HLS play blocked:", e);
-          });
-        }
+        if (onQualityChange) onQualityChange("Auto");
       });
     } 
     // 3. Absolute fallback (Standard MP4)
@@ -115,7 +103,7 @@ const HlsVideoPlayer = React.forwardRef(({
         hlsRef.current.destroy();
       }
     };
-  }, [streamUrl]);
+  }, [streamUrl, isPreloading]);
 
   // Handle Play/Pause based on 'isActive' prop (Virtualization Hook)
   useEffect(() => {
@@ -123,11 +111,14 @@ const HlsVideoPlayer = React.forwardRef(({
     if (!video || !isReady) return;
 
     if (isActive && autoPlay) {
-      const playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise.catch((e) => {
-            if (e.name !== 'AbortError') console.warn("Auto-play prevented:", e);
-        });
+      // Consolidate playback logic here to prevent "double play" glitches
+      if (video.paused) {
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((e) => {
+              if (e.name !== 'AbortError') console.warn("Auto-play prevented:", e);
+          });
+        }
       }
     } else if (!isActive) {
       video.pause();
@@ -172,7 +163,8 @@ const HlsVideoPlayer = React.forwardRef(({
         bestMatchIndex = lowestIndex;
       }
 
-      hls.currentLevel = bestMatchIndex !== -1 ? bestMatchIndex : -1;
+      // Use nextLevel for smooth transition without buffer flush
+      hls.nextLevel = bestMatchIndex !== -1 ? bestMatchIndex : -1;
     }
   }, [preferredQuality, isReady]);
 
