@@ -24,6 +24,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAppContext } from "../context/AppContext";
 import MusicVisualizer from "./MusicVisualizer";
 import { repairUrl } from "../utils/urlHelper.jsx";
+import HlsVideoPlayer from "./HlsVideoPlayer";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CARD_W    = 152;                          // card width px
@@ -103,22 +104,8 @@ const ReelThumbnail = memo(({ reel, index, priority }) => {
         return () => io.disconnect();
     }, []);
 
-    // ── Autoplay — driven purely by visibility, no hover needed ──────────
-    useEffect(() => {
-        const vid = videoRef.current;
-        if (!vid || reel.mediaType !== "video") return;
-
-        if (visible) {
-            vid.muted = true; // muted = required by browser autoplay policy
-            vid.play()
-                .then(() => setPlaying(true))
-                .catch(() => setPlaying(false));
-        } else {
-            vid.pause();
-            vid.currentTime = 0;
-            setPlaying(false);
-        }
-    }, [visible, reel.mediaType]);
+    // HlsVideoPlayer will now handle autoplay based on the "visible" prop
+    // so we no longer need the legacy useEffect here.
 
     const handleClick = useCallback(() => navigate(`/reels?id=${reel._id}`), [navigate, reel._id]);
 
@@ -157,27 +144,22 @@ const ReelThumbnail = memo(({ reel, index, priority }) => {
         >
             {/* ── Media ─────────────────────────────────────────────────── */}
             {isVideo ? (
-                <>
-                    {!videoReady && (
-                        <div className="absolute inset-0 bg-zinc-900 animate-pulse z-0" />
-                    )}
-                    {reel.mediaUrl && (
-                        <video
-                            ref={videoRef}
-                            src={repairUrl(reel.mediaUrl)}
-                            poster={repairUrl(reel.mediaUrl)?.replace(/\.mp4(\?.*)?$/i, ".jpg")}
-                            className="absolute inset-0 w-full h-full object-cover"
-                            muted loop playsInline
-                            crossOrigin="anonymous"
-                            preload={priority ? "auto" : "metadata"}
-                            onCanPlay={() => setVideoReady(true)}
-                            onContextMenu={(e) => e.preventDefault()}
-                            controlsList="nodownload nofullscreen noremoteplayback"
-                            disablePictureInPicture
-                            style={{ opacity: videoReady ? 1 : 0, transition: "opacity 0.4s ease" }}
-                        />
-                    )}
-                </>
+                <HlsVideoPlayer
+                    ref={videoRef}
+                    src={reel.mediaUrl}
+                    poster={repairUrl(reel.mediaUrl)?.replace(/\.mp4(\?.*)?$/i, ".jpg")}
+                    className="absolute inset-0 w-full h-full"
+                    objectFit="cover"
+                    muted={true} // Autoplay policy
+                    loop
+                    isActive={visible}
+                    autoPlay={visible}
+                    onPlaying={() => {
+                        setVideoReady(true);
+                        setPlaying(true);
+                    }}
+                    onPause={() => setPlaying(false)}
+                />
             ) : (
                 <img
                     src={imgError || !reel.mediaUrl ? FALLBACK_AVATAR : repairUrl(reel.mediaUrl)}
