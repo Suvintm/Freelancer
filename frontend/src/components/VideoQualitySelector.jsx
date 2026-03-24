@@ -30,6 +30,11 @@ const VideoQualitySelector = ({
         onMenuClose && onMenuClose();
     };
 
+    // Always include standard HD/SD targets so the user can set them globally,
+    // combined with the exact specific heights the HLS stream parsed!
+    const standardQualities = [1080, 720, 480, 360];
+    const combinedQualities = [...new Set([...standardQualities, ...availableQualities])].sort((a, b) => b - a);
+
     const displayBadgeText = preferredQuality === "Auto" 
         ? `Auto (${currentQuality})` 
         : preferredQuality + "p";
@@ -64,22 +69,24 @@ const VideoQualitySelector = ({
                         <div className="h-px w-full bg-white/10" />
 
                         {/* Specific Resolutions */}
-                        {availableQualities.length > 0 ? (
-                            availableQualities.map(h => (
-                                <button
-                                    key={h}
-                                    onClick={(e) => handleSelect(e, h.toString())}
-                                    className={`flex items-center justify-between px-3 py-2 text-xs font-semibold hover:bg-white/10 transition text-left ${preferredQuality === h.toString() ? 'text-white' : 'text-white/60'}`}
-                                >
-                                    {h}p
-                                    {preferredQuality === h.toString() && <HiCheck className="text-white" />}
-                                </button>
-                            ))
-                        ) : (
-                            <div className="px-3 py-2 text-[10px] text-white/40 italic text-center">
-                                Processing...
-                            </div>
-                        )}
+                        <div className="max-h-60 overflow-y-auto scrollbar-hide">
+                            {combinedQualities.map(h => {
+                                const isAvailableInThisVideo = availableQualities.includes(h) || availableQualities.length === 0;
+                                return (
+                                    <button
+                                        key={h}
+                                        onClick={(e) => handleSelect(e, h.toString())}
+                                        className={`flex items-center w-full justify-between px-3 py-2.5 text-xs font-medium hover:bg-white/10 transition text-left ${preferredQuality === h.toString() ? 'text-white font-bold' : isAvailableInThisVideo ? 'text-white/80' : 'text-white/40'}`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            {h}p
+                                            {!isAvailableInThisVideo && <span className="text-[8px] bg-white/10 px-1 py-0.5 rounded text-white/50">Unsupported on this reel</span>}
+                                        </div>
+                                        {preferredQuality === h.toString() && <HiCheck className="text-white" />}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
