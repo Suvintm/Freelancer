@@ -73,7 +73,9 @@ const HlsVideoPlayer = React.forwardRef(({
         if (onAvailableQualities) onAvailableQualities(uniqueHeights);
 
         if (autoPlay && isActive) {
-          video.play().catch(e => console.warn("HLS play blocked:", e));
+          video.play().catch(e => {
+              if (e.name !== 'AbortError') console.warn("HLS play blocked:", e);
+          });
         }
       });
 
@@ -90,7 +92,9 @@ const HlsVideoPlayer = React.forwardRef(({
       video.addEventListener('loadedmetadata', () => {
         setIsReady(true);
         if (autoPlay && isActive) {
-          video.play().catch(e => console.warn("Safari HLS play blocked:", e));
+          video.play().catch(e => {
+              if (e.name !== 'AbortError') console.warn("Safari HLS play blocked:", e);
+          });
         }
       });
     } 
@@ -115,7 +119,9 @@ const HlsVideoPlayer = React.forwardRef(({
     if (isActive && autoPlay) {
       const playPromise = video.play();
       if (playPromise !== undefined) {
-        playPromise.catch((e) => console.warn("Auto-play prevented", e));
+        playPromise.catch((e) => {
+            if (e.name !== 'AbortError') console.warn("Auto-play prevented:", e);
+        });
       }
     } else if (!isActive) {
       video.pause();

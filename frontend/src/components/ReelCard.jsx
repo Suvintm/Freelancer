@@ -48,6 +48,8 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
     // Global Quality Hook
     const [preferredQuality, setPreferredQuality] = useVideoQuality();
 
+    const isFirstRender = useRef(true);
+
     // Sync local state with props when reel changes
     useEffect(() => {
         setLikesCount(reel.likesCount || 0);
@@ -55,8 +57,12 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
         setIsLiked(user ? reel.likes?.includes(user._id) : false);
     }, [reel, user]);
 
-    // Show mute icon when globalMuted changes
+    // Show mute icon only when globalMuted changes AFTER initial render
     useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
         setShowMuteIcon(true);
         const timer = setTimeout(() => setShowMuteIcon(false), 800);
         return () => clearTimeout(timer);
