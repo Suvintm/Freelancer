@@ -19,22 +19,30 @@ const usePullToRefresh = (onRefresh, containerRef) => {
     const isPulling = useRef(false);
     const lastRefreshTime = useRef(0);
 
+    const getElement = useCallback(() => {
+        const current = containerRef.current;
+        // If it's a Lenis instance, use its wrapper DOM element
+        return (current && typeof current.on === 'function' && current.wrapper) ? current.wrapper : current;
+    }, [containerRef]);
+
     const handleTouchStart = useCallback((e) => {
+        const el = getElement();
         // Only start if we are at the top of the container
-        if (containerRef.current?.scrollTop <= 0) {
+        if (el && el.scrollTop <= 0) {
             touchStart.current = e.touches[0].clientY;
             isPulling.current = true;
         }
-    }, [containerRef]);
+    }, [getElement]);
 
     const handleTouchMove = useCallback((e) => {
         if (!isPulling.current) return;
 
         const currentTouch = e.touches[0].clientY;
         const dy = currentTouch - touchStart.current;
+        const el = getElement();
 
         // Only allow pulling down at the top
-        if (dy > 0 && containerRef.current?.scrollTop <= 0) {
+        if (dy > 0 && el && el.scrollTop <= 0) {
             // Apply dampening (iOS style)
             const dampenedDist = Math.min(dy * DAMPING, PULL_THRESHOLD + 20);
             setPullDistance(dampenedDist);
@@ -74,12 +82,12 @@ const usePullToRefresh = (onRefresh, containerRef) => {
 
     // Attach non-passive move listener to allow preventDefault
     useEffect(() => {
-        const el = containerRef.current;
-        if (!el) return;
+        const el = getElement();
+        if (!el || typeof el.addEventListener !== 'function') return;
 
         el.addEventListener("touchmove", handleTouchMove, { passive: false });
         return () => el.removeEventListener("touchmove", handleTouchMove);
-    }, [handleTouchMove, containerRef]);
+    }, [handleTouchMove, getElement]);
 
     // PullIndicator Component
     const PullIndicator = () => (
