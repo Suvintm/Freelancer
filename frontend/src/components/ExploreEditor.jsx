@@ -528,13 +528,11 @@ const EditorStories = memo(({ editors, onViewStory, onSeeAll }) => {
             className="flex-shrink-0 flex flex-col items-center gap-2 group"
           >
             <div className="relative p-0.5">
-              {/* Pulsing Outer Ring */}
+              {/* Pulsing Outer Ring - Optimized with CSS animation for zero main-thread overhead */}
               {story.hasNew && (
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-                  className={`absolute inset-0 rounded-full bg-gradient-to-tr ${story.gradient} opacity-80 will-change-transform transform-gpu`}
-                  style={{ transform: "translateZ(0)" }}
+                <div
+                  className={`absolute inset-0 rounded-full bg-gradient-to-tr ${story.gradient} opacity-80 animate-spin-slow will-change-transform transform-gpu`}
+                  style={{ transform: "translateZ(0)", animationDuration: "8s" }}
                 />
               )}
               
@@ -673,34 +671,24 @@ const SmartMatchCTA = memo(({ onClick }) => (
       willChange: "transform"
     }}
   >
-    {/* Moving Scan Line Animation */}
-    <motion.div
-      animate={{ top: ["-10%", "110%"] }}
-      transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-      className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-violet-400/40 to-transparent z-20 pointer-events-none"
-      style={{ boxShadow: "0 0 15px rgba(139,92,246,0.5)" }}
-    />
+    {/* Moving Scan Line Animation - Optimized with CSS for GPU-only execution */}
+    <div
+      className="absolute inset-0 z-20 pointer-events-none overflow-hidden"
+    >
+      <div 
+        className="w-full h-[2px] bg-gradient-to-r from-transparent via-violet-400/40 to-transparent animate-scan-line will-change-transform transform-gpu"
+        style={{ boxShadow: "0 0 15px rgba(139,92,246,0.5)", transform: "translateZ(0)" }}
+      />
+    </div>
 
-    {/* Animated Floating Orbs */}
-    <motion.div
-      animate={{ 
-        x: [0, 30, 0],
-        y: [0, -20, 0],
-        scale: [1, 1.2, 1]
-      }}
-      transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-      className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-violet-600/15 blur-xl sm:blur-3xl pointer-events-none"
-      style={{ transform: "translateZ(0)", willChange: "transform" }}
+    {/* Animated Floating Orbs - CSS Optimized */}
+    <div
+      className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-violet-600/15 blur-xl sm:blur-3xl pointer-events-none animate-pulse-slow will-change-transform transform-gpu"
+      style={{ transform: "translateZ(0)" }}
     />
-    <motion.div
-      animate={{ 
-        x: [0, -25, 0],
-        y: [0, 15, 0],
-        scale: [1, 1.1, 1]
-      }}
-      transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-      className="absolute -bottom-12 -left-12 w-40 h-40 rounded-full bg-emerald-500/15 blur-xl sm:blur-3xl pointer-events-none"
-      style={{ transform: "translateZ(0)", willChange: "transform" }}
+    <div
+      className="absolute -bottom-12 -left-12 w-40 h-40 rounded-full bg-emerald-500/15 blur-xl sm:blur-3xl pointer-events-none animate-pulse-slow will-change-transform transform-gpu"
+      style={{ transform: "translateZ(0)", animationDelay: "2s", animationDuration: "12s" }}
     />
 
     <div className="relative p-6 flex items-center justify-between z-10">
@@ -709,13 +697,11 @@ const SmartMatchCTA = memo(({ onClick }) => (
           <div className="w-6 h-6 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-violet-500/30">
             <IoFlashSharp className="text-white text-[10px] animate-pulse" />
           </div>
-          <motion.span 
-            animate={{ opacity: [1, 0.6, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="text-[11px] font-black text-violet-400 uppercase tracking-[0.2em] will-change-opacity"
+          <span 
+            className="text-[11px] font-black text-violet-400 uppercase tracking-[0.2em] animate-pulse will-change-opacity"
           >
             AI Matching Engine
-          </motion.span>
+          </span>
         </div>
         <h3 className="text-lg font-black text-white mb-1 tracking-tight">Meet your perfect editor in 60 seconds</h3>
         <p className="text-xs text-gray-400 font-medium">Our AI analyzes your project requirements and matches you with the top 1% of talent.</p>
@@ -998,29 +984,28 @@ const EditorCard = memo(({ editor, navigate, searchQuery, isSaved, onToggleFavor
       {/* Header Visual */}
       <div className="h-28 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-violet-600/20 via-indigo-600/10 to-transparent" />
-        {/* Animated dynamic gradient shapes */}
-        <motion.div 
-          animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -top-10 -left-10 w-32 h-32 rounded-full bg-violet-500/20 blur-2xl" 
+        {/* Animated dynamic gradient shapes - CSS Optimized */}
+        <div 
+          className="absolute -top-10 -left-10 w-32 h-32 rounded-full bg-violet-500/20 blur-2xl animate-pulse-slow will-change-transform transform-gpu" 
+          style={{ transform: "translateZ(0)" }}
         />
-        <motion.div 
-          animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.4, 0.2] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          className="absolute -bottom-10 -right-10 w-28 h-28 rounded-full bg-emerald-500/15 blur-2xl" 
+        <div 
+          className="absolute -bottom-10 -right-10 w-28 h-28 rounded-full bg-emerald-500/15 blur-2xl animate-pulse-slow will-change-transform transform-gpu" 
+          style={{ transform: "translateZ(0)", animationDelay: "1s", animationDuration: "8s" }}
         />
       </div>
 
       {/* Content Section */}
       <div className="px-5 pb-6 -mt-10 relative z-10">
         <div className="flex items-end justify-between mb-4">
-          {/* Avatar with Status Ring */}
+          {/* Avatar with Status Ring - CSS Animated */}
           <div className="relative">
-            <motion.div
-              animate={availability.status !== 'busy' ? { rotate: 360 } : {}}
-              transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-              className={`absolute -inset-[3px] rounded-[1.4rem] bg-gradient-to-r ${availabilityConfig.ring} opacity-80`}
-            />
+            {availability.status !== 'busy' && (
+              <div
+                className={`absolute -inset-[3px] rounded-[1.4rem] bg-gradient-to-r ${availabilityConfig.ring} opacity-80 animate-spin-slow will-change-transform transform-gpu`}
+                style={{ transform: "translateZ(0)", animationDuration: "6s" }}
+              />
+            )}
             <div className="relative w-20 h-20 rounded-[1.2rem] p-0.5 bg-[#0a0a0c]">
               <div className="w-full h-full rounded-[1.1rem] overflow-hidden border-2 border-white/5">
                 <img
