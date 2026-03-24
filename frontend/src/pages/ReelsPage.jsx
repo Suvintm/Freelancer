@@ -140,7 +140,7 @@ const ReelsPage = ({ isActive = true }) => {
                 setReels([]);
                 setTargetAd(null); 
                 setActiveReelIndex(0);
-                containerRef.current?.scrollTo({ top: 0, behavior: "instant" });
+                listRef.current?.scrollTo(0);
                 fetchReels(1, false);
             } else if (isAlreadyInFeed && reels[activeReelIndex]?._id !== targetReelId) {
                 // If it's already in feed, we don't need to fetch, but we might want 

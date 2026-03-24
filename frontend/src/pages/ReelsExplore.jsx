@@ -14,7 +14,6 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import ReelGridItem from "../components/ReelGridItem.jsx";
-import ReelPreviewModal from "../components/ReelPreviewModal.jsx";
 import ReelCommentsDrawer from "../components/ReelCommentsDrawer";
 import TrendingReelsCarousel from "../components/TrendingReelsCarousel.jsx";
 
@@ -108,7 +107,6 @@ const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
     const [searchQuery, setSearchQuery] = useState("");
     const [debouncedQ, setDebouncedQ]   = useState("");
     const [selectedTag, setSelectedTag] = useState(null);
-    const [previewReel, setPreviewReel] = useState(null);
     const [showComments, setShowComments] = useState(false);
     const [activeReel, setActiveReel]   = useState(null);
     const [showScrollTop, setShowScrollTop] = useState(false);
@@ -207,9 +205,7 @@ const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
         setReels(prev =>
             prev.map(r => r._id === activeReel?._id ? { ...r, commentsCount: newCount } : r)
         );
-        if (previewReel?._id === activeReel?._id)
-            setPreviewReel(prev => ({ ...prev, commentsCount: newCount }));
-    }, [activeReel, previewReel]);
+    }, [activeReel]);
 
     // ── Client-side filter ─────────────────────────────────────────────────
     const filteredReels = reels.filter(reel => {
@@ -410,7 +406,7 @@ const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
                                 >
                                     <ReelGridItem
                                         reel={reel}
-                                        onPreviewStart={setPreviewReel}
+                                        onPreviewStart={(r) => navigate(`/reels?id=${r._id}`)}
                                     />
                                 </motion.div>
                             ))}
@@ -439,16 +435,6 @@ const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
             </div>
 
             {/* ── MODALS ─────────────────────────────────────────────────── */}
-            <AnimatePresence>
-                {previewReel && (
-                    <ReelPreviewModal
-                        reel={previewReel}
-                        onClose={() => setPreviewReel(null)}
-                        onCommentClick={handleCommentClick}
-                    />
-                )}
-            </AnimatePresence>
-
             <AnimatePresence>
                 {showComments && (
                     <>
