@@ -241,7 +241,10 @@ const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
 
             {/* ── STICKY HEADER (Hidden if in unified Explore tab) ──────────────────────────────────────────── */}
             {!isTab && (
-                <header className="sticky top-0 z-[90] bg-[#050509]/92 backdrop-blur-2xl border-b border-white/[0.04]">
+                <header 
+                    className="sticky top-0 z-[90] bg-[#050509]/92 backdrop-blur-2xl border-b border-white/[0.04]"
+                    style={{ transform: "translateZ(0)", willChange: "backdrop-filter" }}
+                >
                     <div className="max-w-5xl mx-auto px-4 pt-3 pb-2.5 space-y-2.5">
 
                         {/* Back + search */}
@@ -441,6 +444,7 @@ const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
                         <motion.div
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1100]"
+                            style={{ transform: "translateZ(0)", willChange: "backdrop-filter" }}
                             onClick={() => setShowComments(false)}
                         />
                         <ReelCommentsDrawer

@@ -216,7 +216,9 @@ const ExploreSearchBar = memo(({ value, onChange, onSearch, activeFilterCount, o
           border: focused
             ? "1px solid rgba(139,92,246,0.4)"
             : "1px solid rgba(255,255,255,0.08)",
-          backdropFilter: "blur(20px)",
+          backdropFilter: "blur(12px) sm:blur(20px)",
+          transform: "translateZ(0)",
+          willChange: "transform, backdrop-filter"
         }}
       >
         {/* Left Icon with animated glow */}
@@ -315,7 +317,12 @@ const ExploreSearchBar = memo(({ value, onChange, onSearch, activeFilterCount, o
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.18 }}
             className="absolute top-full mt-2 left-0 right-0 rounded-2xl overflow-hidden z-50 border border-white/10 shadow-2xl shadow-black/60"
-            style={{ background: "rgba(10,10,14,0.97)", backdropFilter: "blur(20px)" }}
+            style={{ 
+              background: "rgba(10,10,14,0.97)", 
+              backdropFilter: "blur(12px) sm:blur(20px)",
+              transform: "translateZ(0)",
+              willChange: "transform, opacity" 
+            }}
           >
             {/* Live suggestions */}
             {value.trim() && suggestions.length > 0 && (
@@ -448,10 +455,10 @@ const LiveStatsBar = memo(({ totalEditors, onlineCount }) => {
           transition={{ delay: i * 0.08, type: "spring", stiffness: 100 }}
           whileHover={{ y: -2, backgroundColor: "rgba(255,255,255,0.04)" }}
           className={`group rounded-2xl p-3 border border-white/5 text-center relative overflow-hidden backdrop-blur-md shadow-lg will-change-transform transform-gpu ${stat.glow}`}
-          style={{ background: "rgba(255,255,255,0.02)" }}
+          style={{ background: "rgba(255,255,255,0.02)", transform: "translateZ(0)", willChange: "transform" }}
         >
           {/* Subtle background glow */}
-          <div className={`absolute top-0 right-0 w-12 h-12 rounded-full blur-2xl opacity-10 group-hover:opacity-20 transition-opacity ${stat.bg}`} />
+          <div className={`absolute top-0 right-0 w-12 h-12 rounded-full blur-xl sm:blur-2xl opacity-10 group-hover:opacity-20 transition-opacity ${stat.bg}`} style={{ transform: "translateZ(0)", willChange: "transform" }} />
           
           <div className={`w-8 h-8 rounded-xl ${stat.bg} flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform`}>
             <stat.Icon className={`text-xs ${stat.color}`} />
@@ -527,6 +534,7 @@ const EditorStories = memo(({ editors, onViewStory, onSeeAll }) => {
                   animate={{ rotate: 360 }}
                   transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
                   className={`absolute inset-0 rounded-full bg-gradient-to-tr ${story.gradient} opacity-80 will-change-transform transform-gpu`}
+                  style={{ transform: "translateZ(0)" }}
                 />
               )}
               
@@ -660,7 +668,9 @@ const SmartMatchCTA = memo(({ onClick }) => (
     style={{
       background: "linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(59,130,246,0.1) 50%, rgba(16,185,129,0.12) 100%)",
       border: "1px solid rgba(139,92,246,0.25)",
-      backdropFilter: "blur(12px)",
+      backdropFilter: "blur(8px) sm:blur(12px)",
+      transform: "translateZ(0)",
+      willChange: "transform"
     }}
   >
     {/* Moving Scan Line Animation */}
@@ -679,7 +689,8 @@ const SmartMatchCTA = memo(({ onClick }) => (
         scale: [1, 1.2, 1]
       }}
       transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-      className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-violet-600/15 blur-3xl pointer-events-none"
+      className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-violet-600/15 blur-xl sm:blur-3xl pointer-events-none"
+      style={{ transform: "translateZ(0)", willChange: "transform" }}
     />
     <motion.div
       animate={{ 
@@ -688,7 +699,8 @@ const SmartMatchCTA = memo(({ onClick }) => (
         scale: [1, 1.1, 1]
       }}
       transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-      className="absolute -bottom-12 -left-12 w-40 h-40 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none"
+      className="absolute -bottom-12 -left-12 w-40 h-40 rounded-full bg-emerald-500/15 blur-xl sm:blur-3xl pointer-events-none"
+      style={{ transform: "translateZ(0)", willChange: "transform" }}
     />
 
     <div className="relative p-6 flex items-center justify-between z-10">
@@ -761,6 +773,7 @@ const SpecialtyBrowse = memo(({ onSelect }) => {
             whileHover={{ y: -5, scale: 1.02 }}
             onClick={() => onSelect(item.label)}
             className={`cursor-pointer rounded-2xl p-4 border ${item.bg} ${item.border} backdrop-blur-md transition-all group overflow-hidden relative shadow-lg hover:shadow-2xl hover:shadow-black/40 will-change-transform transform-gpu`}
+            style={{ transform: "translateZ(0)", willChange: "transform" }}
           >
             {/* Glossy overlay */}
             <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 -translate-x-full group-hover:translate-x-full transition-all duration-700" />

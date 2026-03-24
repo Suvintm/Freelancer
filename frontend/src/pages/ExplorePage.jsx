@@ -33,6 +33,7 @@ import {
 import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 import ExploreEditor from "../components/ExploreEditor.jsx";
 import ReelsExplore from "./ReelsExplore.jsx";
+import SmoothScroll from "../components/SmoothScroll.jsx";
 import useRefreshManager from "../hooks/useRefreshManager.js";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 
@@ -92,52 +93,8 @@ const ExplorePage = () => {
   const animControls = useRef(null); // keeps track of the running animation so we can .stop() it
   const scrollTimeoutRef = useRef(null);
 
-  // ── 🆕 Lenis Smooth Scroll Injection ──────────────────────────────────────────
-  const lenisInstances = useRef([]);
-  useEffect(() => {
-    // Clean old
-    lenisInstances.current.forEach(l => l?.destroy?.());
-    lenisInstances.current = [];
-
-    let rafId;
-    function raf(time) {
-      lenisInstances.current.forEach(l => l.raf(time));
-      rafId = requestAnimationFrame(raf);
-    }
-    rafId = requestAnimationFrame(raf);
-
-    // Initialize tracking on the tab wrapper divs
-    setTimeout(() => {
-      scrollRefs.current.forEach((el) => {
-        if (el && el.firstElementChild) {
-          const l = new Lenis({
-            wrapper: el,
-            content: el.firstElementChild,
-            lerp: 0.08,
-            duration: 1.2,
-            syncTouch: true,
-            smoothTouch: false,
-          });
-          
-          // Patch native scroll hook
-          l.on('scroll', (e) => {
-              // Allows Explore's complex header hide logic to keep working seamlessly
-              // NOTE: `handleScroll` is not defined in the provided context.
-              // This line assumes `handleScroll` is an existing function or will be added.
-              // For faithful reproduction of the instruction, it's included as is.
-              // handleScroll({ target: el }); 
-          });
-          
-          lenisInstances.current.push(l);
-        }
-      });
-    }, 150); // small delay to ensure DOM is ready
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      lenisInstances.current.forEach(l => l?.destroy?.());
-    };
-  }, []);
+  // ── 🆕 Lenis Smooth Scroll Injection (Removed manual array in favor of component-based) ──
+  // We now use the <SmoothScroll> component inside the map for better resource management.
   // ─────────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -319,8 +276,13 @@ const ExplorePage = () => {
               direction: "x",
               threshold: 5 // Require swiping at least 5px horizontally to start drag
             }}
-            style={{ x, width: `${TAB_COUNT * 100}%` }}
-            className="flex h-full touch-pan-y will-change-transform"
+            style={{ 
+              x, 
+              width: `${TAB_COUNT * 100}%`,
+              willChange: "transform",
+              transform: "translateZ(0)" 
+            }}
+            className="flex h-full touch-pan-y"
             onDragStart={() => {
               // Stop any URL-driven animation so drag feels immediately responsive
               animControls.current?.();
@@ -368,12 +330,11 @@ const ExplorePage = () => {
             {TABS.map((t, i) => {
               const isActive = activeIndex === i;
               return (
-                <div
+                <SmoothScroll
                   key={t.id}
                   ref={(el) => { scrollRefs.current[i] = el; }}
-                  className="h-full overflow-y-auto scrollbar-hide shrink-0 pb-20"
+                  className="h-full scrollbar-hide shrink-0 pb-20"
                   style={{ width: `${100 / TAB_COUNT}%` }}
-                  // onScroll={handleScroll} // Handled seamlessly by Lenis Event Binder above
                   onTouchStart={activeIndex === i ? handleTouchStart : undefined}
                   onTouchEnd={activeIndex === i ? handleTouchEnd : undefined}
                 >
@@ -382,9 +343,8 @@ const ExplorePage = () => {
                     animate={{ 
                       scale: isActive ? 1 : 0.98,
                       opacity: isActive ? 1 : 0.6,
-                      filter: isActive ? "blur(0px)" : "blur(2px)"
                     }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    transition={{ duration: 0.35, ease: "easeOut" }}
                     className="h-full w-full"
                   >
                     {t.id === "reelsfeed" && (
@@ -398,7 +358,7 @@ const ExplorePage = () => {
                       />
                     )}
                   </motion.div>
-                </div>
+                </SmoothScroll>
               );
             })}
           </motion.div>

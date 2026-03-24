@@ -1,7 +1,7 @@
 import React, { forwardRef } from 'react';
 import { ReactLenis } from 'lenis/react';
 
-const SmoothScroll = forwardRef(({ children, className = "", root = false }, ref) => {
+const SmoothScroll = forwardRef(({ children, className = "", root = false, ...props }, ref) => {
   return (
     <ReactLenis
       ref={ref}
@@ -14,6 +14,7 @@ const SmoothScroll = forwardRef(({ children, className = "", root = false }, ref
         smoothTouch: true,      // ENABLED: provides momentum on mobile
         touchMultiplier: 1.8,   // Tune for "premium" feel (not too fast/slow)
       }}
+      {...props}
       className={root ? className : `h-full w-full overflow-y-auto overflow-x-hidden ${className}`}
     >
       {root ? children : (
