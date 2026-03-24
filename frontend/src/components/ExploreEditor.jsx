@@ -1439,13 +1439,23 @@ const ExploreEditors = ({ initialTab = "editors", isTab = false, isSwiping = fal
   // ─── RENDER ───
   if (!isReady) {
     return (
-      <div className="p-8 space-y-10 animate-pulse bg-black min-h-screen">
-        <div className="h-14 bg-white/5 rounded-2xl w-full" />
-        <div className="grid grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <div key={i} className="h-28 bg-white/5 rounded-3xl" />)}
+      <div className={`p-5 space-y-8 animate-pulse ${isTab ? "" : "bg-black min-h-screen"}`}>
+        {/* Banner Skeleton */}
+        <div className="h-44 bg-white/5 rounded-[2rem] w-full" />
+        
+        {/* Category Pill Skeletons */}
+        <div className="flex gap-2 overflow-hidden">
+          {[1,2,3,4,5].map(i => (
+            <div key={i} className="h-8 w-24 bg-white/5 rounded-full shrink-0" />
+          ))}
         </div>
-        <div className="h-72 bg-white/5 rounded-[2.5rem] w-full" />
-        <div className="h-32 bg-white/5 rounded-2xl w-full" />
+
+        {/* Editor Cards Grid Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1,2,3,4,5,6].map(i => (
+            <div key={i} className="h-48 bg-white/5 rounded-[2.5rem] w-full" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -1676,4 +1686,4 @@ const ExploreEditors = ({ initialTab = "editors", isTab = false, isSwiping = fal
   );
 };
 
-export default ExploreEditors;
+export default memo(ExploreEditors);

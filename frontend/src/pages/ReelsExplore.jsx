@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     HiOutlineChevronLeft,
@@ -227,10 +227,12 @@ const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
 
     if (!isReady) {
         return (
-            <div className={`w-full ${isTab ? "" : "min-h-screen bg-[#050509]"} p-6 space-y-8 animate-pulse`}>
-                <div className="h-10 bg-white/5 rounded-full w-3/4 mx-auto mb-10" />
+            <div className={`w-full ${isTab ? "" : "min-h-screen bg-[#050509]"} p-4 space-y-6 animate-pulse`}>
+                <div className="h-10 bg-white/5 rounded-full w-full max-w-md mx-auto mb-8" />
                 <div className="grid grid-cols-3 gap-3">
-                    {[1,2,3].map(i => <div key={i} className="aspect-[9/16] bg-white/5 rounded-2xl" />)}
+                    {[1,2,3,4,5,6].map(i => (
+                        <div key={i} className="aspect-[9/16] bg-white/5 rounded-xl block" />
+                    ))}
                 </div>
             </div>
         );
@@ -481,4 +483,4 @@ const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
     );
 };
 
-export default ReelsExplore;
+export default memo(ReelsExplore);

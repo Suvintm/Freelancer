@@ -72,6 +72,7 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
                     className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110"
                     alt={reel.title}
                     crossOrigin="anonymous"
+                    decoding="async"
                 />
             )}
 
@@ -80,16 +81,8 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
                 const isNew = reel.createdAt && (new Date() - new Date(reel.createdAt)) < 24 * 60 * 60 * 1000;
                 if (!isNew) return null;
                 return (
-                    <motion.div 
-                        animate={{ 
-                            boxShadow: [
-                                "inset 0 0 0 0.5px rgba(255,255,255,0.1)",
-                                "inset 0 0 0 2px rgba(255,255,255,0.4)",
-                                "inset 0 0 0 0.5px rgba(255,255,255,0.1)"
-                            ] 
-                        }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                        className="absolute inset-0 z-10 pointer-events-none rounded-xl"
+                    <div 
+                        className="absolute inset-0 z-10 pointer-events-none rounded-xl animate-ring-glow will-change-[box-shadow]"
                     />
                 );
             })()}
@@ -115,23 +108,13 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
                     const isNew = reel.createdAt && (new Date() - new Date(reel.createdAt)) < 24 * 60 * 60 * 1000;
                     if (!isNew) return null;
                     return (
-                        <motion.div 
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ 
-                                opacity: [0.8, 1, 0.8],
-                                scale: [1, 1.05, 1],
-                            }}
-                            transition={{ 
-                                duration: 2,
-                                repeat: Infinity,
-                                ease: "easeInOut"
-                            }}
-                            className="px-3 py-1 rounded-full border border-white/40 bg-white  flex items-center justify-center min-w-[35px]"
+                        <div 
+                            className="px-3 py-1 rounded-full border border-white/40 bg-white flex items-center justify-center min-w-[35px] animate-pulse-fast will-change-[opacity,transform]"
                         >
-                            <span className="text-black  text-[7px] font-bold uppercase tracking-[0.1em]">
+                            <span className="text-black text-[7px] font-bold uppercase tracking-[0.1em]">
                                 NEW
                             </span>
-                        </motion.div>
+                        </div>
                     );
                 })()}
 

@@ -156,6 +156,19 @@ const ExplorePage = () => {
   const activeIndexRef = useRef(activeIndex);
   useEffect(() => { activeIndexRef.current = activeIndex; }, [activeIndex]);
 
+  // ── Lazy Loading — tracked "visited" tabs + neighbors ────────────────────
+  const [visitedTabs, setVisitedTabs] = useState(new Set([activeIndex]));
+  useEffect(() => {
+    setVisitedTabs(prev => {
+      const next = new Set(prev);
+      next.add(activeIndex);
+      // Pre-mount neighbors for smooth swiping
+      if (activeIndex > 0) next.add(activeIndex - 1);
+      if (activeIndex < TAB_COUNT - 1) next.add(activeIndex + 1);
+      return next;
+    });
+  }, [activeIndex]);
+
   // ── Navigation helper ────────────────────────────────────────────────────
   const handleTabClick = useCallback(
     (tabId) => {
@@ -280,7 +293,9 @@ const ExplorePage = () => {
               x, 
               width: `${TAB_COUNT * 100}%`,
               willChange: "transform",
-              transform: "translateZ(0)" 
+              transform: "translateZ(0)",
+              backfaceVisibility: "hidden",
+              perspective: 1000
             }}
             className="flex h-full touch-pan-y"
             onDragStart={() => {
@@ -341,21 +356,32 @@ const ExplorePage = () => {
                   <motion.div
                     initial={false}
                     animate={{ 
-                      scale: isActive ? 1 : 0.98,
-                      opacity: isActive ? 1 : 0.6,
+                      scale: isActive ? 1 : 0.985,
+                      opacity: isActive ? 1 : 0,
                     }}
-                    transition={{ duration: 0.35, ease: "easeOut" }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
                     className="h-full w-full"
+                    style={{ 
+                      backfaceVisibility: "hidden",
+                      transform: "translateZ(0)"
+                    }}
                   >
-                    {t.id === "reelsfeed" && (
-                      <ReelsExplore isTab isSwiping={isSwiping} />
-                    )}
-                    {(t.id === "editors" || t.id === "gigs") && (
-                      <ExploreEditor
-                        initialTab={t.id}
-                        isTab
-                        isSwiping={isSwiping}
-                      />
+                    {visitedTabs.has(i) ? (
+                      <>
+                        {t.id === "reelsfeed" && (
+                          <ReelsExplore isTab isSwiping={isSwiping} />
+                        )}
+                        {(t.id === "editors" || t.id === "gigs") && (
+                          <ExploreEditor
+                            initialTab={t.id}
+                            isTab
+                            isSwiping={isSwiping}
+                          />
+                        )}
+                      </>
+                    ) : (
+                      /* Minimal loading state to keep layout stable */
+                      <div className="h-full w-full bg-[#050509]" />
                     )}
                   </motion.div>
                 </SmoothScroll>
