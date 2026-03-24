@@ -40,6 +40,7 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
     const [followLoading, setFollowLoading] = useState(false);
     const [showMuteIcon, setShowMuteIcon] = useState(false);
     const [showFollowAnimation, setShowFollowAnimation] = useState(false);
+    const [currentQuality, setCurrentQuality] = useState("");
 
     // Sync local state with props when reel changes
     useEffect(() => {
@@ -200,6 +201,7 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
                             if (!watchStartRef.current) watchStartRef.current = Date.now();
                         }}
                         onPause={() => setIsPlaying(false)}
+                        onQualityChange={setCurrentQuality}
                     />
                 ) : (
                     <img 
@@ -228,6 +230,13 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Video Quality Badge (Top Right, below global Refresh btn) */}
+            {currentQuality && (
+                <div className="absolute top-[60px] right-5 z-50 text-[9px] font-bold text-white/90 border border-white/40 rounded px-1.5 py-0.5 tracking-widest drop-shadow-md pointer-events-none uppercase">
+                    {currentQuality}
+                </div>
+            )}
             </div>
 
             {/* ── SIDEBAR (Polished & Small) ── */}

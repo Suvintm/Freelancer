@@ -32,6 +32,7 @@ const ReelAdCard = ({ ad, onSkip, isActive=true, isPreloading=false, globalMuted
   const [progress, setProgress]           = useState(0);
   const [isPlaying, setIsPlaying]         = useState(true);
   const [showMuteIcon, setShowMuteIcon]   = useState(false);
+  const [currentQuality, setCurrentQuality] = useState("");
 
   // Sync with global mute state
   const muted = globalMuted;
@@ -205,6 +206,7 @@ const ReelAdCard = ({ ad, onSkip, isActive=true, isPreloading=false, globalMuted
             autoPlay={isActive}
             onPlaying={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
+            onQualityChange={setCurrentQuality}
           />
         ) : (
           <img 
@@ -233,6 +235,13 @@ const ReelAdCard = ({ ad, onSkip, isActive=true, isPreloading=false, globalMuted
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Video Quality Badge (Top Right, below global Refresh btn) */}
+        {currentQuality && (
+            <div className="absolute top-[60px] right-5 z-50 text-[9px] font-bold text-white/90 border border-white/40 rounded px-1.5 py-0.5 tracking-widest drop-shadow-md pointer-events-none uppercase">
+                {currentQuality}
+            </div>
+        )}
       </div>
 
       {/* ── TOP PROGRESS BAR ── */}

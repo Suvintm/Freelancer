@@ -32,6 +32,7 @@ const HlsVideoPlayer = React.forwardRef(({
   onPlaying,
   onPause,
   onEnded,
+  onQualityChange,
   objectFit = "cover"
 }, ref) => {
   const internalRef = useRef(null);
@@ -62,8 +63,16 @@ const HlsVideoPlayer = React.forwardRef(({
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         setIsReady(true);
+        if (onQualityChange) onQualityChange("Auto"); // Initial state
         if (autoPlay && isActive) {
           video.play().catch(e => console.warn("HLS play blocked:", e));
+        }
+      });
+
+      hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
+        const level = hls.levels[data.level];
+        if (level && level.height) {
+          if (onQualityChange) onQualityChange(`${level.height}p`);
         }
       });
     } 
