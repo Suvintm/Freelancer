@@ -39,6 +39,7 @@ import { useAppContext } from "../context/AppContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
+import PortfolioSection from "../components/PortfolioSection.jsx";
 import useRefreshManager from "../hooks/useRefreshManager.js";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 import { useSmoothScroll } from "../hooks/useSmoothScroll.js";
