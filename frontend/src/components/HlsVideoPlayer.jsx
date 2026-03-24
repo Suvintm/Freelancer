@@ -162,7 +162,12 @@ const HlsVideoPlayer = React.forwardRef(({
   return (
     <div className={`relative w-full h-full bg-black overflow-hidden ${className}`}>
       {(!isReady || !isActive) && poster && (
-        <img src={poster} alt="" className="absolute inset-0 w-full h-full object-cover z-0 filter blur-sm transition-opacity duration-300 pointer-events-none" style={{ opacity: isReady ? 0 : 1 }} />
+        <img 
+          src={poster} 
+          alt="" 
+          className="absolute inset-0 w-full h-full z-0 transition-opacity duration-300 pointer-events-none" 
+          style={{ opacity: isReady ? 0 : 1, objectFit: objectFit }} 
+        />
       )}
       <video
         ref={node => {

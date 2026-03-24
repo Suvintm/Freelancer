@@ -201,8 +201,15 @@ const ReelsPage = ({ isActive = true }) => {
 
         reels.forEach((reel, index) => {
             feed.push({ type: 'reel', content: reel, id: reel._id });
-            const seed = reel._id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-            const isAdSlot = ((index + seed) % 3 === 0) && reelAds.length > 0;
+            
+            // Spacing Algorithm: Guaranteed Ad every 3 reels
+            // with a safety gap of 2 after a targetAd.
+            const isTargetAdVisible = targetAd && targetReelId === `ad_${targetAd._id}`;
+            const skipRandomInjection = isTargetAdVisible && index < 2;
+
+            // Simple fixed interval (O(1) calculation)
+            // index + 1 ensures the first ad is after 3 reels (0,1,2 -> Ad)
+            const isAdSlot = ((index + 1) % 3 === 0) && reelAds.length > 0 && !skipRandomInjection;
             
             if (isAdSlot) {
                 const adIndex = adCounter % reelAds.length;

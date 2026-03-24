@@ -4,8 +4,8 @@
 // reelConfig is missing (existing ads without it).
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { HiXMark, HiSpeakerWave, HiSpeakerXMark, HiCheckCircle } from "react-icons/hi2";
-import { FaInstagram, FaGlobe, FaChevronRight } from "react-icons/fa";
+import { HiXMark, HiCheckCircle } from "react-icons/hi2";
+import { FaInstagram, FaGlobe, FaChevronRight, FaVolumeUp, FaVolumeMute } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
@@ -237,8 +237,8 @@ const ReelAdCard = ({ ad, onSkip, isActive=true, isPreloading=false, globalMuted
             >
               <div className="w-16 h-16 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10">
                 {muted
-                  ? <HiSpeakerXMark className="text-white text-2xl" />
-                  : <HiSpeakerWave className="text-white text-2xl" />
+                  ? <FaVolumeMute className="text-white text-2xl" />
+                  : <FaVolumeUp className="text-white text-2xl" />
                 }
               </div>
             </motion.div>
@@ -300,7 +300,7 @@ const ReelAdCard = ({ ad, onSkip, isActive=true, isPreloading=false, globalMuted
             onClick={(e) => { e.stopPropagation(); setMuted(!muted); }}
             className="w-10 h-10 bg-black/40 backdrop-blur-md rounded-full border border-white/10 flex items-center justify-center text-white"
           >
-            {muted ? <HiSpeakerXMark size={16} /> : <HiSpeakerWave size={16} />}
+            {muted ? <FaVolumeMute size={16} /> : <FaVolumeUp size={16} />}
           </button>
         )}
       </div>
