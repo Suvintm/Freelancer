@@ -82,6 +82,7 @@ const TrendingReelsCarousel = ({ reels = [], isSwiping = false }) => {
 
   // ── Drag / touch ───────────────────────────────────────────────────────────
   const onPointerDown = (e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
     isDragging.current = true;
     const x = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
     dragStartX.current = x;
@@ -92,6 +93,7 @@ const TrendingReelsCarousel = ({ reels = [], isSwiping = false }) => {
   };
 
   const onPointerMove = (e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
     if (!isDragging.current) return;
     const x = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
     const now = performance.now();
@@ -103,7 +105,8 @@ const TrendingReelsCarousel = ({ reels = [], isSwiping = false }) => {
     setRenderAngle(angleRef.current);
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
     if (!isDragging.current) return;
     isDragging.current = false;
     // The velocity is already being updated in onPointerMove
@@ -150,14 +153,12 @@ const TrendingReelsCarousel = ({ reels = [], isSwiping = false }) => {
       {/* ── 3D Stage ──────────────────────────────────────────────────────── */}
       <div
         className="absolute inset-0 flex items-center justify-center"
-        style={{ cursor: isDragging.current ? "grabbing" : "grab", perspective: isMobile ? 680 : 880 }}
-        onMouseDown={onPointerDown}
-        onMouseMove={onPointerMove}
-        onMouseUp={onPointerUp}
-        onMouseLeave={onPointerUp}
-        onTouchStart={(e) => onPointerDown(e.touches[0])}
-        onTouchMove={(e) => { e.preventDefault(); onPointerMove(e.touches[0]); }}
-        onTouchEnd={onPointerUp}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onPointerLeave={onPointerUp}
+        style={{ cursor: isDragging.current ? "grabbing" : "grab", perspective: isMobile ? 680 : 880, touchAction: "none" }}
       >
         {/* Ring container — spins on Y axis */}
         <div style={{

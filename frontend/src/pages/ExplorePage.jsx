@@ -76,26 +76,30 @@ const ExplorePage = () => {
 
   // ── Window width — ref keeps value current inside drag closures ─────────
   // Using a ref (not just state) prevents stale closure bugs in onDragEnd
-  const wRef         = useRef(window.innerWidth);
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  // ── Width tracking (Account for desktop sidebar) ─────────────────────────
+  const getContainerWidth = useCallback(() => {
+    return window.innerWidth >= 1024 ? window.innerWidth - 256 : window.innerWidth;
+  }, []);
 
-  useEffect(() => {
-    const onResize = () => {
-      const w = window.innerWidth;
-      wRef.current = w;
-      setWindowWidth(w);
-      // Instantly snap to current tab — no animation on resize
-      x.set(-(activeIndex * w));
-    };
-    window.addEventListener("resize", onResize, { passive: true });
-    return () => window.removeEventListener("resize", onResize);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeIndex]);
+  const [windowWidth, setWindowWidth] = useState(getContainerWidth());
+  const wRef = useRef(windowWidth);
 
   // ── Core motion value ────────────────────────────────────────────────────
   // Initialised directly at the correct position — no first-render flash
-  const x            = useMotionValue(-(activeIndex * wRef.current));
+  const x = useMotionValue(-(activeIndex * getContainerWidth()));
   const animControls = useRef(null); // keeps track of the running animation so we can .stop() it
+
+  useEffect(() => {
+    const handleResize = () => {
+      const newW = getContainerWidth();
+      setWindowWidth(newW);
+      wRef.current = newW;
+      // Re-snap to current tab on resize
+      animate(x, -(activeIndexRef.current * newW), { duration: 0 });
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [x, getContainerWidth]);
 
   // Animate to the correct tab whenever activeIndex changes (URL-driven)
   useEffect(() => {
@@ -259,6 +263,11 @@ const ExplorePage = () => {
             dragConstraints={dragConstraints}
             dragElastic={0.06}
             dragMomentum={false}
+            dragDirectionLock={true}
+            dragDirectionLockConfig={{
+              direction: "x",
+              threshold: 5 // Require swiping at least 5px horizontally to start drag
+            }}
             style={{ x, width: `${TAB_COUNT * 100}%` }}
             className="flex h-full touch-pan-y will-change-transform"
             onDragStart={() => {
