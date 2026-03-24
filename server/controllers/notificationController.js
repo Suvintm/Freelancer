@@ -149,7 +149,9 @@ export const createNotification = async ({ recipient, type, title, message, link
                 const User = (await import("../models/User.js")).default;
                 const senderDoc = await User.findById(sender).select("profilePicture").lean();
                 senderAvatar = senderDoc?.profilePicture || null;
-            } catch (_) {}
+            } catch (_) {
+                // Ignore error if sender user model cannot be loaded (FCM fallback only)
+            }
         }
 
         // ── Flatten FCM Payload ─────────────────────────────────────────────

@@ -45,7 +45,9 @@ export const incrementFrequency = async (userId, adId) => {
         pipeline.incr(key);
         pipeline.expire(key, FREQ_WINDOW);
         await pipeline.exec();
-    } catch (err) {}
+    } catch (err) {
+        // Skip frequency increment tracking if Redis is unavailable
+    }
 };
 
 /**
@@ -75,5 +77,7 @@ export const consumePacingToken = async (adId) => {
     const key = `ads:pace:${adId}`;
     try {
         await redisClient.decr(key);
-    } catch (err) {}
+    } catch (err) {
+        // Skip pacing token consumption if Redis is unavailable
+    }
 };
