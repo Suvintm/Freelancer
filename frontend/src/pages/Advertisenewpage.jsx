@@ -927,7 +927,7 @@ const AdvertiseNewPage = () => {
         </div>
       );
 
-      case 4:
+      case 4: {
         const adTypeInfo    = AD_TYPES.find(t => t.id === form.adType);
         const placementInfo = PLACEMENTS.find(p => p.id === form.placement);
         const durationInfo  = DURATIONS.find(d => d.days === form.days);
@@ -1028,6 +1028,7 @@ const AdvertiseNewPage = () => {
             </div>
           </div>
         );
+      }
 
       default: return null;
     }

@@ -247,6 +247,11 @@ const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
         finally { setLoadingMore(false); }
     };
 
+    const handleCommentAdded = (newCount) => {
+        if (!activeReel) return;
+        setReels(prev => prev.map(r => r._id === activeReel._id ? { ...r, commentsCount: newCount } : r));
+    };
+
     // ── Client-side filter ─────────────────────────────────────────────────
     const filteredReels = useMemo(() => {
         const searchMatchesIds = getFilteredReelIds(debouncedQ);

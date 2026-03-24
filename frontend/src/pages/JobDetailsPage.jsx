@@ -47,6 +47,7 @@ const JobDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, backendURL } = useAppContext();
+  const isEditor = user?.role === 'editor';
   
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
