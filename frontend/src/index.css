@@ -201,3 +201,19 @@ input:-webkit-autofill:active {
   animation: pulse-fast 2s ease-in-out infinite;
 }
 
+@keyframes loader-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-loader-spin {
+  animation: loader-spin 2s linear infinite;
+}
+
+@keyframes loader-pulse {
+  0%, 100% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+.animate-loader-pulse {
+  animation: loader-pulse 2s ease-in-out infinite;
+}
+
