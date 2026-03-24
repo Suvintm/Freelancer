@@ -15,6 +15,8 @@ import {
     trackSkip,
     getReelTags,
     toggleCommentLike,
+    batchAnalytics,
+    getSearchSuggestions,
 } from "../controllers/reelController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 
@@ -23,6 +25,9 @@ const router = express.Router();
 // ============ PUBLIC ROUTES ============
 // Get reels feed (can be accessed without auth for discovery)
 router.get("/feed", getReelsFeed);
+
+// Get search suggestions (TRIE O(L) Autocomplete)
+router.get("/search/suggest", getSearchSuggestions);
 
 // Get unique tags for search suggestions
 router.get("/tags/unique", getReelTags);
@@ -68,5 +73,8 @@ router.post("/:id/watch-time", trackWatchTime);
 
 // Track skip (fast scroll-past < 2s) — negative signal
 router.post("/:id/skip", trackSkip);
+
+// Batch analytics (Product-Grade: Multiple events in one hit)
+router.post("/analytics/batch", batchAnalytics);
 
 export default router;

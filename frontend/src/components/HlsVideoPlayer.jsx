@@ -1,29 +1,11 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Hls from 'hls.js';
+import { toHlsUrl } from '../utils/urlHelper.jsx';
 
 /**
  * HlsVideoPlayer — Product-Grade Adaptive Streaming Engine.
- * 
- * PERFORMANCE UPGRADES (Big Tech Style):
- * 1. Web Workers: Offloads stream demuxing and decoding logic to a separate thread,
- *    preventing UI jank and ensuring consistent 60FPS scrolling in the main feed.
- * 2. Adaptive Bitrate (ABR) EWMA Tuning: Exponentially Weighted Moving Average 
- *    bandwidth estimation for faster convergence on the optimal quality.
- * 3. Intelligent Stall Recovery: Monitor buffer stalls and force immediate level 
- *    switches if the 'smooth' transition takes too long.
+ * ... (rest of the JSDoc) ...
  */
-
-const getHlsUrl = (url) => {
-  if (!url || typeof url !== 'string') return url;
-  if (url.includes('sp_auto') || url.includes('.m3u8')) return url;
-  const uploadIndex = url.indexOf('/upload/');
-  if (uploadIndex === -1) return url;
-  const baseUrl = url.substring(0, uploadIndex + 8);
-  const remainingParams = url.substring(uploadIndex + 8);
-  let hlsUrl = `${baseUrl}sp_full_hd/${remainingParams}`; 
-  hlsUrl = hlsUrl.replace(/\.(mp4|webm|mov|avi)$/i, '.m3u8');
-  return hlsUrl;
-};
 
 const HlsVideoPlayer = React.forwardRef(({
   src, poster, autoPlay = false, muted = true, loop = true,
@@ -37,11 +19,24 @@ const HlsVideoPlayer = React.forwardRef(({
   const [isReady, setIsReady] = useState(false);
   const isStalledRef = useRef(false);
 
-  const streamUrl = useMemo(() => getHlsUrl(src), [src]);
+  // Use the unified Product-Grade utility from urlHelper
+  const streamUrl = useMemo(() => toHlsUrl(src), [src]);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !streamUrl) return;
+
+    // ── SLIDING WINDOW RESOURCE MANAGEMENT ──
+    // Only initialize HLS if the reel is active or in the preloading range.
+    // This prevents background tabs/hidden reels from wasting GPU/CPU threads.
+    if (!isActive && !isPreloading) {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+        setIsReady(false);
+      }
+      return;
+    }
 
     if (streamUrl.includes('.m3u8') && Hls.isSupported()) {
       /**
@@ -54,13 +49,17 @@ const HlsVideoPlayer = React.forwardRef(({
         // ── Web Worker (Offload heavy lifting) ──
         enableWorker: true, 
         
-        // ── Buffer Optimization (Instagram-style preloading) ──
-        maxBufferLength: isPreloading ? 3 : 18, 
-        maxMaxBufferLength: isPreloading ? 5 : 35,
-        maxBufferSize: isPreloading ? 3 * 1000 * 1000 : 25 * 1000 * 1000, 
+        // ── Sliding Window Buffer (DSA Concept: Dynamic Capping) ──
+        // Only buffer 1.5s for neighbors (isPreloading) to save bandwidth/GPU.
+        // Buffer up to 20s for the active reel for smooth playback.
+        maxBufferLength: isActive ? 20 : (isPreloading ? 1.5 : 0), 
+        maxMaxBufferLength: isActive ? 35 : (isPreloading ? 3 : 0),
+        maxBufferSize: isActive ? 60 * 1000 * 1000 : (isPreloading ? 2 * 1000 * 1000 : 0), 
         
+        // Initial buffer target
+        backBufferLength: 0, // Quickly evict past fragments from memory        
         // ── ABR (Adaptive Bitrate) Algorithm Tuning ──
-        abrEwmaDefaultEstimate: 5000000, // 5Mbps initial guess for smoother starts
+        abrEwmaDefaultEstimate: 10000000, // 10Mbps initial guess for 4K/HD starts
         abrBandwidthUpFactor: 0.8,      // Be conservative about upgrading
         abrBandwidthDownFactor: 0.9,    // Fast downgrade for stability
         
@@ -108,7 +107,7 @@ const HlsVideoPlayer = React.forwardRef(({
     }
 
     return () => hlsRef.current?.destroy();
-  }, [streamUrl, isPreloading, onQualityChange, onAvailableQualities, src]);
+  }, [streamUrl, isPreloading, isActive, onQualityChange, onAvailableQualities, src]);
 
   // Unified Playback Controller
   useEffect(() => {

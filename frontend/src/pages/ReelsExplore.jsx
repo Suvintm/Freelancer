@@ -70,19 +70,47 @@ const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
     const [activeReel, setActiveReel]   = useState(null);
     const [showScrollTop, setShowScrollTop] = useState(false);
     const [isReady, setIsReady]         = useState(false);
+    
+    // — Phase 3: Search Autocomplete —
+    const [suggestions, setSuggestions] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [isSuggesting, setIsSuggesting] = useState(false);
 
+    // Simplified entry
     useEffect(() => {
-        const t = setTimeout(() => setIsReady(true), 300);
-        return () => clearTimeout(t);
+        setIsReady(true);
     }, []);
 
     const searchRef = useRef(null);
 
-    // ── Debounce search ────────────────────────────────────────────────────
+    // ── Debounce search & Fetch TRIE Suggestions ───────────────────────────
     useEffect(() => {
-        const t = setTimeout(() => setDebouncedQ(searchQuery), 350);
+        const q = searchQuery.trim();
+        if (q.length < 1) {
+            setSuggestions([]);
+            setShowSuggestions(false);
+            setDebouncedQ("");
+            return;
+        }
+
+        const t = setTimeout(async () => {
+            setDebouncedQ(q);
+            
+            // Fetch Global Suggestions from Backend TRIE (O(L))
+            setIsSuggesting(true);
+            try {
+                const { data } = await axios.get(`${backendURL}/api/reels/search/suggest?q=${encodeURIComponent(q)}`);
+                setSuggestions(data.suggestions || []);
+                setShowSuggestions(data.suggestions?.length > 0);
+            } catch (err) {
+                console.error("Suggestion fetch failed", err);
+            } finally {
+                setIsSuggesting(false);
+            }
+        }, 350);
+
         return () => clearTimeout(t);
-    }, [searchQuery]);
+    }, [searchQuery, backendURL]);
 
     // ── Scroll-to-top ──────────────────────────────────────────────────────
     useEffect(() => {
@@ -103,6 +131,12 @@ const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
      * 3. Set Intersection: Multi-word searches perform a Set intersection (highly optimized in V8).
      * 4. Memoization: The index is only built once per data change, saving CPU cycles.
      */
+    useEffect(() => {
+        const fn = (e) => { if (searchRef.current && !searchRef.current.contains(e.target)) setShowSuggestions(false); };
+        document.addEventListener("mousedown", fn);
+        return () => document.removeEventListener("mousedown", fn);
+    }, []);
+
     const searchIndex = useMemo(() => {
         const index = new Map(); // keyword -> Set of reelIds
         reels.forEach(reel => {
@@ -235,9 +269,9 @@ const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
 
     const isFiltering = !!debouncedQ || !!selectedTag;
 
-    if (!isReady) {
+    if (!isReady && reels.length === 0) {
         return (
-            <div className={`w-full ${isTab ? "" : "min-h-screen bg-[#050509]"} p-4 animate-pulse`}>
+            <div className={`w-full ${isTab ? "" : "min-h-screen bg-[#050509]"} p-4 opacity-50`}>
                 <div className="h-10 bg-white/5 rounded-full w-full max-w-md mx-auto mb-8" />
                 <div className="grid grid-cols-3 gap-3">
                     {[1,2,3].map(i => <div key={i} className="aspect-[9/16] bg-white/5" />)}
@@ -257,10 +291,51 @@ const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
                             </button>
                             <div className="flex-1 relative flex items-center">
                                 <HiOutlineMagnifyingGlass className="absolute left-3.5 text-zinc-500 text-sm pointer-events-none" />
-                                <input ref={searchRef} type="text" placeholder="Search title, tag, editor…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-white/[0.06] border border-white/[0.08] rounded-full pl-9 pr-9 py-2 text-[13px] text-white focus:outline-none focus:border-white/[0.18] transition-all duration-200" />
+                                <input 
+                                    ref={searchRef} 
+                                    type="text" 
+                                    placeholder="Search title, tag, editor…" 
+                                    value={searchQuery} 
+                                    onChange={e => setSearchQuery(e.target.value)} 
+                                    onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                                    className="w-full bg-white/[0.06] border border-white/[0.08] rounded-full pl-9 pr-9 py-2 text-[13px] text-white focus:outline-none focus:border-white/[0.18] transition-all duration-200" 
+                                />
                                 {searchQuery && (
-                                    <button onClick={() => { setSearchQuery(""); searchRef.current?.focus(); }} className="absolute right-3 text-zinc-500 hover:text-white"><HiOutlineXMark /></button>
+                                    <button onClick={() => { setSearchQuery(""); setSuggestions([]); setShowSuggestions(false); searchRef.current?.focus(); }} className="absolute right-3 text-zinc-500 hover:text-white"><HiOutlineXMark /></button>
                                 )}
+
+                                {/* TRIE AUTOCOMPLETE DROPDOWN */}
+                                <AnimatePresence>
+                                    {showSuggestions && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, y: 5 }}
+                                            className="absolute top-[calc(100%+8px)] left-0 right-0 bg-[#12121e] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden z-[100] backdrop-blur-xl"
+                                        >
+                                            <div className="max-h-[300px] overflow-y-auto py-2 scrollbar-thin scrollbar-thumb-white/10">
+                                                {suggestions.map((s, i) => (
+                                                    <button
+                                                        key={`${s.id}-${i}`}
+                                                        onClick={() => {
+                                                            setSearchQuery(s.display);
+                                                            setShowSuggestions(false);
+                                                        }}
+                                                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.05] transition-colors text-left"
+                                                    >
+                                                        <div className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center text-zinc-500">
+                                                            {s.type === 'hashtag' ? '#' : (s.type === 'user' ? '@' : <HiOutlineVideoCamera className="text-xs" />)}
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[13px] font-bold text-zinc-200">{s.display}</span>
+                                                            <span className="text-[9px] uppercase tracking-widest text-zinc-500 font-black">{s.type}</span>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
                         </div>
                         <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-0.5">

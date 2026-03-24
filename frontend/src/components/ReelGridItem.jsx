@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HiOutlinePlay, HiOutlineVideoCamera, HiHeart } from "react-icons/hi2";
-import { repairUrl } from "../utils/urlHelper.jsx";
+import { repairUrl, getPosterUrl } from "../utils/urlHelper.jsx";
 
 const ReelGridItem = ({ reel, onPreviewStart }) => {
     const [isHovered, setIsHovered] = useState(false);
@@ -59,7 +59,7 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
                 <video 
                     ref={videoRef}
                     src={mediaUrl} 
-                    poster={mediaUrl ? mediaUrl.replace(/\.[^./\\]+$/, ".jpg") : ""}
+                    poster={getPosterUrl(reel.mediaUrl)}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     muted 
                     playsInline

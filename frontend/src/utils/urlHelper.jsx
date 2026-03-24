@@ -3,7 +3,7 @@
  * and applies production-level media optimizations to ALL Cloudinary URLs.
  */
 
-const CLOUDINARY_VIDEO_OPT = "q_auto,vc_h264,w_720,c_limit";
+const CLOUDINARY_VIDEO_OPT = "f_auto,q_auto,w_720,c_limit";
 const CLOUDINARY_IMAGE_OPT = "f_auto,q_auto,w_800,c_limit";
 
 /**
@@ -20,6 +20,12 @@ const injectOptimizations = (url) => {
 
     const isVideo = url.includes("/video/upload/");
     const isImage = url.includes("/image/upload/");
+    // HLS/Streaming Detect: Either ends in .m3u8 OR contains a streaming profile (/sp_)
+    const isHLS = url.toLowerCase().includes(".m3u8") || url.includes("/sp_");
+    
+    // HLS manifests and streaming profile URLs should NOT have standard resizing/format flags.
+    // They are managed by Cloudinary's ABR engine.
+    if (isHLS) return url;
 
     if (isVideo) {
         let fixed = url.replace("/upload/", `/upload/${CLOUDINARY_VIDEO_OPT}/`);
@@ -87,4 +93,59 @@ export const repairUrl = (input) => {
     }
 
     return url;
+};
+
+/**
+ * getPosterUrl - Safely generates an optimized poster/thumbnail URL from a video URL.
+ * It correctly handles HLS streaming profiles by stripping them for the static image.
+ */
+export const getPosterUrl = (input) => {
+    let url = repairUrl(input);
+    if (!url) return "";
+
+    // 1. Convert to JPG
+    let poster = url.replace(/\.[^./\\]+$/, ".jpg");
+
+    // 2. If it was HLS/Streaming, strip the streaming profile (sp_...)
+    // Static JPGs don't support streaming profiles.
+    if (poster.includes("/sp_")) {
+        poster = poster.replace(/\/sp_[^/]+\//, "/upload/");
+    }
+
+    // 3. Inject image optimizations (f_auto, q_auto, and responsive width)
+    if (poster.includes("res.cloudinary.com") && !poster.includes("/f_auto")) {
+        poster = poster.replace("/upload/", "/upload/f_auto,q_auto,w_auto,c_scale/");
+    }
+
+    return poster;
+};
+
+/**
+ * toHlsUrl - Safely converts a standard video URL to an HLS streaming URL.
+ * It strips standard optimization flags (f_auto, q_auto) to prevent 500/400 conflicts.
+ */
+export const toHlsUrl = (input) => {
+    let url = repairUrl(input);
+    if (!url || typeof url !== 'string') return url;
+
+    // 1. If it's already HLS or has a profile, just return it
+    if (url.toLowerCase().includes('.m3u8') || url.includes('/sp_')) return url;
+
+    // 2. Extract base and params
+    const uploadIndex = url.indexOf('/upload/');
+    if (uploadIndex === -1) return url;
+
+    const baseUrl = url.substring(0, uploadIndex + 8);
+    let remaining = url.substring(uploadIndex + 8);
+
+    // 3. STRIP standard optimizations (f_auto, q_auto, w_720, etc.)
+    // These cause 500 errors when combined with sp_full_hd
+    remaining = remaining.replace(/^(f_auto|q_auto|w_\d+|c_[^/]+|vc_[^/]+),*[^/]*\//i, "");
+
+    // 4. Inject streaming profile and convert extension
+    // sp_auto is Cloudinary's smart adaptive profile that supports up to 4K
+    let hlsUrl = `${baseUrl}sp_auto/${remaining}`;
+    hlsUrl = hlsUrl.replace(/\.(mp4|webm|mov|avi)$/i, '.m3u8');
+
+    return hlsUrl;
 };

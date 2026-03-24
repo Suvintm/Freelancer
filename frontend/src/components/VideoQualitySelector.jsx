@@ -32,7 +32,8 @@ const VideoQualitySelector = ({
 
     // Always include standard HD/SD targets so the user can set them globally,
     // combined with the exact specific heights the HLS stream parsed!
-    const standardQualities = [1080, 720, 480, 360];
+    // Always include standard UltraHD/HD/SD targets
+    const standardQualities = [2160, 1440, 1080, 720, 480, 360];
     const combinedQualities = [...new Set([...standardQualities, ...availableQualities])].sort((a, b) => b - a);
 
     const displayBadgeText = preferredQuality === "Auto" 

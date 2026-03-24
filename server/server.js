@@ -32,6 +32,7 @@ import userRoutes from "./routes/userRoutes.js";
 import portfolioRoutes from "./routes/portfolioRoutes.js";
 import exploreRoutes from "./routes/exploreRoutes.js";
 import oauthRoutes from "./routes/oauthRoutes.js";
+import { initSearchTrie } from "./controllers/reelController.js";
 import reelRoutes from "./routes/reelRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import gigRoutes from "./routes/gigRoutes.js";
@@ -430,6 +431,9 @@ const startServer = async () => {
 
   // Start scheduled jobs (auto-cancel expired orders, etc.)
   startScheduledJobs();
+
+  // Initialize Search TRIE (O(L) Autocomplete)
+  initSearchTrie();
 
   server.listen(PORT, () => {
     logger.info(`Server running on port ${PORT} in ${process.env.NODE_ENV || "development"} mode`);

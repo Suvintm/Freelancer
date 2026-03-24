@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 import { validateTimezone } from "../utils/timezoneValidator";
+import analyticsService from "../services/AnalyticsService";
 
 export const AppContext = createContext();
 
@@ -50,6 +51,10 @@ export const AppProvider = ({ children }) => {
             const updatedUser = { ...res.data.user, token: parsedUser.token };
             setUser(updatedUser);
             localStorage.setItem("user", JSON.stringify(updatedUser));
+            
+            // Initialize Analytics Batcher
+            analyticsService.init(backendURL, updatedUser.token);
+            
             fetchNotifications(); // Fetch notifications on load
           })
           .catch((err) => {
@@ -89,10 +94,13 @@ export const AppProvider = ({ children }) => {
       localStorage.setItem("user", JSON.stringify(user));
       if (user.token) {
         axios.defaults.headers.common["Authorization"] = `Bearer ${user.token}`;
+        // Ensure analytics is active
+        analyticsService.init(backendURL, user.token);
       }
     } else {
       localStorage.removeItem("user");
       delete axios.defaults.headers.common["Authorization"];
+      analyticsService.destroy();
     }
   }, [user]);
 
@@ -101,6 +109,7 @@ export const AppProvider = ({ children }) => {
     setUser(null);
     localStorage.removeItem("user");
     delete axios.defaults.headers.common["Authorization"];
+    analyticsService.destroy();
   };
 
   // ============ FIREBASE FCM INIT ============

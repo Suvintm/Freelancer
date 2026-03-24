@@ -124,30 +124,31 @@ const TabSwitcher = () => {
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#FAFAFA] dark:bg-[#09090B]">
-      <AnimatePresence mode="wait">
-        {tabs.map((tab) => {
-          const isMounted = mountedTabs.has(tab.id);
-          const isActive = activeTabId === tab.id;
+      {tabs.map((tab) => {
+        const isMounted = mountedTabs.has(tab.id);
+        const isActive = activeTabId === tab.id;
 
-          if (!isMounted || !isActive) return null;
+        if (!isMounted) return null;
 
-          return (
-            <motion.div
-              key={tab.id}
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.02 }}
-              transition={{ 
-                duration: 0.25, 
-                ease: [0.23, 1, 0.32, 1] 
-              }}
-              className="absolute inset-0 w-full h-full bg-[#FAFAFA] dark:bg-[#09090B] overflow-hidden z-10"
-            >
-              <tab.component isActive={isActive} />
-            </motion.div>
-          );
-        })}
-      </AnimatePresence>
+        return (
+          <motion.div
+            key={tab.id}
+            initial={{ opacity: 0 }}
+            animate={{ 
+              opacity: isActive ? 1 : 0,
+              pointerEvents: isActive ? "auto" : "none",
+              visibility: isActive ? "visible" : "hidden"
+            }}
+            transition={{ duration: 0.2 }}
+            className="absolute inset-0 w-full h-full bg-[#FAFAFA] dark:bg-[#09090B] overflow-hidden z-10"
+            style={{ 
+              display: isActive ? "block" : "none" // Force display none for non-active to save GPU
+            }}
+          >
+            <tab.component isActive={isActive} />
+          </motion.div>
+        );
+      })}
     </div>
   );
 };

@@ -16,8 +16,9 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { toast } from "react-toastify";
+import analyticsService from "../services/AnalyticsService";
 import logo from "../assets/logo.png";
-import { repairUrl } from "../utils/urlHelper.jsx";
+import { repairUrl, getPosterUrl } from "../utils/urlHelper.jsx";
 import FollowingAnimation from "./FollowingAnimation";
 import MusicVisualizer from "./MusicVisualizer";
 import LikerAvatars from "./LikerAvatars";
@@ -85,26 +86,28 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
         const duration = videoRef.current?.duration || 0;
         const pct = duration ? Math.round((videoRef.current.currentTime / duration) * 100) : 0;
 
-        // — Send watch completion signal (Instagram's #1 ranking signal) —
+        // — Batch watch completion signal (Product-Grade Efficiency) —
         if (elapsed >= 1) {
-            axios.post(
-                `${backendURL}/api/reels/${reel._id}/watch-time`,
-                { seconds: elapsed, watchPercent: pct },
-                { headers: { Authorization: `Bearer ${user.token}` } }
-            ).catch(() => {});
+            analyticsService.pushEvent({
+                reelId: reel._id,
+                seconds: elapsed,
+                watchPercent: pct,
+                type: 'watch'
+            });
         }
 
-        // — Send skip signal if user left in < 2 seconds (negative signal) —
+        // — Batch skip signal (negative signal) —
         if (elapsed < 2 && reel.mediaType === 'video') {
-            axios.post(
-                `${backendURL}/api/reels/${reel._id}/skip`,
-                {},
-                { headers: { Authorization: `Bearer ${user.token}` } }
-            ).catch(() => {});
+            analyticsService.pushEvent({
+                reelId: reel._id,
+                seconds: elapsed,
+                watchPercent: 0,
+                type: 'skip'
+            });
         }
 
         watchStartRef.current = null;
-    }, [user, reel._id, reel.mediaType, backendURL]);
+    }, [user, reel._id, reel.mediaType]);
 
     useEffect(() => {
         if (!videoRef.current || reel.mediaType !== "video") return;
@@ -187,7 +190,13 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
     const isOwnReel = user?._id === reel.editor?._id;
 
     return (
-        <div className="h-full aspect-[9/16] max-w-full bg-black relative flex items-center justify-center overflow-hidden mx-auto shadow-[0_0_100px_rgba(0,0,0,0.5)]">
+        <div 
+            className="h-full aspect-[9/16] max-w-full bg-black relative flex items-center justify-center overflow-hidden mx-auto shadow-[0_0_100px_rgba(0,0,0,0.5)]"
+            style={{ 
+                willChange: "transform, opacity", 
+                transform: "translateZ(0)" 
+            }}
+        >
             <div 
                 className="absolute inset-0 cursor-pointer" 
                 onClick={(e) => { e.stopPropagation(); setGlobalMuted(!globalMuted); }}
@@ -201,7 +210,7 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
                     <HlsVideoPlayer 
                         ref={videoRef} 
                         src={repairUrl(reel.mediaUrl)} 
-                        poster={repairUrl(reel.mediaUrl) ? repairUrl(reel.mediaUrl).replace(/\.[^./\\]+$/, ".jpg") : ""}
+                        poster={getPosterUrl(reel.mediaUrl)}
                         className="w-full h-full" 
                         objectFit="contain"
                         loop 
