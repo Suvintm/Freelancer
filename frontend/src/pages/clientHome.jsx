@@ -52,12 +52,14 @@ import reelIcon from "../assets/reelicon.png";
 import { useHomeStore } from "../store/homeStore";
 import useRefreshManager from "../hooks/useRefreshManager.js";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
+import { useSmoothScroll } from "../hooks/useSmoothScroll.js";
 
 const ClientHome = () => {
   const { user, backendURL } = useAppContext();
   const navigate = useNavigate();
   const exploreRef = useRef(null);
   const mainContainerRef = useRef(null);
+  useSmoothScroll(mainContainerRef);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const hasLoadedOnce = useRef(false);
@@ -186,16 +188,16 @@ const ClientHome = () => {
       style={{ fontFamily: "'Manrope', sans-serif" }}
     >
       <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-      
       <main 
         ref={mainContainerRef}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         className="flex-1 md:ml-64 md:mt-16 overflow-y-auto"
       >
-        <PullIndicator />
-        
-        {/* SuviX Hero Section - Two Column Grid */}
+        <div className="w-full min-h-max pb-24">
+          <PullIndicator />
+          
+          {/* SuviX Hero Section - Two Column Grid */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -279,8 +281,7 @@ const ClientHome = () => {
           )}
         </AnimatePresence>
 
-
-
+        </div>
       </main>
     </div>
   );

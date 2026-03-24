@@ -50,10 +50,13 @@ import LegalBanner from "../components/LegalBanner.jsx";
 import { useHomeStore } from "../store/homeStore";
 import useRefreshManager from "../hooks/useRefreshManager.js";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
+import { useSmoothScroll } from "../hooks/useSmoothScroll.js";
 
 const EditorHome = () => {
   const { user, backendURL, refreshUser } = useAppContext();
   const mainContainerRef = useRef(null);
+  useSmoothScroll(mainContainerRef);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const hasLoadedOnce = useRef(false);
   const [stats, setStats] = useState({ totalOrders: 0, activeGigs: 0 });
@@ -194,9 +197,10 @@ const EditorHome = () => {
         onTouchEnd={handleTouchEnd}
         className="flex-1 md:ml-64 md:mt-16 overflow-y-auto"
       >
-        <PullIndicator />
+        <div className="w-full min-h-max pb-24">
+          <PullIndicator />
 
-        {/* SuviX Hero Section - Two Column Grid */}
+          {/* SuviX Hero Section - Two Column Grid */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -287,17 +291,12 @@ const EditorHome = () => {
           )}
         </AnimatePresence>
 
-        {/* Floating Reels Button */}
-        {/* <motion.button
-          onClick={() => navigate("/reels")}
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          whileHover={{ scale: 1.1 }}
-          className="fixed bottom-6 right-6 z-[200] w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 border-2 border-[#0a0a0c] light:border-white"
-        >
-          <img src={reelIcon} alt="reels" className="w-5 h-5 object-contain" />
-        </motion.button> */}
+          {/* <motion.button
+            onClick={() => navigate("/reels")}
+            ...
+          </motion.button> */}
 
+        </div>
       </main>
 
       {/* KYC Form Modal */}

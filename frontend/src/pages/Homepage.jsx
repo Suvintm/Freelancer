@@ -3,6 +3,7 @@ import UnifiedBannerSlider from "../components/UnifiedBannerSlider";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthForm from "../components/AuthForm";
+import SmoothScroll from "../components/SmoothScroll.jsx";
 import { useAppContext } from "../context/AppContext";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import {
@@ -143,8 +144,9 @@ const Homepage = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-white overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
-      <Navbar />
+    <SmoothScroll root>
+      <div className="flex flex-col min-h-screen bg-white overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <Navbar />
 
       {/* HERO */}
       <section className="relative bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 pt-4 pb-16 lg:pt-12 lg:pb-20 overflow-hidden">
@@ -414,8 +416,9 @@ const Homepage = () => {
         </div>
       </footer>
 
-      {!user && showAuth && <AuthForm />}
-    </div>
+        {!user && showAuth && <AuthForm />}
+      </div>
+    </SmoothScroll>
   );
 };
 
