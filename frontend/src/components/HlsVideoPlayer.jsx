@@ -14,8 +14,8 @@ const getHlsUrl = (url) => {
   const baseUrl = url.substring(0, uploadIndex + 8);
   const remainingParams = url.substring(uploadIndex + 8);
 
-  // Insert sp_auto and change extension to .m3u8
-  let hlsUrl = `${baseUrl}sp_hd/${remainingParams}`; // Using sp_hd for better mobile profiles
+  // Insert sp_full_hd to generate up to 1080p streams (sp_hd limits to 720p)
+  let hlsUrl = `${baseUrl}sp_full_hd/${remainingParams}`; 
   hlsUrl = hlsUrl.replace(/\.(mp4|webm|mov|avi)$/i, '.m3u8');
 
   return hlsUrl;
