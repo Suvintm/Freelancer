@@ -70,12 +70,14 @@ import { startScheduledJobs } from "./jobs/scheduledJobs.js";
 import { initFirebaseAdmin } from "./utils/firebaseAdmin.js";
 initFirebaseAdmin();
 
-// Validate required environment variables
-const requiredEnvVars = ["MONGO_URI", "JWT_SECRET", "CLOUDINARY_CLOUD_NAME", "REDIS_URL", "REDIS_TOKEN"];
-const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
-if (missingEnvVars.length > 0) {
-  logger.error(`Missing required environment variables: ${missingEnvVars.join(", ")}`);
-  process.exit(1);
+// Validate required environment variables (Skip in test mode as services are mocked)
+if (process.env.NODE_ENV !== "test") {
+  const requiredEnvVars = ["MONGO_URI", "JWT_SECRET", "CLOUDINARY_CLOUD_NAME", "REDIS_URL", "REDIS_TOKEN"];
+  const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
+  if (missingEnvVars.length > 0) {
+    logger.error(`Missing required environment variables: ${missingEnvVars.join(", ")}`);
+    process.exit(1);
+  }
 }
 
 // Redis connectivity check (non-fatal — app still starts if Redis is slow)
