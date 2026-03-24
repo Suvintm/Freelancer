@@ -210,6 +210,7 @@ const ReelAdCard = ({ ad, onSkip, isActive=true, isPreloading=false, globalMuted
             loop
             isActive={isActive || isPreloading}
             autoPlay={isActive}
+            isPreloading={isPreloading && !isActive}
             onPlaying={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
             onQualityChange={setCurrentQuality}

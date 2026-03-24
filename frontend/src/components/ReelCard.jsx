@@ -207,6 +207,7 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
                         loop 
                         autoPlay={isActive}
                         isActive={isActive || isPreloading}
+                        isPreloading={isPreloading && !isActive} // Only strictly true if it's strictly preloading
                         muted={globalMuted}
                         onPlaying={() => {
                             setIsPlaying(true);

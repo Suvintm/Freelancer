@@ -35,6 +35,7 @@ const HlsVideoPlayer = React.forwardRef(({
   onQualityChange,
   onAvailableQualities,
   preferredQuality = "Auto",
+  isPreloading = false,
   objectFit = "cover"
 }, ref) => {
   const internalRef = useRef(null);
@@ -54,9 +55,14 @@ const HlsVideoPlayer = React.forwardRef(({
     // 1. Initialize HLS.js for supported browsers (Chrome, Firefox, Windows Edge)
     if (isHlsUrl && Hls.isSupported()) {
       const hls = new Hls({
-        startLevel: -1, // Auto start based on bandwidth
-        capLevelToPlayerSize: true, // Don't download 4K for a 300px phone
-        maxBufferLength: 30, // 30 seconds max buffer
+        startLevel: -1, 
+        capLevelToPlayerSize: true, 
+        // INSTAGRAM-STYLE PRELOADING PROFILES
+        // If it's just adjacent (preloading), ONLY download the first 2 seconds to make it ready for instant playback.
+        // If it's the active reel being watched, buffer a full 15 seconds ahead.
+        maxBufferLength: isPreloading ? 2 : 15, 
+        maxMaxBufferLength: isPreloading ? 3 : 30,
+        maxBufferSize: isPreloading ? 2 * 1000 * 1000 : 20 * 1000 * 1000, // 2MB preload limit vs 20MB active limit
       });
 
       hlsRef.current = hls;
