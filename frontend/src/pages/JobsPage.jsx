@@ -34,6 +34,7 @@ import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
 import useRefreshManager from "../hooks/useRefreshManager.js";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 import CategoryBanner from "../components/CategoryBanner.jsx";
+import { useSmoothScroll } from "../hooks/useSmoothScroll.js";
 
 // Categories for pills
 const CATEGORY_PILLS = [
@@ -212,6 +213,8 @@ const JobsPage = () => {
     scrollContainerRef
   );
 
+  useSmoothScroll(scrollContainerRef);
+
   const loading = jobsLoading;
 
   const getDaysAgo = (date) => {
@@ -256,8 +259,9 @@ const JobsPage = () => {
         ref={scrollContainerRef}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className="flex-1 md:ml-64 md:mt-16 overflow-y-auto"
+        className="flex-1 md:ml-64 md:mt-16 overflow-y-auto px-4 lg:px-8"
       >
+        <div className="w-full min-h-max pb-24">
         <PullIndicator />
         
         {/* Header with Post Job button */}
@@ -564,6 +568,7 @@ const JobsPage = () => {
             </AnimatePresence>
           </div>
         )}
+        </div>
       </main>
     </div>
   );

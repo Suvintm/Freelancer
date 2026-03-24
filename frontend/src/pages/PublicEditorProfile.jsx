@@ -21,6 +21,7 @@ import SuvixScoreBadge from "../components/SuvixScoreBadge.jsx";
 import KYCRequiredModal from "../components/KYCRequiredModal.jsx";
 import SoftwareExpertise from "../components/SoftwareExpertise.jsx";
 import FollowListModal from "../components/FollowListModal.jsx";
+import SmoothScroll from "../components/SmoothScroll.jsx";
 
 import _premiereIcon from "../assets/preimerepro.png";
 import _aeIcon from "../assets/adobeexpress.png";
@@ -390,8 +391,9 @@ const PublicEditorProfile = () => {
   const strokeDasharray = circumference + 2; // Slight overlap to ensure a solid circle
 
   return (
-    <div className="min-h-screen bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
-      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+    <SmoothScroll root>
+      <div className="min-h-screen bg-black light:bg-slate-50 text-white light:text-slate-900 transition-colors duration-200">
+        <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <main className="md:ml-64 pt-4 md:pt-14 px-3 md:px-6 pb-10">
         <div className="max-w-5xl mx-auto">
@@ -1220,7 +1222,8 @@ const PublicEditorProfile = () => {
         userId={userData?._id}
         type={followModal.type}
       />
-    </div>
+      </div>
+    </SmoothScroll>
   );
   
 };

@@ -38,6 +38,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
+import SmoothScroll from "../components/SmoothScroll.jsx";
 
 // Status configuration with gradient colors
 const STATUS_CONFIG = {
@@ -686,15 +687,16 @@ const MyOrders = () => {
 
 
   return (
-    <div 
-      className={`min-h-screen flex flex-col md:flex-row ${
-        isDark ? "bg-[#09090B] text-white" : "bg-slate-50 text-slate-900"
-      }`}
-      style={{ fontFamily: "'Manrope', sans-serif" }}
-    >
-      <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-
-      <main className="flex-1 px-4 py-4 pt-[72px] md:pt-6 md:ml-64 md:mt-20 pb-24 md:px-6">
+    <SmoothScroll root>
+      <div 
+        className={`min-h-screen flex flex-col md:flex-row ${
+          isDark ? "bg-[#09090B] text-white" : "bg-slate-50 text-slate-900"
+        }`}
+        style={{ fontFamily: "'Manrope', sans-serif" }}
+      >
+        <UnifiedNavigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+  
+        <main className="flex-1 px-4 py-4 pt-[72px] md:pt-6 md:ml-64 md:mt-20 pb-24 md:px-6">
         {/* Header */}
         <div className="flex items-center gap-3 mb-4">
           <motion.button
@@ -906,7 +908,8 @@ const MyOrders = () => {
           </div>
         )}
       </main>
-    </div>
+      </div>
+    </SmoothScroll>
   );
 };
 

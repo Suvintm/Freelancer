@@ -39,9 +39,9 @@ import { useAppContext } from "../context/AppContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import UnifiedNavigation from "../components/UnifiedNavigation.jsx";
-import PortfolioSection from "../components/PortfolioSection.jsx";
- import useRefreshManager from "../hooks/useRefreshManager.js";
+import useRefreshManager from "../hooks/useRefreshManager.js";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
+import { useSmoothScroll } from "../hooks/useSmoothScroll.js";
 
 const ClientProfile = () => {
   const navigate = useNavigate();
@@ -140,6 +140,8 @@ const ClientProfile = () => {
     scrollContainerRef
   );
 
+  useSmoothScroll(scrollContainerRef);
+
   // Removed handleFetchUsers as modal is removed
   // const handleFetchUsers = async (type) => {
   //   try {
@@ -219,8 +221,9 @@ const ClientProfile = () => {
         onTouchEnd={handleTouchEnd}
         className="flex-1 md:ml-64 md:mt-16 overflow-y-auto"
       >
-        <PullIndicator />
-        <div className="max-w-5xl mx-auto">
+        <div className="w-full min-h-max pb-24">
+          <PullIndicator />
+          <div className="max-w-5xl mx-auto">
           
           {/* ==================== PROFILE HEADER (HYPER-COMPACT) ==================== */}
           <motion.div
@@ -518,6 +521,7 @@ const ClientProfile = () => {
               </motion.div>
             )}
           </AnimatePresence>
+        </div>
         </div>
       </main>
 

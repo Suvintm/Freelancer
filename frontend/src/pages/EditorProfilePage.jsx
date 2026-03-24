@@ -54,6 +54,7 @@ import useRefreshManager from "../hooks/useRefreshManager.js";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 import ProfileChecklist from "../components/ProfileChecklist.jsx";
 import FollowListModal from "../components/FollowListModal.jsx";
+import { useSmoothScroll } from "../hooks/useSmoothScroll.js";
 
 import _premiereIcon from "../assets/preimerepro.png";
 import _aeIcon from "../assets/adobeexpress.png";
@@ -229,6 +230,8 @@ const EditorProfile = () => {
         scrollContainerRef
     );
 
+    useSmoothScroll(scrollContainerRef);
+
 
   if (isLoading && !hasLoadedOnce.current) {
     return (
@@ -323,8 +326,9 @@ const EditorProfile = () => {
         onTouchEnd={handleTouchEnd}
         className="flex-1 md:ml-64 md:mt-16 overflow-y-auto"
       >
-        <PullIndicator />
-        <div className="max-w-5xl mx-auto">
+        <div className="w-full min-h-max pb-24">
+          <PullIndicator />
+          <div className="max-w-5xl mx-auto">
           
           {/* ==================== SUBSCRIPTION STATUS BADGE ==================== */}
           {hasInsightsSub && daysRemaining > 0 && (
@@ -833,6 +837,7 @@ const EditorProfile = () => {
               </motion.div>
             )}
           </AnimatePresence>
+        </div>
         </div>
       </main>
 
