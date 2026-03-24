@@ -33,6 +33,8 @@ const HlsVideoPlayer = React.forwardRef(({
   onPause,
   onEnded,
   onQualityChange,
+  onAvailableQualities,
+  preferredQuality = "Auto",
   objectFit = "cover"
 }, ref) => {
   const internalRef = useRef(null);
@@ -64,6 +66,12 @@ const HlsVideoPlayer = React.forwardRef(({
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         setIsReady(true);
         if (onQualityChange) onQualityChange("Auto"); // Initial state
+
+        // Expose all available resolutions
+        const heights = hls.levels.map(l => l.height).filter(Boolean);
+        const uniqueHeights = [...new Set(heights)].sort((a,b) => b - a);
+        if (onAvailableQualities) onAvailableQualities(uniqueHeights);
+
         if (autoPlay && isActive) {
           video.play().catch(e => console.warn("HLS play blocked:", e));
         }
@@ -113,6 +121,48 @@ const HlsVideoPlayer = React.forwardRef(({
       video.pause();
     }
   }, [isActive, autoPlay, isReady]);
+
+  // Handle dynamic quality (level) switching requested by the user
+  useEffect(() => {
+    if (!hlsRef.current || !isReady) return;
+    const hls = hlsRef.current;
+
+    if (preferredQuality === "Auto") {
+      hls.currentLevel = -1; // -1 means auto (adaptive)
+    } else {
+      const targetHeight = parseInt(preferredQuality, 10);
+      if (isNaN(targetHeight)) return;
+
+      let bestMatchIndex = -1;
+      let minDiff = Infinity;
+
+      // Find the highest available resolution that is <= the requested quality
+      hls.levels.forEach((level, index) => {
+        if (level.height && level.height <= targetHeight) {
+          const diff = targetHeight - level.height;
+          if (diff < minDiff) {
+            minDiff = diff;
+            bestMatchIndex = index;
+          }
+        }
+      });
+
+      // If user requested 720p but only 1080p is available, fallback to the lowest available quality to prevent buffering
+      if (bestMatchIndex === -1 && hls.levels.length > 0) {
+        let lowestIndex = 0;
+        let minHeight = Infinity;
+        hls.levels.forEach((l, i) => {
+          if (l.height && l.height < minHeight) {
+            minHeight = l.height;
+            lowestIndex = i;
+          }
+        });
+        bestMatchIndex = lowestIndex;
+      }
+
+      hls.currentLevel = bestMatchIndex !== -1 ? bestMatchIndex : -1;
+    }
+  }, [preferredQuality, isReady]);
 
   return (
     <div className={`relative w-full h-full bg-black overflow-hidden ${className}`}>

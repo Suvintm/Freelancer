@@ -22,6 +22,8 @@ import FollowingAnimation from "./FollowingAnimation";
 import MusicVisualizer from "./MusicVisualizer";
 import LikerAvatars from "./LikerAvatars";
 import HlsVideoPlayer from "./HlsVideoPlayer";
+import VideoQualitySelector from "./VideoQualitySelector";
+import { useVideoQuality } from "../hooks/useVideoQuality";
 
 /**
  * ReelCard — Minimalist Professional UI.
@@ -41,6 +43,10 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
     const [showMuteIcon, setShowMuteIcon] = useState(false);
     const [showFollowAnimation, setShowFollowAnimation] = useState(false);
     const [currentQuality, setCurrentQuality] = useState("");
+    const [availableQualities, setAvailableQualities] = useState([]);
+    
+    // Global Quality Hook
+    const [preferredQuality, setPreferredQuality] = useVideoQuality();
 
     // Sync local state with props when reel changes
     useEffect(() => {
@@ -202,6 +208,8 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
                         }}
                         onPause={() => setIsPlaying(false)}
                         onQualityChange={setCurrentQuality}
+                        onAvailableQualities={setAvailableQualities}
+                        preferredQuality={preferredQuality}
                     />
                 ) : (
                     <img 
@@ -231,11 +239,16 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
                 )}
             </AnimatePresence>
 
-            {/* Video Quality Badge (Top Right, below global Refresh btn) */}
-            {currentQuality && (
-                <div className="absolute top-[60px] right-5 z-50 text-[9px] font-bold text-white/90 border border-white/40 rounded px-1.5 py-0.5 tracking-widest drop-shadow-md pointer-events-none uppercase">
-                    {currentQuality}
-                </div>
+            {/* Interactive Video Quality Menu */}
+            {reel.mediaType === "video" && (
+                <VideoQualitySelector 
+                    currentQuality={currentQuality}
+                    availableQualities={availableQualities}
+                    preferredQuality={preferredQuality}
+                    setPreferredQuality={setPreferredQuality}
+                    onMenuOpen={() => { if (videoRef.current) videoRef.current.pause(); }}
+                    onMenuClose={() => { if (videoRef.current) videoRef.current.play(); }}
+                />
             )}
             </div>
 
