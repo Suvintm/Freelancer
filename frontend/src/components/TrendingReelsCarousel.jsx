@@ -1,6 +1,144 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { repairUrl } from "../utils/urlHelper.jsx";
+
+// ─── Carousel Item (Extracted for auto-play logic) ────────────────────────
+const CarouselItem = memo(({ reel, angle, renderAngle, radius, cardW, cardH, theta, navigate, velocityRef }) => {
+  const videoRef = useRef(null);
+  const cardAngle = ((angle - renderAngle) % 360 + 360) % 360;
+  const signed = cardAngle > 180 ? cardAngle - 360 : cardAngle;
+  const frontness = 1 - Math.abs(signed) / 180; // 0=back → 1=front
+
+  const scale      = 0.72 + frontness * 0.32;
+  const brightness = 0.38 + frontness * 0.72;
+
+  const mediaUrl = repairUrl(reel.mediaUrl);
+  const thumb = mediaUrl?.replace(/\.mp4(\?.*)?$/i, ".jpg") || mediaUrl;
+
+  // Auto-play / Pause logic
+  useEffect(() => {
+    if (!videoRef.current || reel.mediaType !== "video") return;
+    
+    // Play when in front, pause otherwise
+    // Threshold: frontness > 0.7 (roughly 50 degrees from center)
+    if (frontness > 0.7) {
+      if (videoRef.current.paused) {
+        videoRef.current.play().catch(() => {});
+      }
+    } else {
+      if (!videoRef.current.paused) {
+        videoRef.current.pause();
+      }
+    }
+  }, [frontness, reel.mediaType]);
+
+  return (
+    <div
+      onClick={() => { 
+        if (Math.abs(velocityRef.current) < 0.5) {
+          navigate(`/reels?id=${reel._id}`); 
+        }
+      }}
+      style={{
+        position: "absolute", width: cardW, height: cardH, left: 0, top: 0,
+        transformStyle: "preserve-3d",
+        transform: `rotateY(${angle}deg) translateZ(${radius}px)`,
+        cursor: "pointer",
+      }}
+    >
+      <div style={{
+        width: "100%", height: "100%",
+        borderRadius: 14, overflow: "hidden",
+        border: `1.5px solid rgba(255,255,255,${0.05 + frontness * 0.20})`,
+        boxShadow: frontness > 0.65
+          ? "0 12px 40px rgba(0,0,0,0.6), 0 0 28px rgba(160,80,255,0.22)"
+          : "0 6px 20px rgba(0,0,0,0.5)",
+        transform: `scale(${scale})`,
+        filter: `brightness(${brightness})`,
+        background: "#0d0d18",
+        position: "relative",
+      }}>
+        {reel.mediaType === "video" ? (
+          <video
+            ref={videoRef}
+            src={mediaUrl}
+            poster={thumb}
+            muted
+            loop
+            playsInline
+            crossOrigin="anonymous"
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", pointerEvents: "none" }}
+          />
+        ) : thumb ? (
+          <img src={thumb} alt={reel.title || ""} draggable={false}
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", pointerEvents: "none" }} />
+        ) : (
+          <div style={{ width: "100%", height: "100%", background: "linear-gradient(160deg,#1a0a38 0%,#0a1548 100%)" }} />
+        )}
+
+        {/* Bottom info */}
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "22px 7px 7px",
+          background: "linear-gradient(to top,rgba(0,0,0,0.88) 0%,transparent 100%)" }}>
+          {(reel.viewsCount || 0) > 0 && (
+            <p style={{ fontSize: 8, fontWeight: 800, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 2px", lineHeight: 1 }}>
+              ▶ {reel.viewsCount}
+            </p>
+          )}
+          {reel.title && (
+            <p style={{ fontSize: 9.5, fontWeight: 400, color: "#ffffffad", margin: 0, lineHeight: 1.25,
+              display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+              {reel.title}
+            </p>
+          )}
+        </div>
+
+        {/* Shine on front card */}
+        {frontness > 0.72 && (
+          <div style={{ position: "absolute", inset: 0,
+            background: "linear-gradient(135deg,rgba(255,255,255,0.09) 0%,transparent 55%)",
+            pointerEvents: "none" }} />
+        )}
+
+        {/* Pulsing Highlight Ring for front card */}
+        {frontness > 0.88 && (
+          <div style={{
+            position: "absolute", inset: -2,
+            borderRadius: 16,
+            border: "2px solid rgba(255,255,255,0.4)",
+            boxShadow: "0 0 15px rgba(255,255,255,0.3)",
+            animation: "cardRingPulse 2s infinite ease-in-out",
+            pointerEvents: "none"
+          }} />
+        )}
+      </div>
+
+      {/* ── Floating Profile popup (identity) ── */}
+      <div style={{
+        position: "absolute",
+        top: -24, left: "50%",
+        transform: "translateX(-50%)",
+        display: "flex", alignItems: "center", gap: 5,
+        opacity: Math.max(0, (frontness - 0.78) * 4.5), 
+        scale: 0.8 + Math.min(0.2, (frontness - 0.78) * 1.5),
+        pointerEvents: "none",
+        transition: "opacity 0.2s ease-out, scale 0.2s ease-out",
+        padding: "4px 0",
+        background: "transparent"
+      }}>
+        <div className="w-4 h-4 rounded-full overflow-hidden border border-white/20 shrink-0 shadow-[0_2px_10px_rgba(0,0,0,0.5)]">
+          <img 
+            src={repairUrl(reel.editor?.profilePicture) || ` `} 
+            className="w-full h-full object-cover"
+            alt=""
+          />
+        </div>
+        <span className="text-[8px]  text-white lowercase tracking-[0.14em] whitespace-nowrap drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+          {reel.editor?.name || ""}
+        </span>
+      </div>
+    </div>
+  );
+});
 
 const TrendingReelsCarousel = ({ reels = [], isSwiping = false }) => {
   const navigate = useNavigate();
@@ -186,114 +324,20 @@ const TrendingReelsCarousel = ({ reels = [], isSwiping = false }) => {
           transformStyle: "preserve-3d",
           transform: `rotateY(${-renderAngle}deg)`,
         }}>
-          {trendingReels.map((reel, i) => {
-            const angle = theta * i;
-            const cardAngle = ((angle - renderAngle) % 360 + 360) % 360;
-            const signed = cardAngle > 180 ? cardAngle - 360 : cardAngle;
-            const frontness = 1 - Math.abs(signed) / 180; // 0=back → 1=front
-            const scale      = 0.72 + frontness * 0.32;
-            const brightness = 0.38 + frontness * 0.72;
-
-            const thumb = repairUrl(reel.mediaUrl)?.replace(/\.mp4(\?.*)?$/i, ".jpg") || repairUrl(reel.mediaUrl);
-
-            return (
-              <div
-                key={reel._dupId || reel._id}
-                onClick={() => { 
-                  if (Math.abs(velocityRef.current) < 0.5) {
-                    navigate(`/reels?id=${reel._id}`); 
-                  }
-                }}
-                style={{
-                  position: "absolute", width: cardW, height: cardH, left: 0, top: 0,
-                  transformStyle: "preserve-3d",
-                  transform: `rotateY(${angle}deg) translateZ(${radius}px)`,
-                  cursor: "pointer",
-                }}
-              >
-                <div style={{
-                  width: "100%", height: "100%",
-                  borderRadius: 14, overflow: "hidden",
-                  border: `1.5px solid rgba(255,255,255,${0.05 + frontness * 0.20})`,
-                  boxShadow: frontness > 0.65
-                    ? "0 12px 40px rgba(0,0,0,0.6), 0 0 28px rgba(160,80,255,0.22)"
-                    : "0 6px 20px rgba(0,0,0,0.5)",
-                  transform: `scale(${scale})`,
-                  filter: `brightness(${brightness})`,
-                  background: "#0d0d18",
-                  position: "relative",
-                }}>
-                  {thumb ? (
-                    <img src={thumb} alt={reel.title || ""} draggable={false}
-                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", pointerEvents: "none" }} />
-                  ) : (
-                    <div style={{ width: "100%", height: "100%", background: "linear-gradient(160deg,#1a0a38 0%,#0a1548 100%)" }} />
-                  )}
-
-                  {/* Bottom info */}
-                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "22px 7px 7px",
-                    background: "linear-gradient(to top,rgba(0,0,0,0.88) 0%,transparent 100%)" }}>
-                    {(reel.viewsCount || 0) > 0 && (
-                      <p style={{ fontSize: 8, fontWeight: 800, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 2px", lineHeight: 1 }}>
-                        ▶ {reel.viewsCount}
-                      </p>
-                    )}
-                    {reel.title && (
-                      <p style={{ fontSize: 9.5, fontWeight: 400, color: "#ffffffad", margin: 0, lineHeight: 1.25,
-                        display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                        {reel.title}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Shine on front card */}
-                  {frontness > 0.72 && (
-                    <div style={{ position: "absolute", inset: 0,
-                      background: "linear-gradient(135deg,rgba(255,255,255,0.09) 0%,transparent 55%)",
-                      pointerEvents: "none" }} />
-                  )}
-
-                  {/* Pulsing Highlight Ring for front card */}
-                  {frontness > 0.88 && (
-                    <div style={{
-                      position: "absolute", inset: -2,
-                      borderRadius: 16,
-                      border: "2px solid rgba(255,255,255,0.4)",
-                      boxShadow: "0 0 15px rgba(255,255,255,0.3)",
-                      animation: "cardRingPulse 2s infinite ease-in-out",
-                      pointerEvents: "none"
-                    }} />
-                  )}
-                </div>
-
-                {/* ── Floating Profile popup (identity) ── */}
-                <div style={{
-                  position: "absolute",
-                  top: -24, left: "50%",
-                  transform: "translateX(-50%)",
-                  display: "flex", alignItems: "center", gap: 5,
-                  // Smooth popup/popout based on frontness
-                  opacity: Math.max(0, (frontness - 0.78) * 4.5), 
-                  scale: 0.8 + Math.min(0.2, (frontness - 0.78) * 1.5),
-                  pointerEvents: "none",
-                  transition: "opacity 0.2s ease-out, scale 0.2s ease-out",
-                  padding: "4px 0",
-                  background: "transparent" // Removed background
-                }}>
-                  <div className="w-4 h-4 rounded-full overflow-hidden border border-white/20 shrink-0 shadow-[0_2px_10px_rgba(0,0,0,0.5)]">
-                    <img 
-                      src={repairUrl(reel.editor?.profilePicture) || ` `} 
-                      className="w-full h-full object-cover"
-                      alt=""
-                    />
-                  </div>
-                  <span className="text-[8px]  text-white lowercase tracking-[0.14em] whitespace-nowrap drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                    {reel.editor?.name || ""}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+          {trendingReels.map((reel, i) => (
+            <CarouselItem
+              key={reel._dupId || reel._id}
+              reel={reel}
+              angle={theta * i}
+              renderAngle={renderAngle}
+              radius={radius}
+              cardW={cardW}
+              cardH={cardH}
+              theta={theta}
+              navigate={navigate}
+              velocityRef={velocityRef}
+            />
+          ))}
         </div>
       </div>
 
