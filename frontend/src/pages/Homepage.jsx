@@ -150,8 +150,8 @@ const Homepage = () => {
 
       {/* HERO */}
       <section className="relative bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 pt-4 pb-16 lg:pt-12 lg:pb-20 overflow-hidden">
-        <div className="absolute top-20 -right-20 w-[500px] h-[500px] bg-emerald-100/50 rounded-full blur-3xl pointer-events-none" style={{ transform: "translateZ(0)", willChange: "transform" }} />
-        <div className="absolute bottom-0 -left-20 w-[400px] h-[400px] bg-blue-100/30 rounded-full blur-3xl pointer-events-none" style={{ transform: "translateZ(0)", willChange: "transform" }} />
+        <div className="absolute top-20 -right-20 w-[500px] h-[500px] bg-emerald-100/50 rounded-full blur-2xl sm:blur-3xl pointer-events-none" style={{ transform: "translateZ(0)", willChange: "transform" }} />
+        <div className="absolute bottom-0 -left-20 w-[400px] h-[400px] bg-blue-100/30 rounded-full blur-2xl sm:blur-3xl pointer-events-none" style={{ transform: "translateZ(0)", willChange: "transform" }} />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
@@ -196,7 +196,7 @@ const Homepage = () => {
 
               {user && (
                 <div className="bg-white/40 backdrop-blur-xl border border-white/40 rounded-[2rem] p-8 shadow-2xl relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl -z-10" style={{ transform: "translateZ(0)", willChange: "transform" }} />
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl sm:blur-3xl -z-10" style={{ transform: "translateZ(0)", willChange: "transform" }} />
                   <p className="text-xl font-bold text-slate-800 mb-6 leading-tight">
                     Continue where you left off. Your workspace, messages, and earnings are ready.
                   </p>
@@ -382,8 +382,8 @@ const Homepage = () => {
 
       {/* CTA */}
       <section className="py-16 bg-gradient-to-r from-emerald-500 to-teal-500 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" style={{ transform: "translateZ(0)", willChange: "transform" }} />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" style={{ transform: "translateZ(0)", willChange: "transform" }} />
+        <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-2xl sm:blur-3xl -translate-x-1/2 -translate-y-1/2" style={{ transform: "translateZ(0)", willChange: "transform" }} />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-2xl sm:blur-3xl translate-x-1/2 translate-y-1/2" style={{ transform: "translateZ(0)", willChange: "transform" }} />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
             <h2 className="text-2xl sm:text-4xl font-bold text-white mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Ready to Transform Your Video Projects?</h2>

@@ -7,10 +7,12 @@ const SmoothScroll = forwardRef(({ children, className = "", root = false }, ref
       ref={ref}
       root={root}
       options={{
-        lerp: 0.08,             // Super smooth momentum interpolation
+        lerp: 0.1,              // super smooth damping
         duration: 1.2,          // Length of scroll animation
+        smoothWheel: true,
         syncTouch: true,        // Sync with touch device momentum
-        smoothTouch: false,     // Native mobile scroll is usually better
+        smoothTouch: true,      // ENABLED: provides momentum on mobile
+        touchMultiplier: 1.8,   // Tune for "premium" feel (not too fast/slow)
       }}
       className={root ? className : `h-full w-full overflow-y-auto overflow-x-hidden ${className}`}
     >

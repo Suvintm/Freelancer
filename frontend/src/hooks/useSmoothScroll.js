@@ -19,7 +19,8 @@ export function useSmoothScroll(wrapperRef) {
       duration: 1.2,
       smoothWheel: true,
       syncTouch: true,
-      smoothTouch: false,
+      smoothTouch: true,
+      touchMultiplier: 1.8,
     });
 
     let rafId;
