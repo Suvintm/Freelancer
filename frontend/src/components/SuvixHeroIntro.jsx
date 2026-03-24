@@ -28,7 +28,7 @@ const ToastCard = ({ icon, title, sub, accentColor, delay, style }) => (
     animate={{ opacity: 1, scale: 1, y: 0 }}
     transition={{ delay, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
     className="absolute flex items-center gap-3 px-3.5 py-2.5 rounded-2xl z-30 pointer-events-none select-none bg-[#0E0E14]/88 light:bg-white/95 backdrop-blur-2xl border border-white/10 light:border-zinc-200 shadow-2xl shadow-black/50 light:shadow-zinc-200/50 min-w-[196px]"
-    style={{ ...style }}
+    style={{ ...style, transform: "translateZ(0)", willChange: "transform, opacity" }}
   >
     {/* Icon bubble */}
     <div
@@ -120,8 +120,8 @@ const SuvixHeroIntro = ({ userType = "editor", userName = "" }) => {
   return (
     <div className="hidden lg:flex flex-col h-full relative overflow-visible">
       {/* BACKGROUND ACCENTS ONLY (No main card bg as requested) */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 light:bg-indigo-500/5 blur-[60px] rounded-full" />
-      <div className="absolute bottom-0 left-0 w-40 h-40 bg-purple-500/10 light:bg-purple-500/5 blur-[80px] rounded-full" />
+      <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 light:bg-indigo-500/5 blur-[60px] rounded-full" style={{ transform: "translateZ(0)", willChange: "transform" }} />
+      <div className="absolute bottom-0 left-0 w-40 h-40 bg-purple-500/10 light:bg-purple-500/5 blur-[80px] rounded-full" style={{ transform: "translateZ(0)", willChange: "transform" }} />
 
       {/* Floating toast cards - adjusted positioning to look better in the grid */}
       {c.toasts.map((t) => (

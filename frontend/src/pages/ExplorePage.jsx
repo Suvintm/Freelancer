@@ -245,7 +245,7 @@ const ExplorePage = () => {
         {/* ── Tab Bar ───────────────────────────────────────────────────── */}
         <motion.div 
           className="flex-shrink-0 sticky top-0 z-[100] backdrop-blur-xl border-b border-white/[0.05]"
-          style={{ backgroundColor: tabBarBg }}
+          style={{ backgroundColor: tabBarBg, transform: "translateZ(0)", willChange: "transform, background-color" }}
         >
           <div className="max-w-5xl mx-auto px-4 py-2.5 flex justify-center">
             <div

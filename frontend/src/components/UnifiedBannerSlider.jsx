@@ -170,14 +170,14 @@ const hudItem = {
 // ─── Loading Skeleton ────────────────────────────────────────────────────────
 const BannerSkeleton = () => (
     <div className="relative w-full max-w-[1250px] mx-auto rounded-[2rem] overflow-hidden bg-zinc-900 border border-white/5 aspect-[16/10] lg:aspect-[1.8/1]">
-        <div className="absolute inset-0" style={{ background: "linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.035) 50%,transparent 60%)", backgroundSize: "200% 100%", animation: "ubShimmer 1.8s infinite" }} />
-        <div className="absolute bottom-0 inset-x-0 p-6 space-y-3">
-            <div className="h-2.5 w-14 bg-white/8 rounded-full animate-pulse" />
-            <div className="h-6 w-48 bg-white/10 rounded-lg animate-pulse" />
-            <div className="h-3.5 w-64 bg-white/6 rounded-lg animate-pulse" />
-            <div className="h-8 w-28 bg-white/10 rounded-xl animate-pulse mt-2" />
+        <div className="absolute inset-0 -translate-x-full" style={{ background: "linear-gradient(105deg,transparent 30%,rgba(255,255,255,0.04) 50%,transparent 70%)", animation: "ubShimmer 1.8s infinite linear", willChange: "transform" }} />
+        <div className="absolute bottom-0 inset-x-0 p-6 space-y-3 pointer-events-none">
+            <div className="h-2.5 w-14 bg-white/8 rounded-full" />
+            <div className="h-6 w-48 bg-white/10 rounded-lg" />
+            <div className="h-3.5 w-64 bg-white/6 rounded-lg" />
+            <div className="h-8 w-28 bg-white/10 rounded-xl mt-2" />
         </div>
-        <style>{`@keyframes ubShimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}`}</style>
+        <style>{`@keyframes ubShimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}`}</style>
     </div>
 );
 
@@ -503,7 +503,7 @@ const UnifiedBannerSlider = ({ filter = null, pageName = "home" }) => {
                     {/* ── PROGRESS BAR ─────────────────────────────────────────── */}
                     {lc.showProgressBar && (
                         <div className="absolute bottom-0 inset-x-0 h-[2px] z-50 bg-white/8">
-                            <motion.div className="h-full bg-white/60" style={{ width: `${progress}%` }} transition={{ ease: "linear" }} />
+                            <motion.div className="h-full bg-white/60 origin-left" style={{ transform: `scaleX(${progress / 100})`, willChange: "transform" }} transition={{ ease: "linear" }} />
                         </div>
                     )}
 
@@ -646,7 +646,7 @@ const UnifiedBannerSlider = ({ filter = null, pageName = "home" }) => {
                 </div>
             )}
 
-            <style>{`@keyframes ubShimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}`}</style>
+            <style>{`@keyframes ubShimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}`}</style>
             
             {/* ── HIDDEN PRELOADER ─────────────────────────────────────── */}
             <div className="hidden" aria-hidden="true">

@@ -145,13 +145,13 @@ const Homepage = () => {
 
   return (
     <SmoothScroll root>
-      <div className="flex flex-col min-h-screen bg-white overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <div className="flex flex-col min-h-screen bg-white" style={{ fontFamily: "'Inter', sans-serif" }}>
         <Navbar />
 
       {/* HERO */}
       <section className="relative bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 pt-4 pb-16 lg:pt-12 lg:pb-20 overflow-hidden">
-        <div className="absolute top-20 right-0 w-[500px] h-[500px] bg-emerald-100/50 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-100/30 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-20 -right-20 w-[500px] h-[500px] bg-emerald-100/50 rounded-full blur-3xl pointer-events-none" style={{ transform: "translateZ(0)", willChange: "transform" }} />
+        <div className="absolute bottom-0 -left-20 w-[400px] h-[400px] bg-blue-100/30 rounded-full blur-3xl pointer-events-none" style={{ transform: "translateZ(0)", willChange: "transform" }} />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
@@ -196,7 +196,7 @@ const Homepage = () => {
 
               {user && (
                 <div className="bg-white/40 backdrop-blur-xl border border-white/40 rounded-[2rem] p-8 shadow-2xl relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl -z-10" />
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl -z-10" style={{ transform: "translateZ(0)", willChange: "transform" }} />
                   <p className="text-xl font-bold text-slate-800 mb-6 leading-tight">
                     Continue where you left off. Your workspace, messages, and earnings are ready.
                   </p>
@@ -228,11 +228,11 @@ const Homepage = () => {
               <div className="relative rounded-[2.5rem] overflow-hidden shadow-2xl border border-slate-200/50">
                 <UnifiedBannerSlider />
               </div>
-              <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 3, repeat: Infinity }} className="absolute -top-4 -right-4 bg-white rounded-2xl shadow-xl p-4 border border-slate-100 hidden lg:flex items-center gap-3">
+              <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 3, repeat: Infinity }} style={{ willChange: "transform" }} className="absolute -top-4 -right-4 bg-white rounded-2xl shadow-xl p-4 border border-slate-100 hidden lg:flex items-center gap-3">
                 <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center"><FaCheckCircle className="text-emerald-500" /></div>
                 <div><p className="text-sm font-semibold text-slate-900">Project Delivered!</p><p className="text-xs text-slate-500">Wedding Film · Just now</p></div>
               </motion.div>
-              <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 4, repeat: Infinity }} className="absolute -bottom-4 -left-4 bg-white rounded-2xl shadow-xl p-4 border border-slate-100 hidden lg:flex items-center gap-3">
+              <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 4, repeat: Infinity }} style={{ willChange: "transform" }} className="absolute -bottom-4 -left-4 bg-white rounded-2xl shadow-xl p-4 border border-slate-100 hidden lg:flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center"><FaCreditCard className="text-blue-500" /></div>
                 <div><p className="text-sm font-semibold text-slate-900">₹12,500 Received</p><p className="text-xs text-slate-500">Payment · 2 min ago</p></div>
               </motion.div>
@@ -382,8 +382,8 @@ const Homepage = () => {
 
       {/* CTA */}
       <section className="py-16 bg-gradient-to-r from-emerald-500 to-teal-500 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
+        <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" style={{ transform: "translateZ(0)", willChange: "transform" }} />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" style={{ transform: "translateZ(0)", willChange: "transform" }} />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
             <h2 className="text-2xl sm:text-4xl font-bold text-white mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Ready to Transform Your Video Projects?</h2>
