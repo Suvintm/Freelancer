@@ -14,6 +14,8 @@ const TrendingReelsCarousel = ({ reels = [], isSwiping = false }) => {
   const lastTime = useRef(0);
   const [renderAngle, setRenderAngle] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  const directionRef = useRef(1); // 1 for counter-clockwise, -1 for clockwise
+
 
   useEffect(() => {
     setIsMobile(window.innerWidth < 640);
@@ -64,12 +66,17 @@ const TrendingReelsCarousel = ({ reels = [], isSwiping = false }) => {
 
       if (!isDragging.current) {
         // Apply velocity decay (momentum)
-        if (Math.abs(velocityRef.current) > 0.01) {
+        if (Math.abs(velocityRef.current) > 0.005) {
           angleRef.current += velocityRef.current * dt;
-          velocityRef.current *= 0.95; // Decay factor
+          velocityRef.current *= 0.96; // Smoother decay
+          
+          // Sync direction with current momentum for auto-rotate
+          if (Math.abs(velocityRef.current) > 0.05) {
+            directionRef.current = velocityRef.current > 0 ? 1 : -1;
+          }
         } else {
-          // Slow constant rotation when no momentum
-          angleRef.current += 0.018 * dt;
+          // Constant rotation in the last known direction
+          angleRef.current += (0.018 * directionRef.current) * dt;
         }
         setRenderAngle(angleRef.current);
       }
@@ -98,7 +105,19 @@ const TrendingReelsCarousel = ({ reels = [], isSwiping = false }) => {
     const x = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
     const now = performance.now();
     const dt = now - lastTime.current;
-    if (dt > 0) velocityRef.current = (x - lastX.current) / dt;
+    if (dt > 0) {
+      // Calculate angular velocity directly based on the -0.35 deg/px factor used for drag
+      const degDelta = (x - lastX.current) * -0.35;
+      const degVelocity = degDelta / dt;
+      
+      // Smoothing velocity to avoid sudden snaps
+      velocityRef.current = velocityRef.current * 0.4 + degVelocity * 0.6;
+      
+      // Update direction if moving with intent
+      if (Math.abs(degVelocity) > 0.05) {
+        directionRef.current = degVelocity > 0 ? 1 : -1;
+      }
+    }
     lastX.current = x;
     lastTime.current = now;
     angleRef.current = dragStartAngle.current - (x - dragStartX.current) * 0.35;
