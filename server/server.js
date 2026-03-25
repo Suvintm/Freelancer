@@ -63,6 +63,7 @@ import withdrawalRoutes from "./modules/payments/routes/withdrawalRoutes.js";
 import adRequestRoutes from "./modules/ads/routes/adRequestRoutes.js";
 import adPreviewRoutes from "./modules/ads/routes/adPreviewRoutes.js";
 import aiRoutes from "./modules/aiworkspace/routes/aiRoutes.js";
+import finalOutputRoutes from "./routes/finalOutputRoutes.js";
  
 // Scheduled Jobs
 import { startScheduledJobs } from "./jobs/scheduledJobs.js";
@@ -322,11 +323,9 @@ app.use("/api/withdrawals", withdrawalRoutes);
 app.use("/api/ai-workspace", aiRoutes);
 
 // Badge/Achievement Routes
-import badgeRoutes from "./modules/gamification/routes/badgeRoutes.js";
 app.use("/api/badges", badgeRoutes);
 
 // Final Output Routes (Cloudflare R2)
-import finalOutputRoutes from "./routes/finalOutputRoutes.js";
 app.use("/api/final-output", finalOutputRoutes);
 
 // Public maintenance status check (no auth required)
