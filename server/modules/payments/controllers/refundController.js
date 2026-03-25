@@ -2,8 +2,8 @@
 import asyncHandler from "express-async-handler";
 import razorpay from "../../../config/razorpay.js";
 import Refund from "../models/Refund.js";
-import { Order } from "../../../models/Order.js";
-import User from "../../../models/User.js";
+import { Order } from "../../marketplace/models/Order.js";
+import User from "../../user/models/User.js";
 import { ApiError } from "../../../middleware/errorHandler.js";
 import logger from "../../../utils/logger.js";
 

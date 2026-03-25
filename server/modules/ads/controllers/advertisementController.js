@@ -1,6 +1,6 @@
 // advertisementController.js - Production-grade ad management
 import { Advertisement } from "../models/Advertisement.js";
-import { SiteSettings, getSettings } from "../../../models/SiteSettings.js";
+import { SiteSettings, getSettings } from "../../system/models/SiteSettings.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 import logger from "../../../utils/logger.js";
 import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";

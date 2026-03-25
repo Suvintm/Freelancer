@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { SiteSettings } from "../../../models/SiteSettings.js";
+import { SiteSettings } from "../../system/models/SiteSettings.js";
 
 // Generate unique order number
 const generateOrderNumber = () => {

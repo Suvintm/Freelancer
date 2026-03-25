@@ -1,8 +1,8 @@
 import express from "express";
 import passport from "../../../config/passport.js";
 import jwt from "jsonwebtoken";
-import User from "../../../models/User.js";
-import { Profile } from "../../../models/Profile.js";
+import User from "../../user/models/User.js";
+import { Profile } from "../../profiles/models/Profile.js";
 import logger from "../../../utils/logger.js";
 
 const router = express.Router();

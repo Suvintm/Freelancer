@@ -3,9 +3,10 @@
  * Handles payment creation, verification, and webhook processing
  */
 
-import { Order } from "../../../models/Order.js";
-import User from "../../../models/User.js";
-import { SiteSettings } from "../../../models/SiteSettings.js";
+import { Message } from "../../connectivity/models/Message.js";
+import { Order } from "../../marketplace/models/Order.js";
+import User from "../../user/models/User.js";
+import { SiteSettings } from "../../system/models/SiteSettings.js";
 import { Payment } from "../models/Payment.js";
 import PaymentService, {
   isPaymentSupported,
@@ -214,7 +215,7 @@ export const verifyPayment = async (req, res) => {
       .populate("gig", "title");
 
     // Create system message now that payment is confirmed
-    const { Message } = await import("../../../models/Message.js");
+    const { Message } = await import("../../connectivity/models/Message.js");
     
     // Different message based on order type
     if (order.type === "request") {
@@ -238,7 +239,7 @@ export const verifyPayment = async (req, res) => {
     }
 
     // Notify editor now that payment is confirmed
-    const { createNotification } = await import("../../../controllers/notificationController.js");
+    const { createNotification } = await import("../../connectivity/controllers/notificationController.js");
     await createNotification({
       recipient: order.editor,
       type: "success",
@@ -254,7 +255,7 @@ export const verifyPayment = async (req, res) => {
 
     // Increment gig orders count now that it's paid (only for gig orders)
     if (order.gig) {
-      const { Gig } = await import("../../../models/Gig.js");
+      const { Gig } = await import("../../marketplace/models/Gig.js");
       await Gig.findByIdAndUpdate(order.gig, { $inc: { totalOrders: 1 } });
     }
 
@@ -367,7 +368,7 @@ export const verifyPaymentCallback = async (req, res) => {
     });
 
     // Create system message
-    const MessageClass = (await import("../../../models/Message.js")).Message || (await import("../../../models/Message.js")).default;
+    const MessageClass = (await import("../../connectivity/models/Message.js")).Message || (await import("../../connectivity/models/Message.js")).default;
     if (order.type === "request") {
       await MessageClass.create({
         order: order._id,
@@ -387,7 +388,7 @@ export const verifyPaymentCallback = async (req, res) => {
     }
 
     // Notify editor
-    const { createNotification } = await import("../../../controllers/notificationController.js");
+    const { createNotification } = await import("../../connectivity/controllers/notificationController.js");
     await createNotification({
       recipient: order.editor._id,
       type: "success",
@@ -403,7 +404,7 @@ export const verifyPaymentCallback = async (req, res) => {
 
     // Increment gig orders count
     if (order.gig) {
-      const { Gig: GigModel } = await import("../../../models/Gig.js");
+      const { Gig: GigModel } = await import("../../marketplace/models/Gig.js");
       await GigModel.findByIdAndUpdate(order.gig, { $inc: { totalOrders: 1 } });
     }
 
@@ -517,7 +518,7 @@ async function handlePaymentCaptured(payment) {
   // If we just transitioned the status, send notifications and messages
   if (!wasAlreadyProcessed) {
     // Create system message
-    const { Message } = await import("../../../models/Message.js");
+    const { Message } = await import("../../connectivity/models/Message.js");
     if (order.type === "request") {
       await Message.create({
         order: order._id,
@@ -537,7 +538,7 @@ async function handlePaymentCaptured(payment) {
     }
 
     // Notify editor
-    const { createNotification } = await import("../../../controllers/notificationController.js");
+    const { createNotification } = await import("../../connectivity/controllers/notificationController.js");
     await createNotification({
       recipient: order.editor._id,
       type: "success",
@@ -553,7 +554,7 @@ async function handlePaymentCaptured(payment) {
 
     // Increment gig orders count
     if (order.gig) {
-      const { Gig } = await import("../../../models/Gig.js");
+      const { Gig } = await import("../../marketplace/models/Gig.js");
       await Gig.findByIdAndUpdate(order.gig, { $inc: { totalOrders: 1 } });
     }
   }

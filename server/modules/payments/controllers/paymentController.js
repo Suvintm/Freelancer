@@ -1,7 +1,7 @@
 // paymentController.js - Handle payment history and receipts
 import asyncHandler from "express-async-handler";
 import { Payment } from "../models/Payment.js";
-import { Order } from "../../../models/Order.js";
+import { Order } from "../../marketplace/models/Order.js";
 import { ApiError } from "../../../middleware/errorHandler.js";
 
 /**

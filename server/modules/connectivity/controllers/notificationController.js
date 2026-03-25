@@ -146,7 +146,7 @@ export const createNotification = async ({ recipient, type, title, message, link
         let senderAvatar = metaData.senderAvatar || null;
         if (!senderAvatar && sender) {
             try {
-                const User = (await import("../../../models/User.js")).default;
+                const User = (await import("../../user/models/User.js")).default;
                 const senderDoc = await User.findById(sender).select("profilePicture").lean();
                 senderAvatar = senderDoc?.profilePicture || null;
             } catch (_) {

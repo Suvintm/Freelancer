@@ -1,5 +1,5 @@
-import { Profile } from "../../../models/Profile.js";
-import User from "../../../models/User.js";
+import { Profile } from "../../profiles/models/Profile.js";
+import User from "../../user/models/User.js";
 import { asyncHandler } from "../../../middleware/errorHandler.js";
 import { withCache, CacheKey, TTL, hashQuery } from "../../../utils/cache.js";
 

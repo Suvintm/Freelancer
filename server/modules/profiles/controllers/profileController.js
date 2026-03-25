@@ -1,5 +1,5 @@
 import { Profile } from "../models/Profile.js";
-import User from "../../../models/User.js";
+import User from "../../user/models/User.js";
 import { Reel } from "../../reels/models/Reel.js";
 import { Portfolio } from "../models/Portfolio.js";
 import { ProfileVisit } from "../models/ProfileVisit.js";

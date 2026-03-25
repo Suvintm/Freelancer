@@ -4,8 +4,8 @@
 
 import { Job } from "../models/Job.js";
 import { JobApplication } from "../models/JobApplication.js";
-import User from "../../../models/User.js";
-import { Profile } from "../../../models/Profile.js";
+import User from "../../user/models/User.js";
+import { Profile } from "../../profiles/models/Profile.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 import { createNotification } from "../../../controllers/notificationController.js";
 import { sendEmail } from "../../../utils/emailService.js";

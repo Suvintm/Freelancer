@@ -2,7 +2,7 @@
 import express from "express";
 import protect from "../../../middleware/authMiddleware.js";
 import { Order } from "../../marketplace/models/Order.js";
-import User from "../../../models/User.js";
+import User from "../../user/models/User.js";
 
 const router = express.Router();
 

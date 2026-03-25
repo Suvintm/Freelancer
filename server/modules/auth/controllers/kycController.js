@@ -3,15 +3,16 @@
  * Handles Editor KYC submission and status
  */
 
-import User from "../../../models/User.js";
+import User from "../../user/models/User.js";
 import KYCLog from "../../../models/KYCLog.js";
 import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
 import { RazorpayProvider } from "../../../services/RazorpayProvider.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 import { emitToUser, emitMaintenance } from "../../../socket.js";
-import { Profile } from "../../../models/Profile.js";
+import { Profile } from "../../profiles/models/Profile.js";
 import { Portfolio } from "../../../models/Portfolio.js";
 import { calculateProfileCompletion } from "../../../utils/profileUtils.js";
+import { SiteSettings } from "../../system/models/SiteSettings.js";
 
 /**
  * Get KYC Status
@@ -131,7 +132,6 @@ export const submitKYC = asyncHandler(async (req, res) => {
 
   try {
     // Check if auto-KYC is enabled in site settings
-    const { SiteSettings } = await import("../../../models/SiteSettings.js");
     const settings = await SiteSettings.getSettings();
     
     if (!settings.autoKycEnabled) {

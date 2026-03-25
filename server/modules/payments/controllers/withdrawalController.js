@@ -1,5 +1,5 @@
 import asyncHandler from "express-async-handler";
-import User from "../../../models/User.js";
+import User from "../../user/models/User.js";
 import WithdrawalRequest from "../models/WithdrawalRequest.js";
 import WalletTransaction from "../models/WalletTransaction.js";
 import { ApiError } from "../../../middleware/errorHandler.js";

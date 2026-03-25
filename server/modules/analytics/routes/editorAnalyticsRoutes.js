@@ -3,8 +3,8 @@ import express from "express";
 import protect from "../../../middleware/authMiddleware.js";
 import { Order } from "../../marketplace/models/Order.js";
 import { Gig } from "../../marketplace/models/Gig.js";
-import User from "../../../models/User.js";
-import { Profile } from "../../../models/Profile.js";
+import User from "../../user/models/User.js";
+import { Profile } from "../../profiles/models/Profile.js";
 import { Message } from "../../connectivity/models/Message.js";
 
 const router = express.Router();

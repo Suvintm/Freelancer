@@ -3,7 +3,7 @@ import asyncHandler from "express-async-handler";
 import { v2 as cloudinary } from "cloudinary";
 import crypto from "crypto";
 import { Order } from "../models/Order.js";
-import {Message} from "../../../models/Message.js";
+import { Message } from "../../connectivity/models/Message.js";
 import { Payment } from "../../payments/models/Payment.js";
 import { Rating } from "../models/Rating.js";
 import { ApiError } from "../../../middleware/errorHandler.js";

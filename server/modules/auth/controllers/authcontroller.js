@@ -1,14 +1,14 @@
-import User from "../../../models/User.js";
+import User from "../../user/models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
-import { Profile } from "../../../models/Profile.js";
+import { Profile } from "../../profiles/models/Profile.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 import logger from "../../../utils/logger.js";
-import { createNotification } from "../../../controllers/notificationController.js";
+import { createNotification } from "../../connectivity/controllers/notificationController.js";
 import { sendPasswordResetEmail, sendOTPEmail } from "../../../utils/emailService.js";
-import Otp from "../../../models/Otp.js";
+import Otp from "../models/Otp.js";
 import { initiateSMSOTP, verifySMSOTP, validateIndianMobile } from "../../../services/otpService.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;

@@ -63,7 +63,7 @@ import withdrawalRoutes from "./modules/payments/routes/withdrawalRoutes.js";
 import adRequestRoutes from "./modules/ads/routes/adRequestRoutes.js";
 import adPreviewRoutes from "./modules/ads/routes/adPreviewRoutes.js";
 import aiRoutes from "./modules/aiworkspace/routes/aiRoutes.js";
-import finalOutputRoutes from "./routes/finalOutputRoutes.js";
+import finalOutputRoutes from "./modules/marketplace/routes/finalOutputRoutes.js";
  
 // Scheduled Jobs
 import { startScheduledJobs } from "./jobs/scheduledJobs.js";
@@ -329,7 +329,7 @@ app.use("/api/badges", badgeRoutes);
 app.use("/api/final-output", finalOutputRoutes);
 
 // Public maintenance status check (no auth required)
-import { SiteSettings } from "./models/SiteSettings.js";
+import { SiteSettings } from "./modules/system/models/SiteSettings.js";
 app.get("/api/maintenance-status", async (req, res) => {
   try {
     const settings = await SiteSettings.getSettings();
