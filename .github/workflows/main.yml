@@ -74,6 +74,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
       - name: Trigger Render Deploy (Core API)
         if: success()
         run: |
@@ -83,6 +89,7 @@ jobs:
         if: success()
         working-directory: frontend
         run: |
+          npm ci
           npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
           npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
           npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
@@ -94,6 +101,7 @@ jobs:
         if: success()
         working-directory: admin-frontend
         run: |
+          npm ci
           npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
           npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
           npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
