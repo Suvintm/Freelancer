@@ -1,9 +1,9 @@
 import { Gig } from "../models/Gig.js";
-import { ApiError, asyncHandler } from "../../../../middleware/errorHandler.js";
+import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 import { createNotification } from "../../connectivity/controllers/notificationController.js";
-import { uploadToCloudinary } from "../../../../utils/uploadToCloudinary.js";
-import logger from "../../../../utils/logger.js";
-import { getCache, setCache, delPattern } from "../../../../config/redisClient.js";
+import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
+import logger from "../../../utils/logger.js";
+import { getCache, setCache, delPattern } from "../../../config/redisClient.js";
 
 // ============ CREATE GIG ============
 export const createGig = asyncHandler(async (req, res) => {
@@ -307,6 +307,7 @@ export const getGigSuggestions = asyncHandler(async (req, res) => {
     suggestions: suggestions.slice(0, 8)
   });
 });
+
 
 
 

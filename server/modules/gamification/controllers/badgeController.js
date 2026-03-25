@@ -1,6 +1,6 @@
 import { UserBadge, BADGE_DEFINITIONS } from "../models/Badge.js";
-import badgeService from "../../../../services/badgeService.js";
-import logger from "../../../../utils/logger.js";
+import badgeService from "../../../services/badgeService.js";
+import logger from "../../../utils/logger.js";
 
 /**
  * @desc    Get all badges with user's earned status
@@ -139,6 +139,7 @@ export const getBadgeDefinitions = async (req, res) => {
     });
   }
 };
+
 
 
 

@@ -4,7 +4,7 @@ import User from "../models/User.js";
 import { Order } from "../../marketplace/models/Order.js";
 import { Rating } from "../../marketplace/models/Rating.js";
 import { Message } from "../../connectivity/models/Message.js";
-import { ApiError } from "../../../../middleware/errorHandler.js";
+import { ApiError } from "../../../middleware/errorHandler.js";
 
 // Score tier thresholds
 const TIERS = [
@@ -406,6 +406,7 @@ const generateScoreTips = (components) => {
 };
 
 export { TIERS };
+
 
 
 

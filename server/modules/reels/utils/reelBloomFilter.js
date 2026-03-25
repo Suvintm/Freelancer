@@ -23,8 +23,8 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import redisClient, { redisAvailable } from '../../../../config/redisClient.js';
-import logger from '../../../../utils/logger.js';
+import redisClient, { redisAvailable } from '../../../config/redisClient.js';
+import logger from '../../../utils/logger.js';
 
 // Filter dimensions: 2048 bits = 256 bytes. Supports ~1000 items at ~1% FPR.
 const BLOOM_BITS = 2048;
@@ -120,6 +120,7 @@ export const clearSeen = async (userId) => {
         logger.warn(`[BloomFilter] clearSeen failed for user ${userId}: ${err.message}`);
     }
 };
+
 
 
 

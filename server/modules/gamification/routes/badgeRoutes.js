@@ -1,5 +1,5 @@
 import express from "express";
-import protect, { authorize } from "../../../../middleware/authMiddleware.js";
+import protect, { authorize } from "../../../middleware/authMiddleware.js";
 import {
   getAllBadges,
   getUserBadges,
@@ -23,4 +23,5 @@ router.post("/evaluate", authorize("editor"), evaluateBadges);
 router.get("/", authorize("editor"), getAllBadges);
 
 export default router;
+
 

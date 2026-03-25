@@ -4,8 +4,8 @@
  */
 
 import express from "express";
-import protect from "../../../../middleware/authMiddleware.js";
-// import { protectAdmin } from "../../../../middleware/adminAuth.js";
+import protect from "../../../middleware/authMiddleware.js";
+// import { protectAdmin } from "../../../middleware/adminAuth.js";
 import {
   getPlans,
   getMySubscriptions,
@@ -17,7 +17,7 @@ import {
   upsertPlan,
   getAllSubscriptions,
 } from "../controllers/subscriptionController.js";
-import { createSubscriptionOrderValidator, verifySubscriptionPaymentValidator } from "../../../../middleware/validators.js";
+import { createSubscriptionOrderValidator, verifySubscriptionPaymentValidator } from "../../../middleware/validators.js";
 
 const router = express.Router();
 
@@ -51,6 +51,7 @@ router.post("/verify-payment", verifySubscriptionPaymentValidator, verifyPayment
 router.post("/cancel/:id", cancelSubscription);
 
 export default router;
+
 
 
 

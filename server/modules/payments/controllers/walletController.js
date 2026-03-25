@@ -1,7 +1,7 @@
 import asyncHandler from "express-async-handler";
 import User from "../../user/models/User.js";
 import WalletTransaction from "../models/WalletTransaction.js";
-import { ApiError } from "../../../../middleware/errorHandler.js";
+import { ApiError } from "../../../middleware/errorHandler.js";
 
 /**
  * @desc    Get user's wallet balance and stats
@@ -81,6 +81,7 @@ export const getPendingClearance = asyncHandler(async (req, res) => {
     transactions
   });
 });
+
 
 
 

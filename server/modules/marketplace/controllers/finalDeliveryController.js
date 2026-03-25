@@ -6,8 +6,8 @@ import { Order } from "../models/Order.js";
 import { Message } from "../../connectivity/models/Message.js";
 import { Payment } from "../../payments/models/Payment.js";
 import { Rating } from "../models/Rating.js";
-import { ApiError } from "../../../../middleware/errorHandler.js";
-import { getIO } from "../../../../socket.js";
+import { ApiError } from "../../../middleware/errorHandler.js";
+import { getIO } from "../../../socket.js";
 import { createNotification } from "../../connectivity/controllers/notificationController.js";
 import { recalculateEditorScore } from "../../user/controllers/suvixScoreController.js";
 
@@ -635,6 +635,7 @@ export const getDeliveryStatus = asyncHandler(async (req, res) => {
     delivery: deliveryInfo,
   });
 });
+
 
 
 

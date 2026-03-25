@@ -1,6 +1,6 @@
 // clientAnalyticsRoutes.js - Client dashboard analytics
 import express from "express";
-import protect from "../../../../middleware/authMiddleware.js";
+import protect from "../../../middleware/authMiddleware.js";
 import { Order } from "../../marketplace/models/Order.js";
 import User from "../../user/models/User.js";
 
@@ -112,6 +112,7 @@ router.get("/dashboard", async (req, res) => {
 });
 
 export default router;
+
 
 
 

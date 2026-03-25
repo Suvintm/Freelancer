@@ -1,7 +1,7 @@
 // finalDeliveryRoutes.js - Routes for secure final video delivery
 import express from "express";
 import multer from "multer";
-import authMiddleware from "../../../../middleware/authMiddleware.js";
+import authMiddleware from "../../../middleware/authMiddleware.js";
 import {
   uploadFinalDelivery,
   getPreview,
@@ -48,6 +48,7 @@ router.post("/:orderId/confirm", confirmDownload);
 router.get("/:orderId/status", getDeliveryStatus);
 
 export default router;
+
 
 
 

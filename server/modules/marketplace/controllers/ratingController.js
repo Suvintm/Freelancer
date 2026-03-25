@@ -2,7 +2,7 @@ import asyncHandler from "express-async-handler";
 import { Rating } from "../models/Rating.js";
 import { Order } from "../models/Order.js";
 import { Profile } from "../models/Profile.js";
-import { ApiError } from "../../../../middleware/errorHandler.js";
+import { ApiError } from "../../../middleware/errorHandler.js";
 import { createNotification } from "./notificationController.js";
 
 /**
@@ -211,4 +211,5 @@ export const getEditorStats = asyncHandler(async (req, res) => {
     stats,
   });
 });
+
 

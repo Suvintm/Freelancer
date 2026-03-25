@@ -1,5 +1,5 @@
 import express from "express";
-import protect, { authorize } from "../../../../middleware/authMiddleware.js";
+import protect, { authorize } from "../../../middleware/authMiddleware.js";
 import { 
   requestWithdrawal, 
   getMyWithdrawals, 
@@ -16,6 +16,7 @@ router.get("/my", authorize("editor"), getMyWithdrawals);
 router.get("/:id", getWithdrawalDetails);
 
 export default router;
+
 
 
 

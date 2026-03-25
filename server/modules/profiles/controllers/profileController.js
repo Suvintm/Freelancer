@@ -3,13 +3,13 @@ import User from "../../user/models/User.js";
 import { Reel } from "../../reels/models/Reel.js";
 import { Portfolio } from "../models/Portfolio.js";
 import { ProfileVisit } from "../models/ProfileVisit.js";
-import { uploadToCloudinary } from "../../../../utils/uploadToCloudinary.js";
-import { ApiError, asyncHandler } from "../../../../middleware/errorHandler.js";
-import logger from "../../../../utils/logger.js";
+import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
+import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
+import logger from "../../../utils/logger.js";
 import { createNotification } from "../../connectivity/controllers/notificationController.js";
-import { calculateProfileCompletion } from "../../../../utils/profileUtils.js";
+import { calculateProfileCompletion } from "../../profiles/utils/profileUtils.js";
 import fs from "fs";
-import { getCache, setCache, delCache } from "../../../../config/redisClient.js";
+import { getCache, setCache, delCache } from "../../../config/redisClient.js";
 
 // ============ GET PROFILE ============
 export const getProfile = asyncHandler(async (req, res) => {
@@ -492,6 +492,7 @@ export const getProfileCompletionStatus = asyncHandler(async (req, res) => {
       : `Complete ${requiredItems.filter(i => !i.complete).length} more required field(s)`,
   });
 });
+
 
 
 

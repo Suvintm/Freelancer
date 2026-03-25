@@ -8,7 +8,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import redisClient from '../../../../config/redisClient.js';
+import redisClient from '../../../config/redisClient.js';
 import logger from './logger.js';
 
 // Redis keys for Bandit state per location
@@ -90,4 +90,5 @@ export const rankAdsWithBandit = async (ads, location) => {
         return ads; // Fallback to priority sort
     }
 };
+
 

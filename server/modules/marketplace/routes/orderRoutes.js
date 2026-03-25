@@ -19,9 +19,9 @@ import {
   getNewOrdersCount,
   togglePinOrder,
 } from "../controllers/orderController.js";
-import authMiddleware from "../../../../middleware/authMiddleware.js";
-import { requireClientKYC } from "../../../../middleware/kycCheckMiddleware.js";
-import { createGigOrderValidator, disputeValidator, extendDeadlineValidator } from "../../../../middleware/validators.js";
+import authMiddleware from "../../../middleware/authMiddleware.js";
+import { requireClientKYC } from "../../../middleware/kycCheckMiddleware.js";
+import { createGigOrderValidator, disputeValidator, extendDeadlineValidator } from "../../../middleware/validators.js";
 
 const router = express.Router();
 
@@ -61,6 +61,7 @@ router.post("/:id/extend-deadline", extendDeadlineValidator, extendDeadline);
 router.patch("/:id/pin", togglePinOrder);
 
 export default router;
+
 
 
 

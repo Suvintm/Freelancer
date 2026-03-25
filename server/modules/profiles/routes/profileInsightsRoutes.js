@@ -4,8 +4,8 @@
  */
 
 import express from "express";
-import protect from "../../../../middleware/authMiddleware.js";
-import { requireSubscription } from "../../../../middleware/checkSubscription.js";
+import protect from "../../../middleware/authMiddleware.js";
+import { requireSubscription } from "../../../middleware/checkSubscription.js";
 import {
   getBasicStats,
   getVisitorStats,
@@ -39,6 +39,7 @@ router.get("/export", requireProfileInsights, exportVisitors);
 router.get("/visitor/:visitorId", requireProfileInsights, getVisitorDetails);
 
 export default router;
+
 
 
 

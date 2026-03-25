@@ -1,7 +1,7 @@
 // clientKYCRoutes.js - Client KYC API Routes
 import express from "express";
-import protect, { authorize } from "../../../../middleware/authMiddleware.js";
-// import { protectAdmin } from "../../../../middleware/adminAuth.js";
+import protect, { authorize } from "../../../middleware/authMiddleware.js";
+// import { protectAdmin } from "../../../middleware/adminAuth.js";
 import {
   submitKYC,
   getMyKYC,
@@ -12,8 +12,8 @@ import {
 //   verifyKYC,
 //   getKYCStats,
 } from "../controllers/clientKYCController.js";
-import { upload } from "../../../../middleware/upload.js";
-import { uploadLimiter } from "../../../../middleware/rateLimiter.js";
+import { upload } from "../../../middleware/upload.js";
+import { uploadLimiter } from "../../../middleware/rateLimiter.js";
 
 const router = express.Router();
 
@@ -51,6 +51,7 @@ router.get("/can-proceed", protect, authorize("client"), canProceed);
 // MOVED TO ADMIN-SERVER
 
 export default router;
+
 
 
 

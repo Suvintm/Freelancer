@@ -3,7 +3,7 @@
  */
 
 import express from "express";
-import protect from "../../../../middleware/authMiddleware.js";
+import protect from "../../../middleware/authMiddleware.js";
 import {
   createJob,
   getJobs,
@@ -50,6 +50,7 @@ router.patch("/applications/:applicationId/withdraw", protect, withdrawApplicati
 router.get("/:id", protect, getJob);                   // Get single job
 
 export default router;
+
 
 
 

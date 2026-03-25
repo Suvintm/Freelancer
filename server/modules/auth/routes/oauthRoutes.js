@@ -1,9 +1,9 @@
 import express from "express";
-import passport from "../../../../config/passport.js";
+import passport from "../../../config/passport.js";
 import jwt from "jsonwebtoken";
 import User from "../../user/models/User.js";
 import { Profile } from "../../profiles/models/Profile.js";
-import logger from "../../../../utils/logger.js";
+import logger from "../../../utils/logger.js";
 
 const router = express.Router();
 
@@ -181,6 +181,7 @@ router.post("/select-role", async (req, res) => {
 });
 
 export default router;
+
 
 
 
