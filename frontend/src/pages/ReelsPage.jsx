@@ -337,18 +337,20 @@ const ReelsPage = ({ isActive = true }) => {
                         itemSize={windowHeight}
                         width="100%"
                         onScroll={handleScroll}
-                        overscanCount={2} 
+                        itemKey={(index) => combinedFeed[index]?.id || index}
+                        overscanCount={3} 
                         style={{ overflowX: 'hidden' }}
                     >
                         {({ index, style }) => {
                             const item = combinedFeed[index];
                             if (!item) return null;
                             return (
-                                <div style={style} className="snap-start snap-always w-full h-full bg-black">
+                                <div style={{ ...style, willChange: 'transform' }} className="snap-start snap-always w-full h-full bg-black">
                                     {item.type === 'reel' ? (
                                         <ReelCard
                                             reel={item.content}
                                             isActive={isActive && index === activeReelIndex}
+                                            isNearActive={Math.abs(index - activeReelIndex) <= 1}
                                             isPreloading={index === activeReelIndex + 1 || index === activeReelIndex - 1}
                                             onCommentClick={handleCommentClick}
                                             globalMuted={globalMuted}
@@ -358,6 +360,7 @@ const ReelsPage = ({ isActive = true }) => {
                                         <ReelAdCard
                                             ad={item.content}
                                             isActive={isActive && index === activeReelIndex}
+                                            isNearActive={Math.abs(index - activeReelIndex) <= 1}
                                             isPreloading={index === activeReelIndex + 1 || index === activeReelIndex - 1}
                                             globalMuted={globalMuted}
                                             setGlobalMuted={setGlobalMuted}

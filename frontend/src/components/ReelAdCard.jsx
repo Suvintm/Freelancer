@@ -23,7 +23,7 @@ import logo from "../assets/logo.png";
  * - Navigation on CTA click (btnLinkType: ad_details | external | internal | none)
  * - Show/hide advertiser badge and description
  */
-const ReelAdCard = ({ ad, onSkip, isActive=true, isPreloading=false, globalMuted=true, setGlobalMuted }) => {
+const ReelAdCard = ({ ad, onSkip, isActive=true, isNearActive=false, isPreloading=false, globalMuted=true, setGlobalMuted }) => {
   const { backendURL } = useAppContext();
   const navigate = useNavigate();
   const videoRef = useRef(null);
@@ -37,6 +37,17 @@ const ReelAdCard = ({ ad, onSkip, isActive=true, isPreloading=false, globalMuted
   const [currentQuality, setCurrentQuality] = useState("");
   const [availableQualities, setAvailableQualities] = useState([]);
   
+  // — PERFORMANCE CONCEPT: Predictive Metadata Hydration —
+  const [showMetadata, setShowMetadata] = useState(isActive || isNearActive);
+  useEffect(() => {
+      if (isActive || isNearActive) {
+          setShowMetadata(true);
+      } else {
+          const timer = setTimeout(() => setShowMetadata(false), 800);
+          return () => clearTimeout(timer);
+      }
+  }, [isActive, isNearActive]);
+
   // Global Quality Hook
   const [preferredQuality, setPreferredQuality] = useVideoQuality();
 
@@ -324,79 +335,90 @@ const ReelAdCard = ({ ad, onSkip, isActive=true, isPreloading=false, globalMuted
         />
 
         <div className="relative px-5 pb-6">
-          {/* ADVERTISEMENT BAR */}
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.5, type: "spring", stiffness: 100 }}
-            className="w-full bg-white px-4 py-2.5 rounded-lg mb-4 flex items-center justify-center shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-white/20"
-          >
-            <motion.span
-              animate={{ opacity: [0.7, 1, 0.7] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="text-black font-black text-[11px] uppercase tracking-[0.25em]"
-            >
-              Advertisement
-            </motion.span>
-          </motion.div>
-
-          {/* ADVERTISER BADGE — controlled by reelConfig.showAdvertiserBadge */}
-          {rc.showAdvertiserBadge && (
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-white/60 font-black text-[9px] uppercase tracking-[0.2em]">
-                {ad.companyName || ad.advertiserName || "Sponsored"}
-              </span>
-              <HiCheckCircle className="text-blue-500 text-[9px]" />
-            </div>
-          )}
-
-          {/* TITLE */}
-          <h2 className="text-xl font-bold text-white leading-tight tracking-tight drop-shadow-md mb-3">
-            {ad.title}
-          </h2>
-
-          {/* CTA BUTTON — styled from reelConfig */}
-          <motion.button
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
-            onClick={handleCTA}
-            style={btnStyleObj}
-            className="relative overflow-hidden group"
-          >
-            <span className="flex items-center gap-2">
-              <FaGlobe size={12} className="opacity-40" />
-              {rc.ctaText}
-            </span>
-            <FaChevronRight size={10} className="group-hover:translate-x-1 transition-transform opacity-40" />
-            <div className="absolute inset-0 w-1/4 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 -translate-x-full group-hover:animate-[sweep-fast_0.6s_ease-in-out_forwards]" />
-          </motion.button>
-
-          {/* DESCRIPTION — controlled by reelConfig.showDescription */}
-          {rc.showDescription && displayDescription && (
-            <p className="text-[12px] font-medium text-white/60 leading-relaxed line-clamp-2 pr-4 mb-4">
-              {displayDescription}
-            </p>
-          )}
-
-          {/* LINKS FOOTER */}
-          <div className="flex items-center gap-5 pt-3 border-t border-white/5 w-fit">
-            {ad.websiteUrl && (
-              <button
-                onClick={handleCTA}
-                className="text-white/20 hover:text-white transition-colors"
+          <AnimatePresence>
+            {showMetadata && (
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 30 }}
+                transition={{ duration: 0.4 }}
               >
-                <FaGlobe size={14} />
-              </button>
+                {/* ADVERTISEMENT BAR */}
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
+                  className="w-full bg-white px-4 py-2.5 rounded-lg mb-4 flex items-center justify-center shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-white/20"
+                >
+                  <motion.span
+                    animate={{ opacity: [0.7, 1, 0.7] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="text-black font-black text-[11px] uppercase tracking-[0.25em]"
+                  >
+                    Advertisement
+                  </motion.span>
+                </motion.div>
+
+                {/* ADVERTISER BADGE — controlled by reelConfig.showAdvertiserBadge */}
+                {rc.showAdvertiserBadge && (
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-white/60 font-black text-[9px] uppercase tracking-[0.2em]">
+                      {ad.companyName || ad.advertiserName || "Sponsored"}
+                    </span>
+                    <HiCheckCircle className="text-blue-500 text-[9px]" />
+                  </div>
+                )}
+
+                {/* TITLE */}
+                <h2 className="text-xl font-bold text-white leading-tight tracking-tight drop-shadow-md mb-3">
+                  {ad.title}
+                </h2>
+
+                {/* CTA BUTTON — styled from reelConfig */}
+                <motion.button
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  onClick={handleCTA}
+                  style={btnStyleObj}
+                  className="relative overflow-hidden group pointer-events-auto"
+                >
+                  <span className="flex items-center gap-2">
+                    <FaGlobe size={12} className="opacity-40" />
+                    {rc.ctaText}
+                  </span>
+                  <FaChevronRight size={10} className="group-hover:translate-x-1 transition-transform opacity-40" />
+                  <div className="absolute inset-0 w-1/4 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 -translate-x-full group-hover:animate-[sweep-fast_0.6s_ease-in-out_forwards]" />
+                </motion.button>
+
+                {/* DESCRIPTION — controlled by reelConfig.showDescription */}
+                {rc.showDescription && displayDescription && (
+                  <p className="text-[12px] font-medium text-white/60 leading-relaxed line-clamp-2 pr-4 mb-4">
+                    {displayDescription}
+                  </p>
+                )}
+
+                {/* LINKS FOOTER */}
+                <div className="flex items-center gap-5 pt-3 border-t border-white/5 w-fit pointer-events-auto">
+                  {ad.websiteUrl && (
+                    <button
+                      onClick={handleCTA}
+                      className="text-white/20 hover:text-white transition-colors"
+                    >
+                      <FaGlobe size={14} />
+                    </button>
+                  )}
+                  {ad.instagramUrl && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); window.open(ad.instagramUrl, "_blank"); }}
+                      className="text-white/20 hover:text-pink-400 transition-colors"
+                    >
+                      <FaInstagram size={14} />
+                    </button>
+                  )}
+                </div>
+              </motion.div>
             )}
-            {ad.instagramUrl && (
-              <button
-                onClick={(e) => { e.stopPropagation(); window.open(ad.instagramUrl, "_blank"); }}
-                className="text-white/20 hover:text-pink-400 transition-colors"
-              >
-                <FaInstagram size={14} />
-              </button>
-            )}
-          </div>
+          </AnimatePresence>
         </div>
       </div>
 

@@ -30,7 +30,7 @@ import { useVideoQuality } from "../hooks/useVideoQuality";
  * ReelCard — Minimalist Professional UI.
  * Tightened overlay, refined typography, and sleek follow button.
  */
-const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, setGlobalMuted }) => {
+const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, globalMuted, setGlobalMuted }) => {
     const { user, backendURL } = useAppContext();
 
     const [isLiked, setIsLiked] = useState(user ? reel.likes?.includes(user._id) : false);
@@ -51,19 +51,19 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
 
     const isFirstRender = useRef(true);
 
-    // — PERFORMANCE CONCEPT: Metadata Hydration Delay —
-    // We delay the rendering of complex metadata until the reel is actually active.
-    // This reduces the DOM weight and calculation load during the scroll phase.
-    const [showMetadata, setShowMetadata] = useState(isActive);
+    // — PERFORMANCE CONCEPT: Predictive Metadata Hydration —
+    // We start showing metadata as soon as the reel is NEAR the active viewport.
+    // This removes the "pop-in" effect by pre-warming the UI components.
+    const [showMetadata, setShowMetadata] = useState(isActive || isNearActive);
     useEffect(() => {
-        if (isActive) {
+        if (isActive || isNearActive) {
             setShowMetadata(true);
         } else {
             // Delay unmounting slightly to allow for smooth transition out
-            const timer = setTimeout(() => setShowMetadata(false), 500);
+            const timer = setTimeout(() => setShowMetadata(false), 800);
             return () => clearTimeout(timer);
         }
-    }, [isActive]);
+    }, [isActive, isNearActive]);
 
     // Sync local state with props when reel changes
     useEffect(() => {
