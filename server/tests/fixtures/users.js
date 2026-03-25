@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import User from "../../models/User.js";
+import User from "../../modules/user/models/User.js";
 
 /**
  * Seeds standard test users into the in-memory DB.

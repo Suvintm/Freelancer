@@ -6,7 +6,7 @@
  * This allows easy addition of new payment gateways without changing business logic.
  */
 
-import { SiteSettings } from "../models/SiteSettings.js";
+import { SiteSettings } from "../modules/system/models/SiteSettings.js";
 import { RazorpayProvider } from "./RazorpayProvider.js";
 // import { StripeProvider } from "./StripeProvider.js"; // Future
 

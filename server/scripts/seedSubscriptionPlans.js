@@ -5,7 +5,7 @@
 
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import { SubscriptionPlan } from "../models/SubscriptionPlan.js";
+import { SubscriptionPlan } from "../modules/payments/models/SubscriptionPlan.js";
 
 dotenv.config();
 

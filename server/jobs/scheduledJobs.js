@@ -2,11 +2,11 @@
  * Scheduled Jobs - Auto-cancel expired orders, check overdue orders, and other background tasks
  */
 
-import { Order } from "../models/Order.js";
-import { Message } from "../models/Message.js";
-import FinalOutput from "../models/FinalOutput.js";
-import { createNotification } from "../controllers/notificationController.js";
-import User from "../models/User.js";
+import { Order } from "../modules/marketplace/models/Order.js";
+import { Message } from "../modules/connectivity/models/Message.js";
+import FinalOutput from "../modules/marketplace/models/FinalOutput.js";
+import { createNotification } from "../modules/connectivity/controllers/notificationController.js";
+import User from "../modules/user/models/User.js";
 import WalletTransaction from "../modules/payments/models/WalletTransaction.js";
 import { deleteFromCloudinary } from "../utils/cloudinaryStorage.js";
 import logger from "../utils/logger.js";

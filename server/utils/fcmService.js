@@ -1,6 +1,6 @@
 // server/utils/fcmService.js
 import { getMessaging } from "firebase-admin/messaging";
-import User from "../models/User.js";
+import User from "../modules/user/models/User.js";
 import logger from "./logger.js";
 import { initFirebaseAdmin } from "./firebaseAdmin.js";
 

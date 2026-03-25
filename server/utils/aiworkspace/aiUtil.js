@@ -1,6 +1,6 @@
-import { Profile } from "../../models/Profile.js";
-import User from "../../models/User.js";
-import { Reel } from "../../models/Reel.js"; 
+import { Profile } from "../../modules/profiles/models/Profile.js";
+import User from "../../modules/user/models/User.js";
+import { Reel } from "../../modules/reels/models/Reel.js"; 
 import { AI_CONFIG } from "../../config/aiworkspace/aiConfig.js";
 
 /**

@@ -5,8 +5,8 @@ import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import fs from "fs";
-import { Message } from "./models/Message.js";
-import { Order } from "./models/Order.js";
+import { Message } from "./modules/connectivity/models/Message.js";
+import { Order } from "./modules/marketplace/models/Order.js";
 import { subscribe } from "./config/redisClient.js";
 
 dotenv.config();
