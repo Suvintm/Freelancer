@@ -11,10 +11,12 @@ vi.mock('axios');
 // Mock Razorpay Global
 const mockRazorpayOpen = vi.fn();
 const mockRazorpayOn = vi.fn();
-window.Razorpay = vi.fn().mockImplementation(() => ({
-  open: mockRazorpayOpen,
-  on: mockRazorpayOn,
-}));
+window.Razorpay = vi.fn().mockImplementation(function() {
+  return {
+    open: mockRazorpayOpen,
+    on: mockRazorpayOn,
+  };
+});
 
 const mockContextValue = {
   backendURL: 'http://localhost:5000',
