@@ -596,11 +596,16 @@ export const getReelsByEditor = asyncHandler(async (req, res) => {
     const skip = (page - 1) * limit;
 
     const [reels, total] = await Promise.all([
-        Reel.find({ editor: userId, isPublished: true })
+        Reel.find({ editor: userId, isPublished: true }, {
+            _id: 1, title: 1, description: 1, mediaUrl: 1, mediaType: 1,
+            likesCount: 1, viewsCount: 1, commentsCount: 1, createdAt: 1,
+            editor: 1, portfolio: 1
+        })
             .populate("editor", "name profilePicture role")
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(limit),
+            .limit(limit)
+            .lean(),
         Reel.countDocuments({ editor: userId, isPublished: true }),
     ]);
 

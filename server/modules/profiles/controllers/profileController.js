@@ -34,7 +34,11 @@ export const getProfile = asyncHandler(async (req, res) => {
     return res.status(200).json(cachedData);
   }
 
-  let profile = await Profile.findOne({ user: userId })
+  let profile = await Profile.findOne({ user: userId }, {
+      user: 1, about: 1, experience: 1, skills: 1, languages: 1, socialLinks: 1,
+      softwares: 1, hourlyRate: 1, availability: 1, responseTime: 1, location: 1,
+      profileViews: 1, certifications: 1, aiProfile: 1
+  })
     .populate("user", "name email role profilePicture kycStatus followers following suvixId followSettings clientKycStatus availability aiProfile")
     .lean();
 
@@ -68,14 +72,21 @@ export const getProfile = asyncHandler(async (req, res) => {
   }
 
   // Fetch Portfolios manually (since they might not be linked in profile array)
-  const portfolios = await Portfolio.find({ user: userId }).sort({ uploadedAt: -1 });
+  const portfolios = await Portfolio.find({ user: userId }, {
+      _id: 1, title: 1, description: 1, mediaUrl: 1, mediaType: 1, thumbnail: 1, uploadedAt: 1,
+      editedClip: 1, isAIEdited: 1
+  })
+    .sort({ uploadedAt: -1 })
+    .lean();
 
   logger.info(`Fetching profile for user: ${userId}`);
   logger.info(`Found ${portfolios.length} portfolios for user ${userId}`);
   profile.portfolio = portfolios;
 
   // Fetch Reel Stats
-  const reels = await Reel.find({ editor: userId, isPublished: true });
+  const reels = await Reel.find({ editor: userId, isPublished: true }, {
+      _id: 1, title: 1, mediaUrl: 1, mediaType: 1, viewsCount: 1, likesCount: 1, createdAt: 1
+  }).lean();
   logger.info(`Found ${reels.length} published reels for user ${userId}`);
   const totalReels = reels.length;
   const totalViews = reels.reduce((acc, reel) => acc + (reel.viewsCount || 0), 0);
@@ -93,8 +104,8 @@ export const getProfile = asyncHandler(async (req, res) => {
     },
   };
 
-  // Set cache (TTL: 2 minutes)
-  await setCache(cacheKey, responseData, 120);
+  // Set cache (TTL: 10 minutes - Production Grade)
+  await setCache(cacheKey, responseData, 600);
 
   res.status(200).json(responseData);
 });

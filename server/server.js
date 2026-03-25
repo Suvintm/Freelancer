@@ -396,16 +396,22 @@ const connectDB = async (retries = 5) => {
     });
     logger.info("MongoDB connected successfully");
 
-    // Production AI - Create Text Indexes for rapid matching (Run in background to avoid blocking boot)
+    // Production AI - Create Text & Compound Indexes for rapid matching
     const db = mongoose.connection.db;
     Promise.all([
+      // Text Indexes for Global Search
       db.collection("profiles").createIndex({ about: "text", skills: "text", softwares: "text" }),
       db.collection("users").createIndex({ bio: "text", name: "text" }),
-      db.collection("reels").createIndex({ title: "text", description: "text", hashtags: "text" })
+      db.collection("reels").createIndex({ title: "text", description: "text", hashtags: "text" }),
+
+      // Compound Indexes for Performance (Top-tier optimization)
+      db.collection("reels").createIndex({ isPublished: 1, createdAt: -1 }), // For Feed/Trending
+      db.collection("users").createIndex({ role: 1, profileCompleted: 1 }),  // For Editor discovery
+      db.collection("orders").createIndex({ status: 1, createdAt: -1 }),     // For Admin/User dashboards
     ]).then(() => {
-      logger.info("Production AI text indexes verified/created ✅");
+      logger.info("Production database indexes verified/created ✅");
     }).catch(err => {
-      logger.error("Failed to create text indexes:", err.message);
+      logger.error("Failed to create database indexes:", err.message);
     });
 
     return true;
