@@ -8,10 +8,10 @@ import { createNotification } from "../../connectivity/controllers/notificationC
 import mongoose from "mongoose";
 import { getCache, setCache, delPattern } from "../../../config/redisClient.js";
 import redisClient, { redisAvailable } from "../../../config/redisClient.js";
-import { weightedReservoirSample, compositeScore, enforceCreatorDiversity } from "../../../utils/reelScorer.js";
-import { markSeen, hasSeen, clearSeen } from "../../../utils/reelBloomFilter.js";
+import { weightedReservoirSample, compositeScore, enforceCreatorDiversity } from "../utils/reelScorer.js";
+import { markSeen, hasSeen, clearSeen } from "../utils/reelBloomFilter.js";
 import { trackInterest, getUserInterests } from "../../../utils/userInterestTracker.js";
-import trieInstance from "../../../utils/reelSearchTrie.js";
+import trieInstance from "../utils/reelSearchTrie.js";
 
 // Scoreboard Redis key — persistent global sorted set of reel scores
 const SCORE_BOARD_KEY = "reels:score:board";

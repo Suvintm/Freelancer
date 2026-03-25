@@ -7,7 +7,7 @@ import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 import logger from "../../../utils/logger.js";
 import { createNotification } from "../../connectivity/controllers/notificationController.js";
-import { calculateProfileCompletion } from "../../profiles/utils/profileUtils.js";
+import { calculateProfileCompletion } from "../utils/profileUtils.js";
 import fs from "fs";
 import { getCache, setCache, delCache } from "../../../config/redisClient.js";
 

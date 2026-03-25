@@ -5,8 +5,8 @@ import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 import logger from "../../../utils/logger.js";
 import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
 import { getCache, setCache, delPattern } from "../../../config/redisClient.js";
-import { rankAdsWithBandit, updateBanditScore } from "../../../utils/adBandit.js";
-import { checkFrequencyCap, incrementFrequency, checkPacing, consumePacingToken } from "../../../utils/adPacing.js";
+import { rankAdsWithBandit, updateBanditScore } from "../utils/adBandit.js";
+import { checkFrequencyCap, incrementFrequency, checkPacing, consumePacingToken } from "../utils/adPacing.js";
 
 // ✅ Robust Utility to repair URLs mangled by security sanitizers
 // Handles both dot mangling (res_cloudinary_com) and slash mangling (.com_cloudname)
