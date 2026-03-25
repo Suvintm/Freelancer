@@ -81,14 +81,14 @@ jobs:
       
       - name: Deploy Frontend to Vercel
         if: success()
-        run: npx vercel deploy --token=${{ secrets.VERCEL_TOKEN }} --prod
+        run: npx vercel deploy ./frontend --token=${{ secrets.VERCEL_TOKEN }} --prod
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Deploy Admin Frontend to Vercel
         if: success()
-        run: npx vercel deploy --token=${{ secrets.VERCEL_TOKEN }} --prod
+        run: npx vercel deploy ./admin-frontend --token=${{ secrets.VERCEL_TOKEN }} --prod
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_ADMIN_PROJECT_ID }}
