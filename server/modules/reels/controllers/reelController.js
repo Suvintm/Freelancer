@@ -1,6 +1,6 @@
 import { Reel } from "../models/Reel.js";
 import { Comment } from "../models/Comment.js";
-import { Portfolio } from "../../../models/Portfolio.js";
+import { Portfolio } from "../../profiles/models/Portfolio.js";
 import { ReelInteraction } from "../models/ReelInteraction.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 import logger from "../../../utils/logger.js";

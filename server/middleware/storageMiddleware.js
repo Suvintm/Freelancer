@@ -3,8 +3,8 @@
  * Blocks uploads when storage limit is reached
  */
 
-import User from "../models/User.js";
-import { calculateStorageUsed } from "../controllers/storageController.js";
+import User from "../modules/user/models/User.js";
+import { calculateStorageUsed } from "../modules/system/controllers/storageController.js";
 import { ApiError } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
 

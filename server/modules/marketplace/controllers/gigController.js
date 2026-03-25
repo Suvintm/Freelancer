@@ -1,6 +1,6 @@
 import { Gig } from "../models/Gig.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
-import { createNotification } from "../../../controllers/notificationController.js";
+import { createNotification } from "../../connectivity/controllers/notificationController.js";
 import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
 import logger from "../../../utils/logger.js";
 import { getCache, setCache, delPattern } from "../../../config/redisClient.js";

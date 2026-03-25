@@ -267,7 +267,7 @@ export const deletePortfolio = asyncHandler(async (req, res) => {
 
   // Recalculate storage after delete
   try {
-    const { calculateStorageUsed } = await import("../../../controllers/storageController.js");
+    const { calculateStorageUsed } = await import("../../system/controllers/storageController.js");
     const User = (await import("../../user/models/User.js")).default;
     const storageUsed = await calculateStorageUsed(req.user._id);
     await User.findByIdAndUpdate(req.user._id, { 

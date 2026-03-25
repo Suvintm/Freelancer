@@ -6,7 +6,7 @@ import { Brief } from "../models/Brief.js";
 import { Proposal } from "../models/Proposal.js";
 import User from "../../user/models/User.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
-import { createNotification } from "../../../controllers/notificationController.js";
+import { createNotification } from "../../connectivity/controllers/notificationController.js";
 import logger from "../../../utils/logger.js";
 
 // ============ CREATE BRIEF ============

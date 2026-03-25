@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import User from "../models/User.js";
+import User from "../modules/user/models/User.js";
 import { ApiError } from "./errorHandler.js";
 import logger from "../utils/logger.js";
 import { getCache, setCache, deleteCache, CacheKey, TTL } from "../utils/cache.js";

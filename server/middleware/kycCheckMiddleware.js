@@ -1,5 +1,5 @@
 // kycCheckMiddleware.js - Middleware to verify client KYC before sensitive operations
-import User from "../models/User.js";
+import User from "../modules/user/models/User.js";
 import { ApiError } from "./errorHandler.js";
 
 /**

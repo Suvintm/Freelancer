@@ -11,7 +11,7 @@ import asyncHandler from "express-async-handler";
 import FinalOutput from "../models/FinalOutput.js";
 import {Order } from "../models/Order.js";
 import { Message } from "../../connectivity/models/Message.js";
-import { createNotification } from "../../../controllers/notificationController.js";
+import { createNotification } from "../../connectivity/controllers/notificationController.js";
 import {
   generatePublicId,
   getUploadSignature,

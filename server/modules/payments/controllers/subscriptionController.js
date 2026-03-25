@@ -8,7 +8,7 @@ import crypto from "crypto";
 import { Subscription } from "../models/Subscription.js";
 import { SubscriptionPlan } from "../models/SubscriptionPlan.js";
 import { asyncHandler } from "../../../middleware/errorHandler.js";
-import { createNotification } from "../../../controllers/notificationController.js";
+import { createNotification } from "../../connectivity/controllers/notificationController.js";
 import { withCache, deleteCache, CacheKey, TTL } from "../../../utils/cache.js";
 
 // ============ GET ALL PLANS ============

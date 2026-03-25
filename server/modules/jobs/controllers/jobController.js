@@ -7,7 +7,7 @@ import { JobApplication } from "../models/JobApplication.js";
 import User from "../../user/models/User.js";
 import { Profile } from "../../profiles/models/Profile.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
-import { createNotification } from "../../../controllers/notificationController.js";
+import { createNotification } from "../../connectivity/controllers/notificationController.js";
 import { sendEmail } from "../../../utils/emailService.js";
 import logger from "../../../utils/logger.js";
 
