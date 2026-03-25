@@ -1,5 +1,5 @@
 import express from "express";
-import protect  from "../../../middleware/authMiddleware.js";
+import protect  from "../../../../middleware/authMiddleware.js";
 import { toggleSavedEditor, getSavedEditors, updateAvailability, toggleFollow, getFollowStatus, getUserSuggestions, handleFollowRequest, searchUsers, getFollowers, getFollowing } from "../controllers/userController.js";
 import { acceptContentPolicy, logContentAccess } from "../controllers/legalController.js";
 

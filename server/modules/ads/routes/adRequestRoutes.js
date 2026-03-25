@@ -6,9 +6,9 @@ import express from "express";
 import multer from "multer";
 import asyncHandler from "express-async-handler";
 import { AdRequest } from "../models/AdRequest.js";
-import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
-import  protect from "../../../middleware/authMiddleware.js";
-import logger from "../../../utils/logger.js";
+import { uploadToCloudinary } from "../../../../utils/uploadToCloudinary.js";
+import  protect from "../../../../middleware/authMiddleware.js";
+import logger from "../../../../utils/logger.js";
 
 const router = express.Router();
 

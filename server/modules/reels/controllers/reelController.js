@@ -2,15 +2,15 @@ import { Reel } from "../models/Reel.js";
 import { Comment } from "../models/Comment.js";
 import { Portfolio } from "../../profiles/models/Portfolio.js";
 import { ReelInteraction } from "../models/ReelInteraction.js";
-import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
-import logger from "../../../utils/logger.js";
+import { ApiError, asyncHandler } from "../../../../middleware/errorHandler.js";
+import logger from "../../../../utils/logger.js";
 import { createNotification } from "../../connectivity/controllers/notificationController.js";
 import mongoose from "mongoose";
-import { getCache, setCache, delPattern } from "../../../config/redisClient.js";
-import redisClient, { redisAvailable } from "../../../config/redisClient.js";
+import { getCache, setCache, delPattern } from "../../../../config/redisClient.js";
+import redisClient, { redisAvailable } from "../../../../config/redisClient.js";
 import { weightedReservoirSample, compositeScore, enforceCreatorDiversity } from "../utils/reelScorer.js";
 import { markSeen, hasSeen, clearSeen } from "../utils/reelBloomFilter.js";
-import { trackInterest, getUserInterests } from "../../../utils/userInterestTracker.js";
+import { trackInterest, getUserInterests } from "../../../../utils/userInterestTracker.js";
 import trieInstance from "../utils/reelSearchTrie.js";
 
 // Scoreboard Redis key — persistent global sorted set of reel scores
@@ -956,3 +956,4 @@ export const initSearchTrie = async () => {
         }
     }
 };
+

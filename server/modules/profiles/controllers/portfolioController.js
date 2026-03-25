@@ -1,8 +1,8 @@
 import { Portfolio } from "../models/Portfolio.js";
 import { Reel } from "../../reels/models/Reel.js";
-import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
-import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
-import logger from "../../../utils/logger.js";
+import { uploadToCloudinary } from "../../../../utils/uploadToCloudinary.js";
+import { ApiError, asyncHandler } from "../../../../middleware/errorHandler.js";
+import logger from "../../../../utils/logger.js";
 import { createNotification } from "../../connectivity/controllers/notificationController.js";
 
 // Max file sizes
@@ -313,3 +313,4 @@ export const getPortfoliosByUserId = asyncHandler(async (req, res) => {
     },
   });
 });
+

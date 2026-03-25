@@ -15,7 +15,7 @@ import {
   getLatestOutputForOrder,
   cleanupExpiredOutputs,
 } from "../controllers/finalOutputController.js";
-import  protect  from "../../../middleware/authMiddleware.js";
+import  protect  from "../../../../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -47,3 +47,4 @@ router.get("/:id/download-url", getDownloadUrlForOutput);
 router.post("/cleanup", cleanupExpiredOutputs);
 
 export default router;
+

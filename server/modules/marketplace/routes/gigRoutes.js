@@ -9,10 +9,10 @@ import {
   toggleGigStatus,
   getGigSuggestions
 } from "../controllers/gigController.js";
-import authMiddleware from "../../../middleware/authMiddleware.js";
-import { roleMiddleware } from "../../../middleware/roleMiddleware.js";
-import { upload } from "../../../middleware/upload.js";
-import { gigValidator, mongoIdValidator } from "../../../middleware/validators.js";
+import authMiddleware from "../../../../middleware/authMiddleware.js";
+import { roleMiddleware } from "../../../../middleware/roleMiddleware.js";
+import { upload } from "../../../../middleware/upload.js";
+import { gigValidator, mongoIdValidator } from "../../../../middleware/validators.js";
 
 const router = express.Router();
 
@@ -31,4 +31,5 @@ router.delete("/:id", authMiddleware, roleMiddleware(["editor"]), mongoIdValidat
 router.patch("/:id/toggle", authMiddleware, roleMiddleware(["editor"]), mongoIdValidator, toggleGigStatus);
 
 export default router;
+
 

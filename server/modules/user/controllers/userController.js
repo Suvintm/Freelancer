@@ -1,10 +1,10 @@
 import User from "../models/User.js";
 import FollowRequest from "../../connectivity/models/FollowRequest.js";
 import Notification from "../../connectivity/models/Notification.js";
-import { asyncHandler } from "../../../middleware/errorHandler.js";
-import logger from "../../../utils/logger.js";
+import { asyncHandler } from "../../../../middleware/errorHandler.js";
+import logger from "../../../../utils/logger.js";
 import { createNotification } from "../../connectivity/controllers/notificationController.js";
-import { io, getReceiverSocketId } from "../../../socket.js";
+import { io, getReceiverSocketId } from "../../../../socket.js";
 
 // @desc    Toggle saved editor (save/unsave)
 // @route   POST /api/user/saved-editors/:editorId
@@ -470,3 +470,4 @@ export const updateFcmToken = asyncHandler(async (req, res) => {
     message: "FCM Token updated successfully",
   });
 });
+

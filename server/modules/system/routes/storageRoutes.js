@@ -4,7 +4,7 @@
  */
 
 import express from "express";
-import authMiddleware from "../../../middleware/authMiddleware.js";
+import authMiddleware from "../../../../middleware/authMiddleware.js";
 import {
   getStorageStatus,
   getStoragePlans,
@@ -34,3 +34,4 @@ router.post("/verify", verifyStoragePurchase);
 router.get("/history", getStoragePurchaseHistory);
 
 export default router;
+

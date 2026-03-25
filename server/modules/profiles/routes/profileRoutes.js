@@ -1,11 +1,11 @@
 import express from "express";
 import { getProfile, updateProfile, getProfileCompletionStatus } from "../controllers/profileController.js";
 import { getKYCStatus, submitKYC, lookupIFSC } from "../../auth/controllers/kycController.js";
-import authMiddleware, { optionalAuth } from "../../../middleware/authMiddleware.js";
-// import { protectAdmin } from "../../../middleware/adminAuth.js";
-import { upload } from "../../../middleware/upload.js";
-import { updateProfileValidator, userIdValidator } from "../../../middleware/validators.js";
-import { uploadLimiter } from "../../../middleware/rateLimiter.js";
+import authMiddleware, { optionalAuth } from "../../../../middleware/authMiddleware.js";
+// import { protectAdmin } from "../../../../middleware/adminAuth.js";
+import { upload } from "../../../../middleware/upload.js";
+import { updateProfileValidator, userIdValidator } from "../../../../middleware/validators.js";
+import { uploadLimiter } from "../../../../middleware/rateLimiter.js";
 
 const router = express.Router();
 
@@ -54,4 +54,5 @@ router.put(
 router.get("/:userId", optionalAuth, userIdValidator, getProfile);
 
 export default router;
+
 

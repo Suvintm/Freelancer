@@ -8,10 +8,10 @@ import { Proposal } from "../models/Proposal.js";
 import { Order } from "../../marketplace/models/Order.js";
 import { Payment } from "../../payments/models/Payment.js";
 import User from "../../user/models/User.js";
-import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
+import { ApiError, asyncHandler } from "../../../../middleware/errorHandler.js";
 import { createNotification } from "../../connectivity/controllers/notificationController.js";
 import { SiteSettings } from "../../system/models/SiteSettings.js";
-import logger from "../../../utils/logger.js";
+import logger from "../../../../utils/logger.js";
 
 // ============ SUBMIT PROPOSAL ============
 export const submitProposal = asyncHandler(async (req, res) => {
@@ -615,3 +615,4 @@ export default {
   withdrawProposal,
   getProposalStats,
 };
+

@@ -1,11 +1,11 @@
 // refundController.js - Refund processing controller
 import asyncHandler from "express-async-handler";
-import razorpay from "../../../config/razorpay.js";
+import razorpay from "../../../../config/razorpay.js";
 import Refund from "../models/Refund.js";
 import { Order } from "../../marketplace/models/Order.js";
 import User from "../../user/models/User.js";
-import { ApiError } from "../../../middleware/errorHandler.js";
-import logger from "../../../utils/logger.js";
+import { ApiError } from "../../../../middleware/errorHandler.js";
+import logger from "../../../../utils/logger.js";
 
 /**
  * @desc    Initiate refund for an order
@@ -142,7 +142,7 @@ const processRefundInternal = async (refund) => {
  */
 const createRefundNotification = async (clientId, refund, method) => {
   try {
-    const Notification = (await import("../../../models/Notification.js")).default;
+    const Notification = (await import("../../../connectivity/models/Notification.js")).default;
     
     const message = method === "wallet"
       ? `₹${refund.refundAmount} has been added to your wallet`
@@ -262,3 +262,4 @@ export const autoRefundOrder = async (orderId, reason = "order_rejected") => {
     throw err;
   }
 };
+

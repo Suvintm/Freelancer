@@ -22,7 +22,7 @@ import {
   getContentType,
   getFileType,
   getFormat,
-} from "../../../utils/cloudinaryStorage.js";
+} from "../../../../utils/cloudinaryStorage.js";
 
 /**
  * @desc    Get Cloudinary upload signature for final output
@@ -530,3 +530,4 @@ export default {
   getLatestOutputForOrder,
   cleanupExpiredOutputs,
 };
+

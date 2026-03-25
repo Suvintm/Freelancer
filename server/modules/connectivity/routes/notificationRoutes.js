@@ -1,5 +1,5 @@
 import express from "express";
-import protect from "../../../middleware/authMiddleware.js";
+import protect from "../../../../middleware/authMiddleware.js";
 import {
     getNotifications,
     markAsRead,
@@ -16,3 +16,4 @@ router.put("/read/:id", markAsRead); // :id can be specific ID or "all"
 router.delete("/:id", deleteNotification);
 
 export default router;
+

@@ -1,6 +1,6 @@
 // editorAnalyticsRoutes.js - Editor analytics and performance insights
 import express from "express";
-import protect from "../../../middleware/authMiddleware.js";
+import protect from "../../../../middleware/authMiddleware.js";
 import { Order } from "../../marketplace/models/Order.js";
 import { Gig } from "../../marketplace/models/Gig.js";
 import User from "../../user/models/User.js";
@@ -412,3 +412,4 @@ router.get("/quick-stats", async (req, res) => {
 });
 
 export default router;
+

@@ -1,5 +1,5 @@
 import express from "express";
-import protect, { authorize } from "../../../middleware/authMiddleware.js";
+import protect, { authorize } from "../../../../middleware/authMiddleware.js";
 import {
   updateLocationSettings,
   getLocationSettings,
@@ -9,7 +9,7 @@ import {
   toggleVisibility,
   updateServiceRadius,
 } from "../controllers/locationController.js";
-import { locationSearchLimiter } from "../../../middleware/rateLimiter.js";
+import { locationSearchLimiter } from "../../../../middleware/rateLimiter.js";
 
 const router = express.Router();
 
@@ -37,3 +37,4 @@ router.patch("/radius", authorize("editor"), updateServiceRadius);
 
 
 export default router;
+

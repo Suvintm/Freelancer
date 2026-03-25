@@ -1,5 +1,5 @@
 import express from "express";
-import  protect  from "../../../middleware/authMiddleware.js";
+import  protect  from "../../../../middleware/authMiddleware.js";
 import { 
   createAiSession, 
   processAiChat, 
@@ -16,3 +16,4 @@ router.post("/sessions/:id/chat", processAiChat);
 router.post("/sessions/:id/match", processGuidedMatch);
 
 export default router;
+

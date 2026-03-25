@@ -18,7 +18,7 @@ import {
     batchAnalytics,
     getSearchSuggestions,
 } from "../controllers/reelController.js";
-import authMiddleware from "../../../middleware/authMiddleware.js";
+import authMiddleware from "../../../../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -78,3 +78,4 @@ router.post("/:id/skip", trackSkip);
 router.post("/analytics/batch", batchAnalytics);
 
 export default router;
+

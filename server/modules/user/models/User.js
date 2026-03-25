@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { encrypt, decrypt } from "../../../utils/encryption.js";
+import { encrypt, decrypt } from "../../../../utils/encryption.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -285,3 +285,4 @@ const userSchema = new mongoose.Schema(
 userSchema.index({ "suvixScore.total": -1 });
 
 export default mongoose.models.User || mongoose.model("User", userSchema);
+
