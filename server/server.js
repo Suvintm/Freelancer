@@ -26,42 +26,43 @@ import { vpnCheckMiddleware } from "./middleware/vpnCheck.js";
 import passport from "./config/passport.js";
 
 // Routes
-import authRoutes from "./routes/authRoutes.js";
-import profileRoutes from "./routes/profileRoutes.js";
-import userRoutes from "./routes/userRoutes.js";
-import portfolioRoutes from "./routes/portfolioRoutes.js";
-import exploreRoutes from "./routes/exploreRoutes.js";
-import oauthRoutes from "./routes/oauthRoutes.js";
-import { initSearchTrie } from "./controllers/reelController.js";
-import reelRoutes from "./routes/reelRoutes.js";
-import notificationRoutes from "./routes/notificationRoutes.js";
-import gigRoutes from "./routes/gigRoutes.js";
-import orderRoutes from "./routes/orderRoutes.js";
-import messageRoutes from "./routes/messageRoutes.js";
-import editorAnalyticsRoutes from "./routes/editorAnalyticsRoutes.js";
-import clientAnalyticsRoutes from "./routes/clientAnalyticsRoutes.js";
-import quickReplyRoutes from "./routes/quickReplyRoutes.js";
-import checklistRoutes from "./routes/checklistRoutes.js";
-import finalDeliveryRoutes from "./routes/finalDeliveryRoutes.js";
-import paymentRoutes from "./routes/paymentRoutes.js";
-import paymentGatewayRoutes from "./routes/paymentGatewayRoutes.js";
-import storageRoutes from "./routes/storageRoutes.js";
-import advertisementRoutes from "./routes/advertisementRoutes.js";
-import briefRoutes from "./routes/briefRoutes.js";
-import proposalRoutes from "./routes/proposalRoutes.js";
-import ratingRoutes from "./routes/ratingRoutes.js";
-import subscriptionRoutes from "./routes/subscriptionRoutes.js";
-import profileInsightsRoutes from "./routes/profileInsightsRoutes.js";
-import suvixScoreRoutes from "./routes/suvixScoreRoutes.js";
-import clientKYCRoutes from "./routes/clientKYCRoutes.js";
-import refundRoutes from "./routes/refundRoutes.js";
-import locationRoutes from "./routes/locationRoutes.js";
-import jobRoutes from "./routes/jobRoutes.js";
-import walletRoutes from "./routes/walletRoutes.js";
-import withdrawalRoutes from "./routes/withdrawalRoutes.js";
-import adRequestRoutes from "./routes/adRequestRoutes.js";
-import adPreviewRoutes from "./routes/adPreviewRoutes.js";
-import aiRoutes from "./routes/aiworkspace/aiRoutes.js";
+import authRoutes from "./modules/auth/routes/authRoutes.js";
+import profileRoutes from "./modules/profiles/routes/profileRoutes.js";
+import userRoutes from "./modules/user/routes/userRoutes.js";
+import portfolioRoutes from "./modules/profiles/routes/portfolioRoutes.js";
+import exploreRoutes from "./modules/explore/routes/exploreRoutes.js";
+import oauthRoutes from "./modules/auth/routes/oauthRoutes.js";
+import { initSearchTrie } from "./modules/reels/controllers/reelController.js";
+import reelRoutes from "./modules/reels/routes/reelRoutes.js";
+import notificationRoutes from "./modules/connectivity/routes/notificationRoutes.js";
+import gigRoutes from "./modules/marketplace/routes/gigRoutes.js";
+import orderRoutes from "./modules/marketplace/routes/orderRoutes.js";
+import messageRoutes from "./modules/connectivity/routes/messageRoutes.js";
+import editorAnalyticsRoutes from "./modules/analytics/routes/editorAnalyticsRoutes.js";
+import clientAnalyticsRoutes from "./modules/analytics/routes/clientAnalyticsRoutes.js";
+import suvixScoreRoutes from "./modules/user/routes/suvixScoreRoutes.js";
+import badgeRoutes from "./modules/gamification/routes/badgeRoutes.js";
+import quickReplyRoutes from "./modules/connectivity/routes/quickReplyRoutes.js";
+import checklistRoutes from "./modules/marketplace/routes/checklistRoutes.js";
+import finalDeliveryRoutes from "./modules/marketplace/routes/finalDeliveryRoutes.js";
+import paymentRoutes from "./modules/payments/routes/paymentRoutes.js";
+import paymentGatewayRoutes from "./modules/payments/routes/paymentGatewayRoutes.js";
+import storageRoutes from "./modules/system/routes/storageRoutes.js";
+import advertisementRoutes from "./modules/ads/routes/advertisementRoutes.js";
+import briefRoutes from "./modules/jobs/routes/briefRoutes.js";
+import proposalRoutes from "./modules/jobs/routes/proposalRoutes.js";
+import ratingRoutes from "./modules/marketplace/routes/ratingRoutes.js";
+import subscriptionRoutes from "./modules/payments/routes/subscriptionRoutes.js";
+import profileInsightsRoutes from "./modules/profiles/routes/profileInsightsRoutes.js";
+import clientKYCRoutes from "./modules/kyc/routes/clientKYCRoutes.js";
+import refundRoutes from "./modules/payments/routes/refundRoutes.js";
+import locationRoutes from "./modules/user/routes/locationRoutes.js";
+import jobRoutes from "./modules/jobs/routes/jobRoutes.js";
+import walletRoutes from "./modules/payments/routes/walletRoutes.js";
+import withdrawalRoutes from "./modules/payments/routes/withdrawalRoutes.js";
+import adRequestRoutes from "./modules/ads/routes/adRequestRoutes.js";
+import adPreviewRoutes from "./modules/ads/routes/adPreviewRoutes.js";
+import aiRoutes from "./modules/aiworkspace/routes/aiRoutes.js";
  
 // Scheduled Jobs
 import { startScheduledJobs } from "./jobs/scheduledJobs.js";
@@ -321,7 +322,7 @@ app.use("/api/withdrawals", withdrawalRoutes);
 app.use("/api/ai-workspace", aiRoutes);
 
 // Badge/Achievement Routes
-import badgeRoutes from "./routes/badgeRoutes.js";
+import badgeRoutes from "./modules/gamification/routes/badgeRoutes.js";
 app.use("/api/badges", badgeRoutes);
 
 // Final Output Routes (Cloudflare R2)

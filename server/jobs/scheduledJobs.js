@@ -7,7 +7,7 @@ import { Message } from "../models/Message.js";
 import FinalOutput from "../models/FinalOutput.js";
 import { createNotification } from "../controllers/notificationController.js";
 import User from "../models/User.js";
-import WalletTransaction from "../models/WalletTransaction.js";
+import WalletTransaction from "../modules/payments/models/WalletTransaction.js";
 import { deleteFromCloudinary } from "../utils/cloudinaryStorage.js";
 import logger from "../utils/logger.js";
 import mongoose from "mongoose";
@@ -165,7 +165,7 @@ export const processOverdueRefunds = async () => {
     logger.info(`Found ${ordersToRefund.length} orders to refund`);
 
     // Dynamically import the auto-refund function from refundController
-    const { autoRefundOrder } = await import("../controllers/refundController.js");
+    const { autoRefundOrder } = await import("../modules/payments/controllers/refundController.js");
 
     let refundedCount = 0;
 

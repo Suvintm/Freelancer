@@ -3,7 +3,7 @@
  * Checks if user has an active subscription for a specific feature
  */
 
-import { Subscription } from "../models/Subscription.js";
+import { Subscription } from "../modules/payments/models/Subscription.js";
 
 /**
  * Middleware factory to require subscription for a feature
