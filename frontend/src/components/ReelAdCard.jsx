@@ -410,4 +410,4 @@ const ReelAdCard = ({ ad, onSkip, isActive=true, isPreloading=false, globalMuted
   );
 };
 
-export default ReelAdCard;
+export default React.memo(ReelAdCard);

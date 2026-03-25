@@ -51,6 +51,20 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
 
     const isFirstRender = useRef(true);
 
+    // — PERFORMANCE CONCEPT: Metadata Hydration Delay —
+    // We delay the rendering of complex metadata until the reel is actually active.
+    // This reduces the DOM weight and calculation load during the scroll phase.
+    const [showMetadata, setShowMetadata] = useState(isActive);
+    useEffect(() => {
+        if (isActive) {
+            setShowMetadata(true);
+        } else {
+            // Delay unmounting slightly to allow for smooth transition out
+            const timer = setTimeout(() => setShowMetadata(false), 500);
+            return () => clearTimeout(timer);
+        }
+    }, [isActive]);
+
     // Sync local state with props when reel changes
     useEffect(() => {
         setLikesCount(reel.likesCount || 0);
@@ -268,37 +282,48 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
             )}
             </div>
 
-            {/* ── SIDEBAR (Polished & Small) ── */}
-            <div className="absolute right-3 bottom-24 z-50 flex flex-col items-center gap-5">
-                {[
-                    { icon: isLiked ? <FaHeart className="text-red-500" /> : <FaRegHeart />, count: likesCount, action: handleLike },
-                    { icon: <FaComment />, count: reel.commentsCount || 0, action: () => onCommentClick(reel._id) },
-                    { icon: <FaEye />, count: reel.viewsCount || 0, disabled: true },
-                    { icon: <FaShare />, action: () => { const url = `${window.location.origin}/reels?id=${reel._id}`; if(navigator.share) navigator.share({url}); else {navigator.clipboard.writeText(url); toast.success("Copied!");} } }
-                ].map((item, idx) => (
-                    <div key={idx} className="flex flex-col items-center gap-1">
-                        <motion.button
-                            whileTap={{ scale: 0.8 }}
-                            onClick={(e) => { e.stopPropagation(); !item.disabled && item.action(); }}
-                            className={`w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white text-lg ${item.disabled ? "opacity-50" : "shadow-lg"}`}
-                        >
-                            {item.icon}
-                        </motion.button>
-                        {item.count !== undefined && <span className="text-[10px] font-bold text-white drop-shadow-md">{item.count}</span>}
-                    </div>
-                ))}
-                
-                {reel.mediaType === "video" && (
-                    <motion.button
-                        whileTap={{ scale: 0.8 }}
-                        onClick={(e) => { e.stopPropagation(); setGlobalMuted(!globalMuted); }}
-                        className="w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white"
+            {/* SIDEBAR (Only visible when active or nearly settled) */}
+            <AnimatePresence>
+                {showMetadata && (
+                    <motion.div 
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={{ duration: 0.3 }}
+                        className="absolute right-3 bottom-24 z-50 flex flex-col items-center gap-5"
                     >
-                        {globalMuted ? <FaVolumeMute size={16} /> : <FaVolumeUp size={16} />}
-                    </motion.button>
+                        {[
+                            { icon: isLiked ? <FaHeart className="text-red-500" /> : <FaRegHeart />, count: likesCount, action: handleLike },
+                            { icon: <FaComment />, count: reel.commentsCount || 0, action: () => onCommentClick(reel._id) },
+                            { icon: <FaEye />, count: reel.viewsCount || 0, disabled: true },
+                            { icon: <FaShare />, action: () => { const url = `${window.location.origin}/reels?id=${reel._id}`; if(navigator.share) navigator.share({url}); else {navigator.clipboard.writeText(url); toast.success("Copied!");} } }
+                        ].map((item, idx) => (
+                            <div key={idx} className="flex flex-col items-center gap-1">
+                                <motion.button
+                                    whileTap={{ scale: 0.8 }}
+                                    onClick={(e) => { e.stopPropagation(); !item.disabled && item.action(); }}
+                                    className={`w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white text-lg ${item.disabled ? "opacity-50" : "shadow-lg"}`}
+                                >
+                                    {item.icon}
+                                </motion.button>
+                                {item.count !== undefined && <span className="text-[10px] font-bold text-white drop-shadow-md">{item.count}</span>}
+                            </div>
+                        ))}
+                        
+                        {reel.mediaType === "video" && (
+                            <motion.button
+                                whileTap={{ scale: 0.8 }}
+                                onClick={(e) => { e.stopPropagation(); setGlobalMuted(!globalMuted); }}
+                                className="w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white"
+                            >
+                                {globalMuted ? <FaVolumeMute size={16} /> : <FaVolumeUp size={16} />}
+                            </motion.button>
+                        )}
+                    </motion.div>
                 )}
-            </div>
-            {/* OVERLAY CONTENT */}
+            </AnimatePresence>
+
+            {/* OVERLAY CONTENT (Deferred hydration for performance) */}
             <div className="absolute inset-0 z-40 p-5 flex flex-col justify-between pointer-events-none">
                 {/* TOP HEADER */}
                 <div className="flex flex-col items-center gap-1">
@@ -335,75 +360,85 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
                     })()}
                 </div>
 
-                {/* BOTTOM INFO (Tight & Minimal) */}
-                <div className="w-full">
-                    <div className="absolute bottom-0 inset-x-0 h-64 bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-32 pointer-events-none" />
+                {/* BOTTOM INFO (Deferred hydration for performance) */}
+                <AnimatePresence>
+                    {showMetadata && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                            transition={{ duration: 0.3 }}
+                            className="w-full mt-auto"
+                        >
+                            <div className="absolute bottom-0 inset-x-0 h-64 bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-32 pointer-events-none" />
 
-                    <div className="relative pb-6 pointer-events-auto">
-                        {/* WHO LIKED (Latest Likers) */}
-                        <LikerAvatars 
-                            latestLikers={latestLikers} 
-                            likesCount={likesCount} 
-                        />
+                            <div className="relative pb-6 pointer-events-auto">
+                                {/* WHO LIKED (Latest Likers) */}
+                                <LikerAvatars 
+                                    latestLikers={latestLikers} 
+                                    likesCount={likesCount} 
+                                />
 
-                        {/* USER HUB */}
-                        <div className="flex items-center gap-3 mb-3">
-                            <Link to={`/public-profile/${reel.editor?._id}`} onClick={(e) => e.stopPropagation()}>
-                                <div className="w-10 h-10 rounded-full border-[1.5px] border-white overflow-hidden shadow-lg p-[1px] bg-white/10">
-                                    <img src={repairUrl(reel.editor?.profilePicture)} className="w-full h-full rounded-full object-cover" alt="" />
-                                </div>
-                            </Link>
-                            <div className="flex flex-col">
-                                <div className="flex items-center gap-2">
-                                    <Link to={`/public-profile/${reel.editor?._id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-white text-[14px] tracking-tight hover:underline text-shadow whitespace-nowrap">
-                                        {reel.editor?.name}
+                                {/* USER HUB */}
+                                <div className="flex items-center gap-3 mb-3">
+                                    <Link to={`/public-profile/${reel.editor?._id}`} onClick={(e) => e.stopPropagation()}>
+                                        <div className="w-10 h-10 rounded-full border-[1.5px] border-white overflow-hidden shadow-lg p-[1px] bg-white/10">
+                                            <img src={repairUrl(reel.editor?.profilePicture)} className="w-full h-full rounded-full object-cover" alt="" />
+                                        </div>
                                     </Link>
-                                    <span className="px-1.5 py-0.5 bg-white/20 text-[8px] font-bold rounded border border-white/10 text-white/90 shrink-0">
-                                        {(reel.editor?.role || "editor").toUpperCase()}
-                                    </span>
-                                    
-                                    {!isOwnReel && (
-                                        <button
-                                            onClick={handleFollow}
-                                            className="h-5 px-3 bg-transparent border border-white/30 rounded-full flex items-center justify-center text-white text-[9px] font-bold uppercase tracking-wider active:scale-95 transition-all hover:bg-white/20 shadow-lg ml-1"
-                                        >
-                                            {isFollowing ? "Following" : "Follow"}
-                                        </button>
-                                    )}
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center gap-2">
+                                            <Link to={`/public-profile/${reel.editor?._id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-white text-[14px] tracking-tight hover:underline text-shadow whitespace-nowrap">
+                                                {reel.editor?.name}
+                                            </Link>
+                                            <span className="px-1.5 py-0.5 bg-white/20 text-[8px] font-bold rounded border border-white/10 text-white/90 shrink-0">
+                                                {(reel.editor?.role || "editor").toUpperCase()}
+                                            </span>
+                                            
+                                            {!isOwnReel && (
+                                                <button
+                                                    onClick={handleFollow}
+                                                    className="h-5 px-3 bg-transparent border border-white/30 rounded-full flex items-center justify-center text-white text-[9px] font-bold uppercase tracking-wider active:scale-95 transition-all hover:bg-white/20 shadow-lg ml-1"
+                                                >
+                                                    {isFollowing ? "Following" : "Follow"}
+                                                </button>
+                                            )}
+                                        </div>
+                                        
+                                        {reel.mediaType === "video" && (
+                                            <div className="mt-1">
+                                                <MusicVisualizer isPlaying={isActive && isPlaying} />
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                                
+
+                                {/* CONTENT */}
+                                <div className="max-w-[85%] mb-3">
+                                    <h2 className="text-xl font-bold text-white leading-tight mb-0.5 text-shadow">{reel.title}</h2>
+                                    <div className="flex flex-wrap items-baseline gap-1">
+                                        <p className="text-[12px] font-medium text-white/70 leading-relaxed line-clamp-2 text-shadow inline">
+                                            {reel.description}
+                                        </p>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); onCommentClick(reel._id); }}
+                                            className="text-[12px] font-bold text-white/80 hover:text-white transition-colors cursor-pointer whitespace-nowrap"
+                                        >
+                                            more...
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* PROGRESS */}
                                 {reel.mediaType === "video" && (
-                                    <div className="mt-1">
-                                        <MusicVisualizer isPlaying={isActive && isPlaying} />
+                                    <div className="w-full h-[2px] bg-white/10 rounded-full overflow-hidden">
+                                        <motion.div style={{ width: `${progress}%` }} className="h-full bg-white shadow-[0_0_5px_rgba(255,255,255,0.7)]" />
                                     </div>
                                 )}
                             </div>
-                        </div>
-
-                        {/* CONTENT */}
-                        <div className="max-w-[85%] mb-3">
-                            <h2 className="text-xl font-bold text-white leading-tight mb-0.5 text-shadow">{reel.title}</h2>
-                            <div className="flex flex-wrap items-baseline gap-1">
-                                <p className="text-[12px] font-medium text-white/70 leading-relaxed line-clamp-2 text-shadow inline">
-                                    {reel.description}
-                                </p>
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); onCommentClick(reel._id); }}
-                                    className="text-[12px] font-bold text-white/80 hover:text-white transition-colors cursor-pointer whitespace-nowrap"
-                                >
-                                    more...
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* PROGRESS */}
-                        {reel.mediaType === "video" && (
-                            <div className="w-full h-[2px] bg-white/10 rounded-full overflow-hidden">
-                                <motion.div style={{ width: `${progress}%` }} className="h-full bg-white shadow-[0_0_5px_rgba(255,255,255,0.7)]" />
-                            </div>
-                        )}
-                    </div>
-                </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* WATERMARK */}
@@ -429,4 +464,4 @@ const ReelCard = ({ reel, isActive, isPreloading, onCommentClick, globalMuted, s
     );
 };
 
-export default ReelCard;
+export default React.memo(ReelCard);

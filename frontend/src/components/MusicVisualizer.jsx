@@ -44,4 +44,4 @@ const MusicVisualizer = ({ isPlaying = true }) => {
     );
 };
 
-export default MusicVisualizer;
+export default React.memo(MusicVisualizer);

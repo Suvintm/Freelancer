@@ -229,21 +229,35 @@ const ReelsPage = ({ isActive = true }) => {
         return feed;
     }, [reels, reelAds, skippedAdIndices, targetAd, targetReelId]);
 
+    const urlUpdateTimerRef = useRef(null);
+
     const handleScroll = useCallback(({ scrollOffset }) => {
         if (loading) return;
+        
+        // — PERFORMANCE CONCEPT: High-Speed Index Calculation —
+        // We use a zero-latency bitwise or floor calculation to find the candidate index.
         const index = Math.round(scrollOffset / windowHeight);
+        
         if (index !== activeReelIndex && index >= 0 && index < combinedFeed.length) {
             setActiveReelIndex(index);
             savePosition(index);
-            const item = combinedFeed[index];
-            if (item && item.id) {
-                const currentUrl = new URL(window.location.href);
-                const stableId = item.type === 'ad' ? `ad_${item.content._id}` : item.content._id;
-                if (currentUrl.searchParams.get("id") !== stableId) {
-                    currentUrl.searchParams.set("id", stableId);
-                    window.history.replaceState(null, '', currentUrl.pathname + currentUrl.search);
+            
+            // — PERFORMANCE CONCEPT: Debounced Side-Effects —
+            // history.replaceState is expensive and can drop frames during the snap animation.
+            // We debounce it by 100ms to ensure the animation settles before updating the URL.
+            if (urlUpdateTimerRef.current) clearTimeout(urlUpdateTimerRef.current);
+            urlUpdateTimerRef.current = setTimeout(() => {
+                const item = combinedFeed[index];
+                if (item && item.id) {
+                    const currentUrl = new URL(window.location.href);
+                    const stableId = item.type === 'ad' ? `ad_${item.content._id}` : item.content._id;
+                    if (currentUrl.searchParams.get("id") !== stableId) {
+                        currentUrl.searchParams.set("id", stableId);
+                        window.history.replaceState(null, '', currentUrl.pathname + currentUrl.search);
+                    }
                 }
-            }
+            }, 100);
+
             if (index >= combinedFeed.length - 2 && hasMore && !loadingMore) loadMore();
         }
     }, [windowHeight, activeReelIndex, combinedFeed, loading, hasMore, loadingMore, savePosition]);
