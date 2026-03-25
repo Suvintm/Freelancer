@@ -5,7 +5,7 @@ import { Portfolio } from "../../profiles/models/Portfolio.js";
 import { Reel } from "../../reels/models/Reel.js";
 import User from "../../user/models/User.js";
 import { UserBadge, BADGE_DEFINITIONS } from "../models/Badge.js";
-import logger from "../../../../utils/logger.js";
+import logger from "../../../utils/logger.js";
 
 /**
  * Badge Service
@@ -345,4 +345,5 @@ class BadgeService {
 
 export const badgeService = new BadgeService();
 export default badgeService;
+
 

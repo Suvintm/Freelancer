@@ -5,13 +5,13 @@
 
 import User from "../../user/models/User.js";
 import KYCLog from "../../kyc/models/KYCLog.js";
-import { uploadToCloudinary } from "../../../../utils/uploadToCloudinary.js";
-import { RazorpayProvider } from "../../../../services/RazorpayProvider.js";
-import { ApiError, asyncHandler } from "../../../../middleware/errorHandler.js";
-import { emitToUser, emitMaintenance } from "../../../../socket.js";
+import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
+import { RazorpayProvider } from "../../../services/RazorpayProvider.js";
+import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
+import { emitToUser, emitMaintenance } from "../../../socket.js";
 import { Profile } from "../../profiles/models/Profile.js";
 import { Portfolio } from "../../profiles/models/Portfolio.js";
-import { calculateProfileCompletion } from "../../../../utils/profileUtils.js";
+import { calculateProfileCompletion } from "../../../utils/profileUtils.js";
 import { SiteSettings } from "../../system/models/SiteSettings.js";
 
 /**
@@ -292,6 +292,7 @@ export default {
   submitKYC,
   lookupIFSC,
 };
+
 
 
 

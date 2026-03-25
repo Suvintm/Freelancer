@@ -10,11 +10,11 @@ import {
   verifyOtp,
   resendOtp,
 } from "../controllers/authcontroller.js";
-import { upload } from "../../../../middleware/upload.js";
-import protect from "../../../../middleware/authMiddleware.js";
-import { authLimiter, registerLimiter, uploadLimiter } from "../../../../middleware/rateLimiter.js";
-import { registerValidator, loginValidator } from "../../../../middleware/validators.js";
-import { vpnCheckMiddleware } from "../../../../middleware/vpnCheck.js";
+import { upload } from "../../../middleware/upload.js";
+import protect from "../../../middleware/authMiddleware.js";
+import { authLimiter, registerLimiter, uploadLimiter } from "../../../middleware/rateLimiter.js";
+import { registerValidator, loginValidator } from "../../../middleware/validators.js";
+import { vpnCheckMiddleware } from "../../../middleware/vpnCheck.js";
 
 const router = express.Router();
 
@@ -67,4 +67,5 @@ router.patch(
 router.get("/me", protect, getCurrentUser);
 
 export default router;
+
 

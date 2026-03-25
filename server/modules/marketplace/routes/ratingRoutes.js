@@ -1,5 +1,5 @@
 import express from "express";
-import protect from "../../../../middleware/authMiddleware.js";
+import protect from "../../../middleware/authMiddleware.js";
 import {
   submitRating,
   getEditorRatings,
@@ -7,7 +7,7 @@ import {
   checkOrderRating,
   getEditorStats,
 } from "../controllers/ratingController.js";
-import { ratingValidator, ratingResponseValidator } from "../../../../middleware/validators.js";
+import { ratingValidator, ratingResponseValidator } from "../../../middleware/validators.js";
 
 const router = express.Router();
 
@@ -27,4 +27,5 @@ router.get("/stats/:editorId", getEditorStats);
 router.post("/:ratingId/respond", protect, ratingResponseValidator, respondToRating);
 
 export default router;
+
 

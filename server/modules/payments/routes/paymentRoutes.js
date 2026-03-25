@@ -8,8 +8,8 @@
  */
 
 import express from "express";
-import authMiddleware from "../../../../middleware/authMiddleware.js";
-// import { protectAdmin } from "../../../../middleware/adminAuth.js";
+import authMiddleware from "../../../middleware/authMiddleware.js";
+// import { protectAdmin } from "../../../middleware/adminAuth.js";
 import { proxyToPaymentService } from "../../../kafka/paymentProxy.js";
 
 // ── Commented out — migrated to Java Payment Service ─────────────
@@ -38,4 +38,5 @@ router.get("/:id/receipt",   (req, res) => proxyToPaymentService(req, res, "get"
 router.get("/:id",           (req, res) => proxyToPaymentService(req, res, "get", `/payments/${req.params.id}`));
 
 export default router;
+
 

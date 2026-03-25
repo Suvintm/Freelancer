@@ -12,9 +12,9 @@ import PaymentService, {
   isPaymentSupported,
   getCurrencyInfo,
   calculatePlatformFee,
-} from "../../../../services/PaymentService.js";
-import { RazorpayProvider } from "../../../../services/RazorpayProvider.js";
-import { getRazorpayKeyId, verifyWebhookSignature, isRazorpayConfigured } from "../../../../config/razorpay.js";
+} from "../../../services/PaymentService.js";
+import { RazorpayProvider } from "../../../services/RazorpayProvider.js";
+import { getRazorpayKeyId, verifyWebhookSignature, isRazorpayConfigured } from "../../../config/razorpay.js";
 
 /**
  * Get payment configuration for frontend
@@ -784,4 +784,5 @@ export default {
   releasePayment,
   processRefund,
 };
+
 

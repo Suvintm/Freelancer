@@ -1,9 +1,9 @@
 import express from "express";
 import { Checklist } from "../models/Checklist.js";
 import { Order } from "../models/Order.js";
-import { ApiError, asyncHandler } from "../../../../middleware/errorHandler.js";
-import authMiddleware from "../../../../middleware/authMiddleware.js";
-import { getIO } from "../../../../socket.js";
+import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
+import authMiddleware from "../../../middleware/authMiddleware.js";
+import { getIO } from "../../../socket.js";
 
 const router = express.Router();
 
@@ -148,4 +148,5 @@ router.put("/:orderId/item/:itemId", asyncHandler(async (req, res) => {
 }));
 
 export default router;
+
 

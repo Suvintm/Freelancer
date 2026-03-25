@@ -1,10 +1,10 @@
 // advertisementController.js - Production-grade ad management
 import { Advertisement } from "../models/Advertisement.js";
 import { SiteSettings, getSettings } from "../../system/models/SiteSettings.js";
-import { ApiError, asyncHandler } from "../../../../middleware/errorHandler.js";
-import logger from "../../../../utils/logger.js";
-import { uploadToCloudinary } from "../../../../utils/uploadToCloudinary.js";
-import { getCache, setCache, delPattern } from "../../../../config/redisClient.js";
+import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
+import logger from "../../../utils/logger.js";
+import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
+import { getCache, setCache, delPattern } from "../../../config/redisClient.js";
 import { rankAdsWithBandit, updateBanditScore } from "../utils/adBandit.js";
 import { checkFrequencyCap, incrementFrequency, checkPacing, consumePacingToken } from "../utils/adPacing.js";
 
@@ -431,4 +431,5 @@ export const getSiteSettingsAdmin = asyncHandler(async (req, res) => {
   const settings = await getSettings();
   res.status(200).json({ success: true, settings });
 });
+
 

@@ -1,7 +1,7 @@
 // suvixScoreRoutes.js - Suvix Score API Routes
 import express from "express";
-import protect from "../../../../middleware/authMiddleware.js";
-import { authorize } from "../../../../middleware/authMiddleware.js";
+import protect from "../../../middleware/authMiddleware.js";
+import { authorize } from "../../../middleware/authMiddleware.js";
 import {
   getEditorScore,
   getMyScoreBreakdown,
@@ -18,4 +18,5 @@ router.get("/my/breakdown", protect, authorize("editor"), getMyScoreBreakdown);
 router.get("/:editorId", getEditorScore);
 
 export default router;
+
 

@@ -1,6 +1,6 @@
 // refundRoutes.js - Refund API Routes
 import express from "express";
-import protect, { authorize } from "../../../../middleware/authMiddleware.js";
+import protect, { authorize } from "../../../middleware/authMiddleware.js";
 // import { protectAdmin } from "../middleware/adminAuth.js";
 import {
   initiateRefund,
@@ -30,4 +30,5 @@ router.get("/order/:orderId", protect, getOrderRefunds);
 // MOVED TO ADMIN-SERVER
 
 export default router;
+
 
