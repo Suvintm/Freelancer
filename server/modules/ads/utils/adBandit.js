@@ -9,7 +9,7 @@
  */
 
 import redisClient from '../../../config/redisClient.js';
-import logger from './logger.js';
+import logger from '../../../utils/logger.js';
 
 // Redis keys for Bandit state per location
 const BANDIT_CLICKS_KEY = (loc) => `ads:bandit:clicks:${loc || 'all'}`;

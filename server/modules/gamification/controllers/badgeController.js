@@ -1,5 +1,5 @@
 import { UserBadge, BADGE_DEFINITIONS } from "../models/Badge.js";
-import badgeService from "../../../services/badgeService.js";
+import badgeService from "../services/badgeService.js";
 import logger from "../../../utils/logger.js";
 
 /**

@@ -8,7 +8,7 @@
  */
 
 import redisClient from '../../../config/redisClient.js';
-import logger from './logger.js';
+import logger from '../../../utils/logger.js';
 
 // Frequency Cap: Max 2 views per user per ad per 1 hour
 const FREQ_LIMIT = 2;

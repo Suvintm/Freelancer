@@ -1,9 +1,9 @@
 import asyncHandler from "express-async-handler";
 import { Rating } from "../models/Rating.js";
 import { Order } from "../models/Order.js";
-import { Profile } from "../models/Profile.js";
+import { Profile } from "../../profiles/models/Profile.js";
 import { ApiError } from "../../../middleware/errorHandler.js";
-import { createNotification } from "./notificationController.js";
+import { createNotification } from "../../connectivity/controllers/notificationController.js";
 
 /**
  * ⭐ Submit Rating (Client Only)
