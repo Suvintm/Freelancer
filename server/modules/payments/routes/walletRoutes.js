@@ -1,5 +1,5 @@
 import express from "express";
-import protect, { authorize } from "../../../middleware/authMiddleware.js";
+import protect, { authorize } from "../../../../middleware/authMiddleware.js";
 import { 
   getWalletBalance, 
   getWalletTransactions, 
@@ -16,5 +16,8 @@ router.get("/transactions", getWalletTransactions);
 router.get("/pending", getPendingClearance);
 
 export default router;
+
+
+
 
 

@@ -18,7 +18,7 @@ import {
 //   toggleSuvixAds,
 //   getSiteSettingsAdmin,
 } from "../controllers/advertisementController.js";
-// import { protectAdmin } from "../middleware/adminAuth.js";
+// import { protectAdmin } from "../../../../middleware/adminAuth.js";
 
 const router = express.Router();
 
@@ -68,3 +68,4 @@ router.post("/:id/view", trackAdView);                // Track view { location }
 router.post("/:id/click", trackAdClick);              // Track click
 
 export default router;
+

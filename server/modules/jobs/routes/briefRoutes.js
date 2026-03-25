@@ -2,8 +2,8 @@
  * Brief Routes - For Open Briefs feature
  */
 import express from "express";
-import protect from "../../../middleware/authMiddleware.js";
-import { generalLimiter } from "../middleware/rateLimiter.js";
+import protect from "../../../../middleware/authMiddleware.js";
+import { generalLimiter } from "../../../../middleware/rateLimiter.js";
 import {
   createBrief,
   getOpenBriefs,
@@ -47,5 +47,8 @@ router.get("/", protect, getOpenBriefs);
 router.get("/:id", protect, getBriefById);
 
 export default router;
+
+
+
 
 

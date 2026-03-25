@@ -2,14 +2,14 @@ import User from "../../user/models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
+import { uploadToCloudinary } from "../../../../utils/uploadToCloudinary.js";
 import { Profile } from "../../profiles/models/Profile.js";
-import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
-import logger from "../../../utils/logger.js";
+import { ApiError, asyncHandler } from "../../../../middleware/errorHandler.js";
+import logger from "../../../../utils/logger.js";
 import { createNotification } from "../../connectivity/controllers/notificationController.js";
-import { sendPasswordResetEmail, sendOTPEmail } from "../../../utils/emailService.js";
+import { sendPasswordResetEmail, sendOTPEmail } from "../../../../utils/emailService.js";
 import Otp from "../models/Otp.js";
-import { initiateSMSOTP, verifySMSOTP, validateIndianMobile } from "../../../services/otpService.js";
+import { initiateSMSOTP, verifySMSOTP, validateIndianMobile } from "../../../../services/otpService.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = "7d";
@@ -600,5 +600,8 @@ export const resetPassword = asyncHandler(async (req, res) => {
     message: "Password has been reset successfully. Please login with your new password.",
   });
 });
+
+
+
 
 

@@ -2,7 +2,7 @@ import asyncHandler from "express-async-handler";
 import User from "../../user/models/User.js";
 import WithdrawalRequest from "../models/WithdrawalRequest.js";
 import WalletTransaction from "../models/WalletTransaction.js";
-import { ApiError } from "../../../middleware/errorHandler.js";
+import { ApiError } from "../../../../middleware/errorHandler.js";
 import mongoose from "mongoose";
 
 /**
@@ -124,5 +124,8 @@ export const getWithdrawalDetails = asyncHandler(async (req, res) => {
 
   res.json({ success: true, withdrawal });
 });
+
+
+
 
 

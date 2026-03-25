@@ -3,13 +3,13 @@
  * Handles subscription plans, payments, and user subscriptions
  */
 
-import razorpay from "../../../config/razorpay.js";
+import razorpay from "../../../../config/razorpay.js";
 import crypto from "crypto";
 import { Subscription } from "../models/Subscription.js";
 import { SubscriptionPlan } from "../models/SubscriptionPlan.js";
-import { asyncHandler } from "../../../middleware/errorHandler.js";
+import { asyncHandler } from "../../../../middleware/errorHandler.js";
 import { createNotification } from "../../connectivity/controllers/notificationController.js";
-import { withCache, deleteCache, CacheKey, TTL } from "../../../utils/cache.js";
+import { withCache, deleteCache, CacheKey, TTL } from "../../../../utils/cache.js";
 
 // ============ GET ALL PLANS ============
 export const getPlans = asyncHandler(async (req, res) => {
@@ -401,5 +401,8 @@ export const getAllSubscriptions = asyncHandler(async (req, res) => {
     },
   });
 });
+
+
+
 
 

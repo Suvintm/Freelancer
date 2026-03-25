@@ -2,7 +2,7 @@
 import asyncHandler from "express-async-handler";
 import { Payment } from "../models/Payment.js";
 import { Order } from "../../marketplace/models/Order.js";
-import { ApiError } from "../../../middleware/errorHandler.js";
+import { ApiError } from "../../../../middleware/errorHandler.js";
 
 /**
  * 📋 Get Payment History
@@ -262,6 +262,9 @@ export const getReceiptData = asyncHandler(async (req, res) => {
 });
 
 // ADMIN ENDPOINTS MOVED TO ADMIN-SERVER
+
+
+
 
 
 

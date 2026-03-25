@@ -2,8 +2,8 @@
  * Proposal Routes - For Open Briefs feature
  */
 import express from "express";
-import protect from "../../../middleware/authMiddleware.js";
-import { generalLimiter } from "../middleware/rateLimiter.js";
+import protect from "../../../../middleware/authMiddleware.js";
+import { generalLimiter } from "../../../../middleware/rateLimiter.js";
 import {
   submitProposal,
   getProposalsForBrief,
@@ -15,7 +15,7 @@ import {
   withdrawProposal,
   getProposalStats,
 } from "../controllers/proposalController.js";
-import { proposalValidator } from "../middleware/validators.js";
+import { proposalValidator } from "../../../../middleware/validators.js";
 
 const router = express.Router();
 
@@ -52,5 +52,8 @@ router.post("/verify-payment", protect, verifyAcceptancePayment);
 router.patch("/:id/reject", protect, rejectProposal);
 
 export default router;
+
+
+
 
 

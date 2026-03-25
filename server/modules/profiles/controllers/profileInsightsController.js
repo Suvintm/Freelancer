@@ -4,7 +4,7 @@
  */
 
 import { ProfileVisit } from "../models/ProfileVisit.js";
-import { asyncHandler } from "../../../middleware/errorHandler.js";
+import { asyncHandler } from "../../../../middleware/errorHandler.js";
 import mongoose from "mongoose";
 
 // ============ GET BASIC STATS (Free) ============
@@ -221,5 +221,8 @@ export const getVisitorDetails = asyncHandler(async (req, res) => {
     },
   });
 });
+
+
+
 
 

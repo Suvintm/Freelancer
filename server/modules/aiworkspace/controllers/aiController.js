@@ -1,9 +1,9 @@
 import AIWorkspaceSession from "../models/aiModel.js";
-import { asyncHandler } from "../../../middleware/errorHandler.js";
-import { findMatchingEditors } from "../../../utils/aiworkspace/aiUtil.js";
+import { asyncHandler } from "../../../../middleware/errorHandler.js";
+import { findMatchingEditors } from "../../../../utils/aiworkspace/aiUtil.js";
 import Groq from "groq-sdk";
-import { AI_CONFIG } from "../../../config/aiworkspace/aiConfig.js";
-import logger from "../../../utils/logger.js";
+import { AI_CONFIG } from "../../../../config/aiworkspace/aiConfig.js";
+import logger from "../../../../utils/logger.js";
 
 // Single Groq client — fast + free tiers
 const groqApiKey = process.env.GROQ_API_KEY;
@@ -48,7 +48,7 @@ export const createAiSession = asyncHandler(async (req, res) => {
   });
 });
 
-import { extractKeywords } from "../../../utils/aiworkspace/keywordExtractor.js";
+import { extractKeywords } from "../../../../utils/aiworkspace/keywordExtractor.js";
  
 /**
  * @desc    Process natural chat message
@@ -275,5 +275,8 @@ export const processGuidedMatch = asyncHandler(async (req, res) => {
     editors: enrichedMatches.slice(0, 5),
   });
 });
+
+
+
 
 

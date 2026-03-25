@@ -3,9 +3,9 @@ import asyncHandler from "express-async-handler";
 import ClientKYC from "../models/ClientKYC.js";
 import User from "../../user/models/User.js";
 import KYCLog from "../models/KYCLog.js";
-import { ApiError } from "../../../middleware/errorHandler.js";
-import logger from "../../../utils/logger.js";
-import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
+import { ApiError } from "../../../../middleware/errorHandler.js";
+import logger from "../../../../utils/logger.js";
+import { uploadToCloudinary } from "../../../../utils/uploadToCloudinary.js";
 
 /**
  * @desc    Submit Client KYC
@@ -335,6 +335,9 @@ export const canProceed = asyncHandler(async (req, res) => {
 });
 
 // ADMIN ENDPOINTS MOVED TO ADMIN-SERVER
+
+
+
 
 
 

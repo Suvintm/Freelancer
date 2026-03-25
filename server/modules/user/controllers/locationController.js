@@ -7,7 +7,7 @@ import {
   calculateDistance,
   isValidCoordinates,
   geocodeCity,
-} from "../../../utils/geoUtils.js";
+} from "../../../../utils/geoUtils.js";
 
 // @desc    Update editor location settings (Verified Static Presence)
 // @route   PATCH /api/location/settings
@@ -325,5 +325,8 @@ export const deleteLocationSettings = asyncHandler(async (req, res) => {
     message: "Location settings deleted successfully",
   });
 });
+
+
+
 
 

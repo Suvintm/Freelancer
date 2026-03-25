@@ -16,7 +16,7 @@ import {
   uploadVoice,
   sendDriveLink,
 } from "../controllers/messageController.js";
-import authMiddleware from "../../../middleware/authMiddleware.js";
+import authMiddleware from "../../../../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -65,6 +65,9 @@ router.patch("/:messageId/edit", editMessage);
 router.patch("/:messageId/star", toggleStarMessage);
 
 export default router;
+
+
+
 
 
 

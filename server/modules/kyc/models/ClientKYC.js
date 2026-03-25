@@ -2,7 +2,7 @@
 // Stores client's verification details for refund processing
 
 import mongoose from "mongoose";
-import { encrypt, decrypt } from "../utils/encryption.js";
+import { encrypt, decrypt } from "../../../utils/encryption.js";
 
 // Mask account number for display (show last 4 digits)
 const maskAccountNumber = (accountNumber) => {
@@ -268,3 +268,4 @@ clientKYCSchema.index({ user: 1, status: 1 });
 const ClientKYC = mongoose.model("ClientKYC", clientKYCSchema);
 
 export default ClientKYC;
+

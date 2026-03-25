@@ -7,11 +7,11 @@ import {
   deletePortfolio,
   getPortfoliosByUserId,
 } from "../controllers/portfolioController.js";
-import authMiddleware from "../../../middleware/authMiddleware.js";
-import { upload } from "../../../middleware/upload.js";
-import { portfolioValidator, mongoIdValidator, userIdValidator } from "../../../middleware/validators.js";
-import { uploadLimiter } from "../../../middleware/rateLimiter.js";
-import { checkStorage } from "../../../middleware/storageMiddleware.js";
+import authMiddleware from "../../../../middleware/authMiddleware.js";
+import { upload } from "../../../../middleware/upload.js";
+import { portfolioValidator, mongoIdValidator, userIdValidator } from "../../../../middleware/validators.js";
+import { uploadLimiter } from "../../../../middleware/rateLimiter.js";
+import { checkStorage } from "../../../../middleware/storageMiddleware.js";
 
 const router = express.Router();
 
@@ -60,5 +60,8 @@ router.put(
 router.delete("/:id", mongoIdValidator, deletePortfolio);
 
 export default router;
+
+
+
 
 

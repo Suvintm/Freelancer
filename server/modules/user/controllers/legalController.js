@@ -1,7 +1,7 @@
-import { asyncHandler } from "../middleware/errorHandler.js";
+import { asyncHandler } from "../../../../middleware/errorHandler.js";
 import ContentAccessLog from "../../marketplace/models/ContentAccessLog.js";
 import User from "../models/User.js";
-import logger from "../utils/logger.js";
+import logger from "../../../../utils/logger.js";
 
 /**
  * @desc    Accept Content Protection Policy
@@ -60,3 +60,4 @@ export default {
   acceptContentPolicy,
   logContentAccess,
 };
+

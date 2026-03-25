@@ -7,7 +7,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import redisClient from '../config/redisClient.js';
+import redisClient from '../../../../config/redisClient.js';
 import logger from './logger.js';
 
 // Frequency Cap: Max 2 views per user per ad per 1 hour
@@ -81,3 +81,4 @@ export const consumePacingToken = async (adId) => {
         // Skip pacing token consumption if Redis is unavailable
     }
 };
+

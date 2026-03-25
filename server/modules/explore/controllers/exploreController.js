@@ -1,7 +1,7 @@
 import { Profile } from "../../profiles/models/Profile.js";
 import User from "../../user/models/User.js";
-import { asyncHandler } from "../../../middleware/errorHandler.js";
-import { withCache, CacheKey, TTL, hashQuery } from "../../../utils/cache.js";
+import { asyncHandler } from "../../../../middleware/errorHandler.js";
+import { withCache, CacheKey, TTL, hashQuery } from "../../../../utils/cache.js";
 
 // GET /api/explore/editors - Production-level search with filters and sorting
 export const getAllEditors = asyncHandler(async (req, res) => {
@@ -273,5 +273,8 @@ export const getEditorSuggestions = asyncHandler(async (req, res) => {
     suggestions
   });
 });
+
+
+
 
 

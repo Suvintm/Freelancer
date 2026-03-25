@@ -1,7 +1,7 @@
 import express from "express";
 import { QuickReply } from "../models/QuickReply.js";
-import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
-import authMiddleware from "../../../middleware/authMiddleware.js";
+import { ApiError, asyncHandler } from "../../../../middleware/errorHandler.js";
+import authMiddleware from "../../../../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -86,5 +86,8 @@ router.patch("/:id/use", asyncHandler(async (req, res) => {
 }));
 
 export default router;
+
+
+
 
 
