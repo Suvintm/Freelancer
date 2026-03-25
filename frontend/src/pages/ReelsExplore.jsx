@@ -9,7 +9,6 @@ import {
     HiOutlineArrowUp,
     HiOutlineFire,
 } from "react-icons/hi2";
-import { FaFire } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";

@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import SplashScreen from "./components/SplashScreen.jsx";
 import Homepage from "./pages/Homepage.jsx";
 import ClientHome from "./pages/clientHome.jsx";
 import EditorHome from "./pages/EditorHome.jsx";
 import EditorProfilePage from "./pages/EditorProfilePage.jsx";
-import EditorMyorderspage from "./pages/EditorMyorderspage.jsx";
 import EditorProfileUpdate from "./pages/EditorProfileUpdate.jsx";
 import ClientProfileUpdate from "./pages/ClientProfileUpdate.jsx";
 import ReelUploadPage from "./pages/ReelUploadPage.jsx";

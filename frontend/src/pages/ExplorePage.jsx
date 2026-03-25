@@ -13,9 +13,7 @@
  */
 
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
-import { FaFire } from "react-icons/fa";
 import { useNavigate, useLocation } from "react-router-dom";
-import Lenis from 'lenis';
 import {
   motion,
   useMotionValue,
