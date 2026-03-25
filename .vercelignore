@@ -1,0 +1,11 @@
+# Ignore everything by default (to prevent "socket hang up" on large uploads)
+server/
+admin-server/
+payment-service/
+node_modules/
+.git/
+.github/
+
+# But include the frontend services (Vercel will manage these based on settings)
+!frontend/
+!admin-frontend/
