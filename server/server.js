@@ -396,14 +396,18 @@ const connectDB = async (retries = 5) => {
     });
     logger.info("MongoDB connected successfully");
 
-    // Production AI - Create Text Indexes for rapid matching
+    // Production AI - Create Text Indexes for rapid matching (Run in background to avoid blocking boot)
     const db = mongoose.connection.db;
-    await Promise.all([
+    Promise.all([
       db.collection("profiles").createIndex({ about: "text", skills: "text", softwares: "text" }),
       db.collection("users").createIndex({ bio: "text", name: "text" }),
       db.collection("reels").createIndex({ title: "text", description: "text", hashtags: "text" })
-    ]);
-    logger.info("Production AI text indexes verified/created ✅");
+    ]).then(() => {
+      logger.info("Production AI text indexes verified/created ✅");
+    }).catch(err => {
+      logger.error("Failed to create text indexes:", err.message);
+    });
+
     return true;
   } catch (error) {
     logger.error(`MongoDB connection failed: ${error.message}`);
@@ -425,20 +429,25 @@ mongoose.connection.on("error", (error) => {
 });
 
 const startServer = async () => {
+  logger.info("🚀 Starting SuviX Server...");
+  
   const dbConnected = await connectDB();
   if (!dbConnected) {
-    logger.error("Failed to connect to MongoDB. Exiting...");
+    logger.error("❌ Failed to connect to MongoDB. Exiting...");
     process.exit(1);
   }
 
   // Start scheduled jobs (auto-cancel expired orders, etc.)
+  logger.info("⏰ Starting scheduled jobs...");
   startScheduledJobs();
 
   // Initialize Search TRIE (O(L) Autocomplete)
+  logger.info("🔍 Initializing Search TRIE...");
   initSearchTrie();
 
+  logger.info(`🌐 Attempting to listen on port ${PORT}...`);
   server.listen(PORT, () => {
-    logger.info(`Server running on port ${PORT} in ${process.env.NODE_ENV || "development"} mode`);
+    logger.info(`✅ Server running on port ${PORT} in ${process.env.NODE_ENV || "development"} mode`);
   });
 };
 
