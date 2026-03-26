@@ -621,7 +621,14 @@ const SuggestedReels = () => {
                     onTouchStart={() => setInteracting(true)}
                     onTouchEnd={() => setTimeout(() => setInteracting(false), 1100)}
                     className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory px-1 pb-2"
-                    style={{ gap: GAP, scrollbarWidth: "none", msOverflowStyle: "none" }}
+                    style={{ 
+                        gap: GAP, 
+                        scrollbarWidth: "none", 
+                        msOverflowStyle: "none",
+                        touchAction: "pan-x",
+                        overscrollBehaviorX: "contain",
+                        WebkitOverflowScrolling: "touch"
+                    }}
                 >
                     {reels.map((reel, idx) => (
                         <ReelThumbnail
