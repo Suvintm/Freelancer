@@ -42,9 +42,11 @@ export const AppProvider = ({ children }) => {
           "Authorization"
         ] = `Bearer ${parsedUser.token}`;
 
+        // Added timeout to prevent infinite hang during Render spin-up
         axios
           .get(`${backendURL}/api/auth/me`, {
             headers: { Authorization: `Bearer ${parsedUser.token}` },
+            timeout: 15000, // 15 seconds limit
           })
           .then((res) => {
             // ✅ preserve token after refresh
@@ -58,6 +60,7 @@ export const AppProvider = ({ children }) => {
             fetchNotifications(); // Fetch notifications on load
           })
           .catch((err) => {
+            console.error("Auth check failed or timed out:", err.message);
             // Check if user is banned
             if (err.response?.data?.isBanned) {
               localStorage.setItem("banInfo", JSON.stringify({
