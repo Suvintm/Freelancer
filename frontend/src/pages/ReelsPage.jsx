@@ -317,6 +317,23 @@ const ReelsPage = ({ isActive = true }) => {
         setReels(prev => prev.map(r => r._id === activeReel?._id ? { ...r, commentsCount: newCount } : r));
     };
 
+    // — PERFORMANCE: Synchronize child state with parent Source of Truth —
+    const handleLikeUpdate = useCallback((reelId, isLiked, likesCount, latestLikers) => {
+        setReels(prev => prev.map(r => r._id === reelId ? { 
+            ...r, 
+            isLiked, 
+            likesCount,
+            latestLikers
+        } : r));
+    }, []);
+
+    const handleFollowUpdate = useCallback((editorId, isFollowing) => {
+        setReels(prev => prev.map(r => r.editor?._id === editorId ? {
+            ...r,
+            isFollowing
+        } : r));
+    }, []);
+
     return (
         <div className="relative h-full w-full bg-black flex flex-col overflow-hidden">
             <div className="absolute top-0 left-0 right-0 px-4 py-4 z-40 flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
@@ -372,6 +389,8 @@ const ReelsPage = ({ isActive = true }) => {
                                             isNearActive={Math.abs(index - activeReelIndex) <= 1}
                                             isPreloading={index === activeReelIndex + 1 || index === activeReelIndex - 1}
                                             onCommentClick={handleCommentClick}
+                                            onLikeUpdate={handleLikeUpdate}
+                                            onFollowUpdate={handleFollowUpdate}
                                             globalMuted={globalMuted}
                                             setGlobalMuted={setGlobalMuted}
                                         />

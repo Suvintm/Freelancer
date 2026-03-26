@@ -126,7 +126,17 @@ const ReelBottomInfo = React.memo(({ latestLikers, likesCount, editor, isFollowi
     </div>
 ));
 
-const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, globalMuted, setGlobalMuted }) => {
+const ReelCard = ({ 
+    reel, 
+    isActive, 
+    isNearActive, 
+    isPreloading, 
+    onCommentClick, 
+    onLikeUpdate,
+    onFollowUpdate,
+    globalMuted, 
+    setGlobalMuted 
+}) => {
     const { user, backendURL } = useAppContext();
 
     // — PERFORMANCE: Use pre-computed backend values to avoid heavy array checks —
@@ -136,7 +146,15 @@ const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, 
     const [isPlaying, setIsPlaying] = useState(false);
     const [progress, setProgress] = useState(0);
     const [showHeartAnimation, setShowHeartAnimation] = useState(false);
-    const [isFollowing, setIsFollowing] = useState(false);
+    const [isFollowing, setIsFollowing] = useState(reel.isFollowing || false);
+
+    // — VIRTUALIZATION SYNC: Critical for preserving state across unmount/re-mount —
+    useEffect(() => {
+        setIsLiked(reel.isLiked ?? (user ? reel.likes?.some(id => String(id) === String(user._id)) : false));
+        setLikesCount(reel.likesCount || 0);
+        setLatestLikers(reel.latestLikers || []);
+        setIsFollowing(reel.isFollowing || false);
+    }, [reel, user]);
     const [followLoading, setFollowLoading] = useState(false);
     const [showMuteIcon, setShowMuteIcon] = useState(false);
     const [showFollowAnimation, setShowFollowAnimation] = useState(false);
@@ -267,13 +285,36 @@ const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, 
         }
 
         setTimeout(() => setShowHeartAnimation(false), 900);
+        
+        // Notify Parent (Source of Truth) to prevent state loss on scroll
+        // PRODUCTION NOTE: We put the current user at the END of the array
+        // because LikerAvatars.jsx calls .reverse() to show the most recent first.
+        const currentUserObj = { _id: user._id, name: user.name, profilePicture: user.profilePicture };
+        const finalLikers = newIsLiked 
+            ? [...latestLikers.filter(l => String(l._id) !== String(user._id)), currentUserObj].slice(-3)
+            : latestLikers.filter(l => String(l._id) !== String(user._id));
+        
+        const finalCount = newIsLiked ? likesCount + 1 : Math.max(0, likesCount - 1);
+        
+        // Immediate UI Update (Local)
+        setIsLiked(newIsLiked);
+        setLikesCount(finalCount);
+        setLatestLikers(finalLikers);
+
+        // Sync with Parent
+        onLikeUpdate(reel._id, newIsLiked, finalCount, finalLikers);
+
         try {
             await axios.post(`${backendURL}/api/reels/${reel._id}/like`, {}, { headers: { Authorization: `Bearer ${user.token}` } });
         } catch {
+            // Revert on failure
             setIsLiked(!newIsLiked);
-            setLikesCount(prev => !newIsLiked ? prev + 1 : prev - 1);
+            setLikesCount(likesCount);
+            setLatestLikers(latestLikers);
+            onLikeUpdate(reel._id, !newIsLiked, likesCount, latestLikers);
+            toast.error("Failed to update like status");
         }
-    }, [user, isLiked, backendURL, reel._id]);
+    }, [user, isLiked, backendURL, reel._id, latestLikers, likesCount, onLikeUpdate]);
 
     const handleFollow = useCallback(async (e) => {
         if (e) { e.preventDefault(); e.stopPropagation(); }
@@ -282,6 +323,8 @@ const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, 
         setFollowLoading(true);
         const newFollowing = !isFollowing;
         setIsFollowing(newFollowing);
+        onFollowUpdate(reel.editor?._id, newFollowing);
+
         try {
             await axios.post(`${backendURL}/api/user/follow/${reel.editor?._id}`, {}, { headers: { Authorization: `Bearer ${user.token}` } });
             if (newFollowing) {
@@ -290,11 +333,12 @@ const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, 
             }
         } catch {
             setIsFollowing(!newFollowing);
+            onFollowUpdate(reel.editor?._id, !newFollowing);
             toast.error("Failed to update follow status");
         } finally {
             setFollowLoading(false);
         }
-    }, [user, isFollowing, followLoading, reel.editor?._id, backendURL]);
+    }, [user, isFollowing, followLoading, reel.editor?._id, backendURL, onFollowUpdate]);
 
     const handleShare = useCallback(() => {
         const url = `${window.location.origin}/reels?id=${reel._id}`;

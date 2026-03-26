@@ -26,11 +26,12 @@ jobs:
           cache: "npm"
           cache-dependency-path: ${{ matrix.service }}/package-lock.json
 
-      - name: Install & Lint
+      - name: Install, Lint & Build
         working-directory: ${{ matrix.service }}
         run: |
           npm ci
           npm run lint --if-present
+          npm run build --if-present
 
       - name: Run Tests
         working-directory: ${{ matrix.service }}
