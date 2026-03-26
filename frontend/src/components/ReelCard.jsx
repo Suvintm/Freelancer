@@ -385,8 +385,8 @@ const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, 
                 )}
             </AnimatePresence>
 
-            {/* Interactive Video Quality Menu */}
-            {reel.mediaType === "video" && (
+            {/* Interactive Video Quality Menu - COMMENTED OUT FOR INSTA-SMOOTHNESS */}
+            {/* {reel.mediaType === "video" && (
                 <VideoQualitySelector 
                     currentQuality={currentQuality}
                     availableQualities={availableQualities}
@@ -395,17 +395,17 @@ const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, 
                     onMenuOpen={() => { if (videoRef.current) videoRef.current.pause(); }}
                     onMenuClose={() => { if (videoRef.current) videoRef.current.play(); }}
                 />
-            )}
+            )} */}
             </div>
 
-            {/* SIDEBAR (Only visible when active or nearly settled) */}
+            {/* SIDEBAR (Fade-in for Insta-Level Stability) */}
             <AnimatePresence>
                 {showMetadata && (
                     <motion.div 
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20 }}
-                        transition={{ duration: 0.3 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.4, ease: "easeOut" }}
                     >
                         <ReelSidebar 
                             isLiked={isLiked}
@@ -463,10 +463,10 @@ const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, 
                 <AnimatePresence>
                     {showMetadata && (
                         <motion.div 
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 20 }}
-                            transition={{ duration: 0.3 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.5, ease: "easeOut" }}
                         >
                             <ReelBottomInfo 
                                 latestLikers={latestLikers}

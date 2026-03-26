@@ -59,9 +59,9 @@ const HlsVideoPlayer = React.forwardRef(({
         // Initial buffer target
         backBufferLength: 0, // Quickly evict past fragments from memory        
         // ── ABR (Adaptive Bitrate) Algorithm Tuning ──
-        abrEwmaDefaultEstimate: 5000000, // 5Mbps initial guess for HD starts
-        abrBandwidthUpFactor: 0.7,      // Be very conservative about upgrading to avoid jitter
-        abrBandwidthDownFactor: 0.95,   // Fast and clean downgrade for stability
+        abrEwmaDefaultEstimate: 10000000, // 10Mbps initial guess for 4K/HD starts like Instagram
+        abrBandwidthUpFactor: 0.7,       // Be conservative about upgrading to ensure no buffering
+        abrBandwidthDownFactor: 0.95,    // Fast and stable downgrade
         
         // ── Resilience ──
         fragLoadingMaxRetry: 4,
@@ -124,11 +124,13 @@ const HlsVideoPlayer = React.forwardRef(({
     }
   }, [isActive, autoPlay, isReady]);
 
-  // Fast Quality Switching Logic
+  // Fast Quality Switching Logic - FORCED TO AUTO FOR INSTA-SMOOTHNESS
   useEffect(() => {
     if (!hlsRef.current || !isReady) return;
     const hls = hlsRef.current;
 
+    /** 
+     * MANUAL OVERRIDE COMMENTED OUT - SWITCHING TO PURE ABR
     if (preferredQuality === "Auto") {
       hls.currentLevel = -1;
     } else {
@@ -145,11 +147,6 @@ const HlsVideoPlayer = React.forwardRef(({
 
       if (idx === -1 && hls.levels.length > 0) idx = 0; // Fallback to min
 
-      /**
-       * DSA PERFORMANCE CONCEPT: Hybrid Switching
-       * If currently stalling, we force immediate switch (currentLevel) to recover.
-       * If playing normally, we use nextLevel for zero-glitch seamless transition.
-       */
       if (isStalledRef.current || videoRef.current?.paused) {
         hls.currentLevel = idx;
         isStalledRef.current = false;
@@ -157,6 +154,10 @@ const HlsVideoPlayer = React.forwardRef(({
         hls.nextLevel = idx;
       }
     }
+    */
+
+    // Force ABR for all users to ensure maximum stability per Instagram standards
+    hls.currentLevel = -1; 
   }, [preferredQuality, isReady]);
 
   return (
