@@ -324,9 +324,7 @@ const ReelsPage = ({ isActive = true }) => {
                     <HiOutlineChevronLeft className="text-2xl" />
                 </button>
                 <div />
-                <button onClick={() => invalidateCache() || fetchReels(1, false)} className="w-10 h-10 flex items-center justify-center text-white/70 hover:text-white transition-colors pointer-events-auto">
-                    <BiRefresh className={`text-2xl ${refreshing ? "animate-spin" : ""}`} />
-                </button>
+                <div className="w-10 h-10" /> {/* Spacer to maintain symmetry */}
             </div>
 
             <PullIndicator />

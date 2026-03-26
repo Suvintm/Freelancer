@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useState, useCallback } from "react";
+import { createContext, useContext, useRef, useState, useCallback, useEffect } from "react";
 
 /**
  * ReelsContext — Global state that survives navigation.

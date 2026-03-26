@@ -90,34 +90,54 @@ const usePullToRefresh = (onRefresh, containerRef) => {
     }, [handleTouchMove, getElement]);
 
     // PullIndicator Component
-    const PullIndicator = () => (
-        <AnimatePresence>
-            {(pullDistance > 0 || isRefreshing) && (
-                <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ 
-                        height: isRefreshing ? 60 : Math.min(pullDistance, 80),
-                        opacity: 1 
-                    }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="flex items-center justify-center overflow-hidden w-full bg-transparent"
-                >
-                    <div className={`transition-transform duration-200 ${pullDistance >= PULL_THRESHOLD ? "rotate-180" : ""}`}>
-                        {isRefreshing ? (
-                            <FaSpinner className="text-emerald-500 animate-spin text-xl" />
-                        ) : (
-                            <div className="flex flex-col items-center">
-                                <div className="text-zinc-500 text-xs font-bold tracking-widest uppercase mb-1">
-                                    {pullDistance >= PULL_THRESHOLD ? "Release to Refresh" : "Pull to Refresh"}
+    const PullIndicator = () => {
+        const now = Date.now();
+        const onCooldown = now - lastRefreshTime.current < COOLDOWN_MS;
+
+        return (
+            <AnimatePresence>
+                {(pullDistance > 0 || isRefreshing) && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ 
+                            height: isRefreshing ? 70 : Math.min(pullDistance, 90),
+                            opacity: 1 
+                        }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="flex items-center justify-center overflow-hidden w-full bg-transparent z-[100] relative"
+                    >
+                        <div className="flex flex-col items-center gap-1.5 py-4">
+                            <div className="relative">
+                                {/* Outer Glow Ring (Visible when threshold met) */}
+                                {pullDistance >= PULL_THRESHOLD && !isRefreshing && !onCooldown && (
+                                    <motion.div 
+                                        initial={{ scale: 0.8, opacity: 0 }}
+                                        animate={{ scale: 1.5, opacity: 0.4 }}
+                                        transition={{ repeat: Infinity, duration: 1.5 }}
+                                        className="absolute inset-0 bg-emerald-500 rounded-full blur-xl"
+                                    />
+                                )}
+                                
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center border transition-all duration-300 ${isRefreshing ? "bg-white/10 backdrop-blur-md border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.3)]" : (pullDistance >= PULL_THRESHOLD ? (onCooldown ? "bg-zinc-800 border-zinc-700 opacity-50" : "bg-emerald-500 border-emerald-400 scale-110 shadow-lg") : "bg-white/5 backdrop-blur-sm border-white/20")}`}>
+                                    {isRefreshing ? (
+                                        <FaSpinner className="text-emerald-400 animate-spin text-xl" />
+                                    ) : (
+                                        <div className={`transition-transform duration-300 ${pullDistance >= PULL_THRESHOLD ? "rotate-180 scale-125" : "scale-100"}`}>
+                                            <div className={`w-2 h-2 rounded-full ${pullDistance >= PULL_THRESHOLD ? (onCooldown ? "bg-zinc-500" : "bg-white") : "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"}`} />
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                             </div>
-                        )}
-                    </div>
-                </motion.div>
-            )}
-        </AnimatePresence>
-    );
+
+                            <span className={`text-[9px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${pullDistance >= PULL_THRESHOLD ? (onCooldown ? "text-zinc-500" : "text-emerald-400 translate-y-0 opacity-100") : "text-white/40 translate-y-1 opacity-80"}`}>
+                                {isRefreshing ? "Refreshing Feed" : (pullDistance >= PULL_THRESHOLD ? (onCooldown ? "Recently Updated" : "Release to Refresh") : "Pull to Refresh")}
+                            </span>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        );
+    };
 
     return { 
         pullDistance, 
