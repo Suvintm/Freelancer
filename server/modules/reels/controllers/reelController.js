@@ -12,6 +12,7 @@ import { weightedReservoirSample, compositeScore, enforceCreatorDiversity } from
 import { markSeen, hasSeen, clearSeen } from "../utils/reelBloomFilter.js";
 import { trackInterest, getUserInterests } from "../../../utils/userInterestTracker.js";
 import trieInstance from "../utils/reelSearchTrie.js";
+import { purgeReelsFeedCache } from "../../../utils/cloudflareService.js";
 
 // Scoreboard Redis key — persistent global sorted set of reel scores
 const SCORE_BOARD_KEY = "reels:score:board";
@@ -77,6 +78,7 @@ export const publishToReel = asyncHandler(async (req, res) => {
 
     // Invalidate reels feed cache
     await delPattern("reels:feed:*");
+    purgeReelsFeedCache().catch(() => {}); // Cloudflare Edge Purge
 
     // — Index in Search TRIE (O(L) performance) —
     trieInstance.insert(reel.title, { id: reel._id, type: 'title', display: reel.title });
@@ -117,6 +119,7 @@ export const unpublishReel = asyncHandler(async (req, res) => {
 
     // Invalidate reels feed cache
     await delPattern("reels:feed:*");
+    purgeReelsFeedCache().catch(() => {}); // Cloudflare Edge Purge
 
     res.status(200).json({
         success: true,
@@ -297,9 +300,23 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
         pagination: { page, limit, total, hasMore: total > 0 },
     };
 
-    // Cache anonymous page-1 feeds (high traffic, low personalization)
-    if (!userId && !targetReelId && orderedReels.length > 0) {
-        await setCache(anonCacheKey, responseData, 60); // 60s TTL for anon feeds
+    // ── STEP 8: Caching Headers (Instagram-Scale Strategy) ────────────────────
+    if (orderedReels.length > 0) {
+        const latestReel = orderedReels[0].createdAt;
+        if (latestReel) {
+            res.setHeader('Last-Modified', new Date(latestReel).toUTCString());
+        }
+
+        if (!userId) {
+            // Anonymous feed: Cache on Cloudflare Edge for 60s, serve stale for 30s
+            // This offloads ~90% of traffic from your Render server
+            res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=30');
+            await setCache(anonCacheKey, responseData, 60); // Redis Level
+        } else {
+            // Personalized feed: Private cache only (browser only, NO Cloudflare)
+            // Still allows the browser to check if the feed updated without re-downloading
+            res.setHeader('Cache-Control', 'private, max-age=0, must-revalidate');
+        }
     }
 
     logger.info(`[FEED] Returning ${orderedReels.length} reels. Candidates: ${candidateReels.length}. BoardSize: ${boardSize}`);
@@ -314,6 +331,11 @@ export const getReel = asyncHandler(async (req, res) => {
 
     if (!reel) {
         throw new ApiError(404, "Reel not found");
+    }
+
+    if (reel) {
+        res.setHeader('Last-Modified', new Date(reel.createdAt).toUTCString());
+        res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=600'); 
     }
 
     res.status(200).json({
