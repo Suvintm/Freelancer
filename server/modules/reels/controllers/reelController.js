@@ -9,7 +9,7 @@ import { createNotification } from "../../connectivity/controllers/notificationC
 import mongoose from "mongoose";
 import { getCache, setCache, delPattern } from "../../../config/redisClient.js";
 import redisClient, { redisAvailable } from "../../../config/redisClient.js";
-import { weightedReservoirSample, compositeScore, enforceCreatorDiversity } from "../utils/reelScorer.js";
+import { weightedReservoirSample, compositeScore, enforceCreatorDiversity, calculateFreshnessBoost } from "../utils/reelScorer.js";
 import { markSeen, hasSeen, clearSeen } from "../utils/reelBloomFilter.js";
 import { trackInterest, getUserInterests } from "../../../utils/userInterestTracker.js";
 import { trackTrendingInteraction } from "../../../utils/trendingTracker.js";

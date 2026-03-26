@@ -273,6 +273,29 @@ const userSchema = new mongoose.Schema(
       },
       lastAiUpdate: Date,
     },
+
+    // Geospatial Discovery (Phase 30 Fix)
+    location: {
+      type: {
+        type: String,
+        enum: ["Point"],
+        default: "Point",
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+        default: [0, 0],
+      },
+    },
+    locationAccuracy: Number,
+    locationUpdatedAt: Date,
+    isAvailable: {
+      type: Boolean,
+      default: true,
+    },
+    serviceRadius: {
+      type: Number,
+      default: 25,
+    },
   },
   {
     timestamps: true,
@@ -281,8 +304,10 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Essential indexes (not already covered by unique/sparse constraints)
+// Essential indexes
+userSchema.index({ location: "2dsphere" });
 userSchema.index({ "suvixScore.total": -1 });
+userSchema.index({ role: 1, isAvailable: 1, profileCompleted: 1 });
 
 export default mongoose.models.User || mongoose.model("User", userSchema);
 
