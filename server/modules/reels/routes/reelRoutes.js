@@ -17,6 +17,7 @@ import {
     toggleCommentLike,
     batchAnalytics,
     getSearchSuggestions,
+    getSuggestedDiscovery,
 } from "../controllers/reelController.js";
 import authMiddleware from "../../../middleware/authMiddleware.js";
 
@@ -28,6 +29,9 @@ router.get("/feed", getReelsFeed);
 
 // Get search suggestions (TRIE O(L) Autocomplete)
 router.get("/search/suggest", getSearchSuggestions);
+
+// Get suggested creators/reels for "Suggested for You" section
+router.get("/suggestions/discovery", getSuggestedDiscovery);
 
 // Get unique tags for search suggestions
 router.get("/tags/unique", getReelTags);

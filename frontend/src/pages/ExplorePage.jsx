@@ -184,7 +184,11 @@ const ExplorePage = () => {
   );
 
   const { handleTouchStart, handleTouchEnd, PullIndicator } = usePullToRefresh(
-    () => triggerRefresh(true, ["explore"]),
+    () => {
+      triggerRefresh(true, ["explore"]);
+      // Dispatch custom event for child components (like ReelsExplore) to refresh their internal state
+      window.dispatchEvent(new CustomEvent("trigger_explore_refresh"));
+    },
     activeScrollRef
   );
 

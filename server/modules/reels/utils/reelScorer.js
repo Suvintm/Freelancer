@@ -128,19 +128,21 @@ export const compositeScore = (reel, followedIds = null, userInterests = null) =
 };
 
 /**
- * Freshness Injection (Phase 30C)
- * Returns a multiplier for reels < 4 hours old.
- * Once every 5-8 reels, we inject a 'Fresh' reel into the feed.
+ * Freshness Boost: Gives a massive score multiplier to recently uploaded content.
+ * @param {Object} reel - The reel object with createdAt field.
+ * @returns {number} Multiplier (1.0 to 20.0)
  */
 export const calculateFreshnessBoost = (reel) => {
     if (!reel.createdAt) return 1.0;
-    const ageMs = Date.now() - new Date(reel.createdAt).getTime();
-    const ageHours = ageMs / 3600000;
-
-    // 2x boost if less than 1 hour old, tapering to 1x at 4 hours
-    if (ageHours < 1) return 2.0;
-    if (ageHours < 4) return 1.5;
-    return 1.0;
+    const ageInHours = (Date.now() - new Date(reel.createdAt).getTime()) / (1000 * 60 * 60);
+    
+    // Extreme boost for very new content to ensure it hits the feed immediately
+    if (ageInHours <= 4)  return 20.0; // "Just Uploaded" priority
+    if (ageInHours <= 24) return 10.0; // "Recent" boost
+    if (ageInHours <= 48) return 5.0;  // "Still Fresh" boost
+    if (ageInHours <= 72) return 2.0;  // "Last 3 Days" boost
+    
+    return 1.0; 
 };
 
 // ── Creator Diversity Filter (Enhanced Phase 30C) ─────────────────────────────
@@ -209,24 +211,39 @@ class MinHeap {
     }
 }
 
-/**
- * Weighted Reservoir Sampling (A-Chao algorithm).
- * @param {Array}    items      — full candidate pool
- * @param {number}   k          — number of items to select
- * @param {Function} scoreFn    — item → weight (higher = more likely to appear)
- * @param {Set=}     followedIds — Set of followed editor IDs for social boost
- * @returns {Array} k diverse items
- */
-export const weightedReservoirSample = (items, k, scoreFn = compositeScore, followedIds = null) => {
-    if (!items || items.length === 0) return [];
-    if (items.length <= k) return [...items].sort(() => Math.random() - 0.5);
+// Seeded PRNG
+const createPRNG = (seed) => {
+    const hash = typeof seed === 'number' ? seed : 
+            seed.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0);
+    let s = hash || 0xDEADBEEF;
 
+    return () => {
+        let t = s += 0x6D2B79F5;
+        t = Math.imul(t ^ t >>> 15, t | 1);
+        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+};
+
+export const weightedReservoirSample = (items, k, scoreFn = compositeScore, followedIds = null, seed = Date.now()) => {
+    if (!items || items.length === 0) return [];
+    
+    if (items.length <= k) {
+        const prng = createPRNG(seed);
+        const result = [...items];
+        for (let i = result.length - 1; i > 0; i--) {
+            const j = Math.floor(prng() * (i + 1));
+            [result[i], result[j]] = [result[j], result[i]];
+        }
+        return result;
+    }
+
+    const prng = createPRNG(seed);
     const heap = new MinHeap();
 
     for (const item of items) {
         const weight = Math.max(0.001, scoreFn(item, followedIds));
-        // A-Chao key: U^(1/weight) — higher weight = statistically larger key
-        const key = Math.pow(Math.random(), 1 / weight);
+        const key = Math.pow(prng(), 1 / weight);
 
         if (heap.size < k) {
             heap.push([key, item]);
@@ -236,17 +253,10 @@ export const weightedReservoirSample = (items, k, scoreFn = compositeScore, foll
         }
     }
 
-    // Extract + shuffle (heap order is meaningless for display)
     const result = heap.data.map(([, item]) => item);
     for (let i = result.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = Math.floor(prng() * (i + 1));
         [result[i], result[j]] = [result[j], result[i]];
     }
     return result;
 };
-
-
-
-
-
-

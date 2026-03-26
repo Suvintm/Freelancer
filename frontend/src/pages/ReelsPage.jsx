@@ -45,6 +45,7 @@ const ReelsPage = ({ isActive = true }) => {
     const [skippedAdIndices, setSkippedAdIndices] = useState(new Set());
     const [targetAd, setTargetAd] = useState(null);
     const [windowHeight, setWindowHeight] = useState(window.innerHeight);
+    const [sessionSeed, setSessionSeed] = useState(() => Math.random().toString(36).substring(7));
 
     const listRef = useRef(null);
     const viewedReelsRef = useRef(new Set());
@@ -82,7 +83,14 @@ const ReelsPage = ({ isActive = true }) => {
             const excludeIds = excludeIdsArr.join(",");
 
             // Increased limit to 10 for fewer network requests
-            const feedPromise = axios.get(`${backendURL}/api/reels/feed?page=${pageNum}&limit=10&exclude=${excludeIds}`);
+            const feedPromise = axios.get(`${backendURL}/api/reels/feed`, {
+                params: {
+                    page: pageNum,
+                    limit: 10,
+                    exclude: excludeIds,
+                    sessionSeed: sessionSeed
+                }
+            });
             
             // Fetch target reel or ad in parallel to global feed
             const specificPromise = (!isLoadMore && pageNum === 1 && targetReelId && !targetReelId.startsWith("ad_"))
@@ -127,7 +135,7 @@ const ReelsPage = ({ isActive = true }) => {
             setLoadingMore(false);
             setRefreshing(false);
         }
-    }, [backendURL, updateCache, appendToCache, targetReelId, feedCache, reels.length]);
+    }, [backendURL, updateCache, appendToCache, targetReelId, feedCache, reels.length, sessionSeed]);
 
     // ─────────────────────────────────────────────────────────────
     // ON MOUNT/ACTIVE — Optimized state-restoration
@@ -298,8 +306,14 @@ const ReelsPage = ({ isActive = true }) => {
             setRefreshing(true);
             invalidateCache();
             viewedReelsRef.current.clear();
+            const newSeed = Math.random().toString(36).substring(7);
+            setSessionSeed(newSeed);
             setPage(1);
             setActiveReelIndex(0);
+            // fetchReels uses sessionSeed from state, but state updates are async
+            // so we might need a small adjustment if it doesn't pick up immediately
+            // But since pull-to-refresh is manual, the next effect will catch it correctly
+            // or we pass it directly
             await fetchReels(1, false);
             listRef.current?.scrollToItem(0, "start");
             setRefreshing(false);

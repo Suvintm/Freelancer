@@ -135,159 +135,101 @@ export const unpublishReel = asyncHandler(async (req, res) => {
 
 // ============ GET REELS FEED (DSA-Optimized: Wilson Score + Reservoir Sampling + Bloom Filter) ============
 export const getReelsFeed = asyncHandler(async (req, res) => {
-    const page  = parseInt(req.query.page)  || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    // ── STEP 1: Discovery Engine Core (Phase 30.2) ──
+    const { page = 1, limit = 10, exclude = "", sessionSeed = "" } = req.query;
     const targetReelId = req.query.id;
     const userId = req.user?._id?.toString() || null;
 
-    // Legacy exclude-IDs support (kept for frontend backward-compat)
-    let excludeIds = req.query.exclude ? req.query.exclude.split(",").filter(id => id) : [];
+    // DETERMINISTIC RANDOMIZATION: Derived from User + Session
+    const uniqueSeed = (userId || "anon") + (sessionSeed || "global");
 
-    console.log(`[FEED] Fetching - page:${page} limit:${limit} user:${userId || 'anon'} target:${targetReelId || 'none'}`);
+    // VARIETY BOOST: random offset to vary the candidate pool
+    let randomSkip = 0;
+    if (sessionSeed) {
+        // Simple PRNG for deterministic skip based on sessionSeed
+        const hashedSeed = sessionSeed.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0);
+        randomSkip = Math.abs(hashedSeed % 5); // Skip up to 5 items
+    }
 
-    // ── STEP 1: Simple cache for anonymous / page-1 requests ──────────────────
-    // We still cache page-1 anonymous feeds as a hot path.
+    const excludeIds = exclude ? exclude.split(",").filter(id => id.length === 24) : [];
+    const excludeObjectIds = excludeIds.map(id => new mongoose.Types.ObjectId(id));
+
+    // ── STEP 1: Cache (Skip for personalized or seeded requests) ──────────────
     const anonCacheKey = `reels:feed:v4:p${page}:l${limit}`;
-    if (!userId && !targetReelId) {
+    if (!userId && !targetReelId && !sessionSeed) {
         const cached = await getCache(anonCacheKey);
         if (cached) return res.status(200).json(cached);
     }
 
-    const excludeObjectIds = excludeIds
-        .filter(id => mongoose.Types.ObjectId.isValid(id))
-        .map(id => new mongoose.Types.ObjectId(id));
+    // ── STEP 2: Candidate Selection ──────────────────────────────────────────
+    const dbMatch = {
+        isPublished: true,
+        ...(excludeObjectIds.length > 0 && { _id: { $nin: excludeObjectIds } }),
+    };
 
-    // ── STEP 2: Try Redis Sorted Set as candidate pool (O(log N) lookup) ──────
-    // If the scoreboard has enough candidates, skip the heavy DB aggregation.
-    let candidateReels = [];
-    const boardSize = redisAvailable ? await redisClient.zCard(SCORE_BOARD_KEY) : 0;
+    let candidateReels = await Reel.find(dbMatch)
+        .populate("editor", "name profilePicture bio followingCount followersCount")
+        .sort({ createdAt: -1 })
+        .skip(randomSkip)
+        .limit(100)
+        .lean();
 
-    if (boardSize >= limit * 3) {
-        // Pull top 100 candidates from the sorted set (fast, O(log N + 100))
-        const topIds = await redisClient.zRevRange(SCORE_BOARD_KEY, 0, 99);
-        if (topIds.length > 0) {
-            const validIds = topIds
-                .filter(id => mongoose.Types.ObjectId.isValid(id))
-                .map(id => new mongoose.Types.ObjectId(id));
-
-            // Fetch lightweight projection from DB (IDs already known, so it's a point lookup)
-            candidateReels = await Reel.find(
-                { _id: { $in: validIds }, isPublished: true },
-                { _id: 1, likesCount: 1, viewsCount: 1, commentsCount: 1, createdAt: 1,
-                  mediaUrl: 1, mediaType: 1, title: 1, description: 1, editor: 1, portfolio: 1, likes: 1,
-                  avgCompletionRate: 1, completionSampleCount: 1, skipCount: 1, reWatchCount: 1, hashtags: 1 }
-            ).lean();
-
-            logger.debug(`[FEED] Scoreboard hit: ${candidateReels.length} candidates from Redis`);
-        }
+    if (!candidateReels.length && excludeObjectIds.length > 0) {
+        // Fallback if exclusion cleared the pool
+        candidateReels = await Reel.find({ isPublished: true }).limit(100).lean();
     }
 
-    // ── STEP 3: Fall back to DB aggregation if scoreboard is cold ──────────────
-    if (candidateReels.length < limit) {
-        logger.debug('[FEED] Scoreboard cold or small — falling back to DB aggregation');
-        const dbMatch = {
-            isPublished: true,
-            ...(excludeObjectIds.length > 0 && { _id: { $nin: excludeObjectIds } }),
-        };
-        // Lightweight projection — no lookup joins yet, just the data needed to score
-        candidateReels = await Reel.find(dbMatch, {
-            _id: 1, likesCount: 1, viewsCount: 1, commentsCount: 1, createdAt: 1,
-            mediaUrl: 1, mediaType: 1, title: 1, description: 1, editor: 1, portfolio: 1, likes: 1,
-            avgCompletionRate: 1, completionSampleCount: 1, skipCount: 1, reWatchCount: 1, hashtags: 1
-        }).limit(200).lean();
-    }
-
-    // ── STEP 4: Bloom Filter — filter out already-seen reels ──────────────────
-    // O(k) per reel — k=3 Redis GETBIT calls per item
+    // ── STEP 3: Bloom Filter / Seen Filter (Optional) ────────────────────────
     let filteredCandidates = candidateReels;
-    if (userId) {
-        const seenChecks = await Promise.all(
-            candidateReels.map(r => hasSeen(userId, r._id.toString()))
-        );
-        filteredCandidates = candidateReels.filter((_, i) => !seenChecks[i]);
-
-        // If bloom filter removed too many, reset it (feed wrap-around)
-        if (filteredCandidates.length < limit && candidateReels.length >= limit) {
-            logger.debug(`[FEED] Bloom filter wrapped — clearing seen history for user ${userId}`);
-            await clearSeen(userId);
-            filteredCandidates = candidateReels;
-        }
-    }
-
-    // ── STEP 1.4: Multi-Language Split (Phase 30A Polished) ───────────────────
-    // 70% of feed follows user's language, 30% is discovery.
-    // If no user language found, we skip this pass.
-    let discoveryCandidates = filteredCandidates;
-    if (userId) {
-        const userLanguage = req.user?.preferredLanguage || "English";
-        const primaryPool = filteredCandidates.filter(r => r.language === userLanguage);
-        const otherPool = filteredCandidates.filter(r => r.language !== userLanguage);
-        
-        // Blend pool: mostly primary, some discovery
-        if (primaryPool.length > 0) {
-            discoveryCandidates = [
-                ...primaryPool.slice(0, Math.floor(limit * 0.7)),
-                ...otherPool.slice(0, Math.ceil(limit * 0.3))
-            ];
-            // If we don't have enough, just use all filtered candidates
-            if (discoveryCandidates.length < limit) discoveryCandidates = filteredCandidates;
-        }
-    }
-
-    // ── STEP 1.5: Fetch Social Graph for personalization ──────────────────────
-    // Get the Set of editor IDs the user follows. Cached 10 mins per user.
-    // Used to give a 1.5× boost to reels from followed creators.
+    
+    // ── STEP 4: Personalization Signals ──────────────────────────────────────
     let followedIds = null;
-    if (userId) {
+    if (userId && userId !== "anon" && mongoose.Types.ObjectId.isValid(userId)) {
         const socialCacheKey = `user:following:${userId}`;
         let followedSet = await getCache(socialCacheKey);
         if (!followedSet) {
-            // Pull from User model (following array)
             const userDoc = await mongoose.model('User').findById(userId, { following: 1 }).lean();
             followedSet = userDoc?.following?.map(id => id.toString()) || [];
-            await setCache(socialCacheKey, followedSet, 600); // Cache 10 min
+            await setCache(socialCacheKey, followedSet, 600);
         }
         followedIds = new Set(followedSet);
-        logger.debug(`[FEED] Social graph: user ${userId} follows ${followedIds.size} editors`);
     }
 
-    // ── STEP 1.7: Fetch User Interest Vector for ranking ──────────────────────
     let userInterests = null;
-    if (userId) {
+    if (userId && userId !== "anon" && mongoose.Types.ObjectId.isValid(userId)) {
         userInterests = await getUserInterests(userId);
-        logger.debug(`[FEED] Personalization: user ${userId} has ${Object.keys(userInterests).length} affinity signals`);
     }
 
-    // ── STEP 5: Weighted Reservoir Sampling — diversity-aware selection ────────
-    // A-Chao algorithm: O(N log K) time, O(K) space
-    // Pass followedIds for social graph boost AND userInterests for personalization boost
-    // Added calculateFreshnessBoost for Phase 30C
-    const sampledReels = weightedReservoirSample(discoveryCandidates, limit * 3, (r) => {
-        const baseScore = compositeScore(r, followedIds, userInterests);
+    // ── STEP 5: Scoring & Final Shuffle ──────────────────────────────────────
+    const limitNum = parseInt(limit) || 10;
+    const sampledReels = weightedReservoirSample(filteredCandidates, limitNum * 3, (r) => {
+        // Core score based on engagement
+        let score = (r.likesCount || 0) * 1.5 + (r.viewsCount || 0) * 0.5 + 1;
+        
+        // FRESHNESS BOOST: Give new reels a massive multiplier (up to 20x)
         const freshnessBoost = calculateFreshnessBoost(r);
-        return baseScore * freshnessBoost;
-    });
+        score *= freshnessBoost;
+        
+        if (followedIds && followedIds.has(r.editor?.toString() || r.editor?._id?.toString())) {
+            score *= 1.5;
+        }
+        if (userInterests && r.hashtags) {
+            r.hashtags.forEach(tag => {
+                if (userInterests[tag]) score *= (1 + userInterests[tag] * 0.5);
+            });
+        }
+        return score;
+    }, followedIds, uniqueSeed);
 
-    // ── STEP 5b: Creator Diversity — min 3 reels between same editor per batch ────
-    // Enhanced Phase 30C: Hard 'Distance Window' enforcement
-    const diverseReels = enforceCreatorDiversity(sampledReels, 3).slice(0, limit);
-
-    // ── STEP 6: If target reel requested, prepend it ───────────────────────────
-    let finalReels = diverseReels;
-    if (targetReelId && !targetReelId.startsWith("ad_")) {
-        try {
-            if (!finalReels.some(r => r._id.toString() === targetReelId)) {
-                const targetReel = await Reel.findById(targetReelId)
-                    .populate("editor", "name email profilePicture role")
-                    .populate("portfolio")
-                    .lean();
-                if (targetReel) finalReels = [targetReel, ...finalReels.slice(0, limit - 1)];
-            }
-        } catch { /* ignore */ }
-    }
-
-    // ── STEP 7: Full population (editor + portfolio) via targeted lookups ──────
+    // ── STEP 7: Full population via targeted lookups ──────────────────────────
+    const finalReels = sampledReels.slice(0, limitNum);
     const reelIds = finalReels.map(r => r._id);
+    
+    // Safety check for userId to avoid BSON error in aggregation
+    const validUserIdForAggregation = (userId && mongoose.Types.ObjectId.isValid(userId)) 
+        ? new mongoose.Types.ObjectId(userId) 
+        : new mongoose.Types.ObjectId(); // Fallback to random ID for non-matching $in check
+
     const populatedReels = await Reel.aggregate([
         { $match: { _id: { $in: reelIds } } },
         {
@@ -309,7 +251,7 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
             $addFields: {
                 isLiked: {
                     $cond: {
-                        if: { $and: [{ $ne: [userId, null] }, { $in: [new mongoose.Types.ObjectId(userId || new mongoose.Types.ObjectId()), "$likes"] }] },
+                        if: { $in: [validUserIdForAggregation, "$likes"] },
                         then: true,
                         else: false
                     }
@@ -375,7 +317,7 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
         }
     }
 
-    logger.info(`[FEED] Returning ${orderedReels.length} reels. Candidates: ${candidateReels.length}. BoardSize: ${boardSize}`);
+    logger.info(`[FEED] Returning ${populatedReels.length} reels. Candidates: ${candidateReels.length}`);
     res.status(200).json(responseData);
 });
 
@@ -1152,3 +1094,66 @@ export const initSearchTrie = async () => {
 
 
 
+/**
+ * getSuggestedDiscovery (Phase 30.1)
+ * @desc Returns "Suggested for You" creators and reels
+ * @route GET /api/reels/suggestions/discovery
+ */
+export const getSuggestedDiscovery = asyncHandler(async (req, res) => {
+    const userId = req.user?._id;
+    const { limit = 5 } = req.query;
+
+    // 1. Get user affinity
+    const interests = userId ? await getUserInterests(userId) : {};
+    
+    // 2. SOCIAL: Who are you NOT following but have affinity with?
+    let userDoc = null;
+    let followingSet = new Set();
+    if (userId) {
+        userDoc = await mongoose.model('User').findById(userId, { following: 1 }).lean();
+        followingSet = new Set(userDoc?.following?.map(id => id.toString()) || []);
+    }
+
+    // 3. RETRIEVAL: High-performing reels from candidates the user hasn't seen
+    const now = new Date();
+    const candidates = await Reel.find({
+        isActive: true,
+        createdAt: { $gte: new Date(now - 7 * 24 * 60 * 60 * 1000) } // Last 7 days
+    })
+    .sort({ viewsCount: -1 })
+    .limit(100)
+    .lean();
+
+    // 4. RANKING: Use wilsonScore + Interest Match
+    const scoredReels = candidates.map(r => ({
+        ...r,
+        score: (wilsonScore(r.likesCount || 0, r.viewsCount || 0) * 0.7) + 
+               (getPersonalizationBoost(r, interests) * 0.3)
+    }))
+    .sort((a, b) => b.score - a.score);
+
+    // Filter out followed creators
+    const suggestedReels = scoredReels
+        .filter(r => !followingSet.has(r.editor?.toString()))
+        .slice(0, limit);
+
+    // 5. CREATOR SUGGESTIONS: Extract editors from high-score reels
+    const editorIds = [...new Set(scoredReels.map(r => r.editor?.toString()))]
+        .filter(id => id && !followingSet.has(id))
+        .slice(0, 8);
+
+    const editors = await mongoose.model('User').find({
+        _id: { $in: editorIds },
+        role: "editor"
+    })
+    .select("name profilePicture bio suvixScore")
+    .lean();
+
+    res.status(200).json({
+        success: true,
+        data: {
+            suggestedCreators: editors,
+            suggestedReels: suggestedReels.slice(0, 3) // Top 3 reels to highlight
+        }
+    });
+});
