@@ -7,6 +7,7 @@ export function useVideoQuality() {
     });
 
     const setPreferredQuality = (newQuality) => {
+        if (newQuality === preferredQuality) return; // Ignore if same
         localStorage.setItem('suvix_video_quality', newQuality);
         setPreferredQualityState(newQuality);
         // Dispatch custom event to sync across multiple open components natively without React Context bloat

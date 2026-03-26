@@ -59,9 +59,9 @@ const HlsVideoPlayer = React.forwardRef(({
         // Initial buffer target
         backBufferLength: 0, // Quickly evict past fragments from memory        
         // ── ABR (Adaptive Bitrate) Algorithm Tuning ──
-        abrEwmaDefaultEstimate: 10000000, // 10Mbps initial guess for 4K/HD starts
-        abrBandwidthUpFactor: 0.8,      // Be conservative about upgrading
-        abrBandwidthDownFactor: 0.9,    // Fast downgrade for stability
+        abrEwmaDefaultEstimate: 5000000, // 5Mbps initial guess for HD starts
+        abrBandwidthUpFactor: 0.7,      // Be very conservative about upgrading to avoid jitter
+        abrBandwidthDownFactor: 0.95,   // Fast and clean downgrade for stability
         
         // ── Resilience ──
         fragLoadingMaxRetry: 4,

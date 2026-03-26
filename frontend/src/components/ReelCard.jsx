@@ -30,6 +30,104 @@ import { useVideoQuality } from "../hooks/useVideoQuality";
  * ReelCard — Minimalist Professional UI.
  * Tightened overlay, refined typography, and sleek follow button.
  */
+ 
+// — PERFORMANCE: Memoized Overlay components to prevent re-renders on quality changes —
+
+const ReelSidebar = React.memo(({ isLiked, likesCount, commentsCount, viewsCount, onLike, onCommentClick, onShare, onMuteToggle, globalMuted, mediaType }) => (
+    <div className="absolute right-3 bottom-24 z-50 flex flex-col items-center gap-5">
+        {[
+            { icon: isLiked ? <FaHeart className="text-red-500" /> : <FaRegHeart />, count: likesCount, action: onLike },
+            { icon: <FaComment />, count: commentsCount || 0, action: onCommentClick },
+            { icon: <FaEye />, count: viewsCount || 0, disabled: true },
+            { icon: <FaShare />, action: onShare }
+        ].map((item, idx) => (
+            <div key={idx} className="flex flex-col items-center gap-1">
+                <motion.button
+                    whileTap={{ scale: 0.8 }}
+                    onClick={(e) => { e.stopPropagation(); !item.disabled && item.action(); }}
+                    className={`w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white text-lg ${item.disabled ? "opacity-50" : "shadow-lg"}`}
+                >
+                    {item.icon}
+                </motion.button>
+                {item.count !== undefined && <span className="text-[10px] font-bold text-white drop-shadow-md">{item.count}</span>}
+            </div>
+        ))}
+        
+        {mediaType === "video" && (
+            <motion.button
+                whileTap={{ scale: 0.8 }}
+                onClick={(e) => { e.stopPropagation(); onMuteToggle(); }}
+                className="w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white"
+            >
+                {globalMuted ? <FaVolumeMute size={16} /> : <FaVolumeUp size={16} />}
+            </motion.button>
+        )}
+    </div>
+));
+
+const ReelBottomInfo = React.memo(({ latestLikers, likesCount, editor, isFollowing, isOwnReel, onFollow, title, description, onCommentClick, progress, mediaType, isPlaying, isActive }) => (
+    <div className="w-full mt-auto">
+        <div className="absolute bottom-0 inset-x-0 h-64 bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-32 pointer-events-none" />
+
+        <div className="relative pb-6 pointer-events-auto">
+            <LikerAvatars latestLikers={latestLikers} likesCount={likesCount} />
+
+            <div className="flex items-center gap-3 mb-3">
+                <Link to={`/public-profile/${editor?._id}`} onClick={(e) => e.stopPropagation()}>
+                    <div className="w-10 h-10 rounded-full border-[1.5px] border-white overflow-hidden shadow-lg p-[1px] bg-white/10">
+                        <img src={repairUrl(editor?.profilePicture)} className="w-full h-full rounded-full object-cover" alt="" />
+                    </div>
+                </Link>
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                        <Link to={`/public-profile/${editor?._id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-white text-[14px] tracking-tight hover:underline text-shadow whitespace-nowrap">
+                            {editor?.name}
+                        </Link>
+                        <span className="px-1.5 py-0.5 bg-white/20 text-[8px] font-bold rounded border border-white/10 text-white/90 shrink-0">
+                            {(editor?.role || "editor").toUpperCase()}
+                        </span>
+                        
+                        {!isOwnReel && (
+                            <button
+                                onClick={onFollow}
+                                className="h-5 px-3 bg-transparent border border-white/30 rounded-full flex items-center justify-center text-white text-[9px] font-bold uppercase tracking-wider active:scale-95 transition-all hover:bg-white/20 shadow-lg ml-1"
+                            >
+                                {isFollowing ? "Following" : "Follow"}
+                            </button>
+                        )}
+                    </div>
+                    {mediaType === "video" && (
+                        <div className="mt-1">
+                            <MusicVisualizer isPlaying={isActive && isPlaying} />
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="max-w-[85%] mb-3">
+                <h2 className="text-xl font-bold text-white leading-tight mb-0.5 text-shadow">{title}</h2>
+                <div className="flex flex-wrap items-baseline gap-1">
+                    <p className="text-[12px] font-medium text-white/70 leading-relaxed line-clamp-2 text-shadow inline">
+                        {description}
+                    </p>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onCommentClick(); }}
+                        className="text-[12px] font-bold text-white/80 hover:text-white transition-colors cursor-pointer whitespace-nowrap"
+                    >
+                        more...
+                    </button>
+                </div>
+            </div>
+
+            {mediaType === "video" && (
+                <div className="w-full h-[2px] bg-white/10 rounded-full overflow-hidden">
+                    <motion.div style={{ width: `${progress}%` }} className="h-full bg-white shadow-[0_0_5px_rgba(255,255,255,0.7)]" />
+                </div>
+            )}
+        </div>
+    </div>
+));
+
 const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, globalMuted, setGlobalMuted }) => {
     const { user, backendURL } = useAppContext();
 
@@ -153,7 +251,7 @@ const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, 
 
     useEffect(() => () => sendWatchTime(), [sendWatchTime]);
 
-    const handleLike = async () => {
+    const handleLike = useCallback(async () => {
         if (!user) return toast.error("Please login to like");
         const newIsLiked = !isLiked;
         setIsLiked(newIsLiked);
@@ -176,12 +274,11 @@ const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, 
         } catch {
             setIsLiked(!newIsLiked);
             setLikesCount(prev => !newIsLiked ? prev + 1 : prev - 1);
-            // Revert latestLikers if needed (complex for optimistic, keeping it simple)
         }
-    };
+    }, [user, isLiked, backendURL, reel._id]);
 
-    const handleFollow = async (e) => {
-        e.preventDefault(); e.stopPropagation();
+    const handleFollow = useCallback(async (e) => {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
         if (!user) return toast.error("Please login to follow");
         if (followLoading) return;
         setFollowLoading(true);
@@ -199,7 +296,25 @@ const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, 
         } finally {
             setFollowLoading(false);
         }
-    };
+    }, [user, isFollowing, followLoading, reel.editor?._id, backendURL]);
+
+    const handleShare = useCallback(() => {
+        const url = `${window.location.origin}/reels?id=${reel._id}`;
+        if (navigator.share) {
+            navigator.share({ url });
+        } else {
+            navigator.clipboard.writeText(url);
+            toast.success("Copied!");
+        }
+    }, [reel._id]);
+
+    const handleMuteToggle = useCallback(() => {
+        setGlobalMuted(prev => !prev);
+    }, [setGlobalMuted]);
+
+    const handleCommentClick = useCallback(() => {
+        onCommentClick(reel._id);
+    }, [onCommentClick, reel._id]);
 
     if (!reel) return null;
     const isOwnReel = user?._id === reel.editor?._id;
@@ -291,35 +406,19 @@ const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, 
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
                         transition={{ duration: 0.3 }}
-                        className="absolute right-3 bottom-24 z-50 flex flex-col items-center gap-5"
                     >
-                        {[
-                            { icon: isLiked ? <FaHeart className="text-red-500" /> : <FaRegHeart />, count: likesCount, action: handleLike },
-                            { icon: <FaComment />, count: reel.commentsCount || 0, action: () => onCommentClick(reel._id) },
-                            { icon: <FaEye />, count: reel.viewsCount || 0, disabled: true },
-                            { icon: <FaShare />, action: () => { const url = `${window.location.origin}/reels?id=${reel._id}`; if(navigator.share) navigator.share({url}); else {navigator.clipboard.writeText(url); toast.success("Copied!");} } }
-                        ].map((item, idx) => (
-                            <div key={idx} className="flex flex-col items-center gap-1">
-                                <motion.button
-                                    whileTap={{ scale: 0.8 }}
-                                    onClick={(e) => { e.stopPropagation(); !item.disabled && item.action(); }}
-                                    className={`w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white text-lg ${item.disabled ? "opacity-50" : "shadow-lg"}`}
-                                >
-                                    {item.icon}
-                                </motion.button>
-                                {item.count !== undefined && <span className="text-[10px] font-bold text-white drop-shadow-md">{item.count}</span>}
-                            </div>
-                        ))}
-                        
-                        {reel.mediaType === "video" && (
-                            <motion.button
-                                whileTap={{ scale: 0.8 }}
-                                onClick={(e) => { e.stopPropagation(); setGlobalMuted(!globalMuted); }}
-                                className="w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white"
-                            >
-                                {globalMuted ? <FaVolumeMute size={16} /> : <FaVolumeUp size={16} />}
-                            </motion.button>
-                        )}
+                        <ReelSidebar 
+                            isLiked={isLiked}
+                            likesCount={likesCount}
+                            commentsCount={reel.commentsCount}
+                            viewsCount={reel.viewsCount}
+                            onLike={handleLike}
+                            onCommentClick={handleCommentClick}
+                            onShare={handleShare}
+                            onMuteToggle={handleMuteToggle}
+                            globalMuted={globalMuted}
+                            mediaType={reel.mediaType}
+                        />
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -361,7 +460,6 @@ const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, 
                     })()}
                 </div>
 
-                {/* BOTTOM INFO (Deferred hydration for performance) */}
                 <AnimatePresence>
                     {showMetadata && (
                         <motion.div 
@@ -369,74 +467,22 @@ const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, 
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
                             transition={{ duration: 0.3 }}
-                            className="w-full mt-auto"
                         >
-                            <div className="absolute bottom-0 inset-x-0 h-64 bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-32 pointer-events-none" />
-
-                            <div className="relative pb-6 pointer-events-auto">
-                                {/* WHO LIKED (Latest Likers) */}
-                                <LikerAvatars 
-                                    latestLikers={latestLikers} 
-                                    likesCount={likesCount} 
-                                />
-
-                                {/* USER HUB */}
-                                <div className="flex items-center gap-3 mb-3">
-                                    <Link to={`/public-profile/${reel.editor?._id}`} onClick={(e) => e.stopPropagation()}>
-                                        <div className="w-10 h-10 rounded-full border-[1.5px] border-white overflow-hidden shadow-lg p-[1px] bg-white/10">
-                                            <img src={repairUrl(reel.editor?.profilePicture)} className="w-full h-full rounded-full object-cover" alt="" />
-                                        </div>
-                                    </Link>
-                                    <div className="flex flex-col">
-                                        <div className="flex items-center gap-2">
-                                            <Link to={`/public-profile/${reel.editor?._id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-white text-[14px] tracking-tight hover:underline text-shadow whitespace-nowrap">
-                                                {reel.editor?.name}
-                                            </Link>
-                                            <span className="px-1.5 py-0.5 bg-white/20 text-[8px] font-bold rounded border border-white/10 text-white/90 shrink-0">
-                                                {(reel.editor?.role || "editor").toUpperCase()}
-                                            </span>
-                                            
-                                            {!isOwnReel && (
-                                                <button
-                                                    onClick={handleFollow}
-                                                    className="h-5 px-3 bg-transparent border border-white/30 rounded-full flex items-center justify-center text-white text-[9px] font-bold uppercase tracking-wider active:scale-95 transition-all hover:bg-white/20 shadow-lg ml-1"
-                                                >
-                                                    {isFollowing ? "Following" : "Follow"}
-                                                </button>
-                                            )}
-                                        </div>
-                                        
-                                        {reel.mediaType === "video" && (
-                                            <div className="mt-1">
-                                                <MusicVisualizer isPlaying={isActive && isPlaying} />
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* CONTENT */}
-                                <div className="max-w-[85%] mb-3">
-                                    <h2 className="text-xl font-bold text-white leading-tight mb-0.5 text-shadow">{reel.title}</h2>
-                                    <div className="flex flex-wrap items-baseline gap-1">
-                                        <p className="text-[12px] font-medium text-white/70 leading-relaxed line-clamp-2 text-shadow inline">
-                                            {reel.description}
-                                        </p>
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); onCommentClick(reel._id); }}
-                                            className="text-[12px] font-bold text-white/80 hover:text-white transition-colors cursor-pointer whitespace-nowrap"
-                                        >
-                                            more...
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* PROGRESS */}
-                                {reel.mediaType === "video" && (
-                                    <div className="w-full h-[2px] bg-white/10 rounded-full overflow-hidden">
-                                        <motion.div style={{ width: `${progress}%` }} className="h-full bg-white shadow-[0_0_5px_rgba(255,255,255,0.7)]" />
-                                    </div>
-                                )}
-                            </div>
+                            <ReelBottomInfo 
+                                latestLikers={latestLikers}
+                                likesCount={likesCount}
+                                editor={reel.editor}
+                                isFollowing={isFollowing}
+                                isOwnReel={isOwnReel}
+                                onFollow={handleFollow}
+                                title={reel.title}
+                                description={reel.description}
+                                onCommentClick={handleCommentClick}
+                                progress={progress}
+                                mediaType={reel.mediaType}
+                                isPlaying={isPlaying}
+                                isActive={isActive}
+                            />
                         </motion.div>
                     )}
                 </AnimatePresence>
