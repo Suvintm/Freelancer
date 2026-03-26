@@ -40,7 +40,7 @@ passport.deserializeUser(async (id, done) => {
 // Google OAuth Strategy
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || "http://localhost:5000/api/auth/google/callback";
+const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || "https://admin-api.suvix.in/api/auth/google/callback";
 
 console.log("Google OAuth Config Check:", {
     hasClientId: !!GOOGLE_CLIENT_ID,

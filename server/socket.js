@@ -20,6 +20,8 @@ const io = new Server(server, {
       const allowedOrigins = [
         process.env.FRONTEND_URL,
         process.env.ADMIN_URL,
+        "https://suvix.in",
+        "https://admin.suvix.in",
         "https://suvix.vercel.app",
         "https://adminsuvix.vercel.app",
         "http://localhost:5173",

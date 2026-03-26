@@ -365,7 +365,7 @@ const AdManagerPage = ({ adminURL, token }) => {
   const [analyticsData, setAnalyticsData]   = useState(null);
   const fileInputRef = useRef(null);
 
-  const API           = adminURL || import.meta.env.VITE_BACKEND_URL || "http://localhost:5052/api";
+  const API = adminURL || import.meta.env.VITE_BACKEND_URL || "https://admin-api.suvix.in/api";
   const resolvedToken = token || localStorage.getItem("adminToken");
   const authHeader    = { Authorization: `Bearer ${resolvedToken}` };
 

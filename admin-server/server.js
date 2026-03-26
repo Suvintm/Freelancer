@@ -33,6 +33,7 @@ app.use(cors({
             process.env.ADMIN_URL,
             "https://suvix.in",
             "https://admin.suvix.in",
+            "https://admin-api.suvix.in",
             "https://suvix.vercel.app",
             "https://adminsuvix.vercel.app",
             "http://localhost:5173",
