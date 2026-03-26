@@ -160,6 +160,7 @@ const ReelCard = ({
     const [showFollowAnimation, setShowFollowAnimation] = useState(false);
     const [currentQuality, setCurrentQuality] = useState("");
     const [availableQualities, setAvailableQualities] = useState([]);
+    const [loopCount, setLoopCount] = useState(0);
     
     // Global Quality Hook
     const [preferredQuality, setPreferredQuality] = useVideoQuality();
@@ -211,32 +212,38 @@ const ReelCard = ({
 
     const sendWatchTime = useCallback(() => {
         if (!watchStartRef.current || !user) return;
-        const elapsed = Math.round((Date.now() - watchStartRef.current) / 1000);
+        
+        const now = Date.now();
+        const elapsed = Math.round((now - watchStartRef.current) / 1000);
         const duration = videoRef.current?.duration || 0;
-        const pct = duration ? Math.round((videoRef.current.currentTime / duration) * 100) : 0;
+        const currentPos = videoRef.current?.currentTime || 0;
+        const pct = duration ? Math.round((currentPos / duration) * 100) : 0;
 
-        // — Batch watch completion signal (Product-Grade Efficiency) —
+        // — Phase 1 MVP Telemetry —
+        // watch: Impression threshold (> 1s)
         if (elapsed >= 1) {
             analyticsService.pushEvent({
                 reelId: reel._id,
                 seconds: elapsed,
                 watchPercent: pct,
+                loopCount: loopCount,
                 type: 'watch'
             });
         }
 
-        // — Batch skip signal (negative signal) —
-        if (elapsed < 2 && reel.mediaType === 'video') {
+        // skip: Strong negative intent (Exit < 2s AND not finished)
+        if (elapsed < 2 && pct < 90 && reel.mediaType === 'video') {
             analyticsService.pushEvent({
                 reelId: reel._id,
                 seconds: elapsed,
-                watchPercent: 0,
+                watchPercent: pct,
                 type: 'skip'
             });
         }
 
         watchStartRef.current = null;
-    }, [user, reel._id, reel.mediaType]);
+        setLoopCount(0); // Reset for next active session
+    }, [user, reel._id, reel.mediaType, loopCount]);
 
     useEffect(() => {
         if (!videoRef.current || reel.mediaType !== "video") return;
@@ -398,6 +405,7 @@ const ReelCard = ({
                         onQualityChange={setCurrentQuality}
                         onAvailableQualities={setAvailableQualities}
                         preferredQuality={preferredQuality}
+                        onEnded={() => setLoopCount(prev => prev + 1)}
                     />
                 ) : (
                     <img 

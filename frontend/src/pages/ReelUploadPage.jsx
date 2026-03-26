@@ -35,7 +35,12 @@ const ReelUploadPage = () => {
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showTrending, setShowTrending] = useState(false);
+  const [moods, setMoods] = useState(["Cinematic"]); // Default
+  const [language, setLanguage] = useState("English");
   
+  const availableMoods = ["Cinematic", "Vlog", "Minimalist", "VFX", "Corporate", "Educational", "Gaming"];
+  const languages = ["English", "Hindi", "Telugu", "Tamil", "Kannada", "Malayalam", "Spanish", "French"];
+
   const trendingHashtags = [
     "#trending", "#viral", "#foryou", "#reelsinstagram", "#explorepage", 
     "#photography", "#nature", "#love", "#instagood", "#fashion"
@@ -127,6 +132,8 @@ const ReelUploadPage = () => {
     
     // Process hashtags: split by space or comma and clean
     formData.append("hashtags", JSON.stringify(hashtags));
+    formData.append("moods", JSON.stringify(moods));
+    formData.append("language", language);
 
     try {
       setLoading(true);
@@ -447,9 +454,48 @@ const ReelUploadPage = () => {
              <button 
                 onClick={() => setIsAIContent(!isAIContent)}
                 className={`w-10 h-5 rounded-full relative transition-colors ${isAIContent ? "bg-blue-600" : "bg-zinc-800"}`}
-             >
+              >
                 <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${isAIContent ? "right-0.5" : "left-0.5"}`} />
-             </button>
+              </button>
+          </div>
+
+          {/* Architectural Metadata: Mood & Language */}
+          <div className="space-y-4 pt-2">
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Mood / Category</label>
+              <div className="flex flex-wrap gap-2">
+                {availableMoods.map(m => (
+                  <button
+                    key={m}
+                    onClick={() => {
+                        if (moods.includes(m)) {
+                            setMoods(moods.filter(item => item !== m));
+                        } else {
+                            setMoods([...moods, m]);
+                        }
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${moods.includes(m) ? "bg-white border-white text-black" : "bg-zinc-900 border-zinc-800 text-zinc-400"}`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Language</label>
+              <div className="flex flex-wrap gap-2">
+                {languages.map(l => (
+                  <button
+                    key={l}
+                    onClick={() => setLanguage(l)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${language === l ? "bg-blue-600 border-blue-600 text-white" : "bg-zinc-900 border-zinc-800 text-zinc-400"}`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>

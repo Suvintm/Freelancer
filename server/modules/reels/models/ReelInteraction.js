@@ -14,13 +14,21 @@ const reelInteractionSchema = new mongoose.Schema({
     index: true
   },
   
-  // Engagement Signals
+  // Engagement Signals (Phase 30A Polished)
   watched: { type: Boolean, default: false },
   watchPercent: { type: Number, default: 0 },         // 0–100% of video watched
   liked: { type: Boolean, default: false },
   commented: { type: Boolean, default: false },
   shared: { type: Boolean, default: false },
   skipped: { type: Boolean, default: false },         // Scrolled past quickly
+  skipTime: { type: Number, default: 0 },             // Second at which they skipped
+  
+  // High-Fidelity Signal
+  interactionDepth: { 
+    type: String, 
+    enum: ['impression', 'soft', 'full', 'completed'],
+    default: 'impression'
+  },
   
   // Actual watch time in seconds
   watchTimeSeconds: { type: Number, default: 0 },

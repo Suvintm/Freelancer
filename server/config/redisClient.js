@@ -185,6 +185,16 @@ const redisProxy = {
     return client.getbit(key, offset);
   },
 
+  // ── Redis Set helpers (used by Collaborative Filtering) ────────────────────
+  sAdd: (key, member) => {
+    if (!redisAvailable || !client) return Promise.resolve(0);
+    return client.sadd(key, member);
+  },
+  sInter: (...keys) => {
+    if (!redisAvailable || !client) return Promise.resolve([]);
+    return client.sinter(...keys);
+  },
+
   // ── Redis Sorted Set helpers (used by scoreboard algorithm) ────────────────
   /**
    * Add/update a member's score in a sorted set.
@@ -222,6 +232,16 @@ const redisProxy = {
   zCard: (key) => {
     if (!redisAvailable || !client) return Promise.resolve(0);
     return client.zcard(key);
+  },
+  zIncrBy: (key, increment, member) => {
+    if (!redisAvailable || !client) return Promise.resolve(0);
+    return client.zincrby(key, increment, member);
+  },
+
+  // Lua Scripting support
+  eval: (...args) => {
+    if (!redisAvailable || !client) return Promise.resolve(null);
+    return client.eval(...args);
   },
 
   /**

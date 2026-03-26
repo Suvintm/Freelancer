@@ -2,6 +2,7 @@ import { Reel } from "../models/Reel.js";
 import { Comment } from "../models/Comment.js";
 import { Portfolio } from "../../profiles/models/Portfolio.js";
 import { ReelInteraction } from "../models/ReelInteraction.js";
+import { ReelSave } from "../models/ReelSave.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 import logger from "../../../utils/logger.js";
 import { createNotification } from "../../connectivity/controllers/notificationController.js";
@@ -11,12 +12,17 @@ import redisClient, { redisAvailable } from "../../../config/redisClient.js";
 import { weightedReservoirSample, compositeScore, enforceCreatorDiversity } from "../utils/reelScorer.js";
 import { markSeen, hasSeen, clearSeen } from "../utils/reelBloomFilter.js";
 import { trackInterest, getUserInterests } from "../../../utils/userInterestTracker.js";
+import { trackTrendingInteraction } from "../../../utils/trendingTracker.js";
 import trieInstance from "../utils/reelSearchTrie.js";
 import { purgeReelsFeedCache } from "../../../utils/cloudflareService.js";
 
 // Scoreboard Redis key — persistent global sorted set of reel scores
 const SCORE_BOARD_KEY = "reels:score:board";
 const SCORE_BOARD_TTL = 60 * 60 * 24; // 24 hours
+
+// Collaborative Filtering keys
+const REEL_CO_VIEWERS_PREFIX = "reels:co_viewers:";
+const REEL_CO_VIEWERS_TTL = 60 * 60 * 24 * 30; // 30 days
 
 // ============ PUBLISH PORTFOLIO AS REEL ============
 export const publishToReel = asyncHandler(async (req, res) => {
@@ -208,6 +214,26 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
         }
     }
 
+    // ── STEP 1.4: Multi-Language Split (Phase 30A Polished) ───────────────────
+    // 70% of feed follows user's language, 30% is discovery.
+    // If no user language found, we skip this pass.
+    let discoveryCandidates = filteredCandidates;
+    if (userId) {
+        const userLanguage = req.user?.preferredLanguage || "English";
+        const primaryPool = filteredCandidates.filter(r => r.language === userLanguage);
+        const otherPool = filteredCandidates.filter(r => r.language !== userLanguage);
+        
+        // Blend pool: mostly primary, some discovery
+        if (primaryPool.length > 0) {
+            discoveryCandidates = [
+                ...primaryPool.slice(0, Math.floor(limit * 0.7)),
+                ...otherPool.slice(0, Math.ceil(limit * 0.3))
+            ];
+            // If we don't have enough, just use all filtered candidates
+            if (discoveryCandidates.length < limit) discoveryCandidates = filteredCandidates;
+        }
+    }
+
     // ── STEP 1.5: Fetch Social Graph for personalization ──────────────────────
     // Get the Set of editor IDs the user follows. Cached 10 mins per user.
     // Used to give a 1.5× boost to reels from followed creators.
@@ -235,11 +261,16 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
     // ── STEP 5: Weighted Reservoir Sampling — diversity-aware selection ────────
     // A-Chao algorithm: O(N log K) time, O(K) space
     // Pass followedIds for social graph boost AND userInterests for personalization boost
-    const sampledReels = weightedReservoirSample(filteredCandidates, limit * 2, (r) => compositeScore(r, followedIds, userInterests));
+    // Added calculateFreshnessBoost for Phase 30C
+    const sampledReels = weightedReservoirSample(discoveryCandidates, limit * 3, (r) => {
+        const baseScore = compositeScore(r, followedIds, userInterests);
+        const freshnessBoost = calculateFreshnessBoost(r);
+        return baseScore * freshnessBoost;
+    });
 
-    // ── STEP 5b: Creator Diversity — max 2 reels from same editor per batch ────
-    // Instagram rule: you shouldn't see 3+ reels from the same creator in one scroll
-    const diverseReels = enforceCreatorDiversity(sampledReels, 2).slice(0, limit);
+    // ── STEP 5b: Creator Diversity — min 3 reels between same editor per batch ────
+    // Enhanced Phase 30C: Hard 'Distance Window' enforcement
+    const diverseReels = enforceCreatorDiversity(sampledReels, 3).slice(0, limit);
 
     // ── STEP 6: If target reel requested, prepend it ───────────────────────────
     let finalReels = diverseReels;
@@ -382,12 +413,18 @@ export const toggleLike = asyncHandler(async (req, res) => {
 
     if (isLiked) {
         reel.likes = reel.likes.filter((id) => id.toString() !== userId.toString());
+        reel.likesCount = Math.max(0, reel.likesCount - 1);
     } else {
         reel.likes.push(userId);
+        reel.likesCount += 1;
     }
 
-    reel.likesCount = reel.likes.length;
     await reel.save();
+
+    // Track trending (Weight: 5 for like)
+    if (!isLiked) {
+        trackTrendingInteraction(req.user.country, reel.language, reel.hashtags, 5).catch(() => {});
+    }
 
     // ── DSA: Sorted Set Scoreboard update (O(log N)) ─────────────────────────
     // Instead of nuking the entire feed cache, we update only this reel's score
@@ -422,6 +459,43 @@ export const toggleLike = asyncHandler(async (req, res) => {
     }
 });
 
+// ============ SAVE/UNSAVE REEL (Toggle) — Phase 30A ============
+export const toggleSave = asyncHandler(async (req, res) => {
+    const { id: reelId } = req.params;
+    const userId = req.user._id;
+
+    const reel = await Reel.findById(reelId);
+    if (!reel) {
+        throw new ApiError(404, "Reel not found");
+    }
+
+    const existingSave = await ReelSave.findOne({ user: userId, reel: reelId });
+
+    if (existingSave) {
+        // Unsave
+        await ReelSave.findByIdAndDelete(existingSave._id);
+        await Reel.findByIdAndUpdate(reelId, { $inc: { savesCount: -1 } });
+    } else {
+        // Save
+        await ReelSave.create({ user: userId, reel: reelId });
+        await Reel.findByIdAndUpdate(reelId, { $inc: { savesCount: 1 } });
+    }
+
+    // Refresh reel to get updated count for response
+    const updatedReel = await Reel.findById(reelId, { savesCount: 1 }).lean();
+
+    res.status(200).json({
+        success: true,
+        saved: !existingSave,
+        savesCount: updatedReel.savesCount
+    });
+
+    // Track trending (Weight: 10 for save)
+    if (!existingSave) {
+        trackTrendingInteraction(req.user.country, reel.language, reel.hashtags, 10).catch(() => {});
+    }
+});
+
 // ============ INCREMENT VIEW COUNT ============
 export const incrementView = asyncHandler(async (req, res) => {
     const reelId = req.params.id;
@@ -442,6 +516,13 @@ export const incrementView = asyncHandler(async (req, res) => {
     // in the personalized feed until the user has cycled through all reels.
     if (userId) {
         markSeen(userId, reelId).catch(() => {});
+        // Track trending (Weight: 1 for view)
+        trackTrendingInteraction(req.user?.country, reel.language, reel.hashtags, 1).catch(() => {});
+        
+        // Phase 30B: Track co-viewers for collaborative filtering (O(1))
+        const coViewKey = `${REEL_CO_VIEWERS_PREFIX}${reelId}`;
+        redisClient.sAdd(coViewKey, userId).catch(() => {});
+        redisClient.expire(coViewKey, REEL_CO_VIEWERS_TTL).catch(() => {});
     }
 
     // ── DSA: Sorted Set Scoreboard update (O(log N)) ─────────────────────────
@@ -834,6 +915,12 @@ export const trackWatchTime = asyncHandler(async (req, res) => {
 
     const completion = Math.max(0, Math.min(1, (watchPercent || 0) / 100));
 
+    // Determine Interaction Depth
+    let interactionDepth = 'impression';
+    if (completion >= 1.0) interactionDepth = 'completed';
+    else if (completion >= 0.8 || seconds >= 10) interactionDepth = 'full';
+    else if (completion >= 0.3 || seconds >= 3) interactionDepth = 'soft';
+
     // Update ReelInteraction record for per-user tracking
     const existingInteraction = await ReelInteraction.findOne({ user: userId, reel: reelId });
     const isRewatch = !!existingInteraction;
@@ -841,8 +928,13 @@ export const trackWatchTime = asyncHandler(async (req, res) => {
     await ReelInteraction.findOneAndUpdate(
         { user: userId, reel: reelId },
         {
-            $set:  { watchPercent: completion * 100, watched: true, updatedAt: new Date() },
-            $inc:  { watchTimeSeconds: seconds },
+            $set: { 
+                watchPercent: completion * 100, 
+                watched: true, 
+                interactionDepth,
+                updatedAt: new Date() 
+            },
+            $inc: { watchTimeSeconds: seconds },
         },
         { upsert: true, new: true }
     );
@@ -896,12 +988,10 @@ export const trackWatchTime = asyncHandler(async (req, res) => {
     res.status(200).json({ success: true });
 });
 
-// ============ TRACK SKIP — Negative Signal ============
-// Called when a user scrolls past a reel in < 2 seconds (strong "not interested" signal)
-// Used by Instagram and TikTok as a heavy negative ranking factor.
 export const trackSkip = asyncHandler(async (req, res) => {
     const { id: reelId } = req.params;
     const userId = req.user?._id?.toString() || null;
+    const { skipTime } = req.body; // Phase 30A: Track exactly when they skipped
 
     const reel = await Reel.findByIdAndUpdate(
         reelId,
@@ -911,8 +1001,19 @@ export const trackSkip = asyncHandler(async (req, res) => {
 
     if (!reel) return res.status(404).json({ success: false, message: "Reel not found" });
 
-    // Also mark as seen in Bloom Filter (skipped = definitely seen)
+    // Update interaction record with skip data
     if (userId) {
+        await ReelInteraction.findOneAndUpdate(
+            { user: userId, reel: reelId },
+            { 
+                $set: { 
+                    skipped: true, 
+                    skipTime: skipTime || 0,
+                    updatedAt: new Date() 
+                } 
+            },
+            { upsert: true }
+        );
         markSeen(userId, reelId).catch(() => {});
     }
 

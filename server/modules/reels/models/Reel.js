@@ -66,6 +66,23 @@ const reelSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        // ── High-Fidelity Signals (Phase 30A) ────────────────────────────────
+        moods: [{
+            type: String,
+            trim: true,
+            maxlength: 30
+        }],
+        language: {
+            type: String,
+            default: "English",
+            index: true
+        },
+        savesCount: {
+            type: Number,
+            default: 0,
+            index: true
+        },
+        // ─────────────────────────────────────────────────────────────────────
         isPublished: {
             type: Boolean,
             default: true,
@@ -127,6 +144,7 @@ const reelSchema = new mongoose.Schema(
 reelSchema.index({ createdAt: -1 });
 reelSchema.index({ viewsCount: -1 });
 reelSchema.index({ likesCount: -1 });
+reelSchema.index({ savesCount: -1 }); // Added for Phase 30A
 reelSchema.index({ portfolio: 1, editor: 1 });
 reelSchema.index({ recommendationScore: -1, createdAt: -1 }); // Social graph feed
 reelSchema.index({ editor: 1, isPublished: 1, createdAt: -1 }); // Per-editor feed

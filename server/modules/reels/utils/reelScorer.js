@@ -111,33 +111,55 @@ export const compositeScore = (reel, followedIds = null, userInterests = null) =
     // Personalization boost: if user has high affinity for these tags/creator, boost by 1.25×
     const personalizationMultiplier = getPersonalizationBoost(reel, userInterests);
 
+    // Filter: Minimum quality guard for Phase 30A
+    // Prevent random, low-quality, or stagnant content from ranking high
+    const isHighQuality = impressions > 20 || completion > 0.3;
+    const qualityMultiplier = isHighQuality ? 1.0 : 0.5;
+
     const baseScore = (
-        (completion * 0.40) +
-        (quality    * 0.25) +
+        (completion * 0.50) + // Increased for Phase 1
+        (quality    * 0.20) + // Reduced Wilson reliance early
         (freshness  * 0.20) +
         (reWatchBonus * 0.10) +
         (Math.random() * 0.05) // Exploration factor
-    ) - (skipPenalty * 0.30);
+    ) - (skipPenalty * 0.20); // Balanced penalty
 
-    return Math.max(0, baseScore * socialMultiplier * personalizationMultiplier);
+    return Math.max(0, baseScore * socialMultiplier * personalizationMultiplier * qualityMultiplier);
 };
 
-// ── Creator Diversity Filter ──────────────────────────────────────────────────
-// Instagram rule: max 2 reels from the same creator per scroll batch.
-// Applied AFTER reservoir sampling to enforce hard diversity.
-//
-// @param {Array}  reels   — sampled reels
-// @param {number} maxPer  — max reels per creator (default 2)
-// @returns {Array} filtered reels
-export const enforceCreatorDiversity = (reels, maxPer = 2) => {
-    const creatorCount = new Map();
-    return reels.filter(reel => {
-        const editorId = String(reel.editor?._id || reel.editor || 'unknown');
-        const count = creatorCount.get(editorId) || 0;
-        if (count >= maxPer) return false;
-        creatorCount.set(editorId, count + 1);
-        return true;
+/**
+ * Freshness Injection (Phase 30C)
+ * Returns a multiplier for reels < 4 hours old.
+ * Once every 5-8 reels, we inject a 'Fresh' reel into the feed.
+ */
+export const calculateFreshnessBoost = (reel) => {
+    if (!reel.createdAt) return 1.0;
+    const ageMs = Date.now() - new Date(reel.createdAt).getTime();
+    const ageHours = ageMs / 3600000;
+
+    // 2x boost if less than 1 hour old, tapering to 1x at 4 hours
+    if (ageHours < 1) return 2.0;
+    if (ageHours < 4) return 1.5;
+    return 1.0;
+};
+
+// ── Creator Diversity Filter (Enhanced Phase 30C) ─────────────────────────────
+// Hard anti-repeat: Ensures at least 'distance' reels between same creator.
+export const enforceCreatorDiversity = (reels, distance = 3) => {
+    const lastSeen = new Map(); // creatorId -> lastIndex
+    const result = [];
+    
+    reels.forEach((reel, index) => {
+        const creatorId = String(reel.editor?._id || reel.editor || 'unknown');
+        const lastIndex = lastSeen.get(creatorId);
+        
+        if (lastIndex === undefined || (result.length - lastIndex) >= distance) {
+            result.push(reel);
+            lastSeen.set(creatorId, result.length - 1);
+        }
     });
+    
+    return result;
 };
 
 // ── Algorithm: Weighted Reservoir Sampling (A-Chao) ──────────────────────────
