@@ -151,7 +151,7 @@ export const enforceCreatorDiversity = (reels, distance = 3) => {
     const lastSeen = new Map(); // creatorId -> lastIndex
     const result = [];
     
-    reels.forEach((reel, index) => {
+    reels.forEach((reel) => {
         const creatorId = String(reel.editor?._id || reel.editor || 'unknown');
         const lastIndex = lastSeen.get(creatorId);
         
