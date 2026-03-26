@@ -275,16 +275,41 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
         { $lookup: { from: "portfolios", localField: "portfolio", foreignField: "_id", as: "portfolioInfo" } },
         { $unwind: { path: "$portfolioInfo", preserveNullAndEmptyArrays: true } },
         {
+            $addFields: {
+                isLiked: {
+                    $cond: {
+                        if: { $and: [{ $ne: [userId, null] }, { $in: [new mongoose.Types.ObjectId(userId || new mongoose.Types.ObjectId()), "$likes"] }] },
+                        then: true,
+                        else: false
+                    }
+                },
+                latestLikerIds: { $slice: ["$likes", -3] }
+            }
+        },
+        { $lookup: { from: "users", localField: "latestLikerIds", foreignField: "_id", as: "latestLikeUsers" } },
+        {
             $project: {
                 _id: 1, title: 1, description: 1, mediaUrl: 1, mediaType: 1,
-                likesCount: 1, viewsCount: 1, commentsCount: 1, createdAt: 1, likes: 1,
+                likesCount: 1, viewsCount: 1, commentsCount: 1, createdAt: 1,
+                isLiked: 1,
+                latestLikers: {
+                    $map: {
+                        input: "$latestLikeUsers",
+                        as: "u",
+                        in: {
+                            _id: "$$u._id",
+                            name: "$$u.name",
+                            profilePicture: "$$u.profilePicture"
+                        }
+                    }
+                },
                 editor: {
                     _id: { $ifNull: ["$editorInfo._id", "$editorId"] },
                     name: { $ifNull: ["$editorInfo.name", "Unknown Editor"] },
                     profilePicture: { $ifNull: ["$editorInfo.profilePicture", null] },
                     role: { $ifNull: ["$editorInfo.role", "editor"] }
                 },
-                portfolio: "$portfolioInfo",
+                portfolio: { _id: "$portfolioInfo._id" }, // Slim down portfolio info
             }
         }
     ]);
@@ -617,17 +642,54 @@ export const getReelsByEditor = asyncHandler(async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
+    const userIdReq = req.user?._id?.toString() || null;
+
     const [reels, total] = await Promise.all([
-        Reel.find({ editor: userId, isPublished: true }, {
-            _id: 1, title: 1, description: 1, mediaUrl: 1, mediaType: 1,
-            likesCount: 1, viewsCount: 1, commentsCount: 1, createdAt: 1,
-            editor: 1, portfolio: 1
-        })
-            .populate("editor", "name profilePicture role")
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .lean(),
+        Reel.aggregate([
+            { $match: { editor: new mongoose.Types.ObjectId(userId), isPublished: true } },
+            { $sort: { createdAt: -1 } },
+            { $skip: skip },
+            { $limit: limit },
+            {
+                $addFields: {
+                    isLiked: {
+                        $cond: {
+                            if: { $and: [{ $ne: [userIdReq, null] }, { $in: [new mongoose.Types.ObjectId(userIdReq || new mongoose.Types.ObjectId()), "$likes"] }] },
+                            then: true,
+                            else: false
+                        }
+                    },
+                    latestLikerIds: { $slice: ["$likes", -3] }
+                }
+            },
+            { $lookup: { from: "users", localField: "editor", foreignField: "_id", as: "editorInfo" } },
+            { $unwind: "$editorInfo" },
+            { $lookup: { from: "users", localField: "latestLikerIds", foreignField: "_id", as: "latestLikeUsers" } },
+            {
+                $project: {
+                    _id: 1, title: 1, description: 1, mediaUrl: 1, mediaType: 1,
+                    likesCount: 1, viewsCount: 1, commentsCount: 1, createdAt: 1,
+                    isLiked: 1,
+                    latestLikers: {
+                        $map: {
+                            input: "$latestLikeUsers",
+                            as: "u",
+                            in: {
+                                _id: "$$u._id",
+                                name: "$$u.name",
+                                profilePicture: "$$u.profilePicture"
+                            }
+                        }
+                    },
+                    editor: {
+                        _id: "$editorInfo._id",
+                        name: "$editorInfo.name",
+                        profilePicture: "$editorInfo.profilePicture",
+                        role: "$editorInfo.role"
+                    }
+                }
+            }
+        ]),
         Reel.countDocuments({ editor: userId, isPublished: true }),
     ]);
 

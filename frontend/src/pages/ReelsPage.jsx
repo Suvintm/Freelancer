@@ -68,8 +68,8 @@ const ReelsPage = ({ isActive = true }) => {
                 : (targetReelId ? [targetReelId] : []);
             const excludeIds = excludeIdsArr.join(",");
 
-            // Parallelized fetch (Modern Engineering Pattern)
-            const feedPromise = axios.get(`${backendURL}/api/reels/feed?page=${pageNum}&limit=5&exclude=${excludeIds}`);
+            // Increased limit to 10 for fewer network requests
+            const feedPromise = axios.get(`${backendURL}/api/reels/feed?page=${pageNum}&limit=10&exclude=${excludeIds}`);
             
             // Fetch target reel or ad in parallel to global feed
             const specificPromise = (!isLoadMore && pageNum === 1 && targetReelId && !targetReelId.startsWith("ad_"))
@@ -337,8 +337,8 @@ const ReelsPage = ({ isActive = true }) => {
                         itemSize={windowHeight}
                         width="100%"
                         onScroll={handleScroll}
-                        itemKey={(index) => combinedFeed[index]?.id || index}
-                        overscanCount={3} 
+                        itemKey={(index) => combinedFeed[index]?.id || `reel-fallback-${index}`}
+                        overscanCount={6} 
                         style={{ overflowX: 'hidden' }}
                     >
                         {({ index, style }) => {

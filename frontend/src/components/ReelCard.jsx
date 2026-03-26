@@ -33,7 +33,8 @@ import { useVideoQuality } from "../hooks/useVideoQuality";
 const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, globalMuted, setGlobalMuted }) => {
     const { user, backendURL } = useAppContext();
 
-    const [isLiked, setIsLiked] = useState(user ? reel.likes?.includes(user._id) : false);
+    // — PERFORMANCE: Use pre-computed backend values to avoid heavy array checks —
+    const [isLiked, setIsLiked] = useState(reel.isLiked ?? (user ? reel.likes?.includes(user._id) : false));
     const [likesCount, setLikesCount] = useState(reel.likesCount || 0);
     const [latestLikers, setLatestLikers] = useState(reel.latestLikers || []);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -69,7 +70,7 @@ const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, 
     useEffect(() => {
         setLikesCount(reel.likesCount || 0);
         setLatestLikers(reel.latestLikers || []);
-        setIsLiked(user ? reel.likes?.includes(user._id) : false);
+        setIsLiked(reel.isLiked ?? (user ? reel.likes?.includes(user._id) : false));
     }, [reel, user]);
 
     // Show mute icon only when globalMuted changes AFTER initial render
