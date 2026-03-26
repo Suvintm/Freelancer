@@ -60,6 +60,19 @@ const ReelsPage = ({ isActive = true }) => {
     // FETCH REELS — Concurrent Candidate Retrieval (O(1) Wait)
     // ─────────────────────────────────────────────────────────────
     const fetchReels = useCallback(async (pageNum = 1, isLoadMore = false) => {
+        // — OFFLINE PROTECTION —
+        if (!navigator.onLine) {
+            console.warn("[Reels] Device is offline. Skipping network fetch.");
+            setLoading(false);
+            setLoadingMore(false);
+            setRefreshing(false);
+            // If we have cached content but current reels list is empty, restore it
+            if (feedCache.current.length > 0 && reels.length === 0) {
+                setReels(feedCache.current);
+            }
+            return;
+        }
+
         try {
             if (!isLoadMore && pageNum === 1 && reels.length === 0) setLoading(true);
             
@@ -105,6 +118,10 @@ const ReelsPage = ({ isActive = true }) => {
             setHasMore(feedRes.data.pagination.hasMore);
         } catch (err) {
             console.error("[Reels] Fetch error:", err.message);
+            // Fallback: If network fails but we have cached data, ensure it stays visible
+            if (reels.length === 0 && feedCache.current.length > 0) {
+                setReels(feedCache.current);
+            }
         } finally {
             setLoading(false);
             setLoadingMore(false);
@@ -313,6 +330,16 @@ const ReelsPage = ({ isActive = true }) => {
             </div>
 
             <PullIndicator />
+
+            {/* Offline Indicator Overlay */}
+            {!navigator.onLine && (
+                <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-black/60 backdrop-blur-md rounded-full border border-white/10 shadow-2xl flex items-center gap-2 animate-pulse pointer-events-none">
+                    <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b]" />
+                    <span className="text-white text-[10px] font-bold uppercase tracking-widest text-shadow">
+                        Offline Mode • Cached Content
+                    </span>
+                </div>
+            )}
 
             <div
                 className={`flex-1 overflow-hidden origin-top bg-black h-full relative transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${showComments ? "scale-[0.95] translate-y-[-20px] rounded-[20px]" : "scale-100 translate-y-0 rounded-none"}`}

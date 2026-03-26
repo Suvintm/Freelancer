@@ -86,6 +86,46 @@ export const ReelsProvider = ({ children }) => {
     const lastFetchTime = useRef(null);
     const scrollPositionCache = useRef(0);
 
+    // — PERSISTENCE: Initialize Cache from LocalStorage on first load —
+    const [isInitialized, setIsInitialized] = useState(false);
+    useEffect(() => {
+        try {
+            const savedCache = localStorage.getItem("suvix_reels_cache_v1");
+            if (savedCache) {
+                const { data, timestamp, page, activeIndex } = JSON.parse(savedCache);
+                // Only restore if cache is reasonably young (e.g. 24 hours) or the user is offline
+                const isRelevant = Date.now() - timestamp < 24 * 60 * 60 * 1000 || !navigator.onLine;
+                
+                if (isRelevant && data?.length > 0) {
+                    feedLRU.current.clear();
+                    feedLRU.current.mergeReels(data);
+                    lastFetchTime.current = timestamp;
+                    pageCache.current = page || 1;
+                    activeIndexCache.current = activeIndex || 0;
+                }
+            }
+        } catch (err) {
+            console.error("[ReelsContext] Persistence Restore Error:", err);
+        } finally {
+            setIsInitialized(true);
+        }
+    }, []);
+
+    // Helper to sync to disk
+    const syncToDisk = useCallback(() => {
+        try {
+            const cacheData = {
+                data: feedLRU.current.toArray(),
+                timestamp: lastFetchTime.current,
+                page: pageCache.current,
+                activeIndex: activeIndexCache.current
+            };
+            localStorage.setItem("suvix_reels_cache_v1", JSON.stringify(cacheData));
+        } catch (err) {
+            console.warn("[ReelsContext] Persistence Save Error (likely quota):", err);
+        }
+    }, []);
+
     // Global preferences — Persistent across sessions
     const [globalMuted, _setGlobalMuted] = useState(() => {
         const saved = localStorage.getItem("reels_global_muted");
@@ -108,6 +148,8 @@ export const ReelsProvider = ({ children }) => {
     /** Returns true if the feed cache is still fresh enough to use. */
     const isCacheValid = useCallback(() => {
         if (!lastFetchTime.current || feedLRU.current.size === 0) return false;
+        // Extend validity for offline mode
+        if (!navigator.onLine) return true;
         return Date.now() - lastFetchTime.current < CACHE_DURATION_MS;
     }, []);
 
@@ -117,7 +159,8 @@ export const ReelsProvider = ({ children }) => {
         feedLRU.current.mergeReels(reels);
         pageCache.current = page;
         lastFetchTime.current = Date.now();
-    }, []);
+        syncToDisk();
+    }, [syncToDisk]);
 
     /**
      * Appends more reels to cache (infinite scroll).
@@ -127,7 +170,8 @@ export const ReelsProvider = ({ children }) => {
         feedLRU.current.mergeReels(newReels);
         pageCache.current = page;
         lastFetchTime.current = Date.now();
-    }, []);
+        syncToDisk();
+    }, [syncToDisk]);
 
     /** Invalidates the cache, forcing a fresh fetch on next visit. */
     const invalidateCache = useCallback(() => {
@@ -136,12 +180,14 @@ export const ReelsProvider = ({ children }) => {
         pageCache.current = 1;
         activeIndexCache.current = 0;
         scrollPositionCache.current = 0;
+        localStorage.removeItem("suvix_reels_cache_v1");
     }, []);
 
     /** Updates the remembered scroll position (active reel index). */
     const savePosition = useCallback((index) => {
         activeIndexCache.current = index;
-    }, []);
+        syncToDisk(); // Update active index in persistent storage too
+    }, [syncToDisk]);
 
     return (
         <ReelsContext.Provider
