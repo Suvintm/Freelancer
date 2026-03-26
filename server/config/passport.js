@@ -12,7 +12,8 @@ let logger;
 
 const loadDependencies = async () => {
     if (!User) {
-        const userModule = await import("../models/User.js");
+        // Updated path for modular structure
+        const userModule = await import("../modules/user/models/User.js");
         User = userModule.default;
     }
     if (!logger) {
