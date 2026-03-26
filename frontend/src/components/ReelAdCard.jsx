@@ -1,5 +1,5 @@
-// ReelAdCard.jsx - Professional Ad Template with Logic Restoration
-// Reverted to admin-configurable template UI while maintaining HLS performance.
+// ReelAdCard.jsx - Professional Ad Template with Zero-Flicker Performance
+// Restored admin UI with fixed media loading to prevent double-reloading.
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HiXMark, HiCheckCircle, HiHeart, HiOutlineHeart } from "react-icons/hi2";
@@ -9,8 +9,6 @@ import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { repairUrl } from "../utils/urlHelper.jsx";
 import HlsVideoPlayer from "./HlsVideoPlayer";
-import VideoQualitySelector from "./VideoQualitySelector";
-import { useVideoQuality } from "../hooks/useVideoQuality";
 import logo from "../assets/logo.png";
 
 const ReelAdCard = ({ ad, onSkip, isActive=true, isNearActive=false, isPreloading=false, globalMuted=true, setGlobalMuted }) => {
@@ -27,10 +25,7 @@ const ReelAdCard = ({ ad, onSkip, isActive=true, isNearActive=false, isPreloadin
   const [liked, setLiked]                 = useState(false);
   const [likesCount, setLikesCount]       = useState(ad?.likesCount || 0);
   
-  const [currentQuality, setCurrentQuality] = useState("");
-  const [availableQualities, setAvailableQualities] = useState([]);
-  const [preferredQuality, setPreferredQuality] = useVideoQuality();
-
+  // — PERFORMANCE: Standardized predictive metadata hydration —
   const [showMetadata, setShowMetadata] = useState(isActive || isNearActive);
   useEffect(() => {
       if (isActive || isNearActive) {
@@ -44,6 +39,7 @@ const ReelAdCard = ({ ad, onSkip, isActive=true, isNearActive=false, isPreloadin
   const muted = globalMuted;
   const setMuted = setGlobalMuted;
 
+  // ── reelConfig with safe fallbacks ──────────────────────────────────
   const rc = useMemo(() => ({
     ctaText:             ad?.reelConfig?.ctaText             ?? ad?.ctaText        ?? "Learn More",
     btnVariant:          ad?.reelConfig?.btnVariant          ?? "ghost",
@@ -138,7 +134,6 @@ const ReelAdCard = ({ ad, onSkip, isActive=true, isNearActive=false, isPreloadin
     const newLiked = !liked;
     setLiked(newLiked);
     setLikesCount(p => newLiked ? p + 1 : p - 1);
-    // AD-SPECIFIC LIKES: Usually local-only for performance unless a dedicated endpoint exists.
   }, [liked]);
 
   if (!ad) return null;
@@ -156,26 +151,16 @@ const ReelAdCard = ({ ad, onSkip, isActive=true, isNearActive=false, isPreloadin
           <HlsVideoPlayer
             ref={videoRef}
             src={repairedMediaUrl}
-            poster={repairedMediaUrl ? repairedMediaUrl.replace(/\.[^./\\]+$/, ".jpg") : ""}
+            // Poster logic removed to solve the "double-loading/flicker" glitch.
+            // Pure HLS stream starts instantly when buffered.
             className="w-full h-full"
-            objectFit="contain" // Reverted to original aspect ratio
+            objectFit="contain" // Original ratio preserved
             muted={muted} loop isActive={isActive} autoPlay={isActive}
             isPreloading={isPreloading && !isActive}
             onPlaying={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)}
-            onQualityChange={setCurrentQuality} onAvailableQualities={setAvailableQualities}
-            preferredQuality={preferredQuality}
           />
         ) : (
           <img src={repairedMediaUrl} alt="" className="w-full h-full object-contain" crossOrigin="anonymous" />
-        )}
-
-        {/* Quality Selector Restored */}
-        {ad.mediaType === "video" && (
-            <VideoQualitySelector 
-                currentQuality={currentQuality} availableQualities={availableQualities}
-                preferredQuality={preferredQuality} setPreferredQuality={setPreferredQuality}
-                onMenuOpen={() => videoRef.current?.pause()} onMenuClose={() => videoRef.current?.play()}
-            />
         )}
 
         <AnimatePresence>
@@ -199,9 +184,9 @@ const ReelAdCard = ({ ad, onSkip, isActive=true, isNearActive=false, isPreloadin
         />
       </div>
 
-      {/* ── SIDE CONTROLS Enhanced with LIKE ── */}
+      {/* ── SIDE CONTROLS ── */}
       <div className="absolute top-1/2 -translate-y-1/2 right-3 z-40 flex flex-col items-center gap-5">
-        {/* Like Button for Ads */}
+        {/* Like Button for Ads Restored */}
         <button onClick={handleLike} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
           {liked ? <HiHeart className="text-red-500 text-3xl drop-shadow-lg" /> : <HiOutlineHeart className="text-white text-3xl drop-shadow-lg" />}
           <span className="text-[10px] font-bold text-white/80">{likesCount}</span>
