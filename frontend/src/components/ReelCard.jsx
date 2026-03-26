@@ -42,25 +42,23 @@ const ReelSidebar = React.memo(({ isLiked, likesCount, commentsCount, viewsCount
             { icon: <FaShare />, action: onShare }
         ].map((item, idx) => (
             <div key={idx} className="flex flex-col items-center gap-1">
-                <motion.button
-                    whileTap={{ scale: 0.8 }}
+                <button
                     onClick={(e) => { e.stopPropagation(); !item.disabled && item.action(); }}
-                    className={`w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white text-lg ${item.disabled ? "opacity-50" : "shadow-lg"}`}
+                    className={`w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white text-lg ${item.disabled ? "opacity-50" : "shadow-lg active:scale-90 transition-transform"}`}
                 >
                     {item.icon}
-                </motion.button>
+                </button>
                 {item.count !== undefined && <span className="text-[10px] font-bold text-white drop-shadow-md">{item.count}</span>}
             </div>
         ))}
         
         {mediaType === "video" && (
-            <motion.button
-                whileTap={{ scale: 0.8 }}
+            <button
                 onClick={(e) => { e.stopPropagation(); onMuteToggle(); }}
-                className="w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white"
+                className="w-11 h-11 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform"
             >
                 {globalMuted ? <FaVolumeMute size={16} /> : <FaVolumeUp size={16} />}
-            </motion.button>
+            </button>
         )}
     </div>
 ));
@@ -121,7 +119,7 @@ const ReelBottomInfo = React.memo(({ latestLikers, likesCount, editor, isFollowi
 
             {mediaType === "video" && (
                 <div className="w-full h-[2px] bg-white/10 rounded-full overflow-hidden">
-                    <motion.div style={{ width: `${progress}%` }} className="h-full bg-white shadow-[0_0_5px_rgba(255,255,255,0.7)]" />
+                    <div style={{ width: `${progress}%` }} className="h-full bg-white shadow-[0_0_5px_rgba(255,255,255,0.7)] transition-[width] duration-100 ease-linear" />
                 </div>
             )}
         </div>
@@ -398,30 +396,21 @@ const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, 
             )} */}
             </div>
 
-            {/* SIDEBAR (Fade-in for Insta-Level Stability) */}
-            <AnimatePresence>
-                {showMetadata && (
-                    <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.4, ease: "easeOut" }}
-                    >
-                        <ReelSidebar 
-                            isLiked={isLiked}
-                            likesCount={likesCount}
-                            commentsCount={reel.commentsCount}
-                            viewsCount={reel.viewsCount}
-                            onLike={handleLike}
-                            onCommentClick={handleCommentClick}
-                            onShare={handleShare}
-                            onMuteToggle={handleMuteToggle}
-                            globalMuted={globalMuted}
-                            mediaType={reel.mediaType}
-                        />
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {/* SIDEBAR (Stateless rendering for Native Performance) */}
+            {showMetadata && (
+                <ReelSidebar 
+                    isLiked={isLiked}
+                    likesCount={likesCount}
+                    commentsCount={reel.commentsCount}
+                    viewsCount={reel.viewsCount}
+                    onLike={handleLike}
+                    onCommentClick={handleCommentClick}
+                    onShare={handleShare}
+                    onMuteToggle={handleMuteToggle}
+                    globalMuted={globalMuted}
+                    mediaType={reel.mediaType}
+                />
+            )}
 
             {/* OVERLAY CONTENT (Deferred hydration for performance) */}
             <div className="absolute inset-0 z-40 p-5 flex flex-col justify-between pointer-events-none">
@@ -460,32 +449,23 @@ const ReelCard = ({ reel, isActive, isNearActive, isPreloading, onCommentClick, 
                     })()}
                 </div>
 
-                <AnimatePresence>
-                    {showMetadata && (
-                        <motion.div 
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.5, ease: "easeOut" }}
-                        >
-                            <ReelBottomInfo 
-                                latestLikers={latestLikers}
-                                likesCount={likesCount}
-                                editor={reel.editor}
-                                isFollowing={isFollowing}
-                                isOwnReel={isOwnReel}
-                                onFollow={handleFollow}
-                                title={reel.title}
-                                description={reel.description}
-                                onCommentClick={handleCommentClick}
-                                progress={progress}
-                                mediaType={reel.mediaType}
-                                isPlaying={isPlaying}
-                                isActive={isActive}
-                            />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                {showMetadata && (
+                    <ReelBottomInfo 
+                        latestLikers={latestLikers}
+                        likesCount={likesCount}
+                        editor={reel.editor}
+                        isFollowing={isFollowing}
+                        isOwnReel={isOwnReel}
+                        onFollow={handleFollow}
+                        title={reel.title}
+                        description={reel.description}
+                        onCommentClick={handleCommentClick}
+                        progress={progress}
+                        mediaType={reel.mediaType}
+                        isPlaying={isPlaying}
+                        isActive={isActive}
+                    />
+                )}
             </div>
 
             {/* WATERMARK */}

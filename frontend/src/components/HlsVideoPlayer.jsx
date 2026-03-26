@@ -51,10 +51,10 @@ const HlsVideoPlayer = React.forwardRef(({
         
         // ── Sliding Window Buffer (DSA Concept: Dynamic Capping) ──
         // Only buffer 5s for neighbors (isPreloading) to ensure instant play.
-        // Buffer up to 20s for the active reel for smooth playback.
-        maxBufferLength: isActive ? 20 : (isPreloading ? 5 : 0), 
-        maxMaxBufferLength: isActive ? 35 : (isPreloading ? 8 : 0),
-        maxBufferSize: isActive ? 60 * 1000 * 1000 : (isPreloading ? 10 * 1000 * 1000 : 0), 
+        // Buffer up to 30s for the active reel for rock-solid stability.
+        maxBufferLength: isActive ? 30 : (isPreloading ? 5 : 0), 
+        maxMaxBufferLength: isActive ? 60 : (isPreloading ? 10 : 0),
+        maxBufferSize: isActive ? 100 * 1000 * 1000 : (isPreloading ? 10 * 1000 * 1000 : 0), 
         
         // Initial buffer target
         backBufferLength: 0, // Quickly evict past fragments from memory        

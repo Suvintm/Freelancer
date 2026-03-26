@@ -314,16 +314,10 @@ const ReelsPage = ({ isActive = true }) => {
 
             <PullIndicator />
 
-            <motion.div
+            <div
+                className={`flex-1 overflow-hidden origin-top bg-black h-full relative transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${showComments ? "scale-[0.95] translate-y-[-20px] rounded-[20px]" : "scale-100 translate-y-0 rounded-none"}`}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
-                animate={{ 
-                    scale: showComments ? 0.95 : 1,
-                    y: showComments ? -20 : 0,
-                    borderRadius: showComments ? "20px" : "0px",
-                }}
-                transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="flex-1 overflow-hidden origin-top bg-black h-full relative"
             >
                 {loading && <div className="absolute inset-0 z-50"><ReelSkeleton /></div>}
 
@@ -379,7 +373,7 @@ const ReelsPage = ({ isActive = true }) => {
                         <p className="text-lg font-semibold">No reels yet</p>
                     </div>
                 )}
-            </motion.div>
+            </div>
 
             <AnimatePresence>
                 {showComments && (
