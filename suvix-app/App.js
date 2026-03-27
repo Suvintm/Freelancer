@@ -5,10 +5,14 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
 
+import { ThemeProvider } from './src/context/ThemeContext';
+
 // Infrastructure
 import { queryClient } from './src/api/QueryClient';
 import { useAuthStore } from './src/context/useAuthStore';
 import { Colors } from './src/constants/Colors';
+
+import TabNavigator from './src/navigation/TabNavigator';
 
 // Screens
 import LoginScreen from './src/screens/LoginScreen';
@@ -48,30 +52,26 @@ export default function App() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <SafeAreaProvider>
-        <NavigationContainer>
-          <StatusBar style="light" />
-          <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
-            {!isAuthenticated ? (
-              // Auth Stack
-              <>
-                <Stack.Screen name="Login" component={LoginScreen} />
-                <Stack.Screen name="Signup" component={SignupScreen} />
-              </>
-            ) : (
-              // Role-Based App Stack
-              <>
-                {user?.role === 'editor' ? (
-                  <Stack.Screen name="EditorHome" component={EditorHome} />
-                ) : (
-                  <Stack.Screen name="ClientHome" component={ClientHome} />
-                )}
-              </>
-            )}
-          </Stack.Navigator>
-        </NavigationContainer>
-      </SafeAreaProvider>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider>
+          <NavigationContainer>
+            <StatusBar style="light" />
+            <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
+              {!isAuthenticated ? (
+                // Auth Stack
+                <>
+                  <Stack.Screen name="Login" component={LoginScreen} />
+                  <Stack.Screen name="Signup" component={SignupScreen} />
+                </>
+              ) : (
+                // ROLE-BASED HIGH PERFORMANCE TAB APP
+                <Stack.Screen name="Main" component={TabNavigator} />
+              )}
+            </Stack.Navigator>
+          </NavigationContainer>
+        </SafeAreaProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
