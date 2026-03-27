@@ -2,6 +2,8 @@
   "expo": {
     "name": "suvix-app",
     "slug": "suvix-app",
+    "owner": "suvin1515",
+    "scheme": "in.suvix.app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -25,7 +27,8 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {

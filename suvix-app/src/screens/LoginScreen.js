@@ -14,37 +14,50 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
 import { Colors } from '../constants/Colors';
+import { useAuthStore } from '../context/useAuthStore';
+import { useGoogleAuth } from '../hooks/useGoogleAuth';
+import LoadingOverlay from '../components/LoadingOverlay';
 import SuvixInput from '../components/SuvixInput';
 import SuvixButton from '../components/SuvixButton';
-import { API_BASE_URL } from '../config/api';
-import useAuthStore from '../context/useAuthStore';
+import { API_ENDPOINTS } from '../config/api';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const setAuth = useAuthStore((state) => state.setAuth);
+
+  const { signIn: googleSignIn, isLoading: isGoogleLoading } = useGoogleAuth(
+    // On Success
+    () => navigation.replace('Main'),
+    // On Role Selection Required (Matching web flow)
+    (token, user) => navigation.navigate('Signup', { token, user, step: 2 })
+  );
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert('Incomplete Form', 'Please enter both your email and password.');
       return;
     }
 
     setLoading(true);
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
-        email: email.trim(),
+      const response = await axios.post(API_ENDPOINTS.LOGIN, {
+        email: email.trim().toLowerCase(),
         password,
       });
 
-      const { user, token } = response.data;
-      setAuth(user, token);
-      
-      // Navigation will be handled automatically by App.js based on auth state
+      if (response.data.success) {
+        const { user, token } = response.data;
+        // Hardware-encrypted storage of the JWT
+        await setAuth(user, token);
+        // Navigation will be handled automatically by App.js
+      }
     } catch (error) {
-      const message = error.response?.data?.message || 'Login failed. Please check your credentials.';
-      Alert.alert('Login Error', message);
+      console.error('Login Error:', error.response?.data || error.message);
+      const message = error.response?.data?.message || 'Invalid email or password. Please try again.';
+      Alert.alert('Login Failed', message);
     } finally {
       setLoading(false);
     }
@@ -85,8 +98,17 @@ const LoginScreen = ({ navigation }) => {
               placeholder="••••••••"
               value={password}
               onChangeText={setPassword}
-              secureTextEntry
+              secureTextEntry={!showPassword}
               icon={(props) => <MaterialCommunityIcons name="lock-outline" {...props} />}
+              rightIcon={
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  <MaterialCommunityIcons 
+                    name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                    size={20} 
+                    color={Colors.textSecondary} 
+                  />
+                </TouchableOpacity>
+              }
             />
 
             <TouchableOpacity style={styles.forgotPassword}>
@@ -106,7 +128,10 @@ const LoginScreen = ({ navigation }) => {
               <View style={styles.line} />
             </View>
 
-            <TouchableOpacity style={styles.googleButton}>
+            <TouchableOpacity 
+              style={styles.googleButton}
+              onPress={googleSignIn}
+            >
               <MaterialCommunityIcons name="google" size={20} color={Colors.white} />
               <Text style={styles.googleButtonText}>Continue with Google</Text>
             </TouchableOpacity>
@@ -121,6 +146,7 @@ const LoginScreen = ({ navigation }) => {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <LoadingOverlay visible={loading} message="Signing in securely..." />
     </SafeAreaView>
   );
 };

@@ -7,7 +7,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 
 // Infrastructure
 import { queryClient } from './src/api/QueryClient';
-import useAuthStore from './src/context/useAuthStore';
+import { useAuthStore } from './src/context/useAuthStore';
 import { Colors } from './src/constants/Colors';
 
 // Screens
@@ -15,7 +15,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
 
 // Temporary Home Screens (to be expanded in next phase)
-import { View, Text } from 'react-native';
+import { View, Text, ActivityIndicator } from 'react-native';
 const EditorHome = () => (
   <View style={{ flex: 1, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center' }}>
     <Text style={{ color: Colors.white, fontSize: 24, fontWeight: 'bold' }}>Editor Dashboard</Text>
@@ -33,14 +33,26 @@ const ClientHome = () => (
 const Stack = createNativeStackNavigator();
 
 export default function App() {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, isLoading, initialize } = useAuthStore();
+
+  React.useEffect(() => {
+    initialize();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: Colors.primary, justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={Colors.accent} />
+      </View>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <NavigationContainer>
           <StatusBar style="light" />
-          <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade_from_bottom' }}>
+          <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
             {!isAuthenticated ? (
               // Auth Stack
               <>

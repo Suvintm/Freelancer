@@ -3,17 +3,20 @@ import { Platform } from 'react-native';
 /**
  * PRODUCTION-READY NETWORK CONFIG
  * 
- * 192.168.0.175 - Use your PC's local IP for Physical Device testing (Expo Go)
- * 10.0.2.2      - Android Emulator (Loopback to PC)
- * localhost     - iOS Simulator
+ * We now use EXPO_PUBLIC_ environment variables.
+ * This is the professional way to handle secrets in Expo.
  */
-const LAN_IP = '192.168.0.175'; 
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5051/api'; 
 
-const API_BASE_URL = Platform.OS === 'android' 
-  ? `http://${LAN_IP}:5051/api` 
-  : `http://${LAN_IP}:5051/api`;
 
 export const API_ENDPOINTS = {
+  // Auth
+  LOGIN: `${API_BASE_URL}/auth/login`,
+  REGISTER: `${API_BASE_URL}/auth/register`,
+  VERIFY_OTP: `${API_BASE_URL}/auth/verify-otp`,
+  AUTH_ME: `${API_BASE_URL}/auth/me`,
+  
+  // Features
   REELS_FEED: `${API_BASE_URL}/reels/feed`,
   AUTH_PROFILE: `${API_BASE_URL}/profile`,
 };

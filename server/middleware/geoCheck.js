@@ -30,8 +30,9 @@ export const getClientIP = (req) => {
     req.headers["x-forwarded-for"]?.split(",")[0].trim() || // Standard proxy
     req.socket.remoteAddress;
 
-  // Handle local development IPv6 notation
-  if (ip === "::1" || ip === "::ffff:127.0.0.1") return "127.0.0.1";
+  // Handle local development IPv6 notation (::1 or ::ffff:192.168.x.x)
+  if (ip === "::1") return "127.0.0.1";
+  if (ip.startsWith("::ffff:")) return ip.substring(7);
   return ip;
 };
 
@@ -47,8 +48,14 @@ export const geoCheckMiddleware = async (req, res, next) => {
 
   const ip = getClientIP(req);
 
-  // Skip check for localhost during development
-  if (ip === "127.0.0.1" || ip.startsWith("192.168.") || ip.startsWith("10.")) {
+  // Skip check for private IP ranges during development/testing
+  if (
+    ip === "127.0.0.1" || 
+    ip.startsWith("192.168.") || 
+    ip.startsWith("10.") || 
+    ip.startsWith("172.16.") || 
+    ip.startsWith("172.31.")
+  ) {
     return next();
   }
 

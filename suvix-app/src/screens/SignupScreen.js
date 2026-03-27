@@ -15,22 +15,43 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import { Colors } from '../constants/Colors';
+import LoadingOverlay from '../components/LoadingOverlay';
+import { useAuthStore } from '../context/useAuthStore';
+import { useGoogleAuth } from '../hooks/useGoogleAuth';
 import SuvixInput from '../components/SuvixInput';
 import SuvixButton from '../components/SuvixButton';
-import { API_BASE_URL } from '../config/api';
+import { API_ENDPOINTS } from '../config/api';
 
 const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
 const SignupScreen = ({ navigation }) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    phone: '',
-    role: 'editor',
-  });
+  const { setAuth } = useAuthStore();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [role, setRole] = useState('editor');
+  const [country, setCountry] = useState('IN'); // Backend requirement
   const [profileImage, setProfileImage] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [step, setStep] = useState(1); // 1 for initial details, 2 for role/profile image
+
+  const { signIn: googleSignIn, isLoading: isGoogleLoading } = useGoogleAuth(
+    // On Success
+    () => navigation.replace('Main'),
+    // On Role Selection Required
+    (token, user) => {
+      // Assuming user object from Google contains name and email
+      setName(user.name || '');
+      setEmail(user.email || '');
+      // If Google provides a profile picture, set it
+      if (user.profilePicture) {
+        setProfileImage(user.profilePicture);
+      }
+      setStep(2); // Move to step 2 for role selection and phone number
+    }
+  );
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -45,47 +66,60 @@ const SignupScreen = ({ navigation }) => {
     }
   };
 
+  const handleNextStep = () => {
+    if (!name || !email || !password) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+    setStep(2);
+  };
+
   const handleSignup = async () => {
-    const { name, email, password, phone, role } = formData;
     if (!name || !email || !password || !phone) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
-    setLoading(true);
+    setIsLoading(true);
     try {
       const data = new FormData();
       data.append('name', name.trim());
-      data.append('email', email.trim());
+      data.append('email', email.trim().toLowerCase());
       data.append('password', password);
       data.append('phone', phone.trim());
       data.append('role', role);
-      
+      data.append('country', country);
+
       if (profileImage) {
-        let filename = profileImage.split('/').pop();
-        let match = /\.(\w+)$/.exec(filename);
-        let type = match ? `image/${match[1]}` : `image`;
+        const filename = profileImage.split('/').pop();
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image/jpeg`;
         data.append('profilePicture', { uri: profileImage, name: filename, type });
       }
 
-      await axios.post(`${API_BASE_URL}/auth/register`, data, {
+      const response = await axios.post(API_ENDPOINTS.REGISTER, data, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      Alert.alert('Success', 'Account created! Please log in.', [
-        { text: 'OK', onPress: () => navigation.navigate('Login') }
-      ]);
+      if (response.data.success) {
+        await setAuth(response.data.user, response.data.token);
+
+        Alert.alert('Welcome! 🎉', 'Your SuviX account is ready.', [
+          { text: 'Get Started', onPress: () => {} } // Navigation handled by App.js based on auth state
+        ]);
+      }
     } catch (error) {
-      const message = error.response?.data?.message || 'Registration failed.';
-      Alert.alert('Error', message);
+      console.error('Signup Error:', error.response?.data || error.message);
+      const message = error.response?.data?.message || 'Registration failed. Please check your connection.';
+      Alert.alert('Registration Failed', message);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
@@ -97,9 +131,9 @@ const SignupScreen = ({ navigation }) => {
                 <MaterialCommunityIcons name="arrow-left" size={22} color={Colors.white} />
               </TouchableOpacity>
               <View style={styles.logoCentered}>
-                <Image 
-                  source={require('../../assets/logo.png')} 
-                  style={styles.logo} 
+                <Image
+                  source={require('../../assets/logo.png')}
+                  style={styles.logo}
                   resizeMode="contain"
                 />
               </View>
@@ -107,91 +141,128 @@ const SignupScreen = ({ navigation }) => {
               <View style={{ width: 36 }} />
             </View>
 
-            <View style={styles.titleRow}>
-              <View style={styles.titleTextColumn}>
-                <Text style={styles.title}>Create Account</Text>
-                <Text style={styles.subtitle}>Join SuviX and start your journey</Text>
-              </View>
-              <TouchableOpacity onPress={pickImage} style={styles.profilePicker}>
-                <Image source={{ uri: profileImage || DEFAULT_AVATAR }} style={styles.avatar} />
-                <View style={styles.addIconContainer}>
-                   <MaterialCommunityIcons name="plus" size={12} color={Colors.white} />
+            {step === 1 && (
+              <View style={styles.titleRow}>
+                <View style={styles.titleTextColumn}>
+                  <Text style={styles.title}>Create Account</Text>
+                  <Text style={styles.subtitle}>Join SuviX and start your journey</Text>
                 </View>
-              </TouchableOpacity>
+              </View>
+            )}
+            {step === 2 && (
+              <View style={styles.titleRow}>
+                <View style={styles.titleTextColumn}>
+                  <Text style={styles.title}>Almost there!</Text>
+                  <Text style={styles.subtitle}>Just a few more details</Text>
+                </View>
+                <TouchableOpacity onPress={pickImage} style={styles.profilePicker}>
+                  <Image source={{ uri: profileImage || DEFAULT_AVATAR }} style={styles.avatar} />
+                  <View style={styles.addIconContainer}>
+                    <MaterialCommunityIcons name="plus" size={12} color={Colors.white} />
+                  </View>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+
+          {step === 1 && (
+            <View style={styles.form}>
+              <SuvixInput
+                placeholder="Full Name"
+                value={name}
+                onChangeText={setName}
+                icon={(props) => <MaterialCommunityIcons name="account-outline" {...props} />}
+              />
+
+              <SuvixInput
+                placeholder="Email Address"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                icon={(props) => <MaterialCommunityIcons name="email-outline" {...props} />}
+              />
+
+              <SuvixInput
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                icon={(props) => <MaterialCommunityIcons name="lock-outline" {...props} />}
+                rightIcon={(props) => (
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                    <MaterialCommunityIcons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      {...props}
+                    />
+                  </TouchableOpacity>
+                )}
+              />
+
+              <SuvixButton
+                title="Continue"
+                onPress={handleNextStep}
+                style={styles.signupBtn}
+              />
+
+              <View style={styles.divider}>
+                <View style={styles.line} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.line} />
+              </View>
+
+              <SuvixButton
+                title="Sign up with Google"
+                onPress={googleSignIn}
+                variant="outline"
+                icon="google"
+                loading={isGoogleLoading}
+                style={styles.googleButton}
+                textStyle={styles.googleText}
+              />
             </View>
-          </View>
+          )}
 
-          {/* Role Selection */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Select your account role</Text>
-          </View>
-          <View style={styles.roleContainer}>
-            <TouchableOpacity 
-              style={[styles.roleTab, formData.role === 'editor' && styles.activeTab]} 
-              onPress={() => setFormData({...formData, role: 'editor'})}
-            >
-              <Text style={[styles.roleText, formData.role === 'editor' && styles.activeRoleText]}>I'm an Editor</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.roleTab, formData.role === 'client' && styles.activeTab]} 
-              onPress={() => setFormData({...formData, role: 'client'})}
-            >
-              <Text style={[styles.roleText, formData.role === 'client' && styles.activeRoleText]}>I'm a Client</Text>
-            </TouchableOpacity>
-          </View>
+          {step === 2 && (
+            <>
+              {/* Role Selection */}
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Select your account role</Text>
+              </View>
+              <View style={styles.roleContainer}>
+                <TouchableOpacity
+                  style={[styles.roleTab, role === 'editor' && styles.activeTab]}
+                  onPress={() => setRole('editor')}
+                >
+                  <Text style={[styles.roleText, role === 'editor' && styles.activeRoleText]}>I'm an Editor</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.roleTab, role === 'client' && styles.activeTab]}
+                  onPress={() => setRole('client')}
+                >
+                  <Text style={[styles.roleText, role === 'client' && styles.activeRoleText]}>I'm a Client</Text>
+                </TouchableOpacity>
+              </View>
 
-          {/* Form */}
-          <View style={styles.form}>
-            <SuvixInput
-              placeholder="Full Name"
-              value={formData.name}
-              onChangeText={(val) => setFormData({ ...formData, name: val })}
-              icon={(props) => <MaterialCommunityIcons name="account-outline" {...props} />}
-            />
+              {/* Form */}
+              <View style={styles.form}>
+                <SuvixInput
+                  placeholder="Mobile Number"
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                  icon={(props) => <MaterialCommunityIcons name="phone-outline" {...props} />}
+                />
 
-            <SuvixInput
-              placeholder="Email Address"
-              value={formData.email}
-              onChangeText={(val) => setFormData({ ...formData, email: val })}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              icon={(props) => <MaterialCommunityIcons name="email-outline" {...props} />}
-            />
-
-            <SuvixInput
-              placeholder="Mobile Number"
-              value={formData.phone}
-              onChangeText={(val) => setFormData({ ...formData, phone: val })}
-              keyboardType="phone-pad"
-              icon={(props) => <MaterialCommunityIcons name="phone-outline" {...props} />}
-            />
-            
-            <SuvixInput
-              placeholder="Password"
-              value={formData.password}
-              onChangeText={(val) => setFormData({ ...formData, password: val })}
-              secureTextEntry
-              icon={(props) => <MaterialCommunityIcons name="lock-outline" {...props} />}
-            />
-
-            <SuvixButton 
-              title="Create Account" 
-              onPress={handleSignup} 
-              loading={loading} 
-              style={styles.signupBtn}
-            />
-
-            <View style={styles.divider}>
-              <View style={styles.line} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.line} />
-            </View>
-
-            <TouchableOpacity style={styles.googleButton}>
-              <MaterialCommunityIcons name="google" size={18} color={Colors.white} />
-              <Text style={styles.googleText}>Sign up with Google</Text>
-            </TouchableOpacity>
-          </View>
+                <SuvixButton
+                  title="Create Account"
+                  onPress={handleSignup}
+                  loading={isLoading}
+                  style={styles.signupBtn}
+                />
+              </View>
+            </>
+          )}
 
           {/* Footer */}
           <View style={styles.footer}>
@@ -202,6 +273,7 @@ const SignupScreen = ({ navigation }) => {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <LoadingOverlay visible={loading} message="Creating your professional account..." />
     </SafeAreaView>
   );
 };

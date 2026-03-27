@@ -4,6 +4,8 @@ import jwt from "jsonwebtoken";
 import User from "../../user/models/User.js";
 import { Profile } from "../../profiles/models/Profile.js";
 import logger from "../../../utils/logger.js";
+import axios from "axios";
+import crypto from "crypto";
 
 const router = express.Router();
 
@@ -177,6 +179,109 @@ router.post("/select-role", async (req, res) => {
             success: false,
             message: "Failed to set role",
         });
+    }
+});
+
+// ============ MOBILE GOOGLE AUTH (Token Exchange) ============
+
+router.post("/google/mobile", async (req, res) => {
+    try {
+        const { idToken } = req.body;
+
+        if (!idToken) {
+            return res.status(400).json({ success: false, message: "idToken is required" });
+        }
+
+        // 1. Verify token with Google
+        const response = await axios.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
+        const { sub: googleId, email, name, picture } = response.data;
+
+        if (!email) {
+            return res.status(400).json({ success: false, message: "Invalid token data" });
+        }
+
+        const normalizedEmail = email.toLowerCase();
+
+        // 2. Check if user already exists
+        let user = await User.findOne({ $or: [{ googleId }, { email: normalizedEmail }] });
+
+        if (user) {
+            // Already exists - link googleId if missing
+            if (!user.googleId) {
+                user.googleId = googleId;
+                user.authProvider = "google";
+                user.isVerified = true;
+                await user.save();
+                logger.info(`[OAuth Mobile] Linked Google account to existing user: ${normalizedEmail}`);
+            } else {
+                logger.info(`[OAuth Mobile] Login: ${normalizedEmail}`);
+            }
+        } else {
+            // 3. New User Registration
+            // Handle name collision
+            let finalName = name || "User";
+            const nameExists = await User.findOne({ name: { $regex: new RegExp(`^${finalName}$`, "i") } });
+            if (nameExists) {
+                finalName = `${finalName}${Math.floor(1000 + Math.random() * 9000)}`;
+            }
+
+            user = await User.create({
+                name: finalName,
+                email: normalizedEmail,
+                googleId,
+                authProvider: "google",
+                isVerified: true,
+                role: "pending",
+                password: `OAUTH_MOBILE_${crypto.randomBytes(8).toString("hex")}`,
+            });
+
+            // Create Profile
+            await Profile.create({
+                user: user._id,
+                contactEmail: user.email,
+                location: { country: "IN" }, // Default
+            });
+
+            logger.info(`[OAuth Mobile] New user registered: ${normalizedEmail}`);
+        }
+
+        // 4. Handle Pending Role (consistent with Web flow)
+        if (user.role === "pending") {
+            const tempToken = jwt.sign(
+                { id: user._id, type: "role_selection" },
+                JWT_SECRET,
+                { expiresIn: "15m" }
+            );
+            return res.status(200).json({
+                success: true,
+                requiresRoleSelection: true,
+                token: tempToken,
+                user: {
+                    id: user._id,
+                    email: user.email,
+                    name: user.name,
+                    role: user.role
+                }
+            });
+        }
+
+        // 5. Success - generate full token
+        const token = generateToken(user);
+        res.status(200).json({
+            success: true,
+            token,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                profilePicture: user.profilePicture || picture,
+            }
+        });
+
+    } catch (error) {
+        logger.error("[OAuth Mobile] Error:", error.response?.data || error.message);
+        res.status(401).json({ success: false, message: "Google authentication failed" });
     }
 });
 
