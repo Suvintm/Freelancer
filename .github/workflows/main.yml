@@ -3,8 +3,19 @@ name: SuviX Global Production Pipeline
 on:
   push:
     branches: [main, master]
+    paths:
+      - 'server/**'
+      - 'frontend/**'
+      - 'admin-frontend/**'
+      - 'admin-server/**'
+      - '.github/workflows/main.yml'
   pull_request:
     branches: [main, master]
+    paths:
+      - 'server/**'
+      - 'frontend/**'
+      - 'admin-frontend/**'
+      - 'admin-server/**'
 
 jobs:
   # ─────────────────────────────────────────────────────────────

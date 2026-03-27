@@ -1,0 +1,42 @@
+name: SuviX Mobile CI
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'suvix-app/**'
+      - '.github/workflows/mobile-ci.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'suvix-app/**'
+
+jobs:
+  mobile-checks:
+    name: Expo Lint & Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: suvix-app/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: suvix-app
+        run: npm ci
+
+      - name: Lint Check
+        working-directory: suvix-app
+        run: npm run lint --if-present
+
+      - name: Security Audit
+        working-directory: suvix-app
+        run: npm audit --audit-level=high
+
+      - name: Expo Doctor (Health Check)
+        working-directory: suvix-app
+        run: npx expo-doctor
