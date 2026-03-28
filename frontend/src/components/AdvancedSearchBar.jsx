@@ -228,7 +228,7 @@ const AdvancedSearchBar = React.memo(({
 
           {variant === 'pill' && (
             <motion.button
-              whileHover={{ scale: 1.1, boxShadow: "0 0 15px rgba(99, 102, 241, 0.4)" }}
+              whileHover={{ scale: 1.1, boxShadow: "0 0 15px rgba(91, 94, 240, 0.4)" }}
               whileTap={{ scale: 0.9 }}
               onClick={() => onSearch && onSearch(value)}
               className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 flex items-center justify-center text-white text-[9px] font-black shadow-xl shadow-indigo-500/20 tracking-tighter uppercase transition-all duration-300"
