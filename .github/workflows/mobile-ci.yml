@@ -1,4 +1,4 @@
-name: SuviX Android Distribution
+name: SuviX Mobile Production Pipeline
 
 on:
   push:
@@ -12,8 +12,11 @@ on:
       - 'suvix-mobile/**'
 
 jobs:
-  build-android-preview:
-    name: Build Android Preview (APK)
+  # ─────────────────────────────────────────────────────────────
+  # STAGE 1: CI (Quality Gate)
+  # ─────────────────────────────────────────────────────────────
+  ci-quality-gate:
+    name: Lint & Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -26,11 +29,43 @@ jobs:
           cache: "npm"
           cache-dependency-path: suvix-mobile/package-lock.json
 
+      - name: Install Dependencies
+        working-directory: suvix-mobile
+        run: npm install --legacy-peer-deps
+
+      - name: Lint Check
+        working-directory: suvix-mobile
+        run: npm run lint --if-present
+
+      - name: Run Unit Tests
+        working-directory: suvix-mobile
+        run: npm test --if-present
+
+  # ─────────────────────────────────────────────────────────────
+  # STAGE 2: CD (Android Distribution)
+  # ─────────────────────────────────────────────────────────────
+  android-distribution:
+    name: Build Android APK
+    needs: ci-quality-gate
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/production'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Setup Expo
         uses: expo/expo-github-action@v8
         with:
           expo-version: latest
           eas-cache: true
+
+      - name: Install EAS CLI Globally
+        run: npm install -g eas-cli
 
       - name: Install Dependencies
         working-directory: suvix-mobile
@@ -38,6 +73,6 @@ jobs:
 
       - name: Build Android Preview
         working-directory: suvix-mobile
-        run: npx eas build --platform android --profile preview --non-interactive
+        run: eas build --platform android --profile preview --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
