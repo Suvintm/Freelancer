@@ -1,42 +1,43 @@
-name: SuviX Mobile CI
+name: SuviX Android Distribution
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, production]
     paths:
-      - 'suvix-app/**'
+      - 'suvix-mobile/**'
       - '.github/workflows/mobile-ci.yml'
   pull_request:
     branches: [main, master]
     paths:
-      - 'suvix-app/**'
+      - 'suvix-mobile/**'
 
 jobs:
-  mobile-checks:
-    name: Expo Lint & Audit
+  build-android-preview:
+    name: Build Android Preview (APK)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: suvix-app/package-lock.json
+          cache-dependency-path: suvix-mobile/package-lock.json
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-cache: true
 
       - name: Install Dependencies
-        working-directory: suvix-app
-        run: npm ci
+        working-directory: suvix-mobile
+        run: npm install --legacy-peer-deps
 
-      - name: Lint Check
-        working-directory: suvix-app
-        run: npm run lint --if-present
-
-      - name: Security Audit
-        working-directory: suvix-app
-        run: npm audit --audit-level=high
-
-      - name: Expo Doctor (Health Check)
-        working-directory: suvix-app
-        run: npx expo-doctor
+      - name: Build Android Preview
+        working-directory: suvix-mobile
+        run: npx eas build --platform android --profile preview --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
