@@ -7,13 +7,10 @@ import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 88 : 70;
-const TAB_COUNT = 7;
-const TAB_WIDTH = width / TAB_COUNT;
 
 /**
- * PREMIUM ANIMATED TAB BAR
- * Standard React Navigation bottom tab bar replaced with a custom
- * animated version that replicates the SuviX Web App aesthetic.
+ * PRODUCTION-GRADE ANIMATED TAB BAR (Web Sync)
+ * Replicates the 7-tab layout and Center-Floating Reels design from the web frontend.
  */
 export const AnimatedTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { theme, isDarkMode } = useTheme();
@@ -21,27 +18,42 @@ export const AnimatedTabBar = ({ state, descriptors, navigation }: BottomTabBarP
   // Shared value for the sliding cursor/indicator
   const translateX = useSharedValue(0);
 
+  // STRICT FILTER: Only show the 7 primary SuviX tabs from the web app
+  const visibleRoutes = state.routes.filter(route => 
+    !['client', 'editor'].includes(route.name)
+  );
+  
+  const TAB_COUNT = visibleRoutes.length;
+  const TAB_WIDTH = width / TAB_COUNT;
+
   useEffect(() => {
-    // Update indicator position whenever the active route index changes
-    translateX.value = withSpring(state.index * TAB_WIDTH, {
-        damping: 20,
-        stiffness: 150
-    });
-  }, [state.index, translateX]);
+    // Find the current index within the VISIBLE subset to position the indicator
+    const visibleIndex = visibleRoutes.findIndex(route => route.name === state.routes[state.index].name);
+    if (visibleIndex !== -1) {
+      translateX.value = withSpring(visibleIndex * TAB_WIDTH, {
+          damping: 20,
+          stiffness: 150
+      });
+    }
+  }, [state.index, TAB_WIDTH, visibleRoutes]);
 
   const animatedIndicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
-    backgroundColor: theme.text,
+    backgroundColor: '#10B981', // Emerald-500 from Web
   }));
 
   return (
     <View style={[styles.container, { backgroundColor: theme.tabBar, borderTopColor: theme.border }]}>
-      {/* Sliding Underline Indicator */}
+      {/* Dynamic Sliding Indicator */}
       <Animated.View style={[styles.indicator, animatedIndicatorStyle, { width: TAB_WIDTH }]} />
 
       <View style={styles.content}>
-        {state.routes.map((route, index) => {
-          const isFocused = state.index === index;
+        {visibleRoutes.map((route) => {
+          // Find the actual index in the top-level state for focusing/navigation
+          const actualIndex = state.routes.findIndex(r => r.key === route.key);
+          const isFocused = state.index === actualIndex;
+          const { options } = descriptors[route.key];
+          const label = options.title !== undefined ? options.title : route.name;
 
           const onPress = () => {
             const event = navigation.emit({
@@ -55,10 +67,9 @@ export const AnimatedTabBar = ({ state, descriptors, navigation }: BottomTabBarP
             }
           };
 
-          // Icon Mapping based on Web App
           const getIcon = () => {
-            const color = isFocused ? theme.text : theme.textSecondary;
-            const size = 24;
+            const color = isFocused ? '#10B981' : (isDarkMode ? '#FFF' : '#000');
+            const size = 22;
 
             switch (route.name) {
               case 'index':
@@ -68,10 +79,9 @@ export const AnimatedTabBar = ({ state, descriptors, navigation }: BottomTabBarP
               case 'nearby':
                 return <Ionicons name={isFocused ? "location" : "location-outline"} size={size} color={color} />;
               case 'reels':
-                // SPECIAL CENTER REELS ICON (Floating Look)
                 return (
-                  <View style={[styles.reelsContainer, { backgroundColor: isDarkMode ? '#111' : '#EEE' }]}>
-                    <MaterialCommunityIcons name="movie-play" size={30} color={isFocused ? theme.accent : theme.text} />
+                  <View style={styles.reelsContainer}>
+                    <Ionicons name="play" size={26} color="#FFF" />
                   </View>
                 );
               case 'jobs':
@@ -81,24 +91,32 @@ export const AnimatedTabBar = ({ state, descriptors, navigation }: BottomTabBarP
               case 'profile':
                 return <Ionicons name={isFocused ? "person" : "person-outline"} size={size} color={color} />;
               default:
-                return null;
+                return <Ionicons name="apps-outline" size={size} color={color} />;
             }
           };
+
+          const isReels = route.name === 'reels';
 
           return (
             <TouchableOpacity
               key={route.key}
               onPress={onPress}
               style={styles.tabItem}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
-              <Animated.View style={isFocused ? styles.activeIcon : {}}>
+              <View style={isFocused ? styles.activeIcon : {}}>
                 {getIcon()}
-              </Animated.View>
+              </View>
               
-              {isFocused && route.name !== 'reels' && (
-                <Animated.Text style={[styles.label, { color: theme.text }]}>
-                  {route.name === 'index' ? 'Home' : route.name.charAt(0).toUpperCase() + route.name.slice(1)}
+              {!isReels && isFocused && (
+                <Animated.Text style={[styles.label, { color: '#10B981' }]}>
+                   {label === 'index' ? 'Home' : label}
+                </Animated.Text>
+              )}
+              
+              {isReels && (
+                <Animated.Text style={[styles.label, { color: isFocused ? '#10B981' : (isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)') }]}>
+                   Reels
                 </Animated.Text>
               )}
             </TouchableOpacity>
@@ -140,27 +158,32 @@ const styles = StyleSheet.create({
     height: 3,
     borderBottomLeftRadius: 3,
     borderBottomRightRadius: 3,
+    zIndex: 10,
   },
   reelsContainer: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 16,
+    backgroundColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -25, // Pop effect
-    elevation: 4,
+    marginTop: -30,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.1)',
+    elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
   label: {
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 9,
+    fontWeight: '900',
     marginTop: 4,
-    textTransform: 'capitalize',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   activeIcon: {
-    transform: [{ scale: 1.1 }],
+    transform: [{ scale: 1.05 }],
   }
 });

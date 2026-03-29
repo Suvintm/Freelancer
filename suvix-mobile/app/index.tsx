@@ -47,25 +47,28 @@ export default function Index() {
     if (!isInitialized) return;
 
     // --- STEP 2: DYNAMIC REDIRECT (Wait for Intro to Breath) ---
-    // Total wait time: 2500ms for a proper brand introduction
+    // Total wait time: Reduced to 1500ms for better production responsiveness
     const timer = setTimeout(() => {
-      if (!isAuthenticated) {
+      if (!isInitialized) return; // Defensive double-check
+
+      if (!isAuthenticated || !user) {
         router.replace('/login');
       } else {
-        if (user?.role === 'pending') {
+        const role = user.role?.toLowerCase();
+        if (role === 'pending') {
           router.replace('/role-selection');
-        } else if (user?.role === 'editor') {
+        } else if (role === 'editor') {
           router.replace('/(tabs)/editor');
-        } else if (user?.role === 'client') {
+        } else if (role === 'client') {
           router.replace('/(tabs)/client');
         } else {
           router.replace('/login');
         }
       }
-    }, 2500);
+    }, 1500);
 
     return () => clearTimeout(timer);
-  }, [isInitialized, isAuthenticated, user?.role, fadeAnim, scaleAnim, taglineAnim, router]);
+  }, [isInitialized, isAuthenticated, user, router, fadeAnim, scaleAnim, taglineAnim]);
 
   return (
     <View style={styles.container}>

@@ -26,7 +26,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   isInitialized: false,
   setAuth: async (user, token) => {
     try {
-      // Store everything in the hardware-encrypted SecureStore (already linked in your app)
+      // Store everything in the hardware-encrypted SecureStore
       await SecureStore.setItemAsync(TOKEN_KEY, token);
       await SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(user));
       set({ token, user, isAuthenticated: true });
@@ -47,18 +47,31 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const token = await SecureStore.getItemAsync(TOKEN_KEY);
       const userData = await SecureStore.getItemAsync(USER_DATA_KEY);
+      
       if (token && userData) {
-        set({ 
-          token, 
-          user: JSON.parse(userData), 
-          isAuthenticated: true, 
-          isInitialized: true 
-        });
+        try {
+          const parsedUser = JSON.parse(userData);
+          set({ 
+            token, 
+            user: parsedUser, 
+            isAuthenticated: true, 
+            isInitialized: true 
+          });
+        } catch (parseError) {
+          console.error('UserData Parse Error:', parseError);
+          // If data is corrupt, clear it and let them login again
+          await SecureStore.deleteItemAsync(TOKEN_KEY);
+          await SecureStore.deleteItemAsync(USER_DATA_KEY);
+          set({ isInitialized: true, isAuthenticated: false });
+        }
       } else {
-        set({ isInitialized: true });
+        set({ isInitialized: true, isAuthenticated: false });
       }
-    } catch {
-      await SecureStore.setItemAsync(TOKEN_KEY, '');
+    } catch (error) {
+      console.error('Check Auth Native Error:', error);
+      // CRITICAL: Even on native failure, we MUST set isInitialized to true
+      // otherwise the app stays on the splash screen forever.
+      set({ isInitialized: true, isAuthenticated: false });
     }
   },
 }));
