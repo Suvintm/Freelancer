@@ -1,10 +1,10 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../src/store/useAuthStore';
 import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { Colors } from '../src/constants/Colors';
-import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
+import { ThemeProvider } from '../src/context/ThemeContext';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -17,8 +17,6 @@ const queryClient = new QueryClient();
 
 function InitialRoot() {
   const { isInitialized, isAuthenticated, checkAuth } = useAuthStore();
-  const { theme } = useTheme();
-  const router = useRouter();
 
   useEffect(() => {
     checkAuth();

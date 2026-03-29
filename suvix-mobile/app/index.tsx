@@ -65,7 +65,7 @@ export default function Index() {
     }, 2500);
 
     return () => clearTimeout(timer);
-  }, [isInitialized, isAuthenticated, user?.role]);
+  }, [isInitialized, isAuthenticated, user?.role, fadeAnim, scaleAnim, taglineAnim, router]);
 
   return (
     <View style={styles.container}>

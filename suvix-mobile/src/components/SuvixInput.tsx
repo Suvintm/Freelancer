@@ -27,11 +27,9 @@ const SuvixInput: React.FC<SuvixInputProps> = ({
   small,
   ...props 
 }) => {
-  const [isFocused, setIsFocused] = useState(false);
   const [focusAnim] = useState(new Animated.Value(0));
 
   const handleFocus = () => {
-    setIsFocused(true);
     Animated.timing(focusAnim, {
       toValue: 1,
       duration: 250,
@@ -40,7 +38,6 @@ const SuvixInput: React.FC<SuvixInputProps> = ({
   };
 
   const handleBlur = () => {
-    setIsFocused(false);
     Animated.timing(focusAnim, {
       toValue: 0,
       duration: 250,

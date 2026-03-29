@@ -57,8 +57,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       } else {
         set({ isInitialized: true });
       }
-    } catch (error) {
-      set({ isInitialized: true });
+    } catch {
+      await SecureStore.setItemAsync(TOKEN_KEY, '');
     }
   },
 }));

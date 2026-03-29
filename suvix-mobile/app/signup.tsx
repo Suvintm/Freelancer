@@ -11,7 +11,6 @@ import {
   Image,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather, AntDesign } from '@expo/vector-icons';
@@ -22,7 +21,6 @@ import SuvixButton from '../src/components/SuvixButton';
 import { useGoogleAuth } from '../src/hooks/useGoogleAuth';
 import api from '../src/services/api';
 
-const { width } = Dimensions.get('window');
 const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
 type UserRole = 'editor' | 'client';
@@ -55,7 +53,7 @@ export default function SignupScreen() {
       if (!result.canceled) {
         setProfileImage(result.assets[0].uri);
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Feature Unavailable', 'Image picking requires a native rebuild.');
     }
   };
@@ -96,8 +94,9 @@ export default function SignupScreen() {
           { text: 'Log In', onPress: () => router.replace('/login') }
         ]);
       }
-    } catch (error: any) {
-      Alert.alert('Registration Failed', error.response?.data?.message || 'Try again later.');
+    } catch {
+      const message = 'Signup failed';
+      Alert.alert('Signup Error', message);
     } finally {
       setLoading(false);
     }

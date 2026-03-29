@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Platform } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Dimensions, Platform } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
@@ -27,7 +27,7 @@ export const AnimatedTabBar = ({ state, descriptors, navigation }: BottomTabBarP
         damping: 20,
         stiffness: 150
     });
-  }, [state.index]);
+  }, [state.index, translateX]);
 
   const animatedIndicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
@@ -41,7 +41,6 @@ export const AnimatedTabBar = ({ state, descriptors, navigation }: BottomTabBarP
 
       <View style={styles.content}>
         {state.routes.map((route, index) => {
-          const { options } = descriptors[route.key];
           const isFocused = state.index === index;
 
           const onPress = () => {

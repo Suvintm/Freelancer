@@ -11,7 +11,7 @@ import {
   Keyboard,
   ScrollView,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../src/constants/Colors';
@@ -23,12 +23,11 @@ import api from '../src/services/api';
 type UserRole = 'editor' | 'client';
 
 export default function RoleSelectionScreen() {
-  const { token, email, name } = useLocalSearchParams<{ token: string; email: string; name: string }>();
+  const { token, name } = useLocalSearchParams<{ token: string; name: string }>();
   const [role, setRole] = useState<UserRole>('editor');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const setAuth = useAuthStore((state) => state.setAuth);
-  const router = useRouter();
 
   const handleFinalize = async () => {
     if (!phone) {
