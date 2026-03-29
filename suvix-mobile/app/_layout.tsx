@@ -5,6 +5,13 @@ import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { Colors } from '../src/constants/Colors';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
+import * as SplashScreen from 'expo-splash-screen';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
+// Maintain the native splash screen while we initialize
+SplashScreen.preventAutoHideAsync().catch(() => {
+  /* ignore error */
+});
 
 const queryClient = new QueryClient();
 
@@ -15,12 +22,21 @@ function InitialRoot() {
 
   useEffect(() => {
     checkAuth();
-  }, []);
+  }, [checkAuth]);
 
-  // --- GLOBAL AUTH GUARD ---
+  // We don't hide immediately on mount anymore to prevent the white screen.
+  // Instead, we wait for the auth state to be initialized below.
+
+  // --- GLOBAL NAVIGATION GUARD ---
   useEffect(() => {
-    if (isInitialized && !isAuthenticated) {
-      router.replace('/');
+    if (!isInitialized) return;
+
+    // Once we are initialized, hide the native placeholder (white screen)
+    SplashScreen.hideAsync().catch(() => {});
+
+    // If we are authenticated but at the root, move to the correct tab dashboard
+    if (isAuthenticated) {
+      // router.replace('/(tabs)');
     }
   }, [isInitialized, isAuthenticated]);
 
@@ -48,10 +64,12 @@ function InitialRoot() {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <InitialRoot />
-      </QueryClientProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <InitialRoot />
+        </QueryClientProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

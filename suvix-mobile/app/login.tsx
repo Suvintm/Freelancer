@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
+import { Feather, AntDesign } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../src/constants/Colors';
 import SuvixInput from '../src/components/SuvixInput';
@@ -106,7 +106,7 @@ export default function LoginScreen() {
                 onPress={googleSignIn}
                 disabled={isGoogleLoading}
               >
-                <Image source={require('../assets/google_logo.png')} style={styles.googleIcon} />
+                <AntDesign name="google" size={18} color={Colors.white} style={styles.googleIcon} />
                 <Text style={styles.googleButtonText}>
                   {isGoogleLoading ? 'Verifying...' : 'Continue with Google'}
                 </Text>
