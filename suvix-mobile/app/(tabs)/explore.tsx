@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Colors } from '../../src/constants/Colors';
 import { useTheme } from '../../src/context/ThemeContext';
 
 export default function GenericPlaceholder({ title = 'Screen' }) {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Platform } from 'react-native';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../constants/Colors';

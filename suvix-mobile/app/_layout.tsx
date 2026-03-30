@@ -2,9 +2,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../src/store/useAuthStore';
 import { useEffect, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
-import { Colors } from '../src/constants/Colors';
 import { ThemeProvider } from '../src/context/ThemeContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -72,7 +70,7 @@ function InitialRoot() {
         router.replace('/login');
       }
     }
-  }, [isInitialized, isAuthenticated, user, segments, isIntroFinished]);
+  }, [isInitialized, isAuthenticated, user, segments, isIntroFinished, router]);
 
   // BOOT INDICATOR: Shown for a split-second while the engine starts
   // Render the stack immediately - index.tsx will handle the initial splash

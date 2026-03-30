@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet, Dimensions, Platform } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { useTheme } from '../context/ThemeContext';
 
@@ -35,7 +35,7 @@ export const AnimatedTabBar = ({ state, descriptors, navigation }: BottomTabBarP
           stiffness: 150
       });
     }
-  }, [state.index, TAB_WIDTH, visibleRoutes]);
+  }, [state.index, state.routes, TAB_WIDTH, visibleRoutes, translateX]);
 
   const animatedIndicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],

@@ -21,7 +21,6 @@ export const useGoogleAuth = () => {
   const iosClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
   const webClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
   
-  const isConfigValid = !!(androidClientId && webClientId);
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId,

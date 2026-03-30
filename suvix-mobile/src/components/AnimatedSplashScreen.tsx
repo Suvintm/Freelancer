@@ -4,7 +4,6 @@ import {
   StyleSheet,
   Dimensions,
   StatusBar,
-  Text,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -17,10 +16,8 @@ import Animated, {
   runOnJS,
   Easing,
   interpolate,
-  Extrapolation,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors } from '../constants/Colors';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -49,7 +46,7 @@ function FloatingParticle({ delay }: { delay: number }) {
     opacity.value = withDelay(delay, withTiming(0.2, { duration: 1000 }));
     x.value = withRepeat(withTiming(x.value + (Math.random() * 40 - 20), { duration: 4000, easing: Easing.inOut(Easing.sin) }), -1, true);
     y.value = withRepeat(withTiming(y.value + (Math.random() * 40 - 20), { duration: 5000, easing: Easing.inOut(Easing.sin) }), -1, true);
-  }, []);
+  }, [delay, opacity, x, y]);
 
   const style = useAnimatedStyle(() => ({
     position: 'absolute',
@@ -63,6 +60,19 @@ function FloatingParticle({ delay }: { delay: number }) {
   }));
 
   return <Animated.View style={style} />;
+}
+
+function Sparkle({ sv, dx, dy }: { sv: Animated.SharedValue<number>; dx: number; dy: number }) {
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: sv.value,
+    transform: [
+      { translateX: interpolate(sv.value, [0, 1], [0, dx]) },
+      { translateY: interpolate(sv.value, [0, 1], [0, dy]) },
+      { scale: interpolate(sv.value, [0, 1], [0.2, 1]) },
+    ],
+  }));
+
+  return <Animated.View style={[styles.sparkle, animatedStyle]} />;
 }
 
 export default function AnimatedSplashScreen({ onAnimationFinish }: Props) {
@@ -102,7 +112,7 @@ export default function AnimatedSplashScreen({ onAnimationFinish }: Props) {
     spark4.value = withDelay(180, sparkAnim(spark4));
 
     containerOpacity.value = withDelay(T.EXIT, withTiming(0, { duration: 500 }, (f) => f && runOnJS(onAnimationFinish)()));
-  }, [onAnimationFinish]);
+  }, [onAnimationFinish, containerOpacity, iconOpacity, iconRotate, iconScale, spark1, spark2, spark3, spark4, textOpacity, textTranslateX, xOpacity, xRotate, xScale]);
 
   useEffect(() => { startAnimations(); }, [startAnimations]);
 
@@ -119,16 +129,6 @@ export default function AnimatedSplashScreen({ onAnimationFinish }: Props) {
     opacity: xOpacity.value,
     transform: [{ scale: xScale.value }, { rotate: `${xRotate.value}deg` }],
   }));
-
-  const makeSparkStyle = (sv: any, dx: number, dy: number) =>
-    useAnimatedStyle(() => ({
-      opacity: sv.value,
-      transform: [
-        { translateX: interpolate(sv.value, [0, 1], [0, dx]) },
-        { translateY: interpolate(sv.value, [0, 1], [0, dy]) },
-        { scale: interpolate(sv.value, [0, 1], [0.2, 1]) },
-      ],
-    }));
 
   return (
     <Animated.View style={[styles.container, containerStyle]}>
@@ -159,10 +159,10 @@ export default function AnimatedSplashScreen({ onAnimationFinish }: Props) {
               resizeMode="contain"
             />
             <View style={styles.xWrapper}>
-              <Animated.View style={[styles.sparkle, makeSparkStyle(spark1, -35, -35)]} />
-              <Animated.View style={[styles.sparkle, makeSparkStyle(spark2, 35, -35)]} />
-              <Animated.View style={[styles.sparkle, makeSparkStyle(spark3, 35, 35)]} />
-              <Animated.View style={[styles.sparkle, makeSparkStyle(spark4, -35, 35)]} />
+              <Sparkle sv={spark1} dx={-35} dy={-35} />
+              <Sparkle sv={spark2} dx={35} dy={-35} />
+              <Sparkle sv={spark3} dx={35} dy={35} />
+              <Sparkle sv={spark4} dx={-35} dy={35} />
               
               <Animated.Image 
                 source={require('../../assets/x.png')}

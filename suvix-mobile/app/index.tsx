@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Colors } from '../src/constants/Colors';
 import AnimatedSplashScreen from '../src/components/AnimatedSplashScreen';
 
 /**
