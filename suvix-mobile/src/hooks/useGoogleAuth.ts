@@ -14,9 +14,14 @@ export const useGoogleAuth = () => {
   const setAuth = useAuthStore((state) => state.setAuth);
   const router = useRouter();
 
-  const androidClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
-  const iosClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
-  const webClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+  // --- CRITICAL: PREVENT Hard Crash if Env Vars are missing ---
+  // If these are undefined in production, the hook will throw a fatal error.
+  // We use fallback strings and a 'configLoaded' flag to keep the app alive.
+  const androidClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '';
+  const iosClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
+  const webClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
+  
+  const isConfigValid = !!(androidClientId && webClientId);
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId,
