@@ -20,7 +20,7 @@ import SuvixInput from '../src/components/SuvixInput';
 import SuvixButton from '../src/components/SuvixButton';
 import { useAuthStore } from '../src/store/useAuthStore';
 import { useGoogleAuth } from '../src/hooks/useGoogleAuth';
-import api from '../src/services/api';
+import { api } from '../src/api/client';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');

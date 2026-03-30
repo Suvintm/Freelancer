@@ -19,7 +19,7 @@ import { Colors } from '../src/constants/Colors';
 import SuvixInput from '../src/components/SuvixInput';
 import SuvixButton from '../src/components/SuvixButton';
 import { useGoogleAuth } from '../src/hooks/useGoogleAuth';
-import api from '../src/services/api';
+import { api } from '../src/api/client';
 
 const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 

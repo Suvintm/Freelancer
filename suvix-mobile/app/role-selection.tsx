@@ -18,7 +18,7 @@ import { Colors } from '../src/constants/Colors';
 import SuvixInput from '../src/components/SuvixInput';
 import SuvixButton from '../src/components/SuvixButton';
 import { useAuthStore } from '../src/store/useAuthStore';
-import api from '../src/services/api';
+import { api } from '../src/api/client';
 
 type UserRole = 'editor' | 'client';
 
