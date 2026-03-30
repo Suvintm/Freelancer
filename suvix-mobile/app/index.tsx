@@ -43,32 +43,7 @@ export default function Index() {
         useNativeDriver: true,
       }),
     ]).start();
-
-    if (!isInitialized) return;
-
-    // --- STEP 2: DYNAMIC REDIRECT (Wait for Intro to Breath) ---
-    // Total wait time: Reduced to 1500ms for better production responsiveness
-    const timer = setTimeout(() => {
-      if (!isInitialized) return; // Defensive double-check
-
-      if (!isAuthenticated || !user) {
-        router.replace('/login');
-      } else {
-        const role = user.role?.toLowerCase();
-        if (role === 'pending') {
-          router.replace('/role-selection');
-        } else if (role === 'editor') {
-          router.replace('/(tabs)/editor');
-        } else if (role === 'client') {
-          router.replace('/(tabs)/client');
-        } else {
-          router.replace('/login');
-        }
-      }
-    }, 1500);
-
-    return () => clearTimeout(timer);
-  }, [isInitialized, isAuthenticated, user, router, fadeAnim, scaleAnim, taglineAnim]);
+  }, [fadeAnim, scaleAnim, taglineAnim]);
 
   return (
     <View style={styles.container}>

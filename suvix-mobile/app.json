@@ -6,13 +6,14 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "in.suvix.mobile"
+    },
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#050509"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,10 +22,11 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "package": "com.suvix.mobile",
-      "predictiveBackGestureEnabled": false
+      "package": "in.suvix.mobile",
+      "predictiveBackGestureEnabled": false,
+      "usesCleartextTraffic": true
     },
-    "scheme": "suvix-mobile",
+    "scheme": "in.suvix.mobile",
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"

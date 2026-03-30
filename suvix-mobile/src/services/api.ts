@@ -13,7 +13,7 @@ const api = axios.create({
 // Interceptor to add auth token to every request
 api.interceptors.request.use(
   async (config) => {
-    const token = await SecureStore.getItemAsync('userToken');
+    const token = await SecureStore.getItemAsync('suvix_auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -32,8 +32,8 @@ api.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       // Clear storage on unauthorized
-      await SecureStore.deleteItemAsync('userToken');
-      await SecureStore.deleteItemAsync('userData');
+      await SecureStore.deleteItemAsync('suvix_auth_token');
+      await SecureStore.deleteItemAsync('suvix_user_data');
     }
     return Promise.reject(error);
   }

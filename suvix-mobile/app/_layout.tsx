@@ -1,43 +1,70 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../src/store/useAuthStore';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { Colors } from '../src/constants/Colors';
 import { ThemeProvider } from '../src/context/ThemeContext';
-import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-// Maintain the native splash screen while we initialize
-SplashScreen.preventAutoHideAsync().catch(() => {
-  /* ignore error */
-});
-
+/**
+ * PRODUCTION-GRADE NAVIGATION ROOT
+ * Handled with Global Auth Guards and optimized Boot sequence.
+ * This is the ONLY place where automatic redirects are handled.
+ */
 const queryClient = new QueryClient();
 
 function InitialRoot() {
-  const { isInitialized, isAuthenticated, checkAuth } = useAuthStore();
+  const { isInitialized, isAuthenticated, user, checkAuth } = useAuthStore();
+  const segments = useSegments();
+  const router = useRouter();
+  const [isIntroFinished, setIsIntroFinished] = useState(false);
 
+  // Initialize Auth State on boot
   useEffect(() => {
     checkAuth();
+    
+    // Give the animated intro in index.tsx time to play (2 seconds)
+    const timer = setTimeout(() => {
+      setIsIntroFinished(true);
+    }, 2000);
+    
+    return () => clearTimeout(timer);
   }, [checkAuth]);
 
-  // We don't hide immediately on mount anymore to prevent the white screen.
-  // Instead, we wait for the auth state to be initialized below.
-
-  // --- GLOBAL NAVIGATION GUARD ---
+  /**
+   * GLOBAL NAVIGATION GUARD (Auth Sync)
+   * This effect watches the authentication state and handles all redirects.
+   * It ensures standard behavior for Login, Logout, and Unauthorized access.
+   */
   useEffect(() => {
-    if (!isInitialized) return;
+    // Only redirect once initialized AND the intro animation time has passed
+    if (!isInitialized || !isIntroFinished) return;
 
-    // Once we are initialized, hide the native placeholder (white screen)
-    SplashScreen.hideAsync().catch(() => {});
+    const inAuthGroup = segments[0] === '(tabs)';
+    const inLoginGroup = segments[0] === 'login' || segments[0] === 'signup';
 
-    // If we are authenticated but at the root, move to the correct tab dashboard
-    if (isAuthenticated) {
-      // router.replace('/(tabs)');
+    if (!isAuthenticated && (inAuthGroup || !segments[0])) {
+      // LOGOUT/UNAUTHORIZED or at ROOT: Redirect back to login
+      router.replace('/login');
+    } else if (isAuthenticated && (inLoginGroup || !segments[0])) {
+      // LOGIN SUCCESS or ROOT ACCESS: Redirect based on role
+      const role = user?.role?.toLowerCase();
+      
+      if (role === 'pending') {
+        router.replace('/role-selection');
+      } else if (role === 'editor') {
+        router.replace('/(tabs)/editor');
+      } else if (role === 'client') {
+        router.replace('/(tabs)/client');
+      } else {
+        // Fallback for unknown role or missing user data
+        router.replace('/login');
+      }
     }
-  }, [isInitialized, isAuthenticated]);
+  }, [isInitialized, isAuthenticated, user, segments, isIntroFinished]);
 
+  // BOOT INDICATOR: Shown for a split-second while the engine starts
   if (!isInitialized) {
     return (
       <View style={{ flex: 1, backgroundColor: Colors.dark.primary, justifyContent: 'center', alignItems: 'center' }}>
@@ -52,10 +79,7 @@ function InitialRoot() {
       <Stack.Screen name="login" />
       <Stack.Screen name="signup" />
       <Stack.Screen name="role-selection" />
-      {/* 
-          Note: We don't explicitly name the (tabs) screens here 
-          to let Expo Router's automatic discovery handle the nested _layouts 
-      */}
+      <Stack.Screen name="(tabs)" />
     </Stack>
   );
 }

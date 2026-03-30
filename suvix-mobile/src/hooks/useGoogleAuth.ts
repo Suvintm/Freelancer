@@ -1,3 +1,4 @@
+import * as AuthSession from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState, useCallback } from 'react';
@@ -13,11 +14,18 @@ export const useGoogleAuth = () => {
   const setAuth = useAuthStore((state) => state.setAuth);
   const router = useRouter();
 
+  const androidClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
+  const iosClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+  const webClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+
   const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: (process.env as any).EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: (process.env as any).EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    webClientId: (process.env as any).EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    redirectUri: (process.env as any).EXPO_PUBLIC_GOOGLE_REDIRECT_URL,
+    androidClientId,
+    iosClientId,
+    webClientId,
+    redirectUri: AuthSession.makeRedirectUri({
+      scheme: 'in.suvix.mobile', // Updated to match your new package name
+      path: 'oauth2redirect',
+    }),
     scopes: ['openid', 'profile', 'email'],
     responseType: 'id_token',
   });
@@ -69,10 +77,21 @@ export const useGoogleAuth = () => {
   }, [response, handleBackendExchange]);
 
   const signIn = async () => {
+    if (!androidClientId || !webClientId) {
+      console.error('MISSING_CLIENT_IDS', { android: androidClientId, web: webClientId });
+      Alert.alert('Configuration Error', 'Google Client IDs are missing in .env. Please check your production build configuration.');
+      return;
+    }
+
     if (request) {
-      promptAsync();
+      try {
+        await promptAsync();
+      } catch (e) {
+        console.error('Google Prompt Error:', e);
+        Alert.alert('Login Error', 'Failed to open Google login. Please try again.');
+      }
     } else {
-      Alert.alert('Configuration Error', 'Google Login is not configured correctly. Check your Client IDs.');
+      Alert.alert('Initialization Error', 'Google Login is still initializing. Please wait a moment.');
     }
   };
 
