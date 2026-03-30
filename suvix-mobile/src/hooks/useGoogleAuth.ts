@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../store/useAuthStore';
-import api from '../services/api';
+import { api } from '../api/client';
 
 WebBrowser.maybeCompleteAuthSession();
 
