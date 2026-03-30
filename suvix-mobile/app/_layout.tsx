@@ -97,7 +97,7 @@ function InitialRoot() {
         router.replace('/login');
       }
     }
-  }, [isInitialized, isAuthenticated, user, segments, isIntroFinished, router]);
+  }, [isInitialized, isAuthenticated, user, segments, isIntroFinished, dataLoaded, router]);
 
   // BOOT INDICATOR: Shown for a split-second while the engine starts
   // Render the stack immediately - index.tsx will handle the initial splash
