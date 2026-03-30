@@ -1,5 +1,7 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
-import { useAuthStore } from '../store/useAuthStore';
+// Import as type only to avoid require cycle if needed, 
+// but we handle it dynamically in the interceptor below.
+import { useAuthStore as AuthStoreType } from '../store/useAuthStore';
 
 const API_URL = (process.env as any).EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -20,7 +22,11 @@ export const api: AxiosInstance = axios.create({
  * Automatically attaches the Auth Token from the Zustand store (much faster than SecureStore).
  */
 api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+  // Break circular dependency by using dynamic required access
+  // @ts-ignore - Dynamic require is safe here for React Native/Bundler cycles
+  const useAuthStore = require('../store/useAuthStore').useAuthStore;
   const token = useAuthStore.getState().token;
+  
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -44,6 +50,7 @@ api.interceptors.response.use(
     // 1. Global 401 Handler: Auto-logout on unauthorized
     if (error.response?.status === 401) {
       console.warn('🗝️ [API] Session expired (401). Logging out...');
+      const useAuthStore = require('../store/useAuthStore').useAuthStore;
       useAuthStore.getState().logout();
       return Promise.reject(error);
     }

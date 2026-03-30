@@ -19,7 +19,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 const queryClient = new QueryClient();
 
 function InitialRoot() {
-  const { isInitialized, isAuthenticated, user, checkAuth, fetchUser } = useAuthStore();
+  const { isInitialized, isAuthenticated, token, user, checkAuth, fetchUser } = useAuthStore();
   const { fetchClientDashboard, fetchEditorDashboard } = useDashboardStore();
   const segments = useSegments();
   const router = useRouter();
@@ -28,42 +28,73 @@ function InitialRoot() {
 
   // Initialize Auth State & Pre-fetch Data on boot
   useEffect(() => {
+    let isMounted = true;
+
     async function bootstrap() {
       try {
-        // 1. Initial Local Auth Check
+        console.log('🚀 [BOOT] Starting bootstrap sequence...');
+        // 1. Initial Local Auth Check (Token sync)
         await checkAuth();
         
-        // 2. Background Data Sync (JioHotstar Strategy)
-        // We do this in parallel if authenticated
-        const currentUser = useAuthStore.getState().user;
-        if (currentUser) {
-          const profileFetch = fetchUser();
-          const dashboardFetch = currentUser.role === 'editor' 
-            ? fetchEditorDashboard() 
-            : fetchClientDashboard();
-            
-          await Promise.all([profileFetch, dashboardFetch]);
+        // 2. Fetch fresh user data if we have a token
+        const currentToken = useAuthStore.getState().token;
+        if (currentToken) {
+          console.log('🗝️ [BOOT] Token found, pre-fetching profile...');
+          await fetchUser();
+          
+          // 3. Pre-fetch relevant dashboard data for zero-latency loading
+          const currentUser = useAuthStore.getState().user;
+          if (currentUser && isMounted) {
+            console.log(`📊 [BOOT] User identified as ${currentUser.role}. Fetching dashboard...`);
+            if (currentUser.role === 'editor') {
+              await fetchEditorDashboard().catch(() => {});
+            } else {
+              await fetchClientDashboard().catch(() => {});
+            }
+          }
+        } else {
+          console.log('👤 [BOOT] No local token found. Proceeding as Guest.');
         }
       } catch (e) {
-        console.warn('Bootstrap Error:', e);
+        console.error('❌ [BOOT] Critical failure during bootstrap:', e);
       } finally {
-        setDataLoaded(true);
+        if (isMounted) {
+          setDataLoaded(true);
+          console.log('✅ [BOOT] Bootstrap complete.');
+        }
       }
     }
     
     bootstrap();
+
+    // FAIL-SAFE: If the API is dead or hanging, we MUST show the app 
+    // after 5 seconds no matter what.
+    const failSafeTimer = setTimeout(() => {
+      if (!useAuthStore.getState().isInitialized || !dataLoaded) {
+        console.warn('⚠️ [BOOT] Bootstrap took too long. Triggering Fail-Safe...');
+        setDataLoaded(true);
+      }
+    }, 5000);
     
     // Give the advanced animated intro in index.tsx time to play (2.3 seconds)
     const timer = setTimeout(() => {
-      setIsIntroFinished(true);
+      if (isMounted) {
+        setIsIntroFinished(true);
+        console.log('🎬 [BOOT] Intro animation finished.');
+      }
     }, 2300);
     
-    return () => clearTimeout(timer);
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+      clearTimeout(failSafeTimer);
+    };
   }, [checkAuth, fetchUser, fetchClientDashboard, fetchEditorDashboard]);
 
   // Logic Effect: Hide native splash immediately when initialized to show our animation
   useEffect(() => {
     if (isInitialized) {
+      console.log('🖼️ [BOOT] Hiding native splash. Switching to SuviX Animation.');
       SplashScreen.hideAsync().catch(() => {});
     }
   }, [isInitialized]);
@@ -71,36 +102,42 @@ function InitialRoot() {
   /**
    * GLOBAL NAVIGATION GUARD (Auth Sync)
    * This effect watches the authentication state and handles all redirects.
-   * It ensures standard behavior for Login, Logout, and Unauthorized access.
    */
   useEffect(() => {
+    // Only fire when EVERYTHING is ready
     if (!isInitialized || !isIntroFinished || !dataLoaded) return;
+
+    console.log('🚦 [BOOT] Navigation Guard Fired. Segments:', segments);
 
     const inAuthGroup = segments[0] === '(tabs)';
     const inLoginGroup = segments[0] === 'login' || segments[0] === 'signup';
 
-    if (!isAuthenticated && (inAuthGroup || !segments[0])) {
-      // LOGOUT/UNAUTHORIZED or at ROOT: Redirect back to login
-      router.replace('/login');
-    } else if (isAuthenticated && (inLoginGroup || !segments[0])) {
-      // LOGIN SUCCESS or ROOT ACCESS: Redirect based on role
-      const role = user?.role?.toLowerCase();
-      
-      if (role === 'pending') {
-        router.replace('/role-selection');
-      } else if (role === 'editor') {
-        router.replace('/(tabs)/editor');
-      } else if (role === 'client') {
-        router.replace('/(tabs)/client');
-      } else {
-        // Fallback for unknown role or missing user data
+    if (!isAuthenticated) {
+      if (inAuthGroup || !segments[0] || segments[0] === 'index') {
+        console.log('🔓 [GUARD] Unauthorized. Redirecting to /login');
         router.replace('/login');
+      }
+    } else {
+      // Authenticated branch
+      const role = user?.role?.toLowerCase();
+      console.log(`🔒 [GUARD] Authenticated. User Role: ${role || 'UNKNOWN'}`);
+
+      if (inLoginGroup || !segments[0] || segments[0] === 'index') {
+        if (role === 'pending') {
+          router.replace('/role-selection');
+        } else if (role === 'editor') {
+          router.replace('/(tabs)/editor');
+        } else if (role === 'client') {
+          router.replace('/(tabs)/client');
+        } else {
+          // If role is missing (API error?), fallback to login to re-auth
+          console.warn('⚠️ [GUARD] Missing user role. Forcing re-auth.');
+          router.replace('/login');
+        }
       }
     }
   }, [isInitialized, isAuthenticated, user, segments, isIntroFinished, dataLoaded, router]);
 
-  // BOOT INDICATOR: Shown for a split-second while the engine starts
-  // Render the stack immediately - index.tsx will handle the initial splash
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
