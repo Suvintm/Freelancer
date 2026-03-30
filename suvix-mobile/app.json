@@ -22,9 +22,7 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "package": "in.suvix.mobile",
-      "predictiveBackGestureEnabled": false,
-      "usesCleartextTraffic": true
+      "package": "in.suvix.mobile"
     },
     "scheme": "in.suvix.mobile",
     "web": {
@@ -46,7 +44,8 @@
         "expo-build-properties",
         {
           "android": {
-            "kotlinVersion": "1.9.25"
+            "kotlinVersion": "1.9.25",
+            "usesCleartextTraffic": true
           }
         }
       ]
