@@ -6,6 +6,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider } from '../src/context/ThemeContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { useDashboardStore } from '../src/store/useDashboardStore';
+
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -17,14 +19,39 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 const queryClient = new QueryClient();
 
 function InitialRoot() {
-  const { isInitialized, isAuthenticated, user, checkAuth } = useAuthStore();
+  const { isInitialized, isAuthenticated, user, checkAuth, fetchUser } = useAuthStore();
+  const { fetchClientDashboard, fetchEditorDashboard } = useDashboardStore();
   const segments = useSegments();
   const router = useRouter();
   const [isIntroFinished, setIsIntroFinished] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
-  // Initialize Auth State on boot
+  // Initialize Auth State & Pre-fetch Data on boot
   useEffect(() => {
-    checkAuth();
+    async function bootstrap() {
+      try {
+        // 1. Initial Local Auth Check
+        await checkAuth();
+        
+        // 2. Background Data Sync (JioHotstar Strategy)
+        // We do this in parallel if authenticated
+        const currentUser = useAuthStore.getState().user;
+        if (currentUser) {
+          const profileFetch = fetchUser();
+          const dashboardFetch = currentUser.role === 'editor' 
+            ? fetchEditorDashboard() 
+            : fetchClientDashboard();
+            
+          await Promise.all([profileFetch, dashboardFetch]);
+        }
+      } catch (e) {
+        console.warn('Bootstrap Error:', e);
+      } finally {
+        setDataLoaded(true);
+      }
+    }
+    
+    bootstrap();
     
     // Give the advanced animated intro in index.tsx time to play (2.3 seconds)
     const timer = setTimeout(() => {
@@ -32,7 +59,7 @@ function InitialRoot() {
     }, 2300);
     
     return () => clearTimeout(timer);
-  }, [checkAuth]);
+  }, [checkAuth, fetchUser, fetchClientDashboard, fetchEditorDashboard]);
 
   // Logic Effect: Hide native splash immediately when initialized to show our animation
   useEffect(() => {
@@ -47,7 +74,7 @@ function InitialRoot() {
    * It ensures standard behavior for Login, Logout, and Unauthorized access.
    */
   useEffect(() => {
-    if (!isInitialized || !isIntroFinished) return;
+    if (!isInitialized || !isIntroFinished || !dataLoaded) return;
 
     const inAuthGroup = segments[0] === '(tabs)';
     const inLoginGroup = segments[0] === 'login' || segments[0] === 'signup';

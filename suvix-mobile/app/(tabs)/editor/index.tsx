@@ -4,9 +4,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { Colors } from '../../../src/constants/Colors';
 import { useAuthStore } from '../../../src/store/useAuthStore';
+import { useDashboardStore } from '../../../src/store/useDashboardStore';
 
 export default function EditorHomeScreen() {
   const { user, logout } = useAuthStore();
+  const { editorStats } = useDashboardStore();
+
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(val || 0);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -23,15 +33,15 @@ export default function EditorHomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Editor Role Stats Placeholder */}
+        {/* Editor Role Stats - Real Data! */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>0</Text>
-            <Text style={styles.statLabel}>Reels Uploaded</Text>
+            <Text style={styles.statValue}>{editorStats?.activeOrders || 0}</Text>
+            <Text style={styles.statLabel}>Active Orders</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>₹0</Text>
-            <Text style={styles.statLabel}>Total Earnings</Text>
+            <Text style={styles.statValue}>{formatCurrency(editorStats?.monthlyEarnings)}</Text>
+            <Text style={styles.statLabel}>This Month</Text>
           </View>
         </View>
 

@@ -10,6 +10,12 @@ on:
     branches: [main, master]
     paths:
       - 'suvix-mobile/**'
+  workflow_dispatch:
+    inputs:
+      build_profile:
+        description: 'EAS Build Profile (preview, production)'
+        required: true
+        default: 'preview'
 
 jobs:
   # ─────────────────────────────────────────────────────────────
@@ -47,7 +53,7 @@ jobs:
   android-distribution:
     name: Build Android APK
     needs: ci-quality-gate
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/production'
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -73,6 +79,6 @@ jobs:
 
       - name: Build Android Preview
         working-directory: suvix-mobile
-        run: eas build --platform android --profile preview --non-interactive
+        run: eas build --platform android --profile ${{ github.event.inputs.build_profile || 'preview' }} --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

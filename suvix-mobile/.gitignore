@@ -13,6 +13,7 @@ expo-env.d.ts
 .kotlin/
 *.orig.*
 *.jks
+suvix-keystore-b64.txt
 *.p8
 *.p12
 *.key

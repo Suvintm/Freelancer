@@ -4,9 +4,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { Colors } from '../../../src/constants/Colors';
 import { useAuthStore } from '../../../src/store/useAuthStore';
+import { useDashboardStore } from '../../../src/store/useDashboardStore';
 
 export default function ClientHomeScreen() {
   const { user, logout } = useAuthStore();
+  const { clientStats } = useDashboardStore();
+
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(val || 0);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -23,14 +33,14 @@ export default function ClientHomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Client Role Stats Placeholder */}
+        {/* Client Role Stats - Real Data! */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>0</Text>
+            <Text style={styles.statValue}>{clientStats?.activeOrders || 0}</Text>
             <Text style={styles.statLabel}>Active Orders</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>₹0</Text>
+            <Text style={styles.statValue}>{formatCurrency(clientStats?.totalSpent)}</Text>
             <Text style={styles.statLabel}>Total Spent</Text>
           </View>
         </View>
