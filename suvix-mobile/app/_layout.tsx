@@ -28,13 +28,20 @@ function InitialRoot() {
   useEffect(() => {
     checkAuth();
     
-    // Give the animated intro in index.tsx time to play (2 seconds)
+    // Give the advanced animated intro in index.tsx time to play (2.3 seconds)
     const timer = setTimeout(() => {
       setIsIntroFinished(true);
-    }, 2000);
+    }, 2300);
     
     return () => clearTimeout(timer);
   }, [checkAuth]);
+
+  // Logic Effect: Hide native splash immediately when initialized to show our animation
+  useEffect(() => {
+    if (isInitialized) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [isInitialized]);
 
   /**
    * GLOBAL NAVIGATION GUARD (Auth Sync)
@@ -43,11 +50,6 @@ function InitialRoot() {
    */
   useEffect(() => {
     if (!isInitialized || !isIntroFinished) return;
-
-    // --- CRITICAL: HIDE NATIVE SPLASH ---
-    // Once we are initialized and the intro timer is done, 
-    // we must unhook the native splash screen.
-    SplashScreen.hideAsync().catch(() => {});
 
     const inAuthGroup = segments[0] === '(tabs)';
     const inLoginGroup = segments[0] === 'login' || segments[0] === 'signup';
@@ -73,16 +75,9 @@ function InitialRoot() {
   }, [isInitialized, isAuthenticated, user, segments, isIntroFinished]);
 
   // BOOT INDICATOR: Shown for a split-second while the engine starts
-  if (!isInitialized) {
-    return (
-      <View style={{ flex: 1, backgroundColor: Colors.dark.primary, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={Colors.accent} />
-      </View>
-    );
-  }
-
+  // Render the stack immediately - index.tsx will handle the initial splash
   return (
-    <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
+    <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="login" />
       <Stack.Screen name="signup" />
