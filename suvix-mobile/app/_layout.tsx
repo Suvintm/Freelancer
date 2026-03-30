@@ -3,9 +3,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../src/store/useAuthStore';
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
 import { Colors } from '../src/constants/Colors';
 import { ThemeProvider } from '../src/context/ThemeContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 /**
  * PRODUCTION-GRADE NAVIGATION ROOT
@@ -38,8 +42,12 @@ function InitialRoot() {
    * It ensures standard behavior for Login, Logout, and Unauthorized access.
    */
   useEffect(() => {
-    // Only redirect once initialized AND the intro animation time has passed
     if (!isInitialized || !isIntroFinished) return;
+
+    // --- CRITICAL: HIDE NATIVE SPLASH ---
+    // Once we are initialized and the intro timer is done, 
+    // we must unhook the native splash screen.
+    SplashScreen.hideAsync().catch(() => {});
 
     const inAuthGroup = segments[0] === '(tabs)';
     const inLoginGroup = segments[0] === 'login' || segments[0] === 'signup';

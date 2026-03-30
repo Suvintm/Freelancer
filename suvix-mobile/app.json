@@ -34,6 +34,15 @@
     "plugins": [
       "expo-router",
       [
+        "expo-splash-screen",
+        {
+          "image": "./assets/logo.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#050509"
+        }
+      ],
+      "expo-secure-store",
+      [
         "expo-build-properties",
         {
           "android": {

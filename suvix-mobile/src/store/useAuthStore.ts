@@ -51,12 +51,16 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (token && userData) {
         try {
           const parsedUser = JSON.parse(userData);
-          set({ 
-            token, 
-            user: parsedUser, 
-            isAuthenticated: true, 
-            isInitialized: true 
-          });
+          if (parsedUser && typeof parsedUser === 'object') {
+            set({ 
+              token, 
+              user: parsedUser, 
+              isAuthenticated: true, 
+              isInitialized: true 
+            });
+          } else {
+            throw new Error('Invalid user data format');
+          }
         } catch (parseError) {
           console.error('UserData Parse Error:', parseError);
           // If data is corrupt, clear it and let them login again
