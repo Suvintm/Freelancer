@@ -39,7 +39,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const response = await api.post('/auth/login', {
-        email: email.trim().toLowerCase(),
+        email: email.trim(),
         password,
       });
       if (response.data.success) {
@@ -48,6 +48,7 @@ export default function LoginScreen() {
         router.replace('/');
       }
     } catch (error: any) {
+      console.error('❌ Login Error Details:', error.response?.data);
       Alert.alert('Login Failed', error.response?.data?.message || 'Invalid credentials.');
     } finally {
       setLoading(false);

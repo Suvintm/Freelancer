@@ -67,7 +67,7 @@ export default function SignupScreen() {
     try {
       const formData = new FormData();
       formData.append('name', username.trim());
-      formData.append('email', email.trim().toLowerCase());
+      formData.append('email', email.trim());
       formData.append('password', password);
       formData.append('phone', phone.trim());
       formData.append('role', role);
