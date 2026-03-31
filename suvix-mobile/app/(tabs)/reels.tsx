@@ -66,6 +66,9 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
   const [ads, setAds] = useState<any[]>([]);
   const [isMuted, setIsMuted] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [sessionSeed, setSessionSeed] = useState(() => Math.random().toString(36).substring(7));
+  const viewedReels = useRef(new Set<string>());
+  const reelsRef = useRef<any[]>([]); // PRODUCTION: Sync ref for exclusion logic
   const { height: windowHeight } = useWindowDimensions();
   const [viewHeight, setViewHeight] = useState(windowHeight); 
   const flatListRef = useRef<FlatList>(null);
@@ -114,7 +117,18 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
     fetchingRef.current = true;
     setLoading(true);
     try {
-      const res = await api.get('/reels/feed', { params: { page: p, limit: 10 } });
+      // PRODUCTION: Exclude already fetched IDs to ensure truly unique infinite scroll
+      const excludeIdsArr = p > 1 ? reelsRef.current.map(r => r._id).filter(Boolean) : [];
+      const exclude = excludeIdsArr.join(',');
+
+      const res = await api.get('/reels/feed', { 
+        params: { 
+          page: p, 
+          limit: 10,
+          sessionSeed,
+          exclude
+        } 
+      });
       if (res.data.success) {
         const newItems = res.data.reels || [];
         
@@ -125,7 +139,9 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
           const existingIds = new Set(prev.map(r => r._id));
           const uniqueNewItems = newItems.filter((item: any) => !existingIds.has(item._id));
           
-          return [...prev, ...uniqueNewItems];
+          const combined = [...prev, ...uniqueNewItems];
+          reelsRef.current = combined;
+          return combined;
         });
 
         setHasMore(res.data.pagination.hasMore);
@@ -142,7 +158,7 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, [hasMore, activeReelId]);
+  }, [hasMore, activeReelId, sessionSeed]);
 
   // — PRODUCTION: Ad Fetching (GET /api/ads?location=reels_feed) —
   const fetchAds = useCallback(async () => {
@@ -165,12 +181,27 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
     try {
       // 1. Reset feed specific flags
       viewedAds.current.clear();
+      viewedReels.current.clear();
+      const newSeed = Math.random().toString(36).substring(7);
+      setSessionSeed(newSeed);
       
       // 2. Parallel fetch fresh content
+      // Note: fetchReels(1) will pick up the new sessionSeed from closure/ref if we pass it,
+      // but here we just want it to run.
       await Promise.all([
-        fetchReels(1),
         fetchAds()
       ]);
+      
+      // We manually call fetchReels with the new seed to ensure instant freshness
+      // because state updates (setSessionSeed) are async.
+      const res = await api.get('/reels/feed', { 
+        params: { page: 1, limit: 10, sessionSeed: newSeed } 
+      });
+      if (res.data.success) {
+        setReels(res.data.reels || []);
+        setPage(2);
+        setHasMore(res.data.pagination.hasMore);
+      }
       
       // 3. Reset scroll position to top
       flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
@@ -263,6 +294,24 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
           
           if (__DEV__) console.log('📢 Ad Impression Tracked:', backendId);
        }
+    }
+  }, [isFocused, activeReelId]);
+
+  // — PRODUCTION: Reel View Tracking (Bloom Filter Bridge) —
+  useEffect(() => {
+    if (isFocused && activeReelId && !activeReelId.startsWith('ad_')) {
+      if (!viewedReels.current.has(activeReelId)) {
+        // Threshold: 1.5 seconds of viewing counts as "Seen" for discovery engine
+        const timer = setTimeout(() => {
+          viewedReels.current.add(activeReelId);
+          api.post(`/reels/${activeReelId}/view`)
+             .catch(e => console.error('Reel View Error:', e));
+          
+          if (__DEV__) console.log('👀 Reel Seen (Bloom Filter):', activeReelId);
+        }, 1500); 
+
+        return () => clearTimeout(timer);
+      }
     }
   }, [isFocused, activeReelId]);
 

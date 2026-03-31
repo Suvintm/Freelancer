@@ -179,8 +179,22 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
         candidateReels = await Reel.find({ isPublished: true }).limit(100).lean();
     }
 
-    // ── STEP 3: Bloom Filter / Seen Filter (Optional) ────────────────────────
+    // ── STEP 3: Bloom Filter / Seen Filter (Discovery Enforcement) ──────────────
     let filteredCandidates = candidateReels;
+    
+    if (userId && userId !== "anon") {
+        const filters = await Promise.all(
+            candidateReels.map(r => hasSeen(userId, r._id.toString()))
+        );
+        // Filter out reels already marked in the Bloom Filter
+        filteredCandidates = candidateReels.filter((_, i) => !filters[i]);
+        
+        // Safety: If the filter wipes out everything, return the original candidates
+        // but shuffle them differently (fallback mode)
+        if (filteredCandidates.length === 0 && candidateReels.length > 0) {
+            filteredCandidates = candidateReels.slice(0, limitNum * 2);
+        }
+    }
     
     // ── STEP 4: Personalization Signals ──────────────────────────────────────
     let followedIds = null;
