@@ -25,6 +25,7 @@ interface ReelItemProps {
   onMute: () => void;
   isMuted: boolean;
   onBack?: () => void;
+  height?: number;
 }
 
 /**
@@ -39,8 +40,10 @@ const ReelItemInternal = ({
   onShare, 
   onMute, 
   isMuted,
-  onBack
+  onBack,
+  height: propHeight
 }: ReelItemProps) => {
+  const itemHeight = propHeight || Dimensions.get('window').height;
   const lastTap = React.useRef(0);
   const tapTimer = React.useRef<NodeJS.Timeout | null>(null);
   const heartScale = useSharedValue(0);
@@ -102,7 +105,7 @@ const ReelItemInternal = ({
   }));
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { height: itemHeight }]}>
       {/* Layer 1: Background Media */}
       {reel.mediaType === 'image' ? (
         <View style={styles.container}>

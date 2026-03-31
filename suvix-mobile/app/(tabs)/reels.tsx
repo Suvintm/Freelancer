@@ -22,7 +22,7 @@ import { Reel } from '../../src/types/reel';
 import { BackHandler } from 'react-native';
 import { useNavigation } from 'expo-router';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('screen');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // PRODUCTION: AD FALLBACKS
 const APP_ADS = [
@@ -51,6 +51,7 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
   const [activeReelId, setActiveReelId] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
+  const [viewHeight, setViewHeight] = useState(SCREEN_HEIGHT); 
   
   // — ANIMATION SHARED VALUES —
   const scale = useSharedValue(1);
@@ -207,6 +208,7 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
            isActive={isFocused && activeReelId === item.id}
            onSkip={() => console.log('Ad Skiped')}
            onCTA={() => console.log('CTA Pressed')}
+           height={viewHeight}
          />
        );
     }
@@ -221,12 +223,19 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
         onMute={() => setIsMuted(prev => !prev)}
         isMuted={isMuted}
         onBack={onGoHome}
+        height={viewHeight}
       />
     );
   };
 
   return (
-    <View style={styles.root}>
+    <View 
+      style={styles.root}
+      onLayout={(e) => {
+        const { height } = e.nativeEvent.layout;
+        if (height > 0) setViewHeight(height);
+      }}
+    >
       <StatusBar hidden />
       
       {/* 1. SCALE-DOWN CONTAINER (The Reels Feed) */}
@@ -237,8 +246,10 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
           keyExtractor={item => item.id}
           pagingEnabled
           showsVerticalScrollIndicator={false}
-          snapToInterval={SCREEN_HEIGHT}
+          snapToInterval={viewHeight}
+          snapToAlignment="start"
           decelerationRate="fast"
+          disableIntervalMomentum={true}
           
           // — PRODUCTION OPTIMIZATIONS —
           onViewableItemsChanged={onViewableItemsChanged}

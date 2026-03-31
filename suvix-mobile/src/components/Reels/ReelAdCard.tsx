@@ -15,6 +15,7 @@ interface ReelAdCardProps {
   isMuted?: boolean;
   onMute?: () => void;
   isActive?: boolean;
+  height?: number;
 }
 
 /**
@@ -27,8 +28,10 @@ export const ReelAdCard = ({
   onCTA, 
   isMuted = false, 
   onMute,
-  isActive = true 
+  isActive = true,
+  height: propHeight
 }: ReelAdCardProps) => {
+  const adHeight = propHeight || Dimensions.get('window').height;
   const [skipCountdown, setSkipCountdown] = useState(3);
   const [canSkip, setCanSkip] = useState(false);
   const pulseAnim = useRef(new Animated.Value(0.7)).current;
@@ -55,7 +58,7 @@ export const ReelAdCard = ({
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { height: adHeight }]}>
       {/* 1. BACKGROUND MEDIA LAYER (Layer 1) */}
       <View style={StyleSheet.absoluteFill}>
         {ad.mediaUrl ? (
