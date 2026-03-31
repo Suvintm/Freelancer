@@ -55,13 +55,16 @@ const ReelPlayerInternal = ({ url, isActive, isMuted, onBuffer }: ReelPlayerProp
         playWhenInactive={false}
         ignoreSilentSwitch="obey"
         onBuffer={(e) => onBuffer?.(e.isBuffering)}
-        // Production optimization: use a smaller buffer for Reels to start instantly
+        // ELITE: Ultra-aggressive "Instant-Play" buffer config
         bufferConfig={{
-          minBufferMs: 1500,
+          minBufferMs: 500,        // Start playing after 0.5s of data
           maxBufferMs: 3000,
-          bufferForPlaybackMs: 1000,
-          bufferForPlaybackAfterRebufferMs: 1500,
+          bufferForPlaybackMs: 250, // Minimal buffer before initial start
+          bufferForPlaybackAfterRebufferMs: 500,
         }}
+        // PERFORMANCE: Professional Video Toggles
+        preventsDisplaySleepDuringVideoPlayback={true}
+        automaticallyWaitsToMinimizeStalling={false}
       />
       
       {isActive && (

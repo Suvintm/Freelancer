@@ -28,7 +28,7 @@ interface AnimatedTabBarProps {
 export const AnimatedTabBar = ({ activeIndex, tabs, onTabPress }: AnimatedTabBarProps) => {
   const { theme, isDarkMode } = useTheme();
 
-  const VISIBLE_TABS = tabs.filter(t => !['client', 'editor'].includes(t.name));
+  const VISIBLE_TABS = (tabs || []).filter(t => !['client', 'editor'].includes(t.name));
   const TAB_WIDTH = width / VISIBLE_TABS.length;
 
   const activeColor   = isDarkMode ? '#FFFFFF' : '#111111';
