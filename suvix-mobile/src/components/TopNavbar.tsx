@@ -15,11 +15,11 @@ const RoundedMenuIcon = ({ color }: { color: string }) => (
   </View>
 );
 
-/**
- * PRODUCTION-GRADE TOP NAVBAR (Web Sync)
- * Replicates the Logo, Refresh, and Profile integration from the web dashboard.
- */
-export const TopNavbar = () => {
+interface TopNavbarProps {
+  onMenuPress: () => void;
+}
+
+export const TopNavbar = ({ onMenuPress }: TopNavbarProps) => {
   const { user } = useAuthStore();
   const { isDarkMode, toggleTheme } = useTheme();
   const router = useRouter();
@@ -32,7 +32,11 @@ export const TopNavbar = () => {
   return (
     <View style={[styles.container, { backgroundColor: isDarkMode ? 'rgba(5, 5, 9, 0.95)' : 'rgba(255, 255, 255, 0.95)' }]}>
       {/* LEFT: Modern Rounded Menu Icon */}
-      <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
+      <TouchableOpacity 
+        style={styles.iconButton} 
+        onPress={onMenuPress}
+        activeOpacity={0.7}
+      >
         <RoundedMenuIcon color={isDarkMode ? '#FFF' : '#000'} />
       </TouchableOpacity>
 

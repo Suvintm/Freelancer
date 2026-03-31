@@ -4,6 +4,7 @@ import PagerView from 'react-native-pager-view';
 import { useTheme } from '../../src/context/ThemeContext';
 import { AnimatedTabBar } from '../../src/components/AnimatedTabBar';
 import { TopNavbar } from '../../src/components/TopNavbar';
+import { Sidebar } from '../../src/components/Sidebar';
 
 // Screens
 import HomeScreen from './index';
@@ -16,10 +17,7 @@ import ProfileScreen from './profile';
 
 /**
  * PRODUCTION-GRADE SWIPE TAB LAYOUT
- * Uses react-native-pager-view (native thread) for Instagram-style 60fps swipe navigation.
- * - Reels tab has swipe DISABLED (gesture conflict prevention)
- * - Lazy rendering: screens mount only on first visit, stay alive after
- * - offscreenPageLimit: 2 keeps adjacent screens in memory for instant switching
+ * Supports a premium animated sidebar and 60fps swipeable tabs.
  */
 
 // Tab configuration — order MUST match PagerView page order
@@ -39,6 +37,7 @@ export default function TabsLayout() {
   const { theme } = useTheme();
   const pagerRef = useRef<PagerView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Called when a page fully settles after swipe or tap
   const onPageSelected = useCallback((e: any) => {
@@ -53,8 +52,14 @@ export default function TabsLayout() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Top Navbar — always visible across all tabs */}
-      <TopNavbar />
+      {/* Sidebar Overlay */}
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)} 
+      />
+
+      {/* Top Navbar */}
+      <TopNavbar onMenuPress={() => setIsSidebarOpen(true)} />
 
       {/* Native Swipe Pager — runs on native thread for 60fps */}
       <PagerView
