@@ -61,8 +61,8 @@ api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   config.baseURL = await resolveApiUrl();
 
   // @ts-ignore - Dynamic require to break circular dependency
-  const useAuthStore = require('../store/useAuthStore').useAuthStore;
-  const token = useAuthStore.getState().token;
+  const { useAuthStore } = require('../store/useAuthStore');
+  const token = (useAuthStore.getState() as any).token;
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -85,13 +85,15 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     if (error.response?.status === 401) {
       console.warn('🗝️ [API] Session expired (401). Logging out...');
-      const useAuthStore = require('../store/useAuthStore').useAuthStore;
-      useAuthStore.getState().logout();
+      const { useAuthStore } = require('../store/useAuthStore');
+      (useAuthStore.getState() as any).logout();
       return Promise.reject(error);
     }
 
     if (__DEV__) {
-      console.error(`❌ [API Error] ${error.config?.method?.toUpperCase()} ${error.config?.url}:`, error.message);
+      const method = error.config?.method?.toUpperCase() || 'UNKNOWN';
+      const url = error.config?.url || 'URL';
+      console.error(`❌ [API Error] ${method} ${url}:`, error.message);
     }
 
     return Promise.reject(error);
