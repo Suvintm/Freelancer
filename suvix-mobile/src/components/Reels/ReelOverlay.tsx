@@ -92,6 +92,23 @@ const ReelOverlayInternal = ({
     opacity: badgeOpacity.value,
   }));
 
+  // — ANIMATION: Quality Label Pulse —
+  const dotScale = useSharedValue(1);
+  React.useEffect(() => {
+    dotScale.value = withRepeat(
+      withSequence(
+        withTiming(1.3, { duration: 600 }),
+        withTiming(1, { duration: 600 })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  const animatedDotStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: dotScale.value }],
+  }));
+
   return (
     <View style={styles.container} pointerEvents="box-none">
       {/* 0. BACKGROUND TAP LAYER (Layer 0 - for Mute/Like/Pause) */}
@@ -122,8 +139,14 @@ const ReelOverlayInternal = ({
         {/* ELITE: Quality & Connection Badge */}
         <View style={styles.qualityIndicator}>
            <View style={styles.glassBadge}>
-              <View style={[styles.signalDot, { backgroundColor: isBuffering ? '#EAB308' : '#10B981' }]} />
-              <Text style={styles.qualityText}>{videoQuality}</Text>
+              <Animated.View style={[
+                styles.signalDot, 
+                animatedDotStyle,
+                { backgroundColor: isBuffering ? '#EAB308' : '#10B981' }
+              ]} />
+              <Text style={styles.qualityText}>
+                {videoQuality === 'Auto' ? 'AUTO' : `AUTO • ${videoQuality}`}
+              </Text>
            </View>
         </View>
       </View>
