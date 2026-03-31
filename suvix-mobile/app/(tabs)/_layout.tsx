@@ -50,16 +50,22 @@ export default function TabsLayout() {
     setActiveIndex(index);
   }, []);
 
+  const isReelsActive = activeIndex === REELS_INDEX;
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Sidebar Overlay */}
-      <Sidebar 
-        isOpen={isSidebarOpen} 
-        onClose={() => setIsSidebarOpen(false)} 
-      />
+      {/* Sidebar Overlay - Disabled in Reels for full immersion */}
+      {!isReelsActive && (
+        <Sidebar 
+          isOpen={isSidebarOpen} 
+          onClose={() => setIsSidebarOpen(false)} 
+        />
+      )}
 
-      {/* Top Navbar */}
-      <TopNavbar onMenuPress={() => setIsSidebarOpen(true)} />
+      {/* Top Navbar - Hidden in Reels for full-screen scrolling */}
+      {!isReelsActive && (
+        <TopNavbar onMenuPress={() => setIsSidebarOpen(true)} />
+      )}
 
       {/* Native Swipe Pager — runs on native thread for 60fps */}
       <PagerView
@@ -81,12 +87,14 @@ export default function TabsLayout() {
         <View key="6" style={styles.page}><ProfileScreen /></View>
       </PagerView>
 
-      {/* Bottom Tab Bar */}
-      <AnimatedTabBar
-        activeIndex={activeIndex}
-        tabs={TABS}
-        onTabPress={goToPage}
-      />
+      {/* Bottom Tab Bar - Hidden only when Reels is active */}
+      {!isReelsActive && (
+        <AnimatedTabBar
+          activeIndex={activeIndex}
+          tabs={TABS}
+          onTabPress={goToPage}
+        />
+      )}
     </View>
   );
 }

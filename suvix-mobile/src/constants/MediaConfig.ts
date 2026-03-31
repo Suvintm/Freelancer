@@ -1,39 +1,112 @@
+import { getApiBaseUrl } from '../api/client';
+
 /**
  * PRODUCTION-GRADE MEDIA CONFIGURATION
- * Logic for Cloudinary, HLS Adaptive bitrates, and image optimizations.
+ * Ported from web urlHelper.jsx to ensure zero "Black Screen" errors.
+ * Handles mangled Cloudinary URLs, relative paths, and HLS streaming.
  */
 
 export const MediaConfig = {
-  // Cloudinary Base URL if needed
-  CLOUDINARY_BASE: 'https://res.cloudinary.com/suvix/video/upload/',
+  /**
+   * repairUrl - Fixes mangled Cloudinary URLs and ensures absolute paths.
+   */
+  repairUrl: (input: any): string => {
+    if (!input) return '';
 
-  // Quality settings for mobile (optimized for data usage/performance)
-  VIDEO_TRANSFORMS: {
-    LOW_RESL: 'q_auto:eco,f_auto,w_480',
-    MEDIUM_RESL: 'q_auto:good,f_auto,w_720',
-    HIGH_RESL: 'q_auto,f_auto',
-    HLS: 'sp_hls_m3u8', // Production ready HLS adaptation
+    let url = "";
+
+    // 1. Extract URL if input is an object
+    if (typeof input === "object") {
+      url = input.url || input.secure_url || input.profilePicture || input.thumbnail || "";
+      if (typeof url === "object") return MediaConfig.repairUrl(url);
+    } else {
+      url = input;
+    }
+
+    if (!url || typeof url !== "string") return url || '';
+
+    // 2. Handle Relative Paths (Prefixed with /) or missing protocols
+    if (url.startsWith('/') && !url.startsWith('//')) {
+        const base = getApiBaseUrl().replace('/api', ''); 
+        return `${base}${url}`;
+    }
+
+    // 3. Handle Mangled Cloudinary URLs (res_cloudinary_com etc.)
+    if (url.includes("cloudinary") || url.includes("res_") || url.includes("_com")) {
+      let fixed = url;
+      fixed = fixed.replace(/^(https?):?\/*_+/gi, "$1://");
+      fixed = fixed.replace(/_+res_+cloudinary_+com/g, "res.cloudinary.com")
+                   .replace(/res_cloudinary_com/g, "res.cloudinary.com")
+                   .replace(/cloudinary_com/g, "cloudinary.com");
+
+      if (fixed.includes("res.cloudinary.com")) {
+          fixed = fixed.replace(/res\.cloudinary\.com_+/g, "res.cloudinary.com/");
+          fixed = fixed.replace(/image_upload_+/g, "image/upload/")
+                       .replace(/video_upload_+/g, "video/upload/")
+                       .replace(/raw_upload_+/g, "raw/upload/");
+          fixed = fixed.replace(/([/_]?v\d+)_+/g, "$1/");
+          fixed = fixed.replace(/(res\.cloudinary\.com\/[^/_]+)_+(image|video|raw|authenticated)_*/g, "$1/$2/");
+          fixed = fixed.replace(/_+(upload|image|video|v\d+)_+/g, "/$1/");
+          fixed = fixed.replace(/([^:])\/\/+/g, "$1/");
+      }
+
+      fixed = fixed.replace(/_jpg([/_?#]|$)/gi, ".jpg$1")
+                   .replace(/_jpeg([/_?#]|$)/gi, ".jpeg$1")
+                   .replace(/_png([/_?#]|$)/gi, ".png$1")
+                   .replace(/_mp4([/_?#]|$)/gi, ".mp4$1")
+                   .replace(/_webp([/_?#]|$)/gi, ".webp$1");
+
+      return fixed;
+    }
+
+    return url;
   },
 
   /**
-   * Universal HLS Resolver
-   * Converts any raw Cloudinary URL into an HLS adaptive stream.
-   * Based on the "Millions of users" requirement for instant playback.
+   * toAdaptiveStream - Converts raw video URL to HLS (m3u8).
    */
   toAdaptiveStream: (rawUrl: string): string => {
-    if (!rawUrl || !rawUrl.includes('cloudinary.com')) return rawUrl;
+    const url = MediaConfig.repairUrl(rawUrl);
+    if (!url) return '';
     
-    // Ensure the player knows its an HLS stream by adding the m3u8 extension
-    // Logic: replace /upload/ with /upload/sp_hls_m3u8/ and append .m3u8
-    const base = rawUrl.split('/upload/').join('/upload/sp_auto:hls/');
-    return base.endsWith('.m3u8') ? base : `${base.split('.')[0]}.m3u8`;
+    // 1. If it's already HLS, return as is
+    if (url.toLowerCase().includes('.m3u8') || url.includes('/sp_')) return url;
+
+    // 2. Only apply Cloudinary logic if it's a Cloudinary URL
+    if (url.includes('res.cloudinary.com')) {
+        const uploadIndex = url.indexOf('/upload/');
+        if (uploadIndex === -1) return url;
+
+        const baseUrl = url.substring(0, uploadIndex + 8);
+        let remaining = url.substring(uploadIndex + 8);
+
+        // Strip previous transforms to prevent conflicts
+        remaining = remaining.replace(/^(f_auto|q_auto|w_\d+|c_[^/]+|vc_[^/]+),*[^/]*\//i, "");
+
+        let hlsUrl = `${baseUrl}sp_auto/${remaining}`;
+        // Extension swap
+        const lastDot = hlsUrl.lastIndexOf('.');
+        if (lastDot !== -1) {
+            hlsUrl = hlsUrl.substring(0, lastDot) + '.m3u8';
+        } else {
+            hlsUrl += '.m3u8';
+        }
+        return hlsUrl;
+    }
+
+    return url;
   },
 
   /**
-   * Image Optimization for Thumbnails
+   * toOptimizedImage - Injects image quality/format flags.
    */
   toOptimizedImage: (rawUrl: string, width: number = 500): string => {
-    if (!rawUrl || !rawUrl.includes('cloudinary.com')) return rawUrl;
-    return rawUrl.replace('/upload/', `/upload/c_fill,g_auto,w_${width},q_auto,f_auto/`);
+    const url = MediaConfig.repairUrl(rawUrl);
+    if (!url || !url.includes('res.cloudinary.com')) return url;
+    
+    if (url.includes('/upload/')) {
+        return url.replace('/upload/', `/upload/f_auto,q_auto,w_${width},c_limit/`);
+    }
+    return url;
   }
 };

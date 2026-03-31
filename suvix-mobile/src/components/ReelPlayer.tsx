@@ -18,7 +18,7 @@ interface ReelPlayerProps {
  * 2. HLS Adaptive bitrate streaming via MediaConfig.
  * 3. Minimal memory footprint.
  */
-export const ReelPlayer = ({ url, isActive, isMuted, onBuffer }: ReelPlayerProps) => {
+const ReelPlayerInternal = ({ url, isActive, isMuted, onBuffer }: ReelPlayerProps) => {
   const videoRef = useRef<VideoRef>(null);
   const hlsUrl = MediaConfig.toAdaptiveStream(url);
 
@@ -33,6 +33,7 @@ export const ReelPlayer = ({ url, isActive, isMuted, onBuffer }: ReelPlayerProps
     <View style={styles.container}>
       <Video
         ref={videoRef}
+        key={hlsUrl}
         source={{ uri: hlsUrl }}
         style={StyleSheet.absoluteFill}
         resizeMode="cover"
@@ -52,14 +53,22 @@ export const ReelPlayer = ({ url, isActive, isMuted, onBuffer }: ReelPlayerProps
         }}
       />
       
-      {!isActive && (
-        <View style={styles.loader}>
+      {isActive && (
+        <View 
+          pointerEvents="none"
+          style={[
+            styles.loader, 
+            { opacity: 0 } // Video component handles its own buffering internally
+          ]}
+        >
           <ActivityIndicator color={Colors.accent} size="large" />
         </View>
       )}
     </View>
   );
 };
+
+export const ReelPlayer = React.memo(ReelPlayerInternal);
 
 const styles = StyleSheet.create({
   container: {

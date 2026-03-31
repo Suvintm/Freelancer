@@ -6,6 +6,7 @@ export const Colors = {
   success: '#10B981',
   white: '#FFFFFF',
   black: '#000000',
+  heart: '#FF3040',
 
   // DARK THEME (Web/Instagram Inspired)
   dark: {

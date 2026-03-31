@@ -34,6 +34,11 @@ async function resolveApiUrl(): Promise<string> {
   return PROD_URL;
 }
 
+export function getApiBaseUrl(): string {
+  // If we haven't resolved yet, use PROD as a safe fallback
+  return resolvedUrl || PROD_URL;
+}
+
 // Kick off the URL resolution immediately at startup (non-blocking)
 resolveApiUrl();
 
