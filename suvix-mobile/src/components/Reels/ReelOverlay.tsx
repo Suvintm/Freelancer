@@ -26,6 +26,8 @@ interface ReelOverlayProps {
   isPaused?: boolean;
   onPressIn?: () => void;
   onPressOut?: () => void;
+  isBuffering?: boolean;
+  videoQuality?: string;
 }
 
 /**
@@ -45,7 +47,9 @@ const ReelOverlayInternal = ({
   onBack,
   isPaused = false,
   onPressIn,
-  onPressOut
+  onPressOut,
+  isBuffering = false,
+  videoQuality = 'Auto'
 }: ReelOverlayProps) => {
   const insets = useSafeAreaInsets();
   
@@ -115,7 +119,13 @@ const ReelOverlayInternal = ({
           )}
         </View>
         
-        <View style={styles.placeholder} />
+        {/* ELITE: Quality & Connection Badge */}
+        <View style={styles.qualityIndicator}>
+           <View style={styles.glassBadge}>
+              <View style={[styles.signalDot, { backgroundColor: isBuffering ? '#EAB308' : '#10B981' }]} />
+              <Text style={styles.qualityText}>{videoQuality}</Text>
+           </View>
+        </View>
       </View>
 
       {/* 2. BOTTOM GRADIENT (Readability Overlay - Lowered for clarity) */}
@@ -258,6 +268,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     zIndex: 100,
+  },
+  qualityIndicator: {
+    width: 80,
+    alignItems: 'flex-end',
+  },
+  glassBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    gap: 6,
+  },
+  signalDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  qualityText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   backButton: {
     width: 40,

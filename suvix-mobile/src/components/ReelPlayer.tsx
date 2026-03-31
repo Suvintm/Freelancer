@@ -10,16 +10,13 @@ interface ReelPlayerProps {
   isMuted: boolean;
   onBuffer?: (isBuffering: boolean) => void;
   isPaused?: boolean;
+  onQualityChange?: (height: number) => void;
 }
 
 /**
  * PRODUCTION-GRADE REEL PLAYER (ABR OPTIMIZED)
- * Custom wrapper around react-native-video optimized for:
- * 1. Adaptive Bitrate (ABR) via Cloudinary HLS.
- * 2. Rapid component recycling.
- * 3. Network resilience on slow connections.
  */
-const ReelPlayerInternal = ({ url, isActive, isMuted, onBuffer, isPaused = false }: ReelPlayerProps) => {
+const ReelPlayerInternal = ({ url, isActive, isMuted, onBuffer, isPaused = false, onQualityChange }: ReelPlayerProps) => {
   const videoRef = useRef<VideoRef>(null);
   const hlsUrl = MediaConfig.toAdaptiveStream(url);
   const posterUrl = MediaConfig.getPosterUrl(url);
@@ -56,6 +53,17 @@ const ReelPlayerInternal = ({ url, isActive, isMuted, onBuffer, isPaused = false
         playWhenInactive={false}
         ignoreSilentSwitch="obey"
         onBuffer={(e) => onBuffer?.(e.isBuffering)}
+        onLoad={(data) => {
+          if (data.naturalSize) {
+            onQualityChange?.(data.naturalSize.height);
+          }
+        }}
+        onVideoTracks={(data) => {
+          const activeTrack = data.videoTracks?.find(track => track.selected);
+          if (activeTrack && activeTrack.height) {
+            onQualityChange?.(activeTrack.height);
+          }
+        }}
         
         // ELITE: Hardware-Accelerated Adaptive Bitrate (ABR)
         selectedVideoTrack={{

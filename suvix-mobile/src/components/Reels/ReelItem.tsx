@@ -49,6 +49,16 @@ const ReelItemInternal = ({
   const heartScale = useSharedValue(0);
   const heartOpacity = useSharedValue(0);
   const [isPausedByGesture, setIsPausedByGesture] = React.useState(false);
+  const [isBuffering, setIsBuffering] = React.useState(false);
+  const [videoQuality, setVideoQuality] = React.useState<string>('Auto');
+
+  // — ELITE: Quality Formatter —
+  const formatQuality = (height: number) => {
+    if (height >= 1080) return '1080p HD';
+    if (height >= 720) return '720p HD';
+    if (height >= 480) return '480p';
+    return `${height}p`;
+  };
 
   // 1. Impression Tracking (Production Logic)
   React.useEffect(() => {
@@ -132,6 +142,8 @@ const ReelItemInternal = ({
           isActive={isActive} 
           isMuted={isMuted} 
           isPaused={isPausedByGesture}
+          onBuffer={setIsBuffering}
+          onQualityChange={(h) => setVideoQuality(formatQuality(h))}
         />
       )}
       
@@ -155,6 +167,8 @@ const ReelItemInternal = ({
         onVideoPress={handlePress}
         onBack={onBack}
         isPaused={isPausedByGesture}
+        isBuffering={isBuffering}
+        videoQuality={videoQuality}
         onPressIn={() => setIsPausedByGesture(true)}
         onPressOut={() => setIsPausedByGesture(false)}
       />
