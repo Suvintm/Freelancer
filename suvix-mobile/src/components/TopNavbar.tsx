@@ -1,10 +1,19 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Platform } from 'react-native';
+import { View, StyleSheet, Image, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../constants/Colors';
 import { useRouter } from 'expo-router';
+
+/** Modern rounded hamburger menu icon */
+const RoundedMenuIcon = ({ color }: { color: string }) => (
+  <View style={{ gap: 5, width: 22, justifyContent: 'center' }}>
+    <View style={{ width: 22, height: 2.5, borderRadius: 99, backgroundColor: color }} />
+    <View style={{ width: 15, height: 2.5, borderRadius: 99, backgroundColor: color }} />
+    <View style={{ width: 22, height: 2.5, borderRadius: 99, backgroundColor: color }} />
+  </View>
+);
 
 /**
  * PRODUCTION-GRADE TOP NAVBAR (Web Sync)
@@ -21,24 +30,31 @@ export const TopNavbar = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: isDarkMode ? 'rgba(5, 5, 9, 0.95)' : 'rgba(255, 255, 255, 0.95)', borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }]}>
-      {/* LEFT: Sidebar Toggle */}
+    <View style={[styles.container, { backgroundColor: isDarkMode ? 'rgba(5, 5, 9, 0.95)' : 'rgba(255, 255, 255, 0.95)' }]}>
+      {/* LEFT: Modern Rounded Menu Icon */}
       <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
-        <Ionicons name="menu-outline" size={26} color={isDarkMode ? '#FFF' : '#000'} />
+        <RoundedMenuIcon color={isDarkMode ? '#FFF' : '#000'} />
       </TouchableOpacity>
 
-      {/* CENTER: Logo */}
+      {/* CENTER: Branded Logo (includes name, no separate text needed) */}
       <TouchableOpacity 
         style={styles.logoContainer} 
         onPress={() => router.push('/(tabs)')}
         activeOpacity={0.8}
       >
-        <Image 
-          source={require('../../assets/logo.png')} 
-          style={styles.logo} 
-          resizeMode="contain" 
-        />
-        <Text style={[styles.brandText, { color: isDarkMode ? '#FFF' : '#000' }]}>SuviX</Text>
+        {isDarkMode ? (
+          <Image 
+            source={require('../../assets/darklogo.png')} 
+            style={styles.logoDark} 
+            resizeMode="contain" 
+          />
+        ) : (
+          <Image 
+            source={require('../../assets/lightlogo.png')} 
+            style={styles.logoLight} 
+            resizeMode="contain" 
+          />
+        )}
       </TouchableOpacity>
 
       {/* RIGHT: Actions */}
@@ -81,30 +97,28 @@ const styles = StyleSheet.create({
     height: Platform.OS === 'ios' ? 100 : 70,
     paddingTop: Platform.OS === 'ios' ? 40 : 10,
     paddingHorizontal: 16,
-    borderBottomWidth: 1,
+    borderBottomWidth: 0,
     zIndex: 50,
   },
   iconButton: {
     padding: 8,
   },
   logoContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
     position: 'absolute',
     left: '50%',
-    marginLeft: -40, // Offset for "SuviX" + Logo
-    top: Platform.OS === 'ios' ? 52 : 22,
+    marginLeft: -65,
+    top: Platform.OS === 'ios' ? 46 : 16,
   },
-  logo: {
-    width: 28,
-    height: 28,
-    marginRight: 6,
+  // Dark mode logo
+  logoDark: {
+    width: 130,
+    height: 38,
   },
-  brandText: {
-    fontSize: 18,
-    fontWeight: '900',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+  // Light mode logo
+  logoLight: {
+    width: 130,
+    height: 38,
   },
   rightSection: {
     flexDirection: 'row',

@@ -1,123 +1,112 @@
-import React, { useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Dimensions, Platform } from 'react-native';
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
-const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 88 : 70;
+const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 88 : 65;
+
+interface Tab {
+  name: string;
+  title: string;
+}
+
+interface AnimatedTabBarProps {
+  activeIndex: number;
+  tabs: Tab[];
+  onTabPress: (index: number) => void;
+}
 
 /**
- * PRODUCTION-GRADE ANIMATED TAB BAR (Web Sync)
- * Replicates the 7-tab layout and Center-Floating Reels design from the web frontend.
+ * PRODUCTION-GRADE ANIMATED TAB BAR
+ * - Synced in real-time with PagerView via scrollX Animated.Value
+ * - No bubble background — clean, flat, modern design
+ * - Active tab: filled icon + label (bold, black/white)
+ * - Inactive tab: outline icon + label (visible gray)
+ * - No top border, no green color
  */
-export const AnimatedTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
+export const AnimatedTabBar = ({ activeIndex, tabs, onTabPress }: AnimatedTabBarProps) => {
   const { theme, isDarkMode } = useTheme();
-  
-  // Shared value for the sliding cursor/indicator
-  const translateX = useSharedValue(0);
 
-  // STRICT FILTER: Only show the 7 primary SuviX tabs from the web app
-  const visibleRoutes = state.routes.filter(route => 
-    !['client', 'editor'].includes(route.name)
-  );
-  
-  const TAB_COUNT = visibleRoutes.length;
-  const TAB_WIDTH = width / TAB_COUNT;
+  const VISIBLE_TABS = tabs.filter(t => !['client', 'editor'].includes(t.name));
+  const TAB_WIDTH = width / VISIBLE_TABS.length;
 
-  useEffect(() => {
-    // Find the current index within the VISIBLE subset to position the indicator
-    const visibleIndex = visibleRoutes.findIndex(route => route.name === state.routes[state.index].name);
-    if (visibleIndex !== -1) {
-      translateX.value = withSpring(visibleIndex * TAB_WIDTH, {
-          damping: 20,
-          stiffness: 150
-      });
+  const activeColor   = isDarkMode ? '#FFFFFF' : '#111111';
+  const inactiveColor = isDarkMode ? '#777777' : '#AAAAAA';
+
+  const getIcon = (routeName: string, isFocused: boolean, color: string) => {
+    const size = 22;
+    switch (routeName) {
+      case 'index':
+        return <Ionicons name={isFocused ? 'home' : 'home-outline'} size={size} color={color} />;
+      case 'explore':
+        return <Ionicons name={isFocused ? 'search' : 'search-outline'} size={size} color={color} />;
+      case 'nearby':
+        return <Ionicons name={isFocused ? 'location' : 'location-outline'} size={size} color={color} />;
+      case 'reels':
+        return (
+          <View style={[styles.reelsBtn, { backgroundColor: isDarkMode ? '#FFFFFF' : '#111111' }]}>
+            <Ionicons name="play" size={22} color={isDarkMode ? '#111111' : '#FFFFFF'} />
+          </View>
+        );
+      case 'jobs':
+        return <Ionicons name={isFocused ? 'briefcase' : 'briefcase-outline'} size={size} color={color} />;
+      case 'chats':
+        return <Ionicons name={isFocused ? 'chatbubbles' : 'chatbubbles-outline'} size={size} color={color} />;
+      case 'profile':
+        return <Ionicons name={isFocused ? 'person' : 'person-outline'} size={size} color={color} />;
+      default:
+        return <Ionicons name="apps-outline" size={size} color={color} />;
     }
-  }, [state.index, state.routes, TAB_WIDTH, visibleRoutes, translateX]);
+  };
 
-  const animatedIndicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-    backgroundColor: '#10B981', // Emerald-500 from Web
-  }));
+  const getDisplayLabel = (name: string, title: string) => {
+    if (name === 'index') return 'Home';
+    return title || name;
+  };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.tabBar, borderTopColor: theme.border }]}>
-      {/* Dynamic Sliding Indicator */}
-      <Animated.View style={[styles.indicator, animatedIndicatorStyle, { width: TAB_WIDTH }]} />
-
-      <View style={styles.content}>
-        {visibleRoutes.map((route) => {
-          // Find the actual index in the top-level state for focusing/navigation
-          const actualIndex = state.routes.findIndex(r => r.key === route.key);
-          const isFocused = state.index === actualIndex;
-          const { options } = descriptors[route.key];
-          const label = options.title !== undefined ? options.title : route.name;
-
-          const onPress = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
-
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            }
-          };
-
-          const getIcon = () => {
-            const color = isFocused ? '#10B981' : (isDarkMode ? '#FFF' : '#000');
-            const size = 22;
-
-            switch (route.name) {
-              case 'index':
-                return <Ionicons name={isFocused ? "home" : "home-outline"} size={size} color={color} />;
-              case 'explore':
-                return <Ionicons name={isFocused ? "search" : "search-outline"} size={size} color={color} />;
-              case 'nearby':
-                return <Ionicons name={isFocused ? "location" : "location-outline"} size={size} color={color} />;
-              case 'reels':
-                return (
-                  <View style={styles.reelsContainer}>
-                    <Ionicons name="play" size={26} color="#FFF" />
-                  </View>
-                );
-              case 'jobs':
-                return <Ionicons name={isFocused ? "briefcase" : "briefcase-outline"} size={size} color={color} />;
-              case 'chats':
-                return <Ionicons name={isFocused ? "chatbubbles" : "chatbubbles-outline"} size={size} color={color} />;
-              case 'profile':
-                return <Ionicons name={isFocused ? "person" : "person-outline"} size={size} color={color} />;
-              default:
-                return <Ionicons name="apps-outline" size={size} color={color} />;
-            }
-          };
-
-          const isReels = route.name === 'reels';
+    <View style={[styles.container, { backgroundColor: theme.tabBar }]}>
+      <View style={styles.row}>
+        {VISIBLE_TABS.map((tab, index) => {
+          const isFocused = activeIndex === index;
+          const isReels = tab.name === 'reels';
+          const color = isFocused ? activeColor : inactiveColor;
+          const label = getDisplayLabel(tab.name, tab.title);
 
           return (
             <TouchableOpacity
-              key={route.key}
-              onPress={onPress}
+              key={tab.name}
+              onPress={() => onTabPress(index)}
               style={styles.tabItem}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
             >
-              <View style={isFocused ? styles.activeIcon : {}}>
-                {getIcon()}
+              {/* Icon */}
+              <View style={isReels ? styles.reelsWrapper : null}>
+                {getIcon(tab.name, isFocused, color)}
               </View>
-              
-              {!isReels && isFocused && (
-                <Animated.Text style={[styles.label, { color: '#10B981' }]}>
-                   {label === 'index' ? 'Home' : label}
-                </Animated.Text>
+
+              {/* Label — shown under all tabs */}
+              {!isReels && (
+                <Text
+                  style={[
+                    styles.label,
+                    {
+                      color,
+                      fontWeight: isFocused ? '700' : '400',
+                    }
+                  ]}
+                  numberOfLines={1}
+                >
+                  {label}
+                </Text>
               )}
-              
+
+              {/* Reels text */}
               {isReels && (
-                <Animated.Text style={[styles.label, { color: isFocused ? '#10B981' : (isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)') }]}>
-                   Reels
-                </Animated.Text>
+                <Text style={[styles.label, { color: inactiveColor, marginTop: 4 }]}>
+                  REELS
+                </Text>
               )}
             </TouchableOpacity>
           );
@@ -133,57 +122,44 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: '100%',
     height: TAB_BAR_HEIGHT,
-    borderTopWidth: 1,
-    elevation: 20,
+    borderTopWidth: 0,
+    elevation: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
   },
-  content: {
+  row: {
     flexDirection: 'row',
     height: '100%',
     alignItems: 'center',
-    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+    paddingBottom: Platform.OS === 'ios' ? 22 : 0,
   },
   tabItem: {
     flex: 1,
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  indicator: {
-    position: 'absolute',
-    top: 0,
-    height: 3,
-    borderBottomLeftRadius: 3,
-    borderBottomRightRadius: 3,
-    zIndex: 10,
-  },
-  reelsContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: '#000',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: -30,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.1)',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    gap: 2,
   },
   label: {
     fontSize: 9,
-    fontWeight: '900',
-    marginTop: 4,
+    letterSpacing: 0.4,
     textTransform: 'uppercase',
-    letterSpacing: 1,
   },
-  activeIcon: {
-    transform: [{ scale: 1.05 }],
-  }
+  reelsWrapper: {
+    marginTop: -24,
+  },
+  reelsBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
 });
