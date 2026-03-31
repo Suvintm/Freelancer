@@ -32,17 +32,30 @@ const makeRedisStore = (prefix) => {
 };
 
 
-// ─── General API limiter: 1000 req / 5 min ────────────────────────────────
+// ─── General API limiter: 100 req / 15 min ────────────────────────────────
+// 🛡️ PRODUCTION HARDENING: Lowered from 1000 to protect cloud usage quotas.
 export const generalLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000,
-  max: 1000,
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   store: makeRedisStore("rl:general:"),
   message: {
     success: false,
-    message: "Too many requests, please try again after 5 minutes.",
+    message: "Too many requests from this IP, please try again after 15 minutes.",
   },
   standardHeaders: true,
   legacyHeaders: false,
+});
+
+// ─── Boot Profile Limiter: 20 req / 1 minute ──────────────────────────────
+// 🚦 SAFETY VALVE: Prevents infinite loops during app startup from consuming bandwidth.
+export const bootLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  store: makeRedisStore("rl:boot:"),
+  message: {
+    success: false,
+    message: "App startup loop detected. Please restart the app.",
+  },
 });
 
 // ─── Auth limiter: 10 login attempts / 15 min ─────────────────────────────

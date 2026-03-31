@@ -59,19 +59,32 @@ export default function SignupScreen() {
   };
 
   const handleSignup = async () => {
-    if (!username || !email || !password || !phone) {
+    if (!username || !email || !password || !confirmPassword || !phone) {
       Alert.alert('Incomplete Form', 'Please fill in all details.');
       return;
     }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Password Mismatch', 'Your passwords do not match.');
+      return;
+    }
+
+    if (password.length < 8) {
+      Alert.alert('Password Too Short', 'Password must be at least 8 characters long.');
+      return;
+    }
+
     setLoading(true);
     try {
+      // 🔒 SECURITY SYNC: Matching backend requirements
+      // We use FormData to handle the profile picture upload
       const formData = new FormData();
       formData.append('name', username.trim());
-      formData.append('email', email.trim());
+      formData.append('email', email.trim().toLowerCase());
       formData.append('password', password);
       formData.append('phone', phone.trim());
       formData.append('role', role);
-      formData.append('country', 'IN');
+      formData.append('country', 'IN'); // Defaulting to India for Geo-compliance
 
       if (profileImage) {
         const uriParts = profileImage.split('.');
@@ -90,13 +103,26 @@ export default function SignupScreen() {
       });
 
       if (response.data.success) {
-        Alert.alert('Account Created! 🎉', 'Please log in to continue.', [
-          { text: 'Log In', onPress: () => router.replace('/login') }
-        ]);
+        Alert.alert(
+          'Welcome to SuviX! 🎉',
+          'Your account has been created successfully. Please login to start your journey.',
+          [{ text: 'Go to Login', onPress: () => router.replace('/login') }]
+        );
       }
-    } catch {
-      const message = 'Signup failed';
-      Alert.alert('Signup Error', message);
+    } catch (error: any) {
+      console.error('❌ [AUTH] Signup Error:', error.response?.data || error.message);
+      const data = error.response?.data;
+      const isSuspended = typeof data === 'string' && data.includes('Service Suspended');
+
+      if (!error.response) {
+        Alert.alert('Connection Error', 'Could not reach SuviX. Check your internet.');
+      } else if (isSuspended) {
+        Alert.alert('Service Suspended', 'The SuviX Backend is currently suspended by the hosting provider. Please check the dashboard.');
+      } else if (data?.message?.includes('email_1 dup key')) {
+        Alert.alert('Email Taken', 'This email is already registered. Try logging in instead.');
+      } else {
+        Alert.alert('Registration Failed', data?.message || 'Could not create account. Please check your details.');
+      }
     } finally {
       setLoading(false);
     }

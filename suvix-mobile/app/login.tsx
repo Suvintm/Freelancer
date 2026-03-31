@@ -39,17 +39,47 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const response = await api.post('/auth/login', {
-        email: email.trim(),
+        // 🔒 SECURITY SYNC: Matching backend .trim().toLowerCase()
+        email: email.trim().toLowerCase(),
         password,
       });
+
       if (response.data.success) {
         const { user, token } = response.data;
         await setAuth(user, token);
         router.replace('/');
       }
     } catch (error: any) {
-      console.error('❌ Login Error Details:', error.response?.data);
-      Alert.alert('Login Failed', error.response?.data?.message || 'Invalid credentials.');
+      console.error('❌ [AUTH] Login Error:', error.response?.data || error.message);
+      
+      const status = error.response?.status;
+      const data = error.response?.data;
+      const isCloudflare = typeof data === 'string' && data.includes('challenge-platform');
+      const isSuspended = typeof data === 'string' && data.includes('Service Suspended');
+
+      if (!error.response) {
+        Alert.alert('Connection Error', 'Could not reach SuviX. Check your internet.');
+      } else if (isSuspended) {
+        // 🚨 HOSTING SECURITY: Detecting server-side suspension
+        Alert.alert('Service Suspended', 'The SuviX Backend is currently suspended by the hosting provider. Please check the dashboard.');
+      } else if (isCloudflare) {
+        Alert.alert('Network Protection', 'Cloudflare security is active. Please try again in a few minutes or switch networks.');
+      } else if (status === 403) {
+        // 🌍 REGIONAL SECURITY: Handling Geo/VPN blocks
+        if (data?.error === 'REGION_BLOCKED') {
+          Alert.alert('Region Restricted', 'SuviX is currently only available in India and the US.');
+        } else if (data?.error === 'ACCESS_DENIED' || data?.error === 'VPN_DETECTED') {
+          Alert.alert('VPN Detected', 'Please disable your VPN or Proxy to continue to SuviX.');
+        } else {
+          Alert.alert('Access Denied', data?.message || 'Access restricted by security layers.');
+        }
+      } else if (status === 429) {
+        Alert.alert('Too Many Requests', 'Please wait a moment before trying again.');
+      } else if (status === 401) {
+        Alert.alert('Invalid Credentials', 'The email or password you entered is incorrect.');
+      } else {
+        Alert.alert('Login Failed', data?.message || 'An unexpected error occurred.');
+      }
     } finally {
       setLoading(false);
     }
@@ -91,7 +121,10 @@ export default function LoginScreen() {
                 }
               />
 
-              <TouchableOpacity style={styles.forgotPassword}>
+              <TouchableOpacity 
+                style={styles.forgotPassword}
+                onPress={() => router.push('/forgot-password')}
+              >
                 <Text style={styles.forgotText}>Forgot Password?</Text>
               </TouchableOpacity>
 

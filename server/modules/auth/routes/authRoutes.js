@@ -12,7 +12,7 @@ import {
 } from "../controllers/authcontroller.js";
 import { upload } from "../../../middleware/upload.js";
 import protect from "../../../middleware/authMiddleware.js";
-import { authLimiter, registerLimiter, uploadLimiter } from "../../../middleware/rateLimiter.js";
+import { authLimiter, registerLimiter, uploadLimiter, bootLimiter } from "../../../middleware/rateLimiter.js";
 import { registerValidator, loginValidator } from "../../../middleware/validators.js";
 import { vpnCheckMiddleware } from "../../../middleware/vpnCheck.js";
 
@@ -64,7 +64,8 @@ router.patch(
 
 // ============ CURRENT USER ============
 
-router.get("/me", protect, getCurrentUser);
+// 🛡️ BOOT PROTECTION: Limited to 20 calls/min to prevent looping usage spikes
+router.get("/me", bootLimiter, protect, getCurrentUser);
 
 export default router;
 
