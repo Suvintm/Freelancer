@@ -10,13 +10,14 @@ interface ReelPlayerProps {
   isMuted: boolean;
   onBuffer?: (isBuffering: boolean) => void;
   isPaused?: boolean;
+  isNear: boolean; // PRODUCTION: Preloading guard
   onQualityChange?: (height: number) => void;
 }
 
 /**
  * PRODUCTION-GRADE REEL PLAYER (ABR OPTIMIZED)
  */
-const ReelPlayerInternal = ({ url, isActive, isMuted, onBuffer, isPaused = false, onQualityChange }: ReelPlayerProps) => {
+const ReelPlayerInternal = ({ url, isActive, isNear, isMuted, onBuffer, isPaused = false, onQualityChange }: ReelPlayerProps) => {
   const videoRef = useRef<VideoRef>(null);
   const hlsUrl = MediaConfig.toAdaptiveStream(url);
   const posterUrl = MediaConfig.getPosterUrl(url);

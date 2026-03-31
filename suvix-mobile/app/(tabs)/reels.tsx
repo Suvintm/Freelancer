@@ -51,25 +51,31 @@ const APP_ADS = [
 
 /**
  * PRODUCTION-GRADE REELS SCREEN (STABILIZED ELITE EDITION)
- * Features:
  * 1. Highly Optimized FlatList for 60fps virtualization.
  * 2. Dynamic ViewHeight measurement for pixel-perfect snapping.
- * 3. Integrated Ad/Reel card switching.
  */
+
+// — PRODUCTION: Global Static Cache (Senior Architecture) —
+// This ensures that navigating back to Reels has ZERO blank screen time.
+let staticReelsCache: any[] = [];
+let staticAdsCache: any[] = [];
+
 export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?: () => void; isFocused?: boolean }) {
-  const [reels, setReels] = useState<any[]>([]);
+  const [reels, setReels] = useState<any[]>(staticReelsCache);
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(staticReelsCache.length > 0 ? 2 : 1);
   const [hasMore, setHasMore] = useState(true);
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
-  const [activeReelId, setActiveReelId] = useState<string | null>(null);
-  const [ads, setAds] = useState<any[]>([]);
+  const [activeReelId, setActiveReelId] = useState<string | null>(staticReelsCache[0]?._id || null);
+  const [nearItemIds, setNearItemIds] = useState<Set<string>>(new Set());
+  const [ads, setAds] = useState<any[]>(staticAdsCache);
   const [isMuted, setIsMuted] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [sessionSeed, setSessionSeed] = useState(() => Math.random().toString(36).substring(7));
   const viewedReels = useRef(new Set<string>());
-  const reelsRef = useRef<any[]>([]); // PRODUCTION: Sync ref for exclusion logic
+  const reelsRef = useRef<any[]>(staticReelsCache); // PRODUCTION: Sync ref for exclusion logic
   const { height: windowHeight } = useWindowDimensions();
+  // PRODUCTION: Hardware-locked constant to prevent "Overlap" during fast scroll
   const [viewHeight, setViewHeight] = useState(windowHeight); 
   const flatListRef = useRef<FlatList>(null);
   const fetchingRef = useRef(false);
@@ -141,6 +147,7 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
           
           const combined = [...prev, ...uniqueNewItems];
           reelsRef.current = combined;
+          if (p === 1) staticReelsCache = combined.slice(0, 10); // Update hot cache
           return combined;
         });
 
@@ -158,7 +165,7 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, [hasMore, activeReelId, sessionSeed]);
+  }, [hasMore, activeReelId, sessionSeed, ads]);
 
   // — PRODUCTION: Ad Fetching (GET /api/ads?location=reels_feed) —
   const fetchAds = useCallback(async () => {
@@ -167,7 +174,9 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
     try {
       const res = await api.get('/ads', { params: { location: 'reels_feed' } });
       if (res.data.success) {
-        setAds(res.data.ads || []);
+        const newAds = res.data.ads || [];
+        setAds(newAds);
+        staticAdsCache = newAds; // Update hot cache
       }
     } catch (e) {
       console.error('Fetch Ads Error:', e);
@@ -177,6 +186,7 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
   }, []);
 
   const handleRefresh = useCallback(async () => {
+    if (isRefreshing) return;
     setIsRefreshing(true);
     try {
       // 1. Reset feed specific flags
@@ -186,21 +196,24 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
       setSessionSeed(newSeed);
       
       // 2. Parallel fetch fresh content
-      // Note: fetchReels(1) will pick up the new sessionSeed from closure/ref if we pass it,
-      // but here we just want it to run.
       await Promise.all([
         fetchAds()
       ]);
       
-      // We manually call fetchReels with the new seed to ensure instant freshness
-      // because state updates (setSessionSeed) are async.
       const res = await api.get('/reels/feed', { 
         params: { page: 1, limit: 10, sessionSeed: newSeed } 
       });
       if (res.data.success) {
-        setReels(res.data.reels || []);
+        const freshReels = res.data.reels || [];
+        setReels(freshReels);
+        reelsRef.current = freshReels;
+        staticReelsCache = freshReels.slice(0, 10); // Update hot cache
         setPage(2);
         setHasMore(res.data.pagination.hasMore);
+        
+        if (freshReels.length > 0) {
+           setActiveReelId(freshReels[0]._id);
+        }
       }
       
       // 3. Reset scroll position to top
@@ -210,7 +223,7 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
     } finally {
       setIsRefreshing(false);
     }
-  }, [fetchReels, fetchAds]);
+  }, [fetchAds, isRefreshing, viewHeight]);
 
   useEffect(() => {
     fetchReels(1);
@@ -348,16 +361,36 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
   const handleSkipAd = useCallback(() => console.log('Ad Skipped'), []);
   const handleCTAAd = useCallback(() => console.log('CTA Pressed'), []);
 
-  // — PRODUCTION: Viewability Tracking Logic —
-  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+  // — PRODUCTION: Viewability Tracking Logic (PRELOADING ONLY) —
+  const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
-      setActiveReelId(viewableItems[0].item.id);
+      // PROXIMITY Prep (Neighbors)
+      const activeIdx = viewableItems[0].index;
+      const nearIds = new Set<string>();
+      
+      combinedFeed.forEach((item, idx) => {
+        if (Math.abs(idx - activeIdx) <= 1) {
+           nearIds.add(item.id);
+        }
+      });
+      setNearItemIds(nearIds);
     }
-  }).current;
+  }, [combinedFeed]);
+
+  const onMomentumScrollEnd = useCallback((event: any) => {
+    const yOffset = event.nativeEvent.contentOffset.y;
+    const index = Math.round(yOffset / viewHeight);
+    
+    if (combinedFeed[index]) {
+       const activeId = combinedFeed[index].id;
+       setActiveReelId(activeId);
+    }
+  }, [combinedFeed, viewHeight]);
 
   const viewabilityConfig = useRef({
-    viewAreaCoveragePercentThreshold: 50,
-    minimumViewTime: 0 
+    itemVisiblePercentThreshold: 0, // Very sensitive for preloading
+    minimumViewTime: 0,
+    waitForInteraction: false,
   }).current;
 
   const getItemLayout = useCallback((_: any, index: number) => ({
@@ -383,6 +416,7 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
       <ReelItem 
         reel={item}
         isActive={isFocused && activeReelId === item.id}
+        isNear={nearItemIds.has(item.id)}
         onLike={() => handleLike(item.id)}
         onComment={() => toggleComments(item.id)}
         onShare={() => console.log('Share')}
@@ -421,6 +455,7 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
           
           // — ELITE PERFORMANCE OPTIMIZATIONS —
           onViewableItemsChanged={onViewableItemsChanged}
+          onMomentumScrollEnd={onMomentumScrollEnd}
           viewabilityConfig={viewabilityConfig}
           initialScrollIndex={activeReelId ? combinedFeed.findIndex(i => i.id === activeReelId) : 0}
           onScrollToIndexFailed={(info) => {
@@ -429,12 +464,12 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
                 flatListRef.current?.scrollToIndex({ index: info.index, animated: false });
              });
           }}
-          
-          // Standard Virtualization for 60fps on traditional architecture
-          windowSize={3}
+          // Senior Virtualization for 60fps at Million-User scale
+          windowSize={5}           // Preload 2 screens up/down
           initialNumToRender={1}
-          maxToRenderPerBatch={1}
+          maxToRenderPerBatch={2}
           removeClippedSubviews={true}
+          updateCellsBatchingPeriod={50} // Throttle updates for smooth scroll
 
           // — INFINITE SCROLL —
           onEndReached={() => fetchReels(page)}

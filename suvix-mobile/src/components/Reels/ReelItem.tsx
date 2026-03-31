@@ -24,6 +24,7 @@ interface ReelItemProps {
   onShare: () => void;
   onMute: () => void;
   isMuted: boolean;
+  isNear: boolean; // PRODUCTION: Distance-based lifecycle guard
   onBack?: () => void;
   height?: number;
 }
@@ -40,6 +41,7 @@ const ReelItemInternal = ({
   onShare, 
   onMute, 
   isMuted,
+  isNear,
   onBack,
   height: propHeight
 }: ReelItemProps) => {
@@ -51,6 +53,7 @@ const ReelItemInternal = ({
   const [isPausedByGesture, setIsPausedByGesture] = React.useState(false);
   const [isBuffering, setIsBuffering] = React.useState(false);
   const [videoQuality, setVideoQuality] = React.useState<string>('Auto');
+  const [shouldMount, setShouldMount] = React.useState(isNear);
 
   // — ELITE: Quality Formatter —
   const formatQuality = (height: number) => {
@@ -59,6 +62,19 @@ const ReelItemInternal = ({
     if (height >= 480) return '480p';
     return `${height}p`;
   };
+  
+  // — ELITE: Mounting Hysteresis (Anti-Blink) —
+  React.useEffect(() => {
+    if (isNear) {
+      setShouldMount(true);
+    } else {
+      // If user scrolls past fast, don't unmount immediately to avoid blinking
+      const timer = setTimeout(() => {
+        setShouldMount(false);
+      }, 1500); // 1.5s grace period
+      return () => clearTimeout(timer);
+    }
+  }, [isNear]);
 
   // 1. Impression Tracking (Production Logic)
   React.useEffect(() => {
@@ -137,14 +153,26 @@ const ReelItemInternal = ({
           />
         </View>
       ) : (
-        <ReelPlayer 
-          url={reel.mediaUrl || ''} 
-          isActive={isActive} 
-          isMuted={isMuted} 
-          isPaused={isPausedByGesture}
-          onBuffer={setIsBuffering}
-          onQualityChange={(h) => setVideoQuality(formatQuality(h))}
-        />
+        // PRODUCTION: Logic for Hardware Reclamation with Hysteresis
+        shouldMount ? (
+          <ReelPlayer 
+            url={reel.mediaUrl || ''} 
+            isActive={isActive} 
+            isNear={isNear}
+            isMuted={isMuted} 
+            isPaused={isPausedByGesture}
+            onBuffer={setIsBuffering}
+            onQualityChange={(h) => setVideoQuality(formatQuality(h))}
+          />
+        ) : (
+          <View style={styles.container}>
+             <Image 
+               source={{ uri: MediaConfig.getPosterUrl(reel.mediaUrl) }} 
+               style={StyleSheet.absoluteFill} 
+               resizeMode="contain"
+             />
+          </View>
+        )
       )}
       
       {/* Layer 2: Heart Pop Animation (Double Tap) */}
