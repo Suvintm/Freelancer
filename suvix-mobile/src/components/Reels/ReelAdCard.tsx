@@ -22,7 +22,7 @@ interface ReelAdCardProps {
  * PRODUCTION-GRADE REEL AD CARD
  * Features: 3s Skip Countdown, Pulsing "Advertisement" header, and Dynamic CTA button.
  */
-export const ReelAdCard = ({ 
+export const ReelAdCard = React.memo(({ 
   ad, 
   onSkip, 
   onCTA, 
@@ -147,7 +147,10 @@ export const ReelAdCard = ({
       </View>
     </View>
   );
-};
+});
+
+// Ensure stable display names for debugging
+ReelAdCard.displayName = 'ReelAdCard';
 
 const styles = StyleSheet.create({
   container: {

@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   backButton: {
-    width: 40,
+    width: 80, // Equalized with qualityIndicator for absolute logo centering
     height: 40,
     justifyContent: 'center',
     alignItems: 'flex-start',
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
     height: 20,
   },
   fullBrandingLogo: {
-    width: SCREEN_WIDTH * 0.4,
+    width: SCREEN_WIDTH * 0.35, // Adjusted for safe fit between equal zones
     height: 34,
   },
   brandingText: {

@@ -214,6 +214,10 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
     }
   }, []);
 
+  const handleMute = useCallback(() => setIsMuted(prev => !prev), []);
+  const handleSkipAd = useCallback(() => console.log('Ad Skipped'), []);
+  const handleCTAAd = useCallback(() => console.log('CTA Pressed'), []);
+
   // — PRODUCTION: Viewability Tracking Logic —
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
@@ -238,8 +242,8 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
          <ReelAdCard 
            ad={item} 
            isActive={isFocused && activeReelId === item.id}
-           onSkip={() => console.log('Ad Skiped')}
-           onCTA={() => console.log('CTA Pressed')}
+           onSkip={handleSkipAd}
+           onCTA={handleCTAAd}
            height={viewHeight}
          />
        );
