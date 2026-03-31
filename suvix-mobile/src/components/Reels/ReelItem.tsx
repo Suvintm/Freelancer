@@ -24,6 +24,7 @@ interface ReelItemProps {
   onShare: () => void;
   onMute: () => void;
   isMuted: boolean;
+  onBack?: () => void;
 }
 
 /**
@@ -37,7 +38,8 @@ const ReelItemInternal = ({
   onComment, 
   onShare, 
   onMute, 
-  isMuted 
+  isMuted,
+  onBack
 }: ReelItemProps) => {
   const lastTap = React.useRef(0);
   const tapTimer = React.useRef<NodeJS.Timeout | null>(null);
@@ -146,6 +148,7 @@ const ReelItemInternal = ({
         isActive={isActive}
         progress={isActive ? 0 : 0} 
         onVideoPress={handlePress}
+        onBack={onBack}
       />
     </View>
   );

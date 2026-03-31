@@ -19,6 +19,8 @@ import { ReelAdCard } from '../../src/components/Reels/ReelAdCard';
 import { X } from 'lucide-react-native';
 import { api } from '../../src/api/client';
 import { Reel } from '../../src/types/reel';
+import { BackHandler } from 'react-native';
+import { useNavigation } from 'expo-router';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('screen');
 
@@ -41,7 +43,7 @@ const APP_ADS = [
  * 2. Immersive Full-Screen List (FlatList used as placeholder for FlashList).
  * 3. Integrated Ad/Reel card switching.
  */
-export default function ReelsScreen() {
+export default function ReelsScreen({ onGoHome }: { onGoHome?: () => void }) {
   const [reels, setReels] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -122,7 +124,23 @@ export default function ReelsScreen() {
 
   React.useEffect(() => {
     fetchReels(1);
-  }, []);
+    
+    // — STABILITY: Handle Hardware Back Button (Redirect to Home) —
+    const backAction = () => {
+      if (onGoHome) {
+        onGoHome();
+        return true; // Stop default exit app behavior
+      }
+      return false;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [onGoHome]);
 
   // — PRODUCTION: Unified Feed Logic (Ad Injection) —
   const combinedFeed = React.useMemo(() => {
@@ -200,6 +218,7 @@ export default function ReelsScreen() {
         onShare={() => console.log('Share')}
         onMute={() => setIsMuted(prev => !prev)}
         isMuted={isMuted}
+        onBack={onGoHome}
       />
     );
   };

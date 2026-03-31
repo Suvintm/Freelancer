@@ -22,6 +22,7 @@ interface ReelOverlayProps {
   progress?: number; // 0 to 100
   isActive?: boolean;
   onVideoPress?: () => void;
+  onBack?: () => void;
 }
 
 /**
@@ -37,7 +38,8 @@ const ReelOverlayInternal = ({
   isMuted = false,
   progress = 0,
   isActive = false,
-  onVideoPress
+  onVideoPress,
+  onBack
 }: ReelOverlayProps) => {
   const insets = useSafeAreaInsets();
   
@@ -90,7 +92,7 @@ const ReelOverlayInternal = ({
 
       {/* 1. TOP HEADER (Safe Area Aware) */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
-        <Pressable style={styles.backButton} onPress={() => console.log('Back')}>
+        <Pressable style={styles.backButton} onPress={onBack}>
           <ChevronLeft color="#FFF" size={28} />
         </Pressable>
         
