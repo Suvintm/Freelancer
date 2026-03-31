@@ -72,7 +72,9 @@ export default function TabsLayout() {
 
       {/* Top Navbar - Hidden in Reels for full-screen scrolling */}
       {!isReelsActive && (
-        <TopNavbar onMenuPress={() => setIsSidebarOpen(true)} />
+        <View style={styles.navbarOverlay}>
+          <TopNavbar onMenuPress={() => setIsSidebarOpen(true)} />
+        </View>
       )}
 
       {/* Native Swipe Pager — runs on native thread for 60fps */}
@@ -111,4 +113,11 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   pager:     { flex: 1 },
   page:      { flex: 1 },
+  navbarOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+  },
 });

@@ -50,10 +50,12 @@ export const TopNavbar = ({ onMenuPress }: TopNavbarProps) => {
       </TouchableOpacity>
 
       {/* CENTER: Branded Logo (includes name, no separate text needed) */}
-      <TouchableOpacity 
-        style={styles.logoContainer} 
-        onPress={() => router.push('/(tabs)')}
-        activeOpacity={0.8}
+      <View 
+        style={[
+          styles.logoContainer, 
+          { paddingTop: Math.max(insets.top, 10) }
+        ]} 
+        pointerEvents="none"
       >
         {isDarkMode ? (
           <Image 
@@ -68,7 +70,7 @@ export const TopNavbar = ({ onMenuPress }: TopNavbarProps) => {
             resizeMode="contain" 
           />
         )}
-      </TouchableOpacity>
+      </View>
 
       {/* RIGHT: Actions */}
       <View style={styles.rightSection}>
@@ -114,12 +116,10 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   logoContainer: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 8,
     justifyContent: 'center',
+    zIndex: -1, // Ensure buttons stay on top
   },
   // Dark mode logo
   logoDark: {

@@ -12,7 +12,7 @@ export default function EditorHomeScreen() {
   const palette = isDarkMode ? Colors.dark : Colors.light;
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.primary }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: palette.primary }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
@@ -32,13 +32,13 @@ export default function EditorHomeScreen() {
         </View>
 
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { padding: 24 },
+  scrollContent: { padding: 24, paddingTop: 60 },
   header: { marginBottom: 32 },
   welcomeTxt: { fontSize: 16, fontWeight: '500' },
   nameTxt: { fontSize: 24, fontWeight: '800' },

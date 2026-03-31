@@ -6,7 +6,8 @@ import {
   Pressable,
   Text,
   BackHandler,
-  FlatList
+  FlatList,
+  useWindowDimensions
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import Animated, { 
@@ -51,7 +52,8 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
   const [activeReelId, setActiveReelId] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
-  const [viewHeight, setViewHeight] = useState(SCREEN_HEIGHT); 
+  const { height: windowHeight } = useWindowDimensions();
+  const [viewHeight, setViewHeight] = useState(windowHeight); 
   const flatListRef = useRef<FlatList>(null);
   
   // — ANIMATION SHARED VALUES —
@@ -144,18 +146,30 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
     return () => backHandler.remove();
   }, [onGoHome]);
 
-  // — STABILITY: Snap recovery on Re-focus —
+  // — STABILITY: Snap recovery on Re-focus & Height Change —
   useEffect(() => {
     if (isFocused && activeReelId && reels.length > 0) {
       const index = combinedFeed.findIndex(item => item.id === activeReelId);
       if (index !== -1) {
-        // Delay slightly to ensure layout is ready
-        setTimeout(() => {
-          flatListRef.current?.scrollToIndex({ index, animated: false });
-        }, 100);
+        // PRODUCTION: Instant snap for better UX
+        flatListRef.current?.scrollToIndex({ 
+          index, 
+          animated: false,
+          viewPosition: 0 
+        });
+
+        // Fallback for slower rendering cycles
+        const timer = setTimeout(() => {
+          flatListRef.current?.scrollToIndex({ 
+            index, 
+            animated: false,
+            viewPosition: 0
+          });
+        }, 60); // Reduced delay for faster stabilization
+        return () => clearTimeout(timer);
       }
     }
-  }, [isFocused]);
+  }, [isFocused, viewHeight, activeReelId]);
 
   // — PRODUCTION: Unified Feed Logic (Ad Injection) —
   const combinedFeed = React.useMemo(() => {
@@ -274,6 +288,13 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
           // — ELITE PERFORMANCE OPTIMIZATIONS —
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
+          initialScrollIndex={activeReelId ? combinedFeed.findIndex(i => i.id === activeReelId) : 0}
+          onScrollToIndexFailed={(info) => {
+             const wait = new Promise(resolve => setTimeout(resolve, 100));
+             wait.then(() => {
+                flatListRef.current?.scrollToIndex({ index: info.index, animated: false });
+             });
+          }}
           
           // Standard Virtualization for 60fps on traditional architecture
           windowSize={3}
