@@ -19,6 +19,7 @@ import {
 //   getSiteSettingsAdmin,
 } from "../controllers/advertisementController.js";
 // import { protectAdmin } from "../../../middleware/adminAuth.js";
+import { feedLimiter, impressionLimiter } from "../../../middleware/rateLimiter.js";
 
 const router = express.Router();
 
@@ -62,10 +63,10 @@ router.delete("/:id", protectAdmin, deleteAd);
 router.get("/settings", getSiteSettingsPublic);       // Global ad toggle (for frontend)
 
 // ── Public: Wildcard & tracking (MUST be last) ──────────────────────
-router.get("/", getActiveAds);                        // ?location=home_banner|reels_feed|explore_page
+router.get("/", feedLimiter, getActiveAds);                        // ?location=home_banner|reels_feed|explore_page
 router.get("/:id", getAdById);                        // Single ad for AdDetailsPage
-router.post("/:id/view", trackAdView);                // Track view { location }
-router.post("/:id/click", trackAdClick);              // Track click
+router.post("/:id/view", impressionLimiter, trackAdView);                // Track view { location }
+router.post("/:id/click", impressionLimiter, trackAdClick);              // Track click
 
 export default router;
 

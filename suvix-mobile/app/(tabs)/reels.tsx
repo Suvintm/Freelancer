@@ -7,7 +7,8 @@ import {
   Text,
   BackHandler,
   FlatList,
-  useWindowDimensions
+  useWindowDimensions,
+  RefreshControl
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import Animated, { 
@@ -28,12 +29,23 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // PRODUCTION: AD FALLBACKS
 const APP_ADS = [
   {
-    id: 'ad_1',
+    _id: 'ad_1_premium',
     type: 'ad' as const,
     companyName: 'SuviX Premium',
-    title: 'Unlock ad-free experience and premium content.',
+    title: 'Unlock an ad-free experience and premium content.',
     ctaText: 'GET PREMIUM',
-    websiteDisplay: 'suvix.in/premium'
+    websiteDisplay: 'suvix.in/premium',
+    mediaType: 'image',
+    mediaUrl: 'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=1080&auto=format&fit=crop',
+    reelConfig: {
+      btnVariant: 'filled',
+      btnBgColor: '#FFF',
+      btnTextColor: '#000',
+      btnRadius: 'md',
+      showDescription: true,
+      overlayOpacity: 90,
+      overlayColor: '#000000'
+    }
   }
 ];
 
@@ -51,10 +63,14 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
   const [hasMore, setHasMore] = useState(true);
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
   const [activeReelId, setActiveReelId] = useState<string | null>(null);
+  const [ads, setAds] = useState<any[]>([]);
   const [isMuted, setIsMuted] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { height: windowHeight } = useWindowDimensions();
   const [viewHeight, setViewHeight] = useState(windowHeight); 
   const flatListRef = useRef<FlatList>(null);
+  const fetchingRef = useRef(false);
+  const adsFetchingRef = useRef(false);
   
   // — ANIMATION SHARED VALUES —
   const scale = useSharedValue(1);
@@ -94,7 +110,8 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
 
   // — PRODUCTION: Data Fetching —
   const fetchReels = useCallback(async (p: number) => {
-    if (loading || !hasMore) return;
+    if (fetchingRef.current || !hasMore) return;
+    fetchingRef.current = true;
     setLoading(true);
     try {
       const res = await api.get('/reels/feed', { params: { page: p, limit: 10 } });
@@ -123,11 +140,50 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
       console.error('Fetch Reels Error:', e);
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
-  }, [loading, hasMore, activeReelId]);
+  }, [hasMore, activeReelId]);
+
+  // — PRODUCTION: Ad Fetching (GET /api/ads?location=reels_feed) —
+  const fetchAds = useCallback(async () => {
+    if (adsFetchingRef.current) return;
+    adsFetchingRef.current = true;
+    try {
+      const res = await api.get('/ads', { params: { location: 'reels_feed' } });
+      if (res.data.success) {
+        setAds(res.data.ads || []);
+      }
+    } catch (e) {
+      console.error('Fetch Ads Error:', e);
+    } finally {
+      adsFetchingRef.current = false;
+    }
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      // 1. Reset feed specific flags
+      viewedAds.current.clear();
+      
+      // 2. Parallel fetch fresh content
+      await Promise.all([
+        fetchReels(1),
+        fetchAds()
+      ]);
+      
+      // 3. Reset scroll position to top
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    } catch (e) {
+      console.error('Refresh Error:', e);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchReels, fetchAds]);
 
   useEffect(() => {
     fetchReels(1);
+    fetchAds();
     
     // — STABILITY: Handle Hardware Back Button (Redirect to Home) —
     const backAction = () => {
@@ -144,7 +200,28 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
     );
 
     return () => backHandler.remove();
-  }, [onGoHome]);
+  }, [onGoHome, isFocused]); // RE-RUN STABILIZED: Removed unstable function dependencies. 🛡️
+
+  // — PRODUCTION: Unified Feed Logic (Dynamic Backend Ad Injection) —
+  const combinedFeed = React.useMemo(() => {
+    const feed: any[] = [];
+    const adsToInject = ads; // User Requested: Skip if no ads from backend
+
+    reels.forEach((reel, index) => {
+      feed.push({ ...reel, id: reel._id, type: 'reel' });
+      
+      // Inject Ad every 3 reels ONLY if ads exist
+      if ((index + 1) % 3 === 0 && adsToInject.length > 0) {
+        const adIndex = (Math.floor((index + 1) / 3) - 1) % adsToInject.length;
+        const ad = adsToInject[adIndex];
+        
+        // PRODUCTION: Composite key ensures safe virtualization (e.g. ad_pos_idx_2_65b3...)
+        const compositeId = `ad_pos_idx_${index}_${ad?._id || ad?.id || 'null'}`;
+        feed.push({ ...ad, id: compositeId, type: 'ad' });
+      }
+    });
+    return feed;
+  }, [reels, ads]);
 
   // — STABILITY: Snap recovery on Re-focus & Height Change —
   useEffect(() => {
@@ -171,20 +248,24 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
     }
   }, [isFocused, viewHeight, activeReelId]);
 
-  // — PRODUCTION: Unified Feed Logic (Ad Injection) —
-  const combinedFeed = React.useMemo(() => {
-    const feed: any[] = [];
-    reels.forEach((reel, index) => {
-      feed.push({ ...reel, id: reel._id, type: 'reel' });
-      // Inject Ad every 3 reels
-      if ((index + 1) % 3 === 0) {
-        const ad = APP_ADS[0]; 
-        // PRODUCTION: Use a composite key to ensure Ad uniqueness across pagination
-        feed.push({ ...ad, id: `ad_pos_${index}_${ad.id}`, type: 'ad' });
-      }
-    });
-    return feed;
-  }, [reels]);
+  // — PRODUCTION: Impression Tracking (POST /api/ads/:id/view) —
+  const viewedAds = useRef(new Set<string>());
+  useEffect(() => {
+    if (isFocused && activeReelId && activeReelId.startsWith('ad_')) {
+       // Extract actual backend ID if composite (e.g., ad_pos_2_actualId)
+       const parts = activeReelId.split('_');
+       const backendId = parts[parts.length - 1]; 
+       
+       if (backendId && !viewedAds.current.has(activeReelId)) {
+          viewedAds.current.add(activeReelId);
+          api.post(`/ads/${backendId}/view`, { location: 'reels_feed' })
+             .catch(e => console.error('Ad Track Error:', e));
+          
+          if (__DEV__) console.log('📢 Ad Impression Tracked:', backendId);
+       }
+    }
+  }, [isFocused, activeReelId]);
+
 
   // — PRODUCTION: Interaction Handlers —
   const handleLike = useCallback(async (reelId: string) => {
@@ -309,6 +390,16 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
           // — INFINITE SCROLL —
           onEndReached={() => fetchReels(page)}
           onEndReachedThreshold={0.5}
+
+          // — PULL TO REFRESH —
+          refreshControl={
+            <RefreshControl 
+               refreshing={isRefreshing} 
+               onRefresh={handleRefresh}
+               tintColor="#FFF" // For iOS
+               colors={['#FFF']} // For Android
+            />
+          }
         />
       </Animated.View>
 

@@ -1,4 +1,5 @@
 // advertisementController.js - Production-grade ad management
+import mongoose from "mongoose";
 import { Advertisement } from "../models/Advertisement.js";
 import { getSettings } from "../../system/models/SiteSettings.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
@@ -231,6 +232,11 @@ export const trackAdView = asyncHandler(async (req, res) => {
   if (location === "reels_feed") update.$inc.reelViews = 1;
   else if (location === "explore_page") update.$inc.exploreViews = 1;
   else if (location === "home_banner") update.$inc.homeBannerViews = 1;
+
+  // 🛠️ SAFETY GUARD: Prevent 500 error on non-ObjectId (fallback ads)
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(200).json({ success: true, message: "Skipped telemetry for non-database ID" });
+  }
 
   await Advertisement.findByIdAndUpdate(id, update);
 

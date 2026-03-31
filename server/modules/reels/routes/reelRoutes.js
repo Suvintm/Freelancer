@@ -19,13 +19,14 @@ import {
     getSearchSuggestions,
     getSuggestedDiscovery,
 } from "../controllers/reelController.js";
+import { feedLimiter, impressionLimiter } from "../../../middleware/rateLimiter.js";
 import authMiddleware from "../../../middleware/authMiddleware.js";
 
 const router = express.Router();
 
 // ============ PUBLIC ROUTES ============
 // Get reels feed (can be accessed without auth for discovery)
-router.get("/feed", getReelsFeed);
+router.get("/feed", feedLimiter, getReelsFeed);
 
 // Get search suggestions (TRIE O(L) Autocomplete)
 router.get("/search/suggest", getSearchSuggestions);
@@ -46,7 +47,7 @@ router.get("/:id/comments", getComments);
 router.get("/editor/:userId", getReelsByEditor);
 
 // Increment view - PUBLIC (allows anonymous views like Instagram)
-router.post("/:id/view", incrementView);
+router.post("/:id/view", impressionLimiter, incrementView);
 
 // ============ PROTECTED ROUTES ============
 router.use(authMiddleware);
@@ -73,10 +74,10 @@ router.post("/:id/comments/:commentId/like", toggleCommentLike);
 router.get("/analytics/my-reels", getMyReelsAnalytics);
 
 // Track watch time (completion %)
-router.post("/:id/watch-time", trackWatchTime);
+router.post("/:id/watch-time", impressionLimiter, trackWatchTime);
 
 // Track skip (fast scroll-past < 2s) — negative signal
-router.post("/:id/skip", trackSkip);
+router.post("/:id/skip", impressionLimiter, trackSkip);
 
 // Batch analytics (Product-Grade: Multiple events in one hit)
 router.post("/analytics/batch", batchAnalytics);

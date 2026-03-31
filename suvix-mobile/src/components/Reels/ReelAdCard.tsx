@@ -97,7 +97,13 @@ export const ReelAdCard = React.memo(({
 
       {/* 2. GRADIENT OVERLAY (Layer 2) */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.8)', 'transparent', 'rgba(0,0,0,0.9)']}
+        colors={[
+          'rgba(0,0,0,0.8)', 
+          'transparent', 
+          ad.reelConfig?.overlayColor ? 
+            `${ad.reelConfig.overlayColor}${Math.round((ad.reelConfig.overlayOpacity || 80) * 2.55).toString(16).padStart(2, '0')}` : 
+            'rgba(0,0,0,0.9)'
+        ]}
         style={[StyleSheet.absoluteFill, { zIndex: 1 }]}
       />
 
@@ -131,13 +137,29 @@ export const ReelAdCard = React.memo(({
 
       {/* BOTTOM OVERLAY: CTA and Info */}
       <View style={styles.bottomOverlay}>
-        <Text style={styles.companyName}>{ad.companyName || 'Sponsored'}</Text>
-        <Text style={styles.title}>{ad.title || 'Discover SuviX Premium'}</Text>
+        <Text style={styles.companyName}>{ad.companyName || ad.advertiserName || 'Sponsored'}</Text>
         
-        {/* Pulsing CTA Button */}
-        <Pressable style={styles.ctaButton} onPress={onCTA}>
-           <Text style={styles.ctaText}>{ad.ctaText || 'LEARN MORE'}</Text>
-           <ChevronRight color="#000" size={18} />
+        {(!ad.reelConfig || ad.reelConfig.showDescription !== false) && (
+          <Text style={styles.title} numberOfLines={2}>
+            {ad.reelConfig?.reelDescription || ad.title || 'Discover SuviX Premium'}
+          </Text>
+        )}
+        
+        {/* — DYNAMIC TEMPLATE CTA — */}
+        <Pressable 
+          style={[
+            styles.ctaButton, 
+            getDynamicButtonStyle(ad.reelConfig)
+          ]} 
+          onPress={onCTA}
+        >
+           <Text style={[
+             styles.ctaText, 
+             { color: ad.reelConfig?.btnTextColor || '#000' }
+           ]}>
+             {ad.reelConfig?.ctaText || ad.ctaText || 'LEARN MORE'}
+           </Text>
+           <ChevronRight color={ad.reelConfig?.btnTextColor || '#000'} size={18} />
         </Pressable>
 
         <View style={styles.footer}>
@@ -148,6 +170,31 @@ export const ReelAdCard = React.memo(({
     </View>
   );
 });
+
+// — HELPER: Dynamic Styling Resolver —
+const getDynamicButtonStyle = (config: any) => {
+  if (!config) return {};
+  
+  const radiusMap: Record<string, number> = { sm: 4, md: 12, lg: 20, full: 25 };
+  const styles: any = {
+    borderRadius: radiusMap[config.btnRadius] || 12,
+  };
+
+  if (config.btnVariant === 'outline') {
+    styles.backgroundColor = 'transparent';
+    styles.borderWidth = 1.5;
+    styles.borderColor = config.btnBorderColor || '#FFF';
+  } else if (config.btnVariant === 'ghost') {
+    styles.backgroundColor = config.btnBgColor || 'rgba(255,255,255,0.1)';
+    styles.borderWidth = 0;
+  } else {
+    // Default: Filled
+    styles.backgroundColor = config.btnBgColor || '#FFF';
+    styles.borderWidth = 0;
+  }
+
+  return styles;
+};
 
 // Ensure stable display names for debugging
 ReelAdCard.displayName = 'ReelAdCard';
@@ -281,6 +328,14 @@ const styles = StyleSheet.create({
   },
   backgroundDimmer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  topDimmer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+    backgroundColor: 'rgba(0,0,0,0.6)',
   }
 });

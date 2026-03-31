@@ -119,5 +119,29 @@ export const locationSearchLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// ─── Feed limiter: 30 req / min ──────────────────────────────────────────
+// 🏎️ CONTENT FLOW PROTECTION: Optimized for Reels and Ads feeds.
+export const feedLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30, // 30 pages per minute is more than enough for a real human
+  store: makeRedisStore("rl:feed:"),
+  message: {
+    success: false,
+    message: "Content stream busy. Please slow down.",
+  },
+});
+
+// ─── Impression limiter: 100 req / min ──────────────────────────────────
+// 📈 ANALYTICS PROTECTION: Safeguards ad view tracking endpoints.
+export const impressionLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  store: makeRedisStore("rl:impress:"),
+  message: {
+    success: false,
+    message: "Telemetry quota exceeded.",
+  },
+});
+
 // Export the redis client so server.js can health-check it on startup
 export { redis };
