@@ -1,6 +1,9 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useColorScheme } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { Colors as StaticColors } from '../constants/Colors';
+
+const THEME_KEY = 'suvix_theme_preference';
 
 type ThemeMode = 'light' | 'dark';
 
@@ -22,6 +25,7 @@ interface ThemeContextType {
   themeMode: ThemeMode;
   toggleTheme: () => void;
   setThemeMode: (mode: ThemeMode) => void;
+  isLoaded: boolean;
 }
 
 const lightTheme: ThemeColors = {
@@ -51,18 +55,40 @@ const darkTheme: ThemeColors = {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const systemColorScheme = useColorScheme();
-  const [themeMode, setThemeMode] = useState<ThemeMode>(systemColorScheme || 'dark');
+  const [themeMode, setThemeModeState] = useState<ThemeMode>('dark');
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    async function loadTheme() {
+      try {
+        const savedTheme = await SecureStore.getItemAsync(THEME_KEY);
+        if (savedTheme === 'light' || savedTheme === 'dark') {
+          setThemeModeState(savedTheme as ThemeMode);
+        }
+      } catch (e) {
+        console.error('❌ [THEME] Error loading theme:', e);
+      } finally {
+        setIsLoaded(true);
+      }
+    }
+    loadTheme();
+  }, []);
 
   const isDarkMode = themeMode === 'dark';
   const theme = isDarkMode ? darkTheme : lightTheme;
 
+  const setThemeMode = async (mode: ThemeMode) => {
+    setThemeModeState(mode);
+    await SecureStore.setItemAsync(THEME_KEY, mode);
+  };
+
   const toggleTheme = () => {
-    setThemeMode((prev) => (prev === 'light' ? 'dark' : 'light'));
+    const nextMode = themeMode === 'light' ? 'dark' : 'light';
+    setThemeMode(nextMode);
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, isDarkMode, themeMode, toggleTheme, setThemeMode }}>
+    <ThemeContext.Provider value={{ theme, isDarkMode, themeMode, toggleTheme, setThemeMode, isLoaded }}>
       {children}
     </ThemeContext.Provider>
   );
