@@ -98,6 +98,30 @@ export const MediaConfig = {
   },
 
   /**
+   * getPosterUrl - Safely generates a poster/thumbnail URL from a video URL.
+   */
+  getPosterUrl: (input: any): string => {
+    let url = MediaConfig.repairUrl(input);
+    if (!url) return '';
+
+    // If it's Cloudinary, we can force a JPG
+    if (url.includes("res.cloudinary.com")) {
+        let poster = url.replace(/\.[^./\\]+$/, ".jpg");
+        // Strip HLS profile if present
+        if (poster.includes("/sp_")) {
+            poster = poster.replace(/\/sp_[^/]+\//, "/upload/");
+        }
+        // Inject optimizations
+        if (!poster.includes("/f_auto")) {
+            poster = poster.replace("/upload/", "/upload/f_auto,q_auto,w_800,c_scale/");
+        }
+        return poster;
+    }
+
+    return url;
+  },
+
+  /**
    * toOptimizedImage - Injects image quality/format flags.
    */
   toOptimizedImage: (rawUrl: string, width: number = 500): string => {

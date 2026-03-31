@@ -59,22 +59,34 @@ export const ReelAdCard = ({
       {/* 1. BACKGROUND MEDIA LAYER (Layer 1) */}
       <View style={StyleSheet.absoluteFill}>
         {ad.mediaUrl ? (
-          ad.mediaType === 'video' ? (
-            <Video
-              source={{ uri: MediaConfig.toAdaptiveStream(ad.mediaUrl) }}
-              style={StyleSheet.absoluteFill}
-              resizeMode="cover"
-              repeat
-              muted={isMuted}
-              paused={!isActive}
-            />
-          ) : (
-            <Image 
-              source={{ uri: MediaConfig.toOptimizedImage(ad.mediaUrl, 1080) }} 
-              style={StyleSheet.absoluteFill} 
-              resizeMode="cover" 
-            />
-          )
+          <View style={StyleSheet.absoluteFill}>
+             {/* Background: Blurred Cover */}
+             <Image 
+               source={{ uri: ad.mediaType === 'video' ? MediaConfig.getPosterUrl(ad.mediaUrl) : MediaConfig.repairUrl(ad.mediaUrl) }} 
+               style={StyleSheet.absoluteFill} 
+               blurRadius={25}
+               resizeMode="cover"
+             />
+             <View style={styles.backgroundDimmer} />
+
+             {/* Foreground: Clear Contain */}
+             {ad.mediaType === 'video' ? (
+                <Video
+                  source={{ uri: MediaConfig.toAdaptiveStream(ad.mediaUrl) }}
+                  style={StyleSheet.absoluteFill}
+                  resizeMode="contain"
+                  repeat
+                  muted={isMuted}
+                  paused={!isActive}
+                />
+             ) : (
+                <Image 
+                  source={{ uri: MediaConfig.toOptimizedImage(ad.mediaUrl, 1080) }} 
+                  style={StyleSheet.absoluteFill} 
+                  resizeMode="contain" 
+                />
+             )}
+          </View>
         ) : (
           <View style={styles.adMediaPlaceholder} />
         )}
@@ -260,5 +272,9 @@ const styles = StyleSheet.create({
   adMediaPlaceholder: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#0A0A0A', // Dark depth for ads
+  },
+  backgroundDimmer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
   }
 });

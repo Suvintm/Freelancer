@@ -93,8 +93,18 @@ export default function ReelsScreen() {
     try {
       const res = await api.get('/reels/feed', { params: { page: p, limit: 10 } });
       if (res.data.success) {
-        const newItems = res.data.reels;
-        setReels(prev => [...prev, ...newItems]);
+        const newItems = res.data.reels || [];
+        
+        setReels(prev => {
+          if (p === 1) return newItems;
+          
+          // PRODUCTION: Deduplicate to prevent "Duplicate Key" errors
+          const existingIds = new Set(prev.map(r => r._id));
+          const uniqueNewItems = newItems.filter((item: any) => !existingIds.has(item._id));
+          
+          return [...prev, ...uniqueNewItems];
+        });
+
         setHasMore(res.data.pagination.hasMore);
         setPage(p + 1);
         
@@ -122,7 +132,8 @@ export default function ReelsScreen() {
       // Inject Ad every 3 reels
       if ((index + 1) % 3 === 0) {
         const ad = APP_ADS[0]; 
-        feed.push({ ...ad, id: `ad_${index}` });
+        // PRODUCTION: Use a composite key to ensure Ad uniqueness across pagination
+        feed.push({ ...ad, id: `ad_pos_${index}_${ad.id}`, type: 'ad' });
       }
     });
     return feed;

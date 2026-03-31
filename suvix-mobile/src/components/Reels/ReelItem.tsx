@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, StyleSheet, Dimensions, Pressable } from 'react-native';
+import { View, StyleSheet, Dimensions, Pressable, Image } from 'react-native';
 import { ReelPlayer } from '../ReelPlayer';
 import { ReelOverlay } from './ReelOverlay';
+import { MediaConfig } from '../../constants/MediaConfig';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
@@ -100,12 +101,32 @@ const ReelItemInternal = ({
 
   return (
     <View style={styles.container}>
-      {/* Layer 1: Background Video */}
-      <ReelPlayer 
-        url={reel.mediaUrl || ''} 
-        isActive={isActive} 
-        isMuted={isMuted} 
-      />
+      {/* Layer 1: Background Media */}
+      {reel.mediaType === 'image' ? (
+        <View style={styles.container}>
+          {/* Layer 1 (Background): Blurred Cover */}
+          <Image 
+            source={{ uri: MediaConfig.repairUrl(reel.mediaUrl) }} 
+            style={StyleSheet.absoluteFill} 
+            blurRadius={25}
+            resizeMode="cover"
+          />
+          <View style={styles.backgroundDimmer} />
+          
+          {/* Layer 2 (Foreground): Clear Contain */}
+          <Image 
+            source={{ uri: MediaConfig.repairUrl(reel.mediaUrl) }} 
+            style={StyleSheet.absoluteFill} 
+            resizeMode="contain"
+          />
+        </View>
+      ) : (
+        <ReelPlayer 
+          url={reel.mediaUrl || ''} 
+          isActive={isActive} 
+          isMuted={isMuted} 
+        />
+      )}
       
       {/* Layer 2: Heart Pop Animation (Double Tap) */}
       <View style={styles.heartOverlay} pointerEvents="none">
@@ -138,6 +159,10 @@ const styles = StyleSheet.create({
     height: SCREEN_HEIGHT,
     backgroundColor: '#000',
     overflow: 'hidden',
+  },
+  backgroundDimmer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   heartOverlay: {
     ...StyleSheet.absoluteFillObject,
