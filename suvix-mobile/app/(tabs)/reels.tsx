@@ -194,8 +194,9 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
   }).current;
 
   const viewabilityConfig = useRef({
-    // PRODUCTION: Instagram Standard (Dominant Item plays at 51% visibility)
-    itemVisiblePercentThreshold: 51 
+    // PRODUCTION: Use Area Coverage for more precise snapping
+    viewAreaCoveragePercentThreshold: 50,
+    minimumViewTime: 0 // Instant trigger
   }).current;
 
   const renderItem = ({ item }: { item: any }) => {
