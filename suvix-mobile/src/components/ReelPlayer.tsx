@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator, Image } from 'react-native';
-import Video, { VideoRef } from 'react-native-video';
+import Video, { VideoRef, SelectedVideoTrackType } from 'react-native-video';
 import { MediaConfig } from '../constants/MediaConfig';
 import { Colors } from '../constants/Colors';
 
@@ -13,11 +13,11 @@ interface ReelPlayerProps {
 }
 
 /**
- * PRODUCTION-GRADE REEL PLAYER
+ * PRODUCTION-GRADE REEL PLAYER (ABR OPTIMIZED)
  * Custom wrapper around react-native-video optimized for:
- * 1. Infinite scrolling with FlashList.
- * 2. HLS Adaptive bitrate streaming via MediaConfig.
- * 3. Minimal memory footprint.
+ * 1. Adaptive Bitrate (ABR) via Cloudinary HLS.
+ * 2. Rapid component recycling.
+ * 3. Network resilience on slow connections.
  */
 const ReelPlayerInternal = ({ url, isActive, isMuted, onBuffer, isPaused = false }: ReelPlayerProps) => {
   const videoRef = useRef<VideoRef>(null);
@@ -26,14 +26,14 @@ const ReelPlayerInternal = ({ url, isActive, isMuted, onBuffer, isPaused = false
 
   useEffect(() => {
     if (!isActive && videoRef.current) {
-        // Pause and seek to 0 to save resources when not visible
+        // Reset playback when not visible to save resources
         videoRef.current.seek(0);
     }
   }, [isActive]);
 
   return (
     <View style={styles.container}>
-      {/* LAYER 1: BLURRED BACKGROUND (Fills screen) */}
+      {/* LAYER 1: BLURRED BACKGROUND */}
       <Image 
         source={{ uri: posterUrl }} 
         style={StyleSheet.absoluteFill} 
@@ -42,7 +42,7 @@ const ReelPlayerInternal = ({ url, isActive, isMuted, onBuffer, isPaused = false
       />
       <View style={styles.backgroundDimmer} />
 
-      {/* LAYER 2: MAIN VIDEO (Fitted, No Cropping) */}
+      {/* LAYER 2: MAIN VIDEO (With Intelligence) */}
       <Video
         ref={videoRef}
         key={hlsUrl}
@@ -56,16 +56,24 @@ const ReelPlayerInternal = ({ url, isActive, isMuted, onBuffer, isPaused = false
         playWhenInactive={false}
         ignoreSilentSwitch="obey"
         onBuffer={(e) => onBuffer?.(e.isBuffering)}
-        // ELITE: Ultra-aggressive "Instant-Play" buffer config
-        bufferConfig={{
-          minBufferMs: 500,        // Start playing after 0.5s of data
-          maxBufferMs: 3000,
-          bufferForPlaybackMs: 250, // Minimal buffer before initial start
-          bufferForPlaybackAfterRebufferMs: 500,
+        
+        // ELITE: Hardware-Accelerated Adaptive Bitrate (ABR)
+        selectedVideoTrack={{
+          type: SelectedVideoTrackType.AUTO // Forces native engine to choose quality based on bandwidth
         }}
-        // PERFORMANCE: Professional Video Toggles
+        
+        // RESILIENCE: High-performance buffer for network fluidity
+        // We use slightly larger buffers to prevent "stutter" on spikes
+        bufferConfig={{
+          minBufferMs: 2000,         // Wait for 2s of data on poor connections
+          maxBufferMs: 5000,
+          bufferForPlaybackMs: 1000, // Minimal delay to start
+          bufferForPlaybackAfterRebufferMs: 1500,
+        }}
+        
+        // PERFORMANCE: Professional Native Toggles
         preventsDisplaySleepDuringVideoPlayback={true}
-        automaticallyWaitsToMinimizeStalling={false}
+        automaticallyWaitsToMinimizeStalling={true}
       />
       
       {isActive && (
