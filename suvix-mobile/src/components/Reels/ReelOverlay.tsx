@@ -23,6 +23,9 @@ interface ReelOverlayProps {
   isActive?: boolean;
   onVideoPress?: () => void;
   onBack?: () => void;
+  isPaused?: boolean;
+  onPressIn?: () => void;
+  onPressOut?: () => void;
 }
 
 /**
@@ -39,7 +42,10 @@ const ReelOverlayInternal = ({
   progress = 0,
   isActive = false,
   onVideoPress,
-  onBack
+  onBack,
+  isPaused = false,
+  onPressIn,
+  onPressOut
 }: ReelOverlayProps) => {
   const insets = useSafeAreaInsets();
   
@@ -84,10 +90,13 @@ const ReelOverlayInternal = ({
 
   return (
     <View style={styles.container} pointerEvents="box-none">
-      {/* 0. BACKGROUND TAP LAYER (Layer 0 - for Mute/Like) */}
+      {/* 0. BACKGROUND TAP LAYER (Layer 0 - for Mute/Like/Pause) */}
       <Pressable 
         style={StyleSheet.absoluteFill} 
         onPress={onVideoPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        delayLongPress={150}
       />
 
       {/* 1. TOP HEADER (Safe Area Aware) */}
@@ -198,7 +207,7 @@ const ReelOverlayInternal = ({
                   <Text style={styles.followText}>Follow</Text>
                 </Pressable>
              </View>
-             <MusicVisualizer isPlaying={isActive} />
+             <MusicVisualizer isPlaying={isActive && !isPaused} />
           </View>
         </View>
 

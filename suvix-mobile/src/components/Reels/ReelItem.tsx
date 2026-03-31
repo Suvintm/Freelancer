@@ -48,6 +48,7 @@ const ReelItemInternal = ({
   const tapTimer = React.useRef<NodeJS.Timeout | null>(null);
   const heartScale = useSharedValue(0);
   const heartOpacity = useSharedValue(0);
+  const [isPausedByGesture, setIsPausedByGesture] = React.useState(false);
 
   // 1. Impression Tracking (Production Logic)
   React.useEffect(() => {
@@ -130,6 +131,7 @@ const ReelItemInternal = ({
           url={reel.mediaUrl || ''} 
           isActive={isActive} 
           isMuted={isMuted} 
+          isPaused={isPausedByGesture}
         />
       )}
       
@@ -152,6 +154,9 @@ const ReelItemInternal = ({
         progress={isActive ? 0 : 0} 
         onVideoPress={handlePress}
         onBack={onBack}
+        isPaused={isPausedByGesture}
+        onPressIn={() => setIsPausedByGesture(true)}
+        onPressOut={() => setIsPausedByGesture(false)}
       />
     </View>
   );

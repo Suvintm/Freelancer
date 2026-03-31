@@ -9,6 +9,7 @@ interface ReelPlayerProps {
   isActive: boolean; // Only play if this reel is currently visible
   isMuted: boolean;
   onBuffer?: (isBuffering: boolean) => void;
+  isPaused?: boolean;
 }
 
 /**
@@ -18,7 +19,7 @@ interface ReelPlayerProps {
  * 2. HLS Adaptive bitrate streaming via MediaConfig.
  * 3. Minimal memory footprint.
  */
-const ReelPlayerInternal = ({ url, isActive, isMuted, onBuffer }: ReelPlayerProps) => {
+const ReelPlayerInternal = ({ url, isActive, isMuted, onBuffer, isPaused = false }: ReelPlayerProps) => {
   const videoRef = useRef<VideoRef>(null);
   const hlsUrl = MediaConfig.toAdaptiveStream(url);
   const posterUrl = MediaConfig.getPosterUrl(url);
@@ -49,7 +50,7 @@ const ReelPlayerInternal = ({ url, isActive, isMuted, onBuffer }: ReelPlayerProp
         style={StyleSheet.absoluteFill}
         resizeMode="contain"
         repeat={true}
-        paused={!isActive}
+        paused={!isActive || isPaused}
         muted={isMuted}
         playInBackground={false}
         playWhenInactive={false}

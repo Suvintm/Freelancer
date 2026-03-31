@@ -124,16 +124,12 @@ function InitialRoot() {
       console.log(`🔒 [GUARD] Authenticated. User Role: ${role || 'UNKNOWN'}`);
 
       if (inLoginGroup || !segments[0] || segments[0] === 'index') {
+        const role = user?.role?.toLowerCase();
         if (role === 'pending') {
           router.replace('/role-selection');
-        } else if (role === 'editor') {
-          router.replace('/(tabs)/editor');
-        } else if (role === 'client') {
-          router.replace('/(tabs)/client');
         } else {
-          // If role is missing (API error?), fallback to login to re-auth
-          console.warn('⚠️ [GUARD] Missing user role. Forcing re-auth.');
-          router.replace('/login');
+          // PRODUCTION: Unified Tab Experience (Swipe Pager)
+          router.replace('/(tabs)');
         }
       }
     }
