@@ -12,7 +12,7 @@ export default function EditorHomeScreen() {
   const palette = isDarkMode ? Colors.dark : Colors.light;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: palette.primary }]}>
+    <View style={[styles.container, { backgroundColor: palette.primary }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
@@ -32,7 +32,7 @@ export default function EditorHomeScreen() {
         </View>
 
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../constants/Colors';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /** Modern rounded hamburger menu icon */
 const RoundedMenuIcon = ({ color }: { color: string }) => (
@@ -23,6 +24,7 @@ export const TopNavbar = ({ onMenuPress }: TopNavbarProps) => {
   const { user } = useAuthStore();
   const { isDarkMode, toggleTheme } = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const handleRefresh = () => {
     // Subtle visual indicator of refresh could be added here
@@ -30,7 +32,14 @@ export const TopNavbar = ({ onMenuPress }: TopNavbarProps) => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: isDarkMode ? 'rgba(5, 5, 9, 0.95)' : 'rgba(255, 255, 255, 0.95)' }]}>
+    <View style={[
+      styles.container, 
+      { 
+        backgroundColor: isDarkMode ? 'rgba(5, 5, 9, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        paddingTop: Math.max(insets.top, 10),
+        height: Math.max(insets.top, 20) + 50
+      }
+    ]}>
       {/* LEFT: Modern Rounded Menu Icon */}
       <TouchableOpacity 
         style={styles.iconButton} 
@@ -98,10 +107,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    height: Platform.OS === 'ios' ? 100 : 70,
-    paddingTop: Platform.OS === 'ios' ? 40 : 10,
     paddingHorizontal: 16,
-    borderBottomWidth: 0,
     zIndex: 50,
   },
   iconButton: {
@@ -110,9 +116,10 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: 'center',
     position: 'absolute',
-    left: '50%',
-    marginLeft: -65,
-    top: Platform.OS === 'ios' ? 46 : 16,
+    left: 0,
+    right: 0,
+    bottom: 8,
+    justifyContent: 'center',
   },
   // Dark mode logo
   logoDark: {

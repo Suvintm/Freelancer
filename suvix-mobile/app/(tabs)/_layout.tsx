@@ -1,5 +1,6 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PagerView from 'react-native-pager-view';
 import { useTheme } from '../../src/context/ThemeContext';
 import { AnimatedTabBar } from '../../src/components/AnimatedTabBar';
@@ -38,6 +39,7 @@ export default function TabsLayout() {
   const pagerRef = useRef<PagerView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const insets = useSafeAreaInsets();
 
   // Called when a page fully settles after swipe or tap
   const onPageSelected = useCallback((e: any) => {
@@ -53,7 +55,13 @@ export default function TabsLayout() {
   const isReelsActive = activeIndex === REELS_INDEX;
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[
+      styles.container, 
+      { 
+        backgroundColor: theme.background,
+        paddingBottom: isReelsActive ? 0 : insets.bottom
+      }
+    ]}>
       {/* Sidebar Overlay - Disabled in Reels for full immersion */}
       {!isReelsActive && (
         <Sidebar 

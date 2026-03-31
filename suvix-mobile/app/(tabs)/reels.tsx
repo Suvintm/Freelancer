@@ -52,6 +52,7 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
   const [activeReelId, setActiveReelId] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [viewHeight, setViewHeight] = useState(SCREEN_HEIGHT); 
+  const flatListRef = useRef<FlatList>(null);
   
   // — ANIMATION SHARED VALUES —
   const scale = useSharedValue(1);
@@ -143,6 +144,19 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
     return () => backHandler.remove();
   }, [onGoHome]);
 
+  // — STABILITY: Snap recovery on Re-focus —
+  useEffect(() => {
+    if (isFocused && activeReelId && reels.length > 0) {
+      const index = combinedFeed.findIndex(item => item.id === activeReelId);
+      if (index !== -1) {
+        // Delay slightly to ensure layout is ready
+        setTimeout(() => {
+          flatListRef.current?.scrollToIndex({ index, animated: false });
+        }, 100);
+      }
+    }
+  }, [isFocused]);
+
   // — PRODUCTION: Unified Feed Logic (Ad Injection) —
   const combinedFeed = React.useMemo(() => {
     const feed: any[] = [];
@@ -198,6 +212,12 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
     minimumViewTime: 0 
   }).current;
 
+  const getItemLayout = useCallback((_: any, index: number) => ({
+    length: viewHeight,
+    offset: viewHeight * index,
+    index,
+  }), [viewHeight]);
+
   const renderItem = ({ item }: { item: any }) => {
     if (item.type === 'ad') {
        return (
@@ -239,6 +259,7 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
       {/* 1. SCALE-DOWN CONTAINER (The Reels Feed) */}
       <Animated.View style={[styles.mainContainer, animatedContainerStyle]}>
         <FlatList
+          ref={flatListRef}
           data={combinedFeed}
           renderItem={renderItem}
           keyExtractor={(item: any) => item.id}
@@ -248,6 +269,7 @@ export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?:
           snapToAlignment="start"
           decelerationRate="fast"
           disableIntervalMomentum={true}
+          getItemLayout={getItemLayout}
           
           // — ELITE PERFORMANCE OPTIMIZATIONS —
           onViewableItemsChanged={onViewableItemsChanged}
