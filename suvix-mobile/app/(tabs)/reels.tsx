@@ -43,7 +43,7 @@ const APP_ADS = [
  * 2. Immersive Full-Screen List (FlatList used as placeholder for FlashList).
  * 3. Integrated Ad/Reel card switching.
  */
-export default function ReelsScreen({ onGoHome }: { onGoHome?: () => void }) {
+export default function ReelsScreen({ onGoHome, isFocused = true }: { onGoHome?: () => void; isFocused?: boolean }) {
   const [reels, setReels] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -202,7 +202,7 @@ export default function ReelsScreen({ onGoHome }: { onGoHome?: () => void }) {
        return (
          <ReelAdCard 
            ad={item} 
-           isActive={activeReelId === item.id}
+           isActive={isFocused && activeReelId === item.id}
            onSkip={() => console.log('Ad Skiped')}
            onCTA={() => console.log('CTA Pressed')}
          />
@@ -212,7 +212,7 @@ export default function ReelsScreen({ onGoHome }: { onGoHome?: () => void }) {
     return (
       <ReelItem 
         reel={item}
-        isActive={activeReelId === item.id}
+        isActive={isFocused && activeReelId === item.id}
         onLike={() => handleLike(item.id)}
         onComment={() => toggleComments(item.id)}
         onShare={() => console.log('Share')}

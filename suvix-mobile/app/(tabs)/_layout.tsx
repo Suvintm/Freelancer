@@ -81,7 +81,7 @@ export default function TabsLayout() {
         <View key="0" style={styles.page}><HomeScreen /></View>
         <View key="1" style={styles.page}><ExploreScreen /></View>
         <View key="2" style={styles.page}><NearbyScreen /></View>
-        <View key="3" style={styles.page}><ReelsScreen onGoHome={() => goToPage(0)} /></View>
+        <View key="3" style={styles.page}><ReelsScreen onGoHome={() => goToPage(0)} isFocused={isReelsActive} /></View>
         <View key="4" style={styles.page}><JobsScreen /></View>
         <View key="5" style={styles.page}><ChatsScreen /></View>
         <View key="6" style={styles.page}><ProfileScreen /></View>
