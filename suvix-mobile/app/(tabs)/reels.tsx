@@ -2,12 +2,12 @@ import React, { useState, useCallback, useRef } from 'react';
 import { 
   View, 
   StyleSheet, 
-  StatusBar, 
   FlatList, 
   Dimensions, 
   Pressable,
   Text
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
@@ -195,7 +195,7 @@ export default function ReelsScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar hidden />
       
       {/* 1. SCALE-DOWN CONTAINER (The Reels Feed) */}
       <Animated.View style={[styles.mainContainer, animatedContainerStyle]}>
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
   },
   mainContainer: {
     flex: 1,
-    backgroundColor: '#050505',
+    backgroundColor: '#000', // Solid black for immersive feel
   },
   cardContainer: {
     height: SCREEN_HEIGHT,
