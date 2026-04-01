@@ -69,13 +69,17 @@ function InitialRoot() {
     bootstrap();
 
     // FAIL-SAFE: If the API is dead or hanging, we MUST show the app 
-    // after 5 seconds no matter what.
+    // after 6 seconds no matter what.
     const failSafeTimer = setTimeout(() => {
-      if (!useAuthStore.getState().isInitialized || !dataLoaded) {
+      const { isInitialized: initialized, dataLoaded: loaded } = { 
+        isInitialized: useAuthStore.getState().isInitialized,
+        dataLoaded: dataLoaded // this won't work as expected inside the closure if not careful, but let's just use the state
+      };
+      if (!initialized) {
         console.warn('⚠️ [BOOT] Bootstrap took too long. Triggering Fail-Safe...');
         setDataLoaded(true);
       }
-    }, 5000);
+    }, 6000);
     
     // Give the advanced animated intro in index.tsx time to play (2.3 seconds)
     const timer = setTimeout(() => {
@@ -120,11 +124,18 @@ function InitialRoot() {
       }
     } else {
       // Authenticated branch
+      // If we are authenticated but have no user after dataLoaded, it's a broken session
+      if (!user && dataLoaded) {
+        console.warn('🗝️ [GUARD] Auth exists but User is null. Forcing re-login.');
+        useAuthStore.getState().logout();
+        router.replace('/login');
+        return;
+      }
+
       const role = user?.role?.toLowerCase();
       console.log(`🔒 [GUARD] Authenticated. User Role: ${role || 'UNKNOWN'}`);
 
       if (inLoginGroup || !segments[0] || segments[0] === 'index') {
-        const role = user?.role?.toLowerCase();
         if (role === 'pending') {
           router.replace('/role-selection');
         } else {

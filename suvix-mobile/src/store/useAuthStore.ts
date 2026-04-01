@@ -16,6 +16,7 @@ interface AuthState {
   user: any | null;
   isAuthenticated: boolean;
   isInitialized: boolean;
+  isLoadingUser: boolean;
   setAuth: (user: any, token: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -27,6 +28,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
   isInitialized: false,
+  isLoadingUser: false,
   setAuth: async (user, token) => {
     try {
       // Store ONLY the token in hardware-encrypted SecureStore
@@ -48,19 +50,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { token } = get();
     if (!token) return;
 
+    set({ isLoadingUser: true });
     try {
       const res = await api.get('/auth/me');
       
       if (res.data.user) {
         const updatedUser = res.data.user;
-        set({ user: updatedUser, isAuthenticated: true });
+        set({ user: updatedUser, isAuthenticated: true, isLoadingUser: false });
       }
     } catch (error) {
       console.error('Fetch User Error:', error);
       // If unauthorized, clear everything
       if ((error as any).response?.status === 401) {
          await SecureStore.deleteItemAsync(TOKEN_KEY);
-         set({ token: null, user: null, isAuthenticated: false });
+         set({ token: null, user: null, isAuthenticated: false, isLoadingUser: false });
+      } else {
+         set({ isLoadingUser: false });
       }
     }
   },
