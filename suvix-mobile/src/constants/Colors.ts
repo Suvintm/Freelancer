@@ -1,9 +1,9 @@
 export const Colors = {
-  // BRANDING
-  accent: '#22C55E', // SuviX Emerald
-  accentGradient: ['#22C55E', '#059669'] as const,
+  // BRANDING (Monochrome / Zinc / AI Inspired)
+  accent: '#FFFFFF', // High-Contrast Active Accent
+  accentGradient: ['#FFFFFF', '#D4D4D8'] as const, // Zinc Flow
   error: '#EF4444',
-  success: '#10B981',
+  success: '#22C55E',
   white: '#FFFFFF',
   black: '#000000',
   heart: '#FF3040',
