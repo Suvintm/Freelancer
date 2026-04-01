@@ -1,18 +1,20 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
+import { ScreenContainer } from '../../src/components/shared/ScreenContainer';
 
 export default function ChatsPlaceholder() {
   const { theme } = useTheme();
   
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <Text style={[styles.text, { color: theme.text }]}>CHATS</Text>
-      <Text style={[styles.subtext, { color: theme.textSecondary }]}>
-        Connect with your collaborators and clients instantly.
-      </Text>
-    </SafeAreaView>
+    <ScreenContainer isScrollable={false}>
+      <View style={styles.container}>
+        <Text style={[styles.text, { color: theme.text }]}>CHATS</Text>
+        <Text style={[styles.subtext, { color: theme.textSecondary }]}>
+          Your unified workspace messaging and collaboration.
+        </Text>
+      </View>
+    </ScreenContainer>
   );
 }
 
@@ -20,8 +22,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
-    padding: 30,
-    paddingTop: 100,
+    justifyContent: 'center',
   },
   text: {
     fontSize: 20,

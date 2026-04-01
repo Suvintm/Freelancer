@@ -169,17 +169,18 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
         if (cached) return res.status(200).json(cached);
     }
 
-    // ── STEP 2: Candidate Selection ──────────────────────────────────────────
+    // ── STEP 2: Candidate Selection (Instagram Scale Pool) ───────────────────
     const dbMatch = {
         isPublished: true,
         ...(excludeObjectIds.length > 0 && { _id: { $nin: excludeObjectIds } }),
     };
 
+    // Increase pool to 200 candidates for better reservoir sampling variety
     let candidateReels = await Reel.find(dbMatch)
         .populate("editor", "name profilePicture bio followingCount followersCount")
         .sort({ createdAt: -1 })
         .skip(randomSkip)
-        .limit(100)
+        .limit(200) 
         .lean();
 
     if (!candidateReels.length && excludeObjectIds.length > 0) {
@@ -222,24 +223,38 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
         userInterests = await getUserInterests(userId);
     }
 
-    // ── STEP 5: Scoring & Final Shuffle ──────────────────────────────────────
-    const limitNum = parseInt(limit) || 10;
+    // ── STEP 5: Scoring & Final Shuffle (Wilson + Freshness) ────────────────
+    const limitNum = parseInt(limit) || 12;
     const sampledReels = weightedReservoirSample(filteredCandidates, limitNum * 3, (r) => {
-        // Core score based on engagement
-        let score = (r.likesCount || 0) * 1.5 + (r.viewsCount || 0) * 0.5 + 1;
+        // — ELITE: IG Composite Signal Model —
+        // Base score starts at 1.0 to ensure all content has a chance
+        let score = 1.0; 
         
-        // FRESHNESS BOOST: Give new reels a massive multiplier (up to 20x)
-        const freshnessBoost = calculateFreshnessBoost(r);
-        score *= freshnessBoost;
+        // Signal 1: Engagement Density (Wilson-Score Lite)
+        const engagementWeight = (r.likesCount || 0) * 1.5 + (r.commentsCount || 0) * 2.0;
+        const viewDensity = (r.viewsCount || 1);
+        score += (engagementWeight / viewDensity) * 10;
         
+        // Signal 2: FRESHNESS BOOST (Massive priority for new content on Page 1)
+        if (page === 1) {
+            const freshnessBoost = calculateFreshnessBoost(r);
+            score *= freshnessBoost;
+        }
+        
+        // Signal 3: Social Graph Boost (Followed Creators)
         if (followedIds && followedIds.has(r.editor?.toString() || r.editor?._id?.toString())) {
-            score *= 1.5;
+            score *= 1.8; // High priority for subscriptions
         }
+
+        // Signal 4: Personalization (Niche/Hashtag Affinity)
         if (userInterests && r.hashtags) {
+            let tagMultiplier = 1.0;
             r.hashtags.forEach(tag => {
-                if (userInterests[tag]) score *= (1 + userInterests[tag] * 0.5);
+                if (userInterests[tag]) tagMultiplier += (userInterests[tag] * 0.3);
             });
+            score *= Math.min(2.0, tagMultiplier); // Cap personalization to prevent "Filter Bubbles"
         }
+
         return score;
     }, followedIds, uniqueSeed);
 
@@ -305,7 +320,7 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
                     profilePicture: { $ifNull: ["$editorInfo.profilePicture", null] },
                     role: { $ifNull: ["$editorInfo.role", "editor"] }
                 },
-                portfolio: { _id: "$portfolioInfo._id" }, // Slim down portfolio info
+                portfolio: { _id: "$portfolioInfo._id" }, 
             }
         }
     ]);
@@ -315,29 +330,18 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
     const orderedReels = reelIds.map(id => reelMap.get(id.toString())).filter(Boolean);
 
     const total = await Reel.countDocuments({ isPublished: true });
+    
+    // Performance: Lean pagination check
     const responseData = {
         success: true,
         reels: orderedReels,
         pagination: { page, limit, total, hasMore: total > 0 },
     };
 
-    // ── STEP 8: Caching Headers (Instagram-Scale Strategy) ────────────────────
+    // ── STEP 8: Caching Headers (Standardized Discovery) ───────────────────
     if (orderedReels.length > 0) {
-        const latestReel = orderedReels[0].createdAt;
-        if (latestReel) {
-            res.setHeader('Last-Modified', new Date(latestReel).toUTCString());
-        }
-
-        if (!userId) {
-            // Anonymous feed: Cache on Cloudflare Edge for 60s, serve stale for 30s
-            // This offloads ~90% of traffic from your Render server
-            res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=30');
-            await setCache(anonCacheKey, responseData, 60); // Redis Level
-        } else {
-            // Personalized feed: Private cache only (browser only, NO Cloudflare)
-            // Still allows the browser to check if the feed updated without re-downloading
-            res.setHeader('Cache-Control', 'private, max-age=0, must-revalidate');
-        }
+        // Standardized Cache Control for 60s at the edge, stale-while-revalidate for smoothness
+        res.setHeader('Cache-Control', 'private, max-age=60, stale-while-revalidate=30');
     }
 
     logger.info(`[FEED] Returning ${populatedReels.length} reels. Candidates: ${candidateReels.length}`);

@@ -59,30 +59,26 @@ export default function TabsLayout() {
       styles.container, 
       { 
         backgroundColor: theme.background,
-        paddingBottom: isReelsActive ? 0 : insets.bottom
+        paddingBottom: insets.bottom
       }
     ]}>
       {/* Sidebar Overlay - Disabled in Reels for full immersion */}
-      {!isReelsActive && (
-        <Sidebar 
-          isOpen={isSidebarOpen} 
-          onClose={() => setIsSidebarOpen(false)} 
-        />
-      )}
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)} 
+      />
 
       {/* Top Navbar - Hidden in Reels for full-screen scrolling */}
-      {!isReelsActive && (
-        <View style={styles.navbarOverlay}>
-          <TopNavbar onMenuPress={() => setIsSidebarOpen(true)} />
-        </View>
-      )}
+      <View style={styles.navbarOverlay}>
+        <TopNavbar onMenuPress={() => setIsSidebarOpen(true)} />
+      </View>
 
       {/* Native Swipe Pager — runs on native thread for 60fps */}
       <PagerView
         ref={pagerRef}
         style={styles.pager}
         initialPage={0}
-        scrollEnabled={activeIndex !== REELS_INDEX}
+        scrollEnabled={true}
         onPageSelected={onPageSelected}
         offscreenPageLimit={2}
         overdrag={false}
@@ -91,20 +87,18 @@ export default function TabsLayout() {
         <View key="0" style={styles.page}><HomeScreen /></View>
         <View key="1" style={styles.page}><ExploreScreen /></View>
         <View key="2" style={styles.page}><NearbyScreen /></View>
-        <View key="3" style={styles.page}><ReelsScreen onGoHome={() => goToPage(0)} isFocused={isReelsActive} /></View>
+        <View key="3" style={styles.page}><ReelsScreen /></View>
         <View key="4" style={styles.page}><JobsScreen /></View>
         <View key="5" style={styles.page}><ChatsScreen /></View>
         <View key="6" style={styles.page}><ProfileScreen /></View>
       </PagerView>
 
       {/* Bottom Tab Bar - Hidden only when Reels is active */}
-      {!isReelsActive && (
-        <AnimatedTabBar
-          activeIndex={activeIndex}
-          tabs={TABS}
-          onTabPress={goToPage}
-        />
-      )}
+      <AnimatedTabBar
+        activeIndex={activeIndex}
+        tabs={TABS}
+        onTabPress={goToPage}
+      />
     </View>
   );
 }

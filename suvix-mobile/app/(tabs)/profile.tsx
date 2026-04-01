@@ -1,18 +1,20 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
+import { ScreenContainer } from '../../src/components/shared/ScreenContainer';
 
 export default function ProfilePlaceholder() {
   const { theme } = useTheme();
   
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <Text style={[styles.text, { color: theme.text }]}>PROFILE</Text>
-      <Text style={[styles.subtext, { color: theme.textSecondary }]}>
-        Manage your identity and portfolio insights.
-      </Text>
-    </SafeAreaView>
+    <ScreenContainer isScrollable={false}>
+      <View style={styles.container}>
+        <Text style={[styles.text, { color: theme.text }]}>PROFILE</Text>
+        <Text style={[styles.subtext, { color: theme.textSecondary }]}>
+          Manage your personal settings and creative portfolio.
+        </Text>
+      </View>
+    </ScreenContainer>
   );
 }
 
@@ -20,8 +22,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
-    padding: 30,
-    paddingTop: 100,
+    justifyContent: 'center',
   },
   text: {
     fontSize: 20,

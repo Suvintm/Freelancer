@@ -25,6 +25,9 @@ export const TopNavbar = ({ onMenuPress }: TopNavbarProps) => {
   const { isDarkMode, toggleTheme } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  
+  const NAVBAR_HEIGHT = 50;
+  const TOTAL_HEIGHT = insets.top + NAVBAR_HEIGHT;
 
   const handleRefresh = () => {
     // Subtle visual indicator of refresh could be added here
@@ -36,8 +39,8 @@ export const TopNavbar = ({ onMenuPress }: TopNavbarProps) => {
       styles.container, 
       { 
         backgroundColor: isDarkMode ? 'rgba(5, 5, 9, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-        paddingTop: Math.max(insets.top, 10),
-        height: Math.max(insets.top, 20) + 50
+        paddingTop: insets.top,
+        height: TOTAL_HEIGHT
       }
     ]}>
       {/* LEFT: Modern Rounded Menu Icon */}
@@ -49,14 +52,8 @@ export const TopNavbar = ({ onMenuPress }: TopNavbarProps) => {
         <RoundedMenuIcon color={isDarkMode ? '#FFF' : '#000'} />
       </TouchableOpacity>
 
-      {/* CENTER: Branded Logo (includes name, no separate text needed) */}
-      <View 
-        style={[
-          styles.logoContainer, 
-          { paddingTop: Math.max(insets.top, 10) }
-        ]} 
-        pointerEvents="none"
-      >
+      {/* CENTER: Branded Logo */}
+      <View style={styles.logoContainer} pointerEvents="none">
         {isDarkMode ? (
           <Image 
             source={require('../../assets/darklogo.png')} 
@@ -117,9 +114,10 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
     justifyContent: 'center',
-    zIndex: -1, // Ensure buttons stay on top
+    alignItems: 'center',
+    marginTop: 0, // Logic shifted to container paddingTop
+    zIndex: -1,
   },
   // Dark mode logo
   logoDark: {

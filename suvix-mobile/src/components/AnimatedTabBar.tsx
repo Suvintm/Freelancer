@@ -2,9 +2,10 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
-const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 88 : 65;
+// OLD FIXED HEIGHT REMOVED
 
 interface Tab {
   name: string;
@@ -27,6 +28,9 @@ interface AnimatedTabBarProps {
  */
 export const AnimatedTabBar = ({ activeIndex, tabs, onTabPress }: AnimatedTabBarProps) => {
   const { theme, isDarkMode } = useTheme();
+  const insets = useSafeAreaInsets();
+  
+  const TAB_BAR_HEIGHT = 60 + insets.bottom;
 
   const VISIBLE_TABS = (tabs || []).filter(t => !['client', 'editor'].includes(t.name));
   const TAB_WIDTH = width / VISIBLE_TABS.length;
@@ -66,7 +70,14 @@ export const AnimatedTabBar = ({ activeIndex, tabs, onTabPress }: AnimatedTabBar
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.tabBar }]}>
+    <View style={[
+      styles.container, 
+      { 
+        backgroundColor: theme.tabBar,
+        height: TAB_BAR_HEIGHT,
+        paddingBottom: insets.bottom 
+      }
+    ]}>
       <View style={styles.row}>
         {VISIBLE_TABS.map((tab, index) => {
           const isFocused = activeIndex === index;
@@ -121,7 +132,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     width: '100%',
-    height: TAB_BAR_HEIGHT,
+    // Removed fixed TAB_BAR_HEIGHT to use dynamic height from props/theme
     borderTopWidth: 0,
     elevation: 24,
     shadowColor: '#000',
@@ -131,9 +142,8 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    height: '100%',
     alignItems: 'center',
-    paddingBottom: Platform.OS === 'ios' ? 22 : 0,
+    // Use dynamic padding-bottom instead of OS-specific guessing
   },
   tabItem: {
     flex: 1,
