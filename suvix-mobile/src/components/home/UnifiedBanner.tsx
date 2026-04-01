@@ -14,21 +14,35 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { Colors } from '../../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
-import Video, { ResizeMode } from 'react-native-video';
+import { Video, ResizeMode } from 'expo-av';
 
 const { width } = Dimensions.get('window');
 const ASPECT_RATIO = 16 / 10;
 const BANNER_HEIGHT = (width - 32) / ASPECT_RATIO;
 
-// ─── STATIC PRO ASSETS ───────────────────────────────────────────────────────
+// ─── STATIC PRO ASSETS (With Posters to avoid black screening) ───────────────
 const LEVELS = [
   {
     id: 0,
     label: 'FEATURED',
     color: '#FFF',
     items: [
-      { id: 'f1', title: 'Elite Workspace', desc: 'Transform your vision with local experts.', type: 'video', media: 'https://cdn.pixabay.com/video/2019/04/13/22758-330689456_large.mp4' },
-      { id: 'f2', title: 'Global SuviX', desc: 'Secure payments, global delivery.', type: 'video', media: 'https://cdn.pixabay.com/video/2020/03/15/33580-397227441_large.mp4' }
+      { 
+        id: 'f1', 
+        title: 'Elite Workspace', 
+        desc: 'Transform your vision with local experts.', 
+        type: 'video', 
+        media: 'https://cdn.pixabay.com/video/2019/04/13/22758-330689456_large.mp4',
+        poster: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=1200' 
+      },
+      { 
+        id: 'f2', 
+        title: 'Global SuviX', 
+        desc: 'Secure payments, global delivery.', 
+        type: 'video', 
+        media: 'https://cdn.pixabay.com/video/2020/03/15/33580-397227441_large.mp4',
+        poster: 'https://images.unsplash.com/photo-1550439062-609e1531270e?q=80&w=1200' 
+      }
     ]
   },
   {
@@ -36,8 +50,22 @@ const LEVELS = [
     label: 'SPARKS',
     color: '#00F0FF',
     items: [
-      { id: 's1', title: 'Neon Sparks v2', desc: 'New editing tools just landed.', type: 'video', media: 'https://cdn.pixabay.com/video/2021/08/17/85375-589578160_large.mp4' },
-      { id: 's2', title: 'AI Automation', desc: 'Scale faster than ever before.', type: 'video', media: 'https://cdn.pixabay.com/video/2023/11/05/187851-881268677_large.mp4' }
+      { 
+        id: 's1', 
+        title: 'Neon Sparks v2', 
+        desc: 'New editing tools just landed.', 
+        type: 'video', 
+        media: 'https://cdn.pixabay.com/video/2021/08/17/85375-589578160_large.mp4',
+        poster: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1200' 
+      },
+      { 
+        id: 's2', 
+        title: 'AI Automation', 
+        desc: 'Scale faster than ever before.', 
+        type: 'video', 
+        media: 'https://cdn.pixabay.com/video/2023/11/05/187851-881268677_large.mp4',
+        poster: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1200' 
+      }
     ]
   },
   {
@@ -45,8 +73,22 @@ const LEVELS = [
     label: 'EXPLORE',
     color: '#FFF',
     items: [
-      { id: 'e1', title: 'Explore Gigs', desc: 'Discover thousands of services.', type: 'video', media: 'https://cdn.pixabay.com/video/2021/04/12/70860-537402685_large.mp4' },
-      { id: 'e2', title: 'Learn Skills', desc: 'Master new tools with SuviX.', type: 'video', media: 'https://cdn.pixabay.com/video/2023/05/16/163273-827616654_large.mp4' }
+      { 
+        id: 'e1', 
+        title: 'Explore Gigs', 
+        desc: 'Discover thousands of services.', 
+        type: 'video', 
+        media: 'https://cdn.pixabay.com/video/2021/04/12/70860-537402685_large.mp4',
+        poster: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1200' 
+      },
+      { 
+        id: 'e2', 
+        title: 'Learn Skills', 
+        desc: 'Master new tools with SuviX.', 
+        type: 'video', 
+        media: 'https://cdn.pixabay.com/video/2023/05/16/163273-827616654_large.mp4',
+        poster: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1200' 
+      }
     ]
   }
 ];
@@ -54,6 +96,7 @@ const LEVELS = [
 interface FlatSlide {
   id: string;
   media: string;
+  poster?: string;
   type: 'video' | 'image';
   title: string;
   desc: string;
@@ -140,16 +183,19 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
             <View style={styles.slide}>
                 <View style={[styles.card, { backgroundColor: palette.secondary, borderColor: palette.border }]}>
                     
-                    {/* MEDIA ENGINE */}
+                    {/* MEDIA ENGINE 2.0 (High Precision Visibility) */}
                     {item.type === 'video' ? (
                         <Video
                             source={{ uri: item.media }}
                             style={styles.media}
                             resizeMode={ResizeMode.COVER}
-                            repeat={true}
-                            muted={true}
-                            paused={false}
-                            playInBackground={false}
+                            shouldPlay={true}
+                            isLooping={true}
+                            isMuted={true}
+                            useNativeControls={false}
+                            posterSource={{ uri: item.poster }}
+                            usePoster={true}
+                            posterStyle={styles.media}
                         />
                     ) : (
                         <Image source={{ uri: item.media }} style={styles.media} resizeMode="cover" />
