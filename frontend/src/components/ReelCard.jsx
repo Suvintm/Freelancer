@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     FaHeart,
@@ -15,10 +15,11 @@ import {
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
+import { useDataSaver } from "../context/DataSaverContext";
 import { toast } from "react-toastify";
 import analyticsService from "../services/AnalyticsService";
 import logo from "../assets/logo.png";
-import { repairUrl, getPosterUrl } from "../utils/urlHelper.jsx";
+import { repairUrl, getPosterUrl, toHlsUrl } from "../utils/urlHelper.jsx";
 import FollowingAnimation from "./FollowingAnimation";
 import MusicVisualizer from "./MusicVisualizer";
 import LikerAvatars from "./LikerAvatars";
@@ -138,6 +139,7 @@ const ReelCard = ({
     setGlobalMuted 
 }) => {
     const { user, backendURL } = useAppContext();
+    const { dataMode } = useDataSaver();
 
     // — PERFORMANCE: Use pre-computed backend values to avoid heavy array checks —
     const [isLiked, setIsLiked] = useState(reel.isLiked ?? (user ? reel.likes?.some(id => String(id) === String(user._id)) : false));
@@ -202,6 +204,24 @@ const ReelCard = ({
     const videoRef = useRef(null);
     const progressTimerRef = useRef(null);
     const watchStartRef = useRef(null);
+
+    const videoSrc = useMemo(() => {
+        const base = repairUrl(reel.mediaUrl);
+        
+        // Data Saver Logic:
+        // High: Use Eager HLS if available, otherwise fallback to auto-generated HLS
+        if (dataMode === "high") {
+            return reel.hlsUrl || toHlsUrl(base);
+        }
+        
+        // Low: Use original MP4/Progressive for less buffering overhead in poor networks
+        return base;
+    }, [reel.mediaUrl, reel.hlsUrl, dataMode]);
+
+    const posterSrc = React.useMemo(() => {
+        if (reel.thumbnailUrl) return reel.thumbnailUrl;
+        return getPosterUrl(reel.mediaUrl);
+    }, [reel.mediaUrl, reel.thumbnailUrl]);
 
     useEffect(() => {
         if (!user || user._id === reel.editor?._id) return;
@@ -388,8 +408,8 @@ const ReelCard = ({
                 {reel.mediaType === "video" ? (
                     <HlsVideoPlayer 
                         ref={videoRef} 
-                        src={repairUrl(reel.mediaUrl)} 
-                        poster={getPosterUrl(reel.mediaUrl)}
+                        src={videoSrc} 
+                        poster={posterSrc}
                         className="w-full h-full" 
                         objectFit="contain"
                         loop 

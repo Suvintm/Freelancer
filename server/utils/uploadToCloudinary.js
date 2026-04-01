@@ -1,13 +1,14 @@
 import cloudinary from "../config/cloudinary.js";
 
 // ✅ Upload file buffer to Cloudinary (Public Access)
-export const uploadToCloudinary = async (fileBuffer, folder = "profiles") => {
+export const uploadToCloudinary = async (fileBuffer, folder = "profiles", options = {}) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
         folder,
         resource_type: "auto",
-        access_mode: "public", // 👈 ensures file is publicly viewable
+        access_mode: "public",
+        ...options
       },
       (error, result) => {
         if (error) {

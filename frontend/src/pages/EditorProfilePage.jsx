@@ -55,6 +55,7 @@ import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 import ProfileChecklist from "../components/ProfileChecklist.jsx";
 import FollowListModal from "../components/FollowListModal.jsx";
 import { useSmoothScroll } from "../hooks/useSmoothScroll.js";
+import { useDataSaver } from "../context/DataSaverContext";
 
 import _premiereIcon from "../assets/preimerepro.png";
 import _aeIcon from "../assets/adobeexpress.png";
@@ -90,6 +91,7 @@ const countryNameToCode = {
 
 const EditorProfile = () => {
   const { user, backendURL } = useAppContext();
+  const { dataMode, toggleDataMode } = useDataSaver();
   const [profile, setProfile] = useState(null);
   const [editedProfile, setEditedProfile] = useState(null);
   const [reels, setReels] = useState([]);
@@ -745,6 +747,31 @@ const EditorProfile = () => {
                           </button>
                         ))}
                       </div>
+                    </div>
+                    
+                    {/* Data Saver Toggle (Phase 30.2) */}
+                    <div className="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-normal text-white">Playback Settings</h4>
+                        <div className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[8px] font-bold uppercase">New</div>
+                      </div>
+                      <button
+                        onClick={toggleDataMode}
+                        className="w-full flex items-center justify-between p-2.5 bg-zinc-900 border border-zinc-800 rounded-lg hover:bg-zinc-800 transition-colors group"
+                      >
+                        <div className="flex flex-col items-start gap-0.5">
+                          <span className="text-xs text-zinc-300 font-medium">Data Saver</span>
+                          <span className="text-[10px] text-zinc-500 uppercase tracking-tight">
+                            {dataMode === 'low' ? 'Optimized (Low Data)' : 'High Quality (HLS)'}
+                          </span>
+                        </div>
+                        <div className={`w-8 h-4 rounded-full relative transition-colors duration-300 ${dataMode === 'low' ? 'bg-blue-600' : 'bg-zinc-700'}`}>
+                          <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-transform duration-300 ${dataMode === 'low' ? 'translate-x-[18px]' : 'translate-x-[2px]'}`} />
+                        </div>
+                      </button>
+                      <p className="mt-2 text-[9px] text-zinc-500 leading-tight">
+                        Switch to 'Optimized' for faster loading on slow networks.
+                      </p>
                     </div>
 
                     {/* Badges */}

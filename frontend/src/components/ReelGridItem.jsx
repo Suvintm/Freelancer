@@ -7,7 +7,18 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
     const [isHovered, setIsHovered] = useState(false);
     const [isHolding, setIsHolding] = useState(false);
     const videoRef = useRef(null);
-    const mediaUrl = repairUrl(reel.mediaUrl);
+    
+    // — PERFORMANCE: Memoized source calculation —
+    const posterSrc = React.useMemo(() => {
+        if (reel.thumbnailUrl) return reel.thumbnailUrl;
+        return getPosterUrl(reel.mediaUrl);
+    }, [reel.mediaUrl, reel.thumbnailUrl]);
+
+    const videoSrc = React.useMemo(() => {
+        // Only resolve the full video URL if we're actually going to play it
+        if (!isHolding && reel.mediaType === "video") return ""; 
+        return repairUrl(reel.mediaUrl);
+    }, [reel.mediaUrl, isHolding, reel.mediaType]);
 
     // Interaction Overhaul:
     // Hold: Play locally
@@ -54,23 +65,37 @@ const ReelGridItem = ({ reel, onPreviewStart }) => {
             onTouchEnd={handleHoldEnd}
             onClick={handleClick}
         >
-            {/* Thumbnail */}
+            {/* Thumbnail Logic: JPG-First for Performance */}
             {reel.mediaType === "video" ? (
-                <video 
-                    ref={videoRef}
-                    src={mediaUrl} 
-                    poster={getPosterUrl(reel.mediaUrl)}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    muted 
-                    playsInline
-                    loop
-                    crossOrigin="anonymous"
-                />
+                <div className="w-full h-full relative">
+                    {/* The static JPG thumbnail (Always visible initially) */}
+                    <img 
+                        src={posterSrc}
+                        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isHolding ? "opacity-0" : "opacity-100"}`}
+                        alt=""
+                        loading="lazy"
+                    />
+                    
+                    {/* The actual video (Only rendered/played on hold) */}
+                    {isHolding && (
+                        <video 
+                            ref={videoRef}
+                            src={videoSrc} 
+                            className="w-full h-full object-cover"
+                            muted 
+                            playsInline
+                            loop
+                            autoPlay
+                            crossOrigin="anonymous"
+                        />
+                    )}
+                </div>
             ) : (
                 <img 
-                    src={mediaUrl} 
+                    src={posterSrc} 
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     alt={reel.title}
+                    loading="lazy"
                     crossOrigin="anonymous"
                     decoding="async"
                 />

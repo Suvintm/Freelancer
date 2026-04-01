@@ -16,10 +16,11 @@ import {
     getReelTags,
     toggleCommentLike,
     batchAnalytics,
-    getSearchSuggestions,
     getSuggestedDiscovery,
+    getSearchSuggestions,
 } from "../controllers/reelController.js";
-import { feedLimiter, impressionLimiter } from "../../../middleware/rateLimiter.js";
+import { cloudinaryWebhookController } from "../controllers/cloudinaryWebhookController.js";
+import { feedLimiter, impressionLimiter, interactionLimiter, heavyLimiter } from "../../../middleware/rateLimiter.js";
 import authMiddleware from "../../../middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -29,13 +30,16 @@ const router = express.Router();
 router.get("/feed", feedLimiter, getReelsFeed);
 
 // Get search suggestions (TRIE O(L) Autocomplete)
-router.get("/search/suggest", getSearchSuggestions);
+router.get("/search/suggest", heavyLimiter, getSearchSuggestions);
 
 // Get suggested creators/reels for "Suggested for You" section
 router.get("/suggestions/discovery", getSuggestedDiscovery);
 
 // Get unique tags for search suggestions
 router.get("/tags/unique", getReelTags);
+
+// Cloudinary Async Webhook (Processing completion)
+router.post("/webhooks/cloudinary", cloudinaryWebhookController);
 
 // Get single reel
 router.get("/:id", getReel);
@@ -62,10 +66,10 @@ router.get("/check/:portfolioId", checkPublished);
 router.delete("/unpublish/:reelId", unpublishReel);
 
 // Like/unlike reel
-router.post("/:id/like", toggleLike);
+router.post("/:id/like", interactionLimiter, toggleLike);
 
 // Add comment
-router.post("/:id/comments", addComment);
+router.post("/:id/comments", interactionLimiter, addComment);
 
 // Toggle comment like
 router.post("/:id/comments/:commentId/like", toggleCommentLike);

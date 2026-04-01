@@ -80,7 +80,16 @@ export const uploadAdMedia = asyncHandler(async (req, res) => {
   const isVideo = req.file.mimetype.startsWith("video/");
   const folder = isVideo ? "advertisements/videos" : "advertisements/images";
 
-  const result = await uploadToCloudinary(req.file.buffer, folder);
+  const options = {};
+  if (isVideo) {
+    options.eager = [
+      { streaming_profile: "auto", format: "m3u8" },
+      { width: 720, height: 1280, crop: "limit", format: "mp4", quality: "auto" }
+    ];
+    options.eager_async = true;
+  }
+
+  const result = await uploadToCloudinary(req.file.buffer, folder, options);
 
   res.status(200).json({
     success: true,

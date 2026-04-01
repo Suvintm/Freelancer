@@ -59,6 +59,16 @@ const portfolioSchema = new mongoose.Schema(
       default: Date.now,
       index: true,
     },
+    // ── Production Media Metadata ──────────────────────────────────────────
+    hlsUrl: { type: String, default: "" },
+    thumbnailUrl: { type: String, default: "" },
+    duration: { type: Number, default: 0 }, // In seconds
+    processingStatus: { 
+      type: String, 
+      enum: ["pending", "processing", "complete", "failed"], 
+      default: "pending" 
+    },
+    cloudinaryPublicId: { type: String, default: "" },
   },
   { timestamps: true }
 );

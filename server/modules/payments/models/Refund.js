@@ -85,6 +85,7 @@ const refundSchema = new mongoose.Schema(
         "payment_failed",       // Original payment issues
         "duplicate_payment",    // Double payment detected
         "admin_initiated",      // Admin initiated refund
+        "overdue",              // Order was not completed in time
         "other",
       ],
       required: true,

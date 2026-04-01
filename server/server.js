@@ -17,7 +17,7 @@ dotenv.config();
 import logger from "./utils/logger.js";
 
 // Middleware
-import { generalLimiter, redis } from "./middleware/rateLimiter.js";
+import { publicApiLimiter, redis } from "./middleware/rateLimiter.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { geoCheckMiddleware } from "./middleware/geoCheck.js";
 import { vpnCheckMiddleware } from "./middleware/vpnCheck.js";
@@ -67,6 +67,9 @@ import finalOutputRoutes from "./modules/marketplace/routes/finalOutputRoutes.js
  
 // Scheduled Jobs
 import { startScheduledJobs } from "./jobs/scheduledJobs.js";
+
+// BullMQ Workers (Background Processing)
+import "./jobs/workers.js";
 
 // Firebase Admin initialization
 import { initFirebaseAdmin } from "./utils/firebaseAdmin.js";
@@ -193,8 +196,13 @@ app.use(
   })
 );
 
-// Rate limiter (general)
-app.use(generalLimiter);
+// ============ RATE LIMITING (Production-Grade Tiers) ============
+// 🚨 PRE-MIDDLEWARE EXEMPTIONS: Standard browser assets like favicon.ico
+// This ensures visual branding always loads even under heavy API load.
+app.get("/favicon.ico", (req, res) => res.status(204).end());
+
+// Apply General Tier specifically to API routes (Exempts static loads)
+app.use("/api", publicApiLimiter);
 
 // ============ REGIONAL SECURITY ============
 // Layer 1: Country-level block (India Only)

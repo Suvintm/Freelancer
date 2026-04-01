@@ -117,7 +117,18 @@ const HlsVideoPlayer = React.forwardRef(({
     if (isActive && autoPlay) {
       if (video.paused) {
         const p = video.play();
-        if (p !== undefined) p.catch(e => { if (e.name !== 'AbortError') console.warn(e); });
+        if (p !== undefined) {
+          p.catch(e => {
+            if (e.name === 'NotAllowedError') {
+              console.warn("[HlsVideoPlayer] Autoplay blocked by browser. Retrying muted...");
+              // Force local mute to satisfy browser policy
+              video.muted = true;
+              video.play().catch(err => console.error("[HlsVideoPlayer] Muted playback also failed:", err));
+            } else if (e.name !== 'AbortError') {
+              console.warn("[HlsVideoPlayer] Playback error:", e);
+            }
+          });
+        }
       }
     } else if (!isActive) {
       video.pause();

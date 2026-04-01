@@ -6,6 +6,7 @@ import { Profile } from "../../profiles/models/Profile.js";
 import logger from "../../../utils/logger.js";
 import axios from "axios";
 import crypto from "crypto";
+import { authLimiter } from "../../../middleware/rateLimiter.js";
 
 const router = express.Router();
 
@@ -27,6 +28,7 @@ const generateToken = (user) => {
 // Initiate Google OAuth
 router.get(
     "/google",
+    authLimiter,
     passport.authenticate("google", {
         scope: ["profile", "email"],
         prompt: "select_account", // Always show account selector
@@ -74,7 +76,7 @@ router.get(
 
 // ============ ROLE SELECTION (for new OAuth users) ============
 
-router.post("/select-role", async (req, res) => {
+router.post("/select-role", authLimiter, async (req, res) => {
     try {
         const { token, role, phone, country } = req.body;
 

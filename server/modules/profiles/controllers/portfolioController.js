@@ -14,6 +14,12 @@ const MAX_ORIGINAL_FILES = 5; // Max 5 original clips
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm", "video/x-msvideo"];
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
+// ── Production Media Pipeline (Phase 30.2) ──────────────────────────────────
+const HLS_EAGER_TRANSFORMS = [
+  { streaming_profile: "auto", format: "m3u8" }, // Adaptive bitrate manifest
+  { width: 600, aspect_ratio: "9:16", crop: "fill", format: "jpg" } // Static grid thumbnail
+];
+
 // Helper to validate file
 const validateFile = (file, type) => {
   if (!file) return true;
@@ -83,16 +89,36 @@ export const createPortfolio = asyncHandler(async (req, res) => {
     }
   }
 
-  // Validate and upload edited clip (single file)
+  // Validate and upload edited clip (single file) with Eager HLS
+  let cloudinaryPublicId = "";
+  let hlsUrl = "";
+  let thumbnailUrl = "";
+  let duration = 0;
+  let processingStatus = "pending";
+
   if (req.files?.editedClip?.[0]) {
     const file = req.files.editedClip[0];
     validateFile(file, "video");
-    const result = await uploadToCloudinary(file.buffer, "portfolio");
+    
+    // Trigger Eager HLS transcoding + Thumbnail generation
+    const result = await uploadToCloudinary(file.buffer, "portfolio", {
+      eager: HLS_EAGER_TRANSFORMS,
+      eager_async: true,
+      eager_notification_url: `${process.env.BACKEND_URL}/api/reels/webhooks/cloudinary`
+    });
+    
     editedClip = result.url;
+    cloudinaryPublicId = result.public_id;
     totalSizeBytes += file.size || 0;
+    
+    // Initial URLs (may be updated by webhook later, but we can predictably guess them)
+    // Cloudinary predictable paths: .../upload/sp_auto/[publicId].m3u8
+    hlsUrl = editedClip.replace("/upload/", "/upload/sp_auto/").replace(/\.[^.]+$/, ".m3u8");
+    thumbnailUrl = editedClip.replace("/upload/", "/upload/w_600,ar_9:16,c_fill/").replace(/\.[^.]+$/, ".jpg");
+    processingStatus = "processing";
   }
 
-  // Create portfolio with actual file size
+  // Create portfolio with actual file size and production metadata
   const portfolio = await Portfolio.create({
     user: req.user._id,
     title: title?.trim().substring(0, 100) || "",
@@ -100,6 +126,11 @@ export const createPortfolio = asyncHandler(async (req, res) => {
     originalClip: originalClips.length > 0 ? originalClips[0] : "", // First clip for backward compatibility
     originalClips: originalClips, // All clips in array
     editedClip,
+    hlsUrl,
+    thumbnailUrl,
+    duration,
+    processingStatus,
+    cloudinaryPublicId,
     hashtags: parsedHashtags,
     location: location || "",
     taggedUsers: parsedTaggedUsers,

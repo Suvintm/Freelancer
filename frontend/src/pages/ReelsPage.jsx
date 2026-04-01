@@ -13,6 +13,7 @@ import ReelSkeleton from "../components/ReelSkeleton";
 import ReelAdCard from "../components/ReelAdCard";
 import ReelCommentsDrawer from "../components/ReelCommentsDrawer";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
+import analyticsService from "../services/AnalyticsService";
 
 const ReelsPage = ({ isActive = true }) => {
     const { backendURL } = useAppContext();
@@ -23,6 +24,7 @@ const ReelsPage = ({ isActive = true }) => {
         isCacheValid,
         updateCache,
         appendToCache,
+        updateReelInCache,
         invalidateCache,
         savePosition,
         globalMuted,
@@ -178,7 +180,7 @@ const ReelsPage = ({ isActive = true }) => {
         } else if (reels.length === 0) {
             fetchReels(1, false);
         }
-    }, [isActive, targetReelId, fetchReels, isCacheValid, reels.length, feedCache, pageCache, activeIndexCache]);
+    }, [isActive, targetReelId, fetchReels, isCacheValid, reels.length, feedCache, pageCache, activeIndexCache, savePosition]);
 
     // Fetch ads for reels feed injection
     useEffect(() => {
@@ -193,12 +195,19 @@ const ReelsPage = ({ isActive = true }) => {
         fetchReelAds();
     }, [backendURL]);
 
-    // Track views
+    // Track views — Production Grade (Flight-Batching)
     useEffect(() => {
         const reel = reels[activeReelIndex];
         if (!reel || viewedReelsRef.current.has(reel._id)) return;
         viewedReelsRef.current.add(reel._id);
-        axios.post(`${backendURL}/api/reels/${reel._id}/view`).catch(() => {});
+        
+        if (reel.type === 'ad') {
+            const endpoint = `/api/ads/${reel._id}/view`;
+            axios.post(`${backendURL}${endpoint}`).catch(() => {});
+        } else {
+            // — SENIOR ENGINEERING: Use AnalyticsService for background telemetry —
+            analyticsService.pushEvent({ reelId: reel._id, type: 'view' });
+        }
     }, [activeReelIndex, reels, backendURL]);
 
     // Handle deep linked comments
@@ -328,7 +337,9 @@ const ReelsPage = ({ isActive = true }) => {
     };
 
     const handleCommentAdded = (newCount) => {
+        if (!activeReel?._id) return;
         setReels(prev => prev.map(r => r._id === activeReel?._id ? { ...r, commentsCount: newCount } : r));
+        updateReelInCache(activeReel._id, { commentsCount: newCount });
     };
 
     // — PERFORMANCE: Synchronize child state with parent Source of Truth —
@@ -339,14 +350,22 @@ const ReelsPage = ({ isActive = true }) => {
             likesCount,
             latestLikers
         } : r));
-    }, []);
+        updateReelInCache(reelId, { isLiked, likesCount, latestLikers });
+    }, [updateReelInCache]);
 
     const handleFollowUpdate = useCallback((editorId, isFollowing) => {
         setReels(prev => prev.map(r => r.editor?._id === editorId ? {
             ...r,
             isFollowing
         } : r));
-    }, []);
+        
+        // Sync following state across all reels by this editor in the cache
+        reels.forEach(r => {
+            if (r.editor?._id === editorId) {
+                updateReelInCache(r._id, { isFollowing });
+            }
+        });
+    }, [reels, updateReelInCache]);
 
     return (
         <div className="relative h-full w-full bg-black flex flex-col overflow-hidden">
@@ -388,7 +407,7 @@ const ReelsPage = ({ isActive = true }) => {
                         width="100%"
                         onScroll={handleScroll}
                         itemKey={(index) => combinedFeed[index]?.id || `reel-fallback-${index}`}
-                        overscanCount={6} 
+                        overscanCount={2} 
                         style={{ overflowX: 'hidden' }}
                     >
                         {({ index, style }) => {

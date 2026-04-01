@@ -122,29 +122,37 @@ export const getPosterUrl = (input) => {
 
 /**
  * toHlsUrl - Safely converts a standard video URL to an HLS streaming URL.
- * It strips standard optimization flags (f_auto, q_auto) to prevent 500/400 conflicts.
+ * It strips standard optimization flags (f_auto, q_auto) and version segments
+ * to prevent 500/400 conflicts when injecting a streaming profile.
  */
 export const toHlsUrl = (input) => {
     let url = repairUrl(input);
-    if (!url || typeof url !== 'string') return url;
+    if (!url || typeof url !== 'string' || !url.includes('res.cloudinary.com')) return url;
 
     // 1. If it's already HLS or has a profile, just return it
     if (url.toLowerCase().includes('.m3u8') || url.includes('/sp_')) return url;
 
-    // 2. Extract base and params
-    const uploadIndex = url.indexOf('/upload/');
+    // 2. Identify the upload segment
+    const parts = url.split('/');
+    const uploadIndex = parts.indexOf('upload');
     if (uploadIndex === -1) return url;
 
-    const baseUrl = url.substring(0, uploadIndex + 8);
-    let remaining = url.substring(uploadIndex + 8);
+    // 3. RECONSTRUCT: Filter out transformation segments and version strings
+    // We want: [baseUrl]/upload/sp_auto/[publicId].[extension]
+    const baseUrl = parts.slice(0, uploadIndex + 1).join('/');
+    const remainingParts = parts.slice(uploadIndex + 1);
 
-    // 3. STRIP standard optimizations (f_auto, q_auto, w_720, etc.)
-    // These cause 500 errors when combined with sp_full_hd
-    remaining = remaining.replace(/^(f_auto|q_auto|w_\d+|c_[^/]+|vc_[^/]+),*[^/]*\//i, "");
+    // Filter out parts that look like transformations (e.g. f_auto, w_720) or versions (v12345)
+    const cleanRemaining = remainingParts.filter(p => {
+        // Skip transformation strings (contain comma or start with certain flags)
+        if (p.includes(',') || /^(f_|q_|w_|c_|vc_|so_|eo_|br_|du_|ar_|ac_|dl_|p_|pg_)/.test(p)) return false;
+        // Skip version strings (start with 'v' followed by digits)
+        if (/^v\d+$/.test(p)) return false;
+        return true;
+    });
 
     // 4. Inject streaming profile and convert extension
-    // sp_auto is Cloudinary's smart adaptive profile that supports up to 4K
-    let hlsUrl = `${baseUrl}sp_auto/${remaining}`;
+    let hlsUrl = `${baseUrl}/sp_auto/${cleanRemaining.join('/')}`;
     hlsUrl = hlsUrl.replace(/\.(mp4|webm|mov|avi)$/i, '.m3u8');
 
     return hlsUrl;

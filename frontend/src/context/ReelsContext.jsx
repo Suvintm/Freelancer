@@ -72,6 +72,14 @@ class LRUCache {
         }
     }
 
+    /** Update a specific reel's fields in the cache. O(1) */
+    update(key, updates) {
+        if (!this.map.has(key)) return;
+        const current = this.map.get(key);
+        const updated = { ...current, ...updates };
+        this.map.set(key, updated);
+    }
+
     /**
      * Returns all cached reels as an array, newest last.
      */
@@ -90,18 +98,34 @@ export const ReelsProvider = ({ children }) => {
     const [isInitialized, setIsInitialized] = useState(false);
     useEffect(() => {
         try {
+            const navigation = performance.getEntriesByType("navigation")[0];
+            const isHardReload = navigation?.type === "reload";
+            
             const savedCache = localStorage.getItem("suvix_reels_cache_v1");
             if (savedCache) {
                 const { data, timestamp, page, activeIndex } = JSON.parse(savedCache);
-                // Only restore if cache is reasonably young (e.g. 24 hours) or the user is offline
-                const isRelevant = Date.now() - timestamp < 24 * 60 * 60 * 1000 || !navigator.onLine;
                 
-                if (isRelevant && data?.length > 0) {
-                    feedLRU.current.clear();
-                    feedLRU.current.mergeReels(data);
-                    lastFetchTime.current = timestamp;
-                    pageCache.current = page || 1;
-                    activeIndexCache.current = activeIndex || 0;
+                // — PRODUCT LOGIC: Instagram/TikTok Style Persistence —
+                // 1. If Hard Reload (F5): Reset position and invalidate cache -> Get fresh feed
+                // 2. If Cold Start (Initial Load): Restore cache but start at position 0
+                // 3. If SPA Navigation (Internal): Keep everything persistent (handled by memory)
+                
+                if (isHardReload) {
+                    console.info("[ReelsContext] Hard Reload detected. Invalidating cache for fresh feed.");
+                    // No restore -> triggers fetch in ReelsPage
+                } else {
+                    // Only restore if cache is reasonably young (e.g. 24 hours) or user is offline
+                    const isRelevant = Date.now() - timestamp < 24 * 60 * 60 * 1000 || !navigator.onLine;
+                    
+                    if (isRelevant && data?.length > 0) {
+                        feedLRU.current.clear();
+                        feedLRU.current.mergeReels(data);
+                        lastFetchTime.current = timestamp;
+                        // For a cold start, we still reset to page 1 / index 0 usually, 
+                        // but we keep the data so it loads instantly.
+                        // pageCache.current = page || 1;
+                        // activeIndexCache.current = activeIndex || 0;
+                    }
                 }
             }
         } catch (err) {
@@ -183,6 +207,12 @@ export const ReelsProvider = ({ children }) => {
         localStorage.removeItem("suvix_reels_cache_v1");
     }, []);
 
+    /** Partially updates a reel's state in the cache (Likes, Follows, etc.) */
+    const updateReelInCache = useCallback((reelId, updates) => {
+        feedLRU.current.update(String(reelId), updates);
+        syncToDisk();
+    }, [syncToDisk]);
+
     /** Updates the remembered scroll position (active reel index). */
     const savePosition = useCallback((index) => {
         activeIndexCache.current = index;
@@ -201,6 +231,7 @@ export const ReelsProvider = ({ children }) => {
                 isCacheValid,
                 updateCache,
                 appendToCache,
+                updateReelInCache,
                 invalidateCache,
                 savePosition,
             }}

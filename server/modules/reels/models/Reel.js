@@ -66,6 +66,17 @@ const reelSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        // ── Production Media Metadata ──────────────────────────────────────────
+        hlsUrl: { type: String, default: "" },
+        hlsUrlLow: { type: String, default: "" }, // 360p or 480p variant
+        thumbnailUrl: { type: String, default: "" },
+        duration: { type: Number, default: 0 },
+        processingStatus: { 
+            type: String, 
+            enum: ["pending", "processing", "complete", "failed"], 
+            default: "pending" 
+        },
+        cloudinaryPublicId: { type: String, default: "" },
         // ── High-Fidelity Signals (Phase 30A) ────────────────────────────────
         moods: [{
             type: String,

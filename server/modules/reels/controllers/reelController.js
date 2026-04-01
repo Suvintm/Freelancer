@@ -15,6 +15,8 @@ import { trackInterest, getUserInterests, getPersonalizationBoost } from "../../
 import { trackTrendingInteraction } from "../../../utils/trendingTracker.js";
 import trieInstance from "../utils/reelSearchTrie.js";
 import { purgeReelsFeedCache } from "../../../utils/cloudflareService.js";
+import { videoProcessingQueue, analyticsQueue } from "../../../config/queues.js";
+import { getCollaborativeAffinities } from "../utils/recsysEngine.js";
 
 // Scoreboard Redis key — persistent global sorted set of reel scores
 const SCORE_BOARD_KEY = "reels:score:board";
@@ -61,6 +63,11 @@ export const publishToReel = asyncHandler(async (req, res) => {
         description: portfolio.description,
         mediaUrl,
         mediaType: isVideo ? "video" : "image",
+        hlsUrl: portfolio.hlsUrl || "",
+        thumbnailUrl: portfolio.thumbnailUrl || "",
+        duration: portfolio.duration || 0,
+        processingStatus: portfolio.processingStatus || "pending",
+        cloudinaryPublicId: portfolio.cloudinaryPublicId || "",
         hashtags: portfolio.hashtags || [],
         location: portfolio.location || "",
         taggedUsers: portfolio.taggedUsers || [],
@@ -104,6 +111,7 @@ export const publishToReel = asyncHandler(async (req, res) => {
         reel: populatedReel,
     });
 });
+
 
 // ============ UNPUBLISH REEL ============
 export const unpublishReel = asyncHandler(async (req, res) => {
@@ -277,6 +285,7 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
         {
             $project: {
                 _id: 1, title: 1, description: 1, mediaUrl: 1, mediaType: 1,
+                hlsUrl: 1, thumbnailUrl: 1, duration: 1, processingStatus: 1,
                 likesCount: 1, viewsCount: 1, commentsCount: 1, createdAt: 1,
                 isLiked: 1,
                 latestLikers: {
@@ -452,10 +461,21 @@ export const toggleSave = asyncHandler(async (req, res) => {
     }
 });
 
-// ============ INCREMENT VIEW COUNT ============
+// ============ INCREMENT VIEW COUNT (Optimized) ============
 export const incrementView = asyncHandler(async (req, res) => {
     const reelId = req.params.id;
     const userId = req.user?._id?.toString() || null;
+    const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+    const viewKey = `view:${reelId}:${ip}`;
+
+    // 1. IP-based Deduplication (15m window)
+    if (redisAvailable) {
+        const hasViewed = await getCache(viewKey);
+        if (hasViewed) {
+            return res.status(200).json({ success: true, message: "View already counted recently", deduplicated: true });
+        }
+        await setCache(viewKey, "1", 60 * 15);
+    }
     
     const reel = await Reel.findByIdAndUpdate(
         reelId,
@@ -464,28 +484,18 @@ export const incrementView = asyncHandler(async (req, res) => {
     );
 
     if (!reel) {
-        return res.status(404).json({ success: false, message: "Reel not found" });
+        throw new ApiError(404, "Reel not found");
     }
 
-    // ── DSA: Bloom Filter — Mark this reel as seen for this user ─────────────
-    // O(k) — k=3 Redis SETBIT calls. Prevents this reel from showing again
-    // in the personalized feed until the user has cycled through all reels.
-    if (userId) {
-        markSeen(userId, reelId).catch(() => {});
-        // Track trending (Weight: 1 for view)
-        trackTrendingInteraction(req.user?.country, reel.language, reel.hashtags, 1).catch(() => {});
-        
-        // Phase 30B: Track co-viewers for collaborative filtering (O(1))
-        const coViewKey = `${REEL_CO_VIEWERS_PREFIX}${reelId}`;
-        redisClient.sAdd(coViewKey, userId).catch(() => {});
-        redisClient.expire(coViewKey, REEL_CO_VIEWERS_TTL).catch(() => {});
+    // ── BullMQ: Async Analytics & Scoring (Phase 30.2) ─────────────────────────
+    // Offload heavy updates from the request/response cycle
+    if (analyticsQueue) {
+        analyticsQueue.add("view", { reelId, userId, ip, country: req.user?.country }).catch(() => {});
     }
 
-    // ── DSA: Sorted Set Scoreboard update (O(log N)) ─────────────────────────
-    // Update the reel's position in the global score board without cache invalidation.
-    const updatedScore = compositeScore(reel);
-    redisClient.zAdd(SCORE_BOARD_KEY, updatedScore, reelId).catch(() => {});
-    redisClient.expire(SCORE_BOARD_KEY, SCORE_BOARD_TTL).catch(() => {});
+    if (videoProcessingQueue) {
+        videoProcessingQueue.add("REFRESH_SCORE", { reelId, action: "REFRESH_SCORE" }, { delay: 5000 }).catch(() => {});
+    }
 
     res.status(200).json({
         success: true,
@@ -1007,6 +1017,17 @@ export const batchAnalytics = asyncHandler(async (req, res) => {
                     redisClient.zAdd(SCORE_BOARD_KEY, newScore, reelId).catch(() => {});
                 }
             } 
+            else if (type === 'view') {
+                // — Phase 4 Strategy: Flight-Batching Views —
+                await Reel.findByIdAndUpdate(reelId, { $inc: { viewsCount: 1 } });
+                if (userId) {
+                    await ReelInteraction.findOneAndUpdate(
+                        { user: userId, reel: reelId },
+                        { $set: { viewed: true }, $setOnInsert: { createdAt: new Date() } },
+                        { upsert: true }
+                    );
+                }
+            }
             else if (type === 'watch' && seconds > 0) {
                 const completion = Math.max(0, Math.min(1, (watchPercent || 0) / 100));
                 
@@ -1127,13 +1148,29 @@ export const getSuggestedDiscovery = asyncHandler(async (req, res) => {
         userDoc = await mongoose.model('User').findById(userId, { following: 1 }).lean();
         followingSet = new Set(userDoc?.following?.map(id => id.toString()) || []);
     }
+    
+    // 3. COLLABORATIVE FILTERING (RecSys 2.0)
+    let collaborativeIds = [];
+    if (userId) {
+        // Fetch last watched reel and its affinities
+        const lastWatched = await redisClient.smembers(`user:history:${userId}`);
+        if (lastWatched && lastWatched.length > 0) {
+            const affinities = await getCollaborativeAffinities(lastWatched[lastWatched.length - 1], 20);
+            collaborativeIds = affinities.map(a => new mongoose.Types.ObjectId(a.reelId));
+        }
+    }
 
-    // 3. RETRIEVAL: High-performing reels from candidates the user hasn't seen
+    // 4. RETRIEVAL: High-performing reels from candidates the user hasn't seen
     const now = new Date();
-    const candidates = await Reel.find({
-        isActive: true,
-        createdAt: { $gte: new Date(now - 7 * 24 * 60 * 60 * 1000) } // Last 7 days
-    })
+    const candidateQuery = {
+        isPublished: true,
+        $or: [
+            { createdAt: { $gte: new Date(now - 7 * 24 * 60 * 60 * 1000) } }, // 1. Fresh content
+            { _id: { $in: collaborativeIds } } // 2. Collaborative matches
+        ]
+    };
+    
+    const candidates = await Reel.find(candidateQuery)
     .sort({ viewsCount: -1 })
     .limit(100)
     .lean();
@@ -1141,6 +1178,8 @@ export const getSuggestedDiscovery = asyncHandler(async (req, res) => {
     // 4. RANKING: Use wilsonScore + Interest Match
     const scoredReels = candidates.map(r => ({
         ...r,
+        hlsUrl: r.hlsUrl || null,
+        processingStatus: r.processingStatus || 'complete',
         score: (wilsonScore(r.likesCount || 0, r.viewsCount || 0) * 0.7) + 
                (getPersonalizationBoost(r, interests) * 0.3)
     }))
