@@ -6,6 +6,7 @@ import { useTheme } from '../../../src/context/ThemeContext';
 import { Colors } from '../../../src/constants/Colors';
 
 import { ScreenContainer } from '../../../src/components/shared/ScreenContainer';
+import { UnifiedBanner } from '../../../src/components/home/UnifiedBanner';
 
 export default function ClientHomeScreen() {
   const { user } = useAuthStore();
@@ -15,28 +16,56 @@ export default function ClientHomeScreen() {
 
   return (
     <ScreenContainer>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={[styles.welcomeTxt, { color: palette.textSecondary }]}>Welcome back,</Text>
-          <Text style={[styles.nameTxt, { color: palette.text }]}>{user?.name || 'Client'} 💼</Text>
-        </View>
-      </View>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* TOP ZONE GESTURE SHIELD: Protects both Banner and Welcome area from Page Swiping */}
+        <View 
+            onStartShouldSetResponderCapture={() => true}
+            onMoveShouldSetResponderCapture={(ev) => Math.abs(ev.nativeEvent.pageX) > 20}
+        >
+            {/* Elite Banner - FULL BLEED */}
+            <UnifiedBanner pageName="home" />
 
-      {/* Empty State / Simplified Home */}
-      <View style={styles.emptyState}>
-        <View style={[styles.infoCard, { backgroundColor: palette.secondary, borderColor: palette.border }]}>
-           <Text style={[styles.infoTxt, { color: palette.textSecondary }]}>
-              We are building your personalized experience. Use the sidebar to explore talented editors and manage your profile.
-           </Text>
+            {/* Dashboard Header - PADDED VIEW inside Shield */}
+            <View style={styles.dashboardContainer}>
+                <View style={styles.header}>
+                    <View>
+                        <Text style={[styles.welcomeTxt, { color: palette.textSecondary }]}>Welcome back,</Text>
+                        <Text style={[styles.nameTxt, { color: palette.text }]}>{user?.name || 'Client'} 💼</Text>
+                    </View>
+                </View>
+            </View>
         </View>
-      </View>
+
+        {/* Lower Dashboard Content (Normal swiping or non-shielded) */}
+        <View style={styles.dashboardContainer}>
+            {/* Empty State / Simplified Home */}
+            <View style={styles.emptyState}>
+            <View style={[styles.infoCard, { backgroundColor: palette.secondary, borderColor: palette.border }]}>
+                <Text style={[styles.infoTxt, { color: palette.textSecondary }]}>
+                    We are building your personalized experience. Use the sidebar to explore talented editors and manage your profile.
+                </Text>
+            </View>
+            </View>
+        </View>
+      </ScrollView>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { marginBottom: 32 },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  dashboardContainer: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+  },
+  header: { 
+    marginBottom: 32,
+  },
   welcomeTxt: { fontSize: 16, fontWeight: '500' },
   nameTxt: { fontSize: 24, fontWeight: '800' },
   emptyState: {
