@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { Colors } from '../../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 
 const { width } = Dimensions.get('window');
 const ASPECT_RATIO = 16 / 10;
@@ -109,6 +109,26 @@ interface UnifiedBannerProps {
   pageName?: 'home' | 'editors' | 'gigs' | 'jobs' | 'explore';
 }
 
+// 🍿 NEXT-GEN VIDEO COMPONENT
+const BannerVideo = ({ source, poster }: { source: string, poster?: string }) => {
+  const player = useVideoPlayer(source, (player) => {
+    player.loop = true;
+    player.play();
+    player.muted = true;
+    player.staysActiveInBackground = false;
+  });
+
+  return (
+    <VideoView
+      player={player}
+      style={styles.media}
+      contentFit="cover"
+      placeholderContentFit="cover"
+      nativeControls={false}
+    />
+  );
+};
+
 export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
   const { isDarkMode } = useTheme();
   const palette = isDarkMode ? Colors.dark : Colors.light;
@@ -183,20 +203,9 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
             <View style={styles.slide}>
                 <View style={[styles.card, { backgroundColor: palette.secondary, borderColor: palette.border }]}>
                     
-                    {/* MEDIA ENGINE 2.0 (High Precision Visibility) */}
+                    {/* MEDIA ENGINE 3.0 (Next-Gen expo-video) */}
                     {item.type === 'video' ? (
-                        <Video
-                            source={{ uri: item.media }}
-                            style={styles.media}
-                            resizeMode={ResizeMode.COVER}
-                            shouldPlay={true}
-                            isLooping={true}
-                            isMuted={true}
-                            useNativeControls={false}
-                            posterSource={{ uri: item.poster }}
-                            usePoster={true}
-                            posterStyle={styles.media}
-                        />
+                        <BannerVideo source={item.media} poster={item.poster} />
                     ) : (
                         <Image source={{ uri: item.media }} style={styles.media} resizeMode="cover" />
                     )}

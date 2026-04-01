@@ -57,7 +57,8 @@
             "newArchEnabled": true
           }
         }
-      ]
+      ],
+      "expo-video"
     ],
     "extra": {
       "router": {
