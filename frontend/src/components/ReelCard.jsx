@@ -169,6 +169,19 @@ const ReelCard = ({
 
     const isFirstRender = useRef(true);
 
+    // — STABILITY: Memoized Player Callbacks —
+    const handleVideoEnded = useCallback(() => {
+        setLoopCount(prev => prev + 1);
+    }, []);
+
+    const handleStreamingQuality = useCallback((q) => {
+        setCurrentQuality(q);
+    }, []);
+
+    const handleAvailableStreaming = useCallback((list) => {
+        setAvailableQualities(list);
+    }, []);
+
     // — PERFORMANCE CONCEPT: Predictive Metadata Hydration —
     // We start showing metadata as soon as the reel is NEAR the active viewport.
     // This removes the "pop-in" effect by pre-warming the UI components.
@@ -422,10 +435,10 @@ const ReelCard = ({
                             if (!watchStartRef.current) watchStartRef.current = Date.now();
                         }}
                         onPause={() => setIsPlaying(false)}
-                        onQualityChange={setCurrentQuality}
-                        onAvailableQualities={setAvailableQualities}
+                        onQualityChange={handleStreamingQuality}
+                        onAvailableQualities={handleAvailableStreaming}
                         preferredQuality={preferredQuality}
-                        onEnded={() => setLoopCount(prev => prev + 1)}
+                        onEnded={handleVideoEnded}
                     />
                 ) : (
                     <img 

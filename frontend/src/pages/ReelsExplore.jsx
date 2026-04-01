@@ -12,6 +12,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
+import { useReelsContext } from "../context/ReelsContext";
 import ReelGridItem from "../components/ReelGridItem.jsx";
 import ReelCommentsDrawer from "../components/ReelCommentsDrawer";
 import TrendingReelsCarousel from "../components/TrendingReelsCarousel.jsx";
@@ -33,6 +34,7 @@ const SkeletonCard = () => (
 // ─── Main Component ────────────────────────────────────────────────────────
 const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
     const { backendURL } = useAppContext();
+    const { prePopulateCache } = useReelsContext();
     const navigate = useNavigate();
 
     const [reels, setReels]             = useState([]);
@@ -70,6 +72,7 @@ const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
                 });
                 const fetched = data.reels || [];
                 setReels(fetched);
+                prePopulateCache(fetched);
                 setSeenIds(new Set(fetched.map(r => r._id)));
                 setHasMore(fetched.length >= INITIAL_LIMIT);
             } else {
@@ -85,6 +88,7 @@ const ReelsExplore = ({ isTab = false, isSwiping = false }) => {
                 } else {
                     const genuinelyNew = incoming.filter(r => !seenIds.has(r._id));
                     setReels(prev => [...prev, ...genuinelyNew]);
+                    prePopulateCache(genuinelyNew);
                     setSeenIds(prev => new Set([...prev, ...genuinelyNew.map(r => r._id)]));
                     if (incoming.length < LOAD_MORE_LIMIT) setHasMore(false);
                 }

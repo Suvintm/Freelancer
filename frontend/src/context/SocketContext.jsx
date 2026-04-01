@@ -26,14 +26,26 @@ export const SocketProvider = ({ children }) => {
   const syncIntervalRef = useRef(null);
   const socketRef = useRef(null);
 
+    const getSocketBaseUrl = useCallback(() => {
+    try {
+      if (!backendURL || backendURL.includes("://https")) {
+        // Fallback for malformed .env or parsing errors
+        return window.location.origin;
+      }
+      return backendURL.replace("/api", "");
+    } catch (err) {
+      return window.location.origin;
+    }
+  }, [backendURL]);
+
   // Initialize socket connection with production-ready settings
   useEffect(() => {
     if (!user?.token || !user?._id) {
-      console.log("⚠️ Socket: No user token or ID, skipping connection");
+      console.info("⚠️ Socket: No user token or ID, skipping connection");
       return;
     }
 
-    const baseUrl = backendURL.replace("/api", "");
+    const baseUrl = getSocketBaseUrl();
     console.log("🔌 Socket: Connecting to", baseUrl);
     setConnectionState("connecting");
 

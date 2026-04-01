@@ -16,58 +16,58 @@ const HlsVideoPlayer = React.forwardRef(({
   const internalRef = useRef(null);
   const videoRef = (ref && typeof ref !== 'function') ? ref : internalRef;
   const hlsRef = useRef(null);
+  const abortControllerRef = useRef(null);
   const [isReady, setIsReady] = useState(false);
   const isStalledRef = useRef(false);
+  const autoplayWarnedRef = useRef(false);
+  const lastUrlRef = useRef(""); // To track actual URL change vs. prop re-render
 
   // Use the unified Product-Grade utility from urlHelper
   const streamUrl = useMemo(() => toHlsUrl(src), [src]);
 
+  // — PRO-LEVEL: Stable Callback Refs —
+  // We lock the identity of parent callbacks to prevent UI re-renders from re-triggering the HLS lifecycle.
+  const onQualityChangeRef = useRef(onQualityChange);
+  const onAvailableQualitiesRef = useRef(onAvailableQualities);
+
+  useEffect(() => {
+    onQualityChangeRef.current = onQualityChange;
+    onAvailableQualitiesRef.current = onAvailableQualities;
+  }, [onQualityChange, onAvailableQualities]);
+
+  // — PRO-LEVEL: Persistent Media Identity Engine —
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !streamUrl) return;
 
-    // ── SLIDING WINDOW RESOURCE MANAGEMENT ──
-    // Only initialize HLS if the reel is active or in the preloading range.
-    // This prevents background tabs/hidden reels from wasting GPU/CPU threads.
-    if (!isActive && !isPreloading) {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-        setIsReady(false);
-      }
-      return;
+    // — STABILITY GUARD: Only "Hard-Reset" if the URL actually changed —
+    if (streamUrl === lastUrlRef.current) {
+        // Skip re-initialization. The HLS instance is already healthy.
+        return;
     }
 
+    // New URL detected! Perform clean tear-down of previous session.
+    if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+    }
+    setIsReady(false);
+    lastUrlRef.current = streamUrl;
+
     if (streamUrl.includes('.m3u8') && Hls.isSupported()) {
-      /**
-       * HLS.js Advance Configuration (Performance Tuning)
-       */
+      if (!abortControllerRef.current) abortControllerRef.current = new AbortController();
+
+      const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      const isSlow = connection && (connection.saveData || connection.effectiveType === '2g' || connection.effectiveType === '3g');
+
       const hls = new Hls({
-        startLevel: -1, // Startup in ABR mode
+        startLevel: preferredQuality === "Auto" ? (isSlow ? 0 : -1) : undefined,
         capLevelToPlayerSize: true, 
-        
-        // ── Web Worker (Offload heavy lifting) ──
         enableWorker: true, 
-        
-        // ── Sliding Window Buffer (DSA Concept: Dynamic Capping) ──
-        // Only buffer 5s for neighbors (isPreloading) to ensure instant play.
-        // Buffer up to 30s for the active reel for rock-solid stability.
-        maxBufferLength: isActive ? 30 : (isPreloading ? 5 : 0), 
-        maxMaxBufferLength: isActive ? 60 : (isPreloading ? 10 : 0),
-        maxBufferSize: isActive ? 100 * 1000 * 1000 : (isPreloading ? 10 * 1000 * 1000 : 0), 
-        
-        // Initial buffer target
-        backBufferLength: 0, // Quickly evict past fragments from memory        
-        // ── ABR (Adaptive Bitrate) Algorithm Tuning ──
-        abrEwmaDefaultEstimate: 10000000, // 10Mbps initial guess for 4K/HD starts like Instagram
-        abrBandwidthUpFactor: 0.7,       // Be conservative about upgrading to ensure no buffering
-        abrBandwidthDownFactor: 0.95,    // Fast and stable downgrade
-        
-        // ── Resilience ──
-        fragLoadingMaxRetry: 4,
-        manifestLoadingMaxRetry: 4,
-        levelLoadingMaxRetry: 4,
-        lowLatencyMode: true,           // Faster fragment selection
+        maxBufferLength: 5, 
+        maxMaxBufferLength: 10,
+        backBufferLength: 0, 
+        lowLatencyMode: true,
       });
 
       hlsRef.current = hls;
@@ -76,29 +76,22 @@ const HlsVideoPlayer = React.forwardRef(({
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         setIsReady(true);
-        if (onQualityChange) onQualityChange("Auto");
+        if (onQualityChangeRef.current) onQualityChangeRef.current("Auto");
         const heights = hls.levels.map(l => l.height).filter(Boolean);
         const uniqueHeights = [...new Set(heights)].sort((a,b) => b - a);
-        if (onAvailableQualities) onAvailableQualities(uniqueHeights);
+        if (onAvailableQualitiesRef.current) onAvailableQualitiesRef.current(uniqueHeights);
       });
 
       hls.on(Hls.Events.LEVEL_SWITCHED, (v, data) => {
         const h = hls.levels[data.level]?.height;
-        if (h && onQualityChange) onQualityChange(`${h}p`);
-      });
-
-      // Monitor for stalling to provide intelligent recovery
-      hls.on(Hls.Events.ERROR, (v, data) => {
-        if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR) {
-          isStalledRef.current = true;
-        }
+        if (h && onQualityChangeRef.current) onQualityChangeRef.current(`${h}p`);
       });
     } 
     else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = streamUrl;
       video.addEventListener('loadedmetadata', () => {
         setIsReady(true);
-        if (onQualityChange) onQualityChange("Auto");
+        if (onQualityChangeRef.current) onQualityChangeRef.current("Auto");
       });
     } 
     else {
@@ -106,33 +99,84 @@ const HlsVideoPlayer = React.forwardRef(({
       setIsReady(true);
     }
 
-    return () => hlsRef.current?.destroy();
-  }, [streamUrl, isPreloading, isActive, onQualityChange, onAvailableQualities, src]);
+    return () => {
+        // — PRO-LEVEL: Safe Cleanup —
+        // We only clear the video object if the URL actually changed or component unmounts.
+        // We do NOT clear during simple re-renders caused by parent state updates (Likes).
+    };
+  }, [streamUrl, src]); 
 
-  // Unified Playback Controller
+  // Cleanup effect for actual Unmount
+  useEffect(() => {
+    return () => {
+      if (hlsRef.current) {
+          hlsRef.current.destroy();
+          hlsRef.current = null;
+      }
+      const video = videoRef.current;
+      if (video) {
+        video.pause();
+        try {
+          video.removeAttribute('src');
+          video.load(); 
+        } catch (e) {}
+      }
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+      lastUrlRef.current = "";
+    };
+  }, []);
+
+  // — PRO-LEVEL: Dynamic Promotion Controller —
+  // This updates HLS configuration (like buffer depth) without restarting the stream.
+  useEffect(() => {
+    const hls = hlsRef.current;
+    if (!hls) return;
+
+    // — STABILITY: Dynamic Buffer Scaling —
+    // Active: High-perf buffer. Preload: Tiny "Hook" buffer to save user bandwidth.
+    hls.config.maxBufferLength = isActive ? 30 : (isPreloading ? 2 : 0);
+    hls.config.maxMaxBufferLength = isActive ? 60 : (isPreloading ? 5 : 0);
+    hls.config.maxBufferSize = isActive ? 100 * 1000 * 1000 : (isPreloading ? 5 * 1000 * 1000 : 0);
+
+    // If it moved out of range entirely, we pause but don't destroy
+    if (!isActive && !isPreloading) {
+        if (videoRef.current) videoRef.current.pause();
+    }
+  }, [isActive, isPreloading]);
+
+  // Unified Playback & Visibility Controller
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !isReady) return;
+
+    const handleVisibility = () => {
+      if (document.hidden && !video.paused) {
+        video.pause();
+      } else if (!document.hidden && isActive && autoPlay && video.paused) {
+        video.play().catch(() => {}); // Attempt Resume
+      }
+    };
 
     if (isActive && autoPlay) {
       if (video.paused) {
         const p = video.play();
         if (p !== undefined) {
           p.catch(e => {
-            if (e.name === 'NotAllowedError') {
-              console.warn("[HlsVideoPlayer] Autoplay blocked by browser. Retrying muted...");
-              // Force local mute to satisfy browser policy
+              if (e.name === 'NotAllowedError' && !autoplayWarnedRef.current) {
+                console.info("[HlsVideoPlayer] Autoplay blocked. Retrying muted...");
+                autoplayWarnedRef.current = true;
+              }
               video.muted = true;
-              video.play().catch(err => console.error("[HlsVideoPlayer] Muted playback also failed:", err));
-            } else if (e.name !== 'AbortError') {
-              console.warn("[HlsVideoPlayer] Playback error:", e);
-            }
-          });
+              video.play().catch(() => {});
+            });
         }
       }
-    } else if (!isActive) {
+    } else {
       video.pause();
     }
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [isActive, autoPlay, isReady]);
 
   // Fast Quality Switching Logic - FORCED TO AUTO FOR INSTA-SMOOTHNESS

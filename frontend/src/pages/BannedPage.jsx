@@ -16,7 +16,18 @@ const BannedPage = () => {
 
   // Listen for unbanned event
   useEffect(() => {
-    const baseUrl = backendURL?.replace("/api", "") || "http://localhost:5000";
+    const getBaseUrl = () => {
+      try {
+        if (!backendURL || backendURL.includes("://https")) {
+          return window.location.origin;
+        }
+        return backendURL.replace("/api", "");
+      } catch (err) {
+        return window.location.origin;
+      }
+    };
+
+    const baseUrl = getBaseUrl();
     
     // Connect with minimal config (doesn't need auth since user is banned)
     const socket = io(baseUrl, {

@@ -3,7 +3,11 @@
  * and applies production-level media optimizations to ALL Cloudinary URLs.
  */
 
-const CLOUDINARY_VIDEO_OPT = "f_auto,q_auto,w_720,c_limit";
+// — PRO-LEVEL: Stable Video Codec —
+// We REMOVE 'f_auto' and 'q_auto' from Progressive Videos (MP4s). 
+// Those flags often break the 'Content-Length' and 'Range Requests' (416) in browsers.
+// Instead, we force 'vc_h264' for universal, seekable playback on Cloudinary.
+const CLOUDINARY_VIDEO_OPT = "vc_h264,w_720,c_limit";
 const CLOUDINARY_IMAGE_OPT = "f_auto,q_auto,w_800,c_limit";
 
 /**
@@ -28,8 +32,9 @@ const injectOptimizations = (url) => {
     if (isHLS) return url;
 
     if (isVideo) {
+        // — STABILITY FIX: Progressive MP4s MUST be seekable —
         let fixed = url.replace("/upload/", `/upload/${CLOUDINARY_VIDEO_OPT}/`);
-        // Ensure .mp4 extension for H.264
+        // Force .mp4 extension for H.264 compatibility
         if (!fixed.toLowerCase().endsWith(".mp4")) {
             fixed = fixed.replace(/\.[^./\\]+$/, ".mp4");
         }
@@ -38,7 +43,7 @@ const injectOptimizations = (url) => {
         return url.replace("/upload/", `/upload/${CLOUDINARY_IMAGE_OPT}/`);
     }
 
-    // Generic fallback
+    // Generic fallback for unknown types
     return url.replace("/upload/", "/upload/f_auto,q_auto/");
 };
 

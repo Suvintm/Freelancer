@@ -1,9 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FixedSizeList as List } from "react-window";
-import { FaSpinner } from "react-icons/fa";
 import { HiOutlineChevronLeft } from "react-icons/hi2";
-import { BiRefresh } from "react-icons/bi";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
@@ -14,6 +12,60 @@ import ReelAdCard from "../components/ReelAdCard";
 import ReelCommentsDrawer from "../components/ReelCommentsDrawer";
 import usePullToRefresh from "../hooks/usePullToRefresh.jsx";
 import analyticsService from "../services/AnalyticsService";
+
+const ReelRow = React.memo(({ 
+    index, 
+    style, 
+    data: { 
+        combinedFeed, 
+        activeReelIndex, 
+        isActive, 
+        showComments, 
+        preloadDepth, 
+        isScrollingFast,
+        globalMuted,
+        setGlobalMuted,
+        handleCommentClick,
+        handleLikeUpdate,
+        handleFollowUpdate,
+        setSkippedAdIndices
+    } 
+}) => {
+    const item = combinedFeed[index];
+    if (!item) return null;
+    
+    const distance = Math.abs(index - activeReelIndex);
+    const isReelActive = isActive && index === activeReelIndex && !showComments;
+    const isBurstPreloading = !isScrollingFast && distance === 1;
+
+    return (
+        <div style={{ ...style, willChange: 'transform' }} className="snap-start snap-always w-full h-full bg-black">
+            {item.type === 'reel' ? (
+                <ReelCard
+                    reel={item.content}
+                    isActive={isReelActive}
+                    isNearActive={distance <= preloadDepth}
+                    isPreloading={isBurstPreloading}
+                    onCommentClick={handleCommentClick}
+                    onLikeUpdate={handleLikeUpdate}
+                    onFollowUpdate={handleFollowUpdate}
+                    globalMuted={globalMuted}
+                    setGlobalMuted={setGlobalMuted}
+                />
+            ) : (
+                <ReelAdCard
+                    ad={item.content}
+                    isActive={isReelActive}
+                    isNearActive={distance <= preloadDepth}
+                    isPreloading={isBurstPreloading}
+                    globalMuted={globalMuted}
+                    setGlobalMuted={setGlobalMuted}
+                    onSkip={() => setSkippedAdIndices(prev => new Set([...prev, item.id]))}
+                />
+            )}
+        </div>
+    );
+});
 
 const ReelsPage = ({ isActive = true }) => {
     const { backendURL } = useAppContext();
@@ -27,8 +79,11 @@ const ReelsPage = ({ isActive = true }) => {
         updateReelInCache,
         invalidateCache,
         savePosition,
+        prePopulateCache,
+        findReelById,
         globalMuted,
         setGlobalMuted,
+        preloadDepth, 
     } = useReelsContext();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -48,28 +103,27 @@ const ReelsPage = ({ isActive = true }) => {
     const [targetAd, setTargetAd] = useState(null);
     const [windowHeight, setWindowHeight] = useState(window.innerHeight);
     const [sessionSeed, setSessionSeed] = useState(() => Math.random().toString(36).substring(7));
+    
+    // — PRO-LEVEL: Performance Telemetry —
+    const lastScrollOffsetRef = useRef(0);
+    const lastScrollTimeRef = useRef(Date.now());
+    const [isScrollingFast, setIsScrollingFast] = useState(false);
+    const scrollStopTimerRef = useRef(null);
 
     const listRef = useRef(null);
     const viewedReelsRef = useRef(new Set());
 
-    // Track window height for FixedSizeList
     useEffect(() => {
         const handleResize = () => setWindowHeight(window.innerHeight);
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
-    // ─────────────────────────────────────────────────────────────
-    // FETCH REELS — Concurrent Candidate Retrieval (O(1) Wait)
-    // ─────────────────────────────────────────────────────────────
     const fetchReels = useCallback(async (pageNum = 1, isLoadMore = false) => {
-        // — OFFLINE PROTECTION —
         if (!navigator.onLine) {
-            console.warn("[Reels] Device is offline. Skipping network fetch.");
             setLoading(false);
             setLoadingMore(false);
             setRefreshing(false);
-            // If we have cached content but current reels list is empty, restore it
             if (feedCache.current.length > 0 && reels.length === 0) {
                 setReels(feedCache.current);
             }
@@ -84,8 +138,7 @@ const ReelsPage = ({ isActive = true }) => {
                 : (targetReelId ? [targetReelId] : []);
             const excludeIds = excludeIdsArr.join(",");
 
-            // Increased limit to 10 for fewer network requests
-            const feedPromise = axios.get(`${backendURL}/api/reels/feed`, {
+            const { data } = await axios.get(`${backendURL}/api/reels/feed`, {
                 params: {
                     page: pageNum,
                     limit: 10,
@@ -93,23 +146,27 @@ const ReelsPage = ({ isActive = true }) => {
                     sessionSeed: sessionSeed
                 }
             });
-            
-            // Fetch target reel or ad in parallel to global feed
-            const specificPromise = (!isLoadMore && pageNum === 1 && targetReelId && !targetReelId.startsWith("ad_"))
-                ? axios.get(`${backendURL}/api/reels/${targetReelId}`).catch(() => null)
-                : Promise.resolve(null);
-            
-            const adPromise = (!isLoadMore && pageNum === 1 && targetReelId?.startsWith("ad_"))
-                ? axios.get(`${backendURL}/api/ads/${targetReelId.replace("ad_", "")}`).catch(() => null)
-                : Promise.resolve(null);
 
-            const [feedRes, specificRes, adRes] = await Promise.all([feedPromise, specificPromise, adPromise]);
+            // Parallel loading for specific reel or ad if deep linked
+            let specificRes = null;
+            let adRes = null;
+            if (!isLoadMore && pageNum === 1 && targetReelId) {
+                if (targetReelId.startsWith("ad_")) {
+                    adRes = await axios.get(`${backendURL}/api/ads/${targetReelId.replace("ad_", "")}`).catch(() => null);
+                } else {
+                    specificRes = await axios.get(`${backendURL}/api/reels/${targetReelId}`).catch(() => null);
+                }
+            }
 
-            let fetchedReels = feedRes.data.reels || [];
+            let fetchedReels = data.reels || [];
             
-            // Integrate high-priority target if found
-            if (specificRes?.data?.reel) {
-                fetchedReels = [specificRes.data.reel, ...fetchedReels];
+            // — PRO-LEVEL: Target Preservation Logic —
+            // We must ensure the Target (either from network or pre-existing cache) is at Index 0.
+            const targetInCache = findReelById(targetReelId);
+            const targetObj = specificRes?.data?.reel || targetInCache;
+
+            if (targetObj) {
+                fetchedReels = [targetObj, ...fetchedReels.filter(r => r?._id !== targetReelId)];
             } else if (adRes?.data?.ad) {
                 setTargetAd(adRes.data.ad);
             }
@@ -125,10 +182,9 @@ const ReelsPage = ({ isActive = true }) => {
                 updateCache(uniqueInitial, pageNum);
             }
 
-            setHasMore(feedRes.data.pagination.hasMore);
+            setHasMore(data.pagination.hasMore);
         } catch (err) {
             console.error("[Reels] Fetch error:", err.message);
-            // Fallback: If network fails but we have cached data, ensure it stays visible
             if (reels.length === 0 && feedCache.current.length > 0) {
                 setReels(feedCache.current);
             }
@@ -139,36 +195,49 @@ const ReelsPage = ({ isActive = true }) => {
         }
     }, [backendURL, updateCache, appendToCache, targetReelId, feedCache, reels.length, sessionSeed]);
 
-    // ─────────────────────────────────────────────────────────────
-    // ON MOUNT/ACTIVE — Optimized state-restoration
-    // ─────────────────────────────────────────────────────────────
     useEffect(() => {
         if (!isActive) return;
+        
+        // — PRO-LEVEL: Instant Deep-Link Handoff —
+        if (targetReelId && reels.length === 0) {
+            const cachedReel = findReelById(targetReelId);
+            if (cachedReel) {
+                console.info("[Reels] Found Target Reel in cache. Instant Mount.");
+                setReels([cachedReel]);
+                setLoading(false);
+                // fetchReels(1, false) will still run but won't show a skeleton
+            }
+        }
 
-        // If switching tabs and we already have content, don't show black screen or loading pulses
         if (reels.length > 0) setLoading(false);
 
         if (targetReelId) {
-            const isAlreadyInFeed = reels.some(r => r?._id === targetReelId || (r?.type === 'ad' && r?.content?._id === targetReelId.replace('ad_', '')));
             const currentFirstId = (reels.length > 0) ? (reels[0].type === 'ad' ? `ad_${reels[0].content?._id}` : reels[0]._id) : null;
             
-            if (targetReelId !== currentFirstId && !isAlreadyInFeed) {
-                // Brand new deep link -> Reset and fresh parallel fetch
-                setLoading(true);
-                setReels([]);
-                setTargetAd(null); 
-                setActiveReelIndex(0);
-                listRef.current?.scrollTo(0);
-                fetchReels(1, false);
-            } else if (isAlreadyInFeed) {
-                const foundIndex = reels.findIndex(r => r?._id === targetReelId || (r?.type === 'ad' && r?.content?._id === targetReelId.replace('ad_', '')));
-                if (foundIndex !== -1 && foundIndex !== activeReelIndex) {
-                    setActiveReelIndex(foundIndex);
-                    setTimeout(() => listRef.current?.scrollToItem(foundIndex, "start"), 50);
+            // — PRO-LEVEL: Root-Positioning Logic —
+            // If we have a target ID, it MUST be at index 0 to prevent "Scroll Up" leaks.
+            if (targetReelId !== currentFirstId) {
+                // Not the root! Reset and move to root.
+                const cachedReel = findReelById(targetReelId);
+                if (cachedReel) {
+                    setReels([cachedReel]);
+                    setLoading(false);
+                    setActiveReelIndex(0);
+                    listRef.current?.scrollTo(0);
+                    // — PRO-LEVEL: Background Fill —
+                    // We have the "Hero" reel, now fill the rest of the feed silently.
+                    fetchReels(1, false);
+                } else if (reels.length === 0) {
+                    setLoading(true);
+                    fetchReels(1, false);
+                } else {
+                    // It's in the list but not first. Force reset to make it first.
+                    setReels([]);
+                    setLoading(true);
+                    fetchReels(1, false);
                 }
             }
         } else if (isCacheValid() && reels.length === 0) {
-            // Tab return -> Restore instantly from LRU Cache
             setReels(feedCache.current);
             setPage(pageCache.current);
             setLoading(false);
@@ -180,9 +249,8 @@ const ReelsPage = ({ isActive = true }) => {
         } else if (reels.length === 0) {
             fetchReels(1, false);
         }
-    }, [isActive, targetReelId, fetchReels, isCacheValid, reels.length, feedCache, pageCache, activeIndexCache, savePosition]);
+    }, [isActive, targetReelId, fetchReels, findReelById, isCacheValid, reels.length, feedCache, pageCache, activeIndexCache, savePosition]);
 
-    // Fetch ads for reels feed injection
     useEffect(() => {
         const fetchReelAds = async () => {
             try {
@@ -195,22 +263,18 @@ const ReelsPage = ({ isActive = true }) => {
         fetchReelAds();
     }, [backendURL]);
 
-    // Track views — Production Grade (Flight-Batching)
     useEffect(() => {
         const reel = reels[activeReelIndex];
         if (!reel || viewedReelsRef.current.has(reel._id)) return;
         viewedReelsRef.current.add(reel._id);
         
         if (reel.type === 'ad') {
-            const endpoint = `/api/ads/${reel._id}/view`;
-            axios.post(`${backendURL}${endpoint}`).catch(() => {});
+            axios.post(`${backendURL}/api/ads/${reel._id}/view`).catch(() => {});
         } else {
-            // — SENIOR ENGINEERING: Use AnalyticsService for background telemetry —
             analyticsService.pushEvent({ reelId: reel._id, type: 'view' });
         }
     }, [activeReelIndex, reels, backendURL]);
 
-    // Handle deep linked comments
     useEffect(() => {
         const openComments = searchParams.get("openComments");
         if (openComments === "true" && targetReelId && reels.length > 0) {
@@ -222,10 +286,7 @@ const ReelsPage = ({ isActive = true }) => {
         }
     }, [searchParams, targetReelId, reels]);
 
-    // ─────────────────────────────────────────────────────────────
-    // UNIFIED FEED — Ad Injection & Dynamic Layout
-    // ─────────────────────────────────────────────────────────────
-    const combinedFeed = React.useMemo(() => {
+    const combinedFeed = useMemo(() => {
         const feed = [];
         let adCounter = 0;
         
@@ -234,15 +295,10 @@ const ReelsPage = ({ isActive = true }) => {
         }
 
         reels.forEach((reel, index) => {
+            if (!reel) return;
             feed.push({ type: 'reel', content: reel, id: reel._id });
-            
-            // Spacing Algorithm: Guaranteed Ad every 3 reels
-            // with a safety gap of 2 after a targetAd.
             const isTargetAdVisible = targetAd && targetReelId === `ad_${targetAd._id}`;
             const skipRandomInjection = isTargetAdVisible && index < 2;
-
-            // Simple fixed interval (O(1) calculation)
-            // index + 1 ensures the first ad is after 3 reels (0,1,2 -> Ad)
             const isAdSlot = ((index + 1) % 3 === 0) && reelAds.length > 0 && !skipRandomInjection;
             
             if (isAdSlot) {
@@ -267,18 +323,27 @@ const ReelsPage = ({ isActive = true }) => {
 
     const handleScroll = useCallback(({ scrollOffset }) => {
         if (loading) return;
+
+        const now = Date.now();
+        const deltaTime = now - lastScrollTimeRef.current;
+        const deltaOffset = Math.abs(scrollOffset - lastScrollOffsetRef.current);
+        const velocity = deltaOffset / (deltaTime || 1);
         
-        // — PERFORMANCE CONCEPT: High-Speed Index Calculation —
-        // We use a zero-latency bitwise or floor calculation to find the candidate index.
+        lastScrollOffsetRef.current = scrollOffset;
+        lastScrollTimeRef.current = now;
+
+        if (velocity > 5) {
+            if (!isScrollingFast) setIsScrollingFast(true);
+            if (scrollStopTimerRef.current) clearTimeout(scrollStopTimerRef.current);
+            scrollStopTimerRef.current = setTimeout(() => setIsScrollingFast(false), 200);
+        }
+        
         const index = Math.round(scrollOffset / windowHeight);
         
         if (index !== activeReelIndex && index >= 0 && index < combinedFeed.length) {
             setActiveReelIndex(index);
             savePosition(index);
             
-            // — PERFORMANCE CONCEPT: Debounced Side-Effects —
-            // history.replaceState is expensive and can drop frames during the snap animation.
-            // We debounce it by 100ms to ensure the animation settles before updating the URL.
             if (urlUpdateTimerRef.current) clearTimeout(urlUpdateTimerRef.current);
             urlUpdateTimerRef.current = setTimeout(() => {
                 const item = combinedFeed[index];
@@ -294,7 +359,7 @@ const ReelsPage = ({ isActive = true }) => {
 
             if (index >= combinedFeed.length - 2 && hasMore && !loadingMore) loadMore();
         }
-    }, [windowHeight, activeReelIndex, combinedFeed, loading, hasMore, loadingMore, savePosition]);
+    }, [windowHeight, activeReelIndex, combinedFeed, loading, hasMore, loadingMore, savePosition, isScrollingFast]);
 
     const loadMore = async () => {
         if (loadingMore) return;
@@ -319,10 +384,6 @@ const ReelsPage = ({ isActive = true }) => {
             setSessionSeed(newSeed);
             setPage(1);
             setActiveReelIndex(0);
-            // fetchReels uses sessionSeed from state, but state updates are async
-            // so we might need a small adjustment if it doesn't pick up immediately
-            // But since pull-to-refresh is manual, the next effect will catch it correctly
-            // or we pass it directly
             await fetchReels(1, false);
             listRef.current?.scrollToItem(0, "start");
             setRefreshing(false);
@@ -342,7 +403,6 @@ const ReelsPage = ({ isActive = true }) => {
         updateReelInCache(activeReel._id, { commentsCount: newCount });
     };
 
-    // — PERFORMANCE: Synchronize child state with parent Source of Truth —
     const handleLikeUpdate = useCallback((reelId, isLiked, likesCount, latestLikers) => {
         setReels(prev => prev.map(r => r._id === reelId ? { 
             ...r, 
@@ -359,7 +419,6 @@ const ReelsPage = ({ isActive = true }) => {
             isFollowing
         } : r));
         
-        // Sync following state across all reels by this editor in the cache
         reels.forEach(r => {
             if (r.editor?._id === editorId) {
                 updateReelInCache(r._id, { isFollowing });
@@ -374,20 +433,10 @@ const ReelsPage = ({ isActive = true }) => {
                     <HiOutlineChevronLeft className="text-2xl" />
                 </button>
                 <div />
-                <div className="w-10 h-10" /> {/* Spacer to maintain symmetry */}
+                <div className="w-10 h-10" />
             </div>
 
             <PullIndicator />
-
-            {/* Offline Indicator Overlay */}
-            {!navigator.onLine && (
-                <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-black/60 backdrop-blur-md rounded-full border border-white/10 shadow-2xl flex items-center gap-2 animate-pulse pointer-events-none">
-                    <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b]" />
-                    <span className="text-white text-[10px] font-bold uppercase tracking-widest text-shadow">
-                        Offline Mode • Cached Content
-                    </span>
-                </div>
-            )}
 
             <div
                 className={`flex-1 overflow-hidden origin-top bg-black h-full relative transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${showComments ? "scale-[0.95] translate-y-[-20px] rounded-[20px]" : "scale-100 translate-y-0 rounded-none"}`}
@@ -407,44 +456,28 @@ const ReelsPage = ({ isActive = true }) => {
                         width="100%"
                         onScroll={handleScroll}
                         itemKey={(index) => combinedFeed[index]?.id || `reel-fallback-${index}`}
-                        overscanCount={2} 
+                        overscanCount={preloadDepth} 
                         style={{ overflowX: 'hidden' }}
-                    >
-                        {({ index, style }) => {
-                            const item = combinedFeed[index];
-                            if (!item) return null;
-                            return (
-                                <div style={{ ...style, willChange: 'transform' }} className="snap-start snap-always w-full h-full bg-black">
-                                    {item.type === 'reel' ? (
-                                        <ReelCard
-                                            reel={item.content}
-                                            isActive={isActive && index === activeReelIndex}
-                                            isNearActive={Math.abs(index - activeReelIndex) <= 1}
-                                            isPreloading={index === activeReelIndex + 1 || index === activeReelIndex - 1}
-                                            onCommentClick={handleCommentClick}
-                                            onLikeUpdate={handleLikeUpdate}
-                                            onFollowUpdate={handleFollowUpdate}
-                                            globalMuted={globalMuted}
-                                            setGlobalMuted={setGlobalMuted}
-                                        />
-                                    ) : (
-                                        <ReelAdCard
-                                            ad={item.content}
-                                            isActive={isActive && index === activeReelIndex}
-                                            isNearActive={Math.abs(index - activeReelIndex) <= 1}
-                                            isPreloading={index === activeReelIndex + 1 || index === activeReelIndex - 1}
-                                            globalMuted={globalMuted}
-                                            setGlobalMuted={setGlobalMuted}
-                                            onSkip={() => setSkippedAdIndices(prev => new Set([...prev, item.id]))}
-                                        />
-                                    )}
-                                </div>
-                            );
+                        itemData={{
+                            combinedFeed,
+                            activeReelIndex,
+                            isActive,
+                            showComments,
+                            preloadDepth,
+                            isScrollingFast,
+                            globalMuted,
+                            setGlobalMuted,
+                            handleCommentClick,
+                            handleLikeUpdate,
+                            handleFollowUpdate,
+                            setSkippedAdIndices
                         }}
+                    >
+                        {ReelRow}
                     </List>
                 )}
 
-                {!loading && reels.length === 0 && (
+                {!loading && (reels.length === 0 || !combinedFeed.length) && (
                     <div className="w-full h-screen flex flex-col items-center justify-center text-white gap-4">
                         <span className="text-5xl">🎬</span>
                         <p className="text-lg font-semibold">No reels yet</p>
@@ -455,8 +488,18 @@ const ReelsPage = ({ isActive = true }) => {
             <AnimatePresence>
                 {showComments && (
                     <>
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 z-[55]" onClick={() => setShowComments(false)} />
-                        <ReelCommentsDrawer reel={activeReel} onClose={() => setShowComments(false)} onCommentAdded={handleCommentAdded} />
+                        <motion.div 
+                            initial={{ opacity: 0 }} 
+                            animate={{ opacity: 1 }} 
+                            exit={{ opacity: 0 }} 
+                            className="fixed inset-0 bg-black/40 z-[55]" 
+                            onClick={() => setShowComments(false)} 
+                        />
+                        <ReelCommentsDrawer 
+                            reel={activeReel} 
+                            onClose={() => setShowComments(false)} 
+                            onCommentAdded={handleCommentAdded} 
+                        />
                     </>
                 )}
             </AnimatePresence>
