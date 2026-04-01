@@ -8,16 +8,16 @@ export const Colors = {
   black: '#000000',
   heart: '#FF3040',
 
-  // DARK THEME (Web/Instagram Inspired)
+  // DARK THEME (Pure Black / OLED / Play Store Inspired)
   dark: {
-    primary: '#050509', // Deep space dark background
-    secondary: '#11111A', // Elevated surface dark
+    primary: '#000000', // Absolute pure black for OLED
+    secondary: '#0B0B0B', // Very subtle elevation for cards
     text: '#FFFFFF',
     textSecondary: '#A1A1AA',
-    border: '#27272A',
-    inputBg: '#18181B',
-    overlay: 'rgba(5, 5, 9, 0.8)',
-    tabBar: 'rgba(17, 17, 26, 0.9)',
+    border: '#1A1A1B',
+    inputBg: '#0F0F12',
+    overlay: 'rgba(0, 0, 0, 0.8)',
+    tabBar: 'rgba(0, 0, 0, 0.96)',
   },
 
   // LIGHT THEME (Clean/Corporate Inspired)

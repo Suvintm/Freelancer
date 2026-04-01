@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import { StatusBar } from 'expo-status-bar';
 import { Colors as StaticColors } from '../constants/Colors';
 
 const THEME_KEY = 'suvix_theme_preference';
@@ -29,26 +30,26 @@ interface ThemeContextType {
 }
 
 const lightTheme: ThemeColors = {
-  primary: '#FFFFFF',
-  background: '#F9FAFB',
-  card: '#FFFFFF',
-  text: '#111827',
-  textSecondary: '#6B7280',
-  border: '#E5E7EB',
-  notification: '#F87171',
-  tabBar: '#FFFFFF',
+  primary: StaticColors.light.primary,
+  background: StaticColors.light.primary,
+  card: StaticColors.white,
+  text: StaticColors.light.text,
+  textSecondary: StaticColors.light.textSecondary,
+  border: StaticColors.light.border,
+  notification: StaticColors.error,
+  tabBar: StaticColors.light.tabBar,
   accent: StaticColors.accent,
 };
 
 const darkTheme: ThemeColors = {
-  primary: '#000000',
-  background: '#0F0F14',
-  card: '#16161D',
-  text: '#F9FAFB',
-  textSecondary: '#9CA3AF',
-  border: '#27272E',
-  notification: '#F87171',
-  tabBar: '#000000',
+  primary: StaticColors.dark.primary,
+  background: StaticColors.dark.primary, // Pure Black OLED
+  card: StaticColors.dark.secondary, // Material Elevation
+  text: StaticColors.dark.text,
+  textSecondary: StaticColors.dark.textSecondary,
+  border: StaticColors.dark.border,
+  notification: StaticColors.error,
+  tabBar: StaticColors.dark.tabBar,
   accent: StaticColors.accent,
 };
 
@@ -89,6 +90,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   return (
     <ThemeContext.Provider value={{ theme, isDarkMode, themeMode, toggleTheme, setThemeMode, isLoaded }}>
+      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
       {children}
     </ThemeContext.Provider>
   );

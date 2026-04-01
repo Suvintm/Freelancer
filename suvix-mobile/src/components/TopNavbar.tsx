@@ -34,11 +34,13 @@ export const TopNavbar = ({ onMenuPress }: TopNavbarProps) => {
     console.log('Refreshing content...');
   };
 
+  const palette = isDarkMode ? Colors.dark : Colors.light;
+
   return (
     <View style={[
       styles.container, 
       { 
-        backgroundColor: isDarkMode ? 'rgba(5, 5, 9, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        backgroundColor: palette.tabBar,
         paddingTop: insets.top,
         height: TOTAL_HEIGHT
       }
@@ -113,10 +115,13 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   logoContainer: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 50, // Matches NAVBAR_HEIGHT exactly
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 0, // Logic shifted to container paddingTop
     zIndex: -1,
   },
   // Dark mode logo
