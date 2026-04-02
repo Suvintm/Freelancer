@@ -10,6 +10,7 @@ import { SiteSettings, getSettings } from "../models/SiteSettings.js";
 import { protectAdmin, requirePermission, logActivity } from "../middleware/adminAuth.js";
 import { uploadToCloudinary, deleteFromCloudinary } from "../utils/uploadToCloudinary.js";
 import { publish } from "../config/redisClient.js";
+import { getIO } from "../socket.js";
 import logger from "../utils/logger.js";
 
 const router = express.Router();
@@ -18,16 +19,49 @@ const router = express.Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 200 * 1024 * 1024 }, // 200 MB
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith("image/") || file.mimetype.startsWith("video/")) {
-      cb(null, true);
-    } else {
-      cb(new Error("Only image and video files are allowed"), false);
-    }
-  },
 });
 
-// Protect all routes
+// ── NEW: Cloudinary Media Webhook ────────────────────────────────────
+// This route is PUBLIC so Cloudinary can call it.
+// It updates the database when background video processing is done.
+router.post("/webhook", asyncHandler(async (req, res) => {
+  const { notification_type, public_id, secure_url, eager, original_filename } = req.body;
+
+  if (notification_type === "upload") {
+    console.log(`📡 [Webhook] Received upload notification for: ${public_id}`);
+    
+    // Find the ad by its mediaPublicId
+    const ad = await Advertisement.findOne({ 
+      $or: [{ mediaPublicId: public_id }, { thumbnailPublicId: public_id }] 
+    });
+
+    if (ad) {
+      if (eager && eager.length > 0) {
+        // We found our optimized H.264 version!
+        const optimizedUrl = eager[0].secure_url;
+        ad.mediaUrl = optimizedUrl;
+        ad.mediaStatus = "ready";
+        ad.isOptimized = true;
+        await ad.save();
+        
+        console.log(`✅ [Webhook] Ad "${ad.title}" updated with optimized video.`);
+        
+        // Notify the frontend via Socket.io
+        if (io) {
+          io.emit("media:status_update", { 
+            adId: ad._id, 
+            status: "ready", 
+            url: optimizedUrl,
+            title: ad.title
+          });
+        }
+      }
+    }
+  }
+  res.status(200).json({ received: true });
+}));
+
+// Protect all remaining routes
 router.use(protectAdmin);
 
 // ── URL repair ───────────────────────────────────────────────────────
@@ -182,94 +216,159 @@ router.post(
     { name: "gallery", maxCount: 5 },
   ]),
   asyncHandler(async (req, res) => {
-    const body = req.body;
+    console.log("🚀 [Admin] Starting banner save process...");
+    try {
+      const body = req.body;
 
-    if (!body.title || !body.advertiserName) {
-      return res.status(400).json({ success: false, message: "Advertiser name and title are required" });
+      if (!body.title || !body.advertiserName) {
+        console.warn("⚠️  [Admin] Missing required fields: title or advertiserName");
+        return res.status(400).json({ success: false, message: "Advertiser name and title are required" });
+      }
+
+      // ── Parse JSON sub-objects ──
+      const cropData      = parseJSON(body.cropData);
+      const layoutConfig  = parseJSON(body.layoutConfig);
+      const buttonStyle   = parseJSON(body.buttonStyle);
+      const reelConfig    = parseJSON(body.reelConfig); 
+      const displayLocations = parseJSON(body.displayLocations, ["banners:home_0"]);
+
+      const maxOrder = await Advertisement.findOne().sort({ order: -1 }).select("order");
+
+      // ── 1. Create the Ad Record IMMEDIATELY (Placeholder Status) ──
+      const isVideoUpload = req.files?.media?.[0]?.mimetype?.startsWith("video/");
+      
+      const ad = await Advertisement.create({
+        advertiserName:  body.advertiserName,
+        advertiserEmail: body.advertiserEmail,
+        advertiserPhone: body.advertiserPhone,
+        companyName:     body.companyName,
+        title:           body.title,
+        tagline:         body.tagline,
+        description:     body.description,
+        longDescription: body.longDescription,
+        mediaType:       body.mediaType || (isVideoUpload ? 'video' : 'image'),
+        mediaUrl:        body.mediaUrl || "https://res.cloudinary.com/suvix/video/upload/v1711200000/placeholder_video.mp4", // Placeholder during upload
+        thumbnailUrl:    body.thumbnailUrl || "",
+        galleryImages:   [], // To be updated in background
+        websiteUrl:      body.websiteUrl,
+        ctaText:         body.ctaText || "Learn More",
+        isActive:        body.isActive === "true" || body.isActive === true,
+        isDefault:       body.isDefault === "true" || body.isDefault === true,
+        displayLocations,
+        adType:          body.adType || "promotional",
+        priority:        body.priority || "medium",
+        order:           (maxOrder?.order || 0) + 1,
+        approvalStatus:  body.approvalStatus || "pending",
+        createdBy:       req.admin._id,
+        cropData,
+        layoutConfig,
+        buttonStyle,
+        reelConfig,
+        mediaStatus:     "uploading", // 👈 STARTING STATUS
+        isOptimized:     false,
+      });
+
+      // ── 2. Respond to Frontend IMMEDIATELY — No More Spinning! ──
+      res.status(201).json({ 
+        success: true, 
+        ad: cleanAd(ad), 
+        message: "Advertisement created! Uploading media in background..." 
+      });
+
+      // ── 3. Background Process: Upload files to Cloudinary ──
+      // This runs after the response is sent.
+      (async () => {
+        try {
+          const io = getIO();
+          console.log(`🎬 [Background] Starting Cloudinary transfer for Ad: ${ad.title}`);
+          const files = req.files;
+          let finalMediaUrl = ad.mediaUrl;
+          let finalMediaPublicId = "";
+          let finalGallery = [];
+
+          // Initialize progress
+          ad.uploadProgress = 10;
+          await ad.save();
+          if (io) io.emit("media:progress", { adId: ad._id, status: "uploading", progress: 10 });
+
+          // A. Primary Media
+          if (files?.media?.[0]) {
+            const file = files.media[0];
+            const isVideo = file.mimetype.startsWith('video/');
+            const folder  = isVideo ? 'advertisements/videos' : 'advertisements/images';
+
+            const options = {
+              notification_url: `${req.protocol}://${req.get('host')}/api/admin/ads/webhook`
+            };
+            if (isVideo) {
+              options.eager = [{ format: 'mp4', video_codec: 'h264', audio_codec: 'aac', width: 1080, crop: 'limit', quality: 'auto' }];
+              options.eager_async = true;
+            }
+
+            const result = await uploadToCloudinary(
+              file.buffer, 
+              folder, 
+              options, 
+              (p) => {
+                const percent = typeof p === "function" ? p(ad.uploadProgress || 10) : p;
+                ad.uploadProgress = percent;
+                if (io) io.emit("media:progress", { adId: ad._id, status: "uploading", progress: percent });
+              }
+            );
+            finalMediaUrl = result.secure_url || result.url;
+            finalMediaPublicId = result.public_id;
+            
+            if (finalMediaUrl) {
+              // If it's a video, status becomes 'processing' (Cloudinary is doing eager transcode)
+              // If it's an image, status becomes 'ready' immediately
+              ad.mediaStatus = isVideo ? "processing" : "ready";
+              ad.mediaUrl = finalMediaUrl;
+              ad.mediaPublicId = finalMediaPublicId;
+              ad.isOptimized = !isVideo;
+              ad.thumbnailUrl = isVideo ? finalMediaUrl.replace(/\.[^.]+$/, '.jpg') : ad.thumbnailUrl;
+            } else {
+              throw new Error("Cloudinary upload did not return a valid URL.");
+            }
+          }
+
+          // B. Gallery
+          if (files?.gallery?.length) {
+            const galleryResults = await Promise.all(
+              files.gallery.map(f => uploadToCloudinary(f.buffer, "advertisements/gallery"))
+            );
+            finalGallery = galleryResults.map(r => r.secure_url || r.url);
+            ad.galleryImages = finalGallery;
+          }
+
+          await ad.save();
+          console.log(`✅ [Background] Transfer complete for "${ad.title}". Status: ${ad.mediaStatus}`);
+
+          // C. Notify UI via Socket.io
+          if (io) {
+            io.emit("media:status_update", { 
+              adId: ad._id, 
+              status: ad.mediaStatus, 
+              url: ad.mediaUrl,
+              title: ad.title
+            });
+          }
+        } catch (bgError) {
+          console.error(`💥 [Background Error] Failed to upload media for Ad "${ad._id}":`, bgError);
+          ad.mediaStatus = "failed";
+          await ad.save();
+          if (io) io.emit("media:status_update", { adId: ad._id, status: "failed", title: ad.title });
+        }
+      })();
+
+      await publishAdUpdate();
+      logger.info(`[ADS] Created: ${ad.title}`);
+      return; // 👈 Logic stops here, background task continues independently
+    } catch (error) {
+      console.error("💥 [Admin] Error saving advertisement:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: "Server error during banner save: " + error.message });
+      }
     }
-
-    // ── Upload media to Cloudinary now ──
-    let mediaUrl = body.mediaUrl || "";
-    let mediaType = body.mediaType || "image";
-    let thumbnailUrl = body.thumbnailUrl || "";
-
-    if (req.files?.media?.[0]) {
-      const file = req.files.media[0];
-      const isVideo = file.mimetype.startsWith("video/");
-      const folder = isVideo ? "advertisements/videos" : "advertisements/images";
-      const result = await uploadToCloudinary(file.buffer, folder);
-      mediaUrl = result.url;
-      mediaType = isVideo ? "video" : "image";
-      thumbnailUrl = isVideo ? result.url.replace(/\.[^.]+$/, ".jpg") : "";
-    }
-
-    if (!mediaUrl) {
-      return res.status(400).json({ success: false, message: "A media file is required" });
-    }
-
-    // ── Upload gallery images ──
-    let galleryImages = parseJSON(body.galleryImages, []);
-    if (req.files?.gallery?.length) {
-      const galleryResults = await Promise.all(
-        req.files.gallery.map(f => uploadToCloudinary(f.buffer, "advertisements/gallery"))
-      );
-      galleryImages = [...galleryImages, ...galleryResults.map(r => r.url)].slice(0, 5);
-    }
-
-    // ── Parse JSON sub-objects ──
-    const cropData      = parseJSON(body.cropData);
-    const layoutConfig  = parseJSON(body.layoutConfig);
-    const buttonStyle   = parseJSON(body.buttonStyle);
-    const reelConfig    = parseJSON(body.reelConfig);  // ← NEW
-    const displayLocations = parseJSON(body.displayLocations, ["banners:home_0"]);
-
-    const maxOrder = await Advertisement.findOne().sort({ order: -1 }).select("order");
-
-    const ad = await Advertisement.create({
-      advertiserName:  body.advertiserName,
-      advertiserEmail: body.advertiserEmail,
-      advertiserPhone: body.advertiserPhone,
-      companyName:     body.companyName,
-      title:           body.title,
-      tagline:         body.tagline,
-      description:     body.description,
-      longDescription: body.longDescription,
-      mediaType,
-      mediaUrl,
-      thumbnailUrl,
-      galleryImages,
-      websiteUrl:   body.websiteUrl,
-      instagramUrl: body.instagramUrl,
-      facebookUrl:  body.facebookUrl,
-      youtubeUrl:   body.youtubeUrl,
-      otherUrl:     body.otherUrl,
-      ctaText:      body.ctaText || "Learn More",
-      isActive:     body.isActive === "true" || body.isActive === true,
-      isDefault:    body.isDefault === "true" || body.isDefault === true,
-      displayLocations,
-      adType:         body.adType || "promotional",
-      tags:           parseJSON(body.tags, []),
-      badge:          body.badge || "SPONSOR",
-      startDate:      body.startDate,
-      endDate:        body.endDate,
-      priority:       body.priority || "medium",
-      order:          (maxOrder?.order || 0) + 1,
-      adminNotes:     body.adminNotes,
-      approvalStatus: body.approvalStatus || "pending",
-      buttonLinkType: body.buttonLinkType || "ad_details",
-      buttonLink:     body.buttonLink || "",
-      cardLinkType:   body.cardLinkType || "none",
-      cardLink:       body.cardLink || "",
-      createdBy:      req.admin._id,
-      cropData,
-      layoutConfig,
-      buttonStyle,
-      reelConfig,     // ← NEW
-    });
-
-    await publishAdUpdate();
-    logger.info(`[ADS] Created: ${ad.title} by ${ad.advertiserName}`);
-    res.status(201).json({ success: true, ad: cleanAd(ad), message: "Advertisement created successfully" });
   })
 );
 
@@ -283,61 +382,130 @@ router.patch(
     { name: "gallery", maxCount: 5 },
   ]),
   asyncHandler(async (req, res) => {
-    const ad = await Advertisement.findById(req.params.id);
-    if (!ad) return res.status(404).json({ success: false, message: "Ad not found" });
+    console.log(`🚀 [Admin] Starting banner update process for ID: ${req.params.id}...`);
+    try {
+      const ad = await Advertisement.findById(req.params.id);
+      if (!ad) return res.status(404).json({ success: false, message: "Ad not found" });
 
-    const body = req.body;
+      const body = req.body;
 
-    // ── Re-upload media only if a new file was sent ──
-    if (req.files?.media?.[0]) {
-      const file = req.files.media[0];
-      const isVideo = file.mimetype.startsWith("video/");
-      const folder = isVideo ? "advertisements/videos" : "advertisements/images";
-      const result = await uploadToCloudinary(file.buffer, folder);
-      ad.mediaUrl = result.url;
-      ad.mediaType = isVideo ? "video" : "image";
-      ad.thumbnailUrl = isVideo ? result.url.replace(/\.[^.]+$/, ".jpg") : "";
+      if (body.reelConfig   !== undefined) ad.reelConfig   = { ...ad.reelConfig?.toObject?.()   || ad.reelConfig   || {}, ...parseJSON(body.reelConfig) };
+
+      // ── Scalar fields ──
+      const scalarFields = [
+        "advertiserName","advertiserEmail","advertiserPhone","companyName",
+        "title","tagline","description","longDescription",
+        "websiteUrl","instagramUrl","facebookUrl","youtubeUrl","otherUrl","ctaText",
+        "badge","adminNotes","approvalStatus","priority","order",
+        "startDate","endDate","adType",
+        "buttonLinkType","buttonLink","cardLinkType","cardLink",
+      ];
+      scalarFields.forEach(f => { if (body[f] !== undefined) ad[f] = body[f]; });
+
+      // ── Boolean fields ──
+      if (body.isActive  !== undefined) ad.isActive  = body.isActive  === "true" || body.isActive  === true;
+      if (body.isDefault !== undefined) ad.isDefault = body.isDefault === "true" || body.isDefault === true;
+      if (body.displayLocations !== undefined) ad.displayLocations = parseJSON(body.displayLocations, ad.displayLocations);
+      if (body.tags !== undefined) ad.tags = parseJSON(body.tags, ad.tags);
+
+      // Set initial status if new media is arriving
+      const hasNewMedia = !!req.files?.media?.[0];
+      if (hasNewMedia) ad.mediaStatus = "uploading";
+
+      await ad.save();
+
+      // ── Respond to Frontend IMMEDIATELY — No More Spinning! ──
+      res.json({ 
+        success: true, 
+        ad: cleanAd(ad), 
+        message: hasNewMedia ? "Ad updated! Uploading new media in background..." : "Ad updated successfully" 
+      });
+
+      // ── Background Process: Upload new media if provided ──
+      if (hasNewMedia || req.files?.gallery?.length) {
+        (async () => {
+          try {
+            const io = getIO();
+            console.log(`🎬 [Background-Patch] Starting media sync for Ad: ${ad.title}`);
+            const files = req.files;
+
+            // Initialize progress
+            ad.uploadProgress = 10;
+            await ad.save();
+            if (io) io.emit("media:progress", { adId: ad._id, status: "uploading", progress: 10 });
+
+            // A. New Primary Media
+            if (files?.media?.[0]) {
+              const file = files.media[0];
+              const isVideo = file.mimetype.startsWith('video/');
+              const folder  = isVideo ? 'advertisements/videos' : 'advertisements/images';
+
+              const options = { notification_url: `${req.protocol}://${req.get('host')}/api/admin/ads/webhook` };
+              if (isVideo) {
+                options.eager = [{ format: 'mp4', video_codec: 'h264', audio_codec: 'aac', width: 1080, crop: 'limit', quality: 'auto' }];
+                options.eager_async = true;
+              }
+
+              const result = await uploadToCloudinary(
+                file.buffer, 
+                folder, 
+                options,
+                (p) => {
+                  const percent = typeof p === "function" ? p(ad.uploadProgress || 10) : p;
+                  ad.uploadProgress = percent;
+                  if (io) io.emit("media:progress", { adId: ad._id, status: "uploading", progress: percent });
+                }
+              );
+              ad.mediaUrl = result.secure_url || result.url;
+              ad.mediaPublicId = result.public_id;
+              
+              if (ad.mediaUrl) {
+                ad.mediaStatus = isVideo ? "processing" : "ready";
+                ad.isOptimized = !isVideo;
+                ad.thumbnailUrl = isVideo ? ad.mediaUrl.replace(/\.[^.]+$/, '.jpg') : ad.thumbnailUrl;
+              } else {
+                throw new Error("Cloudinary update did not return a valid URL.");
+              }
+            }
+
+            // B. New Gallery items
+            if (files?.gallery?.length) {
+              const galleryResults = await Promise.all(
+                files.gallery.map(f => uploadToCloudinary(f.buffer, "advertisements/gallery"))
+              );
+              const existing = ad.galleryImages || [];
+              ad.galleryImages = [...existing, ...galleryResults.map(r => r.secure_url || r.url)].slice(0, 5);
+            }
+
+            await ad.save();
+            console.log(`✅ [Background-Patch] Media sync complete for "${ad.title}"`);
+
+            if (io) {
+              io.emit("media:status_update", { 
+                adId: ad._id, 
+                status: ad.mediaStatus, 
+                url: ad.mediaUrl,
+                title: ad.title
+              });
+            }
+          } catch (bgError) {
+            console.error(`💥 [Background-Patch Error] Failed:`, bgError);
+            ad.mediaStatus = "failed";
+            await ad.save();
+            if (io) io.emit("media:status_update", { adId: ad._id, status: "failed", title: ad.title });
+          }
+        })();
+      }
+
+      await publishAdUpdate();
+      logger.info(`[ADS] Updated: ${ad.title}`);
+      return;
+    } catch (error) {
+      console.error("💥 [Admin] Error updating advertisement:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: "Server error during banner update: " + error.message });
+      }
     }
-
-    // ── Append gallery images if new ones sent ──
-    if (req.files?.gallery?.length) {
-      const galleryResults = await Promise.all(
-        req.files.gallery.map(f => uploadToCloudinary(f.buffer, "advertisements/gallery"))
-      );
-      const existing = ad.galleryImages || [];
-      ad.galleryImages = [...existing, ...galleryResults.map(r => r.url)].slice(0, 5);
-    } else if (body.galleryImages !== undefined) {
-      ad.galleryImages = parseJSON(body.galleryImages, ad.galleryImages);
-    }
-
-    // ── Scalar fields ──
-    const scalarFields = [
-      "advertiserName","advertiserEmail","advertiserPhone","companyName",
-      "title","tagline","description","longDescription",
-      "websiteUrl","instagramUrl","facebookUrl","youtubeUrl","otherUrl","ctaText",
-      "badge","adminNotes","approvalStatus","priority","order",
-      "startDate","endDate","adType",
-      "buttonLinkType","buttonLink","cardLinkType","cardLink",
-    ];
-    scalarFields.forEach(f => { if (body[f] !== undefined) ad[f] = body[f]; });
-
-    // ── Boolean fields ──
-    if (body.isActive  !== undefined) ad.isActive  = body.isActive  === "true" || body.isActive  === true;
-    if (body.isDefault !== undefined) ad.isDefault = body.isDefault === "true" || body.isDefault === true;
-    if (body.displayLocations !== undefined) ad.displayLocations = parseJSON(body.displayLocations, ad.displayLocations);
-    if (body.tags !== undefined) ad.tags = parseJSON(body.tags, ad.tags);
-
-    // ── JSON sub-objects — deep merge so partial updates work ──
-    if (body.cropData     !== undefined) ad.cropData     = { ...ad.cropData?.toObject?.()     || ad.cropData     || {}, ...parseJSON(body.cropData) };
-    if (body.layoutConfig !== undefined) ad.layoutConfig = { ...ad.layoutConfig?.toObject?.() || ad.layoutConfig || {}, ...parseJSON(body.layoutConfig) };
-    if (body.buttonStyle  !== undefined) ad.buttonStyle  = { ...ad.buttonStyle?.toObject?.()  || ad.buttonStyle  || {}, ...parseJSON(body.buttonStyle) };
-    // ── NEW: reelConfig deep merge ──
-    if (body.reelConfig   !== undefined) ad.reelConfig   = { ...ad.reelConfig?.toObject?.()   || ad.reelConfig   || {}, ...parseJSON(body.reelConfig) };
-
-    await ad.save();
-    await publishAdUpdate();
-    logger.info(`[ADS] Updated: ${ad.title}`);
-    res.json({ success: true, ad: cleanAd(ad), message: "Advertisement updated successfully" });
   })
 );
 

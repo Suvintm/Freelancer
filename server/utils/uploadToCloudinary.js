@@ -8,15 +8,17 @@ export const uploadToCloudinary = async (fileBuffer, folder = "profiles", option
         folder,
         resource_type: "auto",
         access_mode: "public",
+        timeout: 120000, // 👈 120 seconds for video transcoding
         ...options
       },
       (error, result) => {
         if (error) {
-          console.error("Cloudinary upload error:", error);
+          console.error("❌ Cloudinary upload error:", error);
           return reject(new Error(`Upload failed: ${error.message}`));
         }
         console.log("✅ Cloudinary upload success:", result.secure_url);
-        resolve({ url: result.secure_url, public_id: result.public_id });
+        // Return full result to preserve 'eager' transformations
+        resolve(result);
       }
     );
 

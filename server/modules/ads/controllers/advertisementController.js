@@ -75,28 +75,49 @@ const cleanAd = (ad) => {
 
 // ============ MEDIA UPLOAD ============
 export const uploadAdMedia = asyncHandler(async (req, res) => {
+  console.log("🚀 [Server] Starting ad media upload...");
   if (!req.file) throw new ApiError(400, "No file uploaded");
 
-  const isVideo = req.file.mimetype.startsWith("video/");
-  const folder = isVideo ? "advertisements/videos" : "advertisements/images";
+  try {
+    const isVideo = req.file.mimetype.startsWith("video/");
+    const folder  = isVideo ? "advertisements/videos" : "advertisements/images";
 
-  const options = {};
-  if (isVideo) {
-    options.eager = [
-      { streaming_profile: "auto", format: "m3u8" },
-      { width: 720, height: 1280, crop: "limit", format: "mp4", quality: "auto" }
-    ];
-    options.eager_async = true;
+    console.log(`🎬 [Server] Uploading ${isVideo ? 'video' : 'image'} to Cloudinary...`);
+    const options = {};
+    if (isVideo) {
+      options.eager = [
+        // ✅ Synchronous transcode — result is ready immediately
+        { format: 'mp4', video_codec: 'h264', audio_codec: 'aac',
+          width: 1080, crop: 'limit', quality: 'auto' },
+      ];
+      options.eager_async = false; 
+    }
+
+    const result = await uploadToCloudinary(req.file.buffer, folder, options);
+
+    let mediaUrl = result.secure_url || result.url;
+    let mediaType = isVideo ? 'video' : 'image';
+    let thumbnailUrl = isVideo ? mediaUrl.replace(/\.[^.]+$/, '.jpg') : '';
+
+    if (isVideo && result.eager?.[0]?.secure_url) {
+      // ✅ Use the already-transcoded H.264/AAC MP4 URL
+      mediaUrl     = result.eager[0].secure_url;
+      thumbnailUrl = result.eager[0].secure_url.replace(/\.mp4$/i, '.jpg');
+      console.log("✅ [Server] Video optimized & saved:", mediaUrl);
+    } else {
+      console.log("✅ [Server] Media saved:", mediaUrl);
+    }
+
+    res.status(200).json({
+      success: true,
+      mediaUrl,
+      mediaType,
+      thumbnailUrl,
+    });
+  } catch (error) {
+    console.error("💥 [Server] Ad media upload failed:", error);
+    res.status(500).json({ success: false, message: "Upload failed: " + error.message });
   }
-
-  const result = await uploadToCloudinary(req.file.buffer, folder, options);
-
-  res.status(200).json({
-    success: true,
-    mediaUrl: result.url,
-    mediaType: isVideo ? "video" : "image",
-    thumbnailUrl: isVideo ? result.url.replace(/\.[^.]+$/, ".jpg") : null,
-  });
 });
 
 // ============ GALLERY UPLOAD (up to 5 images) ============

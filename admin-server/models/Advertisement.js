@@ -144,6 +144,28 @@ const advertisementSchema = new mongoose.Schema(
     thumbnailUrl: {
       type: String,
     },
+    // New fields for async media processing tracking
+    mediaStatus: {
+      type: String,
+      enum: ["uploading", "processing", "ready", "failed"],
+      default: "ready", // Defaults to ready (for existing images/legacy)
+    },
+    uploadProgress: {
+      type: Number,
+      default: 0,
+    },
+    mediaPublicId: {
+      type: String,
+      trim: true,
+    },
+    thumbnailPublicId: {
+      type: String,
+      trim: true,
+    },
+    isOptimized: {
+      type: Boolean,
+      default: false,
+    },
 
     // ========== CROP & LAYOUT (banner) ==========
     cropData: {

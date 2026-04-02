@@ -1,23 +1,6 @@
 /**
  * UnifiedBanner.tsx
  * React Native port of UnifiedBannerSlider.jsx — feature-for-feature parity.
- *
- * Features:
- *  • Fetches ads from /api/ads with pageName-based location filtering
- *  • Level system (vertical: home_0, home_1, home_2) with animated sidebar switcher
- *  • Horizontal swipe between items within the active level only
- *  • Auto-advance: progress-bar ticker for images, setTimeout for videos
- *  • Fade transition when switching levels
- *  • Per-ad layout config (textPosition, overlayDirection, overlayOpacity, etc.)
- *  • Per-ad button style (variant, bgColor, textColor, radius, icon, iconPosition)
- *  • Mute/unmute for video ads
- *  • Details button → /ad-details/:id
- *  • Card tap + CTA button routing (ad_details / internal / external)
- *  • Loading skeleton with shimmer
- *  • Real-time socket refresh (ads:updated) — hook in socketService
- *  • AppState-aware: pauses timer when app goes to background
- *  • Empty-state fallback
- *  • URL repair for malformed Cloudinary URLs
  */
 
 import React, {
@@ -42,6 +25,7 @@ import {
 } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useEvent } from 'expo';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -56,36 +40,65 @@ const TICK_MS       = 50;
 
 // ─── URL Repair (exact port from web) ────────────────────────────────────────
 const repairUrl = (url?: string | null): string => {
-  if (!url || typeof url !== 'string') return url ?? '';
-  if (!url.includes('cloudinary') && !url.includes('res_') && !url.includes('_com')) return url;
-  let f = url;
-  f = f.replace(/^(https?):?\/*_+/gi, '$1://');
-  f = f.replace(/_+res_+cloudinary_+com/g, 'res.cloudinary.com')
-       .replace(/res_cloudinary_com/g, 'res.cloudinary.com')
-       .replace(/cloudinary_com/g, 'cloudinary.com');
+  if (!url || typeof url !== 'string' || !url.includes('cloudinary')) return url ?? '';
+  
+  let f = url.replace(/^(https?):?\/*_+/gi, '$1://')
+             .replace(/_+res_+cloudinary_+com/g, 'res.cloudinary.com')
+             .replace(/res_cloudinary_com/g, 'res.cloudinary.com');
+
   if (f.includes('res.cloudinary.com')) {
-    f = f.replace(/res\.cloudinary\.com_+/g, 'res.cloudinary.com/');
-    f = f.replace(/image_upload_+/g, 'image/upload/')
-         .replace(/video_upload_+/g, 'video/upload/')
-         .replace(/raw_upload_+/g,   'raw/upload/');
-    f = f.replace(/([/_]?v\d+)_+/g, '$1/');
-    f = f.replace(/(res\.cloudinary\.com\/[^/_]+)_+(image|video|raw|authenticated)_*/g, '$1/$2/');
-    f = f.replace(/advertisements_images_+/g,  'advertisements/images/')
-         .replace(/advertisements_videos_+/g,  'advertisements/videos/')
-         .replace(/advertisements_gallery_+/g, 'advertisements/gallery/');
-    f = f.replace(/_+(upload|image|video|v\d+)_+/g, '/$1/');
-    f = f.replace(/_([a-z0-9\-_]+\.(webp|jpg|jpeg|png|mp4|mov|m4v|json))/gi, '/$1');
-    f = f.replace(/([^:])\/\/+/g, '$1/');
-    if (f.includes('res.cloudinary.com') && f.split('_').length > 5) {
-      f = f.replace(/_+/g, '/').replace(/(https?):\/+/g, '$1://').replace(/([^:])\/\/+/g, '$1/');
+    const uploadIdx = f.indexOf('/upload/');
+    if (uploadIdx !== -1) {
+      const baseUrl = f.substring(0, uploadIdx + 8);
+      let rest = f.substring(uploadIdx + 8);
+
+      // Strip any existing Cloudinary transformation segment first
+      // (handles cases where the URL already has transforms from a previous repair)
+      const existingTransformPattern = /^[a-z_,]+\/(?=[a-zA-Z0-9])/;
+      if (existingTransformPattern.test(rest)) {
+        rest = rest.replace(existingTransformPattern, '');
+      }
+
+      // Fix mangled extensions
+      rest = rest.replace(/_mp4$/i,  '.mp4')
+                 .replace(/_jpg$/i,  '.jpg')
+                 .replace(/_jpeg$/i, '.jpeg')
+                 .replace(/_png$/i,  '.png')
+                 .replace(/_webp$/i, '.webp');
+
+      const parts = rest.split('/');
+
+      const pathSegments = parts.filter(p => {
+        if (/^v\d+$/.test(p)) return false;
+        if (p.includes('_') && /^(q|f|vc|br|c|w|h|so|eo|du|co|bo|ac|fps|an)_/i.test(p)) return false;
+        return true;
+      });
+
+      // Fix underscores → slashes in path only (not in filename)
+      const fileName = pathSegments[pathSegments.length - 1] ?? '';
+      const folderSegments = pathSegments
+        .slice(0, -1)
+        .map(seg => seg.replace(/_+/g, '/'));
+      const reconstructedPath = [...folderSegments, fileName].join('/');
+
+      // ✅ FIXED: valid Cloudinary params for Android compatibility
+      // - f_mp4:  force MP4 container (Android requires this)
+      // - vc_h264: H.264 video codec (universal Android support)
+      // - ac_aac:  AAC audio codec  (required for Android MediaCodec)
+      // - q_auto: auto quality
+      // - w_1080,c_limit: max 1080px wide, don't upscale
+      const isVideo = f.includes('/video/') || fileName.match(/\.(mp4|mov|webm|avi|mkv)$/i);
+      const opt = isVideo
+        ? 'q_auto,f_mp4,vc_h264,ac_aac,w_1080,c_limit'
+        : 'q_auto,f_auto,w_1080,c_limit';
+
+      f = `${baseUrl}${opt}/${reconstructedPath}`;
     }
   }
+
   return f
-    .replace(/_jpg([/_?#]|$)/gi,  '.jpg$1')
-    .replace(/_jpeg([/_?#]|$)/gi, '.jpeg$1')
-    .replace(/_png([/_?#]|$)/gi,  '.png$1')
-    .replace(/_mp4([/_?#]|$)/gi,  '.mp4$1')
-    .replace(/_webp([/_?#]|$)/gi, '.webp$1');
+    .replace(/([^:])\/\/+/g, '$1/')
+    .replace(/^http:/, 'https:');
 };
 
 // ─── Layout config resolver ───────────────────────────────────────────────────
@@ -226,17 +239,80 @@ const sk = StyleSheet.create({
 
 // ─── Memoised video (only remounts when source changes) ───────────────────────
 const BannerVideo = React.memo(({ source, muted }: { source: string; muted: boolean }) => {
-  const player = useVideoPlayer({ uri: source }, (p) => {
+  const url = source; // already repaired upstream
+
+  const player = useVideoPlayer(url, (p) => {
     p.loop                    = true;
     p.muted                   = muted;
     p.staysActiveInBackground = false;
-    p.play();
+    // Don't call p.play() here — surface isn't ready on Android
   });
-  useEffect(() => { player.muted = muted; }, [muted]);
-  return <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />;
+
+  const { status } = useEvent(player, 'statusChange', { status: player.status });
+
+  useEffect(() => {
+    if (!player) return;
+    player.muted = muted;
+  }, [muted, player]);
+
+  // ✅ Play only when the player reports it's ready
+  useEffect(() => {
+    if (status === 'readyToPlay' && !player.playing) {
+      player.play();
+    }
+  }, [status, player]);
+
+  if (!url) return (
+    <View style={[StyleSheet.absoluteFill, { backgroundColor: '#050505' }]} />
+  );
+
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      <VideoView
+        player={player}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        nativeControls={false}
+        allowsFullscreen={false}        // ← prevents Android fullscreen hijack
+        allowsPictureInPicture={false}  // ← prevents PiP issues on Android
+      />
+      {status === 'loading' && (
+        <View style={[StyleSheet.absoluteFill, {
+          backgroundColor: '#000',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }]}>
+          <Ionicons name="sync" size={24} color="#fff" />
+        </View>
+      )}
+      {status === 'error' && (
+        <View style={[StyleSheet.absoluteFill, {
+          backgroundColor: '#400',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }]}>
+          <Ionicons name="alert-circle" size={24} color="#f88" />
+          {__DEV__ && (
+            <Text style={{ color: '#999', fontSize: 9, marginTop: 4, paddingHorizontal: 20, textAlign: 'center' }}>
+              {url}
+            </Text>
+          )}
+        </View>
+      )}
+    </View>
+  );
 });
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Preloader component to safely use hooks for the "next" item ──────────────
+const BannerPreloader = React.memo(({ item }: { item: AdItem }) => {
+  const url = repairUrl(item.mediaUrl);
+  if (item.mediaType === 'video') {
+    const player = useVideoPlayer(url, p => { p.muted = true; p.pause(); });
+    return <VideoView player={player} style={{ width: 1, height: 1 }} />;
+  }
+  return <Image source={{ uri: url }} style={{ width: 1, height: 1 }} />;
+});
+
 interface UnifiedBannerProps {
   pageName?: 'home' | 'editors' | 'gigs' | 'jobs' | 'explore';
 }
@@ -281,15 +357,6 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
     staleTime: 60_000,
   });
 
-  // ── Socket refresh — plug your socketService here ─────────────────────
-  // useEffect(() => {
-  //   const socket = socketService.getSocket?.();
-  //   if (!socket) return;
-  //   const cb = () => queryClient.invalidateQueries({ queryKey: ['ads'] });
-  //   socket.on('ads:updated', cb);
-  //   return () => socket.off('ads:updated', cb);
-  // }, [queryClient]);
-
   // Build levels
   const levels: Level[] = useMemo(() => {
     const all = adsData?.ads ?? [];
@@ -298,7 +365,7 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
       title:          ad.title ?? '',
       description:    ad.description || ad.tagline || '',
       mediaUrl:       repairUrl(ad.mediaUrl),
-      mediaType:      ad.mediaType,
+      mediaType:      (ad.mediaType?.toLowerCase() || 'image') as 'image' | 'video',
       linkText:       ad.ctaText    || 'Learn More',
       badge:          ad.badge      || 'SPONSOR',
       isAd:           true,
@@ -350,7 +417,6 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
     pageName === 'jobs'    ? 'JOB BANNER' : level?.label ?? '',
   [pageName, level]);
 
-  // ── Advance ───────────────────────────────────────────────────────────
   const advance = useCallback(() => {
     const lvl    = levels[vRef.current];
     if (!lvl) return;
@@ -372,7 +438,6 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
     }
   }, [levels, fadeAnim]);
 
-  // Progress ticker (images)
   useEffect(() => {
     clearInterval(tickRef.current!);
     if (!appActive || !item || item.isEmptyState || item.mediaType === 'video') {
@@ -385,17 +450,14 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
     return () => clearInterval(tickRef.current!);
   }, [appActive, vIdx, hIdx, advance, item?.mediaType, DURATION_MS]);
 
-  // Video timer (replaces onTimeUpdate >= 5s)
   useEffect(() => {
     if (!appActive || !item || item.mediaType !== 'video') return;
     const t = setTimeout(advance, DURATION_MS);
     return () => clearTimeout(t);
   }, [appActive, item?._id, item?.mediaType, advance, DURATION_MS]);
 
-  // Reset scroll on level change
   useEffect(() => { scrollRef.current?.scrollTo({ x: 0, animated: false }); }, [vIdx]);
 
-  // goTo
   const goTo = useCallback((v: number, h: number) => {
     if (v !== vRef.current) {
       Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
@@ -430,16 +492,12 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
     if (ad.buttonLinkType === 'internal' && ad.buttonLink) { router.push(ad.buttonLink as any); return; }
   }, [router]);
 
-  // Early returns (ALL hooks above this line)
   if (isLoading && !adsData) return <BannerSkeleton />;
   if (!item)                  return null;
 
   return (
     <View style={s.container}>
-
-      {/* ONE stable animated wrapper */}
       <Animated.View style={[s.wrapper, { opacity: fadeAnim }]}>
-
         <ScrollView
           ref={scrollRef}
           horizontal
@@ -451,135 +509,124 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
           bounces={false}
           disableIntervalMomentum
         >
-          {level.items.map((ad) => {
-            const ilc   = resolveLayout(ad.layoutConfig);
-            const ibs   = resolveButton(ad.buttonStyle);
-            const ovl   = buildOverlay(ilc);
-            const flex  = textFlex(ilc.textPosition);
-            const align: any = flex.alignItems === 'flex-end' ? 'right' : flex.alignItems === 'center' ? 'center' : 'left';
+          {levels.map((lvl, vI) => (
+            <View key={lvl.id} style={{ flexDirection: 'row' }}>
+              {vIdx === vI && lvl.items.map((ad, hI) => {
+                const ilc   = resolveLayout(ad.layoutConfig);
+                const ibs   = resolveButton(ad.buttonStyle);
+                const ovl   = buildOverlay(ilc);
+                const flex  = textFlex(ilc.textPosition);
+                const align: any = flex.alignItems === 'flex-end' ? 'right' : flex.alignItems === 'center' ? 'center' : 'left';
+                const isActive = hI === hMap[vIdx];
 
-            return (
-              <TouchableOpacity key={ad._id} style={s.slide} activeOpacity={0.97} onPress={handleCardPress}>
-                <View style={s.card}>
-
-                  {/* ── Empty state ── */}
-                  {ad.isEmptyState ? (
-                    <View style={s.emptyWrap}>
-                      <Text style={s.emptyTxt}>No ads or banners</Text>
-                    </View>
-                  ) : (
-                    <>
-                      {/* Media */}
-                      {ad.mediaType === 'video'
-                        ? <BannerVideo source={ad.mediaUrl} muted={muted} />
-                        : <Image source={{ uri: ad.mediaUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-                      }
-
-                      {/* Gradient overlay */}
-                      <LinearGradient
-                        colors={ovl.colors as any}
-                        start={ovl.start}
-                        end={ovl.end}
-                        locations={ovl.locations as any}
-                        style={StyleSheet.absoluteFill}
-                        pointerEvents="none"
-                      />
-
-                      {/* Content HUD */}
-                      <View style={[s.hud, flex]} pointerEvents="box-none">
-                        <View style={s.hudInner}>
-
-                          {/* Badge */}
-                          {ilc.showBadge && (
-                            <View style={s.badgeRow}>
-                              <View style={[s.badge, { backgroundColor: ilc.badgeColor }]}>
-                                <Ionicons name={level.icon} size={9} color={level.color} />
-                                <Text style={s.badgeTxt}>
-                                  {(ilc.badgeText || ad.badge || displayLabel).toUpperCase()}
-                                </Text>
-                              </View>
-                              {ad.isAd && ilc.showSponsorTag && (
-                                <View style={s.sponsor}><Text style={s.sponsorTxt}>SPONSOR</Text></View>
-                              )}
-                            </View>
-                          )}
-
-                          {/* Title */}
-                          <Text
-                            numberOfLines={2}
-                            style={[s.title, { fontSize: tSize(ilc.titleSize), fontWeight: tWt(ilc.titleWeight), color: ilc.titleColor, textAlign: align }]}
-                          >
-                            {ad.title}
-                          </Text>
-
-                          {/* Description */}
-                          {ilc.showDescription && (
-                            <Text numberOfLines={1} style={[s.desc, { color: ilc.descColor }]}>
-                              {ad.description}
-                            </Text>
-                          )}
-
-                          {/* CTA row */}
-                          <View style={s.ctaRow}>
-                            {/* Main CTA button */}
-                            <TouchableOpacity
-                              style={[
-                                s.ctaBtn,
-                                {
-                                  borderRadius:    btnR(ibs.radius),
-                                  backgroundColor: ibs.variant === 'filled' ? ibs.bgColor : ibs.variant === 'ghost' ? 'rgba(255,255,255,0.1)' : 'transparent',
-                                  borderWidth:     ibs.variant === 'outline' ? 1.5 : 0,
-                                  borderColor:     ibs.variant === 'outline' ? ibs.borderColor : undefined,
-                                },
-                              ]}
-                              onPress={() => handleCTAPress(ad)}
-                              activeOpacity={0.8}
-                            >
-                              {ibs.iconPosition === 'left' && (
-                                <Ionicons name="chevron-forward" size={10} color={ibs.variant === 'filled' ? ibs.textColor : ibs.variant === 'outline' ? ibs.borderColor : '#fff'} />
-                              )}
-                              <Text style={[s.ctaTxt, { color: ibs.variant === 'filled' ? ibs.textColor : ibs.variant === 'outline' ? ibs.borderColor : '#fff' }]}>
-                                {ad.linkText}
-                              </Text>
-                              {ibs.iconPosition !== 'left' && (
-                                <Ionicons name="chevron-forward" size={10} color={ibs.variant === 'filled' ? ibs.textColor : ibs.variant === 'outline' ? ibs.borderColor : '#fff'} />
-                              )}
-                            </TouchableOpacity>
-
-                            {/* Details button */}
-                            {ad.isAd && ilc.showDetailsBtn && (
-                              <TouchableOpacity style={s.detailsBtn} onPress={() => router.push(`/ad-details/${ad._id}` as any)} activeOpacity={0.8}>
-                                <Text style={s.detailsTxt}>Details</Text>
-                                <Ionicons name="arrow-forward" size={10} color="#fff" />
-                              </TouchableOpacity>
-                            )}
-
-                            {/* Mute button */}
-                            {ad.isAd && ilc.showMuteBtn && ad.mediaType === 'video' && (
-                              <TouchableOpacity style={s.muteBtn} onPress={() => setMuted(v => !v)} activeOpacity={0.8}>
-                                <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={14} color="#fff" />
-                              </TouchableOpacity>
-                            )}
-                          </View>
+                return (
+                  <View key={ad._id} style={s.slide}>
+                    <View style={s.card}>
+                      {ad.isEmptyState ? (
+                        <View style={s.emptyWrap}>
+                          <Text style={s.emptyTxt}>No ads or banners</Text>
                         </View>
-                      </View>
-                    </>
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+                      ) : (
+                        <>
+                          <TouchableOpacity activeOpacity={1} style={StyleSheet.absoluteFill} onPress={handleCardPress}>
+                            {ad.mediaType === 'video' && isActive
+                              ? <BannerVideo source={ad.mediaUrl} muted={muted} />
+                              : ad.mediaUrl ? <Image source={{ uri: ad.mediaUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null
+                            }
+                          </TouchableOpacity>
+
+                          <LinearGradient
+                            colors={ovl.colors as any}
+                            start={ovl.start}
+                            end={ovl.end}
+                            locations={ovl.locations as any}
+                            style={StyleSheet.absoluteFill}
+                            pointerEvents="none"
+                          />
+
+                          <View style={[s.hud, flex]} pointerEvents="box-none">
+                            <View style={s.hudInner}>
+                              {ilc.showBadge && (
+                                <View style={s.badgeRow}>
+                                  <View style={[s.badge, { backgroundColor: ilc.badgeColor }]}>
+                                    <Ionicons name={level.icon} size={9} color={level.color} />
+                                    <Text style={s.badgeTxt}>
+                                      {(ilc.badgeText || ad.badge || displayLabel).toUpperCase()}
+                                    </Text>
+                                  </View>
+                                  {ad.isAd && ilc.showSponsorTag && (
+                                    <View style={s.sponsor}><Text style={s.sponsorTxt}>SPONSOR</Text></View>
+                                  )}
+                                </View>
+                              )}
+
+                              <Text numberOfLines={2} style={[s.title, { fontSize: tSize(ilc.titleSize), fontWeight: tWt(ilc.titleWeight), color: ilc.titleColor, textAlign: align }]}>
+                                {ad.title}
+                              </Text>
+
+                              {ilc.showDescription && (
+                                <Text numberOfLines={1} style={[s.desc, { color: ilc.descColor }]}>
+                                  {ad.description}
+                                </Text>
+                              )}
+
+                              <View style={s.ctaRow}>
+                                <TouchableOpacity
+                                  style={[s.ctaBtn, { borderRadius: btnR(ibs.radius), backgroundColor: ibs.variant === 'filled' ? ibs.bgColor : ibs.variant === 'ghost' ? 'rgba(255,255,255,0.1)' : 'transparent', borderWidth: ibs.variant === 'outline' ? 1.5 : 0, borderColor: ibs.variant === 'outline' ? ibs.borderColor : undefined }]}
+                                  onPress={() => handleCTAPress(ad)}
+                                  activeOpacity={0.8}
+                                >
+                                  {ibs.iconPosition === 'left' && <Ionicons name="chevron-forward" size={10} color={ibs.variant === 'filled' ? ibs.textColor : ibs.variant === 'outline' ? ibs.borderColor : '#fff'} />}
+                                  <Text style={[s.ctaTxt, { color: ibs.variant === 'filled' ? ibs.textColor : ibs.variant === 'outline' ? ibs.borderColor : '#fff' }]}>{ad.linkText}</Text>
+                                  {ibs.iconPosition !== 'left' && <Ionicons name="chevron-forward" size={10} color={ibs.variant === 'filled' ? ibs.textColor : ibs.variant === 'outline' ? ibs.borderColor : '#fff'} />}
+                                </TouchableOpacity>
+
+                                {ad.isAd && ilc.showDetailsBtn && (
+                                  <TouchableOpacity style={s.detailsBtn} onPress={() => router.push(`/ad-details/${ad._id}` as any)} activeOpacity={0.8}>
+                                    <Text style={s.detailsTxt}>Details</Text>
+                                    <Ionicons name="arrow-forward" size={10} color="#fff" />
+                                  </TouchableOpacity>
+                                )}
+
+                                {ad.isAd && ilc.showMuteBtn && ad.mediaType === 'video' && (
+                                  <TouchableOpacity style={s.muteBtn} onPress={() => setMuted(v => !v)} activeOpacity={0.8}>
+                                    <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={14} color="#fff" />
+                                  </TouchableOpacity>
+                                )}
+                              </View>
+                            </View>
+                          </View>
+                        </>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ))}
         </ScrollView>
 
-        {/* Progress bar */}
         {!item.isEmptyState && lc.showProgressBar && (
           <View style={s.progBg} pointerEvents="none">
             <View style={[s.progFill, { width: `${progress}%` as any }]} />
           </View>
         )}
+
+        {/* ISOLATION: Preloader disabled for debugging */}
+        {/*
+        <View style={{ width: 0, height: 0, opacity: 0, position: 'absolute' }} pointerEvents="none" aria-hidden={true}>
+          {(() => {
+            const items = levels[vIdx]?.items;
+            if (!items || items.length <= 1) return null;
+            const nextIdx = (hMap[vIdx] + 1) % items.length;
+            const nextItem = items[nextIdx];
+            if (!nextItem || nextItem.isEmptyState || !nextItem.mediaUrl) return null;
+            return <BannerPreloader key={nextItem._id} item={nextItem} />;
+          })()}
+        </View>
+        */}
       </Animated.View>
 
-      {/* Dot indicators */}
       {!item.isEmptyState && level.items.length > 1 && (
         <View style={s.dots}>
           {level.items.map((_, i) => (
@@ -590,7 +637,6 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
         </View>
       )}
 
-      {/* Category switcher sidebar (shown only when > 1 level) */}
       {!item.isEmptyState && levels.length > 1 && (
         <View style={s.sidebar}>
           {levels.map((lvl, i) => {
@@ -608,7 +654,6 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
   );
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   container: { marginVertical: 12, height: BANNER_HEIGHT, position: 'relative' },
   wrapper:   { width: '100%', height: BANNER_HEIGHT },

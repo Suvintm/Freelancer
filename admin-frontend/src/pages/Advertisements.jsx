@@ -20,8 +20,9 @@ import {
   HiOutlineSparkles, HiOutlineCalendarDays, HiOutlineUser, HiArrowRight,
   HiSpeakerXMark, HiOutlineCursorArrowRipple,
   HiOutlineSquare3Stack3D, HiOutlineClipboardDocumentList,
-  HiOutlineChartBarSquare,
+  HiOutlineChartBarSquare, HiOutlineBellAlert,
 } from "react-icons/hi2";
+import { useSocket } from "../context/SocketContext";
 import { FaAd, FaInstagram, FaGlobe, FaChevronRight } from "react-icons/fa";
 import axios from "axios";
 import TemplateSelector from "./TemplateSelector";
@@ -335,16 +336,34 @@ const StatusBadge = ({ ad }) => {
   const isPending  = ad.approvalStatus === "pending";
   const hasStarted = !start || isNaN(start.getTime()) || start <= now;
   const notEnded   = !end || isNaN(end.getTime()) || end >= now;
-  const isLive     = ad.isActive && isApproved && hasStarted && notEnded;
+  
+  // New Status Logic
+  const isUploading  = ad.mediaStatus === "uploading";
+  const isProcessing = ad.mediaStatus === "processing";
+  const isReady      = ad.mediaStatus === "ready" || ad.isOptimized;
+  const isLive       = ad.isActive && isApproved && hasStarted && notEnded && isReady;
 
-  if (isLive)       return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(34,197,94,0.12)",  color: "#22c55e" }}>LIVE</span>;
+  if (isUploading)  return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(96,165,250,0.1)",  color: "#60a5fa", border: "1px solid rgba(96,165,250,0.2)" }}>⏳ Uploading {ad.uploadProgress ? `${Math.round(ad.uploadProgress)}%` : ""}</span>;
+  if (isProcessing) return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.2)" }}>🎬 Optimizing</span>;
+  
+  if (isLive)       return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(34,197,94,0.12)",  color: "#22c55e", border: "1px solid rgba(34,197,94,0.3)" }}>📱 SYNCED</span>;
+  
+  if (isReady && !ad.isActive) return (
+    <div style={{ display: "flex", gap: 4 }}>
+      <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(113,113,122,0.1)", color: "#52525b" }}>INACTIVE</span>
+      <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(34,197,94,0.05)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)" }}>READY ✅</span>
+    </div>
+  );
+
   if (!ad.isActive) return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(113,113,122,0.1)", color: "#52525b" }}>INACTIVE</span>;
   if (isRejected)   return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(239,68,68,0.1)",   color: "#ef4444" }}>REJECTED</span>;
   if (isPending)    return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(245,158,11,0.1)",  color: "#f59e0b" }}>PENDING</span>;
+  
   if (isApproved) {
     if (!hasStarted) return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(96,165,250,0.1)",  color: "#60a5fa" }}>SCHEDULED</span>;
     if (!notEnded)   return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(239,68,68,0.1)",   color: "#ef4444" }}>EXPIRED</span>;
   }
+
   return <span style={{ padding: "2px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(245,158,11,0.1)", color: "#f59e0b" }}>PENDING</span>;
 };
 
@@ -363,6 +382,12 @@ const AdManagerPage = ({ adminURL, token }) => {
   const [galleryFiles, setGalleryFiles]     = useState([]);
   const [toast, setToast]                   = useState(null);
   const [analyticsData, setAnalyticsData]   = useState(null);
+  const [activityLogs, setActivityLogs]     = useState(() => {
+    const saved = localStorage.getItem("suvix_ad_activity");
+    return saved ? JSON.parse(saved) : [];
+  });
+  
+  const { socket } = useSocket();
   const fileInputRef = useRef(null);
 
   const API = adminURL || import.meta.env.VITE_BACKEND_URL || "https://admin-api.suvix.in/api";
@@ -405,6 +430,53 @@ const AdManagerPage = ({ adminURL, token }) => {
   }, [API, resolvedToken]);
 
   useEffect(() => { fetchAds(); fetchAnalytics(); }, []);
+
+  // ── Socket Listener ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on("media:status_update", (data) => {
+      console.log("🎬 Media Status Update Received:", data);
+      
+      // 1. Update the ads list
+      setAds(prev => prev.map(ad => 
+        ad._id === data.adId 
+          ? { ...ad, mediaStatus: data.status, mediaUrl: data.url, isOptimized: true }
+          : ad
+      ));
+
+      // 2. Add to Activity Log
+      const log = {
+        id: Date.now(),
+        adId: data.adId,
+        title: data.title || "Video Banner",
+        type: "SUCCESS",
+        message: `Video optimization complete for "${data.title}"`,
+        time: new Date().toLocaleTimeString(),
+      };
+      setActivityLogs(prev => {
+        const updated = [log, ...prev].slice(0, 50);
+        localStorage.setItem("suvix_ad_activity", JSON.stringify(updated));
+        return updated;
+      });
+
+      // 3. Show Toast
+      showToast(`✅ Video Ready: ${data.title}`, "success");
+    });
+
+    socket.on("media:progress", (data) => {
+      setAds(prev => prev.map(ad => 
+        ad._id === data.adId 
+          ? { ...ad, uploadProgress: data.progress }
+          : ad
+      ));
+    });
+
+    return () => {
+      socket.off("media:status_update");
+      socket.off("media:progress");
+    };
+  }, [socket]);
 
   // ── Toast ──────────────────────────────────────────────────────────
   const showToast = (msg, type = "success") => {
@@ -567,6 +639,7 @@ const AdManagerPage = ({ adminURL, token }) => {
               { id: "ads",      label: "Manage Ads",   icon: HiOutlineChartBarSquare },
               { id: "requests", label: "Ad Requests",  icon: HiOutlineClipboardDocumentList },
               { id: "preview",  label: "Preview Model", icon: HiOutlineEye },
+              { id: "activity", label: "Activity 🔔",   icon: HiOutlineBellAlert },
             ].map(t => (
               <button key={t.id} onClick={() => { setPageTab(t.id); setShowForm(false); }}
                 style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", border: "none", whiteSpace: "nowrap", background: pageTab === t.id ? "#fff" : "#0a0a0a", color: pageTab === t.id ? "#000" : "#52525b" }}>
@@ -606,6 +679,38 @@ const AdManagerPage = ({ adminURL, token }) => {
         </div>
       )}
 
+      {/* ── ACTIVITY TAB ── */}
+      {pageTab === "activity" && (
+        <div style={{ padding: 24, maxWidth: 800, margin: "0 auto" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 800 }}>Media Processing Activity</h2>
+            <button onClick={() => { setActivityLogs([]); localStorage.removeItem("suvix_ad_activity"); }} style={{ ...secondaryBtn, padding: "4px 10px", fontSize: 10 }}>Clear History</button>
+          </div>
+          
+          {activityLogs.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "60px 20px", color: "#3f3f46" }}>
+              <HiOutlineBellAlert style={{ fontSize: 40, marginBottom: 12, opacity: 0.1 }} />
+              <div style={{ fontSize: 13 }}>No recent media activity</div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {activityLogs.map(log => (
+                <div key={log.id} style={{ padding: "14px 16px", background: "#0a0a0a", border: "1px solid #111", borderRadius: 12, display: "flex", alignItems: "center", gap: 16 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: log.type === "SUCCESS" ? "rgba(34,197,94,0.1)" : "rgba(245,158,11,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {log.type === "SUCCESS" ? <HiOutlineCheck style={{ color: "#22c55e" }} /> : <HiOutlineClock style={{ color: "#f59e0b" }} />}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 2 }}>{log.message}</div>
+                    <div style={{ fontSize: 11, color: "#52525b" }}>{log.time} • {log.title}</div>
+                  </div>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: log.type === "SUCCESS" ? "#22c55e" : "#f59e0b" }}>{log.type}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {pageTab === "requests" && <div style={{ padding: 24 }}><AdRequestsTab API={API} authHeader={authHeader} showToast={showToast} /></div>}
       {pageTab === "preview"  && <div style={{ padding: 24 }}><AdPreviewTab  API={API} authHeader={authHeader} showToast={showToast} /></div>}
 
@@ -626,12 +731,18 @@ const AdManagerPage = ({ adminURL, token }) => {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 10 }}>
                   {ads.map(ad => (
                     <div key={ad._id} style={{ background: "#0a0a0a", border: "1px solid #111", borderRadius: 12, overflow: "hidden" }}>
-                      <div style={{ height: 90, background: "#111", position: "relative", overflow: "hidden" }}>
-                        {ad.mediaUrl && (
+                      <div style={{ height: 90, background: "#111", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {ad.mediaStatus === "uploading" ? (
+                          <div style={{ textAlign: "center" }}>
+                            <div className="spinner" style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.1)", borderTopColor: "#3b82f6", borderRadius: "50%", margin: "0 auto 6px", animation: "spin 1s linear infinite" }} />
+                            <div style={{ fontSize: 10, color: "#fff", fontWeight: 800, marginBottom: 2 }}>{ad.uploadProgress ? `${Math.round(ad.uploadProgress)}%` : "WAITING..."}</div>
+                            <div style={{ fontSize: 9, color: "#3f3f46", fontWeight: 700 }}>TRANSFERRING MEDIA...</div>
+                          </div>
+                        ) : ad.mediaUrl ? (
                           ad.mediaType === "video"
                             ? <video src={repairUrl(ad.mediaUrl)} muted style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                             : <img src={repairUrl(ad.mediaUrl)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        )}
+                        ) : null}
                         <div style={{ position: "absolute", top: 8, left: 8 }}><StatusBadge ad={ad} /></div>
                         <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 4 }}>
                           {ad.displayLocations?.includes("reels_feed") && (
