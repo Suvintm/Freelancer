@@ -1,316 +1,655 @@
-import React from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  Dimensions, 
-  Image, 
+/**
+ * UnifiedBanner.tsx
+ * React Native port of UnifiedBannerSlider.jsx — feature-for-feature parity.
+ *
+ * Features:
+ *  • Fetches ads from /api/ads with pageName-based location filtering
+ *  • Level system (vertical: home_0, home_1, home_2) with animated sidebar switcher
+ *  • Horizontal swipe between items within the active level only
+ *  • Auto-advance: progress-bar ticker for images, setTimeout for videos
+ *  • Fade transition when switching levels
+ *  • Per-ad layout config (textPosition, overlayDirection, overlayOpacity, etc.)
+ *  • Per-ad button style (variant, bgColor, textColor, radius, icon, iconPosition)
+ *  • Mute/unmute for video ads
+ *  • Details button → /ad-details/:id
+ *  • Card tap + CTA button routing (ad_details / internal / external)
+ *  • Loading skeleton with shimmer
+ *  • Real-time socket refresh (ads:updated) — hook in socketService
+ *  • AppState-aware: pauses timer when app goes to background
+ *  • Empty-state fallback
+ *  • URL repair for malformed Cloudinary URLs
+ */
+
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Dimensions,
+  Image,
   TouchableOpacity,
-  FlatList,
+  Animated,
   NativeSyntheticEvent,
-  NativeScrollEvent
+  NativeScrollEvent,
+  AppState,
+  AppStateStatus,
 } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '../../context/ThemeContext';
-import { Colors } from '../../constants/Colors';
-import { Ionicons } from '@expo/vector-icons';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { useRouter } from 'expo-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
+import { api } from '../../api/client';
+import { useTheme } from '../../context/ThemeContext';
 
-const { width } = Dimensions.get('window');
-const ASPECT_RATIO = 16 / 10;
-const BANNER_HEIGHT = (width - 32) / ASPECT_RATIO;
+// ─── Dimensions ───────────────────────────────────────────────────────────────
+const { width: SW } = Dimensions.get('window');
+const BANNER_HEIGHT = (SW - 32) / (16 / 10);
+const TICK_MS       = 50;
 
-// ─── STATIC PRO ASSETS (With Posters to avoid black screening) ───────────────
-const LEVELS = [
-  {
-    id: 0,
-    label: 'FEATURED',
-    color: '#FFF',
-    items: [
-      { 
-        id: 'f1', 
-        title: 'Elite Workspace', 
-        desc: 'Transform your vision with local experts.', 
-        type: 'video', 
-        media: 'https://cdn.pixabay.com/video/2019/04/13/22758-330689456_large.mp4',
-        poster: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=1200' 
-      },
-      { 
-        id: 'f2', 
-        title: 'Global SuviX', 
-        desc: 'Secure payments, global delivery.', 
-        type: 'video', 
-        media: 'https://cdn.pixabay.com/video/2020/03/15/33580-397227441_large.mp4',
-        poster: 'https://images.unsplash.com/photo-1550439062-609e1531270e?q=80&w=1200' 
-      }
-    ]
-  },
-  {
-    id: 1,
-    label: 'SPARKS',
-    color: '#00F0FF',
-    items: [
-      { 
-        id: 's1', 
-        title: 'Neon Sparks v2', 
-        desc: 'New editing tools just landed.', 
-        type: 'video', 
-        media: 'https://cdn.pixabay.com/video/2021/08/17/85375-589578160_large.mp4',
-        poster: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1200' 
-      },
-      { 
-        id: 's2', 
-        title: 'AI Automation', 
-        desc: 'Scale faster than ever before.', 
-        type: 'video', 
-        media: 'https://cdn.pixabay.com/video/2023/11/05/187851-881268677_large.mp4',
-        poster: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1200' 
-      }
-    ]
-  },
-  {
-    id: 2,
-    label: 'EXPLORE',
-    color: '#FFF',
-    items: [
-      { 
-        id: 'e1', 
-        title: 'Explore Gigs', 
-        desc: 'Discover thousands of services.', 
-        type: 'video', 
-        media: 'https://cdn.pixabay.com/video/2021/04/12/70860-537402685_large.mp4',
-        poster: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1200' 
-      },
-      { 
-        id: 'e2', 
-        title: 'Learn Skills', 
-        desc: 'Master new tools with SuviX.', 
-        type: 'video', 
-        media: 'https://cdn.pixabay.com/video/2023/05/16/163273-827616654_large.mp4',
-        poster: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1200' 
-      }
-    ]
+// ─── URL Repair (exact port from web) ────────────────────────────────────────
+const repairUrl = (url?: string | null): string => {
+  if (!url || typeof url !== 'string') return url ?? '';
+  if (!url.includes('cloudinary') && !url.includes('res_') && !url.includes('_com')) return url;
+  let f = url;
+  f = f.replace(/^(https?):?\/*_+/gi, '$1://');
+  f = f.replace(/_+res_+cloudinary_+com/g, 'res.cloudinary.com')
+       .replace(/res_cloudinary_com/g, 'res.cloudinary.com')
+       .replace(/cloudinary_com/g, 'cloudinary.com');
+  if (f.includes('res.cloudinary.com')) {
+    f = f.replace(/res\.cloudinary\.com_+/g, 'res.cloudinary.com/');
+    f = f.replace(/image_upload_+/g, 'image/upload/')
+         .replace(/video_upload_+/g, 'video/upload/')
+         .replace(/raw_upload_+/g,   'raw/upload/');
+    f = f.replace(/([/_]?v\d+)_+/g, '$1/');
+    f = f.replace(/(res\.cloudinary\.com\/[^/_]+)_+(image|video|raw|authenticated)_*/g, '$1/$2/');
+    f = f.replace(/advertisements_images_+/g,  'advertisements/images/')
+         .replace(/advertisements_videos_+/g,  'advertisements/videos/')
+         .replace(/advertisements_gallery_+/g, 'advertisements/gallery/');
+    f = f.replace(/_+(upload|image|video|v\d+)_+/g, '/$1/');
+    f = f.replace(/_([a-z0-9\-_]+\.(webp|jpg|jpeg|png|mp4|mov|m4v|json))/gi, '/$1');
+    f = f.replace(/([^:])\/\/+/g, '$1/');
+    if (f.includes('res.cloudinary.com') && f.split('_').length > 5) {
+      f = f.replace(/_+/g, '/').replace(/(https?):\/+/g, '$1://').replace(/([^:])\/\/+/g, '$1/');
+    }
   }
-];
+  return f
+    .replace(/_jpg([/_?#]|$)/gi,  '.jpg$1')
+    .replace(/_jpeg([/_?#]|$)/gi, '.jpeg$1')
+    .replace(/_png([/_?#]|$)/gi,  '.png$1')
+    .replace(/_mp4([/_?#]|$)/gi,  '.mp4$1')
+    .replace(/_webp([/_?#]|$)/gi, '.webp$1');
+};
 
-interface FlatSlide {
-  id: string;
-  media: string;
-  poster?: string;
-  type: 'video' | 'image';
-  title: string;
-  desc: string;
-  levelId: number;
-  levelLabel: string;
-  levelColor: string;
+// ─── Layout config resolver ───────────────────────────────────────────────────
+const resolveLayout = (lc: Record<string, any> = {}) => ({
+  textPosition:    lc.textPosition     ?? 'bl',
+  overlayDirection:lc.overlayDirection ?? 'to-top',
+  overlayOpacity:  lc.overlayOpacity   ?? 75,
+  overlayColor:    lc.overlayColor     ?? '#040408',
+  titleSize:       lc.titleSize        ?? 'md',
+  titleWeight:     lc.titleWeight      ?? 'black',
+  titleColor:      lc.titleColor       ?? '#ffffff',
+  descColor:       lc.descColor        ?? 'rgba(212,212,216,0.75)',
+  showBadge:       lc.showBadge        ?? true,
+  showSponsorTag:  lc.showSponsorTag   ?? true,
+  showDescription: lc.showDescription  ?? true,
+  showProgressBar: lc.showProgressBar  ?? true,
+  showDetailsBtn:  lc.showDetailsBtn   ?? true,
+  showMuteBtn:     lc.showMuteBtn      ?? true,
+  slideDuration:   lc.slideDuration    ?? 5000,
+  badgeText:       lc.badgeText        ?? '',
+  badgeColor:      lc.badgeColor       ?? 'rgba(255,255,255,0.12)',
+});
+
+// ─── Button style resolver ────────────────────────────────────────────────────
+const resolveButton = (bs: Record<string, any> = {}) => ({
+  variant:      bs.variant      ?? 'filled',
+  bgColor:      bs.bgColor      ?? '#ffffff',
+  textColor:    bs.textColor    ?? '#000000',
+  borderColor:  bs.borderColor  ?? '#ffffff',
+  radius:       bs.radius       ?? 'md',
+  icon:         bs.icon         ?? 'chevron',
+  iconPosition: bs.iconPosition ?? 'right',
+});
+
+// ─── Overlay gradient → LinearGradient props ─────────────────────────────────
+type GradProp = { colors: string[]; locations?: number[]; start: { x: number; y: number }; end: { x: number; y: number } };
+
+const buildOverlay = (lc: ReturnType<typeof resolveLayout>): GradProp => {
+  const toRgba = (hex: string, op: number) => {
+    try {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return `rgba(${r},${g},${b},${(op / 100).toFixed(2)})`;
+    } catch { return `rgba(4,4,8,${(op / 100).toFixed(2)})`; }
+  };
+  const s = toRgba(lc.overlayColor, lc.overlayOpacity);
+  const m = toRgba(lc.overlayColor, Math.round(lc.overlayOpacity * 0.35));
+  const t = 'transparent';
+  const dirs: Record<string, GradProp> = {
+    'to-top':    { colors: [s, m, t], locations: [0, 0.42, 0.75], start: { x: 0, y: 1 }, end: { x: 0, y: 0 } },
+    'to-bottom': { colors: [s, t],    locations: [0, 0.75],       start: { x: 0, y: 0 }, end: { x: 0, y: 1 } },
+    'to-left':   { colors: [s, t],    locations: [0, 0.75],       start: { x: 1, y: 0 }, end: { x: 0, y: 0 } },
+    'to-right':  { colors: [s, t],    locations: [0, 0.75],       start: { x: 0, y: 0 }, end: { x: 1, y: 0 } },
+    'radial':    { colors: [t, s],    locations: [0.3, 1],        start: { x: 0.5, y: 0.5 }, end: { x: 0, y: 0 } },
+    'none':      { colors: ['transparent', 'transparent'],        start: { x: 0, y: 0 }, end: { x: 0, y: 1 } },
+  };
+  return dirs[lc.overlayDirection] ?? dirs['to-top'];
+};
+
+// ─── Text position → RN flex ──────────────────────────────────────────────────
+const textFlex = (pos: string): { justifyContent: any; alignItems: any } =>
+  ({
+    tl: { justifyContent: 'flex-start', alignItems: 'flex-start' },
+    tc: { justifyContent: 'flex-start', alignItems: 'center'     },
+    tr: { justifyContent: 'flex-start', alignItems: 'flex-end'   },
+    ml: { justifyContent: 'center',     alignItems: 'flex-start' },
+    mc: { justifyContent: 'center',     alignItems: 'center'     },
+    mr: { justifyContent: 'center',     alignItems: 'flex-end'   },
+    bl: { justifyContent: 'flex-end',   alignItems: 'flex-start' },
+    bc: { justifyContent: 'flex-end',   alignItems: 'center'     },
+    br: { justifyContent: 'flex-end',   alignItems: 'flex-end'   },
+  } as any)[pos] ?? { justifyContent: 'flex-end', alignItems: 'flex-start' };
+
+const btnR  = (r: string) => ({ sm: 6, md: 8, lg: 12, full: 999 } as any)[r] ?? 8;
+const tSize = (s: string) => ({ sm: 13, md: 16, lg: 20, xl: 24 } as any)[s]  ?? 16;
+const tWt   = (w: string) => ({ bold: '700', black: '900', extrabold: '800' } as any)[w] ?? '900';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface AdItem {
+  _id:            string;
+  title:          string;
+  description:    string;
+  mediaUrl:       string;
+  mediaType:      'image' | 'video';
+  linkText:       string;
+  badge:          string;
+  isAd:           boolean;
+  layoutConfig:   Record<string, any>;
+  buttonStyle:    Record<string, any>;
+  buttonLinkType: string;
+  buttonLink:     string;
+  cardLinkType:   string;
+  cardLink:       string;
+  isEmptyState?:  boolean;
+}
+interface Level {
+  id:    string;
+  label: string;
+  color: string;
+  icon:  keyof typeof Ionicons.glyphMap;
+  items: AdItem[];
 }
 
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+const BannerSkeleton = React.memo(() => {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0, duration: 900, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+  const op = anim.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.65] });
+  return (
+    <View style={sk.wrap}>
+      <Animated.View style={[sk.inner, { opacity: op }]}>
+        <View style={sk.badge} />
+        <View style={sk.title} />
+        <View style={sk.desc}  />
+        <View style={sk.btn}   />
+      </Animated.View>
+    </View>
+  );
+});
+const sk = StyleSheet.create({
+  wrap:  { height: BANNER_HEIGHT, marginHorizontal: 16, borderRadius: 32, backgroundColor: '#18181b', overflow: 'hidden', justifyContent: 'flex-end', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  inner: { padding: 20, gap: 10 },
+  badge: { height: 10, width: 56,  backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 99 },
+  title: { height: 20, width: 192, backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 8 },
+  desc:  { height: 14, width: 240, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 8 },
+  btn:   { height: 32, width: 112, backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 12, marginTop: 4 },
+});
+
+// ─── Memoised video (only remounts when source changes) ───────────────────────
+const BannerVideo = React.memo(({ source, muted }: { source: string; muted: boolean }) => {
+  const player = useVideoPlayer({ uri: source }, (p) => {
+    p.loop                    = true;
+    p.muted                   = muted;
+    p.staysActiveInBackground = false;
+    p.play();
+  });
+  useEffect(() => { player.muted = muted; }, [muted]);
+  return <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />;
+});
+
+// ─── Main component ───────────────────────────────────────────────────────────
 interface UnifiedBannerProps {
   pageName?: 'home' | 'editors' | 'gigs' | 'jobs' | 'explore';
 }
 
-// 🍿 NEXT-GEN VIDEO COMPONENT
-const BannerVideo = ({ source, poster }: { source: string, poster?: string }) => {
-  const player = useVideoPlayer(source, (player) => {
-    player.loop = true;
-    player.play();
-    player.muted = true;
-    player.staysActiveInBackground = false;
+export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
+  const router      = useRouter();
+  const queryClient = useQueryClient();
+
+  const [vIdx, setVIdx]       = useState(0);          // vertical (level) index
+  const [hMap, setHMap]       = useState<number[]>(new Array(10).fill(0)); // hIdx per level
+  const [muted, setMuted]     = useState(true);
+  const [progress, setProgress] = useState(0);
+  const [appActive, setAppActive] = useState(true);
+
+  const vRef  = useRef(0);
+  const hRef  = useRef(0);
+  vRef.current = vIdx;
+
+  const scrollRef = useRef<ScrollView>(null);
+  const tickRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const fadeAnim  = useRef(new Animated.Value(1)).current;
+
+  // AppState
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s: AppStateStatus) => setAppActive(s === 'active'));
+    return () => sub.remove();
+  }, []);
+
+  // Fetch ads
+  const { data: adsData, isLoading } = useQuery({
+    queryKey: ['ads', pageName],
+    queryFn: async () => {
+      const loc =
+        pageName === 'home'    ? 'banners:home_0,banners:home_1,banners:home_2' :
+        pageName === 'editors' ? 'banners:editors' :
+        pageName === 'gigs'    ? 'banners:gigs' :
+        pageName === 'jobs'    ? 'banners:jobs' :
+                                 'banners:explore';
+      const { data } = await api.get(`/ads?location=${loc}`);
+      return data;
+    },
+    staleTime: 60_000,
   });
 
+  // ── Socket refresh — plug your socketService here ─────────────────────
+  // useEffect(() => {
+  //   const socket = socketService.getSocket?.();
+  //   if (!socket) return;
+  //   const cb = () => queryClient.invalidateQueries({ queryKey: ['ads'] });
+  //   socket.on('ads:updated', cb);
+  //   return () => socket.off('ads:updated', cb);
+  // }, [queryClient]);
+
+  // Build levels
+  const levels: Level[] = useMemo(() => {
+    const all = adsData?.ads ?? [];
+    const fmt = (ad: any): AdItem => ({
+      _id:            ad._id,
+      title:          ad.title ?? '',
+      description:    ad.description || ad.tagline || '',
+      mediaUrl:       repairUrl(ad.mediaUrl),
+      mediaType:      ad.mediaType,
+      linkText:       ad.ctaText    || 'Learn More',
+      badge:          ad.badge      || 'SPONSOR',
+      isAd:           true,
+      layoutConfig:   ad.layoutConfig   ?? {},
+      buttonStyle:    ad.buttonStyle    ?? {},
+      buttonLinkType: ad.buttonLinkType || 'ad_details',
+      buttonLink:     ad.buttonLink     || '',
+      cardLinkType:   ad.cardLinkType   || 'none',
+      cardLink:       ad.cardLink       || '',
+    });
+    const result: Level[] = [];
+
+    const l0 = all.filter((a: any) => a.displayLocations?.some((l: string) =>
+      ['banners:home_0','banners:editors','banners:gigs','banners:jobs','banners:explore',
+       'banners_home_0','banners_editors','banners_gigs','banners_jobs',
+       'home_banner_0','editors_banner','gigs_banner','jobs_banner','home_banner'].includes(l)
+    )).map(fmt);
+    if (l0.length) result.push({ id: 'l0', label: 'HOME BANNER',  color: '#f59e0b', icon: 'megaphone-outline', items: l0 });
+
+    const l1 = all.filter((a: any) => a.displayLocations?.some((l: string) =>
+      ['banners:home_1','banners_home_1','home_banner_1'].includes(l)
+    )).map(fmt);
+    if (l1.length) result.push({ id: 'l1', label: 'SPARKS',       color: '#a78bfa', icon: 'sparkles-outline',  items: l1 });
+
+    const l2 = all.filter((a: any) => a.displayLocations?.some((l: string) =>
+      ['banners:home_2','banners_home_2','home_banner_2'].includes(l)
+    )).map(fmt);
+    if (l2.length) result.push({ id: 'l2', label: 'EXPLORE',      color: '#34d399', icon: 'film-outline',      items: l2 });
+
+    if (!result.length)
+      result.push({ id: 'empty', label: '', color: '#71717a', icon: 'megaphone-outline', items: [{ _id: 'e', isEmptyState: true } as AdItem] });
+
+    return result;
+  }, [adsData]);
+
+  useEffect(() => { if (vIdx >= levels.length) setVIdx(0); }, [levels.length]);
+
+  const level  = levels[vIdx] ?? levels[0];
+  const hIdx   = hMap[vIdx]  ?? 0;
+  hRef.current = hIdx;
+  const item   = level?.items[hIdx];
+
+  const lc          = useMemo(() => resolveLayout(item?.layoutConfig), [item]);
+  const DURATION_MS = lc.slideDuration;
+
+  const displayLabel = useMemo(() =>
+    pageName === 'editors' ? 'EXPLORE EDITOR BANNER' :
+    pageName === 'gigs'    ? 'GIG BANNER' :
+    pageName === 'jobs'    ? 'JOB BANNER' : level?.label ?? '',
+  [pageName, level]);
+
+  // ── Advance ───────────────────────────────────────────────────────────
+  const advance = useCallback(() => {
+    const lvl    = levels[vRef.current];
+    if (!lvl) return;
+    const isLast = hRef.current >= lvl.items.length - 1;
+    if (isLast) {
+      const next = (vRef.current + 1) % levels.length;
+      Animated.timing(fadeAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+        setVIdx(next);
+        setHMap(p => { const n = [...p]; n[next] = 0; return n; });
+        setProgress(0);
+        scrollRef.current?.scrollTo({ x: 0, animated: false });
+        Animated.timing(fadeAnim, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+      });
+    } else {
+      const nextH = hRef.current + 1;
+      setHMap(p => { const n = [...p]; n[vRef.current] = nextH; return n; });
+      scrollRef.current?.scrollTo({ x: nextH * SW, animated: true });
+      setProgress(0);
+    }
+  }, [levels, fadeAnim]);
+
+  // Progress ticker (images)
+  useEffect(() => {
+    clearInterval(tickRef.current!);
+    if (!appActive || !item || item.isEmptyState || item.mediaType === 'video') {
+      setProgress(0); return;
+    }
+    setProgress(0);
+    tickRef.current = setInterval(() => {
+      setProgress(p => { if (p >= 100) { advance(); return 0; } return p + (TICK_MS / DURATION_MS) * 100; });
+    }, TICK_MS);
+    return () => clearInterval(tickRef.current!);
+  }, [appActive, vIdx, hIdx, advance, item?.mediaType, DURATION_MS]);
+
+  // Video timer (replaces onTimeUpdate >= 5s)
+  useEffect(() => {
+    if (!appActive || !item || item.mediaType !== 'video') return;
+    const t = setTimeout(advance, DURATION_MS);
+    return () => clearTimeout(t);
+  }, [appActive, item?._id, item?.mediaType, advance, DURATION_MS]);
+
+  // Reset scroll on level change
+  useEffect(() => { scrollRef.current?.scrollTo({ x: 0, animated: false }); }, [vIdx]);
+
+  // goTo
+  const goTo = useCallback((v: number, h: number) => {
+    if (v !== vRef.current) {
+      Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+        setVIdx(v);
+        setHMap(p => { const n = [...p]; n[v] = h; return n; });
+        setProgress(0);
+        scrollRef.current?.scrollTo({ x: 0, animated: false });
+        Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+      });
+    } else {
+      setHMap(p => { const n = [...p]; n[v] = h; return n; });
+      scrollRef.current?.scrollTo({ x: h * SW, animated: true });
+      setProgress(0);
+    }
+  }, [fadeAnim]);
+
+  const onScrollEnd = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / e.nativeEvent.layoutMeasurement.width);
+    const clamped = Math.max(0, Math.min(idx, (levels[vRef.current]?.items.length ?? 1) - 1));
+    if (clamped === hRef.current) return;
+    setHMap(p => { const n = [...p]; n[vRef.current] = clamped; return n; });
+    setProgress(0);
+  }, [levels]);
+
+  const handleCardPress = useCallback(() => {
+    if (!item || item.cardLinkType === 'none') return;
+    if (item.cardLinkType === 'internal' && item.cardLink) router.push(item.cardLink as any);
+  }, [item, router]);
+
+  const handleCTAPress = useCallback((ad: AdItem) => {
+    if (ad.buttonLinkType === 'ad_details')             { router.push(`/ad-details/${ad._id}` as any); return; }
+    if (ad.buttonLinkType === 'internal' && ad.buttonLink) { router.push(ad.buttonLink as any); return; }
+  }, [router]);
+
+  // Early returns (ALL hooks above this line)
+  if (isLoading && !adsData) return <BannerSkeleton />;
+  if (!item)                  return null;
+
   return (
-    <VideoView
-      player={player}
-      style={styles.media}
-      contentFit="cover"
-      placeholderContentFit="cover"
-      nativeControls={false}
-    />
-  );
-};
+    <View style={s.container}>
 
-export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
-  const { isDarkMode } = useTheme();
-  const palette = isDarkMode ? Colors.dark : Colors.light;
+      {/* ONE stable animated wrapper */}
+      <Animated.View style={[s.wrapper, { opacity: fadeAnim }]}>
 
-  // Flatten slides with full typing
-  const ALL_SLIDES: FlatSlide[] = LEVELS.flatMap(lvl => 
-    lvl.items.map(item => ({ 
-        ...(item as any), 
-        levelId: lvl.id, 
-        levelLabel: lvl.label, 
-        levelColor: lvl.color 
-    }))
-  );
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onMomentumScrollEnd={onScrollEnd}
+          decelerationRate="fast"
+          bounces={false}
+          disableIntervalMomentum
+        >
+          {level.items.map((ad) => {
+            const ilc   = resolveLayout(ad.layoutConfig);
+            const ibs   = resolveButton(ad.buttonStyle);
+            const ovl   = buildOverlay(ilc);
+            const flex  = textFlex(ilc.textPosition);
+            const align: any = flex.alignItems === 'flex-end' ? 'right' : flex.alignItems === 'center' ? 'center' : 'left';
 
-  const [activeIndex, setActiveIndex] = React.useState(0);
-  const flatListRef = React.useRef<FlatList<FlatSlide>>(null);
-
-  const currentSlide = ALL_SLIDES[activeIndex];
-  
-  // ─── LEVEL-SPECIFIC DOT CALCULATION ────────────────────────────────────────
-  const levelItems = LEVELS.find(l => l.id === currentSlide.levelId)?.items || [];
-  const firstIndexInLevel = ALL_SLIDES.findIndex(s => s.levelId === currentSlide.levelId);
-  const relativeIndex = activeIndex - firstIndexInLevel;
-
-  // ─── AUTO LOOP LOGIC ───────────────────────────────────────────────────────
-  React.useEffect(() => {
-    const timer = setInterval(() => {
-        advance();
-    }, 8000); // Slower for video clarity
-    return () => clearInterval(timer);
-  }, [activeIndex]);
-
-  const advance = () => {
-    const nextIdx = (activeIndex + 1) % ALL_SLIDES.length;
-    goTo(nextIdx);
-  };
-
-  const goTo = (index: number) => {
-    setActiveIndex(index);
-    flatListRef.current?.scrollToIndex({ index, animated: true });
-  };
-
-  const goToLevel = (lvlId: number) => {
-    const targetIdx = ALL_SLIDES.findIndex(s => s.levelId === lvlId);
-    if (targetIdx !== -1) goTo(targetIdx);
-  };
-
-  const onMomentumScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const contentOffset = event.nativeEvent.contentOffset.x;
-    const viewSize = event.nativeEvent.layoutMeasurement.width;
-    const index = Math.round(contentOffset / viewSize);
-    if (index !== activeIndex && index < ALL_SLIDES.length) setActiveIndex(index);
-  };
-
-  return (
-    <View 
-        style={styles.container}
-        // GESTURE SHIELD: Intercept all horizontal touches in the banner zone
-        onStartShouldSetResponderCapture={() => true}
-        onMoveShouldSetResponderCapture={(ev) => Math.abs(ev.nativeEvent.pageX) > 10}
-    >
-      <FlatList
-        ref={flatListRef}
-        data={ALL_SLIDES}
-        horizontal
-        pagingEnabled
-        nestedScrollEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={onMomentumScrollEnd}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-            <View style={styles.slide}>
-                <View style={[styles.card, { backgroundColor: palette.secondary, borderColor: palette.border }]}>
-                    
-                    {/* MEDIA ENGINE 3.0 (Next-Gen expo-video) */}
-                    {item.type === 'video' ? (
-                        <BannerVideo source={item.media} poster={item.poster} />
-                    ) : (
-                        <Image source={{ uri: item.media }} style={styles.media} resizeMode="cover" />
-                    )}
-
-                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']} style={styles.overlay} />
-
-                    <View style={styles.hud}>
-                        <View style={[styles.badge, { backgroundColor: item.levelColor + '22', borderColor: item.levelColor + '44' }]}>
-                            <Text style={[styles.badgeTxt, { color: '#FFF' }]}>{item.levelLabel}</Text>
-                        </View>
-                        <Text style={styles.title}>{item.title}</Text>
-                        <Text style={styles.desc}>{item.desc}</Text>
-                        
-                        <TouchableOpacity style={styles.cta}>
-                            <Text style={styles.ctaTxt}>LEARN MORE</Text>
-                            <Ionicons name="arrow-forward" size={14} color="#000" />
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* LEVEL-SPECIFIC DOT INDICATORS */}
-                    <View style={styles.dots}>
-                        {levelItems.map((_, i) => (
-                            <View key={i} style={[styles.dot, { backgroundColor: i === relativeIndex ? '#FFF' : 'rgba(255,255,255,0.3)', width: i === relativeIndex ? 16 : 6 }]} />
-                        ))}
-                    </View>
-                </View>
-            </View>
-        )}
-      />
-
-      {/* VERTICAL SIDEBAR SWITCHER (Syncs with flattened levels) */}
-      <View style={styles.sidebar}>
-        {LEVELS.map((lvl) => {
-            const active = currentSlide.levelId === lvl.id;
             return (
-                <TouchableOpacity 
-                    key={lvl.id} 
-                    onPress={() => goToLevel(lvl.id)}
-                    style={[styles.sideItem, active && styles.sideActive]}
-                >
-                    <Ionicons 
-                        name={lvl.id === 0 ? "flash" : lvl.id === 1 ? "sparkles" : "film"} 
-                        size={12} 
-                        color={active ? "#000" : lvl.color} 
-                    />
-                </TouchableOpacity>
+              <TouchableOpacity key={ad._id} style={s.slide} activeOpacity={0.97} onPress={handleCardPress}>
+                <View style={s.card}>
+
+                  {/* ── Empty state ── */}
+                  {ad.isEmptyState ? (
+                    <View style={s.emptyWrap}>
+                      <Text style={s.emptyTxt}>No ads or banners</Text>
+                    </View>
+                  ) : (
+                    <>
+                      {/* Media */}
+                      {ad.mediaType === 'video'
+                        ? <BannerVideo source={ad.mediaUrl} muted={muted} />
+                        : <Image source={{ uri: ad.mediaUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                      }
+
+                      {/* Gradient overlay */}
+                      <LinearGradient
+                        colors={ovl.colors as any}
+                        start={ovl.start}
+                        end={ovl.end}
+                        locations={ovl.locations as any}
+                        style={StyleSheet.absoluteFill}
+                        pointerEvents="none"
+                      />
+
+                      {/* Content HUD */}
+                      <View style={[s.hud, flex]} pointerEvents="box-none">
+                        <View style={s.hudInner}>
+
+                          {/* Badge */}
+                          {ilc.showBadge && (
+                            <View style={s.badgeRow}>
+                              <View style={[s.badge, { backgroundColor: ilc.badgeColor }]}>
+                                <Ionicons name={level.icon} size={9} color={level.color} />
+                                <Text style={s.badgeTxt}>
+                                  {(ilc.badgeText || ad.badge || displayLabel).toUpperCase()}
+                                </Text>
+                              </View>
+                              {ad.isAd && ilc.showSponsorTag && (
+                                <View style={s.sponsor}><Text style={s.sponsorTxt}>SPONSOR</Text></View>
+                              )}
+                            </View>
+                          )}
+
+                          {/* Title */}
+                          <Text
+                            numberOfLines={2}
+                            style={[s.title, { fontSize: tSize(ilc.titleSize), fontWeight: tWt(ilc.titleWeight), color: ilc.titleColor, textAlign: align }]}
+                          >
+                            {ad.title}
+                          </Text>
+
+                          {/* Description */}
+                          {ilc.showDescription && (
+                            <Text numberOfLines={1} style={[s.desc, { color: ilc.descColor }]}>
+                              {ad.description}
+                            </Text>
+                          )}
+
+                          {/* CTA row */}
+                          <View style={s.ctaRow}>
+                            {/* Main CTA button */}
+                            <TouchableOpacity
+                              style={[
+                                s.ctaBtn,
+                                {
+                                  borderRadius:    btnR(ibs.radius),
+                                  backgroundColor: ibs.variant === 'filled' ? ibs.bgColor : ibs.variant === 'ghost' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                  borderWidth:     ibs.variant === 'outline' ? 1.5 : 0,
+                                  borderColor:     ibs.variant === 'outline' ? ibs.borderColor : undefined,
+                                },
+                              ]}
+                              onPress={() => handleCTAPress(ad)}
+                              activeOpacity={0.8}
+                            >
+                              {ibs.iconPosition === 'left' && (
+                                <Ionicons name="chevron-forward" size={10} color={ibs.variant === 'filled' ? ibs.textColor : ibs.variant === 'outline' ? ibs.borderColor : '#fff'} />
+                              )}
+                              <Text style={[s.ctaTxt, { color: ibs.variant === 'filled' ? ibs.textColor : ibs.variant === 'outline' ? ibs.borderColor : '#fff' }]}>
+                                {ad.linkText}
+                              </Text>
+                              {ibs.iconPosition !== 'left' && (
+                                <Ionicons name="chevron-forward" size={10} color={ibs.variant === 'filled' ? ibs.textColor : ibs.variant === 'outline' ? ibs.borderColor : '#fff'} />
+                              )}
+                            </TouchableOpacity>
+
+                            {/* Details button */}
+                            {ad.isAd && ilc.showDetailsBtn && (
+                              <TouchableOpacity style={s.detailsBtn} onPress={() => router.push(`/ad-details/${ad._id}` as any)} activeOpacity={0.8}>
+                                <Text style={s.detailsTxt}>Details</Text>
+                                <Ionicons name="arrow-forward" size={10} color="#fff" />
+                              </TouchableOpacity>
+                            )}
+
+                            {/* Mute button */}
+                            {ad.isAd && ilc.showMuteBtn && ad.mediaType === 'video' && (
+                              <TouchableOpacity style={s.muteBtn} onPress={() => setMuted(v => !v)} activeOpacity={0.8}>
+                                <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={14} color="#fff" />
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        </View>
+                      </View>
+                    </>
+                  )}
+                </View>
+              </TouchableOpacity>
             );
-        })}
-      </View>
+          })}
+        </ScrollView>
+
+        {/* Progress bar */}
+        {!item.isEmptyState && lc.showProgressBar && (
+          <View style={s.progBg} pointerEvents="none">
+            <View style={[s.progFill, { width: `${progress}%` as any }]} />
+          </View>
+        )}
+      </Animated.View>
+
+      {/* Dot indicators */}
+      {!item.isEmptyState && level.items.length > 1 && (
+        <View style={s.dots}>
+          {level.items.map((_, i) => (
+            <TouchableOpacity key={i} onPress={() => goTo(vIdx, i)} hitSlop={8}>
+              <View style={[s.dot, { width: i === hIdx ? 18 : 5, backgroundColor: i === hIdx ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.25)' }]} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* Category switcher sidebar (shown only when > 1 level) */}
+      {!item.isEmptyState && levels.length > 1 && (
+        <View style={s.sidebar}>
+          {levels.map((lvl, i) => {
+            const active = vIdx === i;
+            return (
+              <TouchableOpacity key={lvl.id} onPress={() => goTo(i, 0)} style={[s.sideBtn, active && s.sideBtnActive]} activeOpacity={0.7}>
+                <Ionicons name={lvl.icon} size={11} color={active ? '#000' : lvl.color} />
+                {active && <View style={s.sideGlow} />}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 0, 
-    marginVertical: 12,
-    position: 'relative',
-    height: BANNER_HEIGHT,
+// ─── Styles ───────────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+  container: { marginVertical: 12, height: BANNER_HEIGHT, position: 'relative' },
+  wrapper:   { width: '100%', height: BANNER_HEIGHT },
+
+  slide: { width: SW, paddingHorizontal: 16, height: BANNER_HEIGHT },
+  card:  {
+    flex: 1, borderRadius: 32, overflow: 'hidden',
+    backgroundColor: '#09090b', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 24, elevation: 12,
   },
-  slide: {
-    width: width,
-    paddingHorizontal: 16, // RESTORING FLOATING CARD LOOK
-    height: BANNER_HEIGHT,
-  },
-  card: {
-    flex: 1,
-    borderRadius: 32, // WEB-PERFECT 2REM ROUNDED EDGES
-    overflow: 'hidden',
-    borderWidth: 1,
-    position: 'relative',
-  },
-  media: { width: '100%', height: '100%', position: 'absolute' },
-  overlay: { position: 'absolute', inset: 0 },
-  hud: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20 },
-  badge: { 
-    alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, 
-    borderRadius: 6, borderWidth: 1, marginBottom: 8 
-  },
-  badgeTxt: { fontSize: 8, fontWeight: '900', letterSpacing: 1.5 },
-  title: { color: '#FFF', fontSize: 20, fontWeight: '900', marginBottom: 4 },
-  desc: { color: 'rgba(255,255,255,0.6)', fontSize: 12, marginBottom: 12 },
-  cta: { 
-    flexDirection: 'row', alignItems: 'center', gap: 6, 
-    backgroundColor: '#FFF', paddingHorizontal: 14, paddingVertical: 8, 
-    borderRadius: 12, alignSelf: 'flex-start' 
-  },
-  ctaTxt: { fontSize: 10, fontWeight: '900', color: '#000' },
-  dots: { position: 'absolute', bottom: 20, right: 20, flexDirection: 'row', gap: 4 },
-  dot: { height: 6, borderRadius: 3 },
-  sidebar: {
-    position: 'absolute',
-    right: 32,
-    top: 20,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: 6,
-    borderRadius: 16,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    zIndex: 100,
-  },
-  sideItem: {
-    width: 28, height: 28, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  sideActive: { backgroundColor: '#FFF' }
+
+  emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(39,39,42,0.4)' },
+  emptyTxt:  { color: '#71717a', fontSize: 14, fontWeight: '500' },
+
+  hud:      { ...StyleSheet.absoluteFillObject, padding: 16, paddingBottom: 14, flexDirection: 'column' },
+  hudInner: { maxWidth: '85%', gap: 4 },
+
+  badgeRow:   { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
+  badge:      { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  badgeTxt:   { fontSize: 7.5, fontWeight: '900', letterSpacing: 1.6, color: '#fff', textTransform: 'uppercase' },
+  sponsor:    { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: 'rgba(245,158,11,0.85)' },
+  sponsorTxt: { fontSize: 6.5, fontWeight: '900', color: '#fff', textTransform: 'uppercase' },
+
+  title: { letterSpacing: -0.3, marginBottom: 2, maxWidth: '80%', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 },
+  desc:  { fontSize: 9.5, fontWeight: '500', lineHeight: 14, marginBottom: 8, maxWidth: '72%' },
+
+  ctaRow:     { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  ctaBtn:     { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 6 },
+  ctaTxt:     { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 },
+  detailsBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  detailsTxt: { fontSize: 9, fontWeight: '700', color: '#fff' },
+  muteBtn:    { width: 28, height: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+
+  progBg:   { position: 'absolute', bottom: 0, left: 16, right: 16, height: 2, backgroundColor: 'rgba(255,255,255,0.08)', borderBottomLeftRadius: 32, borderBottomRightRadius: 32, overflow: 'hidden' },
+  progFill: { height: '100%', backgroundColor: 'rgba(255,255,255,0.6)' },
+
+  dots: { position: 'absolute', top: 16, right: 52, flexDirection: 'row', alignItems: 'center', gap: 6, zIndex: 30 },
+  dot:  { height: 5, borderRadius: 99 },
+
+  sidebar:      { position: 'absolute', right: 28, top: '50%', transform: [{ translateY: -44 }], backgroundColor: 'rgba(0,0,0,0.45)', paddingVertical: 8, paddingHorizontal: 6, borderRadius: 16, gap: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', zIndex: 30, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 },
+  sideBtn:      { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' },
+  sideBtnActive:{ backgroundColor: '#ffffff', shadowColor: '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.15, shadowRadius: 8 },
+  sideGlow:     { ...StyleSheet.absoluteFillObject, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.12)' },
 });

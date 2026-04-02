@@ -59,26 +59,30 @@ export default function TabsLayout() {
       styles.container, 
       { 
         backgroundColor: theme.background,
-        paddingBottom: insets.bottom
+        paddingBottom: isReelsActive ? 0 : insets.bottom
       }
     ]}>
       {/* Sidebar Overlay - Disabled in Reels for full immersion */}
-      <Sidebar 
-        isOpen={isSidebarOpen} 
-        onClose={() => setIsSidebarOpen(false)} 
-      />
+      {!isReelsActive && (
+        <Sidebar 
+          isOpen={isSidebarOpen} 
+          onClose={() => setIsSidebarOpen(false)} 
+        />
+      )}
 
       {/* Top Navbar - Hidden in Reels for full-screen scrolling */}
-      <View style={styles.navbarOverlay}>
-        <TopNavbar onMenuPress={() => setIsSidebarOpen(true)} />
-      </View>
+      {!isReelsActive && (
+        <View style={styles.navbarOverlay}>
+          <TopNavbar onMenuPress={() => setIsSidebarOpen(true)} />
+        </View>
+      )}
 
-      {/* Native Swipe Pager — runs on native thread for 60fps */}
+      {/* Native Swipe Pager — scroll disabled on Home to prevent banner gesture conflicts */}
       <PagerView
         ref={pagerRef}
         style={styles.pager}
         initialPage={0}
-        scrollEnabled={true}
+        scrollEnabled={activeIndex !== 0} // Lock swipe on Home tab
         onPageSelected={onPageSelected}
         offscreenPageLimit={2}
         overdrag={false}
@@ -94,11 +98,13 @@ export default function TabsLayout() {
       </PagerView>
 
       {/* Bottom Tab Bar - Hidden only when Reels is active */}
-      <AnimatedTabBar
-        activeIndex={activeIndex}
-        tabs={TABS}
-        onTabPress={goToPage}
-      />
+      {!isReelsActive && (
+        <AnimatedTabBar
+          activeIndex={activeIndex}
+          tabs={TABS}
+          onTabPress={goToPage}
+        />
+      )}
     </View>
   );
 }
