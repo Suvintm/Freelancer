@@ -156,7 +156,7 @@ const CreateGig = () => {
         <div className="flex items-center gap-4 mb-8">
           <button
             onClick={() => navigate(-1)}
-            className="p-3 rounded-xl bg-[#111319] light:bg-white border border-[#262A3B] light:border-slate-300 hover:bg-[#1a1d25] light:hover:bg-slate-50 transition-all light:shadow-sm"
+            className="p-3 rounded-xl bg-[#111319] light:bg-white border border-[#262A3B] light:border-slate-400 hover:bg-[#1a1d25] light:hover:bg-slate-50 transition-all light:shadow-sm"
           >
             <FaArrowLeft className="light:text-slate-600" />
           </button>
