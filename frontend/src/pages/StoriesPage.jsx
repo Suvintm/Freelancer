@@ -35,7 +35,7 @@ const StoriesPage = () => {
         isOpen={true}
         initialUserIndex={activeUserIdx}
         users={ENRICHED_STORY_DATA}
-        onClose={() => navigate(-1)} // Navigate back to where they came from
+        onClose={() => navigate(-1)} // Navigate back to where they came from 
       />
     </div>
   );
