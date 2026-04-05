@@ -8,7 +8,6 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Alert,
-  Image,
   ScrollView,
   TouchableOpacity,
 } from 'react-native';

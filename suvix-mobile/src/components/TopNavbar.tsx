@@ -78,7 +78,7 @@ export const TopNavbar = ({ onMenuPress }: TopNavbarProps) => {
       rotation.value = withTiming(0, { duration: 300 });
       progress.value = withTiming(-width, { duration: 300 });
     }
-  }, [showLoading]);
+  }, [showLoading, rotation, progress, width]);
 
   const spinStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],

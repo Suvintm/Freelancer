@@ -1,7 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
-import { useAuthStore } from '../store/useAuthStore';
-import Constants from 'expo-constants';
 
 // For mobile, we use the local dev IP or the production URL from our store
 const DEFAULT_BACKEND = 'https://suvix-server.onrender.com';
@@ -46,7 +44,6 @@ const DEFAULT_BANNERS = [
 ];
 
 export const useBannerData = (pageName: 'home' | 'editors' | 'gigs' | 'jobs' | 'explore' = 'home') => {
-  const { user } = useAuthStore();
 
   return useQuery({
     queryKey: ['ads', pageName],

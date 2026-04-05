@@ -1,5 +1,4 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,7 +35,6 @@ export const AnimatedTabBar = ({ activeIndex, tabs, onTabPress, hidden }: Animat
   const TAB_BAR_HEIGHT = 60 + insets.bottom;
 
   const VISIBLE_TABS = (tabs || []).filter(t => !['client', 'editor'].includes(t.name));
-  const TAB_WIDTH = width / VISIBLE_TABS.length;
 
   const activeColor   = isDarkMode ? '#FFFFFF' : '#111111';
   const inactiveColor = isDarkMode ? '#777777' : '#AAAAAA';

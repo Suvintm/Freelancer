@@ -94,7 +94,7 @@ function InitialRoot() {
       clearTimeout(timer);
       clearTimeout(failSafeTimer);
     };
-  }, []); // ✅ PRODUCTION SAFE: Runs exactly once on mount. No re-fire loops.
+  }, [checkAuth, fetchUser, fetchClientDashboard, fetchEditorDashboard, dataLoaded]); // ✅ PRODUCTION SAFE: Runs exactly once on mount. No re-fire loops.
 
   // Logic Effect: Hide native splash immediately when initialized to show our animation
   useEffect(() => {

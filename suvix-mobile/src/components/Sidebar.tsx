@@ -14,8 +14,6 @@ import Animated, {
   useAnimatedStyle, 
   withTiming, 
   withSpring,
-  interpolate,
-  Extrapolate
 } from 'react-native-reanimated';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
@@ -23,7 +21,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../constants/Colors';
 import { useRouter } from 'expo-router';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 const SIDEBAR_WIDTH = width * 0.75;
 
 interface SidebarProps {
@@ -54,7 +52,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       translateX.value = withTiming(-SIDEBAR_WIDTH, { duration: 300 });
       opacity.value = withTiming(0, { duration: 300 });
     }
-  }, [isOpen]);
+  }, [isOpen, translateX, opacity, SIDEBAR_WIDTH]);
 
   const animatedSidebarStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],

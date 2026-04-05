@@ -1,6 +1,4 @@
-import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../../src/store/useAuthStore';
 import { useTheme } from '../../../src/context/ThemeContext';
 import { Colors } from '../../../src/constants/Colors';

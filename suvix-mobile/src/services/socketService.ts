@@ -1,6 +1,5 @@
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '../store/useAuthStore';
-import Constants from 'expo-constants';
 
 /**
  * PRODUCTION-GRADE SOCKET SERVICE

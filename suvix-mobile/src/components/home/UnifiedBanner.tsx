@@ -28,10 +28,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEvent } from 'expo';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useRouter } from 'expo-router';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../api/client';
-import { useTheme } from '../../context/ThemeContext';
 
 // ─── Dimensions ───────────────────────────────────────────────────────────────
 const { width: SW } = Dimensions.get('window');
@@ -215,7 +214,7 @@ const BannerSkeleton = React.memo(() => {
     );
     loop.start();
     return () => loop.stop();
-  }, []);
+  }, [anim]);
   const op = anim.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.65] });
   return (
     <View style={sk.wrap}>
@@ -228,6 +227,7 @@ const BannerSkeleton = React.memo(() => {
     </View>
   );
 });
+BannerSkeleton.displayName = 'BannerSkeleton';
 const sk = StyleSheet.create({
   wrap:  { height: BANNER_HEIGHT, marginHorizontal: 16, borderRadius: 32, backgroundColor: '#18181b', overflow: 'hidden', justifyContent: 'flex-end', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
   inner: { padding: 20, gap: 10 },
@@ -302,16 +302,27 @@ const BannerVideo = React.memo(({ source, muted }: { source: string; muted: bool
     </View>
   );
 });
+BannerVideo.displayName = 'BannerVideo';
+
+// Sub-component to safely use the video player hook
+const VideoPreloader = React.memo(({ url }: { url: string }) => {
+  const player = useVideoPlayer(url, (p) => {
+    p.muted = true;
+    p.pause();
+  });
+  return <VideoView player={player} style={{ width: 1, height: 1 }} />;
+});
+VideoPreloader.displayName = 'VideoPreloader';
 
 // ─── Preloader component to safely use hooks for the "next" item ──────────────
 const BannerPreloader = React.memo(({ item }: { item: AdItem }) => {
   const url = repairUrl(item.mediaUrl);
   if (item.mediaType === 'video') {
-    const player = useVideoPlayer(url, p => { p.muted = true; p.pause(); });
-    return <VideoView player={player} style={{ width: 1, height: 1 }} />;
+    return <VideoPreloader url={url} />;
   }
   return <Image source={{ uri: url }} style={{ width: 1, height: 1 }} />;
 });
+BannerPreloader.displayName = 'BannerPreloader';
 
 interface UnifiedBannerProps {
   pageName?: 'home' | 'editors' | 'gigs' | 'jobs' | 'explore';
@@ -319,7 +330,6 @@ interface UnifiedBannerProps {
 
 export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
   const router      = useRouter();
-  const queryClient = useQueryClient();
 
   const [vIdx, setVIdx]       = useState(0);          // vertical (level) index
   const [hMap, setHMap]       = useState<number[]>(new Array(10).fill(0)); // hIdx per level
@@ -401,7 +411,7 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
     return result;
   }, [adsData]);
 
-  useEffect(() => { if (vIdx >= levels.length) setVIdx(0); }, [levels.length]);
+  useEffect(() => { if (vIdx >= levels.length) setVIdx(0); }, [levels.length, vIdx]);
 
   const level  = levels[vIdx] ?? levels[0];
   const hIdx   = hMap[vIdx]  ?? 0;
@@ -448,13 +458,13 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
       setProgress(p => { if (p >= 100) { advance(); return 0; } return p + (TICK_MS / DURATION_MS) * 100; });
     }, TICK_MS);
     return () => clearInterval(tickRef.current!);
-  }, [appActive, vIdx, hIdx, advance, item?.mediaType, DURATION_MS]);
+  }, [appActive, vIdx, hIdx, advance, item, DURATION_MS]);
 
   useEffect(() => {
     if (!appActive || !item || item.mediaType !== 'video') return;
     const t = setTimeout(advance, DURATION_MS);
     return () => clearTimeout(t);
-  }, [appActive, item?._id, item?.mediaType, advance, DURATION_MS]);
+  }, [appActive, item, advance, DURATION_MS]);
 
   useEffect(() => { scrollRef.current?.scrollTo({ x: 0, animated: false }); }, [vIdx]);
 

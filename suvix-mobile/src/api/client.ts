@@ -24,7 +24,7 @@ async function resolveApiUrl(): Promise<string> {
         resolvedUrl = LOCAL_URL;
         return resolvedUrl;
       }
-    } catch (_e) {
+    } catch {
       // Local unreachable — fall through to production
     }
   }

@@ -41,6 +41,7 @@ jobs:
         working-directory: ${{ matrix.service }}
         run: |
           npm ci
+          if [ -d "prisma" ]; then npx prisma generate; fi
           npm run lint --if-present
           npm run build --if-present
 

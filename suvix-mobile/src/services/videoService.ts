@@ -1,5 +1,3 @@
-import { Platform } from 'react-native';
-
 /**
  * PRODUCTION-GRADE VIDEO PRE-LOADING SERVICE
  * Handles the logic for:

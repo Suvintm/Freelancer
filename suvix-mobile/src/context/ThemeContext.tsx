@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useColorScheme } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { StatusBar } from 'expo-status-bar';
 import { Colors as StaticColors } from '../constants/Colors';
@@ -95,6 +94,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     </ThemeContext.Provider>
   );
 };
+ThemeProvider.displayName = 'ThemeProvider';
 
 export const useTheme = () => {
   const context = useContext(ThemeContext);

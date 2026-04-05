@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { Colors } from '../../constants/Colors';
