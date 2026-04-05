@@ -1,7 +1,7 @@
 import prisma from "../../../config/prisma.js";
 import FollowRequest from "../../connectivity/models/FollowRequest.js";
 import Notification from "../../connectivity/models/Notification.js";
-import { asyncHandler } from "../../../middleware/errorHandler.js";
+import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 import logger from "../../../utils/logger.js";
 import { createNotification } from "../../connectivity/controllers/notificationController.js";
 import { io, getReceiverSocketId } from "../../../socket.js";

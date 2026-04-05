@@ -445,7 +445,7 @@ export const verifyAcceptancePayment = asyncHandler(async (req, res) => {
     });
 
     // Fire and forget rejection of others
-    tx.proposal.updateMany({
+    prisma.proposal.updateMany({
         where: {
             brief_id: brief.id,
             id: { not: proposalId },

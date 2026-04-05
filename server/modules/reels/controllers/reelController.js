@@ -18,6 +18,7 @@ import { purgeReelsFeedCache } from "../../../utils/cloudflareService.js";
 import { videoProcessingQueue, analyticsQueue } from "../../../config/queues.js";
 import { getCollaborativeAffinities } from "../utils/recsysEngine.js";
 import { attachUserMetadata } from "../../../utils/hybridJoin.js";
+import prisma from "../../../config/prisma.js";
 
 // Scoreboard Redis key — persistent global sorted set of reel scores
 const SCORE_BOARD_KEY = "reels:score:board";

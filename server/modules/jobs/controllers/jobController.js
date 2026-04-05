@@ -115,7 +115,7 @@ export const createJob = asyncHandler(async (req, res) => {
       budget_min: Number(budget.min),
       budget_max: Number(budget.max),
       currency: budget.currency || "INR",
-      hiring_rounds: hiring_rounds || 1,
+      hiring_rounds: hiringRounds || 1,
       round_names: finalRoundNames,
       application_deadline: new Date(applicationDeadline),
       expected_start_date: expectedStartDate ? new Date(expectedStartDate) : null,

@@ -172,6 +172,10 @@ export const getStarredMessages = asyncHandler(async (req, res) => {
 
 // ============ UPLOAD VOICE MESSAGE ============
 export const uploadVoice = asyncHandler(async (req, res) => {
+  const { orderId } = req.params;
+  const { duration } = req.body;
+  const userId = req.user.id;
+
   const order = await prisma.order.findUnique({ where: { id: orderId } });
   if (!order) throw new ApiError(404, "Order not found");
 

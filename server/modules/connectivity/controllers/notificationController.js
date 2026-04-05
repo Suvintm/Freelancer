@@ -3,6 +3,7 @@ import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 import { io, getReceiverSocketId } from "../../../socket.js";
 import { withCache, deleteCache, CacheKey, TTL } from "../../../utils/cache.js";
 import { sendPushNotification } from "../../../utils/fcmService.js";
+import prisma from "../../../config/prisma.js";
 
 // ============ GET UNREAD COUNT ============
 export const getUnreadCount = asyncHandler(async (req, res) => {
