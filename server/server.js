@@ -13,6 +13,11 @@ import session from "express-session";
 import { RedisStore } from "connect-redis";
 import { SiteSettings } from "./modules/system/models/SiteSettings.js";
 
+// Global BigInt JSON serialization fix
+BigInt.prototype.toJSON = function () {
+    return this.toString();
+};
+
 
 // Utils
 import logger from "./utils/logger.js";

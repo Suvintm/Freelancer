@@ -1,59 +1,86 @@
-import asyncHandler from "express-async-handler";
-import User from "../../user/models/User.js";
-import WalletTransaction from "../models/WalletTransaction.js";
-import { ApiError } from "../../../middleware/errorHandler.js";
+import prisma from "../../../config/prisma.js";
+import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 
 /**
- * @desc    Get user's wallet balance and stats
+ * @desc    Get user's wallet balance and stats (PostgreSQL)
  * @route   GET /api/wallet/balance
  * @access  Private (Editor)
  */
 export const getWalletBalance = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user._id)
-    .select("walletBalance pendingBalance lifetimeEarnings totalWithdrawn");
+  const userId = req.user.id;
   
-  if (!user) {
-    throw new ApiError(404, "User not found");
+  // Try to find the wallet, create if it doesn't exist
+  let wallet = await prisma.userWallet.findUnique({
+    where: { user_id: userId }
+  });
+
+  if (!wallet) {
+    wallet = await prisma.userWallet.create({
+      data: { user_id: userId }
+    });
   }
+
+  const walletBalance = Number(wallet.wallet_balance || 0);
+  const pendingBalance = Number(wallet.pending_balance || 0);
 
   res.json({
     success: true,
     wallet: {
-      available: user.walletBalance || 0,          // Can withdraw now
-      pending: user.pendingBalance || 0,           // In clearance (7 days)
-      lifetime: user.lifetimeEarnings || 0,        // All time earned
-      withdrawn: user.totalWithdrawn || 0,         // All time withdrawn
-      total: (user.walletBalance || 0) + (user.pendingBalance || 0), // Total held by platform
+      available: walletBalance,          // Can withdraw now
+      pending: pendingBalance,           // In clearance (7 days)
+      lifetime: Number(wallet.lifetime_earnings || 0),        // All time earned
+      withdrawn: Number(wallet.total_withdrawn || 0),         // All time withdrawn
+      total: walletBalance + pendingBalance,                  // Total held by platform
     }
   });
 });
 
 /**
- * @desc    Get user's wallet transaction history
+ * @desc    Get user's wallet transaction history (PostgreSQL)
  * @route   GET /api/wallet/transactions
  * @access  Private (Editor)
  */
 export const getWalletTransactions = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, type, status } = req.query;
+  const userId = req.user.id;
   
-  const query = { user: req.user._id };
-  if (type) query.type = type;
-  if (status) query.status = status;
+  const where = { user_id: userId };
+  if (type) where.type = type;
+  if (status) where.status = status;
   
   const skip = (parseInt(page) - 1) * parseInt(limit);
   
-  const transactions = await WalletTransaction.find(query)
-    .populate("order", "orderNumber title amount")
-    .populate("withdrawal", "amount status requestedAt")
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(parseInt(limit));
+  const transactions = await prisma.walletTransaction.findMany({
+    where,
+    include: {
+      order: { select: { order_number: true, title: true, amount: true } },
+      withdrawal: { select: { amount: true, status: true, requested_at: true } }
+    },
+    orderBy: { created_at: 'desc' },
+    skip,
+    take: parseInt(limit)
+  });
     
-  const total = await WalletTransaction.countDocuments(query);
+  const total = await prisma.walletTransaction.count({ where });
+
+  // Map to frontend expected names
+  const mappedTransactions = transactions.map(tx => ({
+     ...tx,
+     order: tx.order ? {
+         orderNumber: tx.order.order_number,
+         title: tx.order.title,
+         amount: Number(tx.order.amount)
+     } : null,
+     withdrawal: tx.withdrawal ? {
+         amount: Number(tx.withdrawal.amount),
+         status: tx.withdrawal.status,
+         requestedAt: tx.withdrawal.requested_at
+     } : null
+  }));
 
   res.json({ 
     success: true, 
-    transactions,
+    transactions: mappedTransactions,
     pagination: {
       total,
       page: parseInt(page),
@@ -63,22 +90,35 @@ export const getWalletTransactions = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Get transactions pending clearance
+ * @desc    Get transactions pending clearance (PostgreSQL)
  * @route   GET /api/wallet/pending
  * @access  Private (Editor)
  */
 export const getPendingClearance = asyncHandler(async (req, res) => {
-  const transactions = await WalletTransaction.find({
-    user: req.user._id,
-    status: "pending_clearance"
-  })
-  .populate("order", "orderNumber title")
-  .sort({ clearanceDate: 1 });
+  const userId = req.user.id;
+  
+  const transactions = await prisma.walletTransaction.findMany({
+    where: {
+      user_id: userId,
+      status: "pending_clearance"
+    },
+    include: {
+      order: { select: { order_number: true, title: true } }
+    },
+    orderBy: { clearance_date: 'asc' }
+  });
 
   res.json({
     success: true,
     count: transactions.length,
-    transactions
+    transactions: transactions.map(tx => ({
+      ...tx,
+      clearanceDate: tx.clearance_date,
+      order: tx.order ? {
+          orderNumber: tx.order.order_number,
+          title: tx.order.title
+      } : null
+    }))
   });
 });
 

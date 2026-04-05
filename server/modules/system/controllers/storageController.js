@@ -145,8 +145,8 @@ export const getStorageStatus = asyncHandler(async (req, res) => {
       }
   });
 
-  const limit = Number(user.storage_limit);
-  const usedPercent = Math.round((storageData.totalBytes / limit) * 100);
+  const limit = Number(user.storage_limit || 0);
+  const usedPercent = limit > 0 ? Math.round((Number(storageData.totalBytes) / limit) * 100) : 0;
   
   const storageSettings = await StorageSettings.getSettings();
   const plansObject = storageSettings.toPlansObject();
@@ -159,12 +159,12 @@ export const getStorageStatus = asyncHandler(async (req, res) => {
       usedFormatted: formatBytes(storageData.totalBytes),
       limitFormatted: formatBytes(limit),
       usedPercent,
-      remainingBytes: Math.max(0, limit - storageData.totalBytes),
-      remainingFormatted: formatBytes(Math.max(0, limit - storageData.totalBytes)),
+      remainingBytes: Math.max(0, limit - Number(storageData.totalBytes)),
+      remainingFormatted: formatBytes(Math.max(0, Number(limit) - Number(storageData.totalBytes))),
       plan: user.storage_plan,
       isLowStorage: usedPercent >= 80,
       isFull: usedPercent >= 100,
-      lastCalculated: new Date(),
+      lastCalculated: user.storage_last_calculated || new Date(),
     },
     breakdown: {
       ...storageData.counts,
@@ -329,7 +329,7 @@ export const canUpload = async (userId, fileSizeBytes) => {
   const storageData = await calculateStorageUsed(userId);
   const newTotal = storageData.totalBytes + fileSizeBytes;
 
-  if (BigInt(newTotal) > user.storage_limit) {
+  if (BigInt(newTotal) > (user.storage_limit || BigInt(0))) {
     return {
       allowed: false,
       reason: "Storage limit exceeded",

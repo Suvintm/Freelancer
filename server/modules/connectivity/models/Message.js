@@ -4,16 +4,14 @@ const messageSchema = new mongoose.Schema(
   {
     // Which order this message belongs to
     order: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Order",
+      type: String, // References PostgreSQL Order (UUID)
       required: true,
       index: true,
     },
 
     // Who sent the message
     sender: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String, // References PostgreSQL User (UUID)
       required: false, // Optional for system messages
     },
 
@@ -175,8 +173,7 @@ const messageSchema = new mongoose.Schema(
       type: Date,
     },
     deletedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String, // References PostgreSQL User (UUID)
     },
 
     // ✏️ Edit message fields
@@ -197,8 +194,7 @@ const messageSchema = new mongoose.Schema(
       default: false,
     },
     starredBy: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String, // References PostgreSQL User (UUID)
     }],
 
     // 🎙️ Voice message fields

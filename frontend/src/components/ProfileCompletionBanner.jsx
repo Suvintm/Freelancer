@@ -155,10 +155,10 @@ const ProfileCompletionBanner = () => {
 
   if (user?.role !== 'editor' || loading) return null;
 
-  const percent = completionData?.percent || 0;
-  const breakdown = completionData?.breakdown || [];
-  const requiredCount = completionData?.requiredCount || 5;
-  const requiredComplete = completionData?.requiredComplete || 0;
+  const percent = completionData?.completion?.percent || 0;
+  const breakdown = completionData?.completion?.breakdown || [];
+  const requiredCount = completionData?.completion?.requiredCount || 5;
+  const requiredComplete = completionData?.completion?.requiredComplete || 0;
 
   if (percent >= 100) return null;
 

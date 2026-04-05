@@ -17,7 +17,11 @@ const ProfileChecklist = ({ completionData }) => {
 
   if (!completionData) return null;
 
-  const { percent, breakdown } = completionData;
+  // Robust parsing: handle both { completion: { percent, breakdown } } and { percent, breakdown }
+  const data = completionData.completion || completionData;
+  const percent = data.percent || 0;
+  const breakdown = data.breakdown || [];
+  
   const isComplete = percent >= 100;
 
   const handleGo = (id) => {

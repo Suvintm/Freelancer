@@ -42,7 +42,7 @@ router.put(
   "/",
   authMiddleware,
   uploadLimiter,
-  upload.fields([{ name: "certifications", maxCount: 5 }]),
+  upload.fields([{ name: "certifications", maxCount: 5 }, { name: "profile_picture", maxCount: 1 }]), 
   updateProfileValidator,
   updateProfile
 );

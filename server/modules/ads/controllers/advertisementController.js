@@ -85,6 +85,8 @@ const cleanAd = (ad) => {
     reelViews: ad.reel_views,
     exploreViews: ad.explore_views,
     homeBannerViews: ad.home_banner_views,
+    startDate: ad.start_date,
+    endDate: ad.end_date,
     createdAt: ad.created_at,
     updatedAt: ad.updated_at
   };
@@ -161,23 +163,26 @@ export const uploadGalleryImages = asyncHandler(async (req, res) => {
 // ============ PUBLIC: GET ACTIVE ADS ============
 export const getActiveAds = asyncHandler(async (req, res) => {
   const now = new Date();
-  const { location } = req.query; // "home_banner" | "reels_feed" | "explore_page"
+  const { location } = req.query; 
 
   const cacheKey = `ads:${location || 'all'}`;
   const cached = await getCache(cacheKey);
   if (cached) return res.status(200).json(cached);
 
+  // Handle multiple locations separated by commas (e.g. banners:home_0,banners:home_1)
+  const locations = location ? location.split(',').map(l => l.trim()) : null;
+
   const where = {
     is_active: true,
     OR: [
-      { startDate: { equals: null } },
-      { startDate: { lte: now } }
+      { start_date: { equals: null } },
+      { start_date: { lte: now } }
     ],
     AND: [
       {
         OR: [
-          { endDate: { equals: null } },
-          { endDate: { gte: now } }
+          { end_date: { equals: null } },
+          { end_date: { gte: now } }
         ]
       }
     ]
@@ -192,8 +197,8 @@ export const getActiveAds = asyncHandler(async (req, res) => {
       ad_request: {
         status: "approved"
       },
-      ...(location ? {
-        display_locations: { has: location }
+      ...(locations && locations.length > 0 ? {
+        display_locations: { hasSome: locations }
       } : {})
     },
     orderBy: [
@@ -205,7 +210,7 @@ export const getActiveAds = asyncHandler(async (req, res) => {
   });
 
   // Check showSuvixAds from SiteSettings (PostgreSQL singleton)
-  if (location === "home_banner") {
+  if (locations && locations.includes("home_banner")) {
     const settings = await SiteSettings.getSettings();
     if (settings && !settings.showSuvixAds && ads.length === 0) {
       const payload = { success: true, count: 0, ads: [] };
@@ -219,7 +224,7 @@ export const getActiveAds = asyncHandler(async (req, res) => {
     ads = await prisma.advertisement.findMany({
       where: {
         is_default: true,
-        ...(location ? { display_locations: { has: location } } : {})
+        ...(locations && locations.length > 0 ? { display_locations: { hasSome: locations } } : {})
       },
       orderBy: [
         { order: 'asc' },
@@ -356,6 +361,8 @@ export const createAd = asyncHandler(async (req, res) => {
       display_locations: displayProps.displayLocations || ["banners:home_0"],
       is_default: displayProps.isDefault || false,
       priority: displayProps.priority || "medium",
+      start_date: displayProps.startDate ? new Date(displayProps.startDate) : new Date(),
+      end_date: displayProps.endDate ? new Date(displayProps.endDate) : null,
       order,
     },
     include: { ad_request: true }
@@ -373,7 +380,8 @@ export const updateAd = asyncHandler(async (req, res) => {
   const fields = [
     "tagline", "longDescription", "mediaType", "mediaUrl", "thumbnailUrl", 
     "galleryImages", "layoutConfig", "buttonStyle", "reelConfig",
-    "isActive", "displayLocations", "isDefault", "priority", "order"
+    "isActive", "displayLocations", "isDefault", "priority", "order",
+    "startDate", "endDate"
   ];
 
   fields.forEach(f => {

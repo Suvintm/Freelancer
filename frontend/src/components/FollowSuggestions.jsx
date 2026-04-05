@@ -63,8 +63,9 @@ const FollowSuggestions = () => {
             });
             const states = {};
             (res.data.suggestions || []).forEach(s => {
-                const isFollowed = user?.following?.some(id => id.toString() === s._id.toString());
-                states[s._id] = { loading: false, isFollowing: !!isFollowed, isPending: false, showAnimation: false };
+                const isFollowed = user?.following?.some(id => id.toString() === (s.id || s._id)?.toString());
+                const sid = s.id || s._id;
+                states[sid] = { loading: false, isFollowing: !!isFollowed, isPending: false, showAnimation: false };
             });
             setFollowStates(states);
             return res.data.suggestions || [];
@@ -153,7 +154,7 @@ const FollowSuggestions = () => {
     // ── Follow / Unfollow ──────────────────────────────────────────────────
     const handleFollow = async (e, targetUser) => {
         e.stopPropagation();
-        const targetId = targetUser._id;
+        const targetId = targetUser.id || targetUser._id;
         if (followStates[targetId]?.loading) return;
 
         setFollowStates(prev => ({ ...prev, [targetId]: { ...prev[targetId], loading: true } }));
@@ -253,23 +254,24 @@ const FollowSuggestions = () => {
             >
                 <AnimatePresence>
                     {suggestions.map((item, idx) => {
-                        const state = followStates[item._id] || {};
+                        const sid = item.id || item._id;
+                        const state = followStates[sid] || {};
                         return (
                             <SuggestionCard
-                                key={item._id}
+                                key={sid}
                                 item={item}
                                 idx={idx}
                                 state={state}
                                 onCardClick={() =>
                                     navigate(item.role === "editor"
-                                        ? `/editor/${item._id}`
-                                        : `/public-profile/${item._id}`)
+                                        ? `/editor/${sid}`
+                                        : `/public-profile/${sid}`)
                                 }
                                 onFollow={(e) => handleFollow(e, item)}
                                 onAnimationComplete={() =>
                                     setFollowStates(prev => ({
                                         ...prev,
-                                        [item._id]: { ...prev[item._id], showAnimation: false },
+                                        [sid]: { ...prev[sid], showAnimation: false },
                                     }))
                                 }
                             />

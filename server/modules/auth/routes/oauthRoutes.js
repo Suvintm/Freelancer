@@ -1,8 +1,7 @@
 import express from "express";
 import passport from "../../../config/passport.js";
 import jwt from "jsonwebtoken";
-import User from "../../user/models/User.js";
-import { Profile } from "../../profiles/models/Profile.js";
+import prisma from "../../../config/prisma.js";
 import logger from "../../../utils/logger.js";
 import axios from "axios";
 import crypto from "crypto";
@@ -14,10 +13,10 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = "7d";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
-// Generate JWT token
+// Generate JWT token (Postgres/Prisma)
 const generateToken = (user) => {
     return jwt.sign(
-        { id: user._id, role: user.role },
+        { id: user.id, role: user.role },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
     );
@@ -31,7 +30,7 @@ router.get(
     authLimiter,
     passport.authenticate("google", {
         scope: ["profile", "email"],
-        prompt: "select_account", // Always show account selector
+        prompt: "select_account",
         session: false,
     })
 );
@@ -55,7 +54,7 @@ router.get(
             if (user.role === "pending") {
                 // Generate a temporary token for role selection
                 const tempToken = jwt.sign(
-                    { id: user._id, type: "role_selection" },
+                    { id: user.id, type: "role_selection" },
                     JWT_SECRET,
                     { expiresIn: "10m" }
                 );
@@ -112,8 +111,8 @@ router.post("/select-role", authLimiter, async (req, res) => {
             });
         }
 
-        // Update user role and production defaults
-        const user = await User.findById(decoded.id);
+        // Update user role and production defaults in PostgreSQL
+        const user = await prisma.user.findUnique({ where: { id: decoded.id } });
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -125,53 +124,60 @@ router.post("/select-role", authLimiter, async (req, res) => {
         const currency = currencyMap[country] || "INR";
         const paymentGateway = country === "IN" ? "razorpay" : "none";
 
-        user.role = role;
-        user.phone = phone;
-        user.country = country;
-        user.currency = currency;
-        user.paymentGateway = paymentGateway;
-        user.isVerified = true; // OAuth users are verified
-        await user.save();
+        const updatedUser = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                role,
+                phone,
+                country,
+                currency,
+                payment_gateway: paymentGateway,
+                is_verified: true,
+            }
+        });
 
-        // Create profile for the user with full consistency
-        const existingProfile = await Profile.findOne({ user: user._id });
+        // Create profile for the user in PostgreSQL
+        const existingProfile = await prisma.userProfile.findUnique({ where: { user_id: user.id } });
         if (!existingProfile) {
-            await Profile.create({
-                user: user._id,
-                about: "",
-                portfolio: [],
-                skills: [],
-                languages: [],
-                experience: "",
-                certifications: [],
-                contactEmail: user.email,
-                location: { country: country },
+            await prisma.userProfile.create({
+                data: {
+                    user_id: user.id,
+                    about: "",
+                    skills: [],
+                    languages: [],
+                    experience: "",
+                    contact_email: updatedUser.email,
+                    location_country: country,
+                }
             });
         } else {
-            // Update existing profile with new country/email if necessary
-            existingProfile.contactEmail = user.email;
-            existingProfile.location = { country: country };
-            await existingProfile.save();
+            await prisma.userProfile.update({
+                where: { user_id: user.id },
+                data: {
+                    contact_email: updatedUser.email,
+                    location_country: country,
+                }
+            });
         }
 
         // Generate full token
-        const authToken = generateToken(user);
+        const authToken = generateToken(updatedUser);
 
-        logger.info(`[OAuth] Finalized registration: ${user.email} as ${role}`);
+        logger.info(`[OAuth] Finalized registration (Postgres): ${updatedUser.email} as ${role}`);
 
         res.status(200).json({
             success: true,
             message: "Registration completed successfully",
             user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                profileCompleted: user.profileCompleted,
-                profilePicture: user.profilePicture,
-                isVerified: user.isVerified,
-                kycStatus: user.kycStatus,
-                profileCompletionPercent: user.profileCompletionPercent,
+                id: updatedUser.id,
+                name: updatedUser.name,
+                email: updatedUser.email,
+                role: updatedUser.role,
+                profileCompleted: updatedUser.profile_completed,
+                profilePicture: updatedUser.profile_picture,
+                isVerified: updatedUser.is_verified,
+                kycStatus: updatedUser.kyc_status,
+                profileCompletionPercent: updatedUser.profile_completion_percent,
             },
             token: authToken,
         });
@@ -204,53 +210,69 @@ router.post("/google/mobile", async (req, res) => {
 
         const normalizedEmail = email.toLowerCase();
 
-        // 2. Check if user already exists
-        let user = await User.findOne({ $or: [{ googleId }, { email: normalizedEmail }] });
+        // 2. Check if user already exists in PostgreSQL
+        let user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { google_id: googleId },
+                    { email: normalizedEmail }
+                ]
+            }
+        });
 
         if (user) {
             // Already exists - link googleId if missing
-            if (!user.googleId) {
-                user.googleId = googleId;
-                user.authProvider = "google";
-                user.isVerified = true;
-                await user.save();
-                logger.info(`[OAuth Mobile] Linked Google account to existing user: ${normalizedEmail}`);
+            if (!user.google_id) {
+                user = await prisma.user.update({
+                    where: { id: user.id },
+                    data: {
+                        google_id: googleId,
+                        auth_provider: "google",
+                        is_verified: true
+                    }
+                });
+                logger.info(`[OAuth Mobile] Linked Google account to existing user (Postgres): ${normalizedEmail}`);
             } else {
-                logger.info(`[OAuth Mobile] Login: ${normalizedEmail}`);
+                logger.info(`[OAuth Mobile] Login (Postgres): ${normalizedEmail}`);
             }
         } else {
-            // 3. New User Registration
-            // Handle name collision
+            // 3. New User Registration in PostgreSQL
             let finalName = name || "User";
-            const nameExists = await User.findOne({ name: { $regex: new RegExp(`^${finalName}$`, "i") } });
+            const nameExists = await prisma.user.findFirst({
+                where: { name: { equals: finalName, mode: 'insensitive' } }
+            });
             if (nameExists) {
                 finalName = `${finalName}${Math.floor(1000 + Math.random() * 9000)}`;
             }
 
-            user = await User.create({
-                name: finalName,
-                email: normalizedEmail,
-                googleId,
-                authProvider: "google",
-                isVerified: true,
-                role: "pending",
-                password: `OAUTH_MOBILE_${crypto.randomBytes(8).toString("hex")}`,
+            user = await prisma.user.create({
+                data: {
+                    name: finalName,
+                    email: normalizedEmail,
+                    google_id: googleId,
+                    auth_provider: "google",
+                    is_verified: true,
+                    role: "pending",
+                    password_hash: `OAUTH_MOBILE_${crypto.randomBytes(8).toString("hex")}`,
+                }
             });
 
             // Create Profile
-            await Profile.create({
-                user: user._id,
-                contactEmail: user.email,
-                location: { country: "IN" }, // Default
+            await prisma.userProfile.create({
+                data: {
+                    user_id: user.id,
+                    contact_email: user.email,
+                    location_country: "IN", 
+                }
             });
 
-            logger.info(`[OAuth Mobile] New user registered: ${normalizedEmail}`);
+            logger.info(`[OAuth Mobile] New user registered (Postgres): ${normalizedEmail}`);
         }
 
-        // 4. Handle Pending Role (consistent with Web flow)
+        // 4. Handle Pending Role
         if (user.role === "pending") {
             const tempToken = jwt.sign(
-                { id: user._id, type: "role_selection" },
+                { id: user.id, type: "role_selection" },
                 JWT_SECRET,
                 { expiresIn: "15m" }
             );
@@ -259,7 +281,7 @@ router.post("/google/mobile", async (req, res) => {
                 requiresRoleSelection: true,
                 token: tempToken,
                 user: {
-                    id: user._id,
+                    id: user.id,
                     email: user.email,
                     name: user.name,
                     role: user.role
@@ -273,16 +295,16 @@ router.post("/google/mobile", async (req, res) => {
             success: true,
             token,
             user: {
-                id: user._id,
+                id: user.id,
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                profilePicture: user.profilePicture || picture,
+                profilePicture: user.profile_picture || picture,
             }
         });
 
     } catch (error) {
-        logger.error("[OAuth Mobile] Error:", error.response?.data || error.message);
+        logger.error("[OAuth Mobile] Error (Postgres):", error.response?.data || error.message);
         res.status(401).json({ success: false, message: "Google authentication failed" });
     }
 });

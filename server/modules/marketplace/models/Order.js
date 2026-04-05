@@ -39,13 +39,11 @@ const orderSchema = new mongoose.Schema(
 
     // Parties involved
     client: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String, // References PostgreSQL User (UUID)
       required: true,
     },
     editor: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String, // References PostgreSQL User (UUID)
       required: true,
     },
 
@@ -292,8 +290,7 @@ const orderSchema = new mongoose.Schema(
       originalDeadline: Date,
       newDeadline: Date,
       extendedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        type: String, // References PostgreSQL User (UUID)
       },
       extendedAt: Date,
       extraDays: Number,
@@ -313,8 +310,7 @@ const orderSchema = new mongoose.Schema(
     // 📌 Pinned status (user-specific)
     pinnedBy: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        type: String, // References PostgreSQL User (UUID)
       },
     ],
 

@@ -2,8 +2,7 @@ import mongoose from "mongoose";
 
 const ReelSaveSchema = new mongoose.Schema({
   user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    type: String, // References PostgreSQL User (UUID)
     required: true,
     index: true
   },

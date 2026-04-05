@@ -98,6 +98,8 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
     manualApproval: user?.followSettings?.manualApproval || false,
     softwares: [],
     name: user?.name || "",
+    profilePictureFile: null,
+    profilePicturePreview: user?.profile_picture || "",
     socialLinks: {
       youtube: "",
       instagram: "",
@@ -142,6 +144,7 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
         manualApproval: p?.user?.followSettings?.manualApproval || false,
         softwares: p?.softwares || [],
         name: p?.user?.name || "",
+        profilePicturePreview: p?.user?.profilePicture || "",
         socialLinks: {
           youtube: p?.socialLinks?.youtube || "",
           instagram: p?.socialLinks?.instagram || "",
@@ -261,6 +264,21 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
     });
   };
 
+  const handleProfilePicChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error("Profile picture must be less than 2MB");
+        return;
+      }
+      setFormData({
+        ...formData,
+        profilePictureFile: file,
+        profilePicturePreview: URL.createObjectURL(file)
+      });
+    }
+  };
+
   const removeCert = (index, type = "local") => {
     if (type === "local") {
       const updated = [...formData.certifications];
@@ -306,6 +324,10 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
       formPayload.append("socialLinks", JSON.stringify(formData.socialLinks));
       formPayload.append("aiProfile", JSON.stringify(formData.aiProfile));
       formPayload.append("name", formData.name);
+
+      if (formData.profilePictureFile) {
+        formPayload.append("profile_picture", formData.profilePictureFile);
+      }
 
       formData.certifications.forEach((file) => {
         formPayload.append("certifications", file);
@@ -448,6 +470,35 @@ const UpdateProfile = ({ languagesOptions = [] }) => {
               <SectionHeader simple icon={HiOutlineUser} title="Basic Information" subtitle="Your public identity" isDark={isDark} />
               
               <div className="space-y-6">
+                {/* Profile Picture Upload Section */}
+                <div className="flex items-center gap-6 p-4 rounded-2xl border bg-black/20 border-white/5">
+                  <div className="relative group">
+                    <img 
+                      src={formData.profilePicturePreview || "/default-avatar.png"} 
+                      alt="Profile Preview" 
+                      className="w-16 h-16 rounded-full object-cover border-2 border-emerald-500/30 group-hover:border-emerald-500 transition-all"
+                    />
+                    <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center pointer-events-none">
+                      <HiOutlineCloudArrowUp className="w-5 h-5 text-white" />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-[11px] font-normal uppercase tracking-wider text-zinc-400 mb-2">Profile Image</h4>
+                    <label className="cursor-pointer">
+                      <span className="text-[10px] px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all font-medium">
+                        Change Photo
+                      </span>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={handleProfilePicChange}
+                      />
+                    </label>
+                    <p className="text-[9px] text-zinc-500 font-normal mt-2">Max 2MB. Recommendation: Square aspect ratio.</p>
+                  </div>
+                </div>
+
                 <InputWrapper label="About Me" required isDark={isDark}>
                   <textarea
                     name="about"

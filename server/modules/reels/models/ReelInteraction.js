@@ -1,18 +1,17 @@
 import mongoose from "mongoose";
 
 const reelInteractionSchema = new mongoose.Schema({
-  user: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: "User", 
-    required: true, 
-    index: true 
-  },
-  reel: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: "Reel", 
-    required: true,
-    index: true
-  },
+    user: { 
+      type: String, // References PostgreSQL User (UUID)
+      required: true, 
+      index: true 
+    },
+    reel: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "Reel", 
+      required: true,
+      index: true
+    },
   
   // Engagement Signals (Phase 30A Polished)
   watched: { type: Boolean, default: false },

@@ -8,33 +8,57 @@
  * @returns {Number} - Completion percentage (0-100)
  */
 export const calculateProfileCompletion = (user, profile, portfolioCount = 0) => {
-  let completion = 0;
-  
   const requiredItems = [
     {
-      // 1. Profile Photo (20%)
+      id: "profilePicture",
+      section: "personal",
+      label: "Profile Photo",
+      weight: 20,
+      required: true,
       complete: !!(user?.profile_picture && !user.profile_picture.includes("flaticon")),
     },
     {
-      // 2. Professional Bio (20%)
+      id: "about",
+      section: "personal",
+      label: "Professional Bio",
+      weight: 20,
+      required: true,
       complete: !!(profile?.about && profile.about.length >= 10),
     },
     {
-      // 3. Skills (3+) (20%)
-      complete: !!(profile?.skills && profile.skills.length >= 3),
+      id: "skills",
+      section: "skills",
+      label: "Skills (3+)",
+      weight: 20,
+      required: true,
+      complete: !!(profile?.skills?.filter(Boolean)?.length >= 3),
     },
     {
-      // 4. Portfolio (2+) (20%)
-      complete: !!(portfolioCount >= 2 || (profile?.portfolio && profile.portfolio.length >= 2)),
+      id: "portfolio",
+      section: "portfolio",
+      label: "Portfolio (2+)",
+      weight: 20,
+      required: true,
+      complete: !!(portfolioCount >= 2 || (profile?.portfolio?.filter(Boolean)?.length >= 2)),
     },
     {
-      // 5. Software & Tools (1+) (20%)
-      complete: !!(profile?.softwares && profile.softwares.length >= 1),
+      id: "softwares",
+      section: "skills",
+      label: "Software & Tools (1+)",
+      weight: 20,
+      required: true,
+      complete: !!(profile?.softwares?.filter(Boolean)?.length >= 1),
     },
   ];
 
-  const completedCount = requiredItems.filter(i => i.complete).length;
-  completion = completedCount * 20;
+  const completedCount = requiredItems.filter(i => i.complete && i.required).length;
+  const currentPercentage = Math.round(completedCount * 20);
 
-  return Math.round(completion);
+  return {
+    percent: currentPercentage,
+    percentage: currentPercentage, // Compatibility
+    breakdown: requiredItems,
+    requiredCount: requiredItems.length,
+    requiredComplete: completedCount
+  };
 };

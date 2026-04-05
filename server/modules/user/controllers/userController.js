@@ -40,11 +40,9 @@ export const getSavedEditors = asyncHandler(async (req, res) => {
       where: { user_id: userId },
       include: {
           editor: {
-              select: {
-                  id: true, name: true, profile_picture: true, role: true, 
-                  location: true, rating: true, total_projects: true, 
-                  suvix_score_total: true, availability_status: true,
-                  availability_busy_until: true
+              include: {
+                  location: true,
+                  profile: true
               }
           }
       }
@@ -53,19 +51,26 @@ export const getSavedEditors = asyncHandler(async (req, res) => {
   const now = new Date();
   const validSavedEditors = saved.map(s => {
       const editor = s.editor;
+      const profile = editor.profile || {};
+      
       let status = editor.availability_status;
       if (status === 'busy' && editor.availability_busy_until && new Date(editor.availability_busy_until) < now) {
           status = 'available';
       }
+
+      // Map rating and score from profile JSON
+      const ratingStats = typeof profile.rating_stats === 'string' ? JSON.parse(profile.rating_stats) : (profile.rating_stats || {});
+      const suvixScore = typeof profile.suvix_score === 'string' ? JSON.parse(profile.suvix_score) : (profile.suvix_score || {});
+
       return {
           id: editor.id,
           name: editor.name,
           profilePicture: editor.profile_picture,
           role: editor.role,
-          location: editor.location,
-          rating: Number(editor.rating),
-          totalProjects: editor.total_projects,
-          suvixScore: editor.suvix_score_total,
+          location: editor.location ? `${editor.location.city}, ${editor.location.country}` : "Unknown",
+          rating: Number(ratingStats.averageRating || 0),
+          totalProjects: Number(suvixScore.completedOrders || 0),
+          suvixScore: Number(suvixScore.total || 0),
           availability: { status }
       };
   });
@@ -217,22 +222,44 @@ export const handleFollowRequest = asyncHandler(async (req, res) => {
     }
 });
 
-// Utility: FCM Token
+// Utility: FCM Token (PostgreSQL)
 export const updateFcmToken = asyncHandler(async (req, res) => {
     const { token } = req.body;
     const userId = req.user.id;
     if (!token) throw new ApiError(400, "Token is required");
 
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    let tokens = user.fcm_tokens || [];
-    if (!tokens.includes(token)) {
-        if (tokens.length >= 5) tokens.shift();
-        tokens.push(token);
-        await prisma.user.update({
-            where: { id: userId },
-            data: { fcm_tokens: tokens }
+    // Check if token already exists for this user
+    const existing = await prisma.userFcmToken.findUnique({
+        where: { token: token }
+    });
+
+    if (existing) {
+        if (existing.user_id !== userId) {
+            // Token belongs to another user, reassign it
+            await prisma.userFcmToken.update({
+                where: { token: token },
+                data: { user_id: userId, created_at: new Date() }
+            });
+        }
+        // If it's already theirs, no action needed or just update timestamp
+    } else {
+        // Manage token limit (5 per user)
+        const userTokens = await prisma.userFcmToken.findMany({
+            where: { user_id: userId },
+            orderBy: { created_at: 'asc' }
+        });
+
+        if (userTokens.length >= 5) {
+            await prisma.userFcmToken.delete({
+                where: { id: userTokens[0].id }
+            });
+        }
+
+        await prisma.userFcmToken.create({
+            data: { user_id: userId, token: token }
         });
     }
+
     res.status(200).json({ success: true, message: "Token updated" });
 });
 

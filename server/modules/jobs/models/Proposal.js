@@ -16,8 +16,7 @@ const proposalSchema = new mongoose.Schema(
 
     // Editor who submitted
     editor: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String, // References PostgreSQL User (UUID)
       required: true,
       index: true,
     },
@@ -96,8 +95,7 @@ const proposalSchema = new mongoose.Schema(
     
     // Linked order created from this proposal
     linkedOrder: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Order",
+      type: String, // References PostgreSQL Order (UUID)
     },
 
     // ============ WITHDRAWAL ============

@@ -1105,8 +1105,9 @@ export const getSuggestedDiscovery = asyncHandler(async (req, res) => {
         .slice(0, limit);
 
     // 5. CREATOR SUGGESTIONS: Extract editors from high-score reels
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const editorIds = [...new Set(scoredReels.map(r => r.editor?.toString()))]
-        .filter(id => id && !followingSet.has(id))
+        .filter(id => id && uuidRegex.test(id) && !followingSet.has(id))
         .slice(0, 8);
 
     // 5. CREATOR SUGGESTIONS: Fetch from PostgreSQL

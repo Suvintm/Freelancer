@@ -403,6 +403,12 @@ model User {
   profile_completed         Boolean?            @default(false) @map("profile_completed")
   profile_completion_percent Int?                @default(0) @map("profile_completion_percent") @db.SmallInt
 
+  // Storage
+  storage_used              BigInt?             @default(0) @map("storage_used")
+  storage_limit             BigInt?             @default(5368709120) @map("storage_limit") // 5GB Default
+  storage_plan              String?             @default("free") @map("storage_plan") @db.VarChar(20)
+  storage_last_calculated   DateTime?           @map("storage_last_calculated") @db.Timestamptz(6)
+
   // Consent
   consent_timestamp         DateTime?           @map("consent_timestamp") @db.Timestamptz(6)
   consent_ip_address        String?             @map("consent_ip_address") @db.Inet
@@ -1487,6 +1493,9 @@ model Advertisement {
   reel_views            Int?        @default(0) @map("reel_views")
   explore_views         Int?        @default(0) @map("explore_views")
   home_banner_views     Int?        @default(0) @map("home_banner_views")
+  
+  start_date            DateTime?   @default(now()) @map("start_date") @db.Timestamptz(6)
+  end_date              DateTime?   @map("end_date") @db.Timestamptz(6)
   
   created_at            DateTime?   @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at            DateTime?   @default(now()) @map("updated_at") @db.Timestamptz(6)

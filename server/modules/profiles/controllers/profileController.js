@@ -6,23 +6,42 @@ import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 import { calculateProfileCompletion } from "../utils/profileUtils.js";
 import logger from "../../../utils/logger.js";
 import redis from "../../../config/redisClient.js";
+import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
 
 /**
  * Helper to map profile for frontend compatibility
  */
 const mapProfile = (user, profile, portfolioCount = 0) => {
   if (!user) return null;
+  const ratingStats = profile?.rating_stats ? (typeof profile.rating_stats === 'string' ? JSON.parse(profile.rating_stats) : profile.rating_stats) : { totalReviews: 0, averageRating: 0 };
+  const suvixScore = profile?.suvix_score ? (typeof profile.suvix_score === 'string' ? JSON.parse(profile.suvix_score) : profile.suvix_score) : { total: 0 };
+
   return {
-    ...user,
+    ...profile,
+    user: {
+      ...user,
+      id: user.id,
+      profilePicture: user.profile_picture,
+      isVerified: user.kyc_status === 'verified',
+      followers: user.followers || [],
+      following: user.following || [],
+      followSettings: {
+        manualApproval: user.follow_manual_approval || false
+      },
+      aiProfile: user.ai_profile || {
+        aiKeywords: [],
+        aiDescription: "",
+        videoStyles: [],
+        softwareProficiency: {}
+      }
+    },
     id: user.id,
     portfolioCount,
     profilePicture: user.profile_picture,
-    isVerified: user.is_verified,
-    kycStatus: user.kyc_status,
-    profileCompleted: user.profile_completed,
-    completionPercentage: user.profile_completion_percent,
+    isVerified: user.kyc_status === 'verified',
     skills: profile?.skills || [],
     languages: profile?.languages || [],
+    softwares: profile?.softwares || [],
     experience: profile?.experience || "",
     about: profile?.about || "",
     location: {
@@ -33,10 +52,13 @@ const mapProfile = (user, profile, portfolioCount = 0) => {
     socialLinks: {
         instagram: profile?.social_instagram || "",
         youtube: profile?.social_youtube || "",
+        tiktok: profile?.social_tiktok || "",
         twitter: profile?.social_twitter || "",
-        linkedin: profile?.social_linkedin || ""
+        linkedin: profile?.social_linkedin || "",
+        website: profile?.social_website || ""
     },
-    ratingStats: profile?.rating_stats || { averageRating: 0, totalReviews: 0 },
+    ratingStats,
+    suvixScore
   };
 };
 
@@ -81,7 +103,36 @@ export const getProfile = asyncHandler(async (req, res) => {
  */
 export const updateProfile = asyncHandler(async (req, res) => {
   const userId = req.user.id;
-  const { name, bio, about, skills, languages, experience, location, socialLinks } = req.body;
+  const { name, bio, about, experience, location } = req.body;
+
+  // Since we use multipart/form-data, some fields may arrive as strings
+  let { skills, languages, softwares, socialLinks, aiProfile, followSettings } = req.body;
+
+  // Robust parsing for multipart/form-data strings
+  try {
+    if (typeof skills === "string") skills = skills.split(",").map(s => s.trim()).filter(Boolean);
+    if (typeof languages === "string") languages = languages.split(",").map(l => l.trim()).filter(Boolean);
+    if (typeof softwares === "string") softwares = JSON.parse(softwares);
+    if (typeof socialLinks === "string") socialLinks = JSON.parse(socialLinks);
+    if (typeof aiProfile === "string") aiProfile = JSON.parse(aiProfile);
+    if (typeof followSettings === "string") followSettings = JSON.parse(followSettings);
+  } catch (err) {
+    console.error("Error parsing profile update fields:", err);
+  }
+
+  const skillsArr = Array.isArray(skills) ? skills : [];
+  const languagesArr = Array.isArray(languages) ? languages : [];
+  const softwaresArr = Array.isArray(softwares) ? softwares : [];
+
+  let profilePicture = undefined;
+  if (req.files?.profile_picture?.[0]) {
+    try {
+      const result = await uploadToCloudinary(req.files.profile_picture[0].buffer, "profiles");
+      profilePicture = result.url;
+    } catch (err) {
+      logger.error("Profile picture upload failed:", err);
+    }
+  }
 
   // Update User (PostgreSQL)
   const updatedUser = await prisma.user.update({
@@ -89,6 +140,9 @@ export const updateProfile = asyncHandler(async (req, res) => {
     data: {
       name: name !== undefined ? name : undefined,
       bio: bio !== undefined ? bio : undefined,
+      profile_picture: profilePicture || undefined,
+      follow_manual_approval: followSettings?.manualApproval !== undefined ? followSettings.manualApproval : undefined,
+      ai_profile: aiProfile || undefined
     }
   });
 
@@ -98,27 +152,38 @@ export const updateProfile = asyncHandler(async (req, res) => {
     create: {
       user_id: userId,
       about: about || "",
-      skills: Array.isArray(skills) ? skills : [],
-      languages: Array.isArray(languages) ? languages : [],
+      skills: skillsArr,
+      languages: languagesArr,
+      softwares: softwaresArr,
       experience: experience || "",
       social_instagram: socialLinks?.instagram || "",
       social_youtube: socialLinks?.youtube || "",
+      social_tiktok: socialLinks?.tiktok || "",
+      social_twitter: socialLinks?.twitter || "",
+      social_linkedin: socialLinks?.linkedin || "",
+      social_website: socialLinks?.website || "",
       location_country: location?.country || ""
     },
     update: {
       about: about !== undefined ? about : undefined,
-      skills: Array.isArray(skills) ? skills : undefined,
-      languages: Array.isArray(languages) ? languages : undefined,
+      skills: skillsArr.length > 0 ? skillsArr : undefined,
+      languages: languagesArr.length > 0 ? languagesArr : undefined,
+      softwares: softwaresArr.length > 0 ? softwaresArr : undefined,
       experience: experience !== undefined ? experience : undefined,
       social_instagram: socialLinks?.instagram !== undefined ? socialLinks.instagram : undefined,
       social_youtube: socialLinks?.youtube !== undefined ? socialLinks.youtube : undefined,
+      social_tiktok: socialLinks?.tiktok !== undefined ? socialLinks.tiktok : undefined,
+      social_twitter: socialLinks?.twitter !== undefined ? socialLinks.twitter : undefined,
+      social_linkedin: socialLinks?.linkedin !== undefined ? socialLinks.linkedin : undefined,
+      social_website: socialLinks?.website !== undefined ? socialLinks.website : undefined,
       location_country: location?.country !== undefined ? location.country : undefined
     }
   });
 
   // Recalculate completion
   const portfolioCount = await Portfolio.countDocuments({ user: userId });
-  const percent = calculateProfileCompletion(updatedUser, updatedProfile, portfolioCount);
+  const completionData = calculateProfileCompletion(updatedUser, updatedProfile, portfolioCount);
+  const percent = completionData.percent;
   
   await prisma.user.update({
     where: { id: userId },
@@ -155,14 +220,16 @@ export const getProfileCompletionStatus = asyncHandler(async (req, res) => {
   
     if (!user) throw new ApiError(404, "User not found");
   
-    const percentage = calculateProfileCompletion(user, profile, portfolioCount);
+    const completion = calculateProfileCompletion(user, profile, portfolioCount);
   
     res.json({
       success: true,
       completion: {
-        percentage,
-        isCompleted: percentage >= 100
-      }
+        ...completion,
+        isCompleted: completion.percent >= 100
+      },
+      // Added for absolute legacy compatibility
+      percent: completion.percent 
     });
   });
 

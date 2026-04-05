@@ -23,8 +23,7 @@ const briefSchema = new mongoose.Schema(
 
     // Client who posted
     client: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String, // References PostgreSQL User (UUID)
       required: true,
       index: true,
     },
@@ -163,8 +162,7 @@ const briefSchema = new mongoose.Schema(
       ref: "Proposal",
     },
     acceptedEditor: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String, // References PostgreSQL User (UUID)
     },
     acceptedAt: Date,
     
@@ -178,8 +176,7 @@ const briefSchema = new mongoose.Schema(
     
     // Linked order created from this brief
     linkedOrder: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Order",
+      type: String, // References PostgreSQL Order (UUID)
     },
 
     // ============ EDIT HISTORY (Audit Trail) ============
@@ -192,8 +189,7 @@ const briefSchema = new mongoose.Schema(
         default: Date.now,
       },
       editedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        type: String, // References PostgreSQL User (UUID)
       },
       reason: String,
     }],
