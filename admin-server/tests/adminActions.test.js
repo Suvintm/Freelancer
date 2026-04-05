@@ -6,6 +6,7 @@ import { SiteSettings } from "../models/SiteSettings.js";
 import SuperAdmin from "../models/SuperAdmin.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import prisma from "../config/prisma.js";
 
 const JWT_SECRET = "testsecret123";
 
@@ -23,8 +24,22 @@ describe("🛠️ Admin Actions Integration Tests", () => {
       role: "superadmin"
     });
 
+    // Mock Prisma behavior for protectAdmin middleware
+    prisma.superAdmin.findUnique.mockResolvedValue({
+      id: admin._id.toString(),
+      email: admin.email,
+      name: admin.name,
+      role: "superadmin",
+      is_active: true,
+      permissions: {
+        users: true,
+        settings: true,
+        analytics: true
+      }
+    });
+
     // Generate Token
-    adminToken = jwt.sign({ id: admin._id, role: "superadmin", isAdmin: true }, JWT_SECRET);
+    adminToken = jwt.sign({ id: admin._id.toString(), role: "superadmin", isAdmin: true }, JWT_SECRET);
 
     // 2. Create a User to ban
     testUser = await User.create({

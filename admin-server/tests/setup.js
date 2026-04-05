@@ -22,6 +22,21 @@ vi.mock("../config/redisClient.js", () => ({
   },
 }));
 
+// Mock Prisma for admin authentication
+vi.mock("../config/prisma.js", () => ({
+  default: {
+    superAdmin: {
+      findUnique: vi.fn(),
+    },
+    adminMember: {
+      findUnique: vi.fn(),
+    },
+    adminActivityLog: {
+      create: vi.fn().mockResolvedValue({}),
+    },
+  },
+}));
+
 let mongoServer;
 
 beforeAll(async () => {
