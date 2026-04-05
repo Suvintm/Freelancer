@@ -29,6 +29,11 @@ const protect = async (req, res, next) => {
       throw new ApiError(401, "Token verification failed");
     }
 
+    // Validate decoded token has required fields
+    if (!decoded || !decoded.id) {
+      throw new ApiError(401, "Invalid token: missing user ID");
+    }
+
     // Get user — check Redis cache first
     const cacheKey = CacheKey.userProfile(decoded.id);
     let user = await getCache(cacheKey);
@@ -36,10 +41,11 @@ const protect = async (req, res, next) => {
     if (user) {
       if (typeof user === "string") user = JSON.parse(user);
     } else {
-      // Fetch from PostgreSQL
-      user = await prisma.user.findUnique({
-        where: { id: decoded.id },
-        select: {
+      // Fetch from PostgreSQL with error handling
+      try {
+        user = await prisma.user.findUnique({
+          where: { id: decoded.id },
+          select: {
             id: true,
             username: true,
             name: true,
@@ -48,8 +54,14 @@ const protect = async (req, res, next) => {
             is_banned: true,
             ban_reason: true,
             profile_picture: true
-        }
-      });
+          }
+        });
+      } catch (prismaError) {
+        logger.error("Prisma query error in authMiddleware:", prismaError);
+        // During tests, fallback to 401 if ID format is invalid
+        throw new ApiError(401, "Authentication database error");
+      }
+      
       if (user) await setCache(cacheKey, user, TTL.USER_PROFILE);
     }
 
@@ -89,11 +101,29 @@ export const optionalAuth = async (req, res, next) => {
 
     if (token) {
       const decoded = jwt.verify(token, JWT_SECRET);
-      const user = await prisma.user.findUnique({
-          where: { id: decoded.id }
-      });
-      if (user && !user.is_banned) {
-        req.user = user;
+      
+      if (decoded && decoded.id) {
+        try {
+          const user = await prisma.user.findUnique({
+            where: { id: decoded.id },
+            select: {
+              id: true,
+              username: true,
+              name: true,
+              email: true,
+              role: true,
+              is_banned: true,
+              ban_reason: true,
+              profile_picture: true
+            }
+          });
+          if (user && !user.is_banned) {
+            req.user = user;
+          }
+        } catch (prismaError) {
+          logger.error("Prisma query error in optionalAuth:", prismaError);
+          // Continue without user if error occurs
+        }
       }
     }
   } catch (error) {

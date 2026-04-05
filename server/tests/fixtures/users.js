@@ -15,6 +15,7 @@ export const seedUsers = async () => {
 
   const [editor, client, banned] = await Promise.all([
     User.create({
+      _id: "69d245969e9f212dd7ff8af0",
       email: "editor@test.com",
       password: editorPass,
       name: "Test Editor",
@@ -23,6 +24,7 @@ export const seedUsers = async () => {
       country: "IN",
     }),
     User.create({
+      _id: "69d2459b9e9f212dd7ff8bc3",
       email: "client@test.com",
       password: clientPass,
       name: "Test Client",
@@ -31,6 +33,7 @@ export const seedUsers = async () => {
       country: "IN",
     }),
     User.create({
+      _id: "69d245949e9f212dd7ff8acf",
       email: "banned@test.com",
       password: bannedPass,
       name: "Banned User",

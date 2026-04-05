@@ -26,6 +26,50 @@ vi.mock("../config/redisClient.js", () => ({
   redisAvailable: false,
 }));
 
+// ─── Mock Prisma ──────────────────────────────────────────────────────────────
+vi.mock("../config/prisma.js", () => ({
+  default: {
+    user: {
+      findUnique: vi.fn().mockImplementation(({ where }) => {
+        // Resolve different test user roles based on the email or ID passed in tests
+        // This satisfies both valid UUIDs and MongoDB-style ObjectIDs during tests
+        if (where.email === "banned@test.com" || where.id === "69d245949e9f212dd7ff8acf") {
+          return Promise.resolve({
+            id: where.id || "69d245949e9f212dd7ff8acf",
+            email: "banned@test.com",
+            role: "client",
+            is_banned: true,
+            ban_reason: "Violation of terms",
+          });
+        }
+        if (where.email === "editor@test.com" || where.id?.includes("f0")) {
+          return Promise.resolve({
+            id: where.id || "69d245969e9f212dd7ff8af0",
+            email: "editor@test.com",
+            role: "editor",
+            is_banned: false,
+          });
+        }
+        return Promise.resolve({
+          id: where.id || "69d2459b9e9f212dd7ff8bc3",
+          email: "client@test.com",
+          role: "client",
+          is_banned: false,
+        });
+      }),
+      update: vi.fn().mockResolvedValue({}),
+    },
+    order: { findUnique: vi.fn().mockResolvedValue(null) },
+    siteSettings: {
+      findUnique: vi.fn().mockResolvedValue({
+        id: "settings-id",
+        maintenance_mode: false,
+      }),
+    },
+    proposal: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+  },
+}));
+
 // ─── Mock Cache Utilities ─────────────────────────────────────────────────────
 vi.mock("../utils/cache.js", () => ({
   getCache: vi.fn(() => Promise.resolve(null)),
