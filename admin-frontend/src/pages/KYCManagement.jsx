@@ -44,7 +44,9 @@ const UserAvatar = ({ src, name, size = 32 }) => {
   );
 };
 
-const StatusBadge = ({ status }) => {
+const StatusBadge = ({ status, submittedAt }) => {
+  const isOverdue = status === "submitted" && submittedAt && (new Date() - new Date(submittedAt) > 24 * 60 * 60 * 1000);
+  
   const cfg = {
     verified:     { label: "Verified",  color: "#15803d", bg: "rgba(21,128,61,0.1)",  border: "rgba(21,128,61,0.2)" },
     submitted:    { label: "Pending",   color: "#b45309", bg: "rgba(180,83,9,0.1)",   border: "rgba(180,83,9,0.2)" },
@@ -54,15 +56,26 @@ const StatusBadge = ({ status }) => {
   }[status] || { label: status, color: "#4b5563", bg: "#f3f4f6", border: "#e5e7eb" };
 
   return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 5,
-      padding: "2px 10px", borderRadius: 8, fontSize: 11, fontWeight: 700,
-      background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`,
-      textTransform: "uppercase", letterSpacing: "0.02em"
-    }}>
-      <span style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.color }} />
-      {cfg.label}
-    </span>
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <span style={{
+        display: "inline-flex", alignItems: "center", gap: 5,
+        padding: "2px 10px", borderRadius: 8, fontSize: 11, fontWeight: 700,
+        background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`,
+        textTransform: "uppercase", letterSpacing: "0.02em"
+      }}>
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.color }} />
+        {cfg.label}
+      </span>
+      {isOverdue && (
+        <span style={{
+          padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 800,
+          background: "rgba(185,28,28,0.1)", color: "#b91c1c", border: "1px solid rgba(185,28,28,0.2)",
+          display: "flex", alignItems: "center", gap: 4
+        }}>
+          <HiOutlineClock size={12} /> SLA: OVERDUE
+        </span>
+      )}
+    </div>
   );
 };
 
@@ -207,7 +220,12 @@ const KYCManagement = () => {
     {
       header: "KYC Status",
       accessorKey: activeTab === "editors" ? "kycStatus" : "status",
-      cell: (row, status) => <StatusBadge status={status} />
+      cell: (row, status) => (
+        <StatusBadge 
+          status={status} 
+          submittedAt={activeTab === "editors" ? row.kycSubmittedAt : row.submittedAt} 
+        />
+      )
     },
     {
       header: "Bank Proof",
@@ -371,6 +389,7 @@ const KYCManagement = () => {
               const user = activeTab === "editors" ? d.user : d.kyc.user;
               const kyc = activeTab === "editors" ? d.user : d.kyc;
               const status = kyc.kycStatus || kyc.status || "pending";
+              const submittedAt = activeTab === "editors" ? kyc.kycSubmittedAt : kyc.submittedAt;
               const name = activeTab === "editors" ? user?.name : kyc?.fullName || user?.name;
               
               return (
@@ -381,7 +400,7 @@ const KYCManagement = () => {
                     <div style={{ flex: 1 }}>
                       <h3 style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>{name}</h3>
                       <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "2px 0 8px" }}>{user?.email}</p>
-                      <StatusBadge status={status} />
+                      <StatusBadge status={status} submittedAt={submittedAt} />
                     </div>
                   </div>
 

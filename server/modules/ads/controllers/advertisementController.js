@@ -1,7 +1,6 @@
-// advertisementController.js - Production-grade ad management
-import mongoose from "mongoose";
-import { Advertisement } from "../models/Advertisement.js";
-import { getSettings } from "../../system/models/SiteSettings.js";
+// advertisementController.js - Production-grade ad management (Prisma/PostgreSQL)
+import prisma from "../../../config/prisma.js";
+import { SiteSettings } from "../../system/models/SiteSettings.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 import logger from "../../../utils/logger.js";
 import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
@@ -10,18 +9,12 @@ import { rankAdsWithBandit, updateBanditScore } from "../utils/adBandit.js";
 import { checkFrequencyCap, incrementFrequency, checkPacing, consumePacingToken } from "../utils/adPacing.js";
 
 // ✅ Robust Utility to repair URLs mangled by security sanitizers
-// Handles both dot mangling (res_cloudinary_com) and slash mangling (.com_cloudname)
 const repairUrl = (val) => {
   if (!val) return val;
   if (Array.isArray(val)) return val.map(v => repairUrl(v));
   if (typeof val !== "string") return val;
+  if (val.includes("res.cloudinary.com") && !val.includes("res_cloudinary") && !val.includes("cloudinary_com")) return val;
 
-  // If it is already a clean Cloudinary URL, don't repair it
-  if (val.includes("res.cloudinary.com") && !val.includes("res_cloudinary") && !val.includes("cloudinary_com")) {
-    return val;
-  }
-
-  // Only repair if it looks mangled
   if (val.includes("cloudinary") || val.includes("res_") || val.includes("_com")) {
     let fixed = val;
     fixed = fixed.replace(/^(https?):?\/*_+/gi, "$1://");
@@ -39,10 +32,7 @@ const repairUrl = (val) => {
       fixed = fixed.replace(/advertisements_images_+/g, "advertisements/images/")
                    .replace(/advertisements_videos_+/g, "advertisements/videos/")
                    .replace(/advertisements_gallery_+/g, "advertisements/gallery/");
-      
-      // Safe replacement of underscores with slashes for known path keywords
       fixed = fixed.replace(/_+(upload|image|video|v\d+)_+/g, "/$1/");
-      
       fixed = fixed.replace(/([^:])\/\/+/g, "$1/");
     }
     fixed = fixed.replace(/_jpg([/_?#]|$)/gi, ".jpg$1")
@@ -56,39 +46,73 @@ const repairUrl = (val) => {
   return val;
 };
 
-// ✅ Helper to clean up ad object before sending to client
+// ✅ Helper to clean up ad object before sending to client (Map Prisma snake_case to camelCase)
 const cleanAd = (ad) => {
   if (!ad) return ad;
-  const adObj = ad.toObject ? ad.toObject() : ad;
   
+  // Flatten AdRequest into Ad if present
+  const req = ad.ad_request || {};
+  const obj = {
+    id: ad.id,
+    _id: ad.id, // Legacy compatibility
+    advertiserName: req.advertiser_name || ad.advertiserName,
+    companyName: req.company_name,
+    title: req.title || ad.title,
+    tagline: ad.tagline,
+    description: req.description || ad.description,
+    longDescription: ad.long_description,
+    mediaType: req.media_type || ad.media_type,
+    mediaUrl: req.media_url || ad.media_url,
+    thumbnailUrl: ad.thumbnail_url,
+    websiteUrl: req.website_url,
+    instagramUrl: req.instagram_url,
+    facebookUrl: req.facebook_url,
+    youtubeUrl: req.youtube_url,
+    otherUrl: req.other_url,
+    ctaText: req.cta_text || ad.ctaText || "Learn More",
+    badge: req.badge || "SPONSOR",
+    isActive: ad.is_active,
+    isDefault: ad.is_default,
+    displayLocations: ad.display_locations,
+    priority: ad.priority,
+    order: ad.order,
+    galleryImages: ad.gallery_images || [],
+    layoutConfig: ad.layout_config,
+    buttonStyle: ad.button_style,
+    reelConfig: ad.reel_config,
+    views: ad.views,
+    clicks: ad.clicks,
+    reelViews: ad.reel_views,
+    exploreViews: ad.explore_views,
+    homeBannerViews: ad.home_banner_views,
+    createdAt: ad.created_at,
+    updatedAt: ad.updated_at
+  };
+
   const urlFields = ["mediaUrl", "thumbnailUrl", "websiteUrl", "instagramUrl", "facebookUrl", "youtubeUrl", "otherUrl"];
   urlFields.forEach(field => {
-    if (adObj[field]) adObj[field] = repairUrl(adObj[field]);
+    if (obj[field]) obj[field] = repairUrl(obj[field]);
   });
   
-  if (adObj.galleryImages) {
-    adObj.galleryImages = adObj.galleryImages.map(img => repairUrl(img));
+  if (obj.galleryImages) {
+    obj.galleryImages = obj.galleryImages.map(img => repairUrl(img));
   }
   
-  return adObj;
+  return obj;
 };
 
 // ============ MEDIA UPLOAD ============
 export const uploadAdMedia = asyncHandler(async (req, res) => {
-  console.log("🚀 [Server] Starting ad media upload...");
   if (!req.file) throw new ApiError(400, "No file uploaded");
 
   try {
     const isVideo = req.file.mimetype.startsWith("video/");
     const folder  = isVideo ? "advertisements/videos" : "advertisements/images";
 
-    console.log(`🎬 [Server] Uploading ${isVideo ? 'video' : 'image'} to Cloudinary...`);
     const options = {};
     if (isVideo) {
       options.eager = [
-        // ✅ Synchronous transcode — result is ready immediately
-        { format: 'mp4', video_codec: 'h264', audio_codec: 'aac',
-          width: 1080, crop: 'limit', quality: 'auto' },
+        { format: 'mp4', video_codec: 'h264', audio_codec: 'aac', width: 1080, crop: 'limit', quality: 'auto' },
       ];
       options.eager_async = false; 
     }
@@ -100,12 +124,8 @@ export const uploadAdMedia = asyncHandler(async (req, res) => {
     let thumbnailUrl = isVideo ? mediaUrl.replace(/\.[^.]+$/, '.jpg') : '';
 
     if (isVideo && result.eager?.[0]?.secure_url) {
-      // ✅ Use the already-transcoded H.264/AAC MP4 URL
       mediaUrl     = result.eager[0].secure_url;
       thumbnailUrl = result.eager[0].secure_url.replace(/\.mp4$/i, '.jpg');
-      console.log("✅ [Server] Video optimized & saved:", mediaUrl);
-    } else {
-      console.log("✅ [Server] Media saved:", mediaUrl);
     }
 
     res.status(200).json({
@@ -115,106 +135,113 @@ export const uploadAdMedia = asyncHandler(async (req, res) => {
       thumbnailUrl,
     });
   } catch (error) {
-    console.error("💥 [Server] Ad media upload failed:", error);
     res.status(500).json({ success: false, message: "Upload failed: " + error.message });
   }
 });
 
-// ============ GALLERY UPLOAD (up to 5 images) ============
 export const uploadGalleryImages = asyncHandler(async (req, res) => {
   if (!req.files || req.files.length === 0) throw new ApiError(400, "No files uploaded");
-  if (req.files.length > 5) throw new ApiError(400, "Maximum 5 gallery images allowed");
 
-  const uploadPromises = req.files.map((file) =>
-    uploadToCloudinary(file.buffer, "advertisements/gallery")
-  );
-  const results = await Promise.all(uploadPromises);
-  const urls = results.map((r) => r.url);
+  try {
+    const uploadPromises = req.files.map(file => 
+      uploadToCloudinary(file.buffer, "advertisements/gallery")
+    );
+    const results = await Promise.all(uploadPromises);
+    const urls = results.map(r => r.secure_url || r.url);
 
-  res.status(200).json({ success: true, galleryImages: urls });
+    res.status(200).json({
+      success: true,
+      urls,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Gallery upload failed: " + error.message });
+  }
 });
 
-// ============ PUBLIC: GET ACTIVE ADS BY LOCATION ============
+// ============ PUBLIC: GET ACTIVE ADS ============
 export const getActiveAds = asyncHandler(async (req, res) => {
   const now = new Date();
   const { location } = req.query; // "home_banner" | "reels_feed" | "explore_page"
 
-  // ── Redis cache check (TTL: 10 min) ──────────────────────────────────
   const cacheKey = `ads:${location || 'all'}`;
   const cached = await getCache(cacheKey);
-  if (cached) {
-    return res.status(200).json(cached);
-  }
+  if (cached) return res.status(200).json(cached);
 
-  const query = {
-    isActive: true,
-    approvalStatus: "approved",
-    $and: [
-      {
-        $or: [
-          { startDate: { $exists: false } },
-          { startDate: null },
-          { startDate: { $lte: now } },
-        ],
-      },
-      {
-        $or: [
-          { endDate: { $exists: false } },
-          { endDate: null },
-          { endDate: { $gte: now } },
-        ],
-      },
+  const where = {
+    is_active: true,
+    OR: [
+      { startDate: { equals: null } },
+      { startDate: { lte: now } }
     ],
+    AND: [
+      {
+        OR: [
+          { endDate: { equals: null } },
+          { endDate: { gte: now } }
+        ]
+      }
+    ]
   };
 
-  if (location) {
-    const locations = location.split(",");
-    query.displayLocations = { $in: locations };
-  }
+  // Approval status is on AdRequest
+  const include = { ad_request: true };
 
-  let ads = await Advertisement.find(query)
-    .sort({ priority: -1, order: 1, createdAt: -1 })
-    .select("-adminNotes -advertiserEmail -advertiserPhone -createdBy -__v");
+  let ads = await prisma.advertisement.findMany({
+    where: {
+      ...where,
+      ad_request: {
+        status: "approved"
+      },
+      ...(location ? {
+        display_locations: { has: location }
+      } : {})
+    },
+    orderBy: [
+      { priority: 'desc' },
+      { order: 'asc' },
+      { created_at: 'desc' }
+    ],
+    include
+  });
 
-  // Check site settings for home_banner location
+  // Check showSuvixAds from SiteSettings (PostgreSQL singleton)
   if (location === "home_banner") {
-    const settings = await getSettings();
-    if (!settings.showSuvixAds && ads.length === 0) {
+    const settings = await SiteSettings.getSettings();
+    if (settings && !settings.showSuvixAds && ads.length === 0) {
       const payload = { success: true, count: 0, ads: [] };
       await setCache(cacheKey, payload, 300);
       return res.status(200).json(payload);
     }
   }
 
-  // ── FALLBACK: If no live ads found, return default banners ──────────
+  // FALLBACK: Defaults
   if (ads.length === 0) {
-    const defaultQuery = { isDefault: true };
-    if (location) defaultQuery.displayLocations = { $in: [location] };
-    ads = await Advertisement.find(defaultQuery)
-      .sort({ order: 1, createdAt: -1 })
-      .select("-adminNotes -advertiserEmail -advertiserPhone -createdBy -__v");
+    ads = await prisma.advertisement.findMany({
+      where: {
+        is_default: true,
+        ...(location ? { display_locations: { has: location } } : {})
+      },
+      orderBy: [
+        { order: 'asc' },
+        { created_at: 'desc' }
+      ],
+      include
+    });
   }
 
-  // ── STEP 2: Rank Ads with Bandit (UCB1) ─────────────────────────────────
   const rankedAds = await rankAdsWithBandit(ads, location);
 
-  // ── STEP 3: Apply Frequency Cap & Pacing (Personalized Filter) ──────────
-  // Per-user frequency capping (O(1) Redis check)
-  const userId = req.user?._id?.toString();
+  // Apply Frequency Cap & Pacing
+  const userId = req.user?.id;
   let filteredAds = rankedAds;
 
   if (userId) {
-    const checks = await Promise.all(rankedAds.map(ad => checkFrequencyCap(userId, ad._id.toString())));
+    const checks = await Promise.all(rankedAds.map(ad => checkFrequencyCap(userId, ad.id)));
     filteredAds = rankedAds.filter((_, i) => !checks[i]);
-    
-    // If cap removes too many, fall back to ranked list (safety)
-    if (filteredAds.length === 0 && rankedAds.length > 0) {
-        filteredAds = rankedAds.slice(0, 5);
-    }
+    if (filteredAds.length === 0 && rankedAds.length > 0) filteredAds = rankedAds.slice(0, 5);
   }
 
-  // Final Pacing Check
-  const pacingChecks = await Promise.all(filteredAds.map(ad => checkPacing(ad._id.toString())));
+  const pacingChecks = await Promise.all(filteredAds.map(ad => checkPacing(ad.id)));
   const finalAds = filteredAds.filter((_, i) => !pacingChecks[i]);
 
   const cleanedAds = finalAds.map(ad => cleanAd(ad));
@@ -222,35 +249,23 @@ export const getActiveAds = asyncHandler(async (req, res) => {
     success: true, 
     count: finalAds.length, 
     ads: cleanedAds, 
-    hasDefaults: finalAds.some(a => a.isDefault),
+    hasDefaults: finalAds.some(a => a.is_default),
     isPersonalized: !!userId
   };
 
-  // Cache for 10 minutes (Slightly shorter for dynamic bandit)
   await setCache(cacheKey, payload, 300);
-
   res.status(200).json(payload);
 });
 
 // ============ PUBLIC: GET SINGLE AD ============
 export const getAdById = asyncHandler(async (req, res) => {
-  const ad = await Advertisement.findById(req.params.id).select(
-    "-adminNotes -advertiserEmail -advertiserPhone -createdBy -__v"
-  );
+  const ad = await prisma.advertisement.findUnique({
+    where: { id: req.params.id },
+    include: { ad_request: true }
+  });
   if (!ad) throw new ApiError(404, "Advertisement not found");
 
   res.status(200).json({ success: true, ad: cleanAd(ad) });
-});
-
-// ============ PUBLIC: GET SITE SETTINGS ============
-export const getSiteSettingsPublic = asyncHandler(async (req, res) => {
-  const cached = await getCache('settings:showSuvixAds');
-  if (cached) return res.status(200).json(cached);
-
-  const settings = await getSettings();
-  const payload = { success: true, showSuvixAds: settings.showSuvixAds };
-  await setCache('settings:showSuvixAds', payload, 300); // 5 min TTL
-  res.status(200).json(payload);
 });
 
 // ============ PUBLIC: TRACK VIEW ============
@@ -258,23 +273,20 @@ export const trackAdView = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { location } = req.body;
 
-  const update = { $inc: { views: 1 } };
-  if (location === "reels_feed") update.$inc.reelViews = 1;
-  else if (location === "explore_page") update.$inc.exploreViews = 1;
-  else if (location === "home_banner") update.$inc.homeBannerViews = 1;
+  const data = { views: { increment: 1 } };
+  if (location === "reels_feed") data.reel_views = { increment: 1 };
+  else if (location === "explore_page") data.explore_views = { increment: 1 };
+  else if (location === "home_banner") data.home_banner_views = { increment: 1 };
 
-  // 🛠️ SAFETY GUARD: Prevent 500 error on non-ObjectId (fallback ads)
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(200).json({ success: true, message: "Skipped telemetry for non-database ID" });
-  }
+  await prisma.advertisement.update({
+    where: { id },
+    data
+  });
 
-  await Advertisement.findByIdAndUpdate(id, update);
-
-  // ── DSA: Update Bandit & Pacing State ─────────────
   updateBanditScore(id, location, 'view').catch(() => {});
   consumePacingToken(id).catch(() => {});
-  if (req.user?._id) {
-    incrementFrequency(req.user._id.toString(), id).catch(() => {});
+  if (req.user?.id) {
+    incrementFrequency(req.user.id, id).catch(() => {});
   }
 
   res.status(200).json({ success: true });
@@ -282,190 +294,172 @@ export const trackAdView = asyncHandler(async (req, res) => {
 
 // ============ PUBLIC: TRACK CLICK ============
 export const trackAdClick = asyncHandler(async (req, res) => {
-  await Advertisement.findByIdAndUpdate(req.params.id, { $inc: { clicks: 1 } });
+  const { id } = req.params;
+  await prisma.advertisement.update({
+    where: { id },
+    data: { clicks: { increment: 1 } }
+  });
   
-  // ── DSA: Update Bandit Score (Positive signal) ────
-  updateBanditScore(req.params.id, req.query.location || 'all', 'click').catch(() => {});
-
+  updateBanditScore(id, req.query.location || 'all', 'click').catch(() => {});
   res.status(200).json({ success: true });
 });
 
 // ============ ADMIN: GET ALL ADS ============
 export const getAllAds = asyncHandler(async (req, res) => {
   const { status, location, priority } = req.query;
-  const query = {};
+  const where = {};
 
   if (status && status !== "all") {
-    if (status === "active") query.isActive = true;
-    else if (status === "inactive") query.isActive = false;
+    if (status === "active") where.is_active = true;
+    else if (status === "inactive") where.is_active = false;
     else if (["pending", "approved", "rejected"].includes(status)) {
-      query.approvalStatus = status;
+      where.ad_request = { status };
     }
   }
-  if (location) query.displayLocations = { $in: [location] };
-  if (priority) query.priority = priority;
+  if (location) where.display_locations = { has: location };
+  if (priority) where.priority = priority;
 
-  const ads = await Advertisement.find(query)
-    .sort({ order: 1, createdAt: -1 })
-    .populate("createdBy", "name email");
+  const ads = await prisma.advertisement.findMany({
+    where,
+    orderBy: [ { order: 'asc' }, { created_at: 'desc' } ],
+    include: { ad_request: { include: { user: { select: { name: true, email: true } } } } }
+  });
 
-  logger.info(`[ADS] Admin fetched ${ads.length} ads. Status: ${status || 'all'}`);
-  const cleanedAds = ads.map(ad => cleanAd(ad));
+  const cleanedAds = ads.map(ad => cleanAd({ ...ad, createdBy: ad.ad_request?.user }));
   res.status(200).json({ success: true, count: ads.length, ads: cleanedAds });
 });
 
 // ============ ADMIN: CREATE AD ============
 export const createAd = asyncHandler(async (req, res) => {
-  const {
-    advertiserName, advertiserEmail, advertiserPhone, companyName,
-    title, tagline, description, longDescription,
-    mediaType, mediaUrl, thumbnailUrl, galleryImages,
-    websiteUrl, instagramUrl, facebookUrl, youtubeUrl, otherUrl, ctaText,
-    isActive, displayLocations, badge, isDefault,
-    startDate, endDate, priority, adminNotes, approvalStatus,
-  } = req.body;
+  // This typically converts an AdRequest to an Advertisement
+  const { requestId, ...displayProps } = req.body;
 
-  if (!title || !mediaType || !mediaUrl || !advertiserName) {
-    throw new ApiError(400, "Title, advertiser name, and media are required");
-  }
+  const request = await prisma.adRequest.findUnique({ where: { id: requestId } });
+  if (!request) throw new ApiError(404, "Ad Request not found");
 
-  const maxOrder = await Advertisement.findOne().sort({ order: -1 }).select("order");
-  const order = (maxOrder?.order || 0) + 1;
+  const maxOrder = await prisma.advertisement.aggregate({ _max: { order: true } });
+  const order = (maxOrder._max.order || 0) + 1;
 
-  const ad = await Advertisement.create({
-    advertiserName, advertiserEmail, advertiserPhone, companyName,
-    title, tagline, description, longDescription,
-    mediaType, mediaUrl, thumbnailUrl,
-    galleryImages: galleryImages || [],
-    websiteUrl, instagramUrl, facebookUrl, youtubeUrl, otherUrl,
-    ctaText: ctaText || "Learn More",
-    isActive: isActive || false,
-    isDefault: isDefault || false,
-    displayLocations: displayLocations || ["home_banner"],
-    badge: badge || "SPONSOR",
-    startDate, endDate,
-    priority: priority || "medium",
-    order,
-    adminNotes,
-    approvalStatus: approvalStatus || "pending",
-    createdBy: req.admin?._id,
+  const ad = await prisma.advertisement.create({
+    data: {
+      ad_request_id: requestId,
+      tagline: displayProps.tagline,
+      long_description: displayProps.longDescription,
+      media_type: displayProps.mediaType || request.media_type,
+      media_url: repairUrl(displayProps.mediaUrl || request.media_url),
+      thumbnail_url: repairUrl(displayProps.thumbnailUrl),
+      gallery_images: repairUrl(displayProps.galleryImages || []),
+      layout_config: displayProps.layoutConfig || {},
+      button_style: displayProps.buttonStyle || {},
+      reel_config: displayProps.reelConfig || {},
+      is_active: displayProps.isActive || false,
+      display_locations: displayProps.displayLocations || ["banners:home_0"],
+      is_default: displayProps.isDefault || false,
+      priority: displayProps.priority || "medium",
+      order,
+    },
+    include: { ad_request: true }
   });
 
-  // Restore dots and slashes in URLs after creation (just in case)
-  ad.mediaUrl = repairUrl(ad.mediaUrl);
-  ad.thumbnailUrl = repairUrl(ad.thumbnailUrl);
-  ad.galleryImages = repairUrl(ad.galleryImages);
-  ad.websiteUrl = repairUrl(ad.websiteUrl);
-  ad.instagramUrl = repairUrl(ad.instagramUrl);
-  ad.facebookUrl = repairUrl(ad.facebookUrl);
-  ad.youtubeUrl = repairUrl(ad.youtubeUrl);
-  ad.otherUrl = repairUrl(ad.otherUrl);
-  await ad.save();
-
-  logger.info(`Advertisement created: ${ad.title} by ${ad.advertiserName}`);
-  await delPattern('ads:*'); // Invalidate all ad caches
+  await delPattern('ads:*');
   res.status(201).json({ success: true, message: "Advertisement created", ad: cleanAd(ad) });
 });
 
 // ============ ADMIN: UPDATE AD ============
 export const updateAd = asyncHandler(async (req, res) => {
-  const ad = await Advertisement.findById(req.params.id);
-  if (!ad) throw new ApiError(404, "Advertisement not found");
-
-  const allowedFields = [
-    "advertiserName", "advertiserEmail", "advertiserPhone", "companyName",
-    "title", "tagline", "description", "longDescription",
-    "mediaType", "mediaUrl", "thumbnailUrl", "galleryImages",
-    "websiteUrl", "instagramUrl", "facebookUrl", "youtubeUrl", "otherUrl", "ctaText",
-    "isActive", "isDefault", "displayLocations", "badge",
-    "startDate", "endDate", "priority", "order",
-    "adminNotes", "approvalStatus",
+  const { id } = req.params;
+  const updateData = {};
+  
+  const fields = [
+    "tagline", "longDescription", "mediaType", "mediaUrl", "thumbnailUrl", 
+    "galleryImages", "layoutConfig", "buttonStyle", "reelConfig",
+    "isActive", "displayLocations", "isDefault", "priority", "order"
   ];
 
-  allowedFields.forEach((field) => {
-    if (req.body[field] !== undefined) {
-      let val = req.body[field];
-      // Restore dots and slashes for URL fields
-      if (["mediaUrl", "thumbnailUrl", "galleryImages", "websiteUrl", "instagramUrl", "facebookUrl", "youtubeUrl", "otherUrl"].includes(field)) {
-        val = repairUrl(val);
-      }
-      ad[field] = val;
+  fields.forEach(f => {
+    if (req.body[f] !== undefined) {
+      let val = req.body[f];
+      if (typeof val === 'string' && (f.endsWith('Url') || f === 'galleryImages')) val = repairUrl(val);
+      
+      const pgField = f.replace(/([A-Z])/g, "_$1").toLowerCase();
+      updateData[pgField] = val;
     }
   });
 
-  await ad.save();
-  logger.info(`Advertisement updated: ${ad.title}`);
-  await delPattern('ads:*'); // Invalidate all ad caches
+  const ad = await prisma.advertisement.update({
+    where: { id },
+    data: updateData,
+    include: { ad_request: true }
+  });
+
+  await delPattern('ads:*');
   res.status(200).json({ success: true, message: "Advertisement updated", ad: cleanAd(ad) });
 });
 
 // ============ ADMIN: DELETE AD ============
 export const deleteAd = asyncHandler(async (req, res) => {
-  const ad = await Advertisement.findByIdAndDelete(req.params.id);
-  if (!ad) throw new ApiError(404, "Advertisement not found");
-
-  logger.info(`Advertisement deleted: ${ad.title}`);
-  await delPattern('ads:*'); // Invalidate all ad caches
+  await prisma.advertisement.delete({ where: { id: req.params.id } });
+  await delPattern('ads:*');
   res.status(200).json({ success: true, message: "Advertisement deleted" });
 });
 
 // ============ ADMIN: REORDER ADS ============
 export const reorderAds = asyncHandler(async (req, res) => {
   const { orderedIds } = req.body;
-  if (!Array.isArray(orderedIds)) throw new ApiError(400, "orderedIds must be an array");
+  
+  await prisma.$transaction(
+    orderedIds.map((id, index) => 
+      prisma.advertisement.update({
+        where: { id },
+        data: { order: index }
+      })
+    )
+  );
 
-  const updates = orderedIds.map((id, index) => ({
-    updateOne: { filter: { _id: id }, update: { order: index } },
-  }));
-
-  await Advertisement.bulkWrite(updates);
   res.status(200).json({ success: true, message: "Ads reordered" });
 });
 
 // ============ ADMIN: GET ANALYTICS ============
 export const getAdAnalytics = asyncHandler(async (req, res) => {
-  const ads = await Advertisement.find()
-    .sort({ views: -1 })
-    .select("title advertiserName mediaType views clicks reelViews exploreViews homeBannerViews isActive approvalStatus createdAt displayLocations");
+  const ads = await prisma.advertisement.findMany({
+    include: { ad_request: true },
+    orderBy: { views: 'desc' }
+  });
 
-  const totalViews = ads.reduce((s, a) => s + a.views, 0);
-  const totalClicks = ads.reduce((s, a) => s + a.clicks, 0);
+  const totalViews = ads.reduce((s, a) => s + (a.views || 0), 0);
+  const totalClicks = ads.reduce((s, a) => s + (a.clicks || 0), 0);
   const avgCTR = totalViews > 0 ? ((totalClicks / totalViews) * 100).toFixed(2) : 0;
 
   res.status(200).json({
     success: true,
     analytics: {
       totalAds: ads.length,
-      activeAds: ads.filter((a) => a.isActive && a.approvalStatus === "approved").length,
-      pendingAds: ads.filter((a) => a.approvalStatus === "pending").length,
+      activeAds: ads.filter(a => a.is_active).length,
       totalViews,
       totalClicks,
       avgCTR: `${avgCTR}%`,
     },
-    ads,
+    ads: ads.map(a => cleanAd(a)),
   });
 });
 
-// ============ ADMIN: TOGGLE GLOBAL SUVIX ADS ============
 export const toggleSuvixAds = asyncHandler(async (req, res) => {
   const { showSuvixAds } = req.body;
-  const settings = await getSettings();
-  settings.showSuvixAds = showSuvixAds;
-  await settings.save();
+  await SiteSettings.updateSettings({ showSuvixAds });
 
-  res.status(200).json({
-    success: true,
-    showSuvixAds: settings.showSuvixAds,
-    message: `Suvix ads ${showSuvixAds ? "enabled" : "disabled"}`,
-  });
-  await delPattern('ads:*');         // Invalidate ad list cache
-  await delPattern('settings:*');    // Invalidate settings cache
+  res.status(200).json({ success: true, showSuvixAds, message: `Suvix ads ${showSuvixAds ? "enabled" : "disabled"}` });
+  await delPattern('ads:*');
+  await delPattern('settings:*');
 });
 
-// ============ ADMIN: GET SITE SETTINGS ============
-export const getSiteSettingsAdmin = asyncHandler(async (req, res) => {
-  const settings = await getSettings();
-  res.status(200).json({ success: true, settings });
+export const getSiteSettingsPublic = asyncHandler(async (req, res) => {
+  const settings = await SiteSettings.getSettings();
+  res.status(200).json({
+    success: true,
+    settings: {
+      showSuvixAds: settings?.showSuvixAds ?? true
+    }
+  });
 });
 
 

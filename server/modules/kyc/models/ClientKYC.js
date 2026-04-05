@@ -13,8 +13,7 @@ const maskAccountNumber = (accountNumber) => {
 const clientKYCSchema = new mongoose.Schema(
   {
     user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String,
       required: true,
       unique: true,
       index: true,
@@ -136,8 +135,7 @@ const clientKYCSchema = new mongoose.Schema(
     },
 
     verifiedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "AdminMember",
+      type: String,
     },
 
     rejectionReason: {
@@ -256,7 +254,6 @@ clientKYCSchema.statics.getByUserId = async function (userId) {
 // Static method to get pending KYCs for admin
 clientKYCSchema.statics.getPendingVerifications = async function (limit = 50) {
   return this.find({ status: { $in: ["pending", "under_review"] } })
-    .populate("user", "name email profilePicture")
     .sort({ submittedAt: 1 })
     .limit(limit);
 };

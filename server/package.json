@@ -16,6 +16,8 @@
   "type": "module",
   "dependencies": {
     "@exortek/express-mongo-sanitize": "^1.1.1",
+    "@prisma/adapter-pg": "^7.6.0",
+    "@prisma/client": "^7.6.0",
     "@upstash/redis": "^1.36.2",
     "axios": "^1.13.5",
     "bcryptjs": "^3.0.2",
@@ -45,6 +47,7 @@
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-oauth2": "^1.8.0",
+    "pg": "^8.20.0",
     "rate-limit-redis": "^4.3.1",
     "razorpay": "^2.9.6",
     "resend": "^6.6.0",
@@ -59,8 +62,19 @@
     "globals": "^16.5.0",
     "mongodb-memory-server": "^11.0.1",
     "nodemon": "^3.1.10",
+    "prisma": "^7.6.0",
     "supertest": "^7.2.2",
     "vitest": "^4.1.0"
+  },
+  "nodemonConfig": {
+    "ignore": [
+      "logs/*",
+      "*.log",
+      "*.txt",
+      "node_modules",
+      "tests/*",
+      "trace_*.txt"
+    ]
   },
   "overrides": {
     "minimatch": ">=10.2.1"

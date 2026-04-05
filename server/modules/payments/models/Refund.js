@@ -322,10 +322,10 @@ refundSchema.statics.createFromOrder = async function (order, reason, initiatedB
     originalPayment: {
       razorpayOrderId: order.razorpayOrderId,
       razorpayPaymentId: order.razorpayPaymentId,
-      amount: order.totalAmount,
+      amount: order.amount,
       paidAt: order.paidAt,
     },
-    refundAmount: order.totalAmount,
+    refundAmount: order.amount,
     reason,
     initiatedBy,
     refundMethod: "original_payment", // Default to original payment method

@@ -15,9 +15,6 @@ export const cloudinaryWebhookController = asyncHandler(async (req, res) => {
 
     // We only care about eager transformation completions
     if (notification_type === "eager") {
-        // Find if this public_id belongs to a Portfolio or Reel
-        // (Since Portfolios are the source of truth during upload, we check them first)
-        
         const portfolio = await Portfolio.findOne({ cloudinaryPublicId: public_id });
         const reel = await Reel.findOne({ cloudinaryPublicId: public_id });
 
@@ -27,9 +24,9 @@ export const cloudinaryWebhookController = asyncHandler(async (req, res) => {
         }
 
         // Extract the generated URLs from the 'eager' array
-        // We defined full_hd/m3u8 and 600px/jpg in our transforms
-        const hlsData = eager.find(e => e.format === "m3u8");
-        const thumbData = eager.find(e => e.format === "jpg");
+        // sp_full_hd generates multiple manifests, eager usually contains them
+        const hlsData = eager.find(e => e.transformation.includes("sp_full_hd") || e.format === "m3u8");
+        const thumbData = eager.find(e => e.transformation.includes("c_fill,g_auto,h_640,w_360") || e.format === "jpg");
 
         const updateData = {
             processingStatus: "complete",

@@ -71,18 +71,19 @@ export default function TabsLayout() {
       )}
 
       {/* Top Navbar - Hidden in Reels for full-screen scrolling */}
-      {!isReelsActive && (
-        <View style={styles.navbarOverlay}>
-          <TopNavbar onMenuPress={() => setIsSidebarOpen(true)} />
-        </View>
-      )}
+      <View style={[
+        styles.navbarOverlay,
+        { display: isReelsActive ? 'none' : 'flex' }
+      ]}>
+        <TopNavbar onMenuPress={() => setIsSidebarOpen(true)} />
+      </View>
 
       {/* Native Swipe Pager — scroll disabled on Home to prevent banner gesture conflicts */}
       <PagerView
         ref={pagerRef}
         style={styles.pager}
         initialPage={0}
-        scrollEnabled={activeIndex !== 0} // Lock swipe on Home tab
+        scrollEnabled={activeIndex !== REELS_INDEX}  // Lock on reels tab
         onPageSelected={onPageSelected}
         offscreenPageLimit={2}
         overdrag={false}
@@ -98,13 +99,12 @@ export default function TabsLayout() {
       </PagerView>
 
       {/* Bottom Tab Bar - Hidden only when Reels is active */}
-      {!isReelsActive && (
-        <AnimatedTabBar
-          activeIndex={activeIndex}
-          tabs={TABS}
-          onTabPress={goToPage}
-        />
-      )}
+      <AnimatedTabBar
+        activeIndex={activeIndex}
+        tabs={TABS}
+        onTabPress={goToPage}
+        hidden={isReelsActive}
+      />
     </View>
   );
 }

@@ -42,6 +42,12 @@ const ServiceAnalytics = () => {
     enabled: activeTab === "razorpay"
   });
 
+  const healthQuery = useQuery({
+    queryKey: ["analytics", "health"],
+    queryFn: () => analyticsApi.getServiceHealth().then(res => res.data.data),
+    refetchInterval: 15000 // Polling every 15s for "live" feel
+  });
+
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   const formatCurrency = (amount) => {
@@ -115,23 +121,63 @@ const ServiceAnalytics = () => {
           />
         </div>
 
-        <div className="bg-surface border border-border-default rounded-3xl p-8">
-          <h3 className="text-xl font-bold text-primary mb-6">Service Health</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-surface border border-border-default rounded-3xl p-8 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-6">
+             <div className="flex items-center gap-2 px-3 py-1 bg-success/10 border border-success/20 rounded-full">
+                <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                <span className="text-[10px] font-bold text-success uppercase tracking-widest">Live Monitor</span>
+             </div>
+          </div>
+          <h3 className="text-xl font-bold text-primary mb-6">Service Health Architecture</h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {[
-              { name: "Cloudinary CDN", status: "Operational", icon: FaCloud, color: "text-brand" },
-              { name: "MongoDB Atlas", status: "Operational", icon: FaDatabase, color: "text-success" },
-              { name: "Razorpay Gateway", status: data?.razorpay?.enabled ? "Operational" : "Not Linked", icon: FaCreditCard, color: data?.razorpay?.enabled ? "text-info" : "text-muted" }
+              { 
+                name: "PostgreSQL Identity", 
+                status: healthQuery.data?.postgresql?.status || "Checking...", 
+                latency: healthQuery.data?.postgresql?.latency,
+                icon: FaNetworkWired, 
+                color: "text-blue-500",
+                bg: "bg-blue-500/10"
+              },
+              { 
+                name: "MongoDB Persistence", 
+                status: healthQuery.data?.mongodb?.status || "Checking...", 
+                latency: healthQuery.data?.mongodb?.latency,
+                icon: FaDatabase, 
+                color: "text-success",
+                bg: "bg-success/10"
+              },
+              { 
+                name: "Cloudinary CDN", 
+                status: healthQuery.data?.cloudinary?.status || "Checking...", 
+                icon: FaCloud, 
+                color: "text-brand",
+                bg: "bg-brand/10"
+              },
+              { 
+                name: "Razorpay Gateway", 
+                status: healthQuery.data?.razorpay?.status || "Checking...", 
+                icon: FaCreditCard, 
+                color: "text-info",
+                bg: "bg-info/10"
+              }
             ].map(service => (
-              <div key={service.name} className="flex items-center gap-4 p-5 bg-elevated rounded-2xl border border-border-default">
-                <div className={`p-3 rounded-xl bg-surface ${service.color}`}>
-                  <service.icon className="text-xl" />
+              <div key={service.name} className="flex flex-col gap-4 p-6 bg-elevated/40 backdrop-blur-sm rounded-2xl border border-border-default hover:border-brand/30 transition-all group">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${service.bg} ${service.color} group-hover:scale-110 transition-transform`}>
+                  <service.icon className="text-2xl" />
                 </div>
                 <div>
-                  <p className="font-bold text-primary">{service.name}</p>
-                  <div className="flex items-center gap-1.5">
-                    <div className={`w-2 h-2 rounded-full ${service.status === "Operational" ? "bg-success" : "bg-muted animate-pulse"}`} />
-                    <p className="text-sm text-secondary">{service.status}</p>
+                  <p className="font-bold text-primary text-sm">{service.name}</p>
+                  <div className="flex items-center justify-between mt-1">
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-2 h-2 rounded-full ${service.status === "operational" ? "bg-success" : "bg-warning animate-pulse"}`} />
+                      <p className="text-xs text-secondary font-medium uppercase tracking-tighter">
+                        {service.status?.replace("_", " ")}
+                      </p>
+                    </div>
+                    {service.latency !== undefined && (
+                      <span className="text-[10px] font-mono text-muted">{service.latency}ms</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -464,10 +510,12 @@ const ServiceAnalytics = () => {
       <div className="mt-8 pt-6 border-t border-border-default flex justify-between items-center text-muted text-xs">
          <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 font-medium">
-               <div className="w-2.5 h-2.5 rounded-full bg-success shadow-[0_0_8px_rgba(16,185,129,0.5)]" /> API Gateway
+               <div className={`w-2.5 h-2.5 rounded-full ${healthQuery.data?.postgresql?.status === 'operational' ? 'bg-success shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-danger shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`} /> 
+               Identity Core (PG)
             </div>
             <div className="flex items-center gap-2 font-medium">
-               <div className="w-2.5 h-2.5 rounded-full bg-success shadow-[0_0_8px_rgba(16,185,129,0.5)]" /> Socket Cluster
+               <div className={`w-2.5 h-2.5 rounded-full ${healthQuery.data?.mongodb?.status === 'operational' ? 'bg-success shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-danger shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`} /> 
+               Transactional Data (Mongo)
             </div>
          </div>
          <div className="flex items-center gap-2 font-medium">

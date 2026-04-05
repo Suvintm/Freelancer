@@ -1,860 +1,371 @@
-import mongoose from "mongoose";
-import { Message } from "../models/Message.js";
-import { Order } from "../../marketplace/models/Order.js";
+/**
+ * Message Controller - Real-time chat & final delivery (Prisma/PostgreSQL)
+ */
+import prisma from "../../../config/prisma.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
-import { createNotification } from "./notificationController.js";
+import { v2 as cloudinary } from "cloudinary";
 import { getIO } from "../../../socket.js";
+import { createNotification } from "../../connectivity/controllers/notificationController.js";
 import logger from "../../../utils/logger.js";
 
-// ============ GET MESSAGES FOR ORDER (Cursor-based pagination) ============
-export const getMessages = asyncHandler(async (req, res) => {
-  const { orderId } = req.params;
-  const { cursor, limit = 30 } = req.query; // cursor = oldest _id already loaded
-
-  // Verify order access
-  const order = await Order.findById(orderId);
-  if (!order) {
-    throw new ApiError(404, "Order not found");
-  }
-
-  const isClient = order.client.toString() === req.user._id.toString();
-  const isEditor = order.editor.toString() === req.user._id.toString();
-
-  if (!isClient && !isEditor) {
-    throw new ApiError(403, "Not authorized to view messages");
-  }
-
-  // Build query - if cursor provided, fetch messages OLDER than the cursor
-  const query = { order: orderId };
-  if (cursor) {
-    query._id = { $lt: cursor }; // ObjectId comparison works as timestamp comparison
-  }
-
-  const pageLimit = Math.min(parseInt(limit), 50); // cap at 50 per request
-
-  const messages = await Message.find(query)
-    .populate("sender", "name profilePicture")
-    .sort({ createdAt: -1 }) // newest first so we get the most recent page
-    .limit(pageLimit);
-
-  // Reverse so messages are in ascending chronological order for the UI
-  const orderedMessages = messages.reverse();
-
-  // Determine if there are more messages older than what we just loaded
-  const hasMore = messages.length === pageLimit;
-  const nextCursor = hasMore && orderedMessages.length > 0
-    ? orderedMessages[0]._id.toString()
-    : null;
-
-  // Mark messages as seen (only for the initial load, when no cursor is passed meaning fresh open)
-  if (!cursor) {
-    await Message.updateMany(
-      {
-        order: orderId,
-        sender: { $ne: req.user._id },
-        seen: false,
-      },
-      {
-        seen: true,
-        seenAt: new Date(),
-      }
-    );
-  }
-
-  res.status(200).json({
-    success: true,
-    messages: orderedMessages,
-    hasMore,
-    nextCursor,
-  });
-});
+const mapMessage = (m) => {
+  if (!m) return null;
+  return { 
+    ...m, 
+    _id: m.id, 
+    order: m.order_id, 
+    sender: m.sender_id,
+    isDeleted: m.is_deleted,
+    isEdited: m.is_edited,
+    isStarred: m.is_starred
+  };
+};
 
 // ============ SEND MESSAGE ============
 export const sendMessage = asyncHandler(async (req, res) => {
   const { orderId } = req.params;
-  const { content, type, mediaUrl, mediaName, mediaSize, allowDownload, replyTo } = req.body;
+  const { content, type, replyTo } = req.body;
+  const userId = req.user.id;
 
-  // Verify order access
-  const order = await Order.findById(orderId)
-    .populate("client", "name")
-    .populate("editor", "name");
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) throw new ApiError(404, "Order not found");
 
-  if (!order) {
-    throw new ApiError(404, "Order not found");
-  }
+  const receiverId = order.client_id === userId ? order.editor_id : order.client_id;
 
-  const isClient = order.client._id.toString() === req.user._id.toString();
-  const isEditor = order.editor._id.toString() === req.user._id.toString();
-
-  if (!isClient && !isEditor) {
-    throw new ApiError(403, "Not authorized to send messages");
-  }
-
-  // Only allow messages in appropriate order states
-  if (!["accepted", "in_progress", "submitted"].includes(order.status)) {
-    throw new ApiError(400, "Cannot send messages in current order state");
-  }
-
-  // Update order status to in_progress if it's accepted
-  if (order.status === "accepted") {
-    order.status = "in_progress";
-    order.startedAt = new Date();
-    await order.save();
-  }
-
-  // Build replyPreview if replying to a message
-  let replyPreview = null;
-  if (replyTo) {
-    const originalMessage = await Message.findById(replyTo).populate("sender", "name");
-    if (originalMessage) {
-      replyPreview = {
-        messageId: originalMessage._id.toString(),
-        senderName: originalMessage.sender?.name || "User",
-        content: originalMessage.content || (originalMessage.type !== "text" ? `Sent a ${originalMessage.type}` : ""),
-        type: originalMessage.type,
-        mediaUrl: originalMessage.mediaUrl || null,
-        mediaThumbnail: originalMessage.mediaThumbnail || originalMessage.mediaUrl || null,
-      };
-    }
-  }
-
-  // Create message
-  const message = await Message.create({
-    order: orderId,
-    sender: req.user._id,
-    type: type || "text",
-    content,
-    mediaUrl,
-    mediaName,
-    mediaSize,
-    allowDownload: allowDownload || false,
-    replyTo: replyTo || null,
-    replyPreview,
-    delivered: true,
-    deliveredAt: new Date(),
+  const message = await prisma.message.create({
+    data: {
+      order_id: orderId,
+      sender_id: userId,
+      receiver_id: receiverId,
+      type: type || "text",
+      content: content.trim(),
+      reply_to_id: replyTo || null,
+      delivered: true,
+      delivered_at: new Date(),
+    },
+    include: { sender: { select: { id: true, name: true, profile_picture: true } } }
   });
 
-  const populatedMessage = await Message.findById(message._id).populate(
-    "sender",
-    "name profilePicture"
-  );
-
-  // Emit real-time message via Socket.io
   const io = getIO();
   if (io) {
-    console.log(`📤 Socket emit: message:new to room order_${orderId}`);
     io.to(`order_${orderId}`).emit("message:new", {
-      ...populatedMessage.toObject(),
+      ...mapMessage(message),
       orderId,
       senderName: req.user.name,
     });
-  } else {
-    console.log("❌ Socket IO not available");
   }
 
-  // 🔔 Create Notification for the recipient
-  await createNotification({
-    recipient: isClient ? order.editor._id : order.client._id,
-    sender: req.user._id,
-    type: "chat_message",
-    title: `💬 New Message from ${req.user.name}`,
-    message: type === "text" ? content : `Sent a ${type || "file"}`,
-    link: `/chat/${orderId}`,
-    metaData: {
-      orderId,
-      orderNumber: order.orderNumber,
-      senderId: req.user._id,
-      senderName: req.user.name,
-      type: "chat_message",
-      body: type === "text" ? content : `Sent a ${type || "file"}`,
-    }
-  });
-
-  logger.info(`Message sent in order: ${order.orderNumber}`);
-
-  res.status(201).json({
-    success: true,
-    message: populatedMessage,
-  });
+  res.status(201).json({ success: true, message: mapMessage(message) });
 });
 
-// ============ MARK MESSAGE AS SEEN ============
-export const markAsSeen = asyncHandler(async (req, res) => {
-  const { messageId } = req.params;
-
-  const message = await Message.findById(messageId);
-
-  if (!message) {
-    throw new ApiError(404, "Message not found");
-  }
-
-  // Only recipient can mark as seen
-  if (message.sender.toString() === req.user._id.toString()) {
-    throw new ApiError(400, "Cannot mark your own message as seen");
-  }
-
-  message.seen = true;
-  message.seenAt = new Date();
-  await message.save();
-
-  // Emit seen status via Socket.io
-  const io = getIO();
-  if (io) {
-    io.to(`order_${message.order}`).emit("message_seen", {
-      messageId: message._id,
-      seenAt: message.seenAt,
-    });
-  }
-
-  res.status(200).json({
-    success: true,
-    message: "Marked as seen",
-  });
-});
-
-// ============ MARK FILE AS DOWNLOADED ============
-export const markAsDownloaded = asyncHandler(async (req, res) => {
-  const { messageId } = req.params;
-
-  const message = await Message.findById(messageId).populate("order");
-
-  if (!message) {
-    throw new ApiError(404, "Message not found");
-  }
-
-  if (!message.mediaUrl) {
-    throw new ApiError(400, "This message has no media");
-  }
-
-  if (!message.allowDownload) {
-    throw new ApiError(403, "Download not allowed for this file");
-  }
-
-  // Only recipient can download
-  if (message.sender.toString() === req.user._id.toString()) {
-    throw new ApiError(400, "Cannot download your own file");
-  }
-
-  message.downloaded = true;
-  message.downloadedAt = new Date();
-  await message.save();
-
-  // Check if this is the final delivery and auto-complete order
-  const order = await Order.findById(message.order._id);
-  
-  if (order.status === "submitted" && message.allowDownload) {
-    // Auto-complete order
-    order.status = "completed";
-    order.completedAt = new Date();
-    order.paymentStatus = "released";
-    await order.save();
-
-    // Create system message
-    await Message.create({
-      order: order._id,
-      sender: req.user._id,
-      type: "system",
-      content: "Final delivery downloaded. Order completed. Payment released.",
-      systemAction: "work_completed",
-    });
-
-    // Notify editor
-    await createNotification({
-      recipient: order.editor,
-      type: "success",
-      title: "Payment Released",
-      message: `₹${order.editorEarning} released for "${order.title}"`,
-      link: `/chat/${order._id}`,
-    });
-
-    logger.info(`Order auto-completed via download: ${order.orderNumber}`);
-  }
-
-  res.status(200).json({
-    success: true,
-    message: "Download recorded",
-    orderCompleted: order.status === "completed",
-  });
-});
-
-// ============ GET UNREAD COUNT ============
-export const getUnreadCount = asyncHandler(async (req, res) => {
-  try {
-    if (!req.user?._id) {
-      return res.status(200).json({ success: true, unreadCount: 0 });
-    }
-    const userId = req.user._id;
-
-    // Get all orders where user is participant
-    const orders = await Order.find({
-      $or: [{ client: userId }, { editor: userId }],
-      status: { $in: ["accepted", "in_progress", "submitted"] },
-    });
-
-    const orderIds = orders.map((o) => o._id);
-
-    // Count unread messages
-    const unreadCount = await Message.countDocuments({
-      order: { $in: orderIds },
-      sender: { $ne: userId },
-      seen: false,
-    });
-
-    res.status(200).json({
-      success: true,
-      unreadCount,
-    });
-  } catch (error) {
-    logger.error("Error in getUnreadCount:", error);
-    res.status(500).json({ success: false, message: "Internal server error fetching unread count" });
-  }
-});
-
-// ============ GET UNREAD COUNTS PER ORDER ============
-// 🆕 Returns unread count for each order (used by chat list without marking as seen)
-export const getUnreadCountsPerOrder = asyncHandler(async (req, res) => {
-  try {
-    if (!req.user?._id) {
-      return res.status(200).json({ success: true, unreadCounts: {} });
-    }
-    const userId = new mongoose.Types.ObjectId(req.user._id);
-
-    // Get all orders where user is participant
-    const orders = await Order.find({
-      $or: [{ client: userId }, { editor: userId }],
-      status: { $in: ["accepted", "in_progress", "submitted", "completed"] },
-    });
-
-    const orderIds = orders.map((o) => o._id);
-
-    if (orderIds.length === 0) {
-      return res.status(200).json({ success: true, unreadCounts: {} });
-    }
-
-    // Get unread counts grouped by order using aggregation
-    const unreadCounts = await Message.aggregate([
-      {
-        $match: {
-          order: { $in: orderIds },
-          sender: { $ne: userId },
-          seen: false,
-          isDeleted: { $ne: true },
-          // System messages are informational and should never count as unread
-          type: { $ne: "system" },
-        },
-      },
-      {
-        $group: {
-          _id: "$order",
-          count: { $sum: 1 },
-        },
-      },
-    ]);
-
-    // Convert to object { orderId: count }
-    const counts = {};
-    unreadCounts.forEach((item) => {
-      counts[item._id.toString()] = item.count;
-    });
-
-    res.status(200).json({
-      success: true,
-      unreadCounts: counts,
-    });
-  } catch (error) {
-    logger.error("Error in getUnreadCountsPerOrder:", error);
-    res.status(500).json({ success: false, message: "Internal server error fetching unread counts" });
-  }
-});
-
-// ============ UPLOAD FILE ============
-export const uploadFile = asyncHandler(async (req, res) => {
+// ============ GET MESSAGES ============
+export const getMessages = asyncHandler(async (req, res) => {
   const { orderId } = req.params;
+  const cursor = req.query.cursor;
+  const limit = parseInt(req.query.limit) || 50;
 
-  if (!req.file) {
-    throw new ApiError(400, "No file provided");
-  }
-
-  // Verify order access
-  const order = await Order.findById(orderId)
-    .populate("client", "name")
-    .populate("editor", "name");
-
-  if (!order) {
-    throw new ApiError(404, "Order not found");
-  }
-
-  const isClient = order.client._id.toString() === req.user._id.toString();
-  const isEditor = order.editor._id.toString() === req.user._id.toString();
-
-  if (!isClient && !isEditor) {
-    throw new ApiError(403, "Not authorized to upload files");
-  }
-
-  // Only allow uploads in appropriate order states
-  if (!["accepted", "in_progress", "submitted"].includes(order.status)) {
-    throw new ApiError(400, "Cannot upload files in current order state");
-  }
-
-  // Upload to Cloudinary
-  const cloudinary = (await import("cloudinary")).v2;
-  
-  // Determine resource type
-  const mimeType = req.file.mimetype;
-  let resourceType = "auto";
-  if (mimeType.startsWith("video/")) resourceType = "video";
-  else if (mimeType.startsWith("image/")) resourceType = "image";
-  else resourceType = "raw";
-
-  // Convert buffer to base64
-  const b64 = Buffer.from(req.file.buffer).toString("base64");
-  const dataURI = `data:${mimeType};base64,${b64}`;
-
-  const result = await cloudinary.uploader.upload(dataURI, {
-    resource_type: resourceType,
-    folder: `suvix/chats/${orderId}`,
-    use_filename: true,
-    unique_filename: true,
+  const messages = await prisma.message.findMany({
+    where: { order_id: orderId },
+    include: { sender: { select: { id: true, name: true, profile_picture: true } } },
+    orderBy: { created_at: "desc" },
+    take: limit + 1,
+    cursor: cursor ? { id: cursor } : undefined,
+    skip: cursor ? 1 : 0,
   });
 
-  // Create message with file - determine correct type
-  let messageType = "file";
-  if (mimeType.startsWith("image/")) messageType = "image";
-  else if (mimeType.startsWith("video/")) messageType = "video";
-  else if (mimeType.startsWith("audio/")) messageType = "audio";
-
-  const message = await Message.create({
-    order: orderId,
-    sender: req.user._id,
-    type: messageType,
-    content: messageType === "file" ? `Sent a file: ${req.file.originalname}` : "",
-    mediaUrl: result.secure_url,
-    mediaName: req.file.originalname,
-    mediaSize: req.file.size,
-    mediaThumbnail: result.secure_url, // For videos, Cloudinary auto-generates thumbnail
-    allowDownload: req.body.allowDownload === "true" || req.body.allowDownload === true,
-    delivered: true,
-    deliveredAt: new Date(),
-  });
-
-  const populatedMessage = await Message.findById(message._id).populate(
-    "sender",
-    "name profilePicture"
-  );
-
-  // Emit real-time message via Socket.io
-  const io = getIO();
-  if (io) {
-    console.log(`📤 Socket emit: message:new (file) to room order_${orderId}`);
-    io.to(`order_${orderId}`).emit("message:new", {
-      ...populatedMessage.toObject(),
-      orderId,
-      senderName: req.user.name,
-    });
+  let nextCursor = null;
+  if (messages.length > limit) {
+    const nextItem = messages.pop();
+    nextCursor = nextItem.id;
   }
 
-  // 🔔 Create Notification for the recipient
-  await createNotification({
-    recipient: isClient ? order.editor._id : order.client._id,
-    sender: req.user._id,
-    type: "chat_message",
-    title: `📁 New ${messageType === "file" ? "File" : messageType} received`,
-    message: `${req.user.name} shared a ${messageType}: ${req.file.originalname}`,
-    link: `/chat/${orderId}`,
-    metaData: {
-      orderId,
-      orderNumber: order.orderNumber,
-      senderId: req.user._id,
-      senderName: req.user.name,
-      type: "chat_message",
-      body: `${req.user.name} shared a ${messageType}: ${req.file.originalname}`,
-    }
-  });
-
-  logger.info(`File uploaded in order: ${order.orderNumber}`);
-
-  res.status(201).json({
+  res.status(200).json({
     success: true,
-    message: populatedMessage,
+    messages: messages.map(mapMessage),
+    nextCursor,
   });
 });
 
 // ============ DELETE MESSAGE (SOFT) ============
 export const deleteMessage = asyncHandler(async (req, res) => {
   const { messageId } = req.params;
+  const userId = req.user.id;
 
-  const message = await Message.findById(messageId).populate("order");
+  const message = await prisma.message.findUnique({ where: { id: messageId } });
+  if (!message) throw new ApiError(404, "Message not found");
+  if (message.sender_id !== userId) throw new ApiError(403, "Not authorized");
 
-  if (!message) {
-    throw new ApiError(404, "Message not found");
-  }
-
-  // Check if user is the sender
-  if (message.sender.toString() !== req.user._id.toString()) {
-    throw new ApiError(403, "You can only delete your own messages");
-  }
-
-  // 🔒 Block deletion for completed/cancelled/disputed orders
-  const protectedStatuses = ["completed", "cancelled", "disputed"];
-  if (protectedStatuses.includes(message.order.status)) {
-    throw new ApiError(403, "Cannot delete messages from completed or closed orders. Chat history is preserved for record.");
-  }
-
-  // Soft delete
-  message.isDeleted = true;
-  message.deletedAt = new Date();
-  message.deletedBy = req.user._id;
-  await message.save();
-
-  // Emit real-time delete event
-  const io = getIO();
-  if (io) {
-    io.to(`order_${message.order._id}`).emit("message:deleted", {
-      messageId: message._id,
-      orderId: message.order._id,
-      deletedBy: req.user._id,
-    });
-  }
-
-  res.status(200).json({
-    success: true,
-    message: "Message deleted",
+  const updated = await prisma.message.update({
+    where: { id: messageId },
+    data: { is_deleted: true, deleted_at: new Date() }
   });
+
+  const io = getIO();
+  if (io) io.to(`order_${message.order_id}`).emit("message:deleted", { messageId });
+
+  res.status(200).json({ success: true, message: mapMessage(updated) });
 });
 
 // ============ EDIT MESSAGE ============
 export const editMessage = asyncHandler(async (req, res) => {
   const { messageId } = req.params;
   const { content } = req.body;
+  const userId = req.user.id;
 
-  const message = await Message.findById(messageId).populate("order");
+  const message = await prisma.message.findUnique({ where: { id: messageId } });
+  if (!message) throw new ApiError(404, "Message not found");
+  if (message.sender_id !== userId) throw new ApiError(403, "Not authorized");
 
-  if (!message) {
-    throw new ApiError(404, "Message not found");
-  }
-
-  // Check if user is the sender
-  if (message.sender.toString() !== req.user._id.toString()) {
-    throw new ApiError(403, "You can only edit your own messages");
-  }
-
-  // Check if within 15 minutes
-  const fifteenMinutes = 5 * 60 * 1000;
-  if (Date.now() - message.createdAt > fifteenMinutes) {
-    throw new ApiError(400, "Cannot edit message after 5 minutes");
-  }
-
-  // Only text messages can be edited
-  if (message.type !== "text") {
-    throw new ApiError(400, "Only text messages can be edited");
-  }
-
-  // Store original if first edit
-  if (!message.originalContent) {
-    message.originalContent = message.content;
-  }
-
-  message.content = content.trim();
-  message.isEdited = true;
-  message.editedAt = new Date();
-  await message.save();
-
-  // Emit real-time edit event
-  const io = getIO();
-  if (io) {
-    io.to(`order_${message.order._id}`).emit("message:edited", {
-      messageId: message._id,
-      orderId: message.order._id,
-      content: message.content,
-      isEdited: true,
-      editedAt: message.editedAt,
-    });
-  }
-
-  res.status(200).json({
-    success: true,
-    message: "Message edited",
-    data: { content: message.content, isEdited: true },
+  const updated = await prisma.message.update({
+    where: { id: messageId },
+    data: { content: content.trim(), is_edited: true, edited_at: new Date() }
   });
+
+  const io = getIO();
+  if (io) io.to(`order_${message.order_id}`).emit("message:edited", { messageId, content: updated.content });
+
+  res.status(200).json({ success: true, message: mapMessage(updated) });
 });
 
 // ============ TOGGLE STAR MESSAGE ============
 export const toggleStarMessage = asyncHandler(async (req, res) => {
-  const { messageId } = req.params;
-
-  const message = await Message.findById(messageId);
-
-  if (!message) {
-    throw new ApiError(404, "Message not found");
-  }
-
-  const userId = req.user._id;
-  const isStarred = message.starredBy.includes(userId);
-
-  if (isStarred) {
-    // Unstar
-    message.starredBy = message.starredBy.filter(
-      (id) => id.toString() !== userId.toString()
-    );
-  } else {
-    // Star
-    message.starredBy.push(userId);
-  }
-
-  message.isStarred = message.starredBy.length > 0;
-  await message.save();
-
-  res.status(200).json({
-    success: true,
-    starred: !isStarred,
-    message: isStarred ? "Message unstarred" : "Message starred",
-  });
-});
-
-// ============ GET STARRED MESSAGES ============
-export const getStarredMessages = asyncHandler(async (req, res) => {
-  const { orderId } = req.params;
-
-  const starredMessages = await Message.find({
-    order: orderId,
-    starredBy: req.user._id,
-    isDeleted: false,
-  })
-    .populate("sender", "name profilePicture")
-    .sort({ createdAt: -1 });
-
-  res.status(200).json({
-    success: true,
-    messages: starredMessages,
-  });
+    const { messageId } = req.params;
+    const userId = req.user.id;
+  
+    const message = await prisma.message.findUnique({ where: { id: messageId } });
+    if (!message) throw new ApiError(404, "Message not found");
+  
+    const updated = await prisma.message.update({
+      where: { id: messageId },
+      data: { is_starred: !message.is_starred }
+    });
+  
+    res.status(200).json({ success: true, message: mapMessage(updated) });
 });
 
 // ============ SEARCH MESSAGES ============
 export const searchMessages = asyncHandler(async (req, res) => {
-  const { orderId } = req.params;
-  const { q } = req.query;
+    const { orderId } = req.params;
+    const { q } = req.query;
+  
+    const messages = await prisma.message.findMany({
+      where: { order_id: orderId, content: { contains: q, mode: 'insensitive' } },
+      include: { sender: { select: { id: true, name: true } } },
+      orderBy: { created_at: 'desc' }
+    });
+  
+    res.status(200).json({ success: true, messages: messages.map(mapMessage) });
+});
 
-  if (!q || q.trim().length < 2) {
-    throw new ApiError(400, "Search query must be at least 2 characters");
-  }
-
-  const messages = await Message.find({
-    order: orderId,
-    isDeleted: false,
-    $or: [
-      { content: { $regex: q, $options: "i" } },
-      { mediaName: { $regex: q, $options: "i" } },
-    ],
-  })
-    .populate("sender", "name profilePicture")
-    .sort({ createdAt: -1 })
-    .limit(50);
-
-  res.status(200).json({
-    success: true,
-    messages,
-    count: messages.length,
-  });
+// ============ GET STARRED MESSAGES ============
+export const getStarredMessages = asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
+  
+    const messages = await prisma.message.findMany({
+      where: { order_id: orderId, is_starred: true },
+      include: { sender: { select: { id: true, name: true, profile_picture: true } } },
+      orderBy: { created_at: 'desc' }
+    });
+  
+    res.status(200).json({ success: true, messages: messages.map(mapMessage) });
 });
 
 // ============ UPLOAD VOICE MESSAGE ============
 export const uploadVoice = asyncHandler(async (req, res) => {
-  const { orderId } = req.params;
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) throw new ApiError(404, "Order not found");
 
-  if (!req.file) {
-    throw new ApiError(400, "No audio file provided");
-  }
+  const receiverId = order.client_id === userId ? order.editor_id : order.client_id;
 
-  // Verify order access
-  const order = await Order.findById(orderId)
-    .populate("client", "name")
-    .populate("editor", "name");
-
-  if (!order) {
-    throw new ApiError(404, "Order not found");
-  }
-
-  const isClient = order.client._id.toString() === req.user._id.toString();
-  const isEditor = order.editor._id.toString() === req.user._id.toString();
-
-  if (!isClient && !isEditor) {
-    throw new ApiError(403, "Not authorized to send messages");
-  }
-
-  // Upload to Cloudinary
-  const cloudinary = (await import("cloudinary")).v2;
-  
-  const mimeType = req.file.mimetype;
   const b64 = Buffer.from(req.file.buffer).toString("base64");
-  const dataURI = `data:${mimeType};base64,${b64}`;
+  const dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+  const result = await cloudinary.uploader.upload(dataURI, { resource_type: "video", folder: "suvix/chats/voice" });
 
-  const result = await cloudinary.uploader.upload(dataURI, {
-    resource_type: "video", // audio uses video resource type
-    folder: `suvix/chats/${orderId}/voice`,
-    use_filename: true,
-    unique_filename: true,
+  const message = await prisma.message.create({
+    data: {
+      order_id: orderId,
+      sender_id: userId,
+      receiver_id: receiverId,
+      type: "audio",
+      content: "Voice message",
+      media_url: result.secure_url,
+      audio_duration: Number(duration),
+      delivered: true,
+      delivered_at: new Date(),
+    },
+    include: { sender: { select: { id: true, name: true, profile_picture: true } } }
   });
 
-  // Get duration from request body or default
-  const duration = parseFloat(req.body.duration) || 0;
-
-  // Create message
-  const message = await Message.create({
-    order: orderId,
-    sender: req.user._id,
-    type: "audio",
-    content: "Voice message",
-    mediaUrl: result.secure_url,
-    mediaName: req.file.originalname || "voice_message.webm",
-    audioDuration: duration,
-    delivered: true,
-    deliveredAt: new Date(),
-  });
-
-  const populatedMessage = await Message.findById(message._id).populate(
-    "sender",
-    "name profilePicture"
-  );
-
-  // Emit real-time message
   const io = getIO();
   if (io) {
     io.to(`order_${orderId}`).emit("message:new", {
-      ...populatedMessage.toObject(),
+      ...mapMessage(message),
       orderId,
       senderName: req.user.name,
     });
   }
 
-  // 🔔 Create Notification for the recipient
-  await createNotification({
-    recipient: isClient ? order.editor._id : order.client._id,
-    sender: req.user._id,
-    type: "chat_message",
-    title: `🎤 New Voice Message`,
-    message: `${req.user.name} sent a voice message (${duration}s)`,
-    link: `/chat/${orderId}`,
-    metaData: {
-      orderId,
-      orderNumber: order.orderNumber,
-      senderId: req.user._id,
-      senderName: req.user.name,
-      type: "chat_message",
-      body: `${req.user.name} sent a voice message (${duration}s)`,
-    }
-  });
-
-  res.status(201).json({
-    success: true,
-    message: populatedMessage,
-  });
+  res.status(201).json({ success: true, message: mapMessage(message) });
 });
 
-// Send Drive Link (Client Only)
+// ============ SEND DRIVE LINK ============
 export const sendDriveLink = asyncHandler(async (req, res) => {
   const { orderId } = req.params;
+  const userId = req.user.id;
   const { url, title, description, provider, fileCount, totalSize } = req.body;
 
-  // 🔍 DEBUG: trace exact URL received
-  console.log("═══════════════════════════════════");
-  console.log("📥 [DRIVE-LINK] Raw req.body:", JSON.stringify(req.body, null, 2));
-  console.log("📥 [DRIVE-LINK] typeof url:", typeof url);
-  console.log("📥 [DRIVE-LINK] url value:", String(url));
-  console.log("═══════════════════════════════════");
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) throw new ApiError(404, "Order not found");
 
-  // Validate URL — use URL constructor (handles all valid URLs reliably)
-  const urlString = typeof url === "string" ? url.trim() : String(url || "").trim();
-  console.log("📐 [DRIVE-LINK] urlString after trim:", urlString);
-  if (!urlString) {
-    throw new ApiError(400, "URL is required");
-  }
-  let normalizedUrl;
-  try {
-    const parsed = new URL(urlString);
-    if (!["http:", "https:"].includes(parsed.protocol)) {
-      throw new ApiError(400, "URL must start with http:// or https://");
-    }
-    normalizedUrl = parsed.href; // always has protocol (e.g. https://drive.google.com/...)
-    console.log("✅ [DRIVE-LINK] normalizedUrl (will be stored):", normalizedUrl);
-  } catch (e) {
-    console.log("❌ [DRIVE-LINK] URL parse error:", e.message);
-    if (e instanceof ApiError) throw e;
-    throw new ApiError(400, "Invalid URL format");
-  }
+  const receiverId = order.client_id === userId ? order.editor_id : order.client_id;
 
-  const order = await Order.findById(orderId)
-    .populate("client", "name profilePicture")
-    .populate("editor", "name profilePicture");
-
-  if (!order) {
-    throw new ApiError(404, "Order not found");
-  }
-
-  // Only clients can share drive links
-  const isClient = order.client._id.toString() === req.user._id.toString();
-  if (!isClient) {
-    throw new ApiError(403, "Only clients can share raw footage links");
-  }
-
-  // Detect provider from URL
-  let detectedProvider = provider || "other";
-  if (!provider) {
-    if (normalizedUrl.includes("drive.google.com")) detectedProvider = "google_drive";
-    else if (normalizedUrl.includes("dropbox.com")) detectedProvider = "dropbox";
-    else if (normalizedUrl.includes("onedrive")) detectedProvider = "onedrive";
-    else if (normalizedUrl.includes("wetransfer.com")) detectedProvider = "wetransfer";
-    else if (normalizedUrl.includes("mega.nz")) detectedProvider = "mega";
-  }
-
-  const message = await Message.create({
-    order: orderId,
-    sender: req.user._id,
-    type: "drive_link",
-    content: description || "Shared raw footage files",
-    externalLink: {
-      provider: detectedProvider,
-      url: normalizedUrl,
-      title: title || "Raw Footage Package",
-      description: description || "",
-      fileCount: fileCount || null,
-      totalSize: totalSize || null,
+  const message = await prisma.message.create({
+    data: {
+      order_id: orderId,
+      sender_id: userId,
+      receiver_id: receiverId,
+      type: "drive_link",
+      content: description || "Shared raw footage files",
+      external_link: { provider, url, title, description, fileCount, totalSize },
+      delivered: true,
+      delivered_at: new Date(),
     },
-    delivered: true,
-    deliveredAt: new Date(),
+    include: { sender: { select: { id: true, name: true, profile_picture: true } } }
   });
 
-  const populatedMessage = await Message.findById(message._id).populate(
-    "sender",
-    "name profilePicture"
-  );
-
-  // Emit real-time message
   const io = getIO();
   if (io) {
     io.to(`order_${orderId}`).emit("message:new", {
-      ...populatedMessage.toObject(),
+      ...mapMessage(message),
       orderId,
       senderName: req.user.name,
     });
   }
 
-  // Notify editor
-  await createNotification({
-    recipient: order.editor._id,
-    type: "info",
-    title: "📁 Raw Footage Shared",
-    message: `${req.user.name} shared raw footage files`,
-    link: `/chat/${orderId}`,
-  });
-
-  res.status(201).json({
-    success: true,
-    message: populatedMessage,
-  });
+  res.status(201).json({ success: true, message: mapMessage(message) });
 });
 
+// ============ STUBS FOR MISSING MESSAGE EXPORTS ============
 
+export const markAsSeen = asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
+    const userId = req.user.id;
 
+    await prisma.message.updateMany({
+        where: { 
+            order_id: orderId, 
+            receiver_id: userId, 
+            is_read: false 
+        },
+        data: { 
+            is_read: true, 
+            read_at: new Date() 
+        }
+    });
 
+    const io = getIO();
+    if (io) {
+        io.to(`order_${orderId}`).emit("message:seen", { orderId, userId });
+    }
 
+    res.status(200).json({ success: true, message: "Messages marked as seen" });
+});
 
+export const markAsDownloaded = asyncHandler(async (req, res) => {
+    const { messageId } = req.params;
+    const userId = req.user.id;
+
+    const message = await prisma.message.findUnique({ where: { id: messageId } });
+    if (!message) throw new ApiError(404, "Message not found");
+
+    const updatedDownloadedBy = [...new Set([...message.downloaded_by, userId])];
+
+    const updated = await prisma.message.update({
+        where: { id: messageId },
+        data: { downloaded_by: updatedDownloadedBy }
+    });
+
+    res.status(200).json({ success: true, message: mapMessage(updated) });
+});
+
+export const getUnreadCount = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+
+    const count = await prisma.message.count({
+        where: { 
+            receiver_id: userId, 
+            is_read: false,
+            is_deleted: false
+        }
+    });
+
+    res.status(200).json({ success: true, count });
+});
+
+export const getUnreadCountsPerOrder = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+
+    const unreadMessages = await prisma.message.groupBy({
+        by: ['order_id'],
+        where: { 
+            receiver_id: userId, 
+            is_read: false,
+            is_deleted: false
+        },
+        _count: { id: true }
+    });
+
+    const counts = unreadMessages.reduce((acc, curr) => {
+        acc[curr.order_id] = curr._count.id;
+        return acc;
+    }, {});
+
+    res.status(200).json({ success: true, counts });
+});
+
+export const uploadFile = asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
+    const userId = req.user.id;
+
+    if (!req.file) throw new ApiError(400, "No file uploaded");
+
+    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new ApiError(404, "Order not found");
+
+    const receiverId = order.client_id === userId ? order.editor_id : order.client_id;
+
+    const b64 = Buffer.from(req.file.buffer).toString("base64");
+    const dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+    const result = await cloudinary.uploader.upload(dataURI, { 
+        resource_type: "auto", 
+        folder: "suvix/chats/files" 
+    });
+
+    const message = await prisma.message.create({
+        data: {
+            order_id: orderId,
+            sender_id: userId,
+            receiver_id: receiverId,
+            type: "file",
+            content: req.file.originalname,
+            media_url: result.secure_url,
+            media_filename: req.file.originalname,
+            media_size: req.file.size,
+            media_mimetype: req.file.mimetype,
+            delivered: true,
+            delivered_at: new Date(),
+        },
+        include: { sender: { select: { id: true, name: true, profile_picture: true } } }
+    });
+
+    const io = getIO();
+    if (io) {
+        io.to(`order_${orderId}`).emit("message:new", {
+            ...mapMessage(message),
+            orderId,
+            senderName: req.user.name,
+        });
+    }
+
+    res.status(201).json({ success: true, message: mapMessage(message) });
+});

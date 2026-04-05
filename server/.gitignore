@@ -51,4 +51,5 @@ error.txt
 error2.txt
 login_res.json
 server_log.txt
-trace_3.txt
+trace_3.txt
+/generated/prisma

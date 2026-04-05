@@ -1,6 +1,5 @@
 import jwt from "jsonwebtoken";
-import AdminMember from "../models/AdminMember.js";
-import SuperAdmin from "../models/SuperAdmin.js";
+import prisma from "../config/prisma.js";
 
 // Verify admin JWT token
 export const protectAdmin = async (req, res, next) => {
@@ -31,12 +30,15 @@ export const protectAdmin = async (req, res, next) => {
         });
       }
 
-      // Get admin from database based on role
+      // Get admin from database based on role (PostgreSQL)
       let admin = null;
       if (decoded.role === "superadmin") {
-        admin = await SuperAdmin.findById(decoded.id).select("+currentSessionToken");
+        admin = await prisma.superAdmin.findUnique({ where: { id: decoded.id } });
       } else {
-        admin = await AdminMember.findById(decoded.id).select("+currentSessionToken");
+        admin = await prisma.adminMember.findUnique({ 
+            where: { id: decoded.id },
+            include: { role: true } // Include role details for permissions
+        });
       }
 
       if (!admin) {
@@ -46,25 +48,27 @@ export const protectAdmin = async (req, res, next) => {
         });
       }
 
-      // Check if admin is active
-      if (!admin.isActive) {
+      // Check if admin is active (PostgreSQL field is is_active)
+      if (!admin.is_active) {
         return res.status(401).json({
           success: false,
           message: "Admin account has been deactivated",
         });
       }
 
-      // Check if password was changed after token was issued (AdminMember only for now, or SuperAdmin if implemented)
-      if (typeof admin.changedPasswordAfter === 'function' && admin.changedPasswordAfter(decoded.iat)) {
-        return res.status(401).json({
-          success: false,
-          message: "Password was recently changed. Please login again",
-        });
+      // Password verification (check password_changed_at if exists)
+      if (admin.password_changed_at) {
+        const changedTimestamp = parseInt(admin.password_changed_at.getTime() / 1000, 10);
+        if (decoded.iat < changedTimestamp) {
+            return res.status(401).json({
+              success: false,
+              message: "Password was recently changed. Please login again",
+            });
+        }
       }
 
       // Verify session token matches (single session enforcement)
-      // SuperAdmin might not currently enforce currentSessionToken strictly unless added to schema, but we will check if it exists
-      if (admin.currentSessionToken && admin.currentSessionToken !== token) {
+      if (admin.current_session_token && admin.current_session_token !== token) {
         return res.status(401).json({
           success: false,
           message: "Session expired. You may have logged in from another device",
@@ -107,8 +111,9 @@ export const requirePermission = (permission) => {
       return next();
     }
 
-    // Check specific permission
-    if (!req.admin.permissions[permission]) {
+    // Check specific permission (Prisma role/permissions)
+    const permissions = req.admin.permissions || req.admin.role?.permissions || {};
+    if (!permissions[permission]) {
       return res.status(403).json({
         success: false,
         message: `You don't have permission to access ${permission}`,
@@ -146,15 +151,15 @@ export const logActivity = (action) => {
         
         // Log asynchronously to not block response
         // Note: SuperAdmin doesn't have logActivity yet, so let's check
-        if (req.admin.role === "superadmin") {
-           // Skip activity logging for SuperAdmin until we add that array to schema or just ignore
-        } else {
-           AdminMember.findById(req.admin._id).then(admin => {
-             if (admin && typeof admin.logActivity === 'function') {
-               admin.logActivity(action, details, ip);
-             }
-           }).catch(err => console.error("Activity log error:", err));
-        }
+        /* Activity logging logic moved to centralized service or handled via direct Prisma create */
+        prisma.adminActivityLog.create({
+            data: {
+                admin_id: req.admin.id,
+                action: action,
+                details: details,
+                ip: ip
+            }
+        }).catch(err => console.error("Activity log error:", err));
       }
       
       return originalSend.call(this, body);

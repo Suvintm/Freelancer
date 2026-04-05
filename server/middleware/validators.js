@@ -100,7 +100,7 @@ export const mongoIdValidator = [
 ];
 
 export const userIdValidator = [
-    param("userId").isMongoId().withMessage("Invalid user ID format"),
+    param("userId").isUUID().withMessage("Invalid user ID format"),
     validate,
 ];
 

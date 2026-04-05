@@ -9,8 +9,7 @@ const commentSchema = new mongoose.Schema(
             index: true,
         },
         user: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
+            type: String,
             required: true,
         },
         text: {
@@ -26,8 +25,7 @@ const commentSchema = new mongoose.Schema(
             index: true,
         },
         likes: [{
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
+            type: String,
         }],
         likesCount: {
             type: Number,

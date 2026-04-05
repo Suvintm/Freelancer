@@ -3,7 +3,8 @@ import asyncHandler from "express-async-handler";
 import Razorpay from "../config/razorpay.js";
 import Refund from "../models/Refund.js";
 import { Order } from "../models/Order.js";
-import User from "../models/User.js";
+import prisma from "../config/prisma.js";
+import { attachUserMetadata } from "../utils/hybridJoin.js";
 import { ApiError } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
 
@@ -208,13 +209,15 @@ export const getOrderRefunds = asyncHandler(async (req, res) => {
  * @access  Private (Client)
  */
 export const getWalletBalance = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user._id).select("walletBalance walletLastUpdated");
+  const wallet = await prisma.userWallet.findUnique({
+    where: { user_id: req.user.id || req.user._id }
+  });
 
   res.json({
     success: true,
     wallet: {
-      balance: user.walletBalance || 0,
-      lastUpdated: user.walletLastUpdated,
+      balance: Number(wallet?.wallet_balance) || 0,
+      lastUpdated: wallet?.updated_at,
     },
   });
 });
@@ -235,7 +238,6 @@ export const getAllRefunds = asyncHandler(async (req, res) => {
 
   const [refunds, total] = await Promise.all([
     Refund.find(query)
-      .populate("client", "name email")
       .populate("order", "orderNumber title")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
@@ -244,9 +246,12 @@ export const getAllRefunds = asyncHandler(async (req, res) => {
     Refund.countDocuments(query),
   ]);
 
+  // Enrich with client metadata from PostgreSQL
+  const enrichedRefunds = await attachUserMetadata(refunds, "client", "client");
+
   res.json({
     success: true,
-    refunds,
+    refunds: enrichedRefunds,
     pagination: {
       page: parseInt(page),
       limit: parseInt(limit),

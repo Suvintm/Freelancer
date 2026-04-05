@@ -10,8 +10,9 @@ import razorpay from "../config/razorpay.js";
 import { isRazorpayConfigured } from "../config/razorpay.js";
 import { Payment } from "../models/Payment.js";
 import { Order } from "../models/Order.js";
-import User from "../models/User.js";
+import prisma from "../config/prisma.js";
 import { ApiError } from "../middleware/errorHandler.js";
+import { attachUserMetadata } from "../utils/hybridJoin.js";
 
 // ==========================================
 // CLOUDINARY ANALYTICS
@@ -306,8 +307,6 @@ export const getRazorpayAnalytics = asyncHandler(async (req, res) => {
       Payment.find()
         .sort({ createdAt: -1 })
         .limit(10)
-        .populate("client", "name email")
-        .populate("editor", "name email")
         .lean(),
       // Payments by status
       Payment.aggregate([
@@ -319,6 +318,20 @@ export const getRazorpayAnalytics = asyncHandler(async (req, res) => {
         { $group: { _id: null, count: { $sum: 1 }, totalRefunded: { $sum: "$amount" } } }
       ])
     ]);
+
+    // Attach metadata to recent payments (Dual Join)
+    const enrichedPayments = await attachUserMetadata(recentPayments, 'client', 'clientInfo');
+    const fullyEnriched = await attachUserMetadata(enrichedPayments, 'editor', 'editorInfo');
+
+    const formattedPayments = fullyEnriched.map(p => ({
+        id: p._id,
+        amount: p.amount,
+        status: p.status,
+        type: p.type,
+        client: p.clientInfo?.name || "Unknown",
+        editor: p.editorInfo?.name || "Unknown",
+        createdAt: p.createdAt
+    }));
 
     // Get monthly trend (last 6 months)
     const sixMonthsAgo = new Date();
@@ -421,7 +434,7 @@ export const getOverviewAnalytics = asyncHandler(async (req, res) => {
       totalPayments,
       totalRevenue
     ] = await Promise.all([
-      User.countDocuments(),
+      prisma.user.count(),
       Order.countDocuments(),
       Payment.countDocuments({ status: "completed" }),
       Payment.aggregate([
@@ -567,5 +580,72 @@ export const getRevenueChart = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: revenueData
+  });
+});
+
+// ==========================================
+// SYSTEM HEALTH
+// ==========================================
+
+/**
+ * Get comprehensive service health status
+ * GET /api/admin/analytics/service-health
+ */
+export const getServiceHealth = asyncHandler(async (req, res) => {
+  const health = {
+    postgresql: { status: "unknown", latency: 0 },
+    mongodb: { status: "unknown", latency: 0 },
+    cloudinary: { status: "unknown" },
+    razorpay: { status: "unknown" },
+    timestamp: new Date()
+  };
+
+  const start = Date.now();
+
+  // 1. Check PostgreSQL (Prisma)
+  try {
+    const pgStart = Date.now();
+    await prisma.$queryRaw`SELECT 1`;
+    health.postgresql = { 
+      status: "operational", 
+      latency: Date.now() - pgStart 
+    };
+  } catch (e) {
+    health.postgresql = { status: "down", error: e.message };
+  }
+
+  // 2. Check MongoDB (Mongoose)
+  try {
+    const mongoStart = Date.now();
+    if (mongoose.connection.readyState === 1) {
+      await mongoose.connection.db.admin().ping();
+      health.mongodb = { 
+        status: "operational", 
+        latency: Date.now() - mongoStart 
+      };
+    } else {
+      health.mongodb = { status: "disconnected" };
+    }
+  } catch (e) {
+    health.mongodb = { status: "down", error: e.message };
+  }
+
+  // 3. Check Cloudinary
+  try {
+    await cloudinary.api.ping();
+    health.cloudinary = { status: "operational" };
+  } catch (e) {
+    health.cloudinary = { status: "degraded", error: e.message };
+  }
+
+  // 4. Check Razorpay
+  health.razorpay = { 
+    status: isRazorpayConfigured() ? "operational" : "not_configured" 
+  };
+
+  res.json({
+    success: true,
+    data: health,
+    totalLatency: Date.now() - start
   });
 });

@@ -2,35 +2,39 @@ import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import dotenv from "dotenv";
 import crypto from "crypto";
+import prisma from "./prisma.js";
+import logger from "../utils/logger.js";
 
 // Load environment variables
 dotenv.config();
 
-// Lazy load models to avoid circular dependency
-let User;
-let logger;
-
-const loadDependencies = async () => {
-    if (!User) {
-        const userModule = await import("../models/User.js");
-        User = userModule.default;
-    }
-    if (!logger) {
-        const loggerModule = await import("../utils/logger.js");
-        logger = loggerModule.default;
-    }
-};
-
-// Serialize user for session
+// Serialization logic remains minimal
 passport.serializeUser((user, done) => {
     done(null, user.id);
 });
 
-// Deserialize user from session
+// Deserialize user from session (PostgreSQL via Prisma)
 passport.deserializeUser(async (id, done) => {
     try {
-        await loadDependencies();
-        const user = await User.findById(id).select("-password");
+        const user = await prisma.user.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                profile_picture: true,
+                is_banned: true
+            }
+        });
+        
+        if (user) {
+            // Compatibility mapping
+            user._id = user.id;
+            user.profilePicture = user.profile_picture;
+            user.isBanned = user.is_banned;
+        }
+        
         done(null, user);
     } catch (error) {
         done(error, null);
@@ -78,59 +82,79 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
                     }
 
                     // Check if user already exists with this Google ID
-                    let user = await User.findOne({ googleId });
-
+                    let user = await prisma.user.findUnique({
+                        where: { google_id: googleId }
+                    });
+    
                     if (user) {
+                        // Compatibility mapping
+                        user._id = user.id;
+                        user.profilePicture = user.profile_picture;
+
                         // User exists with Google ID - update profile picture if changed
-                        if (profilePicture && user.profilePicture !== profilePicture) {
-                            user.profilePicture = profilePicture;
-                            await user.save();
+                        if (profilePicture && user.profile_picture !== profilePicture) {
+                            await prisma.user.update({
+                                where: { id: user.id },
+                                data: { profile_picture: profilePicture }
+                            });
                         }
                         logger.info(`[OAuth] Google login: ${email}`);
                         return done(null, user);
                     }
-
+    
                     // Check if user exists with same email (registered via email/password)
-                    user = await User.findOne({ email });
-
+                    user = await prisma.user.findUnique({
+                        where: { email }
+                    });
+    
                     if (user) {
-                        // Link Google account to existing user
-                        user.googleId = googleId;
-                        user.authProvider = "google";
-                        // Do not update profilePicture from Google anymore
-                        // Google emails are considered verified
-                        user.isVerified = true; 
+                        // Link Google account to existing user in PostgreSQL
+                        const updatedUser = await prisma.user.update({
+                            where: { id: user.id },
+                            data: {
+                                google_id: googleId,
+                                auth_provider: "google",
+                                is_verified: true
+                            }
+                        });
                         
-                        await user.save();
+                        updatedUser._id = updatedUser.id;
                         logger.info(`[OAuth] Linked Google account to existing user: ${email}`);
-                        return done(null, user);
+                        return done(null, updatedUser);
                     }
 
-                    // NEW USER REGISTRATION via Google
-                    // Smart Name Generation: Handle unique name requirement
+                    // NEW USER REGISTRATION via Google (PostgreSQL via Prisma)
+                    // Smart Name Generation
                     let baseName = profile.displayName || profile.name?.givenName || "User";
                     baseName = baseName.trim();
                     let finalName = baseName;
                     
-                    // Check if name is taken
-                    const nameExists = await User.findOne({ name: { $regex: new RegExp(`^${finalName}$`, "i") } });
+                    // Check if name is taken (Case-insensitive check in PG)
+                    const nameExists = await prisma.user.findFirst({
+                        where: { name: { equals: finalName, mode: "insensitive" } }
+                    });
+
                     if (nameExists) {
-                        // Append a random 4-digit number if name is taken
                         finalName = `${baseName}${Math.floor(1000 + Math.random() * 9000)}`;
                     }
 
-                    const newUser = await User.create({
-                        name: finalName,
-                        email,
-                        googleId,
-                        profilePicture: "", // Force platform default
-                        password: `OAUTH_USER_${crypto.randomBytes(8).toString("hex")}`,
-                        role: "pending", // Force role selection flow
-                        authProvider: "google",
-                        isVerified: true, // Google verified the email
-                        profileCompleted: false,
+                    const newUser = await prisma.user.create({
+                        data: {
+                            name: finalName,
+                            email,
+                            google_id: googleId,
+                            profile_picture: profilePicture || "",
+                            password_hash: `OAUTH_USER_${crypto.randomBytes(8).toString("hex")}`,
+                            role: "pending",
+                            auth_provider: "google",
+                            is_verified: true,
+                            profile_completed: false,
+                            // Ensure wallet is created too
+                            wallet: { create: { wallet_balance: 0 } }
+                        }
                     });
 
+                    newUser._id = newUser.id;
                     logger.info(`[OAuth] New user registered via Google: ${email} (Name: ${finalName})`);
                     return done(null, newUser);
                 } catch (error) {

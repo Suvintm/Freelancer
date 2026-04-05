@@ -3,8 +3,7 @@ import mongoose from "mongoose";
 const kycLogSchema = new mongoose.Schema({
   // The user (Client or Editor) undergoing KYC
   user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User", 
+    type: String,
     required: true,
     index: true
   },
@@ -18,8 +17,8 @@ const kycLogSchema = new mongoose.Schema({
 
   // Who performed the action?
   performedBy: {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // If user submitted/edited
-    adminId: { type: mongoose.Schema.Types.ObjectId, ref: "AdminMember" }, // If admin verified/rejected
+    userId: { type: String }, // If user submitted/edited
+    adminId: { type: String }, // If admin verified/rejected
     role: { type: String, enum: ["user", "admin", "system"], default: "user" }
   },
 

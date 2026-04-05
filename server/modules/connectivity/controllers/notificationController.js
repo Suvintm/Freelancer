@@ -6,10 +6,11 @@ import { sendPushNotification } from "../../../utils/fcmService.js";
 
 // ============ GET UNREAD COUNT ============
 export const getUnreadCount = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
     const unreadCount = await withCache(
-        CacheKey.notificationCount(req.user._id),
+        CacheKey.notificationCount(userId),
         TTL.NOTIFICATION_COUNT,
-        () => Notification.countDocuments({ recipient: req.user._id, isRead: false })
+        () => Notification.countDocuments({ recipient: userId, isRead: false })
     );
 
     res.status(200).json({
@@ -20,24 +21,40 @@ export const getUnreadCount = asyncHandler(async (req, res) => {
 
 // ============ GET NOTIFICATIONS ============
 export const getNotifications = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const [notifications, total] = await Promise.all([
-        Notification.find({ recipient: req.user._id })
-            .populate("sender", "name profilePicture role")
+    const [notificationsRaw, total] = await Promise.all([
+        Notification.find({ recipient: userId })
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit),
-        Notification.countDocuments({ recipient: req.user._id }),
+        Notification.countDocuments({ recipient: userId }),
     ]);
 
-    const unreadCount = await withCache(
-        CacheKey.notificationCount(req.user._id),
-        TTL.NOTIFICATION_COUNT,
-        () => Notification.countDocuments({ recipient: req.user._id, isRead: false })
-    );
+    // Manual population from Prisma
+    const senderIds = [...new Set(notificationsRaw.filter(n => n.sender).map(n => n.sender))];
+    const senders = await prisma.user.findMany({
+        where: { id: { in: senderIds } },
+        select: { id: true, name: true, profile_picture: true, role: true }
+    });
+
+    const senderMap = senders.reduce((acc, s) => {
+        acc[s.id] = { _id: s.id, name: s.name, profilePicture: s.profile_picture, role: s.role };
+        return acc;
+    }, {});
+
+    const notifications = notificationsRaw.map(n => {
+        const obj = n.toObject();
+        if (obj.sender) {
+            obj.sender = senderMap[obj.sender] || { _id: obj.sender, name: "User", profilePicture: "" };
+        }
+        return obj;
+    });
+
+    const unreadCount = await Notification.countDocuments({ recipient: userId, isRead: false });
 
     res.status(200).json({
         success: true,
@@ -54,17 +71,18 @@ export const getNotifications = asyncHandler(async (req, res) => {
 
 // ============ MARK AS READ ============
 export const markAsRead = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
     const { id } = req.params;
 
     if (id === "all") {
         await Notification.updateMany(
-            { recipient: req.user._id, isRead: false },
+            { recipient: userId, isRead: false },
             { isRead: true }
         );
-        await deleteCache(CacheKey.notificationCount(req.user._id));
+        await deleteCache(CacheKey.notificationCount(userId));
     } else {
         const notification = await Notification.findOneAndUpdate(
-            { _id: id, recipient: req.user._id },
+            { _id: id, recipient: userId },
             { isRead: true },
             { new: true }
         );
@@ -72,7 +90,7 @@ export const markAsRead = asyncHandler(async (req, res) => {
         if (!notification) {
             throw new ApiError(404, "Notification not found");
         }
-        await deleteCache(CacheKey.notificationCount(req.user._id));
+        await deleteCache(CacheKey.notificationCount(userId));
     }
 
     res.status(200).json({
@@ -83,11 +101,12 @@ export const markAsRead = asyncHandler(async (req, res) => {
 
 // ============ DELETE NOTIFICATION ============
 export const deleteNotification = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
     const { id } = req.params;
 
     const notification = await Notification.findOneAndDelete({
         _id: id,
-        recipient: req.user._id,
+        recipient: userId,
     });
 
     if (!notification) {
@@ -95,7 +114,7 @@ export const deleteNotification = asyncHandler(async (req, res) => {
     }
 
     if (!notification.isRead) {
-        await deleteCache(CacheKey.notificationCount(req.user._id));
+        await deleteCache(CacheKey.notificationCount(userId));
     }
 
     res.status(200).json({
@@ -105,74 +124,68 @@ export const deleteNotification = asyncHandler(async (req, res) => {
 });
 
 // ============ INTERNAL: CREATE NOTIFICATION ============
-// This function is for internal use by other controllers
 export const createNotification = async ({ recipient, type, title, message, link, sender = null, metaData = {} }) => {
     try {
         const notification = await Notification.create({
-            recipient,
+            recipient: recipient.toString(),
             type,
             title,
             message,
             link,
-            sender,
+            sender: sender ? sender.toString() : null,
             metaData,
         });
 
         const receiverSocketId = getReceiverSocketId(recipient.toString());
-        if (receiverSocketId) {
-            // Always populate sender before emitting for rich client-side display
-            if (sender) {
-                await notification.populate("sender", "name profilePicture role");
+        
+        let senderInfo = null;
+        if (sender) {
+            const senderDoc = await prisma.user.findUnique({
+                where: { id: sender.toString() },
+                select: { id: true, name: true, profile_picture: true, role: true }
+            });
+            if (senderDoc) {
+                senderInfo = {
+                    _id: senderDoc.id,
+                    name: senderDoc.name,
+                    profilePicture: senderDoc.profile_picture,
+                    role: senderDoc.role
+                };
             }
+        }
+
+        if (receiverSocketId) {
             const populatedNotification = notification.toObject();
-            // Emit using standard event name (matches SocketContext listener)
+            if (senderInfo) {
+                populatedNotification.sender = senderInfo;
+            }
             io.to(receiverSocketId).emit("notification:new", populatedNotification);
         }
 
         // Send Push Notification (FCM)
-        // 🏷️ Production Tagging: Group chats by order, everything else stays unique to stack
         let smartTag = metaData.tag || undefined; 
-
         if (type === "chat_message" && metaData.orderId) {
-            // Group by order so multiple chat messages replace each other (with renotify alert)
             smartTag = `chat_${metaData.orderId}`;
         } else if (!smartTag) {
-            // For others, use unique ID to ENSURE they stack independently
             smartTag = notification._id.toString();
         }
 
-        // ── Resolve sender avatar independently ─────────────────────────────
-        // (Socket populate only runs if recipient is online; push needs it always)
-        let senderAvatar = metaData.senderAvatar || null;
-        if (!senderAvatar && sender) {
-            try {
-                const User = (await import("../../user/models/User.js")).default;
-                const senderDoc = await User.findById(sender).select("profilePicture").lean();
-                senderAvatar = senderDoc?.profilePicture || null;
-            } catch (_) {
-                // Ignore error if sender user model cannot be loaded (FCM fallback only)
-            }
-        }
-
-        // ── Flatten FCM Payload ─────────────────────────────────────────────
         const fcmPayload = {
             title: title,
             body: message,
             link: link || "/notifications",
             click_action: link || "/notifications",
             ...metaData,
-            senderAvatar: senderAvatar || "",
+            senderAvatar: senderInfo?.profilePicture || "",
             image: metaData.image || null,
             tag: smartTag,
             notificationId: notification._id.toString()
         };
         
-        // Fire and forget - don't block the API response
-        sendPushNotification(recipient, fcmPayload).catch(err => 
+        sendPushNotification(recipient.toString(), fcmPayload).catch(err => 
             console.error("[FCM] Push failed:", err.message)
         );
 
-        // Invalidate unread count cache
         await deleteCache(CacheKey.notificationCount(recipient.toString()));
 
         return notification;

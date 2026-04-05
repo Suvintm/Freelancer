@@ -4,8 +4,7 @@ const gigSchema = new mongoose.Schema(
   {
     // Editor who created this gig
     editor: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String,
       required: true,
       index: true,
     },

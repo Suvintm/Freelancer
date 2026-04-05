@@ -13,7 +13,7 @@ export const calculateProfileCompletion = (user, profile, portfolioCount = 0) =>
   const requiredItems = [
     {
       // 1. Profile Photo (20%)
-      complete: !!(user?.profilePicture && !user.profilePicture.includes("flaticon")),
+      complete: !!(user?.profile_picture && !user.profile_picture.includes("flaticon")),
     },
     {
       // 2. Professional Bio (20%)

@@ -8,8 +8,7 @@ const reelSchema = new mongoose.Schema(
             required: true,
         },
         editor: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
+            type: String,
             required: true,
             index: true,
         },
@@ -36,8 +35,7 @@ const reelSchema = new mongoose.Schema(
         },
         // Store user IDs who liked
         likes: [{
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
+            type: String,
         }],
         // Cached counts for performance
         likesCount: {
@@ -107,8 +105,7 @@ const reelSchema = new mongoose.Schema(
             trim: true
         },
         taggedUsers: [{
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User"
+            type: String,
         }],
         isAIContent: {
             type: Boolean,

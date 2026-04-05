@@ -17,6 +17,7 @@ import trieInstance from "../utils/reelSearchTrie.js";
 import { purgeReelsFeedCache } from "../../../utils/cloudflareService.js";
 import { videoProcessingQueue, analyticsQueue } from "../../../config/queues.js";
 import { getCollaborativeAffinities } from "../utils/recsysEngine.js";
+import { attachUserMetadata } from "../../../utils/hybridJoin.js";
 
 // Scoreboard Redis key — persistent global sorted set of reel scores
 const SCORE_BOARD_KEY = "reels:score:board";
@@ -36,7 +37,7 @@ export const publishToReel = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Portfolio not found");
     }
 
-    if (portfolio.user.toString() !== req.user._id.toString()) {
+    if (portfolio.user.toString() !== req.user.id.toString()) {
         throw new ApiError(403, "Not authorized to publish this portfolio");
     }
 
@@ -58,7 +59,7 @@ export const publishToReel = asyncHandler(async (req, res) => {
     // Create reel
     const reel = await Reel.create({
         portfolio: portfolioId,
-        editor: req.user._id,
+        editor: req.user.id,
         title: portfolio.title,
         description: portfolio.description,
         mediaUrl,
@@ -74,9 +75,12 @@ export const publishToReel = asyncHandler(async (req, res) => {
         isAIContent: portfolio.isAIContent || false,
     });
 
-    const populatedReel = await Reel.findById(reel._id)
-        .populate("editor", "name email profilePicture")
-        .populate("portfolio");
+    const reelPlain = reel.toObject();
+    const [populatedReel] = await attachUserMetadata([reelPlain], 'editor');
+    
+    // Still populate portfolio as it is in MongoDB
+    const portfolioData = await Portfolio.findById(portfolioId).lean();
+    populatedReel.portfolio = portfolioData;
 
     logger.info(`Portfolio ${portfolioId} published as reel ${reel._id}`);
 
@@ -225,38 +229,48 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
 
     // ── STEP 5: Scoring & Final Shuffle (Wilson + Freshness) ────────────────
     const limitNum = parseInt(limit) || 12;
-    const sampledReels = weightedReservoirSample(filteredCandidates, limitNum * 3, (r) => {
-        // — ELITE: IG Composite Signal Model —
-        // Base score starts at 1.0 to ensure all content has a chance
-        let score = 1.0; 
-        
-        // Signal 1: Engagement Density (Wilson-Score Lite)
-        const engagementWeight = (r.likesCount || 0) * 1.5 + (r.commentsCount || 0) * 2.0;
-        const viewDensity = (r.viewsCount || 1);
-        score += (engagementWeight / viewDensity) * 10;
-        
-        // Signal 2: FRESHNESS BOOST (Massive priority for new content on Page 1)
-        if (page === 1) {
-            const freshnessBoost = calculateFreshnessBoost(r);
-            score *= freshnessBoost;
-        }
-        
-        // Signal 3: Social Graph Boost (Followed Creators)
-        if (followedIds && followedIds.has(r.editor?.toString() || r.editor?._id?.toString())) {
-            score *= 1.8; // High priority for subscriptions
-        }
+    const isLatestSort = req.query.sort === 'latest';
+    
+    let sampledReels;
+    
+    if (isLatestSort) {
+        // ✅ TESTING MODE: Just grab the newest candidates without sampling
+        logger.info(`[FEED] Debug Mode: Returning newest reels first.`);
+        sampledReels = filteredCandidates.slice(0, limitNum * 2);
+    } else {
+        sampledReels = weightedReservoirSample(filteredCandidates, limitNum * 3, (r) => {
+            // — ELITE: IG Composite Signal Model —
+            // Base score starts at 1.0 to ensure all content has a chance
+            let score = 1.0; 
+            
+            // Signal 1: Engagement Density (Wilson-Score Lite)
+            const engagementWeight = (r.likesCount || 0) * 1.5 + (r.commentsCount || 0) * 2.0;
+            const viewDensity = (r.viewsCount || 1);
+            score += (engagementWeight / viewDensity) * 10;
+            
+            // Signal 2: FRESHNESS BOOST (Massive priority for new content on Page 1)
+            if (page === 1) {
+                const freshnessBoost = calculateFreshnessBoost(r);
+                score *= freshnessBoost;
+            }
+            
+            // Signal 3: Social Graph Boost (Followed Creators)
+            if (followedIds && followedIds.has(r.editor?.toString() || r.editor?._id?.toString())) {
+                score *= 1.8; // High priority for subscriptions
+            }
 
-        // Signal 4: Personalization (Niche/Hashtag Affinity)
-        if (userInterests && r.hashtags) {
-            let tagMultiplier = 1.0;
-            r.hashtags.forEach(tag => {
-                if (userInterests[tag]) tagMultiplier += (userInterests[tag] * 0.3);
-            });
-            score *= Math.min(2.0, tagMultiplier); // Cap personalization to prevent "Filter Bubbles"
-        }
+            // Signal 4: Personalization (Niche/Hashtag Affinity)
+            if (userInterests && r.hashtags) {
+                let tagMultiplier = 1.0;
+                r.hashtags.forEach(tag => {
+                    if (userInterests[tag]) tagMultiplier += (userInterests[tag] * 0.3);
+                });
+                score *= Math.min(2.0, tagMultiplier); // Cap personalization to prevent "Filter Bubbles"
+            }
 
-        return score;
-    }, followedIds, uniqueSeed);
+            return score;
+        }, followedIds, uniqueSeed);
+    }
 
     // ── STEP 7: Full population via targeted lookups ──────────────────────────
     const finalReels = sampledReels.slice(0, limitNum);
@@ -267,63 +281,22 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
         ? new mongoose.Types.ObjectId(userId) 
         : new mongoose.Types.ObjectId(); // Fallback to random ID for non-matching $in check
 
-    const populatedReels = await Reel.aggregate([
-        { $match: { _id: { $in: reelIds } } },
-        {
-            $addFields: {
-                editorId: {
-                    $cond: {
-                        if: { $eq: [{ $type: "$editor" }, "string"] },
-                        then: { $toObjectId: "$editor" },
-                        else: { $cond: { if: { $eq: [{ $type: "$editor" }, "objectId"] }, then: "$editor", else: { $ifNull: ["$editor._id", "$editor"] } } }
-                    }
-                }
-            }
-        },
-        { $lookup: { from: "users", localField: "editorId", foreignField: "_id", as: "editorInfo" } },
-        { $unwind: { path: "$editorInfo", preserveNullAndEmptyArrays: true } },
-        { $lookup: { from: "portfolios", localField: "portfolio", foreignField: "_id", as: "portfolioInfo" } },
-        { $unwind: { path: "$portfolioInfo", preserveNullAndEmptyArrays: true } },
-        {
-            $addFields: {
-                isLiked: {
-                    $cond: {
-                        if: { $in: [validUserIdForAggregation, "$likes"] },
-                        then: true,
-                        else: false
-                    }
-                },
-                latestLikerIds: { $slice: ["$likes", -3] }
-            }
-        },
-        { $lookup: { from: "users", localField: "latestLikerIds", foreignField: "_id", as: "latestLikeUsers" } },
-        {
-            $project: {
-                _id: 1, title: 1, description: 1, mediaUrl: 1, mediaType: 1,
-                hlsUrl: 1, thumbnailUrl: 1, duration: 1, processingStatus: 1,
-                likesCount: 1, viewsCount: 1, commentsCount: 1, createdAt: 1,
-                isLiked: 1,
-                latestLikers: {
-                    $map: {
-                        input: "$latestLikeUsers",
-                        as: "u",
-                        in: {
-                            _id: "$$u._id",
-                            name: "$$u.name",
-                            profilePicture: "$$u.profilePicture"
-                        }
-                    }
-                },
-                editor: {
-                    _id: { $ifNull: ["$editorInfo._id", "$editorId"] },
-                    name: { $ifNull: ["$editorInfo.name", "Unknown Editor"] },
-                    profilePicture: { $ifNull: ["$editorInfo.profilePicture", null] },
-                    role: { $ifNull: ["$editorInfo.role", "editor"] }
-                },
-                portfolio: { _id: "$portfolioInfo._id" }, 
-            }
-        }
-    ]);
+    const rawReels = await Reel.find({ _id: { $in: reelIds } }).lean();
+    
+    // 1. Join User Data (PostgreSQL)
+    const reelsWithUsers = await attachUserMetadata(rawReels, 'editor');
+    
+    // 2. Join Portfolio Data (MongoDB)
+    const portfolioIds = [...new Set(reelsWithUsers.map(r => r.portfolio))].filter(Boolean);
+    const portfolios = await Portfolio.find({ _id: { $in: portfolioIds } }).lean();
+    const portfolioMap = new Map(portfolios.map(p => [p._id.toString(), p]));
+
+    const populatedReels = reelsWithUsers.map(r => ({
+        ...r,
+        portfolio: portfolioMap.get(r.portfolio?.toString()) || { _id: r.portfolio },
+        isLiked: userId ? r.likes?.includes(userId) : false,
+        editor: r.userInfo || { _id: r.editor, name: "Unknown Editor" }
+    }));
 
     // Preserve reservoir sample order (aggregate doesn't preserve input order)
     const reelMap = new Map(populatedReels.map(r => [r._id.toString(), r]));
@@ -350,13 +323,23 @@ export const getReelsFeed = asyncHandler(async (req, res) => {
 
 // ============ GET SINGLE REEL ============
 export const getReel = asyncHandler(async (req, res) => {
-    const reel = await Reel.findById(req.params.id)
-        .populate("editor", "name email profilePicture role")
-        .populate("portfolio");
+    const reel = await Reel.findById(req.params.id).lean();
 
     if (!reel) {
         throw new ApiError(404, "Reel not found");
     }
+
+    const [reelWithUser] = await attachUserMetadata([reel], 'editor');
+    
+    // Populate portfolio (MongoDB)
+    if (reelWithUser.portfolio) {
+        reelWithUser.portfolio = await Portfolio.findById(reelWithUser.portfolio).lean();
+    }
+    
+    const finalReel = {
+        ...reelWithUser,
+        editor: reelWithUser.userInfo || { _id: reelWithUser.editor }
+    };
 
     if (reel) {
         res.setHeader('Last-Modified', new Date(reel.createdAt).toUTCString());
@@ -365,7 +348,7 @@ export const getReel = asyncHandler(async (req, res) => {
 
     res.status(200).json({
         success: true,
-        reel,
+        reel: finalReel,
     });
 });
 
@@ -377,11 +360,11 @@ export const toggleLike = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Reel not found");
     }
 
-    const userId = req.user._id;
+    const userId = req.user.id;
     const isLiked = reel.likes.includes(userId);
 
     if (isLiked) {
-        reel.likes = reel.likes.filter((id) => id.toString() !== userId.toString());
+        reel.likes = reel.likes.filter((id) => id !== userId);
         reel.likesCount = Math.max(0, reel.likesCount - 1);
     } else {
         reel.likes.push(userId);
@@ -410,7 +393,7 @@ export const toggleLike = asyncHandler(async (req, res) => {
     });
 
     // Send Notification for Like (Non-blocking)
-    if (!isLiked && reel.editor.toString() !== userId.toString()) {
+    if (!isLiked && reel.editor !== userId) {
         createNotification({
             recipient: reel.editor,
             type: "reel_like",
@@ -431,7 +414,7 @@ export const toggleLike = asyncHandler(async (req, res) => {
 // ============ SAVE/UNSAVE REEL (Toggle) — Phase 30A ============
 export const toggleSave = asyncHandler(async (req, res) => {
     const { id: reelId } = req.params;
-    const userId = req.user._id;
+    const userId = req.user.id;
 
     const reel = await Reel.findById(reelId);
     if (!reel) {
@@ -468,7 +451,7 @@ export const toggleSave = asyncHandler(async (req, res) => {
 // ============ INCREMENT VIEW COUNT (Optimized) ============
 export const incrementView = asyncHandler(async (req, res) => {
     const reelId = req.params.id;
-    const userId = req.user?._id?.toString() || null;
+    const userId = req.user?.id || null;
     const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
     const viewKey = `view:${reelId}:${ip}`;
 
@@ -522,54 +505,18 @@ export const getComments = asyncHandler(async (req, res) => {
         parentComment: parentCommentQuery 
     };
 
-    const [comments, total] = await Promise.all([
-        Comment.aggregate([
-            { $match: { reel: new mongoose.Types.ObjectId(req.params.id), parentComment: parentCommentQuery } },
-            { $sort: { createdAt: -1 } },
-            { $skip: skip },
-            { $limit: limit },
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "user",
-                    foreignField: "_id",
-                    as: "user",
-                },
-            },
-            { $unwind: "$user" },
-            {
-                $lookup: {
-                    from: "comments",
-                    localField: "_id",
-                    foreignField: "parentComment",
-                    as: "replies",
-                },
-            },
-            {
-                $addFields: {
-                    repliesCount: { $size: "$replies" },
-                    isLiked: {
-                        $cond: {
-                            if: { $and: [
-                                { $literal: !!req.user }, 
-                                { $in: [new mongoose.Types.ObjectId(req.user?._id || new mongoose.Types.ObjectId()), { $ifNull: ["$likes", []] }] }
-                            ] },
-                            then: true,
-                            else: false,
-                        },
-                    },
-                },
-            },
-            {
-                $project: {
-                    replies: 0,
-                    "user.password": 0,
-                    "user.email": 0,
-                },
-            },
-        ]),
-        Comment.countDocuments(query),
-    ]);
+    const rawComments = await Comment.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+    const total = await Comment.countDocuments(query);
+    
+    // Join User Data (PostgreSQL)
+    const commentsWithUsers = await attachUserMetadata(rawComments, 'user');
+    
+    const comments = commentsWithUsers.map(c => ({
+        ...c,
+        user: c.userInfo || { _id: c.user, name: "Unknown User" },
+        isLiked: req.user ? c.likes?.includes(req.user.id) : false,
+        repliesCount: 0 // Will be updated by frontend or separate call
+    }));
 
     res.status(200).json({
         success: true,
@@ -620,18 +567,13 @@ export const addComment = asyncHandler(async (req, res) => {
     reel.commentsCount = await Comment.countDocuments({ reel: req.params.id });
     await reel.save();
 
-    // Invalidate cache
-    await delPattern("reels:feed:*");
-
-    const populatedComment = await Comment.findById(comment._id).populate(
-        "user",
-        "name profilePicture"
-    );
+    const rawComment = comment.toObject();
+    const [populatedComment] = await attachUserMetadata([rawComment], 'user');
 
     res.status(201).json({
         success: true,
         comment: {
-            ...populatedComment._doc,
+            ...populatedComment,
             repliesCount: 0,
             isLiked: false,
         },
@@ -639,7 +581,7 @@ export const addComment = asyncHandler(async (req, res) => {
     });
 
     // Send Notification for Comment (Non-blocking)
-    if (reel.editor.toString() !== req.user._id.toString()) {
+    if (reel.editor !== req.user.id) {
         createNotification({
             recipient: reel.editor,
             type: "reel_comment",
@@ -667,11 +609,11 @@ export const toggleCommentLike = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Comment not found");
     }
 
-    const userId = req.user._id;
+    const userId = req.user.id;
     const isLiked = comment.likes.includes(userId);
 
     if (isLiked) {
-        comment.likes = comment.likes.filter(id => id.toString() !== userId.toString());
+        comment.likes = comment.likes.filter(id => id !== userId);
     } else {
         comment.likes.push(userId);
     }
@@ -695,54 +637,17 @@ export const getReelsByEditor = asyncHandler(async (req, res) => {
 
     const userIdReq = req.user?._id?.toString() || null;
 
-    const [reels, total] = await Promise.all([
-        Reel.aggregate([
-            { $match: { editor: new mongoose.Types.ObjectId(userId), isPublished: true } },
-            { $sort: { createdAt: -1 } },
-            { $skip: skip },
-            { $limit: limit },
-            {
-                $addFields: {
-                    isLiked: {
-                        $cond: {
-                            if: { $and: [{ $ne: [userIdReq, null] }, { $in: [new mongoose.Types.ObjectId(userIdReq || new mongoose.Types.ObjectId()), "$likes"] }] },
-                            then: true,
-                            else: false
-                        }
-                    },
-                    latestLikerIds: { $slice: ["$likes", -3] }
-                }
-            },
-            { $lookup: { from: "users", localField: "editor", foreignField: "_id", as: "editorInfo" } },
-            { $unwind: "$editorInfo" },
-            { $lookup: { from: "users", localField: "latestLikerIds", foreignField: "_id", as: "latestLikeUsers" } },
-            {
-                $project: {
-                    _id: 1, title: 1, description: 1, mediaUrl: 1, mediaType: 1,
-                    likesCount: 1, viewsCount: 1, commentsCount: 1, createdAt: 1,
-                    isLiked: 1,
-                    latestLikers: {
-                        $map: {
-                            input: "$latestLikeUsers",
-                            as: "u",
-                            in: {
-                                _id: "$$u._id",
-                                name: "$$u.name",
-                                profilePicture: "$$u.profilePicture"
-                            }
-                        }
-                    },
-                    editor: {
-                        _id: "$editorInfo._id",
-                        name: "$editorInfo.name",
-                        profilePicture: "$editorInfo.profilePicture",
-                        role: "$editorInfo.role"
-                    }
-                }
-            }
-        ]),
-        Reel.countDocuments({ editor: userId, isPublished: true }),
-    ]);
+    const rawReels = await Reel.find({ editor: userId, isPublished: true }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+    const total = await Reel.countDocuments({ editor: userId, isPublished: true });
+    
+    // Join User Data (PostgreSQL)
+    const reelsWithUsers = await attachUserMetadata(rawReels, 'editor');
+    
+    const reels = reelsWithUsers.map(r => ({
+        ...r,
+        editor: r.userInfo || { _id: r.editor, name: "Unknown Editor" },
+        isLiked: userIdReq ? r.likes?.includes(userIdReq) : false,
+    }));
 
     res.status(200).json({
         success: true,
@@ -877,7 +782,7 @@ export const getReelTags = asyncHandler(async (req, res) => {
 export const trackWatchTime = asyncHandler(async (req, res) => {
     const { id: reelId } = req.params;
     const { seconds, watchPercent } = req.body;
-    const userId = req.user._id;
+    const userId = req.user.id;
 
     if (!seconds || seconds <= 0) {
         return res.status(400).json({ success: false, message: "Invalid watch time" });
@@ -941,7 +846,7 @@ export const trackWatchTime = asyncHandler(async (req, res) => {
         if (req.user) {
             const interestWeight = completion >= 0.8 ? 2 : (completion >= 0.3 ? 1 : 0);
             if (interestWeight > 0) {
-                trackInterest(req.user._id, reel.hashtags, reel.editor, interestWeight);
+                trackInterest(req.user.id, reel.hashtags, reel.editor, interestWeight);
             }
         }
 
@@ -960,7 +865,7 @@ export const trackWatchTime = asyncHandler(async (req, res) => {
 
 export const trackSkip = asyncHandler(async (req, res) => {
     const { id: reelId } = req.params;
-    const userId = req.user?._id?.toString() || null;
+    const userId = req.user?.id || null;
     const { skipTime } = req.body; // Phase 30A: Track exactly when they skipped
 
     const reel = await Reel.findByIdAndUpdate(
@@ -1002,7 +907,7 @@ export const batchAnalytics = asyncHandler(async (req, res) => {
     const { events } = req.body; // Array of { reelId, seconds, watchPercent, type }
     if (!Array.isArray(events)) return res.status(400).json({ success: false });
 
-    const userId = req.user?._id;
+    const userId = req.user?.id;
 
     // Process all events in parallel for maximum speed
     await Promise.all(events.map(async (event) => {
@@ -1095,11 +1000,12 @@ export const getSearchSuggestions = asyncHandler(async (req, res) => {
  */
 export const initSearchTrie = async () => {
     try {
-        const reels = await Reel.find({ isPublished: true }).populate("editor", "name").lean();
+        const reels = await Reel.find({ isPublished: true }).lean();
+        const reelsWithUsers = await attachUserMetadata(reels, 'editor');
         trieInstance.clear();
         
         let count = 0;
-        reels.forEach(reel => {
+        reelsWithUsers.forEach(reel => {
             // Index Title
             trieInstance.insert(reel.title, { id: reel._id, type: 'title', display: reel.title });
             
@@ -1112,8 +1018,8 @@ export const initSearchTrie = async () => {
             }
 
             // Index User (Editor)
-            if (reel.editor?.name) {
-                trieInstance.insert(reel.editor.name, { id: reel._id, type: 'user', display: reel.editor.name });
+            if (reel.userInfo?.name) {
+                trieInstance.insert(reel.userInfo.name, { id: reel._id, type: 'user', display: reel.userInfo.name });
             }
             count++;
         });
@@ -1139,18 +1045,21 @@ export const initSearchTrie = async () => {
  * @route GET /api/reels/suggestions/discovery
  */
 export const getSuggestedDiscovery = asyncHandler(async (req, res) => {
-    const userId = req.user?._id;
+    const userId = req.user?.id;
     const { limit = 5 } = req.query;
 
     // 1. Get user affinity
     const interests = userId ? await getUserInterests(userId) : {};
     
     // 2. SOCIAL: Who are you NOT following but have affinity with?
-    let userDoc = null;
     let followingSet = new Set();
     if (userId) {
-        userDoc = await mongoose.model('User').findById(userId, { following: 1 }).lean();
-        followingSet = new Set(userDoc?.following?.map(id => id.toString()) || []);
+        // Fetch from PostgreSQL (follows and following collections are now in Postgres)
+        const follows = await prisma.userFollow.findMany({
+            where: { follower_id: userId },
+            select: { following_id: true }
+        });
+        followingSet = new Set(follows.map(f => f.following_id));
     }
     
     // 3. COLLABORATIVE FILTERING (RecSys 2.0)
@@ -1199,12 +1108,19 @@ export const getSuggestedDiscovery = asyncHandler(async (req, res) => {
         .filter(id => id && !followingSet.has(id))
         .slice(0, 8);
 
-    const editors = await mongoose.model('User').find({
-        _id: { $in: editorIds },
-        role: "editor"
-    })
-    .select("name profilePicture bio suvixScore")
-    .lean();
+    // 5. CREATOR SUGGESTIONS: Fetch from PostgreSQL
+    const editors = await prisma.user.findMany({
+        where: {
+            id: { in: editorIds },
+            role: "editor"
+        },
+        select: {
+            id: true,
+            name: true,
+            profile_picture: true,
+            bio: true,
+        }
+    });
 
     res.status(200).json({
         success: true,

@@ -114,3 +114,20 @@ payment-service/build-error.txt
 #docs
 .docs
 /docs
+
+# AI Planning & Local Audits (KEEP LOCAL)
+*PLAN.md
+*AUDIT.md
+suvix-mobile/docs/
+server/scripts/
+server/test*.js
+admin-server/test*.js
+*-test.js
+test-*.js
+/tmp/
+database_schemas_overview.md
+
+# Log and Output files
+*.txt
+*.sql
+*.log

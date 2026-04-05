@@ -58,7 +58,6 @@ const roleSchema = new mongoose.Schema(
 );
 
 // Indexes
-roleSchema.index({ value: 1 });
 roleSchema.index({ isActive: 1 });
 
 export default mongoose.model("AdminRole", roleSchema);

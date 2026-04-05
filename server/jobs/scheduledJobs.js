@@ -111,7 +111,7 @@ export const checkOverdueOrders = async () => {
         sender: null,
         type: "system",
         content: `⚠️ Order is OVERDUE! The deadline has passed. Chat is disabled. A refund will be processed in 24 hours if work is not submitted.`,
-        systemAction: "order_overdue",
+        systemAction: "overdue",
       });
 
       // Notify client
@@ -172,14 +172,14 @@ export const processOverdueRefunds = async () => {
     for (const order of ordersToRefund) {
       try {
         // Route through the Refund model for proper audit trail & retry logic
-        const refund = await autoRefundOrder(order._id, "order_overdue");
+        const refund = await autoRefundOrder(order._id, "overdue");
 
         // Update order status regardless of refund outcome
         order.overdueRefunded = true;
         order.overdueRefundedAt = now;
         order.refundAmount = order.amount;
         order.refundedAt = now;
-        order.refundReason = "order_overdue";
+        order.refundReason = "overdue";
         order.paymentStatus = "refunded";
         order.escrowStatus = "refunded";
         order.status = "cancelled";

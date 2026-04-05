@@ -10,16 +10,14 @@ const profileVisitSchema = new mongoose.Schema(
   {
     // Whose profile was visited
     profileOwner: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String,
       required: true,
       index: true,
     },
 
     // Who visited (null for guests/anonymous)
     visitor: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String,
       default: null,
     },
 
@@ -53,8 +51,7 @@ const profileVisitSchema = new mongoose.Schema(
 
     // Additional context
     referrerGig: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Gig",
+      type: String,
       default: null,
     },
   },
@@ -109,7 +106,7 @@ profileVisitSchema.statics.recordVisit = async function (data) {
 // Static method to get visitor stats
 profileVisitSchema.statics.getStats = async function (profileOwnerId) {
   const stats = await this.aggregate([
-    { $match: { profileOwner: new mongoose.Types.ObjectId(profileOwnerId) } },
+    { $match: { profileOwner: profileOwnerId } },
     {
       $group: {
         _id: null,

@@ -1,7 +1,5 @@
-// Refund.js - Refund Transaction Model
-// Tracks all refund operations for orders
-
 import mongoose from "mongoose";
+import prisma from "../config/prisma.js";
 
 const refundSchema = new mongoose.Schema(
   {
@@ -246,12 +244,14 @@ refundSchema.methods.markFailed = function (reason, errorCode, errorDetails) {
   return this.save();
 };
 
-// Add to wallet instead
+// Add to wallet instead (PostgreSQL via Prisma)
 refundSchema.methods.creditToWallet = async function (transactionId) {
-  const User = mongoose.model("User");
-  
-  await User.findByIdAndUpdate(this.client, {
-    $inc: { walletBalance: this.refundAmount },
+  // Update wallet in PostgreSQL
+  await prisma.userWallet.update({
+    where: { user_id: this.client.toString() },
+    data: {
+      wallet_balance: { increment: this.refundAmount }
+    }
   });
 
   this.status = "added_to_wallet";

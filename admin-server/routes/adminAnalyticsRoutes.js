@@ -10,7 +10,8 @@ import {
   getRazorpayAnalytics,
   getOverviewAnalytics,
   getOrderStats,
-  getRevenueChart
+  getRevenueChart,
+  getServiceHealth
 } from "../controllers/adminAnalyticsController.js";
 import { protectAdmin } from "../middleware/adminAuth.js";
 
@@ -60,5 +61,12 @@ router.get("/order-stats", getOrderStats);
  * @access  Admin only
  */
 router.get("/revenue-chart", getRevenueChart);
+
+/**
+ * @route   GET /api/admin/analytics/service-health
+ * @desc    Get real-time service health checks (PG, Mongo, etc)
+ * @access  Admin only
+ */
+router.get("/service-health", getServiceHealth);
 
 export default router;

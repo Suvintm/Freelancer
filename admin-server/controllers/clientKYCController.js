@@ -1,11 +1,12 @@
 // clientKYCController.js - Client KYC verification controller
 import asyncHandler from "express-async-handler";
 import ClientKYC from "../models/ClientKYC.js";
-import User from "../models/User.js";
+import prisma from "../config/prisma.js";
 import KYCLog from "../models/KYCLog.js";
 import { ApiError } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
 import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
+import { attachUserMetadata } from "../utils/hybridJoin.js";
 
 /**
  * @desc    Submit Client KYC
@@ -13,7 +14,7 @@ import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
  * @access  Private (Client only)
  */
 export const submitKYC = asyncHandler(async (req, res) => {
-  const userId = req.user._id;
+  const userId = req.user.id;
 
   // Check if user is a client
   if (req.user.role !== "client") {
@@ -158,9 +159,10 @@ export const submitKYC = asyncHandler(async (req, res) => {
 
   await kyc.save();
 
-  // Update user's client KYC status
-  await User.findByIdAndUpdate(userId, {
-    clientKycStatus: "pending",
+  // Update user's client KYC status (PostgreSQL)
+  await prisma.user.update({
+    where: { id: userId },
+    data: { kyc_status: "pending" }
   });
 
   logger.info(`Client KYC submitted: ${userId}`);
@@ -191,7 +193,7 @@ export const submitKYC = asyncHandler(async (req, res) => {
  * @access  Private (Client only)
  */
 export const getMyKYC = asyncHandler(async (req, res) => {
-  const userId = req.user._id;
+  const userId = req.user.id;
 
   const kyc = await ClientKYC.findOne({ user: userId });
 
@@ -229,7 +231,7 @@ export const getMyKYC = asyncHandler(async (req, res) => {
  * @access  Private (Client only)
  */
 export const updateKYC = asyncHandler(async (req, res) => {
-  const userId = req.user._id;
+  const userId = req.user.id;
 
   const kyc = await ClientKYC.findOne({ user: userId });
 
@@ -287,9 +289,10 @@ export const updateKYC = asyncHandler(async (req, res) => {
 
   await kyc.save();
 
-  // Update user status
-  await User.findByIdAndUpdate(userId, {
-    clientKycStatus: kyc.status,
+  // Update user status (PostgreSQL)
+  await prisma.user.update({
+    where: { id: userId },
+    data: { kyc_status: kyc.status }
   });
 
   // Audit Log
@@ -317,12 +320,15 @@ export const updateKYC = asyncHandler(async (req, res) => {
  * @access  Private (Client only)
  */
 export const canProceed = asyncHandler(async (req, res) => {
-  const userId = req.user._id;
+  const userId = req.user.id;
 
-  // Get user's KYC status
-  const user = await User.findById(userId).select("clientKycStatus name");
+  // Get user's KYC status from PostgreSQL
+  const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { kyc_status: true }
+  });
   
-  const isVerified = user.clientKycStatus === "verified";
+  const isVerified = user?.kyc_status === "verified";
 
   res.json({
     success: true,
@@ -351,15 +357,16 @@ export const getPendingKYC = asyncHandler(async (req, res) => {
     query.status = { $in: ["pending", "under_review"] };
   }
 
-  const [kycList, total] = await Promise.all([
+  const [rawKycList, total] = await Promise.all([
     ClientKYC.find(query)
-      .populate("user", "name email profilePicture")
       .sort({ submittedAt: 1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit))
-      .limit(parseInt(limit)),
+      .lean(),
     ClientKYC.countDocuments(query),
   ]);
+
+  const kycList = await attachUserMetadata(rawKycList);
 
   res.json({
     success: true,
@@ -381,12 +388,19 @@ export const getPendingKYC = asyncHandler(async (req, res) => {
 export const getKYCDetails = asyncHandler(async (req, res) => {
   const { kycId } = req.params;
 
-  const kyc = await ClientKYC.findById(kycId)
-    .populate("user", "name email profilePicture phone role kycStatus kycSubmittedAt kycVerifiedAt kycRejectionReason kycDocuments createdAt")
-    .populate("verifiedBy", "name email");
+  const kyc = await ClientKYC.findById(kycId).lean();
 
-  if (!kyc) {
-    throw new ApiError(404, "KYC not found");
+  if (!kyc) throw new ApiError(404, "KYC not found");
+
+  // Fetch User metadata and Admin metadata separately
+  const [enriched] = await attachUserMetadata([kyc]);
+  
+  if (kyc.verifiedBy) {
+      const admin = await prisma.adminMember.findUnique({
+          where: { id: kyc.verifiedBy },
+          select: { name: true, email: true }
+      });
+      enriched.verifiedByInfo = admin;
   }
 
   // Fetch Audit Logs
@@ -447,9 +461,10 @@ export const verifyKYC = asyncHandler(async (req, res) => {
     kyc.status = "rejected";
     kyc.rejectionReason = rejectionReason;
 
-    // Update user's KYC status
-    await User.findByIdAndUpdate(kyc.user, {
-      kycStatus: "rejected",
+    // Update user's KYC status (PostgreSQL)
+    await prisma.user.update({
+      where: { id: kyc.user },
+      data: { kyc_status: "rejected" }
     });
 
     logger.info(`Client KYC rejected: ${kyc.user} by admin ${adminId}`);

@@ -1,41 +1,32 @@
+export interface ReelEditor {
+  _id: string;
+  name: string;
+  profilePicture: string | null;
+  role: 'editor' | 'client' | 'admin';
+}
+
 export interface Reel {
   _id: string;
   title: string;
   description: string;
   mediaUrl: string;
   mediaType: 'video' | 'image';
+  hlsUrl?: string;
+  thumbnailUrl?: string;
+  duration: number;
   likesCount: number;
   viewsCount: number;
   commentsCount: number;
+  isLiked: boolean;
   createdAt: string;
-  isLiked?: boolean;
-  isFollowing?: boolean;
-  latestLikers: {
+  editor: ReelEditor;
+  portfolio: {
     _id: string;
-    name: string;
-    profilePicture: string | null;
-  }[];
-  editor: {
-    _id: string;
-    name: string;
-    profilePicture: string | null;
-    role: string;
   };
+  processingStatus: 'pending' | 'processing' | 'complete' | 'failed';
 }
 
-export interface Ad {
-  _id: string;
-  type: 'ad';
-  companyName: string;
-  title: string;
-  ctaText: string;
-  websiteDisplay: string;
-  mediaUrl?: string;
-}
-
-export type FeedItem = Reel | Ad;
-
-export interface ReelFeedResponse {
+export interface ReelsResponse {
   success: boolean;
   reels: Reel[];
   pagination: {

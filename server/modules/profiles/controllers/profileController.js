@@ -1,512 +1,222 @@
-import { Profile } from "../models/Profile.js";
-import User from "../../user/models/User.js";
-import { Reel } from "../../reels/models/Reel.js";
+import prisma from "../../../config/prisma.js";
 import { Portfolio } from "../models/Portfolio.js";
+import { Reel } from "../../reels/models/Reel.js";
 import { ProfileVisit } from "../models/ProfileVisit.js";
-import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
-import logger from "../../../utils/logger.js";
-import { createNotification } from "../../connectivity/controllers/notificationController.js";
 import { calculateProfileCompletion } from "../utils/profileUtils.js";
-import fs from "fs";
-import { getCache, setCache, delCache } from "../../../config/redisClient.js";
+import logger from "../../../utils/logger.js";
+import redis from "../../../config/redisClient.js";
 
-// ============ GET PROFILE ============
-export const getProfile = asyncHandler(async (req, res) => {
-  const userId = req.params.userId || req.user?._id || req.user?.id;
-  const viewerId = req.user?._id?.toString() || req.user?._id || req.user?.id;
-
-  // ── CACHE CHECK ──────────────────────────────────────────────────
-  const cacheKey = `profile:v2:${userId}`;
-  const cachedData = await getCache(cacheKey);
-  if (cachedData) {
-    // Background visit recording even on cache hit
-    if (viewerId && viewerId !== userId.toString()) {
-        ProfileVisit.recordVisit({
-            profileOwner: userId,
-            visitor: req.user._id,
-            visitorName: req.user.name,
-            visitorPicture: req.user.profilePicture,
-            visitorRole: req.user.role,
-            source: req.query.source || "direct",
-        }).catch(() => {});
-    }
-    return res.status(200).json(cachedData);
-  }
-
-  let profile = await Profile.findOne({ user: userId }, {
-      user: 1, about: 1, experience: 1, skills: 1, languages: 1, socialLinks: 1,
-      softwares: 1, hourlyRate: 1, availability: 1, responseTime: 1, location: 1,
-      profileViews: 1, certifications: 1, aiProfile: 1
-  })
-    .populate("user", "name email role profilePicture kycStatus followers following suvixId followSettings clientKycStatus availability aiProfile")
-    .lean();
-
-  if (!profile) {
-    throw new ApiError(404, "Profile not found");
-  }
-
-  // Record profile visit if viewer is different from profile owner
-  if (viewerId && viewerId !== userId.toString()) {
-    // Get viewer info for caching
-    const viewer = req.user;
-    const source = req.query.source || "direct";
-    const referrerGig = req.query.gig || null;
-
-    // Record detailed visit (async, don't wait)
-    ProfileVisit.recordVisit({
-      profileOwner: userId,
-      visitor: viewer._id || viewer.id,
-      visitorName: viewer.name || "Anonymous",
-      visitorPicture: viewer.profilePicture || "",
-      visitorRole: viewer.role || "guest",
-      source,
-      referrerGig,
-    }).catch(err => logger.warn("Failed to record profile visit:", err));
-
-    // Also increment the simple counter for backward compatibility
-    await Profile.findOneAndUpdate(
-      { user: userId },
-      { $inc: { profileViews: 1 } }
-    );
-  }
-
-  // Fetch Portfolios manually (since they might not be linked in profile array)
-  const portfolios = await Portfolio.find({ user: userId }, {
-      _id: 1, title: 1, description: 1, mediaUrl: 1, mediaType: 1, thumbnail: 1, uploadedAt: 1,
-      editedClip: 1, isAIEdited: 1
-  })
-    .sort({ uploadedAt: -1 })
-    .lean();
-
-  logger.info(`Fetching profile for user: ${userId}`);
-  logger.info(`Found ${portfolios.length} portfolios for user ${userId}`);
-  profile.portfolio = portfolios;
-
-  // Fetch Reel Stats
-  const reels = await Reel.find({ editor: userId, isPublished: true }, {
-      _id: 1, title: 1, mediaUrl: 1, mediaType: 1, viewsCount: 1, likesCount: 1, createdAt: 1
-  }).lean();
-  logger.info(`Found ${reels.length} published reels for user ${userId}`);
-  const totalReels = reels.length;
-  const totalViews = reels.reduce((acc, reel) => acc + (reel.viewsCount || 0), 0);
-  const totalLikes = reels.reduce((acc, reel) => acc + (reel.likesCount || 0), 0);
-
-  const responseData = {
-    success: true,
-    message: "Profile fetched successfully.",
-    profile,
-    reels, // Return reels array
-    stats: {
-      totalReels,
-      totalViews,
-      totalLikes,
+/**
+ * Helper to map profile for frontend compatibility
+ */
+const mapProfile = (user, profile, portfolioCount = 0) => {
+  if (!user) return null;
+  return {
+    ...user,
+    id: user.id,
+    portfolioCount,
+    profilePicture: user.profile_picture,
+    isVerified: user.is_verified,
+    kycStatus: user.kyc_status,
+    profileCompleted: user.profile_completed,
+    completionPercentage: user.profile_completion_percent,
+    skills: profile?.skills || [],
+    languages: profile?.languages || [],
+    experience: profile?.experience || "",
+    about: profile?.about || "",
+    location: {
+        country: profile?.location_country || "",
+        state: user.location?.state || "",
+        city: user.location?.city || ""
     },
+    socialLinks: {
+        instagram: profile?.social_instagram || "",
+        youtube: profile?.social_youtube || "",
+        twitter: profile?.social_twitter || "",
+        linkedin: profile?.social_linkedin || ""
+    },
+    ratingStats: profile?.rating_stats || { averageRating: 0, totalReviews: 0 },
   };
+};
 
-  // Set cache (TTL: 10 minutes - Production Grade)
-  await setCache(cacheKey, responseData, 600);
+/**
+ * Get Profile (Unified for me and others)
+ * GET /api/profile
+ * GET /api/profile/me
+ * GET /api/profile/:userId
+ */
+export const getProfile = asyncHandler(async (req, res) => {
+  const targetId = req.params.userId || req.user?.id;
 
-  res.status(200).json(responseData);
+  if (!targetId) {
+    throw new ApiError(400, "User ID is required");
+  }
+
+  const [user, profile, portfolioCount] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: targetId },
+      include: { location: true }
+    }),
+    prisma.userProfile.findUnique({ where: { user_id: targetId } }),
+    Portfolio.countDocuments({ user: targetId })
+  ]);
+
+  if (!user) throw new ApiError(404, "User not found");
+
+  // Record visit if looking at someone else's profile
+  if (req.user?.id && req.user.id !== user.id) {
+    recordProfileVisit(user.id, req.user.id).catch(err => logger.error("Visit log failed", err));
+  }
+
+  res.json({
+    success: true,
+    profile: mapProfile(user, profile, portfolioCount),
+  });
 });
 
-// ============ UPDATE PROFILE ============
+/**
+ * Update Profile
+ * PATCH /api/profile/update
+ */
 export const updateProfile = asyncHandler(async (req, res) => {
-  logger.info(`Incoming updateProfile request body for user ${req.user._id}: ${JSON.stringify(req.body)}`);
-  const { 
-    about, 
-    experience, 
-    contactEmail, 
-    country, 
-    skills, 
-    languages,
-    socialLinks,
-    softwares,
-    hourlyRate,
-    availability,
-    responseTime,
-    followSettings,
-    name, // username
-    aiProfile // AI Smart Matching data
-  } = req.body;
+  const userId = req.user.id;
+  const { name, bio, about, skills, languages, experience, location, socialLinks } = req.body;
 
-  const profile = await Profile.findOne({ user: req.user._id });
-  if (!profile) {
-    throw new ApiError(404, "Profile not found.");
-  }
-
-  // Update basic text fields with sanitization
-  if (about !== undefined) {
-    profile.about = about.trim().substring(0, 1000); // Limit to 1000 chars
-  }
-  if (experience !== undefined) {
-    profile.experience = experience.trim();
-  }
-  if (contactEmail !== undefined) {
-    profile.contactEmail = contactEmail.toLowerCase().trim();
-  }
-  if (country !== undefined) {
-    profile.location.country = country.trim().substring(0, 100);
-  }
-
-  // Update skills & languages with limits
-  if (skills !== undefined) {
-    const skillsArray = typeof skills === "string"
-      ? skills.split(",").map((s) => s.trim()).filter(Boolean)
-      : skills;
-    profile.skills = skillsArray.slice(0, 20); // Max 20 skills
-  }
-
-  if (languages !== undefined) {
-    const langsArray = typeof languages === "string"
-      ? languages.split(",").map((l) => l.trim()).filter(Boolean)
-      : languages;
-    profile.languages = langsArray.slice(0, 10); // Max 10 languages
-  }
-
-  // Update social links
-  if (socialLinks !== undefined) {
-    let parsedSocials = socialLinks;
-    if (typeof socialLinks === "string") {
-      try {
-        parsedSocials = JSON.parse(socialLinks);
-      } catch (e) {
-        logger.error("Failed to parse socialLinks JSON", e);
-      }
+  // Update User (PostgreSQL)
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      name: name !== undefined ? name : undefined,
+      bio: bio !== undefined ? bio : undefined,
     }
-    profile.socialLinks = {
-      instagram: parsedSocials.instagram?.trim() || '',
-      youtube: parsedSocials.youtube?.trim() || '',
-      tiktok: parsedSocials.tiktok?.trim() || '',
-      twitter: parsedSocials.twitter?.trim() || '',
-      linkedin: parsedSocials.linkedin?.trim() || '',
-      website: parsedSocials.website?.trim() || '',
-      behance: parsedSocials.behance?.trim() || '',
-      dribbble: parsedSocials.dribbble?.trim() || '',
-    };
-  }
+  });
 
-  // Update softwares
-  if (softwares !== undefined) {
-    logger.info(`Source softwares value: ${softwares} (Type: ${typeof softwares})`);
-    let softwaresArray = [];
-    
-    // Try JSON parsing first, then fallback to comma-separated
-    if (typeof softwares === "string" && softwares.trim() !== "") {
-      try {
-        const parsed = JSON.parse(softwares);
-        softwaresArray = Array.isArray(parsed) ? parsed : [parsed];
-        logger.info(`Successfully parsed softwares as JSON: ${JSON.stringify(softwaresArray)}`);
-      } catch (e) {
-        logger.info("Softwares not valid JSON, splitting by comma...");
-        softwaresArray = softwares.split(",").map(s => s.trim()).filter(Boolean);
-        logger.info(`Successfully parsed softwares as comma-separated: ${JSON.stringify(softwaresArray)}`);
-      }
-    } else if (Array.isArray(softwares)) {
-      softwaresArray = softwares;
-      logger.info(`Softwares already an array: ${JSON.stringify(softwaresArray)}`);
+  // Update Profile (PostgreSQL)
+  const updatedProfile = await prisma.userProfile.upsert({
+    where: { user_id: userId },
+    create: {
+      user_id: userId,
+      about: about || "",
+      skills: Array.isArray(skills) ? skills : [],
+      languages: Array.isArray(languages) ? languages : [],
+      experience: experience || "",
+      social_instagram: socialLinks?.instagram || "",
+      social_youtube: socialLinks?.youtube || "",
+      location_country: location?.country || ""
+    },
+    update: {
+      about: about !== undefined ? about : undefined,
+      skills: Array.isArray(skills) ? skills : undefined,
+      languages: Array.isArray(languages) ? languages : undefined,
+      experience: experience !== undefined ? experience : undefined,
+      social_instagram: socialLinks?.instagram !== undefined ? socialLinks.instagram : undefined,
+      social_youtube: socialLinks?.youtube !== undefined ? socialLinks.youtube : undefined,
+      location_country: location?.country !== undefined ? location.country : undefined
     }
+  });
 
-    profile.softwares = softwaresArray;
-    profile.markModified('softwares');
-    logger.info(`Set profile.softwares to: ${JSON.stringify(profile.softwares)}`);
-  }
-
-  // Update hourly rate
-  if (hourlyRate !== undefined) {
-    profile.hourlyRate = {
-      min: Number(hourlyRate.min) || 0,
-      max: Number(hourlyRate.max) || 0,
-      currency: hourlyRate.currency || 'INR',
-    };
-  }
-
-  // Update availability
-  if (availability !== undefined) {
-    profile.availability = availability;
-  }
-
-  // Update response time
-  if (responseTime !== undefined) {
-    profile.responseTime = responseTime;
-  }
-
-  // Update User fields (name/username, followSettings)
-  const userUpdate = {};
+  // Recalculate completion
+  const portfolioCount = await Portfolio.countDocuments({ user: userId });
+  const percent = calculateProfileCompletion(updatedUser, updatedProfile, portfolioCount);
   
-  if (name !== undefined && name.trim().toLowerCase() !== req.user.name.toLowerCase()) {
-    const username = name.trim();
-    // Check uniqueness
-    const existing = await User.findOne({ 
-      name: { $regex: new RegExp(`^${username}$`, "i") },
-      _id: { $ne: req.user._id }
-    });
-    if (existing) {
-      throw new ApiError(400, "This username is already taken.");
+  await prisma.user.update({
+    where: { id: userId },
+    data: { 
+        profile_completion_percent: percent,
+        profile_completed: percent >= 100
     }
-    userUpdate.name = username;
-    logger.info(`Updating username for user ${req.user._id} to ${username}`);
-  }
-
-  // Robust manualApproval extraction
-  let finalManualApproval = undefined;
-  if (followSettings) {
-    try {
-      const parsed = typeof followSettings === 'string' ? JSON.parse(followSettings) : followSettings;
-      finalManualApproval = parsed.manualApproval;
-    } catch (e) {
-      finalManualApproval = req.body['followSettings[manualApproval]'];
-    }
-  } else if (req.body['followSettings[manualApproval]'] !== undefined) {
-    finalManualApproval = req.body['followSettings[manualApproval]'];
-  }
-
-  if (finalManualApproval !== undefined) {
-    userUpdate['followSettings.manualApproval'] = String(finalManualApproval) === 'true';
-  }
-
-  // AI Profile Update
-  if (aiProfile !== undefined) {
-    let parsedAI = aiProfile;
-    if (typeof aiProfile === 'string') {
-      try {
-        parsedAI = JSON.parse(aiProfile);
-      } catch (e) {
-        logger.error("Failed to parse aiProfile JSON", e);
-      }
-    }
-    
-    // Convert softwareProficiency Map from plain object if needed
-    if (parsedAI.softwareProficiency && typeof parsedAI.softwareProficiency === 'object' && !Array.isArray(parsedAI.softwareProficiency)) {
-      userUpdate.aiProfile = {
-        ...parsedAI,
-        lastAiUpdate: new Date()
-      };
-    } else {
-      userUpdate.aiProfile = parsedAI;
-    }
-  }
-
-  if (Object.keys(userUpdate).length > 0) {
-    await User.findByIdAndUpdate(req.user._id, userUpdate);
-    logger.info(`Updated user fields for ${req.user._id}: ${JSON.stringify(userUpdate)}`);
-  }
-
-  // Handle certifications upload
-  if (req.files?.certifications?.length > 0) {
-    const uploadedCerts = [];
-
-    // Limit to 10 certifications total
-    const maxNewCerts = 10 - (profile.certifications?.length || 0);
-    const certsToUpload = req.files.certifications.slice(0, maxNewCerts);
-
-    for (const file of certsToUpload) {
-      // Validate file size (max 5MB per cert)
-      if (file.size > 5 * 1024 * 1024) {
-        logger.warn(`Certification file too large: ${file.originalname}`);
-        continue;
-      }
-
-      // Validate file type
-      const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-      if (!allowedTypes.includes(file.mimetype)) {
-        logger.warn(`Invalid certification file type: ${file.mimetype}`);
-        continue;
-      }
-
-      const result = await uploadToCloudinary(file.buffer, "certifications");
-      uploadedCerts.push({
-        title: file.originalname.split(".")[0].substring(0, 100),
-        image: result.url,
-      });
-    }
-
-    profile.certifications = [
-      ...(profile.certifications || []),
-      ...uploadedCerts,
-    ];
-  }
-
-  logger.info(`Saving profile with softwares: ${JSON.stringify(profile.softwares)}`);
-  await profile.save();
-
-  // Mark profile as completed if required fields are filled
-  const isComplete = profile.about && profile.skills?.length > 0 &&
-    profile.languages?.length > 0 && profile.location?.country;
-
-  await User.findByIdAndUpdate(req.user._id, {
-    profileCompleted: Boolean(isComplete)
   });
-
-  // Trigger Notification
-  await createNotification({
-    recipient: req.user._id,
-    type: "info",
-    title: "Profile Updated",
-    message: "Your profile has been successfully updated.",
-    link: `/public-profile/${req.user._id}`,
-  });
-
-  // Return populated profile
-  const populatedProfile = await Profile.findOne({ user: req.user._id })
-    .populate("user", "name email role profileCompleted profilePicture followSettings aiProfile")
-    .populate("portfolio");
-
-  logger.info(`Profile updated for user: ${req.user._id}`);
 
   // Invalidate cache
-  await delCache(`profile:v2:${req.user._id}`);
-
-  res.status(200).json({
-    success: true,
-    message: "Profile updated successfully.",
-    profile: populatedProfile,
-  });
-});
-
-// ============ GET PROFILE COMPLETION STATUS ============
-export const getProfileCompletionStatus = asyncHandler(async (req, res) => {
-  const userId = req.user?._id || req.user?.id;
-  
-  // Fetch user and profile data
-  const [user, profile] = await Promise.all([
-    User.findById(userId).lean(),
-    Profile.findOne({ user: userId }).lean(),
-  ]);
-  
-  // Get portfolio count
-  const portfolioCount = await Portfolio.countDocuments({ user: userId });
-  
-  // Define completion items with weights
-  // REQUIRED fields contribute to the 80% minimum
-  // OPTIONAL fields are nice-to-have for 100%
-  const items = [
-    {
-      id: "profilePicture",
-      label: "Profile Photo",
-      weight: 20,
-      required: true,
-      section: "basic",
-      complete: user?.profilePicture && !user.profilePicture.includes("flaticon"),
-    },
-    {
-      id: "about",
-      label: "Professional Bio",
-      weight: 20,
-      required: true,
-      section: "about",
-      complete: profile?.about && profile.about.length >= 10,
-    },
-    {
-      id: "skills",
-      label: "Skills (3+)",
-      weight: 20,
-      required: true,
-      section: "skills",
-      complete: profile?.skills && profile.skills.length >= 3,
-    },
-    {
-      id: "portfolio",
-      label: "Portfolio (2+)",
-      weight: 20,
-      required: true,
-      section: "portfolio",
-      complete: portfolioCount >= 2,
-    },
-    {
-      id: "softwares",
-      label: "Software & Tools",
-      weight: 20,
-      required: true,
-      section: "softwares",
-      complete: profile?.softwares && profile.softwares.length >= 1,
-    },
-    {
-      id: "experience",
-      label: "Experience",
-      weight: 0,
-      required: false,
-      section: "experience",
-      complete: profile?.experience && profile.experience.length > 0,
-    },
-    {
-      id: "languages",
-      label: "Languages",
-      weight: 0,
-      required: false,
-      section: "languages",
-      complete: profile?.languages && profile.languages.length >= 1,
-    },
-    {
-      id: "socialLinks",
-      label: "Social Links",
-      weight: 0,
-      required: false,
-      section: "social",
-      complete: (() => {
-        if (!profile?.socialLinks) return false;
-        const links = Object.values(profile.socialLinks).filter(v => v && v.trim().length > 0);
-        return links.length >= 1;
-      })(),
-    },
-    {
-      id: "kycVerified",
-      label: "Bank Account (KYC)",
-      weight: 0,
-      required: false,
-      section: "kyc",
-      complete: user?.kycStatus === "verified",
-    },
-    {
-      id: "hourlyRate",
-      label: "Hourly Rate",
-      weight: 0,
-      required: false,
-      section: "rate",
-      complete: profile?.hourlyRate && profile.hourlyRate.min > 0,
-    },
-  ];
-  
-  // Split into required and optional for the response
-  const requiredItems = items.filter(i => i.required);
-  const optionalItems = items.filter(i => !i.required);
-  const optionalComplete = optionalItems.filter(i => i.complete).length;
-
-  // Use shared utility for the single source-of-truth calculation
-  const percent = calculateProfileCompletion(user, profile, portfolioCount);
-  
-  // Update user's profileCompletionPercent in database
-  if (userId) {
-    await User.findByIdAndUpdate(userId, { 
-      profileCompletionPercent: percent,
-      profileCompleted: percent >= 100,
-    });
+  if (updatedUser.username) {
+    await redis.del(`profile:${updatedUser.username}`);
   }
-  
-  res.status(200).json({
+
+  res.json({
     success: true,
-    percent,
-    requiredCount: requiredItems.length,
-    requiredComplete: requiredItems.filter(i => i.complete).length,
-    optionalCount: optionalItems.length,
-    optionalComplete,
-    breakdown: items.map(item => ({
-      id: item.id,
-      label: item.label,
-      weight: item.required ? 20 : 0,
-      required: item.required,
-      section: item.section,
-      complete: item.complete,
-    })),
-    message: percent >= 100 
-      ? "Profile complete! You're all set to receive orders."
-      : `Complete ${requiredItems.filter(i => !i.complete).length} more required field(s)`,
+    message: "Profile updated successfully",
+    profile: mapProfile(updatedUser, updatedProfile, portfolioCount),
   });
 });
 
+/**
+ * Get Profile Completion Status
+ * GET /api/profile/completion-status
+ */
+export const getProfileCompletionStatus = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+  
+    const [user, profile, portfolioCount] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId } }),
+      prisma.userProfile.findUnique({ where: { user_id: userId } }),
+      Portfolio.countDocuments({ user: userId })
+    ]);
+  
+    if (!user) throw new ApiError(404, "User not found");
+  
+    const percentage = calculateProfileCompletion(user, profile, portfolioCount);
+  
+    res.json({
+      success: true,
+      completion: {
+        percentage,
+        isCompleted: percentage >= 100
+      }
+    });
+  });
 
+/**
+ * Record Profile Visit (MongoDB)
+ */
+async function recordProfileVisit(ownerId, visitorId) {
+    if (!ownerId) return;
+    if (visitorId && visitorId === ownerId) return;
 
+    let visitorData = null;
+    if (visitorId) {
+        const vUser = await prisma.user.findUnique({
+            where: { id: visitorId },
+            select: { name: true, profile_picture: true, role: true }
+        });
+        if (vUser) {
+            visitorData = {
+                visitor: visitorId,
+                visitorName: vUser.name,
+                visitorPicture: vUser.profile_picture,
+                visitorRole: vUser.role
+            };
+        }
+    }
 
+    await ProfileVisit.recordVisit({
+        profileOwner: ownerId,
+        ...visitorData,
+        source: "direct"
+    });
+}
 
+/**
+ * Get Profile Stats
+ * GET /api/profile/stats
+ */
+export const getProfileStats = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
 
+  const [visitStats, portfolioCount, reelsCount] = await Promise.all([
+    ProfileVisit.getStats(userId),
+    Portfolio.countDocuments({ user: userId }),
+    Reel.countDocuments({ editor: userId })
+  ]);
 
+  res.json({
+    success: true,
+    stats: {
+        ...visitStats,
+        portfolioCount,
+        reelsCount
+    }
+  });
+});
+
+export default { getProfile, updateProfile, getProfileStats, getProfileCompletionStatus };

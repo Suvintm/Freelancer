@@ -1,5 +1,5 @@
 // kycCheckMiddleware.js - Middleware to verify client KYC before sensitive operations
-import User from "../models/User.js";
+import prisma from "../config/prisma.js";
 import { ApiError } from "./errorHandler.js";
 
 /**
@@ -13,20 +13,29 @@ export const requireClientKYC = async (req, res, next) => {
       return next();
     }
 
-    // Get fresh user data with KYC status
-    const user = await User.findById(req.user._id).select("clientKycStatus");
+    // Get fresh user data with KYC status from PostgreSQL
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id || req.user._id },
+      select: {
+        kyc_status: true,
+        role: true
+      }
+    });
 
     if (!user) {
       throw new ApiError(401, "User not found");
     }
 
+    // Map Prisma kyc_status to expected clientKycStatus
+    const kycStatus = user.kyc_status;
+
     // Check if KYC is verified
-    if (user.clientKycStatus !== "verified") {
+    if (kycStatus !== "verified") {
       return res.status(403).json({
         success: false,
         kycRequired: true,
-        kycStatus: user.clientKycStatus,
-        message: getKYCMessage(user.clientKycStatus),
+        kycStatus: kycStatus,
+        message: getKYCMessage(kycStatus),
         redirectTo: "/client-kyc",
       });
     }
@@ -53,11 +62,16 @@ export const checkClientKYC = async (req, res, next) => {
       return next();
     }
 
-    const user = await User.findById(req.user._id).select("clientKycStatus walletBalance");
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id || req.user._id },
+      include: {
+        wallet: true
+      }
+    });
     
-    req.kycVerified = user?.clientKycStatus === "verified";
-    req.kycStatus = user?.clientKycStatus || "not_started";
-    req.walletBalance = user?.walletBalance || 0;
+    req.kycVerified = user?.kyc_status === "verified";
+    req.kycStatus = user?.kyc_status || "not_started";
+    req.walletBalance = user?.wallet?.wallet_balance || 0;
 
     next();
   } catch (err) {

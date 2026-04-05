@@ -1,122 +1,112 @@
-// SiteSettings.js - Singleton for global platform settings
-import mongoose from "mongoose";
+// SiteSettings.js - Managed as singleton in PostgreSQL via Prisma
+import prisma from "../../../config/prisma.js";
+import logger from "../../../utils/logger.js";
 
-// Simple in-memory cache to avoid DB hits on every request
-// In production with multiple instances, this would ideally use Redis, 
-// but for a singleton with manual invalidation, this is highly efficient.
+// Multi-tier caching
 let settingsCache = null;
 let cacheTimestamp = 0;
-const CACHE_TTL = 30000; // 30 seconds cache
-
-const siteSettingsSchema = new mongoose.Schema(
-  {
-    key: {
-      type: String,
-      unique: true,
-      default: "global",
-    },
-    // Global toggle for automated KYC verification
-    autoKycEnabled: {
-      type: Boolean,
-      default: false,
-    },
-    // Global toggle to show/hide Suvix internal ad slots
-    showSuvixAds: {
-      type: Boolean,
-      default: true,
-    },
-    // Platform Fee percentage (default 10%)
-    platformFee: {
-      type: Number,
-      default: 10,
-    },
-    // Minimum amount an editor can withdraw
-    minPayoutAmount: {
-      type: Number,
-      default: 1000,
-    },
-    // Maintenance mode toggle
-    maintenanceMode: {
-      type: Boolean,
-      default: false,
-    },
-    maintenanceMessage: {
-      type: String,
-      default: "SuviX is currently undergoing maintenance. We'll be back shortly!",
-    },
-    maintenanceEndTime: {
-      type: Date,
-    },
-    // Refund policies
-    refundPolicy: {
-      beforeAcceptedPercent: { type: Number, default: 100 },
-      afterAcceptedNoWorkPercent: { type: Number, default: 100 },
-      workInProgressLowPercent: { type: Number, default: 75 },
-      workInProgressHighPercent: { type: Number, default: 50 },
-      afterDeliveryPercent: { type: Number, default: 0 },
-    },
-    // Global banner/broadcast
-    systemBroadcast: {
-      message: { type: String, default: "" },
-      isActive: { type: Boolean, default: false },
-      type: { type: String, enum: ["info", "warning", "success", "error"], default: "info" },
-    },
-  },
-  { timestamps: true }
-);
+const CACHE_TTL = 30000; // 30 seconds local in-memory cache
 
 /**
- * Static method to get or create settings with caching
- * This allows calling SiteSettings.getSettings() anywhere in the app.
+ * SiteSettings DAO (PostgreSQL)
+ * Provides singleton access to global platform configuration.
  */
-siteSettingsSchema.statics.getSettings = async function() {
-  const now = Date.now();
-  
-  // Return from cache if still valid
-  if (settingsCache && (now - cacheTimestamp < CACHE_TTL)) {
-    return settingsCache;
-  }
-
-  try {
-    let settings = await this.findOne({ key: "global" });
-    if (!settings) {
-      settings = await this.create({ key: "global" });
+export class SiteSettings {
+  /**
+   * Get or Create Global Settings
+   * Mimics Mongoose static method for backward compatibility.
+   */
+  static async getSettings() {
+    const now = Date.now();
+    
+    if (settingsCache && (now - cacheTimestamp < CACHE_TTL)) {
+      return settingsCache;
     }
-    
-    // Update cache
-    settingsCache = settings;
-    cacheTimestamp = now;
-    
-    return settings;
-  } catch (error) {
-    console.error("Error fetching SiteSettings:", error);
-    // Fallback to defaults to prevent app crash if DB is slow
-    return {
-      platformFee: 10,
-      maintenanceMode: false,
-      showSuvixAds: true,
-      minPayoutAmount: 1000,
-    };
+
+    try {
+      let settings = await prisma.siteSettings.findUnique({
+        where: { key: "global" }
+      });
+
+      if (!settings) {
+        // Initialize if first launch
+        settings = await prisma.siteSettings.create({
+          data: { key: "global" }
+        });
+      }
+
+      // Map to frontend-friendly snake_case to camelCase if needed,
+      // but here we match the previous Mongoose structure for compatibility.
+      const mapped = {
+        key: settings.key,
+        autoKycEnabled: settings.auto_kyc_enabled,
+        showSuvixAds: settings.show_suvix_ads,
+        platformFee: Number(settings.platform_fee),
+        minPayoutAmount: Number(settings.min_payout_amount),
+        maintenanceMode: settings.maintenance_mode,
+        maintenanceMessage: settings.maintenance_message,
+        maintenanceEndTime: settings.maintenance_end_time,
+        refundPolicy: {
+            beforeAcceptedPercent: Number(settings.refund_before_accepted_pct),
+            afterAcceptedNoWorkPercent: Number(settings.refund_after_no_work_pct),
+            workInProgressLowPercent: Number(settings.refund_wip_low_pct),
+            workInProgressHighPercent: Number(settings.refund_wip_high_pct),
+            afterDeliveryPercent: Number(settings.refund_after_delivery_pct)
+        },
+        systemBroadcast: {
+            message: settings.broadcast_message,
+            isActive: settings.broadcast_active,
+            type: settings.broadcast_type
+        }
+      };
+
+      settingsCache = mapped;
+      cacheTimestamp = now;
+      return mapped;
+    } catch (error) {
+      logger.error("Error fetching SiteSettings from PostgreSQL:", error);
+      return {
+        platformFee: 10,
+        maintenanceMode: false,
+        showSuvixAds: true,
+        minPayoutAmount: 1000
+      };
+    }
   }
-};
 
-/**
- * Static method to invalidate cache when settings are updated
- */
-siteSettingsSchema.statics.clearCache = function() {
-  settingsCache = null;
-  cacheTimestamp = 0;
-};
+  /**
+   * Update Site Settings
+   */
+  static async updateSettings(data) {
+    const updated = await prisma.siteSettings.update({
+        where: { key: "global" },
+        data: {
+            auto_kyc_enabled: data.autoKycEnabled,
+            show_suvix_ads: data.showSuvixAds,
+            platform_fee: data.platformFee,
+            min_payout_amount: data.minPayoutAmount,
+            maintenance_mode: data.maintenanceMode,
+            maintenance_message: data.maintenanceMessage,
+            maintenance_end_time: data.maintenanceEndTime,
+            broadcast_message: data.systemBroadcast?.message,
+            broadcast_active: data.systemBroadcast?.isActive,
+            broadcast_type: data.systemBroadcast?.type
+        }
+    });
 
-// Invalidate cache on save
-siteSettingsSchema.post('save', function() {
-  settingsCache = null;
-  cacheTimestamp = 0;
-});
+    this.clearCache();
+    return updated;
+  }
 
-export const SiteSettings = mongoose.model("SiteSettings", siteSettingsSchema);
+  static clearCache() {
+    settingsCache = null;
+    cacheTimestamp = 0;
+  }
+}
 
 // Export utility wrapper for convenience
 export const getSettings = async () => {
   return await SiteSettings.getSettings();
 };
+
+export default SiteSettings;

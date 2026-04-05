@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import User from "../models/User.js";
+import prisma from "../config/prisma.js";
 import { ApiError } from "./errorHandler.js";
 import logger from "../utils/logger.js";
 import { getCache, setCache, deleteCache, CacheKey, TTL } from "../utils/cache.js";
@@ -44,9 +44,30 @@ const protect = async (req, res, next) => {
       // Cache hit — parse if string (Upstash may return object or string)
       if (typeof user === "string") user = JSON.parse(user);
     } else {
-      // Cache miss — fetch from MongoDB and cache
-      user = await User.findById(decoded.id).select("-password").lean();
-      if (user) await setCache(cacheKey, user, TTL.USER_PROFILE);
+      // Cache miss — fetch from PostgreSQL via Prisma and cache
+      user = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          is_banned: true,
+          ban_reason: true,
+          profile_picture: true,
+          // Add other needed fields but exclude password_hash
+        }
+      });
+      
+      if (user) {
+        // Map Prisma snake_case fields to camelCase for frontend compatibility
+        user._id = user.id; // Compatibility with Mongoose _id
+        user.isBanned = user.is_banned;
+        user.banReason = user.ban_reason;
+        user.profilePicture = user.profile_picture;
+        
+        await setCache(cacheKey, user, TTL.USER_PROFILE);
+      }
     }
 
     if (!user) {
@@ -98,8 +119,19 @@ export const optionalAuth = async (req, res, next) => {
 
     if (token) {
       const decoded = jwt.verify(token, JWT_SECRET);
-      const user = await User.findById(decoded.id).select("-password");
-      if (user && !user.isBanned) {
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: { 
+          id: true, 
+          name: true, 
+          email: true, 
+          role: true, 
+          is_banned: true 
+        }
+      });
+      
+      if (user && !user.is_banned) {
+        user._id = user.id; // Compatibility mapping
         req.user = user;
       }
     }

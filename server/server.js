@@ -1,7 +1,9 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import "./config/env.js";
 import express from "express";
 import mongoose from "mongoose";
-import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
 import mongoSanitize from "@exortek/express-mongo-sanitize";
@@ -9,9 +11,8 @@ import hpp from "hpp";
 import compression from "compression";
 import session from "express-session";
 import { RedisStore } from "connect-redis";
+import { SiteSettings } from "./modules/system/models/SiteSettings.js";
 
-// IMPORTANT: Load env variables FIRST before any other imports that use them
-dotenv.config();
 
 // Utils
 import logger from "./utils/logger.js";
@@ -60,11 +61,16 @@ import locationRoutes from "./modules/user/routes/locationRoutes.js";
 import jobRoutes from "./modules/jobs/routes/jobRoutes.js";
 import walletRoutes from "./modules/payments/routes/walletRoutes.js";
 import withdrawalRoutes from "./modules/payments/routes/withdrawalRoutes.js";
+import aiRoutes from "./modules/aiworkspace/routes/aiRoutes.js";
 import adRequestRoutes from "./modules/ads/routes/adRequestRoutes.js";
 import adPreviewRoutes from "./modules/ads/routes/adPreviewRoutes.js";
-import aiRoutes from "./modules/aiworkspace/routes/aiRoutes.js";
 import finalOutputRoutes from "./modules/marketplace/routes/finalOutputRoutes.js";
+
+// Validation logic and other top-level code follows...
  
+// PostgreSQL Support
+import { connectPostgres } from "./config/prisma.js";
+import prisma from "./config/prisma.js";
 // Scheduled Jobs
 import { startScheduledJobs } from "./jobs/scheduledJobs.js";
 
@@ -292,6 +298,11 @@ app.get("/api/health", (req, res) => {
     message: "Server is running",
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
+    database: {
+      mongodb: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+      postgres: "initialized" // We'll add a live check in a specialized route
+    }
+
   });
 });
 
@@ -337,8 +348,8 @@ app.use("/api/badges", badgeRoutes);
 app.use("/api/final-output", finalOutputRoutes);
 
 // Public maintenance status check (no auth required)
-import { SiteSettings } from "./modules/system/models/SiteSettings.js";
 app.get("/api/maintenance-status", async (req, res) => {
+
   try {
     const settings = await SiteSettings.getSettings();
     res.status(200).json({
@@ -380,21 +391,6 @@ app.use(errorHandler);
 // ============ DATABASE & SERVER ============
 
 const PORT = process.env.PORT || 5000;
-
-const gracefulShutdown = async (signal) => {
-  logger.info(`${signal} received. Shutting down gracefully...`);
-  try {
-    await mongoose.connection.close();
-    logger.info("MongoDB connection closed.");
-    process.exit(0);
-  } catch (error) {
-    logger.error("Error during shutdown:", error);
-    process.exit(1);
-  }
-};
-
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
 const connectDB = async (retries = 5) => {
   try {
@@ -451,6 +447,15 @@ const startServer = async () => {
     process.exit(1);
   }
 
+  // Connect to PostgreSQL (Neon)
+  const pgConnected = await connectPostgres();
+  if (pgConnected) {
+    logger.info("🐘 PostgreSQL connectivity established");
+  } else {
+    logger.warn("⚠️ PostgreSQL connection failed, but proceeding with MongoDB only");
+  }
+
+
   // Start scheduled jobs (auto-cancel expired orders, etc.)
   logger.info("⏰ Starting scheduled jobs...");
   startScheduledJobs();
@@ -468,5 +473,44 @@ const startServer = async () => {
 if (process.env.NODE_ENV !== "test") {
   startServer();
 }
+
+// ============ GRACEFUL SHUTDOWN ============
+
+const gracefulShutdown = async (signal) => {
+  logger.info(`\n[${signal}] Received. Starting graceful shutdown...`);
+  
+  // Set a timeout to force exit if cleanup takes too long (e.g. 5 seconds)
+  // This is critical since Redis limit hits can cause hanging
+  const forceExitTimeout = setTimeout(() => {
+    logger.error("Forcefully exiting after 5s timeout.");
+    process.exit(1);
+  }, 5000);
+
+  try {
+    if (server.listening) {
+      server.close(() => {
+        logger.info("HTTP server closed.");
+      });
+    }
+
+    await mongoose.connection.close();
+    logger.info("MongoDB connection closed.");
+
+    if (prisma) {
+      await prisma.$disconnect();
+      logger.info("PostgreSQL connection closed.");
+    }
+
+    clearTimeout(forceExitTimeout);
+    logger.info("Graceful shutdown complete. ✅");
+    process.exit(0);
+  } catch (err) {
+    logger.error("Error during graceful shutdown:", err);
+    process.exit(1);
+  }
+};
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
 export { app, server };

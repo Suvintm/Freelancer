@@ -3,8 +3,7 @@ import mongoose from "mongoose";
  const notificationSchema = new mongoose.Schema(
     {
         recipient: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
+            type: String, // Storing UUID from PostgreSQL
             required: true,
             index: true,
         },
@@ -22,8 +21,7 @@ import mongoose from "mongoose";
             default: "info",
         },
         sender: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
+            type: String, // Storing UUID from PostgreSQL
             default: null,
         },
         metaData: {

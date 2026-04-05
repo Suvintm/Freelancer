@@ -1,6 +1,6 @@
 // server/utils/fcmService.js
 import { getMessaging } from "firebase-admin/messaging";
-import User from "../models/User.js";
+import prisma from "../config/prisma.js";
 import logger from "./logger.js";
 import { initFirebaseAdmin } from "./firebaseAdmin.js";
 
@@ -14,8 +14,12 @@ export const sendPushNotification = async (userId, fcmPayload) => {
     const app = initFirebaseAdmin();
     if (!app) return;
 
-    const user = await User.findById(userId).select("fcmTokens");
-    if (!user || !user.fcmTokens || user.fcmTokens.length === 0) return;
+    const fcmTokens = await prisma.userFcmToken.findMany({
+      where: { user_id: userId.toString() },
+      select: { token: true }
+    });
+
+    if (!fcmTokens || fcmTokens.length === 0) return;
 
     const messaging = getMessaging();
 
@@ -66,7 +70,7 @@ export const sendPushNotification = async (userId, fcmPayload) => {
     };
 
     // ── Send to all registered tokens ─────────────────────────────────────────
-    const sendPromises = user.fcmTokens.map(token =>
+    const sendPromises = fcmTokens.map(({ token }) =>
       messaging.send({ ...message, token })
         .catch(async (err) => {
           // Clean up dead tokens automatically
@@ -74,7 +78,9 @@ export const sendPushNotification = async (userId, fcmPayload) => {
             err.code === 'messaging/registration-token-not-registered' ||
             err.code === 'messaging/invalid-registration-token'
           ) {
-            await User.findByIdAndUpdate(userId, { $pull: { fcmTokens: token } });
+            await prisma.userFcmToken.delete({
+              where: { token: token }
+            }).catch(() => {}); // Ignore if already deleted
             logger.info(`Removed stale FCM token for user ${userId}`);
           } else {
             logger.error(`FCM send error for user ${userId} token ...${token.slice(-6)}: ${err.message}`);

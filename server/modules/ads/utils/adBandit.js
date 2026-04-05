@@ -72,7 +72,7 @@ export const rankAdsWithBandit = async (ads, location) => {
         const totalViews = Object.values(allViews).reduce((sum, v) => sum + parseInt(v), 0);
 
         const adsWithScores = ads.map(ad => {
-            const adId = ad._id.toString();
+            const adId = ad.id; // Prisma uses 'id' instead of '_id'
             const v = parseInt(allViews[adId] || 0);
             const c = parseInt(allClicks[adId] || 0);
             

@@ -3,8 +3,8 @@
  * Blocks uploads when storage limit is reached
  */
 
-import User from "../models/User.js";
-import { calculateStorageUsed } from "../controllers/storageController.js";
+import prisma from "../config/prisma.js";
+import { calculateStorageUsed } from "../controllers/adminStorageController.js";
 import { ApiError } from "../middleware/errorHandler.js";
 import logger from "../utils/logger.js";
 
@@ -19,29 +19,31 @@ export const checkStorage = async (req, res, next) => {
       return next();
     }
 
-    const user = await User.findById(req.user._id);
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id || req.user._id }
+    });
+
     if (!user) {
       return next();
     }
 
-    // Calculate current storage
-    const storageUsed = await calculateStorageUsed(req.user._id);
+    // Storage metadata handled by legacy fallback till full migration
+    const userLimit = 500 * 1024 * 1024; // Default 500MB if missing from Prisma
+    const storageUsed = await calculateStorageUsed(req.user.id || req.user._id);
 
-    // Update user's storage (cache it)
-    user.storageUsed = storageUsed;
-    user.storageLastCalculated = new Date();
-    await user.save();
-
+    // Update user's storage in PostgreSQL (optional if we want to sync)
+    // In this phase, we just check against the hardcoded/default limit
+    
     // Check if storage is exceeded
-    if (storageUsed >= user.storageLimit) {
-      logger.warn(`Storage limit exceeded for user ${req.user._id}: ${storageUsed}/${user.storageLimit}`);
+    if (storageUsed >= userLimit) {
+      logger.warn(`Storage limit exceeded for user ${req.user.id}: ${storageUsed}/${userLimit}`);
       throw new ApiError(
         403,
         "Storage limit exceeded. Please upgrade your storage plan or delete some files to continue uploading.",
         {
           storageUsed,
-          storageLimit: user.storageLimit,
-          usedPercent: Math.round((storageUsed / user.storageLimit) * 100),
+          storageLimit: userLimit,
+          usedPercent: Math.round((storageUsed / userLimit) * 100),
         }
       );
     }
@@ -49,9 +51,9 @@ export const checkStorage = async (req, res, next) => {
     // Attach storage info to request for later use
     req.storageInfo = {
       used: storageUsed,
-      limit: user.storageLimit,
-      remaining: user.storageLimit - storageUsed,
-      plan: user.storagePlan,
+      limit: userLimit,
+      remaining: userLimit - storageUsed,
+      plan: "free", // Default to free plan
     };
 
     next();

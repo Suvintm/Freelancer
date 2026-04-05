@@ -27,25 +27,21 @@ const orderSchema = new mongoose.Schema(
 
     // Reference to gig (if order is from gig)
     gig: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Gig",
+      type: String,
     },
 
     // Reference to brief (if order is from Open Briefs)
     brief: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Brief",
+      type: String,
     },
 
     // Parties involved
     client: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String,
       required: true,
     },
     editor: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String,
       required: true,
     },
 
@@ -292,8 +288,7 @@ const orderSchema = new mongoose.Schema(
       originalDeadline: Date,
       newDeadline: Date,
       extendedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        type: String,
       },
       extendedAt: Date,
       extraDays: Number,
@@ -313,8 +308,7 @@ const orderSchema = new mongoose.Schema(
     // 📌 Pinned status (user-specific)
     pinnedBy: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        type: String,
       },
     ],
 
@@ -322,8 +316,7 @@ const orderSchema = new mongoose.Schema(
     adminNotes: [{
       text: { type: String, required: true },
       addedBy: { 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: "AdminMember",
+        type: String, 
         required: true
       },
       addedAt: { type: Date, default: Date.now }

@@ -3,8 +3,7 @@ import mongoose from "mongoose";
 const portfolioSchema = new mongoose.Schema(
   {
     user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String,
       required: true,
       index: true,
     },
@@ -42,8 +41,7 @@ const portfolioSchema = new mongoose.Schema(
       trim: true
     },
     taggedUsers: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User"
+      type: String,
     }],
     isAIContent: {
       type: Boolean,

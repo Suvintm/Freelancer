@@ -4,150 +4,114 @@ import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 import logger from "../../../utils/logger.js";
 import { createNotification } from "../../connectivity/controllers/notificationController.js";
+import { attachUserMetadata } from "../../../utils/hybridJoin.js";
 
 // Max file sizes
-const MAX_VIDEO_SIZE = 150 * 1024 * 1024; // 100MB for videos
-const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 10MB for images
-const MAX_ORIGINAL_FILES = 5; // Max 5 original clips
+const MAX_VIDEO_SIZE = 150 * 1024 * 1024;
+const MAX_IMAGE_SIZE = 20 * 1024 * 1024;
+const MAX_ORIGINAL_FILES = 5;
 
 // Allowed file types
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm", "video/x-msvideo"];
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
-// ── Production Media Pipeline (Phase 30.2) ──────────────────────────────────
 const HLS_EAGER_TRANSFORMS = [
-  { streaming_profile: "auto", format: "m3u8" }, // Adaptive bitrate manifest
-  { width: 600, aspect_ratio: "9:16", crop: "fill", format: "jpg" } // Static grid thumbnail
+  { streaming_profile: "full_hd", format: "m3u8" },
+  { width: 360, height: 640, crop: "fill", gravity: "auto", format: "jpg" }
 ];
 
-// Helper to validate file
-const validateFile = (file, type) => {
+const validateFile = (file) => {
   if (!file) return true;
-
   const isVideo = ALLOWED_VIDEO_TYPES.includes(file.mimetype);
   const isImage = ALLOWED_IMAGE_TYPES.includes(file.mimetype);
 
   if (!isVideo && !isImage) {
-    throw new ApiError(400, `Invalid file type: ${file.mimetype}. Allowed: MP4, MOV, WebM, AVI, JPEG, PNG, WebP, GIF`);
+    throw new ApiError(400, "Invalid file type");
   }
-
   if (isVideo && file.size > MAX_VIDEO_SIZE) {
-    throw new ApiError(400, `Video file must be less than 100MB. Got: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+    throw new ApiError(400, "Video too large (max 150MB)");
   }
-
   if (isImage && file.size > MAX_IMAGE_SIZE) {
-    throw new ApiError(400, `Image file must be less than 10MB`);
+    throw new ApiError(400, "Image too large (max 10MB)");
   }
-
   return true;
 };
 
-// ============ CREATE PORTFOLIO ============
+// Helper for consistency
+const mapPortfolio = (p) => {
+  if (!p) return null;
+  const data = p.toObject ? p.toObject({ virtuals: true }) : p;
+  return {
+    ...data,
+    id: data._id,
+    userId: data.user,
+    uploadedAt: data.uploadedAt,
+    mediaUrl: data.hlsUrl || data.originalClips?.[0] || data.originalClip || "",
+    thumbnail: data.thumbnailUrl,
+    userInfo: data.userInfo || null
+  };
+};
+
+/**
+ * Create Portfolio (MongoDB)
+ * POST /api/portfolio
+ */
 export const createPortfolio = asyncHandler(async (req, res) => {
   const { title, description, hashtags, location, taggedUsers, isAIContent } = req.body;
+  const userId = req.user.id; // PostgreSQL UUID
   let originalClips = [];
   let editedClip = "";
-  let totalSizeBytes = 0; // Track actual file sizes for storage calculation
+  let totalSizeBytes = 0;
 
-  // Parse JSON strings if necessary (from FormData)
-  let parsedHashtags = [];
-  if (hashtags) {
-    try {
-      parsedHashtags = Array.isArray(hashtags) ? hashtags : JSON.parse(hashtags);
-    } catch (e) {
-      parsedHashtags = String(hashtags).split(",").map(h => h.trim()).filter(h => h);
-    }
-  }
-
-  let parsedTaggedUsers = [];
-  if (taggedUsers) {
-    try {
-      parsedTaggedUsers = Array.isArray(taggedUsers) ? taggedUsers : JSON.parse(taggedUsers);
-    } catch (e) {
-      if (typeof taggedUsers === "string" && taggedUsers.length > 0) {
-        parsedTaggedUsers = [taggedUsers];
-      }
-    }
-  }
-
-  // Handle multiple original clips
   if (req.files?.originalClip) {
-    const files = Array.isArray(req.files.originalClip)
-      ? req.files.originalClip
-      : [req.files.originalClip];
-
-    if (files.length > MAX_ORIGINAL_FILES) {
-      throw new ApiError(400, `Maximum ${MAX_ORIGINAL_FILES} original files allowed`);
-    }
-
-    // Upload each file and track sizes
+    const files = Array.isArray(req.files.originalClip) ? req.files.originalClip : [req.files.originalClip];
+    if (files.length > MAX_ORIGINAL_FILES) throw new ApiError(400, `Max ${MAX_ORIGINAL_FILES} files`);
     for (const file of files) {
-      validateFile(file, "video");
+      validateFile(file);
       const result = await uploadToCloudinary(file.buffer, "portfolio");
       originalClips.push(result.url);
       totalSizeBytes += file.size || 0;
     }
   }
 
-  // Validate and upload edited clip (single file) with Eager HLS
   let cloudinaryPublicId = "";
   let hlsUrl = "";
   let thumbnailUrl = "";
-  let duration = 0;
   let processingStatus = "pending";
 
   if (req.files?.editedClip?.[0]) {
     const file = req.files.editedClip[0];
-    validateFile(file, "video");
-    
-    // Trigger Eager HLS transcoding + Thumbnail generation
+    validateFile(file);
     const result = await uploadToCloudinary(file.buffer, "portfolio", {
       eager: HLS_EAGER_TRANSFORMS,
-      eager_async: true,
-      eager_notification_url: `${process.env.BACKEND_URL}/api/reels/webhooks/cloudinary`
+      eager_async: true
     });
-    
     editedClip = result.url;
     cloudinaryPublicId = result.public_id;
     totalSizeBytes += file.size || 0;
-    
-    // Initial URLs (may be updated by webhook later, but we can predictably guess them)
-    // Cloudinary predictable paths: .../upload/sp_auto/[publicId].m3u8
-    hlsUrl = editedClip.replace("/upload/", "/upload/sp_auto/").replace(/\.[^.]+$/, ".m3u8");
-    thumbnailUrl = editedClip.replace("/upload/", "/upload/w_600,ar_9:16,c_fill/").replace(/\.[^.]+$/, ".jpg");
+    hlsUrl = editedClip.replace("/upload/", "/upload/sp_full_hd/").replace(/\.[^.]+$/, ".m3u8");
+    thumbnailUrl = editedClip.replace("/upload/", "/upload/w_360,h_640,c_fill,g_auto/").replace(/\.[^.]+$/, ".jpg");
     processingStatus = "processing";
   }
 
-  // Create portfolio with actual file size and production metadata
   const portfolio = await Portfolio.create({
-    user: req.user._id,
-    title: title?.trim().substring(0, 100) || "",
-    description: description?.trim().substring(0, 500) || "",
-    originalClip: originalClips.length > 0 ? originalClips[0] : "", // First clip for backward compatibility
-    originalClips: originalClips, // All clips in array
+    user: userId,
+    title: title?.trim() || "",
+    description: description?.trim() || "",
+    originalClips,
     editedClip,
     hlsUrl,
     thumbnailUrl,
-    duration,
     processingStatus,
     cloudinaryPublicId,
-    hashtags: parsedHashtags,
+    hashtags: Array.isArray(hashtags) ? hashtags : (typeof hashtags === 'string' ? hashtags.split(',') : []),
     location: location || "",
-    taggedUsers: parsedTaggedUsers,
     isAIContent: isAIContent === "true" || isAIContent === true,
-    totalSizeBytes, // Store actual size for accurate storage calculation
+    totalSizeBytes
   });
 
-  const populatedPortfolio = await Portfolio.findById(portfolio._id).populate(
-    "user",
-    "name email role profilePicture profileCompleted"
-  );
-
-  logger.info(`Portfolio created: ${portfolio._id} by user: ${req.user._id}, originalClips: ${originalClips.length}`);
-
-  // Trigger Notification
   await createNotification({
-    recipient: req.user._id,
+    recipient: userId,
     type: "success",
     title: "Portfolio Added",
     message: `Your portfolio "${portfolio.title}" has been added successfully.`,
@@ -157,160 +121,89 @@ export const createPortfolio = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     message: "Portfolio created successfully.",
-    portfolio: populatedPortfolio,
+    portfolio: mapPortfolio(portfolio),
   });
 });
 
-// ============ GET ALL PORTFOLIOS (for current user) ============
+/**
+ * Get All Portfolios (MongoDB)
+ * GET /api/portfolio
+ */
 export const getPortfolios = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
   const page = parseInt(req.query.page) || 1;
   const limit = Math.min(parseInt(req.query.limit) || 10, 50);
   const skip = (page - 1) * limit;
 
   const [portfolios, total] = await Promise.all([
-    Portfolio.find({ user: req.user._id })
-      .populate("user", "name email role profilePicture profileCompleted")
-      .sort({ uploadedAt: -1 })
-      .skip(skip)
-      .limit(limit),
-    Portfolio.countDocuments({ user: req.user._id }),
+    Portfolio.find({ user: userId }).sort({ uploadedAt: -1 }).skip(skip).limit(limit).lean(),
+    Portfolio.countDocuments({ user: userId })
   ]);
 
+  const portfoliosWithUser = await attachUserMetadata(portfolios, 'user');
+
   res.status(200).json({
     success: true,
-    portfolios,
-    pagination: {
-      page,
-      limit,
-      total,
-      pages: Math.ceil(total / limit),
-    },
+    portfolios: portfoliosWithUser.map(mapPortfolio),
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) }
   });
 });
 
-// ============ GET SINGLE PORTFOLIO ============
+/**
+ * Get Single Portfolio (MongoDB)
+ * GET /api/portfolio/:id
+ */
 export const getPortfolio = asyncHandler(async (req, res) => {
-  const portfolio = await Portfolio.findById(req.params.id).populate(
-    "user",
-    "name email role profilePicture profileCompleted"
-  );
+  const portfolio = await Portfolio.findById(req.params.id).lean();
+  if (!portfolio) throw new ApiError(404, "Portfolio not found");
 
-  if (!portfolio) {
-    throw new ApiError(404, "Portfolio not found");
-  }
+  const [portfolioWithUser] = await attachUserMetadata([portfolio], 'user');
 
   res.status(200).json({
     success: true,
-    portfolio,
+    portfolio: mapPortfolio(portfolioWithUser)
   });
 });
 
-// ============ UPDATE PORTFOLIO ============
+/**
+ * Update Portfolio (MongoDB)
+ * PATCH /api/portfolio/:id
+ */
 export const updatePortfolio = asyncHandler(async (req, res) => {
   const { title, description } = req.body;
-  const portfolio = await Portfolio.findById(req.params.id);
+  const userId = req.user.id;
+  
+  const portfolio = await Portfolio.findOne({ _id: req.params.id, user: userId });
+  if (!portfolio) throw new ApiError(404, "Portfolio not found or unauthorized");
 
-  if (!portfolio) {
-    throw new ApiError(404, "Portfolio not found");
-  }
-
-  if (portfolio.user.toString() !== req.user._id.toString()) {
-    throw new ApiError(403, "Not authorized to update this portfolio");
-  }
-
-  if (title !== undefined) {
-    portfolio.title = title.trim().substring(0, 100);
-  }
-  if (description !== undefined) {
-    portfolio.description = description.trim().substring(0, 500);
-  }
-
-  // Handle multiple original clips update
-  if (req.files?.originalClip) {
-    const files = Array.isArray(req.files.originalClip)
-      ? req.files.originalClip
-      : [req.files.originalClip];
-
-    if (files.length > MAX_ORIGINAL_FILES) {
-      throw new ApiError(400, `Maximum ${MAX_ORIGINAL_FILES} original files allowed`);
-    }
-
-    const originalClips = [];
-    for (const file of files) {
-      validateFile(file, "video");
-      const result = await uploadToCloudinary(file.buffer, "portfolio");
-      originalClips.push(result.url);
-    }
-    portfolio.originalClips = originalClips;
-    portfolio.originalClip = originalClips[0] || "";
-  }
-
-  if (req.files?.editedClip?.[0]) {
-    const file = req.files.editedClip[0];
-    validateFile(file, "video");
-    const result = await uploadToCloudinary(file.buffer, "portfolio");
-    portfolio.editedClip = result.url;
-  }
-
+  if (title !== undefined) portfolio.title = title.trim();
+  if (description !== undefined) portfolio.description = description.trim();
+  
   await portfolio.save();
-
-  const populatedPortfolio = await Portfolio.findById(portfolio._id).populate(
-    "user",
-    "name email role profilePicture profileCompleted"
-  );
-
-  logger.info(`Portfolio updated: ${portfolio._id}`);
-
-  // Trigger Notification
-  await createNotification({
-    recipient: req.user._id,
-    type: "info",
-    title: "Portfolio Updated",
-    message: `Your portfolio "${portfolio.title}" has been updated.`,
-    link: "/editor-profile",
-  });
 
   res.status(200).json({
     success: true,
     message: "Portfolio updated successfully.",
-    portfolio: populatedPortfolio,
+    portfolio: mapPortfolio(portfolio)
   });
 });
 
-// ============ DELETE PORTFOLIO ============
+/**
+ * Delete Portfolio (MongoDB)
+ * DELETE /api/portfolio/:id
+ */
 export const deletePortfolio = asyncHandler(async (req, res) => {
-  const portfolio = await Portfolio.findById(req.params.id);
+  const userId = req.user.id;
+  const portfolioId = req.params.id;
 
-  if (!portfolio) {
-    throw new ApiError(404, "Portfolio not found");
-  }
+  const portfolio = await Portfolio.findOne({ _id: portfolioId, user: userId });
+  if (!portfolio) throw new ApiError(404, "Portfolio not found or unauthorized");
 
-  if (portfolio.user.toString() !== req.user._id.toString()) {
-    throw new ApiError(403, "Not authorized to delete this portfolio");
-  }
+  // Delete associated reels
+  await Reel.deleteMany({ portfolio: portfolioId });
+  await Portfolio.deleteOne({ _id: portfolioId });
 
-  // Delete associated reels first
-  logger.info(`Deleting associated reels for portfolio: ${req.params.id}`);
-  const deleteResult = await Reel.deleteMany({ portfolio: req.params.id });
-  logger.info(`Deleted ${deleteResult.deletedCount} reels`);
-
-  await Portfolio.findByIdAndDelete(req.params.id);
-
-  // Recalculate storage after delete
-  try {
-    const { calculateStorageUsed } = await import("../../system/controllers/storageController.js");
-    const User = (await import("../../user/models/User.js")).default;
-    const storageUsed = await calculateStorageUsed(req.user._id);
-    await User.findByIdAndUpdate(req.user._id, { 
-      storageUsed,
-      storageLastCalculated: new Date()
-    });
-    logger.info(`Storage recalculated after delete: ${storageUsed} bytes`);
-  } catch (err) {
-    logger.warn("Failed to recalculate storage after delete:", err.message);
-  }
-
-  logger.info(`Portfolio deleted: ${req.params.id}`);
+  logger.info(`Portfolio deleted: ${portfolioId} and its associated reels (MongoDB)`);
 
   res.status(200).json({
     success: true,
@@ -318,7 +211,10 @@ export const deletePortfolio = asyncHandler(async (req, res) => {
   });
 });
 
-// ============ GET PORTFOLIOS BY USER ID (PUBLIC) ============
+/**
+ * Get Public Portfolios (MongoDB)
+ * GET /api/portfolio/public/:userId
+ */
 export const getPortfoliosByUserId = asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const page = parseInt(req.query.page) || 1;
@@ -326,27 +222,17 @@ export const getPortfoliosByUserId = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
 
   const [portfolios, total] = await Promise.all([
-    Portfolio.find({ user: userId })
-      .sort({ uploadedAt: -1 })
-      .skip(skip)
-      .limit(limit),
-    Portfolio.countDocuments({ user: userId }),
+    Portfolio.find({ user: userId }).sort({ uploadedAt: -1 }).skip(skip).limit(limit).lean(),
+    Portfolio.countDocuments({ user: userId })
   ]);
+
+  const portfoliosWithUser = await attachUserMetadata(portfolios, 'user');
 
   res.status(200).json({
     success: true,
-    portfolios,
-    pagination: {
-      page,
-      limit,
-      total,
-      pages: Math.ceil(total / limit),
-    },
+    portfolios: portfoliosWithUser.map(mapPortfolio),
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) }
   });
 });
 
-
-
-
-
-
+export default { createPortfolio, getPortfolios, getPortfolio, updatePortfolio, deletePortfolio, getPortfoliosByUserId };

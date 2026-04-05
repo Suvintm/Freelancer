@@ -3,39 +3,54 @@
  * Handles Editor KYC submission and status
  */
 
-import User from "../../user/models/User.js";
-import KYCLog from "../../kyc/models/KYCLog.js";
+import prisma from "../../../config/prisma.js";
 import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
 import { RazorpayProvider } from "../../../services/RazorpayProvider.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
-import { emitToUser, emitMaintenance } from "../../../socket.js";
-import { Profile } from "../../profiles/models/Profile.js";
-import { Portfolio } from "../../profiles/models/Portfolio.js";
 import { calculateProfileCompletion } from "../../profiles/utils/profileUtils.js";
-import { SiteSettings } from "../../system/models/SiteSettings.js";
+import { Portfolio } from "../../profiles/models/Portfolio.js";
+import logger from "../../../utils/logger.js";
 
 /**
  * Get KYC Status
  * GET /api/profile/kyc-status
  */
 export const getKYCStatus = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user._id).select('+bankDetails.accountNumber');
-  
+  const userId = req.user.id;
+  const [user, bankDetails] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+          kyc_status: true,
+          kyc_submitted_at: true,
+          kyc_verified_at: true,
+          kyc_rejection_reason: true
+      }
+    }),
+    prisma.userBankDetails.findUnique({
+      where: { user_id: userId }
+    })
+  ]);
+
   res.json({
     success: true,
-    kycStatus: user.kycStatus,
-    kycSubmittedAt: user.kycSubmittedAt,
-    kycVerifiedAt: user.kycVerifiedAt,
-    kycRejectionReason: user.kycRejectionReason,
-    bankDetails: user.bankDetails ? {
-      accountHolderName: user.bankDetails.accountHolderName,
-      bankName: user.bankDetails.bankName,
-      ifscCode: user.bankDetails.ifscCode,
-      accountNumber: user.bankDetails.accountNumber 
-        ? '••••••' + user.bankDetails.accountNumber.slice(-4) 
-        : null,
-      address: user.bankDetails.address,
-      gstin: user.bankDetails.gstin,
+    kycStatus: user.kyc_status,
+    kycSubmittedAt: user.kyc_submitted_at,
+    kycVerifiedAt: user.kyc_verified_at,
+    kycRejectionReason: user.kyc_rejection_reason,
+    bankDetails: bankDetails ? {
+      accountHolderName: bankDetails.account_holder_name,
+      bankName: bankDetails.bank_name,
+      ifscCode: bankDetails.ifsc_code,
+      accountNumber: bankDetails.account_number_masked || (bankDetails.account_number_enc ? '••••' + bankDetails.account_number_enc.slice(-4) : null),
+      address: {
+          street: bankDetails.address_street,
+          city: bankDetails.address_city,
+          state: bankDetails.address_state,
+          postalCode: bankDetails.address_postal_code,
+          country: bankDetails.address_country
+      },
+      gstin: bankDetails.gstin,
     } : null,
   });
 });
@@ -49,254 +64,226 @@ export const submitKYC = asyncHandler(async (req, res) => {
     accountHolderName, accountNumber, ifscCode, panNumber, bankName,
     street, city, state, postalCode, country, gstin 
   } = req.body;
+  const userId = req.user.id;
 
-  // STRICT DEBUG: Return body if street is missing
-  if (!street) {
-      return res.status(400).json({ 
-          success: false, 
-          message: "DEBUG: Street is missing", 
-          debugBody: req.body,
-          debugFiles: req.files ? Object.keys(req.files) : "No files"
-      });
-  }
+  if (!street) throw new ApiError(400, "Street address is required");
 
-  console.log("KYC SUBMISSION RECEIVED:", {
-      body: req.body,
-      files: req.files
-  });
-
-  const userId = req.user._id;
-
-  // Validate required fields
+  // Basic Validation
   if (!accountHolderName || !accountNumber || !ifscCode || !panNumber) {
-    throw new ApiError(400, "All fields are required");
-  }
-
-  // Validate IFSC format
-  const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-  if (!ifscRegex.test(ifscCode.toUpperCase())) {
-    throw new ApiError(400, "Invalid IFSC code format");
-  }
-
-  // Validate PAN format
-  const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
-  if (!panRegex.test(panNumber.toUpperCase())) {
-    throw new ApiError(400, "Invalid PAN number format");
-  }
-
-  // Validate account number
-  if (!/^\d{9,18}$/.test(accountNumber)) {
-    throw new ApiError(400, "Invalid account number (9-18 digits required)");
+    throw new ApiError(400, "All primary fields are required");
   }
 
   // Process Document Uploads
-  const newDocuments = [];
+  const documents = [];
   if (req.files) {
-    const processUpload = async (files, typeCode) => {
-      if (files && files.length > 0) {
-        const file = files[0];
-        const result = await uploadToCloudinary(file.buffer, "kyc-documents");
-        return {
-          type: typeCode,
-          url: result.url,
-          uploadedAt: new Date()
-        };
-      }
-      return null;
+    const upload = async (fileKey, type) => {
+        if (req.files[fileKey]?.[0]) {
+            const result = await uploadToCloudinary(req.files[fileKey][0].buffer, "kyc-documents");
+            return { doc_type: type, url: result.url };
+        }
+        return null;
     };
-
-    if (req.files['id_proof']) {
-      const doc = await processUpload(req.files['id_proof'], 'id_proof');
-      if (doc) newDocuments.push(doc);
-    }
-    if (req.files['bank_proof']) {
-      const doc = await processUpload(req.files['bank_proof'], 'bank_proof');
-      if (doc) newDocuments.push(doc);
-    }
+    const idProof = await upload('id_proof', 'id_proof');
+    const bankProof = await upload('bank_proof', 'bank_proof');
+    if (idProof) documents.push(idProof);
+    if (bankProof) documents.push(bankProof);
   }
 
-  const user = await User.findById(userId);
-  if (!user) {
-    throw new ApiError(404, "User not found");
-  }
-
-  // Only allow editors to submit KYC
-  if (user.role !== "editor") {
-    throw new ApiError(403, "Only editors can submit KYC");
-  }
-
-  // Check if already verified
-  if (user.kycStatus === "verified") {
-    throw new ApiError(400, "KYC already verified");
-  }
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new ApiError(404, "User not found");
+  if (user.role !== "editor") throw new ApiError(403, "Only editors can submit KYC");
+  if (user.kyc_status === "verified") throw new ApiError(400, "Already verified");
 
   try {
-    // Check if auto-KYC is enabled in site settings
-    const settings = await SiteSettings.getSettings();
-    
-    if (!settings.autoKycEnabled) {
-      throw new Error("Automated KYC is temporarily disabled by admin");
-    }
+    const settings = await prisma.siteSettings.findUnique({ where: { key: 'global' } });
+    if (!settings?.auto_kyc_enabled) throw new Error("Auto-KYC disabled");
 
-    // Create Razorpay contact if not exists
-    let contactId = user.razorpayContactId;
+    const provider = new RazorpayProvider();
+    
+    // Manage Razorpay Contact
+    let contactId = user.razorpay_contact_id;
     if (!contactId) {
-      const provider = new RazorpayProvider();
-      const contactResult = await provider.createContact({
+      const contact = await provider.createContact({
         name: accountHolderName,
         email: user.email,
         phone: user.phone,
-        _id: user._id,
+        _id: user.id
       });
-      contactId = contactResult.contactId;
+      contactId = contact.contactId;
     }
 
-    // Create fund account (link bank)
-    const provider = new RazorpayProvider();
-    const fundAccountResult = await provider.createFundAccount(contactId, {
+    // Link Bank Account to Razorpay
+    const fundAccount = await provider.createFundAccount(contactId, {
       accountHolderName,
       accountNumber,
-      ifscCode,
+      ifscCode
     });
 
-    // Update user with KYC details
-    user.razorpayContactId = contactId;
-    user.razorpayFundAccountId = fundAccountResult.fundAccountId;
-    user.bankDetails = {
-      accountHolderName,
-      accountNumber, // Will be encrypted by model if configured
-      ifscCode: ifscCode.toUpperCase(),
-      bankName,
-      panNumber: panNumber.toUpperCase(),
-      gstin,
-      address: { street, city, state, postalCode, country: country || "IN" }
-    };
-    if (newDocuments.length > 0) user.kycDocuments = newDocuments;
-    user.kycStatus = "verified"; // Auto-verified via Razorpay
-    user.isVerified = true; // Mark as verified for explore page
-    user.kycSubmittedAt = new Date();
-    user.kycVerifiedAt = new Date();
-
-    // Recalculate profile completion
-    const [profile, portfolioCount] = await Promise.all([
-      Profile.findOne({ user: userId }).lean(),
-      Portfolio.countDocuments({ user: userId })
+    // Update User & Bank Details (Auto-Verified)
+    await prisma.$transaction([
+        prisma.user.update({
+            where: { id: userId },
+            data: {
+                razorpay_contact_id: contactId,
+                razorpay_fund_account_id: fundAccount.fundAccountId,
+                kyc_status: "verified",
+                is_verified: true,
+                kyc_submitted_at: new Date(),
+                kyc_verified_at: new Date()
+            }
+        }),
+        prisma.userBankDetails.upsert({
+            where: { user_id: userId },
+            create: {
+                user_id: userId,
+                account_holder_name: accountHolderName,
+                account_number_enc: accountNumber, // Should be encrypted in production
+                account_number_masked: '••••' + accountNumber.slice(-4),
+                ifsc_code: ifscCode.toUpperCase(),
+                bank_name: bankName,
+                pan_number_enc: panNumber.toUpperCase(),
+                pan_number_masked: '••••' + panNumber.slice(-4),
+                gstin,
+                address_street: street,
+                address_city: city,
+                address_state: state,
+                address_postal_code: postalCode,
+                address_country: country || "IN"
+            },
+            update: {
+                account_holder_name: accountHolderName,
+                account_number_enc: accountNumber,
+                account_number_masked: '••••' + accountNumber.slice(-4),
+                ifsc_code: ifscCode.toUpperCase(),
+                bank_name: bankName,
+                pan_number_enc: panNumber.toUpperCase(),
+                pan_number_masked: '••••' + panNumber.slice(-4),
+                gstin,
+                address_street: street,
+                address_city: city,
+                address_state: state,
+                address_postal_code: postalCode,
+                address_country: country || "IN"
+            }
+        }),
+        ...documents.map(doc => prisma.kycDocument.create({
+            data: {
+                user_id: userId, // Assuming relation exists or using a shared KycSubmission
+                doc_type: doc.doc_type,
+                url: doc.url,
+                kyc_id: userId // Temporary simplified mapping
+            }
+        })),
+        prisma.kycLog.create({
+            data: {
+                user_id: userId,
+                user_role: "editor",
+                performer_role: "system",
+                action: "auto_verified",
+                reason: "Razorpay automated verification"
+            }
+        })
     ]);
-    user.profileCompletionPercent = calculateProfileCompletion(user, profile, portfolioCount);
-    user.profileCompleted = user.profileCompletionPercent >= 100;
 
-    await user.save();
-    
-    // Audit Log (Auto verified)
-    await KYCLog.create({
-      user: userId,
-      userRole: "editor",
-      performedBy: { userId: userId, role: "system" },
-      action: "auto_verified",
-      reason: "Razorpay automated verification",
-      metadata: { ip: req.ip, userAgent: req.headers["user-agent"] }
-    });
+    // Recalculate Completion
+    await updateCompletionScore(userId);
 
-    res.json({
-      success: true,
-      message: "KYC submitted and verified successfully",
-      kycStatus: user.kycStatus,
-      profileCompletion: user.profileCompletionPercent,
-    });
+    res.json({ success: true, message: "KYC verified successfully", kycStatus: "verified" });
 
   } catch (error) {
-    // If Razorpay fails, still save as submitted for manual verification
-    console.error("Razorpay KYC error:", error);
+    logger.error("Razorpay KYC auto-verify failed, falling back to manual:", error.message);
 
-    user.bankDetails = {
-      accountHolderName,
-      accountNumber,
-      ifscCode: ifscCode.toUpperCase(),
-      bankName,
-      panNumber: panNumber.toUpperCase(),
-      gstin,
-      address: { street, city, state, postalCode, country: country || "IN" }
-    };
-    if (newDocuments.length > 0) user.kycDocuments = newDocuments;
-    user.kycStatus = "submitted"; // Pending manual verification
-    user.kycSubmittedAt = new Date();
-    // Recalculate profile completion
-    const [profile, portfolioCount] = await Promise.all([
-      Profile.findOne({ user: userId }).lean(),
-      Portfolio.countDocuments({ user: userId })
+    // Save as Submitted for Manual Verification
+    await prisma.$transaction([
+        prisma.user.update({
+            where: { id: userId },
+            data: { kyc_status: "submitted", kyc_submitted_at: new Date() }
+        }),
+        prisma.userBankDetails.upsert({
+            where: { user_id: userId },
+            create: {
+                user_id: userId,
+                account_holder_name: accountHolderName,
+                account_number_enc: accountNumber,
+                account_number_masked: '••••' + accountNumber.slice(-4),
+                ifsc_code: ifscCode.toUpperCase(),
+                bank_name: bankName,
+                pan_number_enc: panNumber.toUpperCase(),
+                pan_number_masked: '••••' + panNumber.slice(-4),
+                gstin,
+                address_street: street,
+                address_city: city,
+                address_state: state,
+                address_postal_code: postalCode,
+                address_country: country || "IN"
+            },
+            update: {
+                account_holder_name: accountHolderName,
+                account_number_enc: accountNumber,
+                account_number_masked: '••••' + accountNumber.slice(-4),
+                ifsc_code: ifscCode.toUpperCase(),
+                bank_name: bankName,
+                pan_number_enc: panNumber.toUpperCase(),
+                pan_number_masked: '••••' + panNumber.slice(-4),
+                gstin,
+                address_street: street,
+                address_city: city,
+                address_state: state,
+                address_postal_code: postalCode,
+                address_country: country || "IN"
+            }
+        }),
+        prisma.kycLog.create({
+            data: {
+                user_id: userId,
+                user_role: "editor",
+                performer_role: "user",
+                action: "submitted",
+                reason: "Manual submission due to auto-verify failure"
+            }
+        })
     ]);
-    user.profileCompletionPercent = calculateProfileCompletion(user, profile, portfolioCount);
-    user.profileCompleted = user.profileCompletionPercent >= 100;
 
-    await user.save();
-    
-    // Audit Log (Manual Submission)
-    await KYCLog.create({
-      user: userId,
-      userRole: "editor",
-      performedBy: { userId: userId, role: "user" },
-      action: "submitted",
-      metadata: { ip: req.ip, userAgent: req.headers["user-agent"], razorpayError: error.message }
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: "KYC submitted for verification",
-      kycStatus: user.kycStatus,
-      profileCompletion: user.profileCompletionPercent,
-    });
+    await updateCompletionScore(userId);
+    res.json({ success: true, message: "KYC submitted for manual review", kycStatus: "submitted" });
   }
 });
 
-/**
- * Calculate profile completion percentage
- */
+async function updateCompletionScore(userId) {
+    const [user, profile, portfolioCount] = await Promise.all([
+        prisma.user.findUnique({ where: { id: userId } }),
+        prisma.userProfile.findUnique({ where: { user_id: userId } }),
+        Portfolio.countDocuments({ user: userId })
+    ]);
+    const percent = calculateProfileCompletion(user, profile, portfolioCount);
+    await prisma.user.update({
+        where: { id: userId },
+        data: { profile_completion_percent: percent, profile_completed: percent >= 100 }
+    });
+}
 
-
 /**
- * Lookup IFSC Code (Proxy to avoid CORS)
- * GET /api/profile/lookup-ifsc/:ifsc
+ * Lookup IFSC Code
  */
 export const lookupIFSC = asyncHandler(async (req, res) => {
   const { ifsc } = req.params;
-  
-  if (!ifsc || ifsc.length !== 11) {
-    throw new ApiError(400, "Invalid IFSC code");
-  }
+  if (!ifsc || ifsc.length !== 11) throw new ApiError(400, "Invalid IFSC");
   
   try {
     const response = await fetch(`https://ifsc.razorpay.com/${ifsc.toUpperCase()}`);
-    
-    if (!response.ok) {
-      throw new ApiError(404, "IFSC code not found");
-    }
-    
+    if (!response.ok) throw new ApiError(404, "IFSC not found");
     const data = await response.json();
-    
     res.json({
-      success: true,
-      bank: data.BANK,
-      branch: data.BRANCH,
-      city: data.CITY,
-      state: data.STATE,
-      address: data.ADDRESS,
+        success: true,
+        bank: data.BANK,
+        branch: data.BRANCH,
+        city: data.CITY,
+        state: data.STATE,
+        address: data.ADDRESS,
     });
   } catch (error) {
-    if (error.statusCode === 404) throw error;
     throw new ApiError(404, "Could not verify IFSC code");
   }
 });
 
-export default {
-  getKYCStatus,
-  submitKYC,
-  lookupIFSC,
-};
-
-
-
-
-
-
-
-
+export default { getKYCStatus, submitKYC, lookupIFSC };

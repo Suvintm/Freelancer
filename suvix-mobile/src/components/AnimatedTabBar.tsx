@@ -16,6 +16,7 @@ interface AnimatedTabBarProps {
   activeIndex: number;
   tabs: Tab[];
   onTabPress: (index: number) => void;
+  hidden?: boolean;
 }
 
 /**
@@ -26,9 +27,11 @@ interface AnimatedTabBarProps {
  * - Inactive tab: outline icon + label (visible gray)
  * - No top border, no green color
  */
-export const AnimatedTabBar = ({ activeIndex, tabs, onTabPress }: AnimatedTabBarProps) => {
+export const AnimatedTabBar = ({ activeIndex, tabs, onTabPress, hidden }: AnimatedTabBarProps) => {
   const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
+  
+  if (hidden) return null;
   
   const TAB_BAR_HEIGHT = 60 + insets.bottom;
 
