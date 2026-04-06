@@ -8,7 +8,8 @@ export interface CategoryConfig {
   defaultModule: 'creators' | 'rentals' | 'promoters' | 'editors' | 'clients';
   description: string;
   color?: string;
-  thumbnail: any; // Image asset for cinematic cards
+  thumbnail: any; // Cinematic background image
+  overlayIcon?: any; // Category-specific PNG icon overlay
   info: string; // Detailed professional path description
 }
 

@@ -14,8 +14,7 @@ import {
   Dimensions,
   Animated,
   StatusBar,
-  Modal,
-  
+  Modal
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -26,12 +25,29 @@ import SuvixInput from '../src/components/SuvixInput';
 import SuvixButton from '../src/components/SuvixButton';
 import { useAuthStore } from '../src/store/useAuthStore';
 import { api } from '../src/api/client';
-import { DUMMY_CATEGORY_LIST } from '../src/constants/dummy_categories';
+import { DUMMY_CATEGORIES } from '../src/constants/dummy_categories';
 import { CategoryId, CategoryConfig } from '../src/types/category';
 import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 64) / 2;
+
+// Custom sorting order as requested by USER:
+// 1. Normal User, 2. YouTube, 3. Gym, 4. Singer, 5. Dance, 6. Ads, 7. Remaining
+const CATEGORY_ORDER = [
+  'direct_client',    // Normal User
+  'yt_influencer',    // YouTube
+  'fitness_expert',   // Gym / Fitness Pro
+  'singer',           // Singer
+  'dancer',           // Dance
+  'social_promoter',  // Ads & Promotions
+  'video_editor',
+  'rent_service',
+  'photographer',
+  'videographer',
+  'musician',
+  'actor'
+];
 
 export default function RoleSelectionScreen() {
   const { token, name } = useLocalSearchParams<{ token: string; name: string }>();
@@ -55,7 +71,7 @@ export default function RoleSelectionScreen() {
     ]).start();
   }, []);
 
-  const handleImpact = (style = Haptics.ImpactFeedbackStyle.Light) => {
+  const handleImpact = (style: Haptics.ImpactFeedbackStyle = Haptics.ImpactFeedbackStyle.Light) => {
     Haptics.impactAsync(style);
   };
 
@@ -66,21 +82,19 @@ export default function RoleSelectionScreen() {
       return;
     }
 
-    if (!phone) {
-      setIsFinalizing(true);
-      return;
-    }
-
     setLoading(true);
     try {
       handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
-      Alert.alert('Testing Mode', `Success! Selected: ${selectedCategory}. No redirection.`);
+      // [TESTING MODE] Directly showing success Alert
+      Alert.alert('Success', `Role ${selectedCategory} selected for testing.`);
     } catch (error: any) {
       Alert.alert('Setup Failed', 'Could not finalize your professional path.');
     } finally {
       setLoading(false);
     }
   };
+
+  const sortedCategories = CATEGORY_ORDER.map(id => DUMMY_CATEGORIES[id]).filter(Boolean);
 
   const renderCategoryCard = (item: CategoryConfig, index: number) => {
     const isSelected = selectedCategory === item.id;
@@ -98,14 +112,19 @@ export default function RoleSelectionScreen() {
         ]}
       >
         <Image source={item.thumbnail} style={styles.cardImage} resizeMode="cover" />
-        
-        {/* Info Icon */}
+
+        {/* Info Icon - Top Right */}
         <TouchableOpacity 
           style={styles.infoIcon} 
           onPress={() => { handleImpact(Haptics.ImpactFeedbackStyle.Medium); setInfoCategory(item); }}
         >
           <Feather name="info" size={16} color="#FFF" />
         </TouchableOpacity>
+
+        {/* Absolute Icon Overlay - Perfect Top Left Corner */}
+        {item.overlayIcon && (
+          <Image source={item.overlayIcon} style={styles.overlayIcon} resizeMode="contain" />
+        )}
 
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.95)']}
@@ -138,7 +157,7 @@ export default function RoleSelectionScreen() {
             </Animated.View>
 
             <View style={styles.grid}>
-              {DUMMY_CATEGORY_LIST.sort((a, b) => a.id === 'direct_client' ? 1 : -1).map((cat, index) => renderCategoryCard(cat, index))}
+              {sortedCategories.map((cat, index) => renderCategoryCard(cat, index))}
             </View>
 
             <View style={{ height: 120 }} />
@@ -149,34 +168,14 @@ export default function RoleSelectionScreen() {
             colors={['transparent', 'rgba(0,0,0,1)']}
             style={styles.bottomBar}
           >
-            {isFinalizing ? (
-              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.finalForm}>
-                <SuvixInput
-                  small
-                  label="Final Step: Mobile Number"
-                  placeholder="+91 00000 00000"
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                  icon={<Feather name="phone" color={Colors.dark.textSecondary} size={16} />}
-                />
-                <SuvixButton 
-                  title="Enter SuviX Ecosystem" 
-                  onPress={handleFinalize} 
-                  loading={loading}
-                  style={styles.actionBtn}
-                />
-              </KeyboardAvoidingView>
-            ) : (
-              <TouchableOpacity 
-                activeOpacity={0.8}
-                onPress={handleFinalize}
-                style={[styles.nextBtn, !selectedCategory && styles.btnDisabled]}
-              >
-                <Text style={styles.nextBtnText}>Continue</Text>
-                <Feather name="chevron-right" size={20} color="#000" />
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={handleFinalize}
+              style={[styles.nextBtn, !selectedCategory && styles.btnDisabled]}
+            >
+              <Text style={styles.nextBtnText}>Continue</Text>
+              <Feather name="chevron-right" size={20} color="#000" />
+            </TouchableOpacity>
           </LinearGradient>
 
           {/* INFO MODAL */}
@@ -237,6 +236,14 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed'
   },
   cardImage: { width: '100%', height: '100%', position: 'absolute' },
+  overlayIcon: {
+    position: 'absolute',
+    bottom: -5, // Pinned to the bottom-left
+    left: -15, // Pushed left to capitalize on wide icons
+    width: 130, // Large size to dominate the grid
+    height: 130,
+    zIndex: 10
+  },
   infoIcon: {
     position: 'absolute',
     top: 8,
@@ -251,7 +258,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)'
   },
-  cardOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%', justifyContent: 'flex-end', padding: 10 },
+  cardOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '100%', justifyContent: 'flex-end', padding: 15 },
   cardLabelContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardLabel: { color: '#FFF', fontSize: 13, fontWeight: '800' },
   selectedBadge: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' },
@@ -268,6 +275,6 @@ const styles = StyleSheet.create({
   modalContent: { width: '100%', backgroundColor: '#111', borderRadius: 24, padding: 24, borderWidth: 1, borderColor: '#333' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   modalTitle: { color: '#FFF', fontSize: 20, fontWeight: '900' },
-  modalInfo: { color: 'rgba(255,255,255,0.7)', fontSize: 15, lineHeight: 22, marginBottom: 24 },
+  modalInfo: { color: 'rgba(255,255,255,0.7)', fontSize: 13, lineHeight: 20, marginBottom: 24 },
   modalBtn: { borderRadius: 100 }
 });
