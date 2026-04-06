@@ -12,6 +12,7 @@ import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { StoryItem } from '../../hooks/useStories';
 import { useTheme } from '../../context/ThemeContext';
+import { useRouter } from 'expo-router';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -22,14 +23,21 @@ interface StoryCircleProps {
 
 export const StoryCircle = React.memo(({ story, onPress }: StoryCircleProps) => {
   const { isDarkMode, theme } = useTheme();
+  const router = useRouter();
   
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onPress?.(story);
+    
+    if (story.isUserStory && !story.hasActiveStory) {
+      router.push('/story/create');
+    } else {
+      router.push(`/story/${story._id}`);
+    }
   };
 
   const isSeen = story.isSeen && !story.isUserStory;
-  const showGradient = !isSeen && !story.isUserStory;
+  const hasUserActive = story.isUserStory && story.hasActiveStory;
+  const showGradient = (!isSeen && !story.isUserStory) || hasUserActive;
 
   // Premium Monochrome Mixture (White & Zinc)
   const gradientColors = isDarkMode 
