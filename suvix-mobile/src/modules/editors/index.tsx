@@ -1,11 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { Colors } from '../../constants/Colors';
 import { UnifiedBanner } from '../../components/home/UnifiedBanner';
 import { StoryBar } from '../../components/stories/StoryBar';
 import { NearbyExperts } from '../../components/home/NearbyExperts';
 
+/**
+ * EDITOR DASHBOARD (ROOT)
+ * Simplified and optimized for localized component-level animations.
+ */
 export default function EditorDashboard() {
   const { theme } = useTheme();
 

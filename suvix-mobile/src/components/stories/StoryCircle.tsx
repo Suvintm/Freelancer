@@ -1,12 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   Text, 
   Image, 
   StyleSheet, 
   Pressable, 
-  Dimensions 
 } from 'react-native';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withTiming, 
+  Easing,
+  runOnJS,
+  withRepeat,
+  cancelAnimation
+} from 'react-native-reanimated';
+import Svg, { Circle } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,20 +23,38 @@ import { StoryItem } from '../../hooks/useStories';
 import { useTheme } from '../../context/ThemeContext';
 import { useRouter } from 'expo-router';
 
-const { width: SW } = Dimensions.get('window');
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-interface StoryCircleProps {
-  story: StoryItem;
-  onPress?: (story: StoryItem) => void;
-}
-
-export const StoryCircle = React.memo(({ story, onPress }: StoryCircleProps) => {
+/**
+ * PREMIUM STORY CIRCLE with 'Dashed Wave' Elevation
+ * Features a high-fidelity SVG pulsing wave border that orbits a static avatar.
+ */
+export const StoryCircle = React.memo(({ story }: { story: StoryItem }) => {
   const { isDarkMode, theme } = useTheme();
   const router = useRouter();
+  const [isNavigating, setIsNavigating] = useState(false);
   
-  const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
+  // Wave Animation Values
+  const waveScale = useSharedValue(1);
+  const waveRotate = useSharedValue(0);
+  const waveOpacity = useSharedValue(0);
+
+  const waveStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: waveScale.value },
+      { rotate: `${waveRotate.value}deg` }
+    ],
+    opacity: waveOpacity.value,
+  }));
+
+  const performNavigation = () => {
+    setIsNavigating(false);
+    cancelAnimation(waveScale);
+    cancelAnimation(waveRotate);
+    waveOpacity.value = 0;
+    waveScale.value = 1;
+    waveRotate.value = 0;
+
     if (story.isUserStory && !story.hasActiveStory) {
       router.push('/story/create');
     } else {
@@ -35,48 +62,100 @@ export const StoryCircle = React.memo(({ story, onPress }: StoryCircleProps) => 
     }
   };
 
+  const handlePress = () => {
+    if (isNavigating) return;
+    setIsNavigating(true);
+    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // 1. Kickstart the 'Dashed Wave' Pulsing Sequence
+    waveOpacity.value = withTiming(1, { duration: 150 });
+    
+    // Wave Expansion
+    waveScale.value = withTiming(1.15, { 
+        duration: 800, 
+        easing: Easing.bezier(0.4, 0, 0.2, 1) 
+    });
+
+    // Wave Angular Velocity (Orbit)
+    waveRotate.value = withTiming(270, { 
+        duration: 850, 
+        easing: Easing.out(Easing.quad) 
+    });
+
+    // 2. Scheduled Navigation
+    setTimeout(() => {
+      runOnJS(performNavigation)();
+    }, 800);
+  };
+
   const isSeen = story.isSeen && !story.isUserStory;
   const hasUserActive = story.isUserStory && story.hasActiveStory;
   const showGradient = (!isSeen && !story.isUserStory) || hasUserActive;
 
-  // Premium Monochrome Mixture (White & Zinc)
   const gradientColors = isDarkMode 
-    ? (['#FFFFFF', '#71717a'] as const) // Dark Mode: White to Zinc-500
-    : (['#09090b', '#a1a1aa'] as const); // Light Mode: Zinc-950 to Zinc-400
+    ? (['#FFFFFF', '#71717a'] as const) 
+    : (['#09090b', '#a1a1aa'] as const);
+
+  // Stroke color based on theme
+  const strokeColor = isDarkMode ? '#FFFFFF' : '#09090b';
 
   return (
-    <Pressable onPress={handlePress} style={s.container}>
-      <View style={s.avatarWrapper}>
-        {showGradient ? (
-          <LinearGradient
-            colors={gradientColors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={s.gradientBorder}
-          >
-            <View style={[s.innerCircle, { backgroundColor: theme.primary }]}>
-              <Image source={{ uri: story.avatar }} style={s.avatar} />
-            </View>
-          </LinearGradient>
-        ) : (
-          <View style={[s.plainBorder, isSeen && s.seenBorder]}>
-            <Image source={{ uri: story.avatar }} style={s.avatar} />
-          </View>
-        )}
+    <View style={s.container}>
+      <Pressable onPress={handlePress} style={s.pressable}>
+        <View style={s.avatarWrapper}>
+            {/* ─── PREMIUM DASHED WAVE LAYER (SVG) ─── */}
+            <Animated.View style={[s.waveLayer, waveStyle]}>
+                <Svg width="80" height="80" viewBox="0 0 80 80">
+                    <Circle
+                        cx="40"
+                        cy="40"
+                        r="38"
+                        stroke={strokeColor}
+                        strokeWidth="2"
+                        fill="none"
+                        strokeDasharray="6, 10" // Discontinuous Dots
+                        strokeLinecap="round"
+                        opacity={0.6}
+                    />
+                </Svg>
+            </Animated.View>
 
-        {story.isUserStory && (
-          <View style={s.plusBadge}>
-            <Ionicons name="add" size={14} color="#FFF" />
-          </View>
-        )}
-      </View>
-      <Text 
-        style={[s.username, { color: theme.text }, isSeen && s.seenUsername]} 
-        numberOfLines={1}
-      >
-        {story.username}
-      </Text>
-    </Pressable>
+            {/* ─── STATIC AVATAR & BORDER ─── */}
+            {showGradient ? (
+                <LinearGradient
+                    colors={gradientColors}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={s.gradientBorder}
+                >
+                    <View style={[s.innerCircle, { backgroundColor: theme.primary }]}>
+                        <Image source={{ uri: story.avatar }} style={s.avatar} />
+                    </View>
+                </LinearGradient>
+            ) : (
+                <View style={[s.plainBorder, isSeen && s.seenBorder]}>
+                    <View style={[s.innerCircle, { backgroundColor: theme.primary }]}>
+                        <Image source={{ uri: story.avatar }} style={s.avatar} />
+                    </View>
+                </View>
+            )}
+
+            {story.isUserStory && (
+                <View style={s.plusBadge}>
+                    <Ionicons name="add" size={14} color="#FFF" />
+                </View>
+            )}
+        </View>
+        
+        <Text 
+            style={[s.username, { color: theme.text }, isSeen && s.seenUsername]} 
+            numberOfLines={1}
+        >
+            {story.username}
+        </Text>
+      </Pressable>
+    </View>
   );
 });
 
@@ -86,9 +165,25 @@ const s = StyleSheet.create({
     marginHorizontal: 8,
     width: 76,
   },
+  pressable: {
+    alignItems: 'center',
+    width: '100%',
+  },
   avatarWrapper: {
     position: 'relative',
     marginBottom: 6,
+    width: 72,
+    height: 72,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  waveLayer: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: -1,
   },
   gradientBorder: {
     width: 72,
@@ -102,7 +197,6 @@ const s = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 34,
-    backgroundColor: '#050505', // Dashboard background color
     padding: 2,
   },
   plainBorder: {
@@ -111,7 +205,9 @@ const s = StyleSheet.create({
     borderRadius: 36,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
-    padding: 4,
+    padding: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   seenBorder: {
     borderColor: 'rgba(255,255,255,0.08)',

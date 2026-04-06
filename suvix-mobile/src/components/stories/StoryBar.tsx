@@ -4,17 +4,19 @@ import {
   FlatList, 
   StyleSheet, 
   ActivityIndicator,
-  Text
 } from 'react-native';
 import { StoryCircle } from './StoryCircle';
 import { useStories, StoryItem } from '../../hooks/useStories';
 
+/**
+ * STORY BAR
+ * Provides a high-performance horizontal feed for creator stories.
+ */
 export const StoryBar = () => {
   const { data, isLoading } = useStories();
 
   const handlePress = (story: StoryItem) => {
-    console.log(`[STORY_TAP] ${story.username} - ID: ${story._id}`);
-    // Future: Navigation to Story Viewer
+    // Taps are handled inside StoryCircle for localized 'Wave' animations
   };
 
   if (isLoading) {
@@ -36,7 +38,6 @@ export const StoryBar = () => {
         renderItem={({ item }) => (
           <StoryCircle 
             story={item} 
-            onPress={handlePress} 
           />
         )}
       />
@@ -47,10 +48,11 @@ export const StoryBar = () => {
 const s = StyleSheet.create({
   outer: {
     paddingVertical: 12,
+    marginTop: -8, // Tightening with Banner
     backgroundColor: 'transparent',
   },
   content: {
-    paddingHorizontal: 8, // Center-aligned appearance
+    paddingHorizontal: 8,
   },
   loader: {
     height: 104,
