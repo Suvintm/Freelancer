@@ -1,7 +1,8 @@
-import React, { useRef, useState, useCallback, useMemo } from 'react';
+import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PagerView from 'react-native-pager-view';
+import { useSegments, useRouter } from 'expo-router';
 import { useTheme } from '../../src/context/ThemeContext';
 import { AnimatedTabBar } from '../../src/components/AnimatedTabBar';
 import { TopNavbar } from '../../src/components/TopNavbar';
@@ -59,6 +60,28 @@ export default function TabsLayout() {
 
   const reelsIndex = useMemo(() => filteredTabs.findIndex(t => t.name === 'reels'), [filteredTabs]);
   const isReelsActive = false; // Disabled immersive mode for removed reels feed
+
+  const segments = useSegments() as string[];
+
+  // 3. Route Sync: Listen for segment changes and sync PagerView
+  useEffect(() => {
+    // Expected Segments: ['(tabs)', 'nearby'] or similar
+    if (segments.length >= 2 && segments[0] === '(tabs)') {
+      const targetTab = segments[1];
+      const index = filteredTabs.findIndex(t => t.name === targetTab);
+      if (index !== -1 && index !== activeIndex) {
+        pagerRef.current?.setPage(index);
+        setActiveIndex(index);
+      }
+    } else if (segments.length === 1 && segments[0] === '(tabs)') {
+        // Handle home tab reset if needed
+        const homeIndex = filteredTabs.findIndex(t => t.name === 'index');
+        if (homeIndex !== -1 && homeIndex !== activeIndex) {
+            pagerRef.current?.setPage(homeIndex);
+            setActiveIndex(homeIndex);
+        }
+    }
+  }, [segments, filteredTabs]);
 
   const onPageSelected = useCallback((e: any) => {
     setActiveIndex(e.nativeEvent.position);

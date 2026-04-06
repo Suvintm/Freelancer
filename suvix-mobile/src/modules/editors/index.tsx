@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { Colors } from '../../constants/Colors';
 import { UnifiedBanner } from '../../components/home/UnifiedBanner';
+import { StoryBar } from '../../components/stories/StoryBar';
+import { NearbyExperts } from '../../components/home/NearbyExperts';
 
 export default function EditorDashboard() {
   const { theme } = useTheme();
@@ -11,6 +13,8 @@ export default function EditorDashboard() {
     <ScrollView style={[styles.container, { backgroundColor: theme.primary }]}>
       <View style={styles.bannerWrapper}>
         <UnifiedBanner pageName="home" />
+        <StoryBar />
+        <NearbyExperts />
       </View>
 
       <View style={styles.header}>

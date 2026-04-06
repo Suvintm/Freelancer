@@ -58,7 +58,14 @@
           }
         }
       ],
-      "expo-video"
+      "expo-video",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow SuviX to access your location to find nearby experts.",
+          "isAndroidBackgroundEnabled": true
+        }
+      ]
     ],
     "extra": {
       "router": {
