@@ -10,6 +10,7 @@ import React, {
   useRef,
   useMemo,
 } from 'react';
+import { useTheme } from '../../context/ThemeContext';
 import {
   View,
   Text,
@@ -25,20 +26,27 @@ import {
 } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEvent } from 'expo';
-import { useVideoPlayer, VideoView } from 'expo-video';
+import Video from 'react-native-video';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../../api/client';
+import { useBannerData } from '../../hooks/useBannerData';
 
 // ─── Dimensions ───────────────────────────────────────────────────────────────
 const { width: SW } = Dimensions.get('window');
 const BANNER_HEIGHT = (SW - 32) / (16 / 10);
 const TICK_MS       = 50;
 
+// Layout Constants for "Slices"
+const CARD_MARGIN = 16;
+const MULTI_CARD_WIDTH = SW - 32;
+const SINGLE_CARD_WIDTH = SW - 32;
+const GAP = 12;
+const PEEK_PER_CARD = 12; // Bring back the 12px peeks
+const STACK_X_OFFSET = 16; // Perfectly centered (16px margin)
+const SNAP_DIST = SW;      // Standard full-page snap for simplicity
+
 // ─── URL Repair (exact port from web) ────────────────────────────────────────
-const repairUrl = (url?: string | null): string => {
+const repairUrl = (url?: any): any => {
   if (!url || typeof url !== 'string' || !url.includes('cloudinary')) return url ?? '';
   
   let f = url.replace(/^(https?):?\/*_+/gi, '$1://')
@@ -181,7 +189,7 @@ interface AdItem {
   _id:            string;
   title:          string;
   description:    string;
-  mediaUrl:       string;
+  mediaUrl:       any;
   mediaType:      'image' | 'video';
   linkText:       string;
   badge:          string;
@@ -192,6 +200,7 @@ interface AdItem {
   buttonLink:     string;
   cardLinkType:   string;
   cardLink:       string;
+  thumbnailUrl?:  string;
   isEmptyState?:  boolean;
 }
 interface Level {
@@ -204,6 +213,7 @@ interface Level {
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 const BannerSkeleton = React.memo(() => {
+  const { theme } = useTheme();
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -217,12 +227,12 @@ const BannerSkeleton = React.memo(() => {
   }, [anim]);
   const op = anim.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.65] });
   return (
-    <View style={sk.wrap}>
+    <View style={[sk.wrap, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
       <Animated.View style={[sk.inner, { opacity: op }]}>
-        <View style={sk.badge} />
-        <View style={sk.title} />
-        <View style={sk.desc}  />
-        <View style={sk.btn}   />
+        <View style={[sk.badge, { backgroundColor: theme.border }]} />
+        <View style={[sk.title, { backgroundColor: theme.border }]} />
+        <View style={[sk.desc,  { backgroundColor: theme.border }]} />
+        <View style={[sk.btn,   { backgroundColor: theme.border }]} />
       </Animated.View>
     </View>
   );
@@ -237,80 +247,50 @@ const sk = StyleSheet.create({
   btn:   { height: 32, width: 112, backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 12, marginTop: 4 },
 });
 
-// ─── Memoised video (only remounts when source changes) ───────────────────────
-const BannerVideo = React.memo(({ source, muted }: { source: string; muted: boolean }) => {
-  const url = source; // already repaired upstream
-
-  const player = useVideoPlayer(url, (p) => {
-    p.loop                    = true;
-    p.muted                   = muted;
-    p.staysActiveInBackground = false;
-    // Don't call p.play() here — surface isn't ready on Android
-  });
-
-  const { status } = useEvent(player, 'statusChange', { status: player.status });
-
-  useEffect(() => {
-    if (!player) return;
-    player.muted = muted;
-  }, [muted, player]);
-
-  // ✅ Play only when the player reports it's ready
-  useEffect(() => {
-    if (status === 'readyToPlay' && !player.playing) {
-      player.play();
-    }
-  }, [status, player]);
-
-  if (!url) return (
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: '#050505' }]} />
-  );
+// ─── Memoised video (using react-native-video for elite production performance) ───
+const BannerVideo = React.memo(({ source, muted, onPlaySuccess, onPlayError }: { 
+  source: any; 
+  muted: boolean;
+  onPlaySuccess?: () => void;
+  onPlayError?: () => void;
+}) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   return (
-    <View style={StyleSheet.absoluteFill}>
-      <VideoView
-        player={player}
+    <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}>
+      <Video
+        source={(typeof source === 'number' ? source : { uri: source }) as any}
         style={StyleSheet.absoluteFill}
-        contentFit="cover"
-        nativeControls={false}
-        allowsFullscreen={false}        // ← prevents Android fullscreen hijack
-        allowsPictureInPicture={false}  // ← prevents PiP issues on Android
+        muted={muted}
+        repeat={true}
+        resizeMode="cover"
+        shutterColor="transparent"
+        playInBackground={false}
+        playWhenInactive={false}
+        onReadyForDisplay={() => {
+          Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+          onPlaySuccess?.();
+        }}
+        onError={(err) => {
+          console.error(`🎥 [VIDEO_ERROR_RNV] Result: ${source} — ${JSON.stringify(err)}`);
+          onPlayError?.();
+        }}
       />
-      {status === 'loading' && (
-        <View style={[StyleSheet.absoluteFill, {
-          backgroundColor: '#000',
-          justifyContent: 'center',
-          alignItems: 'center'
-        }]}>
-          <Ionicons name="sync" size={24} color="#fff" />
-        </View>
-      )}
-      {status === 'error' && (
-        <View style={[StyleSheet.absoluteFill, {
-          backgroundColor: '#400',
-          justifyContent: 'center',
-          alignItems: 'center'
-        }]}>
-          <Ionicons name="alert-circle" size={24} color="#f88" />
-          {__DEV__ && (
-            <Text style={{ color: '#999', fontSize: 9, marginTop: 4, paddingHorizontal: 20, textAlign: 'center' }}>
-              {url}
-            </Text>
-          )}
-        </View>
-      )}
-    </View>
+    </Animated.View>
   );
 });
 BannerVideo.displayName = 'BannerVideo';
 
-// Sub-component to safely use the video player hook
-const VideoPreloader = React.memo(({ url }: { url: string }) => {
-  const player = useVideoPlayer(url, (p) => {
-    p.muted = true;
-    p.pause();
-  });
-  return <VideoView player={player} style={{ width: 1, height: 1 }} />;
+// Sub-component to safely use the video player for preloading
+const VideoPreloader = React.memo(({ url }: { url: any }) => {
+  return (
+    <Video
+      source={(typeof url === 'number' ? url : { uri: url }) as any}
+      style={{ width: 1, height: 1, opacity: 0 }}
+      paused={true}
+      muted={true}
+    />
+  );
 });
 VideoPreloader.displayName = 'VideoPreloader';
 
@@ -329,10 +309,12 @@ interface UnifiedBannerProps {
 }
 
 export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
+  const { theme, isDarkMode } = useTheme();
   const router      = useRouter();
 
   const [vIdx, setVIdx]       = useState(0);          // vertical (level) index
   const [hMap, setHMap]       = useState<number[]>(new Array(10).fill(0)); // hIdx per level
+  const [videoFailures, setVideoFailures] = useState<Record<string, boolean>>({}); // tracking errors
   const [muted, setMuted]     = useState(true);
   const [progress, setProgress] = useState(0);
   const [appActive, setAppActive] = useState(true);
@@ -342,6 +324,7 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
   vRef.current = vIdx;
 
   const scrollRef = useRef<ScrollView>(null);
+  const scrollX   = useRef(new Animated.Value(0)).current;
   const tickRef   = useRef<ReturnType<typeof setInterval> | null>(null);
   const fadeAnim  = useRef(new Animated.Value(1)).current;
 
@@ -351,30 +334,18 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
     return () => sub.remove();
   }, []);
 
-  // Fetch ads
-  const { data: adsData, isLoading } = useQuery({
-    queryKey: ['ads', pageName],
-    queryFn: async () => {
-      const loc =
-        pageName === 'home'    ? 'banners:home_0,banners:home_1,banners:home_2' :
-        pageName === 'editors' ? 'banners:editors' :
-        pageName === 'gigs'    ? 'banners:gigs' :
-        pageName === 'jobs'    ? 'banners:jobs' :
-                                 'banners:explore';
-      const { data } = await api.get(`/ads?location=${loc}`);
-      return data;
-    },
-    staleTime: 60_000,
-  });
+  // Fetch ads using unified hook
+  const { data: adsData, isLoading } = useBannerData(pageName);
 
   // Build levels
   const levels: Level[] = useMemo(() => {
-    const all = adsData?.ads ?? [];
+    const all = adsData || [];
     const fmt = (ad: any): AdItem => ({
       _id:            ad._id,
       title:          ad.title ?? '',
       description:    ad.description || ad.tagline || '',
       mediaUrl:       repairUrl(ad.mediaUrl),
+      thumbnailUrl:   ad.thumbnailUrl ? repairUrl(ad.thumbnailUrl) : '',
       mediaType:      (ad.mediaType?.toLowerCase() || 'image') as 'image' | 'video',
       linkText:       ad.ctaText    || 'Learn More',
       badge:          ad.badge      || 'SPONSOR',
@@ -442,8 +413,11 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
       });
     } else {
       const nextH = hRef.current + 1;
+      const isMulti = level.items.length > 1;
+      const snapDist = isMulti ? SNAP_DIST : SW;
+      
       setHMap(p => { const n = [...p]; n[vRef.current] = nextH; return n; });
-      scrollRef.current?.scrollTo({ x: nextH * SW, animated: true });
+      scrollRef.current?.scrollTo({ x: nextH * snapDist, animated: true });
       setProgress(0);
     }
   }, [levels, fadeAnim]);
@@ -478,14 +452,20 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
         Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
       });
     } else {
+      const isMulti = levels[v].items.length > 1;
+      const snapDist = isMulti ? SNAP_DIST : SW;
+
       setHMap(p => { const n = [...p]; n[v] = h; return n; });
-      scrollRef.current?.scrollTo({ x: h * SW, animated: true });
+      scrollRef.current?.scrollTo({ x: h * snapDist, animated: true });
       setProgress(0);
     }
-  }, [fadeAnim]);
+  }, [fadeAnim, levels]);
 
   const onScrollEnd = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const idx = Math.round(e.nativeEvent.contentOffset.x / e.nativeEvent.layoutMeasurement.width);
+    const isMulti = levels[vRef.current]?.items.length > 1;
+    const snapDist = isMulti ? SNAP_DIST : SW;
+    
+    const idx = Math.round(e.nativeEvent.contentOffset.x / snapDist);
     const clamped = Math.max(0, Math.min(idx, (levels[vRef.current]?.items.length ?? 1) - 1));
     if (clamped === hRef.current) return;
     setHMap(p => { const n = [...p]; n[vRef.current] = clamped; return n; });
@@ -508,16 +488,25 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
   return (
     <View style={s.container}>
       <Animated.View style={[s.wrapper, { opacity: fadeAnim }]}>
-        <ScrollView
-          ref={scrollRef}
+        <Animated.ScrollView
+          ref={scrollRef as any}
           horizontal
-          pagingEnabled
+          pagingEnabled={level.items.length === 1}
+          snapToInterval={level.items.length > 1 ? SNAP_DIST : undefined}
+          snapToAlignment="start"
+          decelerationRate="fast"
           showsHorizontalScrollIndicator={false}
           scrollEventThrottle={16}
           onMomentumScrollEnd={onScrollEnd}
-          decelerationRate="fast"
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+            { useNativeDriver: true }
+          )}
           bounces={false}
-          disableIntervalMomentum
+          contentContainerStyle={{
+            paddingHorizontal: 0,
+            alignItems: 'center'
+          }}
         >
           {levels.map((lvl, vI) => (
             <View key={lvl.id} style={{ flexDirection: 'row' }}>
@@ -529,9 +518,71 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
                 const align: any = flex.alignItems === 'flex-end' ? 'right' : flex.alignItems === 'center' ? 'center' : 'left';
                 const isActive = hI === hMap[vIdx];
 
+                const isMulti = lvl.items.length > 1;
+                const snapDist = isMulti ? SNAP_DIST : SW;
+
+                const cardStackPos = STACK_X_OFFSET + (hI * PEEK_PER_CARD);
+
+                const translateX = scrollX.interpolate({
+                  inputRange: [
+                    (hI - 1) * snapDist,
+                    hI * snapDist,
+                    (hI + 1) * snapDist,
+                  ],
+                  outputRange: [
+                    (SW - hI * snapDist - 44), // PIN TO RIGHT (Next Peek)
+                    0,                         // CENTER FOCUS
+                    (snapDist - 12),           // PIN TO LEFT (Prev Peek)
+                  ],
+                  extrapolate: 'clamp',
+                });
+
+                const scale = scrollX.interpolate({
+                  inputRange: [
+                    (hI - 1) * snapDist,
+                    hI * snapDist,
+                    (hI + 1) * snapDist,
+                  ],
+                  outputRange: [0.92, 1, 0.92],
+                  extrapolate: 'clamp',
+                });
+
+                const opacity = scrollX.interpolate({
+                  inputRange: [
+                    (hI - 1) * snapDist,
+                    hI * snapDist,
+                    (hI + 1) * snapDist,
+                  ],
+                  outputRange: [0.6, 1, 0.6],
+                  extrapolate: 'clamp',
+                });
+
                 return (
-                  <View key={ad._id} style={s.slide}>
-                    <View style={s.card}>
+                  <Animated.View 
+                    key={ad._id} 
+                    style={[
+                      s.slide, 
+                      { 
+                        width: isMulti ? snapDist : SW,
+                        zIndex: (hI === hMap[vIdx]) ? 100 : 50,
+                      },
+                      isMulti ? {
+                        transform: [{ scale }, { translateX }],
+                        opacity,
+                        paddingHorizontal: 16,
+                      } : {
+                        paddingHorizontal: 16,
+                      }
+                    ]}
+                  >
+                    <View style={[
+                      s.card, 
+                      { 
+                        backgroundColor: theme.secondary, 
+                        borderColor: theme.border,
+                        width: isMulti ? MULTI_CARD_WIDTH : '100%' 
+                      }
+                    ]}>
                       {ad.isEmptyState ? (
                         <View style={s.emptyWrap}>
                           <Text style={s.emptyTxt}>No ads or banners</Text>
@@ -539,10 +590,19 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
                       ) : (
                         <>
                           <TouchableOpacity activeOpacity={1} style={StyleSheet.absoluteFill} onPress={handleCardPress}>
-                            {ad.mediaType === 'video' && isActive
-                              ? <BannerVideo source={ad.mediaUrl} muted={muted} />
-                              : ad.mediaUrl ? <Image source={{ uri: ad.mediaUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null
-                            }
+                            {/* Always render Thumbnail first to avoid flashes */}
+                            {(ad.thumbnailUrl || (ad.mediaType === 'image' && ad.mediaUrl)) && (
+                              <Image source={{ uri: ad.thumbnailUrl || ad.mediaUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                            )}
+                            
+                            {/* Video Layer: Smooth fade-on-ready, Silent fallback-on-error */}
+                            {ad.mediaType === 'video' && isActive && !videoFailures[ad._id] && (
+                              <BannerVideo 
+                                source={ad.mediaUrl} 
+                                muted={muted} 
+                                onPlayError={() => setVideoFailures(p => ({ ...p, [ad._id]: true }))}
+                              />
+                            )}
                           </TouchableOpacity>
 
                           <LinearGradient
@@ -609,16 +669,26 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
                         </>
                       )}
                     </View>
-                  </View>
+                  </Animated.View>
                 );
               })}
             </View>
           ))}
-        </ScrollView>
+        </Animated.ScrollView>
 
         {!item.isEmptyState && lc.showProgressBar && (
-          <View style={s.progBg} pointerEvents="none">
-            <View style={[s.progFill, { width: `${progress}%` as any }]} />
+          <View 
+            style={[
+              s.progBg, 
+              { 
+                backgroundColor: theme.border,
+                width: level.items.length > 1 ? MULTI_CARD_WIDTH : SINGLE_CARD_WIDTH,
+                left: level.items.length > 1 ? CARD_MARGIN : 16,
+              }
+            ]} 
+            pointerEvents="none"
+          >
+            <View style={[s.progFill, { backgroundColor: theme.accent, width: `${progress}%` as any }]} />
           </View>
         )}
 
@@ -641,20 +711,20 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
         <View style={s.dots}>
           {level.items.map((_, i) => (
             <TouchableOpacity key={i} onPress={() => goTo(vIdx, i)} hitSlop={8}>
-              <View style={[s.dot, { width: i === hIdx ? 18 : 5, backgroundColor: i === hIdx ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.25)' }]} />
+              <View style={[s.dot, { width: i === hIdx ? 18 : 5, backgroundColor: i === hIdx ? theme.accent : theme.textSecondary, opacity: i === hIdx ? 1 : 0.4 }]} />
             </TouchableOpacity>
           ))}
         </View>
       )}
 
       {!item.isEmptyState && levels.length > 1 && (
-        <View style={s.sidebar}>
+        <View style={[s.sidebar, { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.4)', borderColor: theme.border }]}>
           {levels.map((lvl, i) => {
             const active = vIdx === i;
             return (
-              <TouchableOpacity key={lvl.id} onPress={() => goTo(i, 0)} style={[s.sideBtn, active && s.sideBtnActive]} activeOpacity={0.7}>
-                <Ionicons name={lvl.icon} size={11} color={active ? '#000' : lvl.color} />
-                {active && <View style={s.sideGlow} />}
+              <TouchableOpacity key={lvl.id} onPress={() => goTo(i, 0)} style={[s.sideBtn, active && { backgroundColor: theme.accent }]} activeOpacity={0.7}>
+                <Ionicons name={lvl.icon} size={11} color={active ? theme.primary : lvl.color} />
+                {active && <View style={[s.sideGlow, { backgroundColor: theme.accent, opacity: 0.2 }]} />}
               </TouchableOpacity>
             );
           })}
@@ -668,7 +738,7 @@ const s = StyleSheet.create({
   container: { marginVertical: 12, height: BANNER_HEIGHT, position: 'relative' },
   wrapper:   { width: '100%', height: BANNER_HEIGHT },
 
-  slide: { width: SW, paddingHorizontal: 16, height: BANNER_HEIGHT },
+  slide: { height: BANNER_HEIGHT, justifyContent: 'center' },
   card:  {
     flex: 1, borderRadius: 32, overflow: 'hidden',
     backgroundColor: '#09090b', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
@@ -697,7 +767,7 @@ const s = StyleSheet.create({
   detailsTxt: { fontSize: 9, fontWeight: '700', color: '#fff' },
   muteBtn:    { width: 28, height: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
 
-  progBg:   { position: 'absolute', bottom: 0, left: 16, right: 16, height: 2, backgroundColor: 'rgba(255,255,255,0.08)', borderBottomLeftRadius: 32, borderBottomRightRadius: 32, overflow: 'hidden' },
+  progBg:   { position: 'absolute', bottom: 0, height: 2, backgroundColor: 'rgba(255,255,255,0.08)', borderBottomLeftRadius: 32, borderBottomRightRadius: 32, overflow: 'hidden' },
   progFill: { height: '100%', backgroundColor: 'rgba(255,255,255,0.6)' },
 
   dots: { position: 'absolute', top: 16, right: 52, flexDirection: 'row', alignItems: 'center', gap: 6, zIndex: 30 },

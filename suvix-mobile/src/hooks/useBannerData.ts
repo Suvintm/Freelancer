@@ -7,7 +7,7 @@ const DEFAULT_BACKEND = 'https://suvix-server.onrender.com';
 /**
  * URL Repair logic mirrored exactly from web to ensure Cloudinary assets load correctly.
  */
-const repairUrl = (url: string) => {
+const repairUrl = (url: any) => {
     if (!url || typeof url !== "string") return url;
     if (!url.includes("cloudinary") && !url.includes("res_") && !url.includes("_com")) return url;
     let fixed = url;
@@ -26,21 +26,83 @@ const repairUrl = (url: string) => {
     return fixed;
 };
 
-// Professional Monochrome Fallbacks
+// Professional Monochrome & Video Defaults
 const DEFAULT_BANNERS = [
+    // --- LEVEL 0: HOME BANNERS ---
     {
-        _id: 'default_1',
-        title: 'Welcome to SuviX',
-        description: 'Discover the world\'s most talented video editors and creators.',
-        mediaUrl: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?auto=format&fit=crop&q=80&w=1200', // Elite Professional Studio
+        _id: 'l0_1',
+        title: 'Premium Video Editing',
+        description: 'Elite editors at your fingertips. Transform your raw footage into cinematic masterpieces.',
+        mediaUrl: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?auto=format&fit=crop&q=80&w=1200',
         mediaType: 'image',
-        ctaText: 'START EXPLORING',
+        ctaText: 'SEE PORTFOLIO',
+        badge: 'ELITE',
+        displayLocations: ['banners:home_0'],
+        layoutConfig: { slideDuration: 5000 },
+        buttonStyle: { variant: 'filled', bgColor: '#ffffff', textColor: '#000' },
+    },
+    {
+        _id: 'l0_2',
+        title: 'Cinematic Motion Graphics',
+        description: 'High-end visual storytelling with professional-grade motion design.',
+        mediaUrl: require('../../assets/images/banners/banner.mp4'),
+        thumbnailUrl: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=1200',
+        mediaType: 'video',
+        ctaText: 'LEARN MORE',
         badge: 'FEATURED',
-        layoutConfig: {},
-        buttonStyle: {},
-        buttonLinkType: 'internal',
-        buttonLink: '/(tabs)/explore',
-    }
+        displayLocations: ['banners:home_0'],
+        layoutConfig: { slideDuration: 10000 },
+        buttonStyle: { variant: 'outline', borderColor: '#ffffff', textColor: '#fff' },
+    },
+    {
+        _id: 'l0_3',
+        title: 'Global Talent Pipeline',
+        description: 'Connect with creators from over 50 countries.',
+        mediaUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1200',
+        mediaType: 'image',
+        ctaText: 'DASHBOARD',
+        badge: 'GLOBAL',
+        displayLocations: ['banners:home_0'],
+        layoutConfig: { slideDuration: 4000 },
+    },
+
+    // --- LEVEL 1: SPARKS ---
+    {
+        _id: 'l1_1',
+        title: 'Spark Your Creativity',
+        description: 'New creative tools added daily to enhance your workflow.',
+        mediaUrl: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=1200',
+        mediaType: 'image',
+        ctaText: 'TRY TOOLS',
+        badge: 'NEW',
+        displayLocations: ['banners:home_1'],
+        layoutConfig: { slideDuration: 5000 },
+    },
+    {
+        _id: 'l1_2',
+        title: 'Vibrant Communities',
+        description: 'Join thousands of creators in our exclusive discord community.',
+        mediaUrl: require('../../assets/images/banners/banner.mp4'),
+        thumbnailUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1200',
+        mediaType: 'video',
+        ctaText: 'JOIN US',
+        badge: 'COMMUNITY',
+        displayLocations: ['banners:home_1'],
+        layoutConfig: { slideDuration: 8000 },
+    },
+
+    // --- LEVEL 2: EXPLORE ---
+    {
+        _id: 'l2_1',
+        title: 'Explore the Marketplace',
+        description: 'Find your next big project or the perfect editor for your brand.',
+        mediaUrl: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=1200',
+        mediaType: 'image',
+        ctaText: 'EXPLORE GIGS',
+        badge: 'MARKET',
+        displayLocations: ['banners:home_2'],
+        layoutConfig: { slideDuration: 6000 },
+    },
 ];
 
 export const useBannerData = (pageName: 'home' | 'editors' | 'gigs' | 'jobs' | 'explore' = 'home') => {
@@ -48,36 +110,8 @@ export const useBannerData = (pageName: 'home' | 'editors' | 'gigs' | 'jobs' | '
   return useQuery({
     queryKey: ['ads', pageName],
     queryFn: async () => {
-        try {
-            let locations = "banners:home_0";
-            if (pageName === "home")    locations = "banners:home_0,banners:home_1,banners:home_2";
-            if (pageName === "editors") locations = "banners:editors";
-            if (pageName === "gigs")    locations = "banners:gigs";
-            if (pageName === "jobs")    locations = "banners:jobs";
-            if (pageName === "explore") locations = "banners:explore";
-
-            const { data } = await axios.get(`${DEFAULT_BACKEND}/api/ads?location=${locations}`);
-            
-            const ads = (data.ads || []).map((ad: any) => ({
-                _id:            ad._id,
-                title:          ad.title,
-                description:    ad.description || ad.tagline || "",
-                mediaUrl:       repairUrl(ad.mediaUrl),
-                mediaType:      ad.mediaType,
-                ctaText:        ad.ctaText || "Learn More",
-                badge:          ad.badge || "PROMO",
-                layoutConfig:   ad.layoutConfig || {},
-                buttonStyle:    ad.buttonStyle  || {},
-                buttonLinkType: ad.buttonLinkType || "ad_details",
-                buttonLink:     ad.buttonLink || "",
-            }));
-
-            // If no ads found in DB, return professional defaults
-            return ads.length > 0 ? ads : DEFAULT_BANNERS;
-        } catch (error) {
-            console.error('❌ [API] Banner Fetch Failed — Using Fallbacks:', error);
-            return DEFAULT_BANNERS;
-        }
+        // Return static defaults directly for testing the slice carousel
+        return DEFAULT_BANNERS;
     },
     staleTime: 600000, 
   });

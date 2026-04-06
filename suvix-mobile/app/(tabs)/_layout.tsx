@@ -58,7 +58,7 @@ export default function TabsLayout() {
   }, [user]);
 
   const reelsIndex = useMemo(() => filteredTabs.findIndex(t => t.name === 'reels'), [filteredTabs]);
-  const isReelsActive = activeIndex === reelsIndex;
+  const isReelsActive = false; // Disabled immersive mode for removed reels feed
 
   const onPageSelected = useCallback((e: any) => {
     setActiveIndex(e.nativeEvent.position);
@@ -109,7 +109,7 @@ export default function TabsLayout() {
         ref={pagerRef}
         style={styles.pager}
         initialPage={0}
-        scrollEnabled={activeIndex !== reelsIndex}
+        scrollEnabled={false}
         onPageSelected={onPageSelected}
         offscreenPageLimit={1}
         overdrag={false}
