@@ -1,10 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { StyleSheet, View, Text, Image, TouchableOpacity, Dimensions, Animated, StatusBar, SafeAreaView } from 'react-native';
+import { StyleSheet, View, Text, Image, TouchableOpacity, Dimensions, Animated, StatusBar, SafeAreaView, useColorScheme } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LucideChevronRight, LucideUserPlus, LucideLogIn } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { Colors } from '../src/constants/Colors';
+import SuvixButton from '../src/components/SuvixButton';
 
 const { width, height } = Dimensions.get('window');
 
@@ -36,6 +38,10 @@ export default function WelcomeScreen() {
   const router = useRouter();
   const pagerRef = useRef<PagerView>(null);
 
+  const colorScheme = useColorScheme();
+  const theme = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const isDark = colorScheme === 'dark';
+
   const handleNext = () => {
     if (activeSlide < ONBOARDING_DATA.length - 1) {
       pagerRef.current?.setPage(activeSlide + 1);
@@ -51,8 +57,8 @@ export default function WelcomeScreen() {
   const isLastSlide = activeSlide === ONBOARDING_DATA.length - 1;
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={[styles.container, { backgroundColor: theme.primary }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
       
       {/* Background Images Layer */}
       <View style={StyleSheet.absoluteFill}>
@@ -72,7 +78,7 @@ export default function WelcomeScreen() {
       <SafeAreaView style={styles.headerContainer}>
         <Image 
           source={require('../assets/whitebglogo.png')} 
-          style={styles.logo}
+          style={[styles.logo, { tintColor: isDark ? undefined : '#000' }]}
           resizeMode="contain"
         />
       </SafeAreaView>
@@ -95,13 +101,13 @@ export default function WelcomeScreen() {
       {/* Bottom Content Section - Modern Glassmorphism Styled */}
       <View style={[styles.bottomSection, isLastSlide && styles.finalSectionHeight]}>
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.85)', 'rgba(0,0,0,1)']}
+          colors={isDark ? ['transparent', 'rgba(0,0,0,0.8)', 'rgba(0,0,0,1)'] : ['transparent', 'rgba(248,250,252,0.8)', 'rgba(248,250,252,1)']}
           style={StyleSheet.absoluteFill}
         />
         
         <SafeAreaView style={styles.contentWrapper}>
           <View style={styles.cardHeader}>
-            <Text style={styles.title}>{ONBOARDING_DATA[activeSlide].title}</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{ONBOARDING_DATA[activeSlide].title}</Text>
             
             {/* Extended Multi-segment Indicator */}
             {!isLastSlide && (
@@ -111,7 +117,7 @@ export default function WelcomeScreen() {
                     key={i} 
                     style={[
                       styles.indicator, 
-                      activeSlide === i && styles.indicatorActive
+                      activeSlide === i ? [styles.indicatorActive, { backgroundColor: theme.accent }] : { backgroundColor: theme.border }
                     ]} 
                   />
                 ))}
@@ -119,7 +125,7 @@ export default function WelcomeScreen() {
             )}
           </View>
 
-          <Text style={styles.description}>
+          <Text style={[styles.description, { color: theme.textSecondary }]}>
             {ONBOARDING_DATA[activeSlide].description}
           </Text>
 
@@ -131,43 +137,34 @@ export default function WelcomeScreen() {
                   activeOpacity={0.7}
                   style={styles.skipBtn}
                 >
-                  <Text style={styles.skipBtnText}>I have an account</Text>
+                  <Text style={[styles.skipBtnText, { color: theme.textSecondary }]}>I have an account</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
                   onPress={handleNext}
                   activeOpacity={0.9}
-                  style={styles.nextBtn}
+                  style={[styles.nextBtn, { backgroundColor: theme.accent }]}
                 >
-                  <Text style={styles.nextBtnText}>Next</Text>
-                  <View style={styles.iconCircle}>
-                    <LucideChevronRight size={18} color="#000" strokeWidth={3} />
+                  <Text style={[styles.nextBtnText, { color: isDark ? '#000' : '#FFF' }]}>Next</Text>
+                  <View style={[styles.iconCircle, { backgroundColor: isDark ? '#F5F5F5' : '#1A1A1A' }]}>
+                    <LucideChevronRight size={18} color={isDark ? "#000" : "#FFF"} strokeWidth={3} />
                   </View>
                 </TouchableOpacity>
               </>
             ) : (
               <View style={styles.finalActions}>
-                 <TouchableOpacity 
+                 <SuvixButton 
+                  title="New User? Create Account" 
                   onPress={() => handleAction('/signup')}
-                  activeOpacity={0.9}
-                  style={styles.whiteBtn}
-                >
-                  <View style={styles.btnIconLayout}>
-                    <LucideUserPlus size={20} color="#000" strokeWidth={2.5} />
-                    <Text style={styles.whiteBtnText}>New User? Create Account</Text>
-                  </View>
-                </TouchableOpacity>
+                  variant="primary"
+                  style={{ marginBottom: 12 }}
+                />
 
-                <TouchableOpacity 
+                <SuvixButton 
+                  title="Already have an account? Login" 
                   onPress={() => handleAction('/login')}
-                  activeOpacity={0.9}
-                  style={[styles.whiteBtn, { marginTop: 12 }]}
-                >
-                  <View style={styles.btnIconLayout}>
-                    <LucideLogIn size={20} color="#000" strokeWidth={2.5} />
-                    <Text style={styles.whiteBtnText}>Already have an account? Login</Text>
-                  </View>
-                </TouchableOpacity>
+                  variant="outline"
+                />
               </View>
             )}
           </View>
@@ -188,12 +185,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 10,
-    alignItems: 'center',
-    paddingTop: 20, 
+    alignItems: 'flex-start',
+    paddingTop: 30, 
+    paddingLeft: 24,
   },
   logo: {
-    width: 140,
-    height: 60,
+    width: 120,
+    height: 50,
   },
   bgImage: {
     width: '100%',

@@ -10,6 +10,8 @@ import {
   Alert,
   ScrollView,
   TouchableOpacity,
+  useColorScheme,
+  StatusBar
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -20,6 +22,10 @@ import SuvixButton from '../src/components/SuvixButton';
 import { api } from '../src/api/client';
 
 export default function ForgotPasswordScreen() {
+  const colorScheme = useColorScheme();
+  const theme = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const isDark = colorScheme === 'dark';
+
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -60,20 +66,21 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.primary }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
           <ScrollView contentContainerStyle={styles.scrollContent}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Feather name="arrow-left" size={24} color={Colors.white} />
+            <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: theme.secondary }]}>
+              <Feather name="arrow-left" size={24} color={theme.text} />
             </TouchableOpacity>
 
             <View style={styles.header}>
-              <View style={styles.iconContainer}>
-                <Feather name="mail" size={40} color={Colors.accent} />
+              <View style={[styles.iconContainer, { backgroundColor: theme.secondary }]}>
+                <Feather name="mail" size={40} color={theme.accent} />
               </View>
-              <Text style={styles.title}>Reset Password</Text>
-              <Text style={styles.subtitle}>Enter your email address and we'll send you instructions to reset your password.</Text>
+              <Text style={[styles.title, { color: theme.text }]}>Reset Password</Text>
+              <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Enter your email address and we'll send you instructions to reset your password.</Text>
             </View>
 
             <View style={styles.form}>
@@ -83,7 +90,7 @@ export default function ForgotPasswordScreen() {
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
-                icon={<Feather name="mail" color={Colors.dark.textSecondary} size={20} />}
+                icon={<Feather name="mail" size={20} />}
               />
 
               <SuvixButton 
@@ -101,14 +108,14 @@ export default function ForgotPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.dark.primary },
+  container: { flex: 1 },
   keyboardView: { flex: 1 },
   scrollContent: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
-  backButton: { marginTop: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.dark.secondary, justifyContent: 'center', alignItems: 'center' },
+  backButton: { marginTop: 20, width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   header: { marginTop: 40, marginBottom: 40, alignItems: 'center' },
-  iconContainer: { width: 80, height: 80, borderRadius: 40, backgroundColor: Colors.dark.secondary, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
-  title: { color: Colors.white, fontSize: 26, fontWeight: '800', textAlign: 'center', marginBottom: 12 },
-  subtitle: { color: Colors.dark.textSecondary, fontSize: 15, textAlign: 'center', lineHeight: 22 },
+  iconContainer: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+  title: { fontSize: 26, fontWeight: '800', textAlign: 'center', marginBottom: 12 },
+  subtitle: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
   form: { flex: 1 },
   actionBtn: { height: 50, marginTop: 10 },
 });

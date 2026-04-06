@@ -1,17 +1,17 @@
 export const Colors = {
-  // BRANDING (Monochrome / Zinc / AI Inspired)
-  accent: '#FFFFFF', // High-Contrast Active Accent
-  accentGradient: ['#FFFFFF', '#D4D4D8'] as const, // Zinc Flow
+  // CORE BRANDING
   error: '#EF4444',
   success: '#22C55E',
   white: '#FFFFFF',
   black: '#000000',
   heart: '#FF3040',
 
-  // DARK THEME (Pure Black / OLED / Play Store Inspired)
+  // DARK THEME (Pure Black / OLED)
   dark: {
-    primary: '#000000', // Absolute pure black for OLED
-    secondary: '#0B0B0B', // Very subtle elevation for cards
+    primary: '#000000',
+    secondary: '#0B0B0B',
+    accent: '#FFFFFF',
+    accentGradient: ['#FFFFFF', '#D4D4D8'] as const,
     text: '#FFFFFF',
     textSecondary: '#A1A1AA',
     border: '#1A1A1B',
@@ -20,10 +20,12 @@ export const Colors = {
     tabBar: 'rgba(0, 0, 0, 0.96)',
   },
 
-  // LIGHT THEME (Clean/Corporate Inspired)
+  // LIGHT THEME (Clean / Zinc)
   light: {
     primary: '#F8FAFC',
     secondary: '#FFFFFF',
+    accent: '#000000',
+    accentGradient: ['#000000', '#27272A'] as const,
     text: '#0F172A',
     textSecondary: '#64748B',
     border: '#E2E8F0',

@@ -11,16 +11,29 @@ const TOKEN_KEY = 'suvix_auth_token';
 // Note: We no longer store the user object in SecureStore to avoid the 2048-byte limit.
 // The user is fetched fresh on every boot during our splash screen pre-fetch.
 
+interface TempSignupData {
+  name?: string;
+  email?: string;
+  password?: string;
+  phone?: string;
+  profileImage?: string | null;
+  categoryId?: string;
+  subCategories?: string[];
+}
+
 interface AuthState {
   token: string | null;
   user: any | null;
   isAuthenticated: boolean;
   isInitialized: boolean;
   isLoadingUser: boolean;
+  tempSignupData: TempSignupData | null;
   setAuth: (user: any, token: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   fetchUser: () => Promise<void>;
+  setTempSignupData: (data: Partial<TempSignupData>) => void;
+  clearTempSignupData: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -29,6 +42,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   isInitialized: false,
   isLoadingUser: false,
+  tempSignupData: null,
+  setTempSignupData: (data) => set((state) => ({ 
+    tempSignupData: { ...(state.tempSignupData || {}), ...data } 
+  })),
+  clearTempSignupData: () => set({ tempSignupData: null }),
   setAuth: async (user, token) => {
     try {
       // Store ONLY the token in hardware-encrypted SecureStore

@@ -10,6 +10,7 @@ export interface CategoryConfig {
   color?: string;
   thumbnail: any; // Cinematic background image
   overlayIcon?: any; // Category-specific PNG icon overlay
+  subCategories?: string[]; // Professional sub-niches
   info: string; // Detailed professional path description
 }
 

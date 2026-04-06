@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { useTheme } from '../../src/context/ThemeContext';
 import { CATEGORIES } from '../../src/constants/categories';
 import { Colors } from '../../src/constants/Colors';
 import { CategoryId } from '../../src/types/category';
@@ -17,6 +18,8 @@ import ClientProfile from '../../src/modules/clients/profile';
  * Acts as a "Module Loader" that swaps the UI based on the user's category.
  */
 export default function ProfileIndex() {
+  const { theme } = useTheme();
+
   const { user, isLoadingUser, isAuthenticated } = useAuthStore();
 
   // Determine which module to load based on user metadata
@@ -35,17 +38,17 @@ export default function ProfileIndex() {
 
   if (isLoadingUser || (isAuthenticated && !user)) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.white} />
-        <Text style={styles.loadingText}>Syncing SuviX Profile...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.primary }]}>
+        <ActivityIndicator size="large" color={theme.text} />
+        <Text style={[styles.loadingText, { color: theme.text }]}>Syncing SuviX Profile...</Text>
       </View>
     );
   }
 
   if (!user) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.errorText}>Please login to access SuviX.</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.primary }]}>
+        <Text style={[styles.errorText, { color: theme.textSecondary }]}>Please login to access SuviX.</Text>
       </View>
     );
   }
@@ -66,15 +69,12 @@ const styles = StyleSheet.create({
     flex: 1, 
     justifyContent: 'center', 
     alignItems: 'center', 
-    backgroundColor: Colors.dark.primary 
   },
   loadingText: { 
-    color: Colors.white, 
     marginTop: 12,
     fontWeight: '600'
   },
   errorText: { 
-    color: Colors.dark.textSecondary,
     fontSize: 14
   }
 });

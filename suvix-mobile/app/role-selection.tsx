@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,8 @@ import {
   Dimensions,
   Animated,
   StatusBar,
-  Modal
+  Modal,
+  useColorScheme
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -50,6 +51,10 @@ const CATEGORY_ORDER = [
 ];
 
 export default function RoleSelectionScreen() {
+  const colorScheme = useColorScheme();
+  const theme = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const isDark = colorScheme === 'dark';
+
   const { token, name } = useLocalSearchParams<{ token: string; name: string }>();
   const [selectedCategory, setSelectedCategory] = useState<CategoryId | null>(null);
   const [infoCategory, setInfoCategory] = useState<CategoryConfig | null>(null);
@@ -75,6 +80,8 @@ export default function RoleSelectionScreen() {
     Haptics.impactAsync(style);
   };
 
+  const { tempSignupData, setTempSignupData, clearTempSignupData } = useAuthStore();
+
   const handleFinalize = async () => {
     if (!selectedCategory) {
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
@@ -85,10 +92,57 @@ export default function RoleSelectionScreen() {
     setLoading(true);
     try {
       handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
-      // [TESTING MODE] Directly showing success Alert
-      Alert.alert('Success', `Role ${selectedCategory} selected for testing.`);
+      
+      // Update global signup buffer
+      setTempSignupData({ categoryId: selectedCategory });
+
+      const category = DUMMY_CATEGORIES[selectedCategory];
+      const backendRole = category?.roleGroupId === 'CLIENT' ? 'client' : 'editor';
+
+      // For Normal User / Client, trigger registration immediately
+      if (selectedCategory === 'direct_client') {
+        const data = useAuthStore.getState().tempSignupData;
+        if (!data) throw new Error('Signup data missing');
+
+        const formData = new FormData();
+        formData.append('name', data.name || '');
+        formData.append('email', data.email || '');
+        formData.append('password', data.password || '');
+        formData.append('phone', data.phone || '');
+        formData.append('role', backendRole);
+        formData.append('country', 'IN');
+
+        if (data.profileImage) {
+          const uriParts = data.profileImage.split('.');
+          const fileType = uriParts[uriParts.length - 1];
+          formData.append('profilePicture', {
+            uri: data.profileImage,
+            name: `profile.${fileType}`,
+            type: `image/${fileType}`,
+          } as any);
+        }
+
+        const response = await api.post('/auth/register', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+
+        if (response.data.success) {
+          const { user, token: authToken } = response.data;
+          await setAuth(user, authToken);
+          clearTempSignupData();
+          Alert.alert('Welcome to SuviX!', 'Your Client profile is ready. Explore elite talent now.');
+          router.replace('/(tabs)');
+        }
+        return;
+      }
+      
+      // Navigation to the Subcategory Selection Screen for other roles
+      router.push({
+        pathname: '/subcategory-selection',
+        params: { categoryId: selectedCategory }
+      });
     } catch (error: any) {
-      Alert.alert('Setup Failed', 'Could not finalize your professional path.');
+      Alert.alert('Setup Failed', error.response?.data?.message || 'Could not finalize your path.');
     } finally {
       setLoading(false);
     }
@@ -107,8 +161,9 @@ export default function RoleSelectionScreen() {
         onPress={() => { handleImpact(); setSelectedCategory(item.id as CategoryId); }}
         style={[
           styles.card, 
-          isSelected && styles.cardSelected,
-          isSpecialClient && styles.specialClientCard
+          { backgroundColor: theme.secondary, borderColor: theme.border },
+          isSelected && { borderColor: theme.accent, borderWidth: 2.5 },
+          isSpecialClient && { borderStyle: 'dashed' }
         ]}
       >
         <Image source={item.thumbnail} style={styles.cardImage} resizeMode="cover" />
@@ -118,7 +173,7 @@ export default function RoleSelectionScreen() {
           style={styles.infoIcon} 
           onPress={() => { handleImpact(Haptics.ImpactFeedbackStyle.Medium); setInfoCategory(item); }}
         >
-          <Feather name="info" size={16} color="#FFF" />
+          <Feather name="info" size={16} color={theme.text} />
         </TouchableOpacity>
 
         {/* Absolute Icon Overlay - Perfect Top Left Corner */}
@@ -127,14 +182,14 @@ export default function RoleSelectionScreen() {
         )}
 
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.95)']}
+          colors={['transparent', 'rgba(0,0,0,0.9)']}
           style={styles.cardOverlay}
         >
           <View style={styles.cardLabelContainer}>
             <Text style={styles.cardLabel} numberOfLines={1}>{item.label}</Text>
             {isSelected && (
-              <View style={styles.selectedBadge}>
-                <Feather name="check" size={10} color="#000" />
+              <View style={[styles.selectedBadge, { backgroundColor: theme.accent }]}>
+                <Feather name="check" size={10} color={isDark ? "#000" : "#FFF"} />
               </View>
             )}
           </View>
@@ -144,16 +199,16 @@ export default function RoleSelectionScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.primary }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             
             <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-              <Image source={require('../assets/whitebglogo.png')} style={styles.logo} resizeMode="contain" />
-              <Text style={styles.title}>Choose Your Path</Text>
-              <Text style={styles.disclaimer}>Wisely choose your category by checking the info of each category on the respective category info icon</Text>
+              <Image source={require('../assets/whitebglogo.png')} style={[styles.logo, { tintColor: isDark ? undefined : theme.text }]} resizeMode="contain" />
+              <Text style={[styles.title, { color: theme.text }]}>Choose Your Path</Text>
+              <Text style={[styles.disclaimer, { color: theme.textSecondary }]}>Wisely choose your category by checking the info of each category on the respective category info icon</Text>
             </Animated.View>
 
             <View style={styles.grid}>
@@ -165,17 +220,16 @@ export default function RoleSelectionScreen() {
 
           {/* FLOATING ACTION BOTTOM BAR */}
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,1)']}
+            colors={isDark ? ['transparent', 'rgba(0,0,0,1)'] : ['transparent', 'rgba(248,250,252,1)']}
             style={styles.bottomBar}
           >
-            <TouchableOpacity 
-              activeOpacity={0.8}
+            <SuvixButton 
+              title="Continue" 
               onPress={handleFinalize}
-              style={[styles.nextBtn, !selectedCategory && styles.btnDisabled]}
-            >
-              <Text style={styles.nextBtnText}>Continue</Text>
-              <Feather name="chevron-right" size={20} color="#000" />
-            </TouchableOpacity>
+              loading={loading}
+              disabled={!selectedCategory}
+              variant="primary"
+            />
           </LinearGradient>
 
           {/* INFO MODAL */}
@@ -187,14 +241,14 @@ export default function RoleSelectionScreen() {
           >
             <View style={styles.modalOverlay}>
               <TouchableOpacity style={styles.modalBlurClose} activeOpacity={1} onPress={() => setInfoCategory(null)} />
-              <View style={styles.modalContent}>
+              <View style={[styles.modalContent, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
                 <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>{infoCategory?.label}</Text>
+                  <Text style={[styles.modalTitle, { color: theme.text }]}>{infoCategory?.label}</Text>
                   <TouchableOpacity onPress={() => setInfoCategory(null)}>
-                    <Feather name="x" size={24} color="#FFF" />
+                    <Feather name="x" size={24} color={theme.text} />
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.modalInfo}>{infoCategory?.info}</Text>
+                <Text style={[styles.modalInfo, { color: theme.textSecondary }]}>{infoCategory?.info}</Text>
                 <SuvixButton 
                   title="Got it" 
                   onPress={() => setInfoCategory(null)}
@@ -210,30 +264,20 @@ export default function RoleSelectionScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
+  container: { flex: 1 },
   scrollContent: { paddingHorizontal: 24, paddingTop: 10 },
   header: { alignItems: 'center', marginBottom: 20 },
   logo: { width: 90, height: 36, marginBottom: 8 },
-  title: { color: '#FFF', fontSize: 26, fontWeight: '900', letterSpacing: -0.5 },
-  disclaimer: { color: 'rgba(255,255,255,0.5)', fontSize: 11, textAlign: 'center', marginTop: 8, paddingHorizontal: 20, fontStyle: 'italic' },
+  title: { fontSize: 26, fontWeight: '900', letterSpacing: -0.5 },
+  disclaimer: { fontSize: 11, textAlign: 'center', marginTop: 8, paddingHorizontal: 20, fontStyle: 'italic' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   card: {
     width: CARD_WIDTH,
     height: CARD_WIDTH * 1.05, // Smaller cards
     borderRadius: 16,
-    backgroundColor: '#111',
     marginBottom: 16,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#222'
-  },
-  cardSelected: {
-    borderColor: '#FFF',
-    borderWidth: 2
-  },
-  specialClientCard: {
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderStyle: 'dashed'
+    borderWidth: 1.5,
   },
   cardImage: { width: '100%', height: '100%', position: 'absolute' },
   overlayIcon: {
@@ -261,20 +305,13 @@ const styles = StyleSheet.create({
   cardOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '100%', justifyContent: 'flex-end', padding: 15 },
   cardLabelContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardLabel: { color: '#FFF', fontSize: 13, fontWeight: '800' },
-  selectedBadge: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' },
+  selectedBadge: { width: 16, height: 16, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 24, paddingBottom: 30, paddingTop: 30 },
-  nextBtn: { backgroundColor: '#FFF', height: 52, borderRadius: 100, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  nextBtnText: { color: '#000', fontSize: 16, fontWeight: '800', marginRight: 8 },
-  btnDisabled: { opacity: 0.5 },
-  finalForm: { width: '100%' },
-  actionBtn: { marginTop: 10, borderRadius: 100 },
-  
-  // Modal Styles
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   modalBlurClose: { ...StyleSheet.absoluteFillObject },
-  modalContent: { width: '100%', backgroundColor: '#111', borderRadius: 24, padding: 24, borderWidth: 1, borderColor: '#333' },
+  modalContent: { width: '100%', borderRadius: 24, padding: 24, borderWidth: 1.5 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  modalTitle: { color: '#FFF', fontSize: 20, fontWeight: '900' },
-  modalInfo: { color: 'rgba(255,255,255,0.7)', fontSize: 13, lineHeight: 20, marginBottom: 24 },
+  modalTitle: { fontSize: 20, fontWeight: '900' },
+  modalInfo: { fontSize: 13, lineHeight: 20, marginBottom: 24 },
   modalBtn: { borderRadius: 100 }
 });

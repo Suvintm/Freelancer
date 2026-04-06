@@ -5,7 +5,8 @@ import {
   StyleSheet, 
   Text, 
   Animated, 
-  TextInputProps 
+  TextInputProps,
+  useColorScheme
 } from 'react-native';
 import { Colors } from '../constants/Colors';
 
@@ -27,6 +28,8 @@ const SuvixInput: React.FC<SuvixInputProps> = ({
   small,
   ...props 
 }) => {
+  const colorScheme = useColorScheme();
+  const theme = colorScheme === 'dark' ? Colors.dark : Colors.light;
   const [focusAnim] = useState(new Animated.Value(0));
 
   const handleFocus = () => {
@@ -47,32 +50,35 @@ const SuvixInput: React.FC<SuvixInputProps> = ({
 
   const borderColor = focusAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [Colors.dark.border, Colors.accent],
+    outputRange: [theme.border, theme.accent],
   });
 
   return (
     <View style={[styles.container, small && styles.compactContainer]}>
-      {label && <Text style={[styles.label, small && styles.compactLabel]}>{label}</Text>}
+      {label && <Text style={[styles.label, small && styles.compactLabel, { color: theme.textSecondary }]}>{label}</Text>}
       <Animated.View style={[
         styles.inputContainer, 
         small && styles.compactInputContainer,
-        { borderColor }
+        { borderColor, backgroundColor: theme.inputBg }
       ]}>
         {icon && (
           <View style={styles.iconContainer}>
-            {React.cloneElement(icon as React.ReactElement, { size: small ? 16 : 20 })}
+            {React.cloneElement(icon as React.ReactElement, { 
+              size: small ? 16 : 20,
+              color: value ? theme.text : theme.textSecondary 
+            })}
           </View>
         )}
         <TextInput
-          style={[styles.input, small && styles.compactInputText]}
+          style={[styles.input, small && styles.compactInputText, { color: theme.text }]}
           placeholder={placeholder}
-          placeholderTextColor={Colors.dark.textSecondary}
+          placeholderTextColor={theme.textSecondary}
           value={value}
           onChangeText={onChangeText}
           secureTextEntry={secureTextEntry}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          selectionColor={Colors.accent}
+          selectionColor={theme.accent}
           autoCapitalize="none"
           {...props}
         />
@@ -95,7 +101,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   label: {
-    color: Colors.dark.textSecondary,
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 8,
@@ -108,7 +113,6 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.dark.inputBg,
     borderRadius: 16,
     borderWidth: 1.5,
     paddingHorizontal: 16,
@@ -131,7 +135,6 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    color: Colors.white,
     fontSize: 16,
     fontWeight: '500',
     height: '100%',

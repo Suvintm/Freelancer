@@ -1,14 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { StatusBar } from 'expo-status-bar';
+import { useColorScheme } from 'react-native';
 import { Colors as StaticColors } from '../constants/Colors';
 
 const THEME_KEY = 'suvix_theme_preference';
 
-type ThemeMode = 'light' | 'dark';
+type ThemeMode = 'light' | 'dark' | 'system';
 
 interface ThemeColors {
   primary: string;
+  secondary: string;
   background: string;
   card: string;
   text: string;
@@ -30,6 +32,7 @@ interface ThemeContextType {
 
 const lightTheme: ThemeColors = {
   primary: StaticColors.light.primary,
+  secondary: StaticColors.light.secondary,
   background: StaticColors.light.primary,
   card: StaticColors.white,
   text: StaticColors.light.text,
@@ -37,11 +40,12 @@ const lightTheme: ThemeColors = {
   border: StaticColors.light.border,
   notification: StaticColors.error,
   tabBar: StaticColors.light.tabBar,
-  accent: StaticColors.accent,
+  accent: StaticColors.light.accent,
 };
 
 const darkTheme: ThemeColors = {
   primary: StaticColors.dark.primary,
+  secondary: StaticColors.dark.secondary,
   background: StaticColors.dark.primary, // Pure Black OLED
   card: StaticColors.dark.secondary, // Material Elevation
   text: StaticColors.dark.text,
@@ -49,20 +53,21 @@ const darkTheme: ThemeColors = {
   border: StaticColors.dark.border,
   notification: StaticColors.error,
   tabBar: StaticColors.dark.tabBar,
-  accent: StaticColors.accent,
+  accent: StaticColors.dark.accent,
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('dark');
+  const systemColorScheme = useColorScheme();
+  const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     async function loadTheme() {
       try {
         const savedTheme = await SecureStore.getItemAsync(THEME_KEY);
-        if (savedTheme === 'light' || savedTheme === 'dark') {
+        if (savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'system') {
           setThemeModeState(savedTheme as ThemeMode);
         }
       } catch (e) {
@@ -74,7 +79,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     loadTheme();
   }, []);
 
-  const isDarkMode = themeMode === 'dark';
+  const effectiveTheme: 'light' | 'dark' = 
+    themeMode === 'system' 
+      ? (systemColorScheme === 'dark' ? 'dark' : 'light') 
+      : themeMode;
+
+  const isDarkMode = effectiveTheme === 'dark';
   const theme = isDarkMode ? darkTheme : lightTheme;
 
   const setThemeMode = async (mode: ThemeMode) => {
@@ -83,7 +93,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const toggleTheme = () => {
-    const nextMode = themeMode === 'light' ? 'dark' : 'light';
+    const nextMode = isDarkMode ? 'light' : 'dark';
     setThemeMode(nextMode);
   };
 

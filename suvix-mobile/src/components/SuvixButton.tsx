@@ -7,7 +7,8 @@ import {
   Animated, 
   ViewStyle, 
   TextStyle,
-  View
+  View,
+  useColorScheme
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../constants/Colors';
@@ -31,6 +32,8 @@ const SuvixButton: React.FC<SuvixButtonProps> = ({
   textStyle,
   variant = 'primary'
 }) => {
+  const colorScheme = useColorScheme();
+  const theme = colorScheme === 'dark' ? Colors.dark : Colors.light;
   const scaleAnim = new Animated.Value(1);
 
   const handlePressIn = () => {
@@ -52,20 +55,18 @@ const SuvixButton: React.FC<SuvixButtonProps> = ({
   const isBtnDisabled = loading || disabled;
 
   const renderContent = () => {
-    const isBtnDisabled = loading || disabled;
-
     return (
       <View style={styles.gradientWrapper}>
         <LinearGradient
-          colors={isBtnDisabled ? [Colors.dark.border, Colors.dark.border] : Colors.accentGradient}
+          colors={isBtnDisabled ? [theme.border, theme.border] : theme.accentGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.gradient}
         >
           {loading ? (
-            <ActivityIndicator color={Colors.white} />
+            <ActivityIndicator color={colorScheme === 'dark' ? Colors.black : Colors.white} />
           ) : (
-            <Text style={[styles.text, textStyle]}>{title}</Text>
+            <Text style={[styles.text, { color: colorScheme === 'dark' ? Colors.black : Colors.white }, textStyle]}>{title}</Text>
           )}
         </LinearGradient>
       </View>
@@ -83,8 +84,12 @@ const SuvixButton: React.FC<SuvixButtonProps> = ({
         style={styles.touchable}
       >
         {variant === 'primary' ? renderContent() : (
-           <View style={[styles.secondaryContainer, variant === 'outline' && styles.outline]}>
-             <Text style={[styles.secondaryText, textStyle]}>{title}</Text>
+           <View style={[
+             styles.secondaryContainer, 
+             { backgroundColor: theme.secondary },
+             variant === 'outline' && [styles.outline, { borderColor: theme.border }]
+           ]}>
+             <Text style={[styles.secondaryText, { color: theme.text }, textStyle]}>{title}</Text>
            </View>
         )}
       </TouchableOpacity>
@@ -117,22 +122,18 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.dark.secondary,
     borderRadius: 16,
   },
   outline: {
     backgroundColor: 'transparent',
     borderWidth: 1.5,
-    borderColor: Colors.dark.border,
   },
   text: {
-    color: Colors.white,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   secondaryText: {
-    color: Colors.white,
     fontSize: 16,
     fontWeight: '600',
   }
