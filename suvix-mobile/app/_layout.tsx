@@ -119,8 +119,8 @@ function InitialRoot() {
 
     if (!isAuthenticated) {
       if (inAuthGroup || !segments[0] || segments[0] === 'index') {
-        console.log('🔓 [GUARD] Unauthorized. Redirecting to /login');
-        router.replace('/login');
+        console.log('🔓 [GUARD] Unauthorized. Redirecting to /welcome');
+        router.replace('/welcome');
       }
     } else {
       // Authenticated branch
@@ -149,6 +149,7 @@ function InitialRoot() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
+      <Stack.Screen name="welcome" />
       <Stack.Screen name="login" />
       <Stack.Screen name="signup" />
       <Stack.Screen name="role-selection" />

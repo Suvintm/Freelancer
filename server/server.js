@@ -80,7 +80,7 @@ import prisma from "./config/prisma.js";
 import { startScheduledJobs } from "./jobs/scheduledJobs.js";
 
 // BullMQ Workers (Background Processing)
-import "./jobs/workers.js";
+// import "./jobs/workers.js";
 
 // Firebase Admin initialization
 import { initFirebaseAdmin } from "./utils/firebaseAdmin.js";
@@ -88,7 +88,7 @@ initFirebaseAdmin();
 
 // Validate required environment variables (Skip in test mode as services are mocked)
 if (process.env.NODE_ENV !== "test") {
-  const requiredEnvVars = ["MONGO_URI", "JWT_SECRET", "CLOUDINARY_CLOUD_NAME", "REDIS_URL", "REDIS_TOKEN"];
+  const requiredEnvVars = ["MONGO_URI", "JWT_SECRET", "CLOUDINARY_CLOUD_NAME"];
   const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
   if (missingEnvVars.length > 0) {
     logger.error(`Missing required environment variables: ${missingEnvVars.join(", ")}`);
@@ -96,12 +96,14 @@ if (process.env.NODE_ENV !== "test") {
   }
 }
 
-// Redis connectivity check (non-fatal — app still starts if Redis is slow)
+// Redis connectivity check (Disabled for Dev to avoid Upstash limits)
+/*
 redis.ping().then(() => {
   logger.info("[Redis] Connected to Upstash Redis ✅");
 }).catch((err) => {
   logger.error("[Redis] Could not connect to Upstash Redis — rate limits will use memory fallback", err.message);
 });
+*/
 
 // Log OAuth status
 if (process.env.GOOGLE_CLIENT_ID) {

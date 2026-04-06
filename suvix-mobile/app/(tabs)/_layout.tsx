@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PagerView from 'react-native-pager-view';
@@ -6,6 +6,9 @@ import { useTheme } from '../../src/context/ThemeContext';
 import { AnimatedTabBar } from '../../src/components/AnimatedTabBar';
 import { TopNavbar } from '../../src/components/TopNavbar';
 import { Sidebar } from '../../src/components/Sidebar';
+import { useAuthStore } from '../../src/store/useAuthStore';
+import { CATEGORIES } from '../../src/constants/categories';
+import { CategoryId } from '../../src/types/category';
 
 // Screens
 import HomeScreen from './index';
@@ -17,42 +20,68 @@ import ChatsScreen from './chats';
 import ProfileScreen from './profile';
 
 /**
- * PRODUCTION-GRADE SWIPE TAB LAYOUT
- * Supports a premium animated sidebar and 60fps swipeable tabs.
+ * PRODUCTION-GRADE DYNAMIC SWIPE TAB LAYOUT
+ * Automatically adjusts features based on User Category (Influencer, Promoter, Renter, etc.)
  */
-
-// Tab configuration — order MUST match PagerView page order
-const TABS = [
-  { name: 'index',   title: 'Home'    },
-  { name: 'explore', title: 'Explore' },
-  { name: 'nearby',  title: 'Nearby'  },
-  { name: 'reels',   title: 'Reels'   }, // index 3 — swipe disabled
-  { name: 'jobs',    title: 'Jobs'    },
-  { name: 'chats',   title: 'Chats'   },
-  { name: 'profile', title: 'Profile' },
-];
-
-const REELS_INDEX = 3;
 
 export default function TabsLayout() {
   const { theme } = useTheme();
+  const { user } = useAuthStore();
   const pagerRef = useRef<PagerView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const insets = useSafeAreaInsets();
 
-  // Called when a page fully settles after swipe or tap
+  // 1. Define Universal Tab Base
+  const ALL_TABS = useMemo(() => [
+    { name: 'index',   title: 'Home'    },
+    { name: 'explore', title: 'Explore' },
+    { name: 'nearby',  title: 'Nearby'  },
+    { name: 'reels',   title: 'Reels'   },
+    { name: 'jobs',    title: 'Jobs', providerOnly: true }, // Only for Providers
+    { name: 'chats',   title: 'Chats'   },
+    { name: 'profile', title: 'Profile' },
+  ], []);
+
+  // 2. Filter Tabs based on User Category/Role
+  const filteredTabs = useMemo(() => {
+    // Default to 'editor' (Provider) if no role found
+    const categoryId = user?.categoryId as CategoryId | undefined;
+    const roleGroupId = categoryId && CATEGORIES[categoryId] 
+      ? CATEGORIES[categoryId].roleGroupId 
+      : (user?.role === 'client' ? 'CLIENT' : 'PROVIDER');
+    
+    return ALL_TABS.filter(tab => {
+      if (tab.providerOnly && roleGroupId !== 'PROVIDER') return false;
+      return true;
+    });
+  }, [user]);
+
+  const reelsIndex = useMemo(() => filteredTabs.findIndex(t => t.name === 'reels'), [filteredTabs]);
+  const isReelsActive = activeIndex === reelsIndex;
+
   const onPageSelected = useCallback((e: any) => {
     setActiveIndex(e.nativeEvent.position);
   }, []);
 
-  // Tab bar tap → jump to that page instantly
   const goToPage = useCallback((index: number) => {
     pagerRef.current?.setPage(index);
     setActiveIndex(index);
   }, []);
 
-  const isReelsActive = activeIndex === REELS_INDEX;
+  // Helper to render the correct screen component
+  const renderScreen = (name: string) => {
+    switch (name) {
+      case 'index':   return <HomeScreen />;
+      case 'explore': return <ExploreScreen />;
+      case 'nearby':  return <NearbyScreen />;
+      case 'reels':   return <ReelsScreen />;
+      case 'jobs':    return <JobsScreen />;
+      case 'chats':   return <ChatsScreen />;
+      case 'profile': return <ProfileScreen />;
+      default:        return <HomeScreen />;
+    }
+  };
 
   return (
     <View style={[
@@ -62,7 +91,6 @@ export default function TabsLayout() {
         paddingBottom: isReelsActive ? 0 : insets.bottom
       }
     ]}>
-      {/* Sidebar Overlay - Disabled in Reels for full immersion */}
       {!isReelsActive && (
         <Sidebar 
           isOpen={isSidebarOpen} 
@@ -70,7 +98,6 @@ export default function TabsLayout() {
         />
       )}
 
-      {/* Top Navbar - Hidden in Reels for full-screen scrolling */}
       <View style={[
         styles.navbarOverlay,
         { display: isReelsActive ? 'none' : 'flex' }
@@ -78,30 +105,25 @@ export default function TabsLayout() {
         <TopNavbar onMenuPress={() => setIsSidebarOpen(true)} />
       </View>
 
-      {/* Native Swipe Pager — scroll disabled on Home to prevent banner gesture conflicts */}
       <PagerView
         ref={pagerRef}
         style={styles.pager}
         initialPage={0}
-        scrollEnabled={activeIndex !== REELS_INDEX}  // Lock on reels tab
+        scrollEnabled={activeIndex !== reelsIndex}
         onPageSelected={onPageSelected}
-        offscreenPageLimit={2}
+        offscreenPageLimit={1}
         overdrag={false}
       >
-        {/* Each child is one page — order must match TABS array above */}
-        <View key="0" style={styles.page}><HomeScreen /></View>
-        <View key="1" style={styles.page}><ExploreScreen /></View>
-        <View key="2" style={styles.page}><NearbyScreen /></View>
-        <View key="3" style={styles.page}><ReelsScreen /></View>
-        <View key="4" style={styles.page}><JobsScreen /></View>
-        <View key="5" style={styles.page}><ChatsScreen /></View>
-        <View key="6" style={styles.page}><ProfileScreen /></View>
+        {filteredTabs.map((tab) => (
+          <View key={tab.name} style={styles.page}>
+            {renderScreen(tab.name)}
+          </View>
+        ))}
       </PagerView>
 
-      {/* Bottom Tab Bar - Hidden only when Reels is active */}
       <AnimatedTabBar
         activeIndex={activeIndex}
-        tabs={TABS}
+        tabs={filteredTabs}
         onTabPress={goToPage}
         hidden={isReelsActive}
       />

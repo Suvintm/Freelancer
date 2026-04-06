@@ -1,39 +1,80 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { useTheme } from '../../src/context/ThemeContext';
-import { ScreenContainer } from '../../src/components/shared/ScreenContainer';
+import React, { useMemo } from 'react';
+import { useAuthStore } from '../../src/store/useAuthStore';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { CATEGORIES } from '../../src/constants/categories';
+import { Colors } from '../../src/constants/Colors';
+import { CategoryId } from '../../src/types/category';
 
-export default function ProfilePlaceholder() {
-  const { theme } = useTheme();
-  
-  return (
-    <ScreenContainer isScrollable={false}>
-      <View style={styles.container}>
-        <Text style={[styles.text, { color: theme.text }]}>PROFILE</Text>
-        <Text style={[styles.subtext, { color: theme.textSecondary }]}>
-          Manage your personal settings and creative portfolio.
-        </Text>
+// Modules
+import CreatorProfile from '../../src/modules/creators/profile';
+import RentalProfile from '../../src/modules/rentals/profile';
+import PromoterProfile from '../../src/modules/promoters/profile';
+import EditorProfile from '../../src/modules/editors/profile';
+import ClientProfile from '../../src/modules/clients/profile';
+
+/**
+ * PRODUCTION-GRADE DYNAMIC PROFILE (Profile Tab)
+ * Acts as a "Module Loader" that swaps the UI based on the user's category.
+ */
+export default function ProfileIndex() {
+  const { user, isLoadingUser, isAuthenticated } = useAuthStore();
+
+  // Determine which module to load based on user metadata
+  const activeModule = useMemo(() => {
+    if (!user) return null;
+    
+    // 1. Try to get module from Category metadata
+    const categoryId = user.categoryId as CategoryId;
+    if (categoryId && CATEGORIES[categoryId]) {
+      return CATEGORIES[categoryId].defaultModule;
+    }
+
+    // 2. Fallback to base role logic
+    return user.role === 'client' ? 'clients' : 'editors';
+  }, [user]);
+
+  if (isLoadingUser || (isAuthenticated && !user)) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.white} />
+        <Text style={styles.loadingText}>Syncing SuviX Profile...</Text>
       </View>
-    </ScreenContainer>
-  );
+    );
+  }
+
+  if (!user) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.errorText}>Please login to access SuviX.</Text>
+      </View>
+    );
+  }
+
+  // Dynamic Module Rendering
+  switch (activeModule) {
+    case 'creators':  return <CreatorProfile />;
+    case 'rentals':   return <RentalProfile />;
+    case 'promoters': return <PromoterProfile />;
+    case 'editors':   return <EditorProfile />;
+    case 'clients':   return <ClientProfile />;
+    default:         return <EditorProfile />;
+  }
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  loadingContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: Colors.dark.primary 
   },
-  text: {
-    fontSize: 20,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 3,
-    marginBottom: 12,
+  loadingText: { 
+    color: Colors.white, 
+    marginTop: 12,
+    fontWeight: '600'
   },
-  subtext: {
-    fontSize: 14,
-    textAlign: 'center',
-    opacity: 0.7,
-  },
+  errorText: { 
+    color: Colors.dark.textSecondary,
+    fontSize: 14
+  }
 });

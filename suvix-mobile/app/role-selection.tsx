@@ -10,21 +10,23 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   ScrollView,
+  FlatList,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import * as LucideIcons from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../src/constants/Colors';
 import SuvixInput from '../src/components/SuvixInput';
 import SuvixButton from '../src/components/SuvixButton';
 import { useAuthStore } from '../src/store/useAuthStore';
 import { api } from '../src/api/client';
-
-type UserRole = 'editor' | 'client';
+import { CATEGORIES, PROVIDER_CATEGORIES, CLIENT_CATEGORIES } from '../src/constants/categories';
+import { CategoryId } from '../src/types/category';
 
 export default function RoleSelectionScreen() {
   const { token, name } = useLocalSearchParams<{ token: string; name: string }>();
-  const [role, setRole] = useState<UserRole>('editor');
+  const [selectedCategory, setSelectedCategory] = useState<CategoryId>('video_editor');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const setAuth = useAuthStore((state) => state.setAuth);
@@ -35,19 +37,26 @@ export default function RoleSelectionScreen() {
       return;
     }
 
+    const category = CATEGORIES[selectedCategory];
+    const baseRole = category.roleGroupId.toLowerCase(); // 'provider' -> 'editor' or 'client'
+
     setLoading(true);
     try {
       const response = await api.post('/auth/select-role', {
         token,
-        role,
+        role: baseRole === 'provider' ? 'editor' : 'client',
         phone,
-        country: 'IN', // Default for now
+        country: 'IN',
+        metadata: {
+          categoryId: selectedCategory
+        }
       });
 
       if (response.data.success) {
         const { user, token: authToken } = response.data;
-        await setAuth(user, authToken);
-        // RootLayout will handle the redirect based on role
+        // Inject categoryId into user object for frontend use
+        const userWithCategory = { ...user, categoryId: selectedCategory };
+        await setAuth(userWithCategory, authToken);
       }
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to finalize registration.';
@@ -57,6 +66,27 @@ export default function RoleSelectionScreen() {
     }
   };
 
+  const renderCategoryItem = (item: any) => {
+    const isSelected = selectedCategory === item.id;
+    // Map Lucide icon name to component
+    const IconComponent = (LucideIcons as any)[item.icon.charAt(0).toUpperCase() + item.icon.slice(1)] || LucideIcons.HelpCircle;
+
+    return (
+      <TouchableOpacity 
+        style={[
+          styles.categoryCard, 
+          isSelected && { borderColor: item.color || Colors.dark.primary, backgroundColor: Colors.white }
+        ]} 
+        onPress={() => setSelectedCategory(item.id)}
+      >
+        <View style={[styles.iconWrapper, { backgroundColor: isSelected ? (item.color || Colors.dark.primary) : Colors.dark.secondary }]}>
+          <IconComponent size={24} color={isSelected ? Colors.white : Colors.dark.textSecondary} />
+        </View>
+        <Text style={[styles.categoryLabel, isSelected && styles.activeCategoryLabel]}>{item.label}</Text>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -64,44 +94,45 @@ export default function RoleSelectionScreen() {
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             <View style={styles.header}>
               <Text style={styles.title}>Welcome, {name}!</Text>
-              <Text style={styles.subtitle}>Complete your profile to join the SuviX community.</Text>
+              <Text style={styles.subtitle}>Select your professional category to get started.</Text>
             </View>
 
             <View style={styles.content}>
-              <Text style={styles.label}>Choose your role</Text>
-              <View style={styles.roleSelector}>
-                <TouchableOpacity 
-                  style={[styles.roleTab, role === 'editor' && styles.activeTab]} 
-                  onPress={() => setRole('editor')}
-                >
-                  <Feather name="video" size={20} color={role === 'editor' ? Colors.dark.primary : Colors.dark.textSecondary} />
-                  <Text style={[styles.roleText, role === 'editor' && styles.activeRoleText]}>I'm an Editor</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={[styles.roleTab, role === 'client' && styles.activeTab]} 
-                  onPress={() => setRole('client')}
-                >
-                  <Feather name="briefcase" size={20} color={role === 'client' ? Colors.dark.primary : Colors.dark.textSecondary} />
-                  <Text style={[styles.roleText, role === 'client' && styles.activeRoleText]}>I'm a Client</Text>
-                </TouchableOpacity>
+              <Text style={styles.sectionLabel}>Service Providers</Text>
+              <View style={styles.grid}>
+                {PROVIDER_CATEGORIES.map(cat => (
+                  <View key={cat.id} style={styles.gridItem}>
+                    {renderCategoryItem(cat)}
+                  </View>
+                ))}
               </View>
 
-              <SuvixInput
-                label="Mobile Number"
-                placeholder="+91 00000 00000"
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-                icon={<Feather name="phone" color={Colors.dark.textSecondary} size={20} />}
-              />
+              <Text style={[styles.sectionLabel, { marginTop: 24 }]}>For Clients</Text>
+              <View style={styles.grid}>
+                {CLIENT_CATEGORIES.map(cat => (
+                  <View key={cat.id} style={styles.gridItem}>
+                    {renderCategoryItem(cat)}
+                  </View>
+                ))}
+              </View>
 
-              <SuvixButton 
-                title="Finish Registration" 
-                onPress={handleFinalize} 
-                loading={loading}
-                style={styles.actionBtn}
-              />
+              <View style={styles.footer}>
+                <SuvixInput
+                  label="Mobile Number"
+                  placeholder="+91 00000 00000"
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                  icon={<Feather name="phone" color={Colors.dark.textSecondary} size={20} />}
+                />
+
+                <SuvixButton 
+                  title="Complete Setup" 
+                  onPress={handleFinalize} 
+                  loading={loading}
+                  style={styles.actionBtn}
+                />
+              </View>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -115,14 +146,32 @@ const styles = StyleSheet.create({
   keyboardView: { flex: 1 },
   scrollContent: { flexGrow: 1, paddingHorizontal: 24, paddingVertical: 40 },
   header: { marginBottom: 32, alignItems: 'center' },
-  title: { color: Colors.white, fontSize: 28, fontWeight: '800', textAlign: 'center', marginBottom: 8 },
-  subtitle: { color: Colors.dark.textSecondary, fontSize: 16, textAlign: 'center', fontWeight: '500' },
+  title: { color: Colors.white, fontSize: 26, fontWeight: '800', textAlign: 'center', marginBottom: 8 },
+  subtitle: { color: Colors.dark.textSecondary, fontSize: 15, textAlign: 'center', fontWeight: '500', paddingHorizontal: 20 },
   content: { flex: 1 },
-  label: { color: Colors.dark.textSecondary, fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, marginLeft: 4 },
-  roleSelector: { flexDirection: 'row', backgroundColor: Colors.dark.secondary, padding: 6, borderRadius: 16, marginBottom: 24, borderWidth: 1, borderColor: Colors.dark.border },
-  roleTab: { flex: 1, paddingVertical: 16, alignItems: 'center', borderRadius: 12, flexDirection: 'row', justifyContent: 'center' },
-  activeTab: { backgroundColor: Colors.white },
-  roleText: { color: Colors.dark.textSecondary, fontSize: 14, fontWeight: '700', marginLeft: 8 },
-  activeRoleText: { color: Colors.dark.primary },
+  sectionLabel: { color: Colors.dark.textSecondary, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 16, marginLeft: 4 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 },
+  gridItem: { width: '50%', padding: 6 },
+  categoryCard: { 
+    backgroundColor: Colors.dark.secondary, 
+    borderRadius: 20, 
+    padding: 16, 
+    alignItems: 'center', 
+    borderWidth: 2, 
+    borderColor: 'transparent',
+    minHeight: 120,
+    justifyContent: 'center'
+  },
+  iconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  categoryLabel: { color: Colors.dark.textSecondary, fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  activeCategoryLabel: { color: Colors.dark.primary },
+  footer: { marginTop: 32 },
   actionBtn: { marginTop: 12 },
 });
