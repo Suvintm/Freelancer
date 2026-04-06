@@ -64,11 +64,13 @@ export default function SignupScreen() {
 
   const handleSignup = async () => {
     if (loading) return;
+    /* [TESTING MODE] Bypassing Validation
     if (!username || !email || !password || !phone) {
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
       Alert.alert('Incomplete Form', 'Please fill in all details.');
       return;
     }
+    */
     setLoading(true);
     try {
       const formData = new FormData();
@@ -89,14 +91,21 @@ export default function SignupScreen() {
         } as any);
       }
 
+      // [TESTING MODE] Bypassing Backend Registration
+      handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
+      router.replace({
+        pathname: '/role-selection',
+        params: { name: username || 'SuviX Professional' }
+      });
+      /* 
       const response = await api.post('/auth/register', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-
       if (response.data.success) {
         handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
         router.replace('/login');
       }
+      */
     } catch (error: any) {
       Alert.alert('Signup Error', error.response?.data?.message || 'Check your details.');
     } finally {
