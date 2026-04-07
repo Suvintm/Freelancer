@@ -29,18 +29,29 @@ export const attachUserMetadata = async (documents, userIdKey = 'user', targetKe
       where: { id: { in: userIds } },
       select: {
         id: true,
-        name: true,
-        username: true,
-        profile_picture: true,
-        is_verified: true,
-        is_banned: true,
         role: true,
+        profile: {
+          select: {
+            name: true,
+            username: true,
+            profile_picture: true,
+          }
+        }
       }
     });
 
-    // Create a lookup map
+    // Create a lookup map (Flatten profile data back to the root for compatibility)
     const userMap = users.reduce((acc, user) => {
-      acc[user.id] = user;
+      acc[user.id] = {
+        id: user.id,
+        role: user.role,
+        name: user.profile?.name || 'User',
+        username: user.profile?.username || 'user',
+        profile_picture: user.profile?.profile_picture || null,
+        // placeholders for missing legacy fields to avoid frontend crashes
+        is_verified: false,
+        is_banned: false
+      };
       return acc;
     }, {});
 

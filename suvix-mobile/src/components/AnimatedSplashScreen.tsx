@@ -10,7 +10,6 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withSpring,
-  withDelay,
   withSequence,
   withRepeat,
   runOnJS,
@@ -43,7 +42,7 @@ function FloatingParticle({ delay }: { delay: number }) {
   const opacity = useSharedValue(0);
 
   useEffect(() => {
-    opacity.value = withDelay(delay, withTiming(0.2, { duration: 1000 }));
+    opacity.value = withSequence(withTiming(0, { duration: delay }), withTiming(0.2, { duration: 1000 }));
     x.value = withRepeat(withTiming(x.value + (Math.random() * 40 - 20), { duration: 4000, easing: Easing.inOut(Easing.sin) }), -1, true);
     y.value = withRepeat(withTiming(y.value + (Math.random() * 40 - 20), { duration: 5000, easing: Easing.inOut(Easing.sin) }), -1, true);
   }, [delay, opacity, x, y]);
@@ -92,26 +91,26 @@ export default function AnimatedSplashScreen({ onAnimationFinish }: Props) {
   const spark4 = useSharedValue(0);
 
   const startAnimations = useCallback(() => {
-    iconScale.value = withDelay(T.ICON_IN, withSpring(1, SPRING));
-    iconOpacity.value = withDelay(T.ICON_IN, withTiming(1, { duration: 500 }));
-    iconRotate.value = withDelay(T.ICON_IN, withSpring(0, { damping: 20 }));
+    iconScale.value = withSequence(withTiming(0.4, { duration: T.ICON_IN }), withSpring(1, SPRING));
+    iconOpacity.value = withSequence(withTiming(0, { duration: T.ICON_IN }), withTiming(1, { duration: 500 }));
+    iconRotate.value = withSequence(withTiming(-20, { duration: T.ICON_IN }), withSpring(0, { damping: 20 }));
 
-    textOpacity.value = withDelay(T.TEXT_IN, withTiming(1, { duration: 500 }));
-    textTranslateX.value = withDelay(T.TEXT_IN, withSpring(0, { damping: 22 }));
+    textOpacity.value = withSequence(withTiming(0, { duration: T.TEXT_IN }), withTiming(1, { duration: 500 }));
+    textTranslateX.value = withSequence(withTiming(-40, { duration: T.TEXT_IN }), withSpring(0, { damping: 22 }));
 
-    xScale.value = withDelay(T.X_IN, withSpring(1.1, { damping: 10 }));
-    xOpacity.value = withDelay(T.X_IN, withTiming(1, { duration: 300 }));
-    xRotate.value = withDelay(T.X_IN, withSpring(0, { damping: 12 }));
+    xScale.value = withSequence(withTiming(0, { duration: T.X_IN }), withSpring(1.1, { damping: 10 }));
+    xOpacity.value = withSequence(withTiming(0, { duration: T.X_IN }), withTiming(1, { duration: 300 }));
+    xRotate.value = withSequence(withTiming(240, { duration: T.X_IN }), withSpring(0, { damping: 12 }));
 
-    const sparkAnim = (sv: any) =>
-      withDelay(T.SPARKLE_IN, withSequence(withTiming(1, { duration: 400 }), withTiming(0, { duration: 300 })));
+    const sparkAnim = (delay: number) =>
+      withSequence(withTiming(0, { duration: delay }), withTiming(1, { duration: 400 }), withTiming(0, { duration: 300 }));
 
-    spark1.value = sparkAnim(spark1);
-    spark2.value = withDelay(60, sparkAnim(spark2));
-    spark3.value = withDelay(120, sparkAnim(spark3));
-    spark4.value = withDelay(180, sparkAnim(spark4));
+    spark1.value = sparkAnim(T.SPARKLE_IN);
+    spark2.value = sparkAnim(T.SPARKLE_IN + 60);
+    spark3.value = sparkAnim(T.SPARKLE_IN + 120);
+    spark4.value = sparkAnim(T.SPARKLE_IN + 180);
 
-    containerOpacity.value = withDelay(T.EXIT, withTiming(0, { duration: 500 }, (f) => f && runOnJS(onAnimationFinish)()));
+    containerOpacity.value = withSequence(withTiming(1, { duration: T.EXIT }), withTiming(0, { duration: 500 }, (f) => f && runOnJS(onAnimationFinish)()));
   }, [onAnimationFinish, containerOpacity, iconOpacity, iconRotate, iconScale, spark1, spark2, spark3, spark4, textOpacity, textTranslateX, xOpacity, xRotate, xScale]);
 
   useEffect(() => { startAnimations(); }, [startAnimations]);

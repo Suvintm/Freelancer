@@ -63,84 +63,76 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
                         return done(new Error("No email provided by Google"), null);
                     }
 
-                    // Check if user already exists with this Google ID in PostgreSQL
+                    // 1. Check if user already exists with this Google ID 
                     let user = await prisma.user.findUnique({
-                        where: { google_id: googleId }
+                        where: { google_id: googleId },
+                        include: { profile: true }
                     });
 
                     if (user) {
-                        // User exists with Google ID
-                        if (profilePicture && !user.profile_picture) {
-                            await prisma.user.update({
-                                where: { id: user.id },
-                                data: { profile_picture: profilePicture }
-                            });
-                        }
                         logger.info(`[OAuth] Google login (Postgres): ${email}`);
                         return done(null, user);
                     }
 
-                    // Check if user exists with same email (registered via email/password)
+                    // 2. Check if user exists with same email (link account)
                     user = await prisma.user.findUnique({
-                        where: { email }
+                        where: { email },
+                        include: { profile: true }
                     });
 
                     if (user) {
-                        // Link Google account to existing user in PostgreSQL
+                        // Link Google account to existing user
                         user = await prisma.user.update({
                             where: { id: user.id },
                             data: {
                                 google_id: googleId,
                                 auth_provider: "google",
                                 is_verified: true
-                            }
+                            },
+                            include: { profile: true }
                         });
                         logger.info(`[OAuth] Linked Google account to existing user in Postgres: ${email}`);
                         return done(null, user);
                     }
 
-                    // NEW USER REGISTRATION via Google
+                    // 3. NEW USER REGISTRATION via Google
                     // Smart Name Generation
                     let baseName = profile.displayName || profile.name?.givenName || "User";
-                    baseName = baseName.trim();
-                    let finalName = baseName;
-                    
-                    // Check if name is taken (Case-insensitive check in Postgres)
-                    const nameExists = await prisma.user.findFirst({
-                        where: { name: { equals: finalName, mode: 'insensitive' } }
+                    let finalName = baseName.trim();
+                    let finalUsername = finalName.toLowerCase().replace(/\s+/g, '_') + `_${crypto.randomBytes(3).toString('hex')}`;
+
+                    // Atomic Creation (Auth + Profile)
+                    user = await prisma.$transaction(async (tx) => {
+                        const newUser = await tx.user.create({
+                            data: {
+                                email,
+                                google_id: googleId,
+                                password_hash: `OAUTH_USER_${crypto.randomBytes(8).toString("hex")}`,
+                                role: "pending", 
+                                auth_provider: "google",
+                                is_verified: true,
+                                is_onboarded: false,
+                            }
+                        });
+
+                        await tx.userProfile.create({
+                            data: {
+                                userId: newUser.id,
+                                username: finalUsername,
+                                name: finalName,
+                                profile_picture: profilePicture,
+                                auth_provider: "google",
+                            }
+                        });
+
+                        return await tx.user.findUnique({
+                            where: { id: newUser.id },
+                            include: { profile: true }
+                        });
                     });
 
-                    if (nameExists) {
-                        finalName = `${baseName}${Math.floor(1000 + Math.random() * 9000)}`;
-                    }
-
-                    const newUser = await prisma.user.create({
-                        data: {
-                            name: finalName,
-                            email,
-                            google_id: googleId,
-                            profile_picture: "",
-                            password_hash: `OAUTH_USER_${crypto.randomBytes(8).toString("hex")}`,
-                            role: "pending", // Force role selection flow for truly new users
-                            auth_provider: "google",
-                            is_verified: true,
-                            profile_completed: false,
-                        }
-                    });
-
-                    // Create user profile
-                    await prisma.userProfile.create({
-                        data: {
-                            user_id: newUser.id,
-                            about: "",
-                            skills: [],
-                            languages: [],
-                            experience: "",
-                        }
-                    });
-
-                    logger.info(`[OAuth] New user registered via Google in Postgres: ${email} (Name: ${finalName})`);
-                    return done(null, newUser);
+                    logger.info(`[OAuth] New user registered via Google: ${email}`);
+                    return done(null, user);
                 } catch (error) {
                     console.error("Google OAuth error:", error);
                     return done(error, null);

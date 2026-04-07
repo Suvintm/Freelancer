@@ -3,6 +3,7 @@
     "name": "SuviX",
     "slug": "suvix-mobile",
     "version": "1.0.0",
+    "platforms": ["android", "ios"],
     "orientation": "portrait",
     "icon": "./assets/appicon.png",
     "userInterfaceStyle": "light",
@@ -29,10 +30,6 @@
       }
     },
     "scheme": "in.suvix.mobile",
-    "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro"
-    },
     "plugins": [
       "expo-router",
       [

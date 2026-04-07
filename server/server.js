@@ -9,6 +9,7 @@ import helmet from "helmet";
 import mongoSanitize from "@exortek/express-mongo-sanitize";
 import hpp from "hpp";
 import compression from "compression";
+import cookieParser from "cookie-parser";
 import session from "express-session";
 import { RedisStore } from "connect-redis";
 import { SiteSettings } from "./modules/system/models/SiteSettings.js";
@@ -114,7 +115,8 @@ if (process.env.GOOGLE_CLIENT_ID) {
 
 import { app, server } from "./socket.js";
 
-// ============ SECURITY MIDDLEWARE ============
+// ============ ADVANCED SECURITY MIDDLEWARE ============
+app.use(cookieParser());
 
 // Trust proxy for production (Render, Vercel, etc.)
 // This is required for express-rate-limit to work correctly behind a reverse proxy

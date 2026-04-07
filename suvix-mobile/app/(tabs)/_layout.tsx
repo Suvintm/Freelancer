@@ -30,8 +30,10 @@ export default function TabsLayout() {
   const { user } = useAuthStore();
   const pagerRef = useRef<PagerView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [renderedPages, setRenderedPages] = useState<Set<number>>(new Set([0]));
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const insets = useSafeAreaInsets();
+  const segments = useSegments() as string[];
 
   // 1. Define Universal Tab Base
   const ALL_TABS = useMemo(() => [
@@ -46,11 +48,7 @@ export default function TabsLayout() {
 
   // 2. Filter Tabs based on User Category/Role
   const filteredTabs = useMemo(() => {
-    // Default to 'editor' (Provider) if no role found
-    const categoryId = user?.categoryId as CategoryId | undefined;
-    const roleGroupId = categoryId && CATEGORIES[categoryId] 
-      ? CATEGORIES[categoryId].roleGroupId 
-      : (user?.role === 'client' ? 'CLIENT' : 'PROVIDER');
+    const roleGroupId = user?.primaryRole?.group || 'PROVIDER';
     
     return ALL_TABS.filter(tab => {
       if (tab.providerOnly && roleGroupId !== 'PROVIDER') return false;
@@ -58,42 +56,58 @@ export default function TabsLayout() {
     });
   }, [user]);
 
-  const reelsIndex = useMemo(() => filteredTabs.findIndex(t => t.name === 'reels'), [filteredTabs]);
   const isReelsActive = false; // Disabled immersive mode for removed reels feed
-
-  const segments = useSegments() as string[];
 
   // 3. Route Sync: Listen for segment changes and sync PagerView
   useEffect(() => {
     // Expected Segments: ['(tabs)', 'nearby'] or similar
+    let targetIndex = -1;
     if (segments.length >= 2 && segments[0] === '(tabs)') {
       const targetTab = segments[1];
-      const index = filteredTabs.findIndex(t => t.name === targetTab);
-      if (index !== -1 && index !== activeIndex) {
-        pagerRef.current?.setPage(index);
-        setActiveIndex(index);
-      }
+      targetIndex = filteredTabs.findIndex(t => t.name === targetTab);
     } else if (segments.length === 1 && segments[0] === '(tabs)') {
-        // Handle home tab reset if needed
-        const homeIndex = filteredTabs.findIndex(t => t.name === 'index');
-        if (homeIndex !== -1 && homeIndex !== activeIndex) {
-            pagerRef.current?.setPage(homeIndex);
-            setActiveIndex(homeIndex);
-        }
+      targetIndex = filteredTabs.findIndex(t => t.name === 'index');
     }
-  }, [segments, filteredTabs]);
+
+    if (targetIndex !== -1) {
+      if (targetIndex !== activeIndex) {
+        pagerRef.current?.setPage(targetIndex);
+        setActiveIndex(targetIndex);
+      }
+      // Add to lazy set
+      if (!renderedPages.has(targetIndex)) {
+        setRenderedPages(prev => new Set([...Array.from(prev), targetIndex]));
+      }
+    }
+  }, [segments, filteredTabs, renderedPages]);
 
   const onPageSelected = useCallback((e: any) => {
-    setActiveIndex(e.nativeEvent.position);
-  }, []);
+    const newIdx = e.nativeEvent.position;
+    setActiveIndex(newIdx);
+    if (!renderedPages.has(newIdx)) {
+      setRenderedPages(prev => new Set([...Array.from(prev), newIdx]));
+    }
+  }, [renderedPages]);
 
   const goToPage = useCallback((index: number) => {
     pagerRef.current?.setPage(index);
     setActiveIndex(index);
-  }, []);
+    if (!renderedPages.has(index)) {
+      setRenderedPages(prev => new Set([...Array.from(prev), index]));
+    }
+  }, [renderedPages]);
 
   // Helper to render the correct screen component
-  const renderScreen = (name: string) => {
+  const renderScreen = (name: string, index: number) => {
+    // Zero-Latency Optimization: Only build the component if it has been visited
+    if (!renderedPages.has(index)) {
+      return (
+        <View style={{ flex: 1, backgroundColor: theme.primary, justifyContent: 'center', alignItems: 'center' }}>
+          {/* Extremely light placeholder to avoid bridge traffic */}
+        </View>
+      );
+    }
+
     switch (name) {
       case 'index':   return <HomeScreen />;
       case 'explore': return <ExploreScreen />;
@@ -121,10 +135,13 @@ export default function TabsLayout() {
         />
       )}
 
-      <View style={[
-        styles.navbarOverlay,
-        { display: isReelsActive ? 'none' : 'flex' }
-      ]}>
+      <View 
+        style={[
+          styles.navbarOverlay,
+          { display: isReelsActive ? 'none' : 'flex' }
+        ]}
+        pointerEvents="box-none"
+      >
         <TopNavbar onMenuPress={() => setIsSidebarOpen(true)} />
       </View>
 
@@ -137,9 +154,9 @@ export default function TabsLayout() {
         offscreenPageLimit={1}
         overdrag={false}
       >
-        {filteredTabs.map((tab) => (
+        {filteredTabs.map((tab, idx) => (
           <View key={tab.name} style={styles.page}>
-            {renderScreen(tab.name)}
+            {renderScreen(tab.name, idx)}
           </View>
         ))}
       </PagerView>

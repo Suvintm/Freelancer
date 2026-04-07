@@ -1,111 +1,99 @@
+import { 
+  generateAccessToken, 
+  generateRefreshToken, 
+  verifyAccessToken,
+  verifyRefreshToken
+} from "../utils/jwt.js";
+import { comparePassword } from "../utils/password.js";
+import { registerFullUser as registerService } from "../services/registerService.js";
 import prisma from "../../../config/prisma.js";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import crypto from "crypto";
-import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
+import { redis } from "../../../middleware/rateLimiter.js";
+import crypto from "crypto";
 import logger from "../../../utils/logger.js";
-import { createNotification } from "../../connectivity/controllers/notificationController.js";
-import { sendPasswordResetEmail, sendOTPEmail } from "../../../utils/emailService.js";
-import { validateIndianMobile } from "../../../services/otpService.js";
 
-
-const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = "7d";
-
-// ============ REGISTER ============
-export const register = asyncHandler(async (req, res) => {
-  logger.info("Registration Request Body:", req.body);
-  const { name, email, password, role, country = "IN", phone } = req.body;
-  let profilePicture;
-
-  // Check for existing user
-  const existingEmail = await prisma.user.findUnique({
-    where: { email: email.trim().toLowerCase() }
-  });
-  if (existingEmail) {
-    throw new ApiError(400, "Email already registered.");
+/**
+ * HELPER: Resolve Primary Professional Identity
+ * Merges system roles with professional categories to provide a clear UI identity.
+ */
+const resolvePrimaryIdentity = (user) => {
+  if (!user.profile || !user.profile.categoryId) {
+    return {
+      group: 'CLIENT',
+      category: 'General',
+      subCategory: 'Member',
+      is_onboarded: user.is_onboarded
+    };
   }
 
-  // Hash password
-  const salt = await bcrypt.genSalt(12);
-  const hashedPassword = await bcrypt.hash(password, salt);
+  // Use the new locked category field
+  const cat = user.profile.category;
+  // Fallback to first mapping for sub-category display
+  const primaryMapping = user.profile.roles?.[0];
+  const subCat = primaryMapping?.subCategory;
 
-  // Upload profile picture if provided
-  if (req.file) {
-    if (req.file.size > 5 * 1024 * 1024) {
-      throw new ApiError(400, "Profile picture must be less than 5MB.");
+  return {
+    group: cat?.roleGroup || 'CLIENT',
+    category: cat?.name || 'General',
+    subCategory: subCat?.name || 'Member',
+    categoryId: cat?.id || user.profile.categoryId,
+    subCategoryId: subCat?.id,
+    is_onboarded: user.is_onboarded
+  };
+};
+
+/**
+ * Cookie Options for Production Security
+ */
+const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days (matches refresh token expiry)
+};
+
+// ============ REFRESH TOKEN ROTATION ============
+export const refresh = asyncHandler(async (req, res) => {
+    const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
+    if (!refreshToken) throw new ApiError(401, "Refresh token required");
+
+    // 1. Verify Token
+    const decoded = verifyRefreshToken(refreshToken);
+    if (!decoded) throw new ApiError(401, "Invalid or expired refresh token");
+
+    // 2. Check if token is in Redis (Rotation Check)
+    const redisKey = `refresh_token:${refreshToken}`;
+    const isValid = await redis.get(redisKey);
+    if (!isValid) {
+        // TOKEN REUSE DETECTED! (Security breach attempt)
+        // In a strictly advanced setup, we might invalidate all user sessions here.
+        throw new ApiError(401, "Token has already been used or is invalid");
     }
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-    if (!allowedTypes.includes(req.file.mimetype)) {
-      throw new ApiError(400, "Only JPEG, PNG, WebP, and GIF images are allowed.");
-    }
-    const uploadResult = await uploadToCloudinary(req.file.buffer, "profiles");
-    profilePicture = uploadResult.url;
-  }
 
-  const isIndia = country.toUpperCase() === "IN";
-  const phoneValue = typeof phone === 'string' ? phone : "";
-  const mobile = isIndia ? validateIndianMobile(phoneValue) : null;
+    // 3. One-time use: Revoke the old token
+    await redis.del(redisKey);
 
-  if (isIndia && !mobile) {
-    throw new ApiError(400, "A valid Indian mobile number is required for registration.");
-  }
+    // 4. Fetch User with profile
+    const user = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        include: { profile: true }
+    });
+    if (!user) throw new ApiError(404, "User no longer exists");
 
-  // DIRECT CREATION FOR TESTING (As per current logic in file)
-  const currencyMap = { IN: "INR", US: "USD", GB: "GBP", CA: "CAD", AU: "AUD" };
-  const currency = currencyMap[country] || "INR";
+    // 5. Issue NEW pair
+    const newAccessToken = generateAccessToken({ id: user.id, role: user.role });
+    const newRefreshToken = generateRefreshToken({ id: user.id });
 
-  const user = await prisma.user.create({
-    data: {
-      name: name.trim(),
-      email: email.toLowerCase().trim(),
-      password_hash: hashedPassword,
-      role: role || 'editor',
-      phone: mobile,
-      is_phone_verified: !!mobile,
-      country: country.toUpperCase(),
-      currency,
-      profile_picture: profilePicture || "",
-    }
-  });
+    // 6. Store NEW refresh token in Redis
+    await redis.set(`refresh_token:${newRefreshToken}`, user.id, "EX", 7 * 24 * 60 * 60);
 
-  await prisma.userProfile.create({
-    data: {
-      user_id: user.id,
-      about: "",
-      skills: [],
-      languages: [],
-      experience: "",
-    }
-  });
-
-  await createNotification({
-    recipient: user.id,
-    type: "success",
-    title: "Welcome to SuviX! 🎉",
-    message: "We're excited to have you on board. Complete your profile to get started.",
-    link: "/editor-profile",
-  });
-
-  const token = jwt.sign(
-    { id: user.id, role: user.role },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
-  );
-
-  res.status(201).json({
-    success: true,
-    message: "Registration successful",
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      profilePicture: user.profile_picture,
-    },
-    token
-  });
+    // 7. Send Response
+    res.cookie("refreshToken", newRefreshToken, cookieOptions);
+    res.status(200).json({
+        success: true,
+        token: newAccessToken,
+        refreshToken: newRefreshToken // Also send back for mobile apps
+    });
 });
 
 // ============ LOGIN ============
@@ -113,389 +101,211 @@ export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
   const user = await prisma.user.findUnique({
-    where: { email: email.trim().toLowerCase() }
-  });
-
-  if (!user) {
-    throw new ApiError(401, "Invalid email or password.");
-  }
-
-  if (user.is_banned) {
-    return res.status(403).json({
-      success: false,
-      isBanned: true,
-      message: "Your account has been suspended.",
-      banReason: user.ban_reason || "Violation of terms of service",
-      bannedAt: user.banned_at,
-    });
-  }
-
-  const isMatch = await bcrypt.compare(password, user.password_hash);
-  if (!isMatch) {
-    throw new ApiError(401, "Invalid email or password.");
-  }
-
-  const token = jwt.sign(
-    { id: user.id, role: user.role },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
-  );
-
-  res.status(200).json({
-    success: true,
-    message: "Login successful",
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      profileCompleted: user.profile_completed,
-      profilePicture: user.profile_picture,
-      isVerified: user.is_verified,
-      kycStatus: user.kyc_status,
-      profileCompletionPercent: user.profile_completion_percent,
-    },
-    token,
-  });
-});
-
-// ============ VERIFY OTP ============
-export const verifyOtp = asyncHandler(async (req, res) => {
-  const { email, phone, otp } = req.body;
-
-  if (!email && !phone) {
-    throw new ApiError(400, "Email or Phone is required.");
-  }
-  if (!otp) {
-    throw new ApiError(400, "OTP is required.");
-  }
-
-  const otpIn = otp.trim();
-  const hashedOtp = crypto.createHash("sha256").update(otpIn).digest("hex");
-
-  const otpDoc = await prisma.otp.findFirst({
-    where: phone ? { phone: phone.trim() } : { email: email.toLowerCase().trim() },
-    orderBy: { created_at: 'desc' }
-  });
-
-  if (!otpDoc) {
-    throw new ApiError(400, "Invalid or expired verification code.");
-  }
-
-  if (otpDoc.attempts >= 5) {
-    throw new ApiError(403, "Too many failed attempts. Please request a new code.");
-  }
-
-  const isExpired = Date.now() - new Date(otpDoc.created_at).getTime() > 600000;
-  if (isExpired) {
-    await prisma.otp.delete({ where: { id: otpDoc.id } });
-    throw new ApiError(400, "Verification code has expired.");
-  }
-
-  if (otpDoc.otp !== hashedOtp) {
-    await prisma.otp.update({
-      where: { id: otpDoc.id },
-      data: { attempts: { increment: 1 } }
-    });
-    const remaining = 4 - otpDoc.attempts;
-    throw new ApiError(400, `Invalid code. ${remaining} attempts remaining.`);
-  }
-
-  let user;
-
-  if (otpDoc.type === "register") {
-    const regData = otpDoc.registration_data;
-    const currencyMap = { IN: "INR", US: "USD", GB: "GBP", CA: "CAD", AU: "AUD" };
-    const currency = currencyMap[regData.country] || "INR";
-
-    user = await prisma.user.create({
-      data: {
-        name: regData.name,
-        email: regData.email,
-        password_hash: regData.password,
-        role: regData.role || 'editor',
-        phone: otpDoc.phone,
-        is_phone_verified: !!otpDoc.phone,
-        country: regData.country.toUpperCase(),
-        currency,
-        profile_picture: regData.profilePicture || "",
+    where: { email: email.toLowerCase().trim() },
+    include: { 
+      profile: {
+        include: { roles: { include: { subCategory: { include: { category: true } } } } }
       }
-    });
-
-    await prisma.userProfile.create({
-      data: {
-        user_id: user.id,
-        about: "",
-        skills: [],
-        languages: [],
-        experience: "",
-      }
-    });
-
-    await createNotification({
-      recipient: user.id,
-      type: "success",
-      title: "Welcome to SuviX! 🎉",
-      message: "We're excited to have you on board. Complete your profile to get started.",
-      link: "/editor-profile",
-    });
-
-    logger.info(`New user verified and created: ${user.email}`);
-  } else {
-    user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() }
-    });
-  }
-
-  if (!user) {
-    throw new ApiError(404, "User not found.");
-  }
-
-  await prisma.otp.delete({ where: { id: otpDoc.id } });
-
-  const token = jwt.sign(
-    { id: user.id, role: user.role },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
-  );
-
-  res.status(200).json({
-    success: true,
-    message: "Verification successful",
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      profileCompleted: user.profile_completed,
-      profilePicture: user.profile_picture,
-      isVerified: user.is_verified,
-      kycStatus: user.kyc_status,
-      profileCompletionPercent: user.profile_completion_percent,
-    },
-    token,
-  });
-});
-
-// ============ RESEND OTP ============
-export const resendOtp = asyncHandler(async (req, res) => {
-  const { email, phone } = req.body;
-
-  if (!email && !phone) {
-    throw new ApiError(400, "Email or Phone is required.");
-  }
-
-  const query = phone ? { phone: phone.trim() } : { email: email.toLowerCase().trim() };
-  
-  const existingOtpDoc = await prisma.otp.findFirst({
-    where: query,
-    orderBy: { created_at: 'desc' }
-  });
-
-  if (!existingOtpDoc) {
-    throw new ApiError(400, "Session expired. Please register or login again.");
-  }
-
-  const newOtpCode = Math.floor(100000 + Math.random() * 900000).toString();
-  const hashedOtp = crypto.createHash("sha256").update(newOtpCode).digest("hex");
-  
-  await prisma.otp.update({
-    where: { id: existingOtpDoc.id },
-    data: {
-      otp: hashedOtp,
-      attempts: 0,
-      created_at: new Date()
     }
   });
 
-  let name = "User";
-  if (existingOtpDoc.type === "register") {
-    name = existingOtpDoc.registration_data.name;
-  } else {
-    const userDoc = await prisma.user.findUnique({ where: query });
-    if (userDoc) name = userDoc.name;
+  if (!user || user.auth_provider === "google") {
+    throw new ApiError(401, "Invalid credentials.");
   }
 
-  await sendOTPEmail(existingOtpDoc.email, name, newOtpCode);
-  logger.info(`Email OTP Resent to: ${existingOtpDoc.email}`);
+  const isMatch = await comparePassword(password, user.password_hash);
+  if (!isMatch) {
+    throw new ApiError(401, "Invalid credentials.");
+  }
+
+  const accessToken = generateAccessToken({ id: user.id, role: user.role });
+  const refreshToken = generateRefreshToken({ id: user.id });
+
+  // Store refresh token in Redis for rotation
+  await redis.set(`refresh_token:${refreshToken}`, user.id, "EX", 7 * 24 * 60 * 60);
+
+  // Set Secure Cookie for Web
+  res.cookie("refreshToken", refreshToken, cookieOptions);
+
+  const primaryIdentity = resolvePrimaryIdentity(user);
 
   res.status(200).json({
     success: true,
-    message: "A new verification code has been sent to your email.",
-    otpMethod: "Email"
+    user: {
+      id: user.id,
+      name: user.profile?.name,
+      username: user.profile?.username,
+      email: user.email,
+      role: primaryIdentity.group.toLowerCase(), // Return professional group as 'role'
+      primaryRole: primaryIdentity, // detailed metadata
+      profilePicture: user.profile?.profile_picture,
+      location: user.profile?.location_country,
+      isOnboarded: user.is_onboarded
+    },
+    token: accessToken,
+    refreshToken // For Mobile Apps
+  });
+});
+
+export const getRoles = asyncHandler(async (req, res) => {
+    const categories = await prisma.roleCategory.findMany({
+        include: {
+            subCategories: true
+        },
+        orderBy: {
+            name: "asc"
+        }
+    });
+
+    res.status(200).json({
+        success: true,
+        categories
+    });
+});
+
+// ============ ATOMIC REGISTER ============
+export const registerFull = asyncHandler(async (req, res) => {
+  const { 
+    fullName, username, email, password, phone, 
+    motherTongue, country, categoryId, roleSubCategoryIds 
+  } = req.body;
+
+  let parsedSubIds = roleSubCategoryIds;
+  if (typeof roleSubCategoryIds === "string" && roleSubCategoryIds) {
+    try { parsedSubIds = JSON.parse(roleSubCategoryIds); } catch (e) { parsedSubIds = [roleSubCategoryIds]; }
+  }
+
+  // SLUG RESOLUTION (Advanced Compatibility)
+  // If the frontend sends slugs instead of IDs, we resolve them here
+  let finalSubIds = parsedSubIds || [];
+  if (finalSubIds.length > 0 && !finalSubIds[0].match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)) {
+      const dbSubs = await prisma.roleSubCategory.findMany({
+          where: { slug: { in: finalSubIds } },
+          select: { id: true }
+      });
+      finalSubIds = dbSubs.map(s => s.id);
+  }
+
+  const userData = {
+    fullName, username, email, password, phone,
+    motherTongue, country, categoryId,
+    roleSubCategoryIds: finalSubIds,
+    profilePictureBuffer: req.file ? req.file.buffer : null
+  };
+
+  const userWithProfile = await registerService(userData);
+
+  const accessToken = generateAccessToken({ id: userWithProfile.id, role: userWithProfile.role });
+  const refreshToken = generateRefreshToken({ id: userWithProfile.id });
+
+  // Store refresh token in Redis
+  await redis.set(`refresh_token:${refreshToken}`, userWithProfile.id, "EX", 7 * 24 * 60 * 60);
+
+  // Set Cookie
+  res.cookie("refreshToken", refreshToken, cookieOptions);
+
+  const primaryIdentity = resolvePrimaryIdentity(userWithProfile);
+  
+  res.status(201).json({
+    success: true,
+    message: "Welcome to SuviX!",
+    user: {
+      id: userWithProfile.id,
+      name: userWithProfile.profile.name,
+      username: userWithProfile.profile.username,
+      email: userWithProfile.email,
+      role: primaryIdentity.group.toLowerCase(), // Consistent with login
+      profilePicture: userWithProfile.profile.profile_picture,
+      primaryRole: primaryIdentity,
+      isOnboarded: true,
+    },
+    token: accessToken,
+    refreshToken
   });
 });
 
 // ============ LOGOUT ============
 export const logout = asyncHandler(async (req, res) => {
-  logger.info(`User logged out: ${req.user?.email}`);
-
-  res.status(200).json({
-    success: true,
-    message: "Logout successful. Please remove token from client.",
-  });
-});
-
-// ============ GET CURRENT USER ============
-export const getCurrentUser = asyncHandler(async (req, res) => {
-  const user = await prisma.user.findUnique({
-    where: { id: req.user.id }
-  });
-
-  if (!user) {
-    throw new ApiError(404, "User not found.");
-  }
-
-  res.status(200).json({
-    success: true,
-    user,
-  });
-});
-
-// ============ UPDATE PROFILE PICTURE ============
-export const updateProfilePicture = asyncHandler(async (req, res) => {
-  if (!req.file) {
-    throw new ApiError(400, "No file uploaded.");
-  }
-  if (req.file.size > 5 * 1024 * 1024) {
-    throw new ApiError(400, "Profile picture must be less than 5MB.");
-  }
-  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-  if (!allowedTypes.includes(req.file.mimetype)) {
-    throw new ApiError(400, "Only JPEG, PNG, WebP, and GIF images are allowed.");
-  }
-
-  const uploadResult = await uploadToCloudinary(req.file.buffer, "profiles");
-  const profilePicture = uploadResult.url;
-
-  const user = await prisma.user.update({
-    where: { id: req.user.id },
-    data: { profile_picture: profilePicture }
-  });
-
-  logger.info(`Profile picture updated for user: ${user.email}`);
-
-  res.status(200).json({
-    success: true,
-    message: "Profile picture updated successfully",
-    user,
-  });
-});
-
-// ============ FORGOT PASSWORD ============
-export const forgotPassword = asyncHandler(async (req, res) => {
-  const { email } = req.body;
-
-  if (!email) {
-    throw new ApiError(400, "Email is required.");
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email: email.toLowerCase() }
-  });
-
-  if (!user) {
-    logger.info(`Password reset requested for non-existent email: ${email}`);
-    return res.status(200).json({
-      success: true,
-      message: "If an account with this email exists, a password reset link has been sent.",
-    });
-  }
-
-  if (user.google_id && !user.password_hash) {
-    logger.info(`Password reset attempted for OAuth-only user: ${email}`);
-    return res.status(200).json({
-      success: true,
-      message: "If an account with this email exists, a password reset link has been sent.",
-    });
-  }
-
-  const resetToken = crypto.randomBytes(32).toString("hex");
-  const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      password_reset_token: hashedToken,
-      password_reset_expires: new Date(Date.now() + 60 * 60 * 1000)
+    const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
+    
+    // Revoke token if it exists
+    if (refreshToken) {
+        await redis.del(`refresh_token:${refreshToken}`);
     }
-  });
 
-  const frontendURL = process.env.FRONTEND_URL || "http://localhost:5173";
-  const resetUrl = `${frontendURL}/reset-password/${resetToken}`;
-
-  try {
-    await sendPasswordResetEmail(user.email, user.name, resetUrl);
-    logger.info(`Password reset email sent to: ${user.email}`);
+    // Clear Browser Cookies
+    res.clearCookie("refreshToken", cookieOptions);
+    
     res.status(200).json({
-      success: true,
-      message: "If an account with this email exists, a password reset link has been sent.",
+        success: true,
+        message: "Logged out successfully"
     });
-  } catch (error) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        password_reset_token: null,
-        password_reset_expires: null
-      }
-    });
-    logger.error(`Failed to send password reset email to ${user.email}:`, error);
-    throw new ApiError(500, "Failed to send password reset email. Please try again later.");
-  }
 });
 
-// ============ RESET PASSWORD ============
-export const resetPassword = asyncHandler(async (req, res) => {
-  const { token } = req.params;
-  const { password, confirmPassword } = req.body;
-
-  if (!password || !confirmPassword) {
-    throw new ApiError(400, "Password and confirm password are required.");
-  }
-  if (password !== confirmPassword) {
-    throw new ApiError(400, "Passwords do not match.");
-  }
-  if (password.length < 8) {
-    throw new ApiError(400, "Password must be at least 8 characters long.");
-  }
-
-  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-
-  const user = await prisma.user.findFirst({
-    where: {
-      password_reset_token: hashedToken,
-      password_reset_expires: { gt: new Date() },
+// ============ ME (PROFILE) ============
+export const getMe = asyncHandler(async (req, res) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.id },
+    include: { 
+        profile: {
+            include: { 
+                category: true,
+                roles: { include: { subCategory: true } } 
+            }
+        } 
     }
   });
 
-  if (!user) {
-    throw new ApiError(400, "Password reset link is invalid or has expired.");
+  if (!user) throw new ApiError(404, "User session invalid.");
+  
+  const primaryIdentity = resolvePrimaryIdentity(user);
+  
+  const responseUser = {
+      id: user.id,
+      name: user.profile?.name,
+      username: user.profile?.username,
+      email: user.email,
+      role: primaryIdentity.group.toLowerCase(),
+      primaryRole: primaryIdentity,
+      profilePicture: user.profile?.profile_picture,
+      isOnboarded: user.is_onboarded
+  };
+
+  res.status(200).json({ success: true, user: responseUser });
+});
+
+// ============ CHECK USERNAME ============
+export const checkUsername = asyncHandler(async (req, res) => {
+  const { username } = req.params;
+  const exists = await prisma.userProfile.findUnique({
+    where: { username: username.toLowerCase().trim() }
+  });
+  res.status(200).json({ success: true, available: !exists });
+});
+export const validateSignup = asyncHandler(async (req, res) => {
+  const { email, username } = req.body;
+
+  if (!email || !username) {
+    throw new ApiError(400, "Email and username are required for validation");
   }
 
-  const salt = await bcrypt.genSalt(12);
-  const hashedPassword = await bcrypt.hash(password, salt);
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      password_hash: hashedPassword,
-      password_reset_token: null,
-      password_reset_expires: null
-    }
+  // Check Email (User table)
+  const emailExists = await prisma.user.findUnique({
+    where: { email: email.toLowerCase().trim() }
   });
 
-  logger.info(`Password reset successful for user: ${user.email}`);
-
-  await createNotification({
-    recipient: user.id,
-    type: "success",
-    title: "Password Changed Successfully 🔐",
-    message: "Your password has been updated. If you didn't make this change, please contact support immediately.",
-    link: "/login",
+  if (emailExists) {
+    throw new ApiError(409, "This email is already registered. Please log in instead.");
+  }
+  
+  // Check Username (UserProfile table)
+  const usernameExists = await prisma.userProfile.findUnique({
+    where: { username: username.toLowerCase().trim() }
   });
 
-  res.status(200).json({
-    success: true,
-    message: "Password has been reset successfully. Please login with your new password.",
-  });
+  if (usernameExists) {
+    throw new ApiError(409, "This username is already taken. Try another!");
+  }
+
+  res.status(200).json({ success: true, available: true });
 });

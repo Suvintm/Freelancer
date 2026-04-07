@@ -62,8 +62,8 @@ export default function LoginScreen() {
       if (response.data.success) {
         handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
         const { user, token } = response.data;
+        // Global Navigation handles the redirect once setAuth completes
         await setAuth(user, token);
-        router.replace('/');
       }
     } catch (error: any) {
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
@@ -94,6 +94,9 @@ export default function LoginScreen() {
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
+                  autoCorrect={false}
+                  spellCheck={false}
+                  textContentType="none"
                   icon={<Feather name="mail" size={16} />}
                 />
                 <SuvixInput

@@ -2,12 +2,14 @@ import 'react-native-gesture-handler';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../src/store/useAuthStore';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider } from '../src/context/ThemeContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useDashboardStore } from '../src/store/useDashboardStore';
+import { useCategoryStore } from '../src/store/useCategoryStore';
+import { Image } from 'react-native';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -27,8 +29,12 @@ function InitialRoot() {
   const [isIntroFinished, setIsIntroFinished] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
 
+  const bootstrapStarted = useRef(false);
   // Initialize Auth State & Pre-fetch Data on boot
   useEffect(() => {
+    if (bootstrapStarted.current) return;
+    bootstrapStarted.current = true;
+
     let isMounted = true;
 
     async function bootstrap() {
@@ -36,22 +42,34 @@ function InitialRoot() {
         console.log('🚀 [BOOT] Starting bootstrap sequence...');
         // 1. Initial Local Auth Check (Token sync)
         await checkAuth();
+
+        // 2. Pre-fetch Dynamic Roles/Categories for Onboarding
+        useCategoryStore.getState().fetchCategories().catch(() => {});
         
-        // 2. Fetch fresh user data if we have a token
+        // 3. Fetch fresh user data if we have a token
         const currentToken = useAuthStore.getState().token;
         if (currentToken) {
           console.log('🗝️ [BOOT] Token found, pre-fetching profile...');
           await fetchUser();
           
-          // 3. Pre-fetch relevant dashboard data for zero-latency loading
           const currentUser = useAuthStore.getState().user;
           if (currentUser && isMounted) {
-            console.log(`📊 [BOOT] User identified as ${currentUser.role}. Fetching dashboard...`);
-            if (currentUser.role === 'editor') {
+            console.log(`📊 [BOOT] User identified: ${currentUser.primaryRole?.category}.`);
+            
+            // 3a. Pre-fetch primary dashboard data
+            if (currentUser.primaryRole?.group === 'PROVIDER') {
               await fetchEditorDashboard().catch(() => {});
             } else {
               await fetchClientDashboard().catch(() => {});
             }
+
+            // 3b. PRO-TECH: Pre-warm Image Cache (Zero Flicker Landing)
+            if (currentUser.profilePicture) {
+              Image.prefetch(currentUser.profilePicture).catch(() => {});
+            }
+            // Pre-fetch a few common assets to prevent grey flickers
+            const LOGO_URI = Image.resolveAssetSource(require('../assets/whitebglogo.png')).uri;
+            Image.prefetch(LOGO_URI).catch(() => {});
           }
         } else {
           console.log('👤 [BOOT] No local token found. Proceeding as Guest.');
@@ -68,33 +86,46 @@ function InitialRoot() {
     
     bootstrap();
 
-    // FAIL-SAFE: If the API is dead or hanging, we MUST show the app 
-    // after 6 seconds no matter what.
-    const failSafeTimer = setTimeout(() => {
-      const { isInitialized: initialized, dataLoaded: loaded } = { 
-        isInitialized: useAuthStore.getState().isInitialized,
-        dataLoaded: dataLoaded // this won't work as expected inside the closure if not careful, but let's just use the state
-      };
-      if (!initialized) {
-        console.warn('⚠️ [BOOT] Bootstrap took too long. Triggering Fail-Safe...');
-        setDataLoaded(true);
-      }
-    }, 6000);
-    
-    // Give the advanced animated intro in index.tsx time to play (2.3 seconds)
     const timer = setTimeout(() => {
       if (isMounted) {
         setIsIntroFinished(true);
         console.log('🎬 [BOOT] Intro animation finished.');
       }
     }, 2300);
+
+    const failSafeTimer = setTimeout(() => {
+      if (isMounted && !dataLoaded) {
+        console.warn('⚠️ [BOOT] Bootstrap timeout. Forcing app start.');
+        setDataLoaded(true);
+      }
+    }, 4000); // Tightened to 4s for production feel
     
     return () => {
       isMounted = false;
       clearTimeout(timer);
       clearTimeout(failSafeTimer);
     };
-  }, [checkAuth, fetchUser, fetchClientDashboard, fetchEditorDashboard, dataLoaded]); // ✅ PRODUCTION SAFE: Runs exactly once on mount. No re-fire loops.
+  }, [checkAuth, fetchUser, fetchClientDashboard, fetchEditorDashboard]); 
+
+  // Session Sync Logic: Re-fetch dashboard data when user logs in manually
+  useEffect(() => {
+    if (isAuthenticated && user && dataLoaded) {
+      // If we are authenticated but the dashboard stats are missing, fetch them
+      const syncDashboard = async () => {
+        try {
+          if (user.primaryRole?.group === 'PROVIDER') {
+            await fetchEditorDashboard().catch(() => {});
+          } else {
+            await fetchClientDashboard().catch(() => {});
+          }
+        } catch (e) {
+          console.error('❌ [SYNC] Failed to sync dashboard after login:', e);
+        }
+      };
+      
+      syncDashboard();
+    }
+  }, [isAuthenticated, user?.role, fetchEditorDashboard, fetchClientDashboard, dataLoaded]);
 
   // Logic Effect: Hide native splash immediately when initialized to show our animation
   useEffect(() => {
@@ -108,42 +139,55 @@ function InitialRoot() {
    * GLOBAL NAVIGATION GUARD (Auth Sync)
    * This effect watches the authentication state and handles all redirects.
    */
+  const isNavigating = useRef(false);
+
   useEffect(() => {
     // Only fire when EVERYTHING is ready
     if (!isInitialized || !isIntroFinished || !dataLoaded) return;
 
-    console.log('🚦 [BOOT] Navigation Guard Fired. Segments:', segments);
+    // Hardened Handoff: 400ms ensures the Native UI is fully settled before the dashboard mount hit
+    const logout = useAuthStore.getState().logout;
+    const handoffTimer = setTimeout(() => {
+      if (isNavigating.current) return;
 
-    const inAuthGroup = segments[0] === '(tabs)';
-    const inLoginGroup = segments[0] === 'login' || segments[0] === 'signup';
+      const currentSegment = segments[0];
+      const inAuthGroup = currentSegment === '(tabs)';
+      const inOnboarding = currentSegment === 'role-selection' || currentSegment === 'subcategory-selection';
+      const inPublicGroup = currentSegment === 'welcome' || currentSegment === 'login' || currentSegment === 'signup' || !currentSegment || currentSegment === 'index';
 
-    if (!isAuthenticated) {
-      if (inAuthGroup || !segments[0] || segments[0] === 'index') {
-        console.log('🔓 [GUARD] Unauthorized. Redirecting to /welcome');
-        router.replace('/welcome');
-      }
-    } else {
-      // Authenticated branch
-      // If we are authenticated but have no user after dataLoaded, it's a broken session
-      if (!user && dataLoaded) {
-        console.warn('🗝️ [GUARD] Auth exists but User is null. Forcing re-login.');
-        useAuthStore.getState().logout();
-        router.replace('/login');
+      console.log(`🚦 [GUARD] Auth: ${isAuthenticated} | Seg: ${currentSegment} | Onboarded: ${user?.isOnboarded}`);
+
+      // 1. UNAUTHENTICATED
+      if (!isAuthenticated || (!user && dataLoaded)) {
+        if (currentSegment !== 'welcome' && currentSegment !== 'login' && currentSegment !== 'signup') {
+          console.log('🔓 [GUARD] Redirecting to /welcome');
+          isNavigating.current = true;
+          router.replace('/welcome');
+          setTimeout(() => { isNavigating.current = false; }, 1000);
+        }
         return;
       }
 
-      const role = user?.role?.toLowerCase();
-      console.log(`🔒 [GUARD] Authenticated. User Role: ${role || 'UNKNOWN'}`);
-
-      if (inLoginGroup || !segments[0] || segments[0] === 'index') {
-        if (role === 'pending') {
-          router.replace('/role-selection');
-        } else {
-          // PRODUCTION: Unified Tab Experience (Swipe Pager)
+      // 2. AUTHENTICATED
+      const isOnboarded = user?.isOnboarded;
+      if (isOnboarded) {
+        if (!inAuthGroup) {
+          console.log('🚀 [GUARD] Taking user to home dashboard...');
+          isNavigating.current = true;
           router.replace('/(tabs)');
+          setTimeout(() => { isNavigating.current = false; }, 1200);
+        }
+      } else {
+        if (!inOnboarding) {
+          console.log('📝 [GUARD] Taking user to onboarding...');
+          isNavigating.current = true;
+          router.replace('/role-selection');
+          setTimeout(() => { isNavigating.current = false; }, 1200);
         }
       }
-    }
+    }, 450); // Hardened Production Delay
+
+    return () => clearTimeout(handoffTimer);
   }, [isInitialized, isAuthenticated, user, segments, isIntroFinished, dataLoaded, router]);
 
   return (

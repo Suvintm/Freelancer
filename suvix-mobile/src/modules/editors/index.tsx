@@ -1,9 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { UnifiedBanner } from '../../components/home/UnifiedBanner';
-import { StoryBar } from '../../components/stories/StoryBar';
-import { NearbyExperts } from '../../components/home/NearbyExperts';
 
 /**
  * EDITOR DASHBOARD (ROOT)
@@ -13,33 +10,24 @@ export default function EditorDashboard() {
   const { theme } = useTheme();
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.primary }]}>
-      <View style={styles.bannerWrapper}>
-        <UnifiedBanner pageName="home" />
-        <StoryBar />
-        <NearbyExperts />
-      </View>
-
+    <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.text }]}>Editor Dashboard</Text>
-        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Find gigs and manage your editing projects.</Text>
+        <Text style={[styles.title, { color: theme.text }]}>Professional Desk</Text>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Ready to find your next major editing gig?</Text>
       </View>
       
       <View style={[styles.placeholder, { backgroundColor: theme.secondary }]}>
         <Text style={[styles.placeholderText, { color: theme.textSecondary }]}>Active Orders & Gig Management coming soon...</Text>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  bannerWrapper: {
-    paddingTop: 80, // Space for the absolute TopNavbar
-  },
   header: { padding: 24, paddingTop: 10 },
-  title: { fontSize: 32, fontWeight: '800' },
+  title: { fontSize: 28, fontWeight: '800' },
   subtitle: { fontSize: 16, marginTop: 4 },
-  placeholder: { margin: 24, padding: 40, borderRadius: 20, alignItems: 'center' },
+  placeholder: { margin: 24, marginTop: 10, padding: 40, borderRadius: 20, alignItems: 'center' },
   placeholderText: { textAlign: 'center' },
 });

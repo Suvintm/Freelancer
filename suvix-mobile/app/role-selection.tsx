@@ -26,9 +26,10 @@ import SuvixInput from '../src/components/SuvixInput';
 import SuvixButton from '../src/components/SuvixButton';
 import { useAuthStore } from '../src/store/useAuthStore';
 import { api } from '../src/api/client';
-import { DUMMY_CATEGORIES } from '../src/constants/dummy_categories';
 import { CategoryId, CategoryConfig } from '../src/types/category';
+import { useCategoryStore } from '../src/store/useCategoryStore';
 import * as Haptics from 'expo-haptics';
+import { ActivityIndicator } from 'react-native';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 64) / 2;
@@ -56,13 +57,14 @@ export default function RoleSelectionScreen() {
   const isDark = colorScheme === 'dark';
 
   const { token, name } = useLocalSearchParams<{ token: string; name: string }>();
-  const [selectedCategory, setSelectedCategory] = useState<CategoryId | null>(null);
-  const [infoCategory, setInfoCategory] = useState<CategoryConfig | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [infoCategory, setInfoCategory] = useState<any | null>(null);
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
   
   const setAuth = useAuthStore((state) => state.setAuth);
+  const { categories, isLoading, fetchCategories } = useCategoryStore();
   const router = useRouter();
 
   // Entrance Animations
@@ -96,51 +98,13 @@ export default function RoleSelectionScreen() {
       // Update global signup buffer
       setTempSignupData({ categoryId: selectedCategory });
 
-      const category = DUMMY_CATEGORIES[selectedCategory];
-      const backendRole = category?.roleGroupId === 'CLIENT' ? 'client' : 'editor';
-
-      // For Normal User / Client, trigger registration immediately
-      if (selectedCategory === 'direct_client') {
-        const data = useAuthStore.getState().tempSignupData;
-        if (!data) throw new Error('Signup data missing');
-
-        const formData = new FormData();
-        formData.append('name', data.name || '');
-        formData.append('email', data.email || '');
-        formData.append('password', data.password || '');
-        formData.append('phone', data.phone || '');
-        formData.append('role', backendRole);
-        formData.append('country', 'IN');
-
-        if (data.profileImage) {
-          const uriParts = data.profileImage.split('.');
-          const fileType = uriParts[uriParts.length - 1];
-          formData.append('profilePicture', {
-            uri: data.profileImage,
-            name: `profile.${fileType}`,
-            type: `image/${fileType}`,
-          } as any);
-        }
-
-        const response = await api.post('/auth/register', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-
-        if (response.data.success) {
-          const { user, token: authToken } = response.data;
-          await setAuth(user, authToken);
-          clearTempSignupData();
-          Alert.alert('Welcome to SuviX!', 'Your Client profile is ready. Explore elite talent now.');
-          router.replace('/(tabs)');
-        }
-        return;
-      }
-      
-      // Navigation to the Subcategory Selection Screen for other roles
+      // ALL roles (including Clients/Normal Users) now proceed to the final step
+      // for an atomic registration write.
       router.push({
         pathname: '/subcategory-selection',
         params: { categoryId: selectedCategory }
       });
+
     } catch (error: any) {
       Alert.alert('Setup Failed', error.response?.data?.message || 'Could not finalize your path.');
     } finally {
@@ -148,11 +112,32 @@ export default function RoleSelectionScreen() {
     }
   };
 
-  const sortedCategories = CATEGORY_ORDER.map(id => DUMMY_CATEGORIES[id]).filter(Boolean);
+  // ASSET MAPPING FOR DYNAMIC DATA
+  // Since the DB gives us slugs, we map them to local high-res images to keep the "Rich Aesthetic"
+  const getCategoryAssets = (slug: string) => {
+    // This maintains the exact production assets you specified
+    switch(slug) {
+      case 'yt_influencer': return { thumb: require('../assets/images/categories/youtube.png'), overlay: require('../assets/images/categories/youtubeicon.png') };
+      case 'direct_client': return { thumb: require('../assets/images/categories/client.png'), overlay: null };
+      case 'fitness_expert': return { thumb: require('../assets/images/categories/fitness.png'), overlay: require('../assets/images/categories/fitnessicon.png') };
+      case 'dancer': return { thumb: require('../assets/images/categories/dancer.png'), overlay: require('../assets/images/categories/danceicon.png') };
+      case 'singer': return { thumb: require('../assets/images/categories/singer.png'), overlay: require('../assets/images/categories/singericon.png') };
+      case 'social_promoter': return { thumb: require('../assets/images/categories/promotions.png'), overlay: require('../assets/images/categories/ads.png') };
+      case 'video_editor': return { thumb: require('../assets/images/categories/editor.png'), overlay: require('../assets/images/categories/editing.png') };
+      case 'rent_service': return { thumb: require('../assets/images/categories/rentals.png'), overlay: require('../assets/images/categories/rental.png') };
+      default: return { thumb: require('../assets/images/categories/editor.png'), overlay: null };
+    }
+  };
 
-  const renderCategoryCard = (item: CategoryConfig, index: number) => {
+  const sortedCategories = CATEGORY_ORDER.map(slug => categories.find(c => c.slug === slug)).filter(Boolean);
+  // Add any new categories from DB that aren't in our hardcoded order at the end
+  const remainingCategories = categories.filter(c => !CATEGORY_ORDER.includes(c.slug));
+  const finalDisplayCategories = [...sortedCategories, ...remainingCategories];
+
+  const renderCategoryCard = (item: any, index: number) => {
     const isSelected = selectedCategory === item.id;
-    const isSpecialClient = item.id === 'direct_client';
+    const isSpecialClient = item.slug === 'direct_client';
+    const assets = getCategoryAssets(item.slug);
     
     return (
       <TouchableOpacity 
@@ -166,7 +151,7 @@ export default function RoleSelectionScreen() {
           isSpecialClient && { borderStyle: 'dashed' }
         ]}
       >
-        <Image source={item.thumbnail} style={styles.cardImage} resizeMode="cover" />
+        <Image source={assets.thumb} style={styles.cardImage} resizeMode="cover" />
 
         {/* Info Icon - Top Right */}
         <TouchableOpacity 
@@ -176,9 +161,9 @@ export default function RoleSelectionScreen() {
           <Feather name="info" size={16} color={theme.text} />
         </TouchableOpacity>
 
-        {/* Absolute Icon Overlay - Perfect Top Left Corner */}
-        {item.overlayIcon && (
-          <Image source={item.overlayIcon} style={styles.overlayIcon} resizeMode="contain" />
+        {/* Absolute Icon Overlay */}
+        {assets.overlay && (
+          <Image source={assets.overlay} style={styles.overlayIcon} resizeMode="contain" />
         )}
 
         <LinearGradient
@@ -186,7 +171,7 @@ export default function RoleSelectionScreen() {
           style={styles.cardOverlay}
         >
           <View style={styles.cardLabelContainer}>
-            <Text style={styles.cardLabel} numberOfLines={1}>{item.label}</Text>
+            <Text style={styles.cardLabel} numberOfLines={1}>{item.name}</Text>
             {isSelected && (
               <View style={[styles.selectedBadge, { backgroundColor: theme.accent }]}>
                 <Feather name="check" size={10} color={isDark ? "#000" : "#FFF"} />
@@ -212,7 +197,13 @@ export default function RoleSelectionScreen() {
             </Animated.View>
 
             <View style={styles.grid}>
-              {sortedCategories.map((cat, index) => renderCategoryCard(cat, index))}
+              {isLoading ? (
+                <View style={{ width: '100%', padding: 40 }}>
+                   <ActivityIndicator color={theme.accent} size="large" />
+                </View>
+              ) : (
+                finalDisplayCategories.map((cat, index) => renderCategoryCard(cat, index))
+              )}
             </View>
 
             <View style={{ height: 120 }} />
@@ -243,12 +234,12 @@ export default function RoleSelectionScreen() {
               <TouchableOpacity style={styles.modalBlurClose} activeOpacity={1} onPress={() => setInfoCategory(null)} />
               <View style={[styles.modalContent, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
                 <View style={styles.modalHeader}>
-                  <Text style={[styles.modalTitle, { color: theme.text }]}>{infoCategory?.label}</Text>
+                  <Text style={[styles.modalTitle, { color: theme.text }]}>{infoCategory?.name}</Text>
                   <TouchableOpacity onPress={() => setInfoCategory(null)}>
                     <Feather name="x" size={24} color={theme.text} />
                   </TouchableOpacity>
                 </View>
-                <Text style={[styles.modalInfo, { color: theme.textSecondary }]}>{infoCategory?.info}</Text>
+                <Text style={[styles.modalInfo, { color: theme.textSecondary }]}>{infoCategory?.description || infoCategory?.info}</Text>
                 <SuvixButton 
                   title="Got it" 
                   onPress={() => setInfoCategory(null)}

@@ -1,7 +1,8 @@
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuthStore } from '../store/useAuthStore';
 
 const { width } = Dimensions.get('window');
 // OLD FIXED HEIGHT REMOVED
@@ -59,7 +60,18 @@ export const AnimatedTabBar = ({ activeIndex, tabs, onTabPress, hidden }: Animat
       case 'chats':
         return <Ionicons name={isFocused ? 'chatbubbles' : 'chatbubbles-outline'} size={size} color={color} />;
       case 'profile':
-        return <Ionicons name={isFocused ? 'person' : 'person-outline'} size={size} color={color} />;
+        const { user } = useAuthStore.getState();
+        return (
+          <View style={[
+            styles.avatarBorder, 
+            { borderColor: isFocused ? color : 'transparent' }
+          ]}>
+            <Image 
+              source={{ uri: user?.profilePicture || 'https://cdn-icons-png.flaticon.com/512/149/149071.png' }} 
+              style={styles.tabAvatar} 
+            />
+          </View>
+        );
       default:
         return <Ionicons name="apps-outline" size={size} color={color} />;
     }
@@ -172,5 +184,15 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
+  },
+  tabAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+  },
+  avatarBorder: {
+    padding: 1.5,
+    borderRadius: 14,
+    borderWidth: 1.5,
   },
 });

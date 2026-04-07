@@ -1,76 +1,31 @@
 import express from "express";
-import {
-  register,
-  login,
+import multer from "multer";
+import { 
+  registerFull, 
+  login, 
+  getRoles,
+  refresh,
   logout,
-  updateProfilePicture,
-  getCurrentUser,
-  forgotPassword,
-  resetPassword,
-  verifyOtp,
-  resendOtp,
-} from "../controllers/authcontroller.js";
-import { upload } from "../../../middleware/upload.js";
-import protect from "../../../middleware/authMiddleware.js";
-import { authLimiter, registerLimiter, uploadLimiter, bootLimiter } from "../../../middleware/rateLimiter.js";
-import { registerValidator, loginValidator } from "../../../middleware/validators.js";
-import { vpnCheckMiddleware } from "../../../middleware/vpnCheck.js";
+  getMe, 
+  checkUsername,
+  validateSignup
+} from "../controllers/authController.js";
+import { authenticate } from "../../../middleware/authMiddleware.js";
 
 const router = express.Router();
+const storage = multer.memoryStorage();
+const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB limit
 
-// ============ AUTH ROUTES ============
+// ============ PUBLIC ROUTES ============
+router.post("/register-full", upload.single("profilePicture"), registerFull);
+router.post("/login", login);
+router.post("/refresh-token", refresh); // Advanced Rotation
+router.post("/logout", logout); // Clear Sessions
+router.get("/roles", getRoles);
+router.get("/check-username/:username", checkUsername);
+router.post("/validate-signup", validateSignup);
 
-// Register - with rate limiting and validation
-router.post(
-  "/register",
-  registerLimiter,
-  vpnCheckMiddleware,
-  upload.single("profilePicture"),
-  registerValidator,
-  register
-);
-
-// Login - with strict rate limiting and validation
-router.post("/login", authLimiter, vpnCheckMiddleware, loginValidator, login);
-
-// Logout - protected
-router.post("/logout", protect, logout);
-
-// ============ OTP VERIFICATION ============
-
-// Verify OTP - finalize registration or login
-router.post("/verify-otp", authLimiter, verifyOtp);
-
-// Resend OTP
-router.post("/resend-otp", authLimiter, resendOtp);
-
-// ============ PASSWORD RESET ============
-
-// Forgot Password - Request reset email
-router.post("/forgot-password", authLimiter, forgotPassword);
-
-// Reset Password - Set new password with token
-router.post("/reset-password/:token", resetPassword);
-
-// ============ PROFILE PICTURE ============
-
-router.patch(
-  "/update-profile-picture",
-  protect,
-  uploadLimiter,
-  upload.single("profilePicture"),
-  updateProfilePicture
-);
-
-// ============ CURRENT USER ============
-
-// 🛡️ BOOT PROTECTION: Limited to 20 calls/min to prevent looping usage spikes
-router.get("/me", bootLimiter, protect, getCurrentUser);
+// ============ PRIVATE ROUTES ============
+router.get("/me", authenticate, getMe);
 
 export default router;
-
-
-
-
-
-

@@ -160,20 +160,26 @@ export const TopNavbar = ({ onMenuPress }: TopNavbarProps) => {
           <Ionicons 
             name={isDarkMode ? "sunny-outline" : "moon-outline"} 
             size={22} 
-            color={isDarkMode ? Colors.accent : '#666'} 
+            color={isDarkMode ? palette.accent : '#666'} 
           />
         </TouchableOpacity>
 
-        {/* Profile Pic */}
+        {/* Notifications */}
         <TouchableOpacity 
-          style={styles.profileButton} 
-          onPress={() => router.push('/(tabs)/profile')}
+          style={styles.actionButton} 
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push('/notifications');
+          }}
           activeOpacity={0.7}
         >
-          <Image 
-            source={{ uri: user?.profilePicture || 'https://cdn-icons-png.flaticon.com/512/149/149071.png' }} 
-            style={[styles.profilePic, { borderColor: Colors.accent }]} 
+          <Ionicons 
+            name="notifications-outline" 
+            size={22} 
+            color={isDarkMode ? '#FFF' : '#000'} 
           />
+          {/* Subtle Notification Badge Dot */}
+          <View style={[styles.notifBadge, { backgroundColor: '#ef4444' }]} />
         </TouchableOpacity>
       </View>
       {/* ELITE PROGRESS LOADER (Bottom of Navbar) */}
@@ -244,5 +250,15 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     borderWidth: 1.5,
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#000',
   },
 });

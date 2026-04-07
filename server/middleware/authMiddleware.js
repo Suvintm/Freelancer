@@ -8,9 +8,9 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 /**
  * Protect Middleware (PostgreSQL)
- * Authenticates user via JWT and fetches from PostgreSQL
+ * Authenticates user via JWT and fetches from PostgreSQL + Profile
  */
-const protect = async (req, res, next) => {
+export const authenticate = async (req, res, next) => {
   try {
     let token;
 
@@ -41,24 +41,16 @@ const protect = async (req, res, next) => {
     if (user) {
       if (typeof user === "string") user = JSON.parse(user);
     } else {
-      // Fetch from PostgreSQL with error handling
+      // Fetch from PostgreSQL (Auth + Profile Split)
       try {
         user = await prisma.user.findUnique({
           where: { id: decoded.id },
-          select: {
-            id: true,
-            username: true,
-            name: true,
-            email: true,
-            role: true,
-            is_banned: true,
-            ban_reason: true,
-            profile_picture: true
+          include: {
+            profile: true,
           }
         });
       } catch (prismaError) {
         logger.error("Prisma query error in authMiddleware:", prismaError);
-        // During tests, fallback to 401 if ID format is invalid
         throw new ApiError(401, "Authentication database error");
       }
       
@@ -67,15 +59,11 @@ const protect = async (req, res, next) => {
 
     if (!user) throw new ApiError(401, "User not found");
 
-    // Check ban status (source of truth)
-    if (user.is_banned) {
-      await deleteCache(cacheKey);
-      return res.status(403).json({
-        success: false,
-        isBanned: true,
-        message: "Your account has been suspended.",
-        banReason: user.ban_reason || "Violation of terms",
-      });
+    // Flatten profile data onto the user object for convenience (standard across app/web)
+    if (user.profile) {
+        user.username = user.profile.username;
+        user.name = user.profile.name;
+        user.profile_picture = user.profile.profile_picture;
     }
 
     req.user = user;
@@ -106,23 +94,21 @@ export const optionalAuth = async (req, res, next) => {
         try {
           const user = await prisma.user.findUnique({
             where: { id: decoded.id },
-            select: {
-              id: true,
-              username: true,
-              name: true,
-              email: true,
-              role: true,
-              is_banned: true,
-              ban_reason: true,
-              profile_picture: true
+            include: {
+                profile: true
             }
           });
-          if (user && !user.is_banned) {
+          if (user) {
+            // Flatten if found
+            if (user.profile) {
+                user.username = user.profile.username;
+                user.name = user.profile.name;
+                user.profile_picture = user.profile.profile_picture;
+            }
             req.user = user;
           }
         } catch (prismaError) {
           logger.error("Prisma query error in optionalAuth:", prismaError);
-          // Continue without user if error occurs
         }
       }
     }
@@ -137,12 +123,11 @@ export const optionalAuth = async (req, res, next) => {
  */
 export const authorize = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      throw new ApiError(403, `Role '${req.user.role}' is not authorized`);
+    if (!req.user || !roles.includes(req.user.role)) {
+      throw new ApiError(403, `Role '${req.user?.role || 'unknown'}' is not authorized`);
     }
     next();
   };
 };
 
-export default protect;
-
+export default authenticate;

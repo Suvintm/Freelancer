@@ -111,73 +111,41 @@ router.post("/select-role", authLimiter, async (req, res) => {
             });
         }
 
-        // Update user role and production defaults in PostgreSQL
-        const user = await prisma.user.findUnique({ where: { id: decoded.id } });
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found",
-            });
-        }
-
-        const currencyMap = { IN: "INR", US: "USD", GB: "GBP", CA: "CAD", AU: "AUD" };
-        const currency = currencyMap[country] || "INR";
-        const paymentGateway = country === "IN" ? "razorpay" : "none";
-
+        // Update user status
         const updatedUser = await prisma.user.update({
-            where: { id: user.id },
+            where: { id: decoded.id },
             data: {
                 role,
-                phone,
-                country,
-                currency,
-                payment_gateway: paymentGateway,
+                is_onboarded: true,
                 is_verified: true,
             }
         });
 
-        // Create profile for the user in PostgreSQL
-        const existingProfile = await prisma.userProfile.findUnique({ where: { user_id: user.id } });
-        if (!existingProfile) {
-            await prisma.userProfile.create({
-                data: {
-                    user_id: user.id,
-                    about: "",
-                    skills: [],
-                    languages: [],
-                    experience: "",
-                    contact_email: updatedUser.email,
-                    location_country: country,
-                }
-            });
-        } else {
-            await prisma.userProfile.update({
-                where: { user_id: user.id },
-                data: {
-                    contact_email: updatedUser.email,
-                    location_country: country,
-                }
-            });
-        }
+        // Update profile with onboarding metadata
+        await prisma.userProfile.update({
+            where: { userId: updatedUser.id },
+            data: {
+                location_country: country,
+                phone: phone,
+            }
+        });
 
         // Generate full token
-        const authToken = generateToken(updatedUser);
+        const authToken = jwt.sign(
+            { id: updatedUser.id, role: updatedUser.role },
+            JWT_SECRET,
+            { expiresIn: JWT_EXPIRES_IN }
+        );
 
-        logger.info(`[OAuth] Finalized registration (Postgres): ${updatedUser.email} as ${role}`);
+        logger.info(`[OAuth] Finalized registration (Postgres): ${updatedUser.id} as ${role}`);
 
         res.status(200).json({
             success: true,
             message: "Registration completed successfully",
             user: {
                 id: updatedUser.id,
-                name: updatedUser.name,
                 email: updatedUser.email,
                 role: updatedUser.role,
-                profileCompleted: updatedUser.profile_completed,
-                profilePicture: updatedUser.profile_picture,
-                isVerified: updatedUser.is_verified,
-                kycStatus: updatedUser.kyc_status,
-                profileCompletionPercent: updatedUser.profile_completion_percent,
             },
             token: authToken,
         });
@@ -217,7 +185,8 @@ router.post("/google/mobile", async (req, res) => {
                     { google_id: googleId },
                     { email: normalizedEmail }
                 ]
-            }
+            },
+            include: { profile: true }
         });
 
         if (user) {
@@ -229,44 +198,48 @@ router.post("/google/mobile", async (req, res) => {
                         google_id: googleId,
                         auth_provider: "google",
                         is_verified: true
-                    }
+                    },
+                    include: { profile: true }
                 });
-                logger.info(`[OAuth Mobile] Linked Google account to existing user (Postgres): ${normalizedEmail}`);
+                logger.info(`[OAuth Mobile] Linked Google account to existing user: ${normalizedEmail}`);
             } else {
-                logger.info(`[OAuth Mobile] Login (Postgres): ${normalizedEmail}`);
+                logger.info(`[OAuth Mobile] Login: ${normalizedEmail}`);
             }
         } else {
-            // 3. New User Registration in PostgreSQL
+            // 3. New User Registration via Transaction
             let finalName = name || "User";
-            const nameExists = await prisma.user.findFirst({
-                where: { name: { equals: finalName, mode: 'insensitive' } }
-            });
-            if (nameExists) {
-                finalName = `${finalName}${Math.floor(1000 + Math.random() * 9000)}`;
-            }
+            let finalUsername = finalName.toLowerCase().replace(/\s+/g, '_') + `_${crypto.randomBytes(3).toString('hex')}`;
 
-            user = await prisma.user.create({
-                data: {
-                    name: finalName,
-                    email: normalizedEmail,
-                    google_id: googleId,
-                    auth_provider: "google",
-                    is_verified: true,
-                    role: "pending",
-                    password_hash: `OAUTH_MOBILE_${crypto.randomBytes(8).toString("hex")}`,
-                }
+            user = await prisma.$transaction(async (tx) => {
+                const newUser = await tx.user.create({
+                    data: {
+                        email: normalizedEmail,
+                        google_id: googleId,
+                        auth_provider: "google",
+                        is_verified: true,
+                        role: "pending",
+                        is_onboarded: false,
+                        password_hash: `OAUTH_MOBILE_${crypto.randomBytes(8).toString("hex")}`,
+                    }
+                });
+
+                await tx.userProfile.create({
+                    data: {
+                        userId: newUser.id,
+                        username: finalUsername,
+                        name: finalName,
+                        profile_picture: picture,
+                        location_country: "IN", 
+                    }
+                });
+
+                return await tx.user.findUnique({
+                    where: { id: newUser.id },
+                    include: { profile: true }
+                });
             });
 
-            // Create Profile
-            await prisma.userProfile.create({
-                data: {
-                    user_id: user.id,
-                    contact_email: user.email,
-                    location_country: "IN", 
-                }
-            });
-
-            logger.info(`[OAuth Mobile] New user registered (Postgres): ${normalizedEmail}`);
+            logger.info(`[OAuth Mobile] New user registered: ${normalizedEmail}`);
         }
 
         // 4. Handle Pending Role
@@ -283,23 +256,28 @@ router.post("/google/mobile", async (req, res) => {
                 user: {
                     id: user.id,
                     email: user.email,
-                    name: user.name,
+                    name: user.profile?.name,
                     role: user.role
                 }
             });
         }
 
         // 5. Success - generate full token
-        const token = generateToken(user);
+        const token = jwt.sign(
+            { id: user.id, role: user.role },
+            JWT_SECRET,
+            { expiresIn: JWT_EXPIRES_IN }
+        );
+
         res.status(200).json({
             success: true,
             token,
             user: {
                 id: user.id,
-                name: user.name,
+                name: user.profile?.name,
                 email: user.email,
                 role: user.role,
-                profilePicture: user.profile_picture || picture,
+                profilePicture: user.profile?.profile_picture || picture,
             }
         });
 

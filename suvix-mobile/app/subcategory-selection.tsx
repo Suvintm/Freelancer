@@ -16,11 +16,12 @@ import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../src/constants/Colors';
-import { DUMMY_CATEGORIES } from '../src/constants/dummy_categories';
 import SuvixButton from '../src/components/SuvixButton';
 import { useAuthStore } from '../src/store/useAuthStore';
+import { useCategoryStore } from '../src/store/useCategoryStore';
 import { api } from '../src/api/client';
 import * as Haptics from 'expo-haptics';
+import { ActivityIndicator } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -31,8 +32,27 @@ export default function SubcategorySelectionScreen() {
 
   const { categoryId } = useLocalSearchParams<{ categoryId: string }>();
   const router = useRouter();
-  const category = DUMMY_CATEGORIES[categoryId as string];
+  const { categories } = useCategoryStore();
+  const category = categories.find(c => c.id === categoryId);
   
+  // ASSET MAPPING FOR DYNAMIC DATA
+  const getCategoryAssets = (slug?: string) => {
+    switch(slug) {
+      case 'yt_influencer': return { thumb: require('../assets/images/categories/youtube.png'), overlay: require('../assets/images/categories/youtubeicon.png') };
+      case 'direct_client': return { thumb: require('../assets/images/categories/client.png'), overlay: null };
+      case 'fitness_expert': return { thumb: require('../assets/images/categories/fitness.png'), overlay: require('../assets/images/categories/fitnessicon.png') };
+      case 'dancer': return { thumb: require('../assets/images/categories/dancer.png'), overlay: require('../assets/images/categories/danceicon.png') };
+      case 'singer': return { thumb: require('../assets/images/categories/singer.png'), overlay: require('../assets/images/categories/singericon.png') };
+      case 'social_promoter': return { thumb: require('../assets/images/categories/promotions.png'), overlay: require('../assets/images/categories/ads.png') };
+      case 'video_editor': return { thumb: require('../assets/images/categories/editor.png'), overlay: require('../assets/images/categories/editing.png') };
+      case 'rent_service': return { thumb: require('../assets/images/categories/rentals.png'), overlay: require('../assets/images/categories/rental.png') };
+      default: return { thumb: require('../assets/images/categories/editor.png'), overlay: null };
+    }
+  };
+
+  const assets = getCategoryAssets(category?.slug);
+  const isYoutube = category?.slug === 'yt_influencer';
+
   // State for multiple selections
   const [selectedSubs, setSelectedSubs] = useState<string[]>([]);
 
@@ -44,7 +64,6 @@ export default function SubcategorySelectionScreen() {
     );
   }
 
-  const isYoutube = categoryId === 'yt_influencer';
 
   const { tempSignupData, setTempSignupData, clearTempSignupData, setAuth } = useAuthStore();
   const [loading, setLoading] = useState(false);
@@ -56,7 +75,7 @@ export default function SubcategorySelectionScreen() {
   const toggleSub = (sub: string) => {
     handleImpact();
     
-    if (isYoutube) {
+    if (category?.slug === 'yt_influencer') {
       // Single select for Youtube as per USER request
       setSelectedSubs([sub]);
       return;
@@ -70,7 +89,9 @@ export default function SubcategorySelectionScreen() {
   };
 
   const handleFinish = async () => {
-    if (selectedSubs.length === 0) {
+    // For Professional roles, subcategories are mandatory. 
+    // For Clients, they are optional but usually selected from a default list.
+    if (selectedSubs.length === 0 && category?.slug !== 'direct_client') {
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
       Alert.alert('Selection Required', 'Please choose at least one niche to continue.');
       return;
@@ -81,20 +102,19 @@ export default function SubcategorySelectionScreen() {
       handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
       
       const data = useAuthStore.getState().tempSignupData;
-      if (!data) throw new Error('Signup data missing');
+      if (!data) throw new Error('Onboarding data is missing. Please restart signup.');
 
-      const backendRole = category?.roleGroupId === 'CLIENT' ? 'client' : 'editor';
+      const backendRole = category?.roleGroup === 'CLIENT' ? 'client' : 'editor';
 
       const formData = new FormData();
-      formData.append('name', data.name || '');
+      formData.append('fullName', data.name || '');
+      formData.append('username', data.username || '');
       formData.append('email', data.email || '');
       formData.append('password', data.password || '');
       formData.append('phone', data.phone || '');
-      formData.append('role', backendRole);
-      formData.append('country', 'IN');
-      
-      // JSON stringify subcategories for professional parsing
-      formData.append('subCategories', JSON.stringify(selectedSubs));
+      formData.append('motherTongue', data.motherTongue || 'English');
+      formData.append('categoryId', categoryId || '');
+      formData.append('roleSubCategoryIds', JSON.stringify(selectedSubs));
 
       if (data.profileImage) {
         const uriParts = data.profileImage.split('.');
@@ -106,23 +126,34 @@ export default function SubcategorySelectionScreen() {
         } as any);
       }
 
-      const response = await api.post('/auth/register', formData, {
+      // CALL THE NEW ATOMIC REGISTER ENDPOINT
+      const response = await api.post('/auth/register-full', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       if (response.data.success) {
         const { user, token: authToken } = response.data;
-        await setAuth(user, authToken);
+        
+        // 1. CLEAR BUFFERS
         clearTempSignupData();
-        Alert.alert('Welcome to SuviX!', `Your professional profile as a ${category.label} is now active.`);
-        router.replace('/(tabs)');
+        
+        // 2. SET AUTH (This triggers the Global Layout Guard automatically)
+        await setAuth(user, authToken);
+        
+        // 3. SHOW WELCOME (The guard will handle the navigation in the background)
+        Alert.alert(
+          'SuviX Ready!', 
+          `Your professional account as a ${category?.name} is now active. Welcome to the elite community!`
+        );
       }
     } catch (error: any) {
+       console.error("Registration Error:", error.response?.data || error.message);
        Alert.alert('Setup Failed', error.response?.data?.message || 'Could not finalize your professional profile.');
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.primary }]}>
@@ -136,33 +167,33 @@ export default function SubcategorySelectionScreen() {
           </TouchableOpacity>
           
           <View style={styles.iconContainer}>
-             {category.overlayIcon ? (
-               <Image source={category.overlayIcon} style={styles.mainIcon} resizeMode="contain" />
+             {assets.overlay ? (
+               <Image source={assets.overlay} style={styles.mainIcon} resizeMode="contain" />
              ) : (
                <View style={[styles.fallbackIcon, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-                 <Feather name={category.icon as any} size={40} color={theme.accent} />
+                 <Feather name={category?.icon as any || 'user'} size={40} color={theme.accent} />
                </View>
              )}
           </View>
           
           <Text style={[styles.title, { color: theme.text }]}>Refine Your Niche</Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-            {isYoutube 
+            {category?.slug === 'yt_influencer' 
               ? 'Please select any one niche to specialize your channel presence' 
-              : `Select your focus areas as a ${category.label}`}
+              : `Select your focus areas as a ${category?.name}`}
           </Text>
           <Text style={[styles.disclaimer, { color: theme.textSecondary }]}>Accurately selecting your specific niches is critical for profile popularity. Profiles with precise professional targeting receive 85% higher engagement and appear at the top of client searches for elite expert matching within the SuviX ecosystem.</Text>
         </View>
 
         {/* TAG CLOUD (FLEX WRAP LIST) */}
         <View style={styles.tagCloud}>
-          {category.subCategories?.map((sub) => {
-            const isSelected = selectedSubs.includes(sub);
+          {category?.subCategories?.map((sub: any) => {
+            const isSelected = selectedSubs.includes(sub.id);
             return (
               <TouchableOpacity
-                key={sub}
+                key={sub.id}
                 activeOpacity={0.7}
-                onPress={() => toggleSub(sub)}
+                onPress={() => toggleSub(sub.id)}
                 style={[
                   styles.tag, 
                   { backgroundColor: theme.secondary, borderColor: theme.border },
@@ -174,7 +205,7 @@ export default function SubcategorySelectionScreen() {
                   { color: theme.textSecondary },
                   isSelected && { color: isDark ? '#000' : '#FFF' }
                 ]}>
-                  {sub}
+                  {sub.name}
                 </Text>
               </TouchableOpacity>
             );

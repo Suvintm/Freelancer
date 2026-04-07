@@ -13,17 +13,39 @@ const TOKEN_KEY = 'suvix_auth_token';
 
 interface TempSignupData {
   name?: string;
+  username?: string; // New
   email?: string;
   password?: string;
   phone?: string;
+  motherTongue?: string; // New
   profileImage?: string | null;
   categoryId?: string;
-  subCategories?: string[];
+  roleSubCategoryIds?: string[];
+}
+
+
+interface AuthUser {
+  id: string;
+  name: string;
+  username: string;
+  email: string;
+  role: string;
+  primaryRole: {
+    group: 'CLIENT' | 'PROVIDER';
+    category: string;
+    subCategory: string;
+    categoryId?: string;
+    subCategoryId?: string;
+    is_onboarded: boolean;
+  };
+  profilePicture?: string;
+  location?: string;
+  isOnboarded: boolean;
 }
 
 interface AuthState {
   token: string | null;
-  user: any | null;
+  user: AuthUser | null;
   isAuthenticated: boolean;
   isInitialized: boolean;
   isLoadingUser: boolean;
@@ -73,16 +95,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const res = await api.get('/auth/me');
       
       if (res.data.user) {
-        const updatedUser = res.data.user;
+        const updatedUser = {
+          ...res.data.user,
+          isOnboarded: !!res.data.user.is_onboarded || !!res.data.user.isOnboarded
+        };
         set({ user: updatedUser, isAuthenticated: true, isLoadingUser: false });
       }
     } catch (error) {
-      console.error('Fetch User Error:', error);
-      // If unauthorized, clear everything
+      // If unauthorized, clear everything SILENTLY (this is normal on boot with expired token)
       if ((error as any).response?.status === 401) {
          await SecureStore.deleteItemAsync(TOKEN_KEY);
          set({ token: null, user: null, isAuthenticated: false, isLoadingUser: false });
       } else {
+         console.error('Fetch User Error:', error);
          set({ isLoadingUser: false });
       }
     }

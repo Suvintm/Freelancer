@@ -3,12 +3,16 @@ import mongoose from "mongoose";
 const profileSchema = new mongoose.Schema(
   {
     user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String, // PostgreSQL UUID as String
       required: true,
       unique: true,
       index: true,
     },
+    subCategories: {
+      type: [String],
+      default: [],
+    },
+
     about: {
       type: String,
       default: "",

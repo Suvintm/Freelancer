@@ -14,49 +14,74 @@ import PromoterDashboard from '../../src/modules/promoters';
 import EditorDashboard from '../../src/modules/editors';
 import ClientDashboard from '../../src/modules/clients';
 
+// Common Components
+import { UnifiedBanner } from '../../src/components/home/UnifiedBanner';
+import { StoryBar } from '../../src/components/stories/StoryBar';
+import { FeatureGallery } from '../../src/components/home/FeatureGallery';
+import { ScrollView } from 'react-native';
+
 /**
  * PRODUCTION-GRADE DYNAMIC DASHBOARD (Home Tab)
- * Acts as a "Module Loader" that swaps the UI based on the user's category.
+ * Implements "Deferred Loading" to save memory and "Zero-Latency" hydrate rendering.
  */
+
+// 1. Component Registry (Deferred Loading to save RAM)
+const MODULE_REGISTRY: Record<string, React.ComponentType> = {
+  creators:  CreatorDashboard,
+  rentals:   RentalDashboard,
+  promoters: PromoterDashboard,
+  editors:   EditorDashboard,
+  clients:   ClientDashboard,
+};
+
 export default function DashboardIndex() {
   const { theme } = useTheme();
-
   const { user, isLoadingUser, isAuthenticated } = useAuthStore();
+  const [isReady, setIsReady] = React.useState(false);
+
+  // STAGGERED INITIALIZATION: Delay heavy Reanimated components to avoid Main Thread choke
+  React.useEffect(() => {
+    const timer = setTimeout(() => setIsReady(true), 150);
+    return () => clearTimeout(timer);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
-        // Exit app on back press from home
+        // Only allow exit if on Home
         BackHandler.exitApp();
         return true;
       };
-
       BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
-      return () =>
-        BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+      return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
     }, [])
   );
 
   // Determine which module to load based on user metadata
   const activeModule = useMemo(() => {
-    if (!user) return null;
+    if (!user || !user.primaryRole) return 'editors'; // Safe fallback
     
-    // 1. Try to get module from Category metadata
-    const categoryId = user.categoryId as CategoryId | undefined;
-    if (categoryId && CATEGORIES[categoryId]) {
-      return CATEGORIES[categoryId].defaultModule;
-    }
+    const roleGroup = user.primaryRole.group;
+    const categoryName = user.primaryRole.category?.toLowerCase() || '';
 
-    // 2. Fallback to base role logic
-    return user.role === 'client' ? 'clients' : 'editors';
+    if (categoryName.includes('youtube') || categoryName.includes('influencer')) return 'creators';
+    if (categoryName.includes('rental')) return 'rentals';
+    if (categoryName.includes('promoter')) return 'promoters';
+    if (categoryName.includes('editor')) return 'editors';
+
+    return roleGroup === 'CLIENT' ? 'clients' : 'editors';
   }, [user]);
 
-  if (isLoadingUser || (isAuthenticated && !user)) {
+  // ZERO-LATENCY FALLBACK: If user is authenticated but data is 1ms late, show the skeleton
+  const showSkeleton = isLoadingUser || (isAuthenticated && !user);
+
+  if (showSkeleton) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.primary }]}>
         <ActivityIndicator size="large" color={theme.text} />
-        <Text style={[styles.loadingText, { color: theme.text }]}>Syncing SuviX Profile...</Text>
+        {/* Subtle Skeleton layout for zero-latency feel */}
+        <View style={{ width: '90%', height: 200, backgroundColor: theme.secondary, borderRadius: 20, marginTop: 40 }} />
+        <View style={{ width: '40%', height: 20, backgroundColor: theme.secondary, borderRadius: 10, marginTop: 20, alignSelf: 'flex-start', marginLeft: 20 }} />
       </View>
     );
   }
@@ -69,15 +94,46 @@ export default function DashboardIndex() {
     );
   }
 
-  // Dynamic Module Rendering
-  switch (activeModule) {
-    case 'creators':  return <CreatorDashboard />;
-    case 'rentals':   return <RentalDashboard />;
-    case 'promoters': return <PromoterDashboard />;
-    case 'editors':   return <EditorDashboard />;
-    case 'clients':   return <ClientDashboard />;
-    default:         return <EditorDashboard />;
-  }
+  // 3. Render Unified Home Feed
+  const ActiveActionModule = MODULE_REGISTRY[activeModule] || EditorDashboard;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.primary }}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ paddingBottom: 60 }}
+        removeClippedSubviews={true} // Performance optimization for large feeds
+      >
+        {/* Banner Section (Always visible) */}
+        <View style={styles.bannerWrapper}>
+          {isReady ? <UnifiedBanner pageName="home" /> : <View style={{ height: 200 }} />}
+        </View>
+
+        {/* Stories Section (Always visible) */}
+        <StoryBar />
+
+        {/* Dynamic Professional Greeting (Safety Guarded) */}
+        <View style={{ padding: 24, paddingTop: 10 }}>
+          <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.text }}>
+            Hi {user.name ? user.name.split(' ')[0] : 'Member'},
+          </Text>
+          <Text style={{ fontSize: 16, color: theme.textSecondary, marginTop: 4 }}>
+            {user.primaryRole?.group === 'PROVIDER' 
+              ? `Ready to grow your ${user.primaryRole?.category || 'Professional'} business?` 
+              : `Looking for ${user.primaryRole?.category || 'Service'} experts today?`}
+          </Text>
+        </View>
+
+        {/* Feature Gallery / Service Quick Links (Always visible) */}
+        {isReady && <FeatureGallery />}
+        
+        {/* Dynamic Action Module (Deferred Render) */}
+        <View style={styles.moduleSection}>
+          <ActiveActionModule />
+        </View>
+      </ScrollView>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -92,5 +148,11 @@ const styles = StyleSheet.create({
   },
   errorText: { 
     fontSize: 14
+  },
+  bannerWrapper: {
+    paddingTop: 80, // Space for the absolute TopNavbar
+  },
+  moduleSection: {
+    paddingTop: 0,
   }
 });
