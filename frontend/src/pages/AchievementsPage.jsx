@@ -254,7 +254,7 @@ const AchievementsPage = () => {
                       {/* Badge Name */}
                       <h3 className={`font-semibold text-sm mb-1 ${
                         badge.earned 
-                          ? isDark ? 'text-white' : 'text-slate-900'
+                          ? isDark ? 'text-white' : 'text-slate-800'
                           : isDark ? 'text-gray-500' : 'text-slate-400'
                       }`}>
                         {badge.name}
