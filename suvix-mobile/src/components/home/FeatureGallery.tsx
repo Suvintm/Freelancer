@@ -177,6 +177,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     marginRight: CARD_MARGIN,
   },
+  cardInner: { flex: 1, overflow: 'hidden' },
   cardContent: { 
     flex: 1, 
     flexDirection: 'row', 

@@ -127,7 +127,7 @@ export default function DashboardIndex() {
         {/* Feature Gallery / Service Quick Links (Always visible) */}
         {isReady && <FeatureGallery />}
         
-        {/* Dynamic Action Module (Deferred Render) */}
+        {/* Dynamic Action Module (Static Render) */}
         <View style={styles.moduleSection}>
           <ActiveActionModule />
         </View>

@@ -27,6 +27,8 @@ interface AnimatedTabBarProps {
  * - Inactive tab: outline icon + label (visible gray)
  * - No top border, no green color
  */
+import * as Haptics from 'expo-haptics';
+
 export const AnimatedTabBar = ({ activeIndex, tabs, onTabPress, hidden }: AnimatedTabBarProps) => {
   const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
@@ -101,7 +103,10 @@ export const AnimatedTabBar = ({ activeIndex, tabs, onTabPress, hidden }: Animat
           return (
             <TouchableOpacity
               key={tab.name}
-              onPress={() => onTabPress(index)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onTabPress(index);
+              }}
               style={styles.tabItem}
               activeOpacity={0.7}
             >

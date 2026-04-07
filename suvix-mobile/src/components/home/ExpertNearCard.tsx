@@ -43,7 +43,11 @@ export const ExpertNearCard = ({ expert }: ExpertNearCardProps) => {
       onPress={handlePress}
       style={[s.card, { width: CARD_WIDTH, height: CARD_HEIGHT, backgroundColor: theme.secondary, borderColor: theme.border }]}
     >
-      <Image source={{ uri: avatarUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      <Image 
+        source={{ uri: avatarUrl }} 
+        style={StyleSheet.absoluteFill} 
+        resizeMode="cover"
+      />
       <LinearGradient 
         colors={['transparent', 'rgba(0,0,0,0.8)']} 
         style={StyleSheet.absoluteFill} 

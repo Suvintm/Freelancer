@@ -74,9 +74,9 @@ const resolveLayout = (lc: Record<string, any> = {}) => ({
 
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
-// ─── Video Component ────────────────────────────────────────────────────────
+// ─── Video Component (Legacy Stability) ──────────────────────────────────────
 const BannerVideo = ({ source, muted, onPlayError }: any) => {
-  const fadeAnim = useRef(new RNAnimated.Value(0)).current;
+  const fadeAnim = React.useRef(new RNAnimated.Value(0)).current;
   return (
     <RNAnimated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}>
       <Video
@@ -212,7 +212,11 @@ export const UnifiedBanner = ({ pageName = 'home' }: UnifiedBannerProps) => {
                 {/* Media Layer */}
                 <TouchableOpacity activeOpacity={1} style={StyleSheet.absoluteFill} onPress={() => item.cardLink && router.push(item.cardLink as any)}>
                   {(item.thumbnailUrl || item.mediaType === 'image') && (
-                    <Image source={{ uri: item.thumbnailUrl || item.mediaUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                    <Image 
+                      source={{ uri: item.thumbnailUrl || item.mediaUrl }} 
+                      style={StyleSheet.absoluteFill} 
+                      resizeMode="cover"
+                    />
                   )}
                   {item.mediaType === 'video' && isActive && !videoFailures[item._id] && (
                     <BannerVideo 

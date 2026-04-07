@@ -119,6 +119,7 @@ const s = StyleSheet.create({
     overflow: 'hidden', 
     borderWidth: 1 
   },
+  fallbackInner: { flex: 1, overflow: 'hidden' },
   fallbackContent: { 
     flex: 1, 
     flexDirection: 'row', 
