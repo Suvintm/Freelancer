@@ -12,15 +12,43 @@ import {
 import { useTheme } from '../../src/context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
+// Modules
+import YouTubeCreatorProfile from '../../src/modules/creators/profiles/YouTubeCreatorProfile';
+import DefaultProfile from '../../src/modules/shared/profiles/DefaultProfile';
+
+/**
+ * PRODUCTION-GRADE DYNAMIC PROFILE (Profile Tab)
+ * Role-based shell that injects specialized profile experiences.
+ */
+
+// 1. Profile Registry
+const PROFILE_REGISTRY: Record<string, React.ComponentType> = {
+  creators: YouTubeCreatorProfile,
+  default:  DefaultProfile,
+};
+
 export default function ProfileIndex() {
   const { theme } = useTheme();
   const { user, isLoadingUser, isAuthenticated } = useAuthStore();
+
+  // Determine which module to load based on user metadata
+  const activeModule = React.useMemo(() => {
+    if (!user || !user.primaryRole) return 'default';
+    
+    // Check if user is a YT Creator
+    const categoryName = user.primaryRole.category?.toLowerCase() || '';
+    if (categoryName.includes('youtube') || categoryName.includes('influencer')) {
+      return 'creators';
+    }
+
+    return 'default';
+  }, [user]);
 
   if (isLoadingUser || (isAuthenticated && !user)) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.primary }]}>
         <ActivityIndicator size="large" color={theme.text} />
-        <Text style={[styles.loadingText, { color: theme.text }]}>Loading Profile...</Text>
+        <Text style={[styles.loadingText, { color: theme.text }]}>Synchronizing Profile...</Text>
       </View>
     );
   }
@@ -33,83 +61,12 @@ export default function ProfileIndex() {
     );
   }
 
-  const displayName = user.name || 'SuviX User';
-  const username = user.username ? `@${user.username}` : '@suvix_member';
-  const roleText = user.primaryRole?.category || user.role || 'Member';
-  const bioText = `Building with SuviX as ${roleText}.`;
+  // 3. Render Injected Profile
+  const ActiveProfileModule = PROFILE_REGISTRY[activeModule] || DefaultProfile;
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.primary }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <LinearGradient
-          colors={['#101828', '#1d2939', '#344054']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.banner}
-        />
-
-        <View style={[styles.profileWrap, { backgroundColor: theme.primary, borderBottomColor: theme.border }]}>
-          <View style={styles.profileRow}>
-            <Image
-              source={{
-                uri: user.profilePicture || 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
-              }}
-              style={styles.avatar}
-            />
-
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: theme.text }]}>0</Text>
-                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Posts</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: theme.text }]}>0</Text>
-                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Followers</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: theme.text }]}>0</Text>
-                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Following</Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.infoBlock}>
-            <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
-            <Text style={[styles.username, { color: theme.textSecondary }]}>{username}</Text>
-            <Text style={[styles.bio, { color: theme.textSecondary }]}>{bioText}</Text>
-          </View>
-
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              activeOpacity={0.9}
-              style={[styles.actionBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
-            >
-              <Text style={[styles.actionText, { color: theme.text }]}>Edit Profile</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={0.9}
-              style={[styles.actionBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
-            >
-              <Text style={[styles.actionText, { color: theme.text }]}>Share Profile</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={[styles.sectionHeader, { borderTopColor: theme.border, borderBottomColor: theme.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>POSTS</Text>
-          <Text style={[styles.sectionTitleMuted, { color: theme.textSecondary }]}>REELS</Text>
-          <Text style={[styles.sectionTitleMuted, { color: theme.textSecondary }]}>TAGGED</Text>
-        </View>
-
-        <View style={styles.grid}>
-          <View style={[styles.gridItem, { backgroundColor: theme.secondary }]} />
-          <View style={[styles.gridItem, { backgroundColor: theme.secondary }]} />
-          <View style={[styles.gridItem, { backgroundColor: theme.secondary }]} />
-          <View style={[styles.gridItem, { backgroundColor: theme.secondary }]} />
-          <View style={[styles.gridItem, { backgroundColor: theme.secondary }]} />
-          <View style={[styles.gridItem, { backgroundColor: theme.secondary }]} />
-        </View>
-      </ScrollView>
+    <View style={{ flex: 1, backgroundColor: theme.primary }}>
+      <ActiveProfileModule />
     </View>
   );
 }
