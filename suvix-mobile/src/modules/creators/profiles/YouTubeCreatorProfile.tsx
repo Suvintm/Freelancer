@@ -13,6 +13,7 @@ import { useTheme } from '../../../context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/Colors';
+import { formatCount } from '../../../utils/formatters';
 
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 
@@ -56,9 +57,26 @@ export default function YouTubeCreatorProfile() {
               </View>
             </View>
 
-            <TouchableOpacity style={[styles.editBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-               <Text style={[styles.editBtnText, { color: theme.text }]}>Settings</Text>
-            </TouchableOpacity>
+            <View style={styles.headerStats}>
+              <View style={styles.miniStatsRow}>
+                <View style={styles.miniStat}>
+                  <Text style={[styles.miniStatValue, { color: theme.text }]}>{formatCount(user.followers)}</Text>
+                  <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Followers</Text>
+                </View>
+                <View style={styles.miniStat}>
+                  <Text style={[styles.miniStatValue, { color: theme.text }]}>{formatCount(user.following)}</Text>
+                  <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Following</Text>
+                </View>
+                <View style={styles.miniStat}>
+                  <Text style={[styles.miniStatValue, { color: '#FF0000' }]}>{formatCount(youtubeProfile.subscriber_count)}</Text>
+                  <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Subs</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity style={[styles.editBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
+                 <Text style={[styles.editBtnText, { color: theme.text }]}>Settings</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.infoBlock}>
@@ -72,23 +90,17 @@ export default function YouTubeCreatorProfile() {
             </Text>
           </View>
 
-          {/* YT Stats Hub */}
+          {/* Video Count Anchor */}
           <View style={[styles.statsHub, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
              <View style={styles.statCell}>
                 <Text style={[styles.statValue, { color: theme.text }]}>
-                  {youtubeProfile.subscriber_count?.toLocaleString() || '0'}
+                  {formatCount(youtubeProfile.video_count)}
                 </Text>
-                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Subscribers</Text>
-             </View>
-             <View style={[styles.statCell, { borderLeftWidth: 1, borderLeftColor: theme.border }]}>
-                <Text style={[styles.statValue, { color: theme.text }]}>
-                  {youtubeProfile.video_count?.toLocaleString() || '0'}
-                </Text>
-                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Uploads</Text>
+                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>YouTube Uploads</Text>
              </View>
              <View style={[styles.statCell, { borderLeftWidth: 1, borderLeftColor: theme.border }]}>
                 <Text style={[styles.statValue, { color: theme.accent }]}>PRO</Text>
-                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Tier</Text>
+                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Creator Tier</Text>
              </View>
           </View>
 
@@ -126,21 +138,26 @@ const styles = StyleSheet.create({
   banner: { height: 120, width: '100%', justifyContent: 'center', alignItems: 'center' },
   bannerOverlay: { opacity: 0.5 },
   profileWrap: { marginTop: -20, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 20, paddingBottom: 20 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: -40 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginTop: -40, gap: 15 },
   avatarContainer: { position: 'relative' },
-  avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 4 },
-  verifiedBadge: { position: 'absolute', bottom: 4, right: 4, backgroundColor: 'white', borderRadius: 10 },
-  editBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, marginBottom: 10 },
-  editBtnText: { fontSize: 13, fontWeight: '600' },
-  infoBlock: { marginTop: 16 },
+  avatar: { width: 90, height: 90, borderRadius: 45, borderWidth: 4 },
+  verifiedBadge: { position: 'absolute', bottom: 2, right: 2, backgroundColor: 'white', borderRadius: 10 },
+  headerStats: { flex: 1, justifyContent: 'center' },
+  miniStatsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, paddingRight: 5 },
+  miniStat: { alignItems: 'center' },
+  miniStatValue: { fontSize: 16, fontWeight: '800' },
+  miniStatLabel: { fontSize: 10, fontWeight: '600', marginTop: 2, opacity: 0.7 },
+  editBtn: { height: 36, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  editBtnText: { fontSize: 12, fontWeight: '700' },
+  infoBlock: { marginTop: 12 },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
-  name: { fontSize: 22, fontWeight: '800' },
-  niche: { fontSize: 12, fontWeight: '900', marginTop: 4, letterSpacing: 1 },
-  bio: { fontSize: 14, marginTop: 10, lineHeight: 20 },
-  statsHub: { flexDirection: 'row', marginTop: 24, paddingVertical: 16, borderRadius: 16, borderWidth: 1 },
+  name: { fontSize: 20, fontWeight: '800' },
+  niche: { fontSize: 11, fontWeight: '900', marginTop: 2, letterSpacing: 1 },
+  bio: { fontSize: 13, marginTop: 8, lineHeight: 18 },
+  statsHub: { flexDirection: 'row', marginTop: 20, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
   statCell: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: 20, fontWeight: '800' },
-  statLabel: { fontSize: 11, fontWeight: '600', marginTop: 4, textTransform: 'uppercase' },
+  statValue: { fontSize: 18, fontWeight: '800' },
+  statLabel: { fontSize: 10, fontWeight: '600', marginTop: 2, textTransform: 'uppercase' },
   sectionTitle: { fontSize: 18, fontWeight: '800', marginTop: 28, marginBottom: 16 },
   toolbox: { flexDirection: 'row', justifyContent: 'space-between' },
   toolCard: { width: '31%', padding: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },

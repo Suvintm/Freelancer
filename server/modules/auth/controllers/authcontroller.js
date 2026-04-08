@@ -341,7 +341,8 @@ export const getMe = asyncHandler(async (req, res) => {
                 roles: { include: { subCategory: { include: { category: true } } } } 
             }
         },
-        youtubeProfiles: true
+        youtubeProfiles: true,
+        stats: true
     }
   });
 
@@ -359,7 +360,9 @@ export const getMe = asyncHandler(async (req, res) => {
       primaryRole: primaryIdentity,
       profilePicture: user.profile?.profile_picture,
       isOnboarded: user.is_onboarded,
-      youtubeProfile: user.youtubeProfiles
+      youtubeProfile: user.youtubeProfiles,
+      followers: user.stats?.followers_count || 0,
+      following: user.stats?.following_count || 0
   };
 
   res.status(200).json({ success: true, user: responseUser });

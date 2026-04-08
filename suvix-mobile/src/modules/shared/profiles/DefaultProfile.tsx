@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../../../context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { formatCount } from '../../../utils/formatters';
 
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 
@@ -36,23 +37,42 @@ export default function DefaultProfile() {
 
         <View style={[styles.profileWrap, { backgroundColor: theme.primary, borderBottomColor: theme.border }]}>
           <View style={styles.profileRow}>
-            <Image
-              source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
-              style={styles.avatar}
-            />
+            <View style={styles.avatarContainer}>
+              <Image
+                source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
+                style={styles.avatar}
+              />
+            </View>
 
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: theme.text }]}>0</Text>
-                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Posts</Text>
+            <View style={styles.headerStats}>
+              <View style={styles.miniStatsRow}>
+                <View style={styles.miniStat}>
+                  <Text style={[styles.miniStatValue, { color: theme.text }]}>{formatCount(user.followers)}</Text>
+                  <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Followers</Text>
+                </View>
+                <View style={styles.miniStat}>
+                  <Text style={[styles.miniStatValue, { color: theme.text }]}>{formatCount(user.following)}</Text>
+                  <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Following</Text>
+                </View>
+                <View style={styles.miniStat}>
+                  <Text style={[styles.miniStatValue, { color: theme.text }]}>0</Text>
+                  <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Posts</Text>
+                </View>
               </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: theme.text }]}>0</Text>
-                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Followers</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: theme.text }]}>0</Text>
-                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Following</Text>
+
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  style={[styles.actionBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
+                >
+                  <Text style={[styles.actionText, { color: theme.text }]}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  style={[styles.actionBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
+                >
+                  <Text style={[styles.actionText, { color: theme.text }]}>Share</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>
@@ -61,21 +81,6 @@ export default function DefaultProfile() {
             <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
             <Text style={[styles.username, { color: theme.textSecondary }]}>{username}</Text>
             <Text style={[styles.bio, { color: theme.textSecondary }]}>{bioText}</Text>
-          </View>
-
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              activeOpacity={0.9}
-              style={[styles.actionBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
-            >
-              <Text style={[styles.actionText, { color: theme.text }]}>Edit Profile</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={0.9}
-              style={[styles.actionBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
-            >
-              <Text style={[styles.actionText, { color: theme.text }]}>Share Profile</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -118,34 +123,42 @@ const styles = StyleSheet.create({
   },
   profileRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
+    gap: 20,
+  },
+  avatarContainer: {
+    position: 'relative',
   },
   avatar: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
+    width: 86,
+    height: 86,
+    borderRadius: 43,
     borderWidth: 3,
     borderColor: '#ffffff',
     backgroundColor: '#0f172a',
     marginTop: -37,
   },
-  statsRow: {
+  headerStats: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginLeft: 12,
+    paddingTop: 10,
   },
-  statItem: {
+  miniStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  miniStat: {
     alignItems: 'center',
   },
-  statNumber: {
-    fontSize: 18,
+  miniStatValue: {
+    fontSize: 16,
     fontWeight: '800',
   },
-  statLabel: {
-    marginTop: 2,
-    fontSize: 11,
+  miniStatLabel: {
+    fontSize: 10,
     fontWeight: '600',
+    marginTop: 2,
+    opacity: 0.7,
   },
   infoBlock: {
     marginTop: 12,
@@ -167,18 +180,17 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
-    marginTop: 12,
-    justifyContent: 'space-between',
+    gap: 8,
   },
   actionBtn: {
-    width: '49%',
+    flex: 1,
     borderWidth: 1,
-    borderRadius: 9,
-    paddingVertical: 8,
+    borderRadius: 8,
+    paddingVertical: 6,
     alignItems: 'center',
   },
   actionText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
   },
   sectionHeader: {

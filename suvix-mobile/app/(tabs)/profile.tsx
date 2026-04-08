@@ -8,9 +8,11 @@ import {
   Image,
   ScrollView,
   TouchableOpacity,
+  StatusBar,
 } from 'react-native';
 import { useTheme } from '../../src/context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Modules
 import YouTubeCreatorProfile from '../../src/modules/creators/profiles/YouTubeCreatorProfile';
@@ -28,7 +30,8 @@ const PROFILE_REGISTRY: Record<string, React.ComponentType> = {
 };
 
 export default function ProfileIndex() {
-  const { theme } = useTheme();
+  const { theme, isDarkMode } = useTheme();
+  const insets = useSafeAreaInsets();
   const { user, isLoadingUser, isAuthenticated } = useAuthStore();
 
   // Determine which module to load based on user metadata
@@ -65,7 +68,8 @@ export default function ProfileIndex() {
   const ActiveProfileModule = PROFILE_REGISTRY[activeModule] || DefaultProfile;
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.primary }}>
+    <View style={{ flex: 1, backgroundColor: theme.primary, paddingTop: insets.top }}>
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <ActiveProfileModule />
     </View>
   );

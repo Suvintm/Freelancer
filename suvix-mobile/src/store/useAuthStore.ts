@@ -61,6 +61,8 @@ interface AuthUser {
     video_count: number;
     thumbnail_url: string;
   } | null;
+  followers?: number;
+  following?: number;
 }
 
 interface AuthState {
