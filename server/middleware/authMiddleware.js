@@ -6,6 +6,25 @@ import { getCache, setCache, deleteCache, CacheKey, TTL } from "../utils/cache.j
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+const mapGroupToAppRole = (group, systemRole) => {
+  if (systemRole === "admin") return "admin";
+  if (group === "CLIENT") return "client";
+  if (group === "PROVIDER") return "editor";
+  return "client";
+};
+
+const deriveAppRoleFromUser = (user) => {
+  const primaryMapping =
+    user.profile?.roles?.find((mapping) => mapping.isPrimary) ||
+    user.profile?.roles?.[0];
+  const group =
+    user.profile?.category?.roleGroup ||
+    primaryMapping?.subCategory?.category?.roleGroup ||
+    "CLIENT";
+
+  return mapGroupToAppRole(group, user.role);
+};
+
 /**
  * Protect Middleware (PostgreSQL)
  * Authenticates user via JWT and fetches from PostgreSQL + Profile
@@ -46,7 +65,18 @@ export const authenticate = async (req, res, next) => {
         user = await prisma.user.findUnique({
           where: { id: decoded.id },
           include: {
-            profile: true,
+            profile: {
+              include: {
+                category: true,
+                roles: {
+                  include: {
+                    subCategory: {
+                      include: { category: true }
+                    }
+                  }
+                }
+              }
+            },
           }
         });
       } catch (prismaError) {
@@ -65,6 +95,8 @@ export const authenticate = async (req, res, next) => {
         user.name = user.profile.name;
         user.profile_picture = user.profile.profile_picture;
     }
+    user.systemRole = user.role;
+    user.role = deriveAppRoleFromUser(user);
 
     req.user = user;
     next();
@@ -95,7 +127,18 @@ export const optionalAuth = async (req, res, next) => {
           const user = await prisma.user.findUnique({
             where: { id: decoded.id },
             include: {
-                profile: true
+              profile: {
+                include: {
+                  category: true,
+                  roles: {
+                    include: {
+                      subCategory: {
+                        include: { category: true }
+                      }
+                    }
+                  }
+                }
+              }
             }
           });
           if (user) {
@@ -105,6 +148,8 @@ export const optionalAuth = async (req, res, next) => {
                 user.name = user.profile.name;
                 user.profile_picture = user.profile.profile_picture;
             }
+            user.systemRole = user.role;
+            user.role = deriveAppRoleFromUser(user);
             req.user = user;
           }
         } catch (prismaError) {

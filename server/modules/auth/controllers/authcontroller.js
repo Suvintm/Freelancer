@@ -12,32 +12,53 @@ import { redis } from "../../../middleware/rateLimiter.js";
 import crypto from "crypto";
 import logger from "../../../utils/logger.js";
 
+const mapGroupToAppRole = (group, systemRole) => {
+  if (systemRole === "admin") return "admin";
+  if (group === "CLIENT") return "client";
+  if (group === "PROVIDER") return "editor";
+  return "client";
+};
+
 /**
  * HELPER: Resolve Primary Professional Identity
  * Merges system roles with professional categories to provide a clear UI identity.
  */
 const resolvePrimaryIdentity = (user) => {
-  if (!user.profile || !user.profile.categoryId) {
+  if (!user.profile) {
     return {
       group: 'CLIENT',
       category: 'General',
       subCategory: 'Member',
+      appRole: mapGroupToAppRole('CLIENT', user.role),
       is_onboarded: user.is_onboarded
     };
   }
 
-  // Use the new locked category field
-  const cat = user.profile.category;
-  // Fallback to first mapping for sub-category display
-  const primaryMapping = user.profile.roles?.[0];
+  const primaryMapping =
+    user.profile.roles?.find((mapping) => mapping.isPrimary) ||
+    user.profile.roles?.[0];
   const subCat = primaryMapping?.subCategory;
+  const cat = user.profile.category || subCat?.category;
+
+  if (!cat && !subCat) {
+    return {
+      group: 'CLIENT',
+      category: 'General',
+      subCategory: 'Member',
+      appRole: mapGroupToAppRole('CLIENT', user.role),
+      is_onboarded: user.is_onboarded
+    };
+  }
+
+  const group = cat?.roleGroup || 'CLIENT';
 
   return {
-    group: cat?.roleGroup || 'CLIENT',
+    group,
     category: cat?.name || 'General',
     subCategory: subCat?.name || 'Member',
     categoryId: cat?.id || user.profile.categoryId,
     subCategoryId: subCat?.id,
+    appRole: mapGroupToAppRole(group, user.role),
     is_onboarded: user.is_onboarded
   };
 };
@@ -136,7 +157,7 @@ export const login = asyncHandler(async (req, res) => {
       name: user.profile?.name,
       username: user.profile?.username,
       email: user.email,
-      role: primaryIdentity.group.toLowerCase(), // Return professional group as 'role'
+      role: primaryIdentity.appRole,
       primaryRole: primaryIdentity, // detailed metadata
       profilePicture: user.profile?.profile_picture,
       location: user.profile?.location_country,
@@ -214,7 +235,7 @@ export const registerFull = asyncHandler(async (req, res) => {
       name: userWithProfile.profile.name,
       username: userWithProfile.profile.username,
       email: userWithProfile.email,
-      role: primaryIdentity.group.toLowerCase(), // Consistent with login
+      role: primaryIdentity.appRole,
       profilePicture: userWithProfile.profile.profile_picture,
       primaryRole: primaryIdentity,
       isOnboarded: true,
@@ -250,7 +271,7 @@ export const getMe = asyncHandler(async (req, res) => {
         profile: {
             include: { 
                 category: true,
-                roles: { include: { subCategory: true } } 
+                roles: { include: { subCategory: { include: { category: true } } } } 
             }
         } 
     }
@@ -265,7 +286,7 @@ export const getMe = asyncHandler(async (req, res) => {
       name: user.profile?.name,
       username: user.profile?.username,
       email: user.email,
-      role: primaryIdentity.group.toLowerCase(),
+      role: primaryIdentity.appRole,
       primaryRole: primaryIdentity,
       profilePicture: user.profile?.profile_picture,
       isOnboarded: user.is_onboarded

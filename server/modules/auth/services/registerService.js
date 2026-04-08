@@ -1,5 +1,4 @@
 import prisma from "../../../config/prisma.js";
-import { Profile as MongoProfile } from "../../profiles/models/Profile.js";
 import { hashPassword } from "../utils/password.js";
 import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
 import { ApiError } from "../../../middleware/errorHandler.js";
@@ -10,7 +9,7 @@ import logger from "../../../utils/logger.js";
  * 1. User (Auth) in PostgreSQL
  * 2. UserProfile (Identity) in PostgreSQL
  * 3. UserRoleMapping (Expertise) in PostgreSQL
- * 4. Sync Profile to MongoDB (Discovery)
+ * 4. Auth-first onboarding flow (no cross-module sync)
  */
 export const registerFullUser = async (userData) => {
   const {
@@ -21,7 +20,7 @@ export const registerFullUser = async (userData) => {
     phone,
     motherTongue,
     country = "India",
-    categoryId, // Required Single Category
+    categoryId, // Optional primary category (legacy compatibility)
     roleSubCategoryIds = [], // Array of UUIDs or Slugs
     profilePictureBuffer,
     authProvider = "local",
@@ -60,6 +59,15 @@ export const registerFullUser = async (userData) => {
   let user;
   try {
     user = await prisma.$transaction(async (tx) => {
+      let resolvedCategoryId = categoryId || null;
+      if (!resolvedCategoryId && roleSubCategoryIds.length > 0) {
+        const firstSubCategory = await tx.roleSubCategory.findFirst({
+          where: { id: roleSubCategoryIds[0] },
+          select: { roleCategoryId: true },
+        });
+        resolvedCategoryId = firstSubCategory?.roleCategoryId || null;
+      }
+
       // Step A: Create User (Auth)
       const newUser = await tx.user.create({
         data: {
@@ -68,7 +76,7 @@ export const registerFullUser = async (userData) => {
           auth_provider: authProvider,
           google_id: googleId,
           role: 'suvix_user', // Standardized Professional Role
-          is_onboarded: !!categoryId, // Mark as onboarded if category provided
+          is_onboarded: !!resolvedCategoryId || roleSubCategoryIds.length > 0,
         },
       });
 
@@ -83,15 +91,16 @@ export const registerFullUser = async (userData) => {
           location_country: country,
           phone: phone,
           auth_provider: authProvider,
-          categoryId: categoryId, // Locked Primary Category
+          categoryId: resolvedCategoryId,
         },
       });
 
       // Step C: Map Dynamic Roles (Expertise)
       if (roleSubCategoryIds.length > 0) {
-        const mappings = roleSubCategoryIds.map((subId) => ({
+        const mappings = roleSubCategoryIds.map((subId, index) => ({
           profileId: profile.id,
           roleSubCategoryId: subId,
+          isPrimary: index === 0,
         }));
         await tx.userRoleMapping.createMany({ data: mappings });
       }
@@ -101,27 +110,6 @@ export const registerFullUser = async (userData) => {
         profile,
       };
     });
-
-    // 5. MongoDB Sync (Discovery & Reels Support)
-    try {
-        await MongoProfile.findOneAndUpdate(
-            { user: user.id },
-            {
-              $set: {
-                username: normalizedUsername,
-                name: fullName,
-                email: normalizedEmail,
-                profile_picture: profilePictureUrl,
-                location: { country: country },
-                // Note: roleSubCategory names/labels can be synced later for search
-              }
-            },
-            { upsert: true, new: true }
-        );
-    } catch (mongoError) {
-        logger.error("MongoDB Profile Sync Failed (Non-blocking):", mongoError);
-        // Non-blocking so registration isn't failed for secondary DB sync issues
-    }
 
     logger.info(`Production Registration Success: ${user.email} (${user.id})`);
     return user;

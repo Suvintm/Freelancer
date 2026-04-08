@@ -3,6 +3,7 @@ dotenv.config();
 
 import "./config/env.js";
 import express from "express";
+import http from "http";
 import mongoose from "mongoose";
 import cors from "cors";
 import helmet from "helmet";
@@ -12,7 +13,6 @@ import compression from "compression";
 import cookieParser from "cookie-parser";
 import session from "express-session";
 import { RedisStore } from "connect-redis";
-import { SiteSettings } from "./modules/system/models/SiteSettings.js";
 
 // Global BigInt JSON serialization fix
 BigInt.prototype.toJSON = function () {
@@ -34,51 +34,14 @@ import passport from "./config/passport.js";
 
 // Routes
 import authRoutes from "./modules/auth/routes/authRoutes.js";
-import profileRoutes from "./modules/profiles/routes/profileRoutes.js";
-import userRoutes from "./modules/user/routes/userRoutes.js";
-import portfolioRoutes from "./modules/profiles/routes/portfolioRoutes.js";
-import exploreRoutes from "./modules/explore/routes/exploreRoutes.js";
 import oauthRoutes from "./modules/auth/routes/oauthRoutes.js";
-import { initSearchTrie } from "./modules/reels/controllers/reelController.js";
-import reelRoutes from "./modules/reels/routes/reelRoutes.js";
-import notificationRoutes from "./modules/connectivity/routes/notificationRoutes.js";
-import gigRoutes from "./modules/marketplace/routes/gigRoutes.js";
-import orderRoutes from "./modules/marketplace/routes/orderRoutes.js";
-import messageRoutes from "./modules/connectivity/routes/messageRoutes.js";
-import editorAnalyticsRoutes from "./modules/analytics/routes/editorAnalyticsRoutes.js";
-import clientAnalyticsRoutes from "./modules/analytics/routes/clientAnalyticsRoutes.js";
-import suvixScoreRoutes from "./modules/user/routes/suvixScoreRoutes.js";
-import badgeRoutes from "./modules/gamification/routes/badgeRoutes.js";
-import quickReplyRoutes from "./modules/connectivity/routes/quickReplyRoutes.js";
-import checklistRoutes from "./modules/marketplace/routes/checklistRoutes.js";
-import finalDeliveryRoutes from "./modules/marketplace/routes/finalDeliveryRoutes.js";
-import paymentRoutes from "./modules/payments/routes/paymentRoutes.js";
-import paymentGatewayRoutes from "./modules/payments/routes/paymentGatewayRoutes.js";
-import storageRoutes from "./modules/system/routes/storageRoutes.js";
-import advertisementRoutes from "./modules/ads/routes/advertisementRoutes.js";
-import briefRoutes from "./modules/jobs/routes/briefRoutes.js";
-import proposalRoutes from "./modules/jobs/routes/proposalRoutes.js";
-import ratingRoutes from "./modules/marketplace/routes/ratingRoutes.js";
-import subscriptionRoutes from "./modules/payments/routes/subscriptionRoutes.js";
-import profileInsightsRoutes from "./modules/profiles/routes/profileInsightsRoutes.js";
-import clientKYCRoutes from "./modules/kyc/routes/clientKYCRoutes.js";
-import refundRoutes from "./modules/payments/routes/refundRoutes.js";
-import locationRoutes from "./modules/user/routes/locationRoutes.js";
-import jobRoutes from "./modules/jobs/routes/jobRoutes.js";
-import walletRoutes from "./modules/payments/routes/walletRoutes.js";
-import withdrawalRoutes from "./modules/payments/routes/withdrawalRoutes.js";
-import aiRoutes from "./modules/aiworkspace/routes/aiRoutes.js";
-import adRequestRoutes from "./modules/ads/routes/adRequestRoutes.js";
-import adPreviewRoutes from "./modules/ads/routes/adPreviewRoutes.js";
-import finalOutputRoutes from "./modules/marketplace/routes/finalOutputRoutes.js";
+import userRoutes from "./modules/user/routes/userRoutes.js";
 
 // Validation logic and other top-level code follows...
  
 // PostgreSQL Support
 import { connectPostgres } from "./config/prisma.js";
 import prisma from "./config/prisma.js";
-// Scheduled Jobs
-import { startScheduledJobs } from "./jobs/scheduledJobs.js";
 
 // BullMQ Workers (Background Processing)
 // import "./jobs/workers.js";
@@ -113,7 +76,8 @@ if (process.env.GOOGLE_CLIENT_ID) {
   logger.warn("GOOGLE_CLIENT_ID not set - Google OAuth will be disabled");
 }
 
-import { app, server } from "./socket.js";
+const app = express();
+const server = http.createServer(app);
 
 // ============ ADVANCED SECURITY MIDDLEWARE ============
 app.use(cookieParser());
@@ -264,11 +228,7 @@ app.use(passport.session());
 // 🚨 IMPORTANT: These routes are moved ABOVE mongoSanitize to prevent 
 // mangling of external URLs (which contain dots that mongoSanitize replaces with '_').
 // These routes handle their own specific validation and security.
-app.use("/api/ad-requests", adRequestRoutes);
-app.use("/api/ad-previews", adPreviewRoutes);
-app.use("/api/ads", advertisementRoutes);
-app.use("/api/messages", messageRoutes); // Drive link URLs contain dots — must bypass sanitizer
-app.use("/api/auth", vpnCheckMiddleware, oauthRoutes); // OAuth codes contain dots — must bypass sanitizer
+app.use("/api/auth", vpnCheckMiddleware, oauthRoutes);
 
 // ============ SECURITY: INPUT SANITIZATION ============
 
@@ -316,62 +276,11 @@ app.get("/api/health", (req, res) => {
 });
 
 app.use("/api/auth", vpnCheckMiddleware, authRoutes);
- app.use("/api/profile", profileRoutes);
 app.use("/api/user", userRoutes);
-app.use("/api/users", userRoutes); // Support plural version for Reels/Follow system
-app.use("/api/portfolio", portfolioRoutes);
-app.use("/api/explore", exploreRoutes);
-app.use("/api/reels", reelRoutes);
-app.use("/api/notifications", notificationRoutes);
-app.use("/api/gigs", gigRoutes);
-app.use("/api/orders", orderRoutes);
-// app.use("/api/messages", messageRoutes); // Moved above sanitization block (drive link URLs need dots preserved)
-app.use("/api/quick-replies", quickReplyRoutes);
-app.use("/api/checklists", checklistRoutes);
-app.use("/api/delivery", finalDeliveryRoutes);
-app.use("/api/payments", paymentRoutes);
-app.use("/api/payment-gateway", paymentGatewayRoutes);
-app.use("/api/editor/analytics", editorAnalyticsRoutes);
-app.use("/api/storage", storageRoutes);
-app.use("/api/client/analytics", clientAnalyticsRoutes);
-// Open Briefs Feature Routes
-app.use("/api/briefs", briefRoutes);
-app.use("/api/proposals", proposalRoutes);
-app.use("/api/ratings", ratingRoutes);
-app.use("/api/subscriptions", subscriptionRoutes);
-app.use("/api/profile-insights", profileInsightsRoutes);
-app.use("/api/suvix-score", suvixScoreRoutes);
-console.log("✅ Mounting Client KYC Routes at /api/client-kyc");
-app.use("/api/client-kyc", clientKYCRoutes);
-app.use("/api/refunds", refundRoutes);
-app.use("/api/location", locationRoutes);
-app.use("/api/jobs", jobRoutes);
-app.use("/api/wallet", walletRoutes);
-app.use("/api/withdrawals", withdrawalRoutes);
-app.use("/api/ai-workspace", aiRoutes);
-
-// Badge/Achievement Routes
-app.use("/api/badges", badgeRoutes);
-
-// Final Output Routes (Cloudflare R2)
-app.use("/api/final-output", finalOutputRoutes);
 
 // Public maintenance status check (no auth required)
 app.get("/api/maintenance-status", async (req, res) => {
-
-  try {
-    const settings = await SiteSettings.getSettings();
-    res.status(200).json({
-      success: true,
-      maintenance: {
-        isActive: settings.maintenanceMode,
-        message: settings.maintenanceMessage,
-        endTime: settings.maintenanceEndTime,
-      },
-    });
-  } catch (error) {
-    res.status(200).json({ success: true, maintenance: { isActive: false } });
-  }
+  res.status(200).json({ success: true, maintenance: { isActive: false } });
 });
 
 // Health check endpoint
@@ -465,13 +374,6 @@ const startServer = async () => {
   }
 
 
-  // Start scheduled jobs (auto-cancel expired orders, etc.)
-  logger.info("⏰ Starting scheduled jobs...");
-  startScheduledJobs();
-
-  // Initialize Search TRIE (O(L) Autocomplete)
-  logger.info("🔍 Initializing Search TRIE...");
-  initSearchTrie();
 
   logger.info(`🌐 Attempting to listen on port ${PORT}...`);
   server.listen(PORT, () => {
