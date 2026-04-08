@@ -14,6 +14,8 @@ interface DashboardState {
   isLoading: boolean;
   isInitialized: boolean;
   fetchDashboardStats: (roleGroup: 'CLIENT' | 'PROVIDER') => Promise<void>;
+  fetchClientDashboard: () => Promise<void>;
+  fetchEditorDashboard: () => Promise<void>;
 }
 
 export const useDashboardStore = create<DashboardState>((set) => ({

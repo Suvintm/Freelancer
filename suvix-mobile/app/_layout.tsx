@@ -23,7 +23,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 const queryClient = new QueryClient();
 
 function InitialRoot() {
-  const { isInitialized, isAuthenticated, user, checkAuth, fetchUser } = useAuthStore();
+  const { isInitialized, isAuthenticated, user, checkAuth, fetchUser, isLoadingUser } = useAuthStore();
   const { fetchClientDashboard, fetchEditorDashboard } = useDashboardStore();
   const segments = useSegments();
   const router = useRouter();
@@ -166,12 +166,19 @@ function InitialRoot() {
         currentSegment === 'login' ||
         currentSegment === 'signup';
 
-      console.log(`🚦 [GUARD] Auth: ${isAuthenticated} | Seg: ${currentSegment} | Onboarded: ${user?.isOnboarded}`);
+      console.log(`🚦 [GUARD] Auth: ${isAuthenticated} | User: ${!!user} | Loading: ${isLoadingUser}`);
 
-      // 1. UNAUTHENTICATED
+      // 1. RE-HYDRATION GUARD (Critical for staying logged in on Reload)
+      // If we have a token but are still fetching the user, DO NOT redirect yet.
+      if (isAuthenticated && !user && isLoadingUser) {
+        console.log('⏳ [GUARD] Waiting for user profile hydration...');
+        return;
+      }
+
+      // 2. UNAUTHENTICATED
       if (!isAuthenticated || (!user && dataLoaded)) {
         if (!currentSegment || currentSegment === 'index') {
-          console.log('🔓 [GUARD] Redirecting guest from intro to /welcome');
+          console.log('🔓 [GUARD] Redirecting guest to /welcome');
           isNavigating.current = true;
           router.replace('/welcome');
           setTimeout(() => { isNavigating.current = false; }, 1000);
@@ -187,7 +194,7 @@ function InitialRoot() {
         return;
       }
 
-      // 2. AUTHENTICATED
+      // 3. AUTHENTICATED
       const isOnboarded = user?.isOnboarded;
       if (isOnboarded) {
         if (!inAuthGroup) {
@@ -207,7 +214,7 @@ function InitialRoot() {
     }, 450); // Hardened Production Delay
 
     return () => clearTimeout(handoffTimer);
-  }, [isInitialized, isAuthenticated, user, segments, isIntroFinished, dataLoaded, router]);
+  }, [isInitialized, isAuthenticated, user, segments, isIntroFinished, dataLoaded, router, isLoadingUser]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

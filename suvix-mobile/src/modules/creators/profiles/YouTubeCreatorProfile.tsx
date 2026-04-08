@@ -14,6 +14,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/Colors';
 
+const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
+
 const { width } = Dimensions.get('window');
 
 export default function YouTubeCreatorProfile() {
@@ -46,9 +48,7 @@ export default function YouTubeCreatorProfile() {
           <View style={styles.headerRow}>
             <View style={styles.avatarContainer}>
               <Image
-                source={{
-                  uri: user.profilePicture || youtubeProfile.thumbnail_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
-                }}
+                source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
                 style={[styles.avatar, { borderColor: theme.primary }]}
               />
               <View style={styles.verifiedBadge}>

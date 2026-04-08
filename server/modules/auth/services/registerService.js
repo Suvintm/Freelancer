@@ -1,8 +1,10 @@
 import prisma from "../../../config/prisma.js";
 import { hashPassword } from "../utils/password.js";
 import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
+import { mirrorExternalImage } from "../../../utils/assetMirror.js";
 import { ApiError } from "../../../middleware/errorHandler.js";
 import logger from "../../../utils/logger.js";
+import mongoose from "mongoose";
 
 /**
  * PRODUCTION-GRADE ATOMIC REGISTRATION (Split Schema)
@@ -211,10 +213,11 @@ export const registerFullUser = async (userData) => {
       }
 
       if (isYoutubeCategory && normalizedChannels.length > 0) {
-        // NOTE: The physical database currently has a UNIQUE constraint on user_id for YouTubeProfile.
-        // We can only store ONE channel record per user in the current DB structure.
-        // We will store the first one selected, but all niches are already saved in role_mappings.
         const channel = normalizedChannels[0];
+
+        // 🖼️ MIRROR TO CLOUDINARY (Production Requirement)
+        // We mirror external YT thumbnails to Cloudinary to avoid cross-origin / expiration issues.
+        const mirroredUrl = await mirrorExternalImage(channel.thumbnail_url);
 
         const existingChannel = await tx.youTubeProfile.findFirst({
           where: { channel_id: channel.channel_id },
@@ -230,14 +233,13 @@ export const registerFullUser = async (userData) => {
             where: { id: existingChannel.id },
             data: {
               channel_name: channel.channel_name,
-              thumbnail_url: channel.thumbnail_url,
+              thumbnail_url: mirroredUrl, // Store SuviX-owned Cloudinary URL
               subscriber_count: channel.subscriber_count,
               video_count: channel.video_count,
               updated_at: new Date(),
             },
           });
         } else {
-          // Check if this user already has ANY YouTube profile (handle 1-to-1 constraint)
           const userHasProfile = await tx.youTubeProfile.findFirst({
             where: { userId: newUser.id }
           });
@@ -248,12 +250,40 @@ export const registerFullUser = async (userData) => {
                 userId: newUser.id,
                 channel_id: channel.channel_id,
                 channel_name: channel.channel_name,
-                thumbnail_url: channel.thumbnail_url,
+                thumbnail_url: mirroredUrl, // Store SuviX-owned Cloudinary URL
                 subscriber_count: channel.subscriber_count,
                 video_count: channel.video_count,
               },
             });
           }
+        }
+
+        // 🔗 HYBRID SYNC: Persistence to MongoDB
+        // Sync creator metadata to MongoDB to build the foundation for rich dynamic portfolios.
+        try {
+          const db = mongoose.connection.db;
+          if (db) {
+            await db.collection("profiles").updateOne(
+              { user_id: newUser.id }, // UUID from PostgreSQL
+              { 
+                $set: {
+                  youtube_channel_id: channel.channel_id,
+                  youtube_channel_name: channel.channel_name,
+                  youtube_thumbnail: mirroredUrl,
+                  youtube_stats: {
+                    subscribers: channel.subscriber_count,
+                    videos: channel.video_count
+                  },
+                  updated_at: new Date()
+                }
+              },
+              { upsert: true }
+            );
+            logger.info(`✅ MongoDB Sync: YouTube metadata synchronized for user ${newUser.id}`);
+          }
+        } catch (mongoErr) {
+          // Warning only: don't crash registration if secondary DB sync fails
+          logger.warn(`⚠️ MongoDB Sync Failed: ${mongoErr.message}`);
         }
       }
 

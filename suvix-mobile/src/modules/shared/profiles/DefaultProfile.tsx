@@ -11,6 +11,8 @@ import {
 import { useTheme } from '../../../context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
+const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
+
 export default function DefaultProfile() {
   const { theme } = useTheme();
   const { user } = useAuthStore();
@@ -35,9 +37,7 @@ export default function DefaultProfile() {
         <View style={[styles.profileWrap, { backgroundColor: theme.primary, borderBottomColor: theme.border }]}>
           <View style={styles.profileRow}>
             <Image
-              source={{
-                uri: user.profilePicture || 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
-              }}
+              source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
               style={styles.avatar}
             />
 

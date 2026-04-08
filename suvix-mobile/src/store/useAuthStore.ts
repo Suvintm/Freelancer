@@ -122,12 +122,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ user: updatedUser, isAuthenticated: true, isLoadingUser: false });
       }
     } catch (error) {
-      // If unauthorized, clear everything SILENTLY (this is normal on boot with expired token)
-      if ((error as any).response?.status === 401) {
+      // PRODUCTION GUARD: Only delete token on a STRICT 401 (Unauthorized)
+      // If it's a network error (no response) or 500, we KEEP the token so 
+      // the user isn't kicked out just because the backend was restarting.
+      const status = (error as any).response?.status;
+      if (status === 401 || status === 403) {
+         console.warn('❌ [AUTH] Session expired. Clearing credentials.');
          await SecureStore.deleteItemAsync(TOKEN_KEY);
          set({ token: null, user: null, isAuthenticated: false, isLoadingUser: false });
       } else {
-         console.error('Fetch User Error:', error);
+         console.log('⚠️ [AUTH] Backend unreachable or error, but keeping session token.');
          set({ isLoadingUser: false });
       }
     }
