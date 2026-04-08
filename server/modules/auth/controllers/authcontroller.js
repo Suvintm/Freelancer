@@ -1,7 +1,6 @@
 import { 
   generateAccessToken, 
   generateRefreshToken, 
-  verifyAccessToken,
   verifyRefreshToken
 } from "../utils/jwt.js";
 import { comparePassword } from "../utils/password.js";
@@ -9,14 +8,13 @@ import { registerFullUser as registerService } from "../services/registerService
 import prisma from "../../../config/prisma.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 import { redis } from "../../../middleware/rateLimiter.js";
-import crypto from "crypto";
-import logger from "../../../utils/logger.js";
+import axios from "axios";
 
 const mapGroupToAppRole = (group, systemRole) => {
   if (systemRole === "admin") return "admin";
-  if (group === "CLIENT") return "client";
-  if (group === "PROVIDER") return "editor";
-  return "client";
+  if (group === "CLIENT") return "normal_user";
+  if (group === "PROVIDER") return "creator";
+  return "normal_user";
 };
 
 /**
@@ -55,9 +53,11 @@ const resolvePrimaryIdentity = (user) => {
   return {
     group,
     category: cat?.name || 'General',
+    categorySlug: cat?.slug,
     subCategory: subCat?.name || 'Member',
     categoryId: cat?.id || user.profile.categoryId,
     subCategoryId: subCat?.id,
+    subCategorySlug: subCat?.slug,
     appRole: mapGroupToAppRole(group, user.role),
     is_onboarded: user.is_onboarded
   };
@@ -126,7 +126,8 @@ export const login = asyncHandler(async (req, res) => {
     include: { 
       profile: {
         include: { roles: { include: { subCategory: { include: { category: true } } } } }
-      }
+      },
+      youtubeProfiles: true
     }
   });
 
@@ -155,13 +156,15 @@ export const login = asyncHandler(async (req, res) => {
     user: {
       id: user.id,
       name: user.profile?.name,
+      displayName: user.profile?.display_name || user.profile?.name,
       username: user.profile?.username,
       email: user.email,
       role: primaryIdentity.appRole,
       primaryRole: primaryIdentity, // detailed metadata
       profilePicture: user.profile?.profile_picture,
       location: user.profile?.location_country,
-      isOnboarded: user.is_onboarded
+      isOnboarded: user.is_onboarded,
+      youtubeProfile: user.youtubeProfiles
     },
     token: accessToken,
     refreshToken // For Mobile Apps
@@ -184,16 +187,69 @@ export const getRoles = asyncHandler(async (req, res) => {
     });
 });
 
+export const getYouTubeChannels = asyncHandler(async (req, res) => {
+  const { accessToken } = req.body;
+
+  if (!accessToken || typeof accessToken !== "string") {
+    throw new ApiError(400, "Google accessToken is required.");
+  }
+
+  let channelPayload;
+  try {
+    const response = await axios.get(
+      "https://www.googleapis.com/youtube/v3/channels",
+      {
+        params: {
+          part: "snippet,statistics",
+          mine: true,
+          maxResults: 50,
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    channelPayload = response.data;
+  } catch (error) {
+    if (error.response) {
+      console.error("Google API Error:", JSON.stringify(error.response.data, null, 2));
+    } else {
+      console.error("Google Request Failed:", error.message);
+    }
+    const status = error.response?.status || 500;
+    if (status === 401) throw new ApiError(401, "Google token expired. Please reconnect YouTube.");
+    if (status === 403) throw new ApiError(403, "YouTube permission denied. Request youtube.readonly scope.");
+    throw new ApiError(502, "Could not fetch YouTube channels from Google.");
+  }
+
+  const channels = (channelPayload?.items || []).map((item) => ({
+    channelId: item.id,
+    channelName: item.snippet?.title || "Untitled Channel",
+    thumbnailUrl:
+      item.snippet?.thumbnails?.high?.url ||
+      item.snippet?.thumbnails?.medium?.url ||
+      item.snippet?.thumbnails?.default?.url ||
+      null,
+    subscriberCount: Number(item.statistics?.subscriberCount || 0),
+    videoCount: Number(item.statistics?.videoCount || 0),
+  }));
+
+  res.status(200).json({
+    success: true,
+    channels,
+  });
+});
+
 // ============ ATOMIC REGISTER ============
 export const registerFull = asyncHandler(async (req, res) => {
   const { 
     fullName, username, email, password, phone, 
-    motherTongue, country, categoryId, roleSubCategoryIds 
+    motherTongue, country, categoryId, roleSubCategoryIds, youtubeChannels
   } = req.body;
 
   let parsedSubIds = roleSubCategoryIds;
   if (typeof roleSubCategoryIds === "string" && roleSubCategoryIds) {
-    try { parsedSubIds = JSON.parse(roleSubCategoryIds); } catch (e) { parsedSubIds = [roleSubCategoryIds]; }
+    try { parsedSubIds = JSON.parse(roleSubCategoryIds); } catch { parsedSubIds = [roleSubCategoryIds]; }
   }
 
   // SLUG RESOLUTION (Advanced Compatibility)
@@ -207,12 +263,22 @@ export const registerFull = asyncHandler(async (req, res) => {
       finalSubIds = dbSubs.map(s => s.id);
   }
 
+  let parsedYoutubeChannels = youtubeChannels;
+  if (typeof youtubeChannels === "string" && youtubeChannels) {
+    try { parsedYoutubeChannels = JSON.parse(youtubeChannels); } catch { parsedYoutubeChannels = []; }
+  }
+
   const userData = {
     fullName, username, email, password, phone,
     motherTongue, country, categoryId,
     roleSubCategoryIds: finalSubIds,
+    youtubeChannels: Array.isArray(parsedYoutubeChannels) ? parsedYoutubeChannels : [],
     profilePictureBuffer: req.file ? req.file.buffer : null
   };
+
+  if (!categoryId) {
+    throw new ApiError(400, "categoryId is required.");
+  }
 
   const userWithProfile = await registerService(userData);
 
@@ -233,6 +299,7 @@ export const registerFull = asyncHandler(async (req, res) => {
     user: {
       id: userWithProfile.id,
       name: userWithProfile.profile.name,
+      displayName: userWithProfile.profile.display_name || userWithProfile.profile.name,
       username: userWithProfile.profile.username,
       email: userWithProfile.email,
       role: primaryIdentity.appRole,
@@ -273,7 +340,8 @@ export const getMe = asyncHandler(async (req, res) => {
                 category: true,
                 roles: { include: { subCategory: { include: { category: true } } } } 
             }
-        } 
+        },
+        youtubeProfiles: true
     }
   });
 
@@ -284,12 +352,14 @@ export const getMe = asyncHandler(async (req, res) => {
   const responseUser = {
       id: user.id,
       name: user.profile?.name,
+      displayName: user.profile?.display_name || user.profile?.name,
       username: user.profile?.username,
       email: user.email,
       role: primaryIdentity.appRole,
       primaryRole: primaryIdentity,
       profilePicture: user.profile?.profile_picture,
-      isOnboarded: user.is_onboarded
+      isOnboarded: user.is_onboarded,
+      youtubeProfile: user.youtubeProfiles
   };
 
   res.status(200).json({ success: true, user: responseUser });

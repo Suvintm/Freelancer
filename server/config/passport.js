@@ -108,7 +108,7 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
                                 email,
                                 google_id: googleId,
                                 password_hash: `OAUTH_USER_${crypto.randomBytes(8).toString("hex")}`,
-                                role: "pending", 
+                                role: "suvix_user", 
                                 auth_provider: "google",
                                 is_verified: true,
                                 is_onboarded: false,
@@ -120,6 +120,7 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
                                 userId: newUser.id,
                                 username: finalUsername,
                                 name: finalName,
+                                display_name: finalName,
                                 profile_picture: profilePicture,
                                 auth_provider: "google",
                             }

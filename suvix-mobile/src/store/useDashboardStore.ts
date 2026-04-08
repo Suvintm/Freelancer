@@ -14,39 +14,20 @@ interface DashboardState {
   isLoading: boolean;
   isInitialized: boolean;
   fetchDashboardStats: (roleGroup: 'CLIENT' | 'PROVIDER') => Promise<void>;
-  // Legacy stubs for compatibility during refactor
-  fetchClientDashboard: () => Promise<void>;
-  fetchEditorDashboard: () => Promise<void>;
 }
 
-export const useDashboardStore = create<DashboardState>((set, get) => ({
+export const useDashboardStore = create<DashboardState>((set) => ({
   stats: null,
   isLoading: false,
   isInitialized: false,
 
-  fetchDashboardStats: async (roleGroup) => {
-    try {
-      set({ isLoading: true });
-      // Resolve endpoint based on Group
-      const endpoint = roleGroup === 'CLIENT' 
-        ? '/client/analytics/dashboard' 
-        : '/editor/analytics/quick-stats';
-        
-      const res = await api.get(endpoint);
-      if (res.data.success) {
-        set({ 
-          stats: res.data.analytics || res.data.stats, 
-          isInitialized: true 
-        });
-      }
-    } catch (error) {
-      console.error('Fetch Dashboard Stats Error:', error);
-    } finally {
-      set({ isLoading: false });
-    }
+  fetchDashboardStats: async () => {
+    // Analytics system is currently being overhauled. 
+    // Defunct endpoints (/editor/analytics/quick-stats) have been removed to prevent 404 errors.
+    set({ isInitialized: true, stats: null });
   },
 
-  // Compatibility Layers
-  fetchClientDashboard: () => get().fetchDashboardStats('CLIENT'),
-  fetchEditorDashboard: () => get().fetchDashboardStats('PROVIDER'),
+  // Legacy stubs kept as no-ops to prevent breakages in calling components
+  fetchClientDashboard: async () => {},
+  fetchEditorDashboard: async () => {},
 }));

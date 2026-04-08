@@ -21,7 +21,8 @@ export const registerFullUser = async (userData) => {
     motherTongue,
     country = "India",
     categoryId, // Optional primary category (legacy compatibility)
-    roleSubCategoryIds = [], // Array of UUIDs or Slugs
+    roleSubCategoryIds = [], // Array of UUIDs
+    youtubeChannels = [],
     profilePictureBuffer,
     authProvider = "local",
     googleId = null,
@@ -68,6 +69,104 @@ export const registerFullUser = async (userData) => {
         resolvedCategoryId = firstSubCategory?.roleCategoryId || null;
       }
 
+      const selectedCategory = resolvedCategoryId
+        ? await tx.roleCategory.findUnique({
+            where: { id: resolvedCategoryId },
+            select: { id: true, slug: true },
+          })
+        : null;
+      const isYoutubeCategory = selectedCategory?.slug === "yt_influencer";
+
+      let normalizedRoleSubCategoryIds = Array.from(
+        new Set((roleSubCategoryIds || []).filter(Boolean))
+      );
+      let normalizedChannels = [];
+
+      if (isYoutubeCategory) {
+        if (!youtubeChannels?.length) {
+          throw new ApiError(400, "YouTube creator onboarding requires at least one connected channel.");
+        }
+
+        normalizedChannels = youtubeChannels
+          .map((ch, index) => {
+            const channelId = String(ch.channelId || ch.channel_id || ch.id || "").trim();
+            const channelName = String(ch.channelName || ch.channel_name || ch.name || "").trim();
+            if (!channelId || !channelName) return null;
+            return {
+              channel_id: channelId,
+              channel_name: channelName,
+              thumbnail_url: ch.thumbnailUrl || ch.thumbnail_url || null,
+              subscriber_count: Number.isFinite(Number(ch.subscriberCount)) ? Number(ch.subscriberCount) : 0,
+              video_count: Number.isFinite(Number(ch.videoCount)) ? Number(ch.videoCount) : 0,
+              subCategoryRef:
+                ch.subCategoryId ||
+                ch.sub_category_id ||
+                ch.subCategorySlug ||
+                ch.sub_category_slug ||
+                ch.categorySlug ||
+                ch.category_slug ||
+                null,
+              isPrimary: ch.isPrimary === true || index === 0,
+              is_verified: ch.isVerified !== false,
+            };
+          })
+          .filter(Boolean);
+
+        if (!normalizedChannels.length) {
+          throw new ApiError(400, "Connected YouTube channels are invalid.");
+        }
+
+        const refs = Array.from(
+          new Set(normalizedChannels.map((ch) => ch.subCategoryRef).filter(Boolean))
+        );
+        const unresolvedChannels = normalizedChannels.filter((ch) => !ch.subCategoryRef);
+        if (unresolvedChannels.length > 0) {
+          throw new ApiError(400, "Each selected YouTube channel must have a subcategory.");
+        }
+
+        const idRefs = refs.filter((ref) =>
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(ref)
+        );
+        const slugRefs = refs.filter((ref) => !idRefs.includes(ref));
+
+        const matchedSubCategories = await tx.roleSubCategory.findMany({
+          where: {
+            roleCategoryId: selectedCategory.id,
+            OR: [
+              ...(idRefs.length ? [{ id: { in: idRefs } }] : []),
+              ...(slugRefs.length ? [{ slug: { in: slugRefs.map((r) => String(r).toLowerCase()) } }] : []),
+            ],
+          },
+          select: { id: true, slug: true },
+        });
+
+        const byId = new Map(matchedSubCategories.map((sub) => [sub.id, sub]));
+        const bySlug = new Map(matchedSubCategories.map((sub) => [sub.slug, sub]));
+
+        normalizedChannels = normalizedChannels.map((channel) => {
+          const ref = String(channel.subCategoryRef).toLowerCase();
+          const matched = byId.get(channel.subCategoryRef) || bySlug.get(ref);
+          if (!matched) {
+            throw new ApiError(
+              400,
+              `Invalid YouTube subcategory for channel ${channel.channel_name}.`
+            );
+          }
+          return {
+            ...channel,
+            category_slug: matched.slug,
+            roleSubCategoryId: matched.id,
+          };
+        });
+
+        normalizedRoleSubCategoryIds = Array.from(
+          new Set([
+            ...normalizedRoleSubCategoryIds,
+            ...normalizedChannels.map((ch) => ch.roleSubCategoryId),
+          ])
+        );
+      }
+
       // Step A: Create User (Auth)
       const newUser = await tx.user.create({
         data: {
@@ -76,7 +175,7 @@ export const registerFullUser = async (userData) => {
           auth_provider: authProvider,
           google_id: googleId,
           role: 'suvix_user', // Standardized Professional Role
-          is_onboarded: !!resolvedCategoryId || roleSubCategoryIds.length > 0,
+          is_onboarded: !!resolvedCategoryId || normalizedRoleSubCategoryIds.length > 0,
         },
       });
 
@@ -95,14 +194,67 @@ export const registerFullUser = async (userData) => {
         },
       });
 
+      await tx.userStats.upsert({
+        where: { userId: newUser.id },
+        update: { updated_at: new Date() },
+        create: { userId: newUser.id },
+      });
+
       // Step C: Map Dynamic Roles (Expertise)
-      if (roleSubCategoryIds.length > 0) {
-        const mappings = roleSubCategoryIds.map((subId, index) => ({
+      if (normalizedRoleSubCategoryIds.length > 0) {
+        const mappings = normalizedRoleSubCategoryIds.map((subId, index) => ({
           profileId: profile.id,
           roleSubCategoryId: subId,
           isPrimary: index === 0,
         }));
-        await tx.userRoleMapping.createMany({ data: mappings });
+        await tx.userRoleMapping.createMany({ data: mappings, skipDuplicates: true });
+      }
+
+      if (isYoutubeCategory && normalizedChannels.length > 0) {
+        // NOTE: The physical database currently has a UNIQUE constraint on user_id for YouTubeProfile.
+        // We can only store ONE channel record per user in the current DB structure.
+        // We will store the first one selected, but all niches are already saved in role_mappings.
+        const channel = normalizedChannels[0];
+
+        const existingChannel = await tx.youTubeProfile.findFirst({
+          where: { channel_id: channel.channel_id },
+          select: { id: true, userId: true },
+        });
+
+        if (existingChannel && existingChannel.userId !== newUser.id) {
+          throw new ApiError(409, `Channel ${channel.channel_name} is already connected to another account.`);
+        }
+
+        if (existingChannel) {
+          await tx.youTubeProfile.update({
+            where: { id: existingChannel.id },
+            data: {
+              channel_name: channel.channel_name,
+              thumbnail_url: channel.thumbnail_url,
+              subscriber_count: channel.subscriber_count,
+              video_count: channel.video_count,
+              updated_at: new Date(),
+            },
+          });
+        } else {
+          // Check if this user already has ANY YouTube profile (handle 1-to-1 constraint)
+          const userHasProfile = await tx.youTubeProfile.findFirst({
+            where: { userId: newUser.id }
+          });
+
+          if (!userHasProfile) {
+            await tx.youTubeProfile.create({
+              data: {
+                userId: newUser.id,
+                channel_id: channel.channel_id,
+                channel_name: channel.channel_name,
+                thumbnail_url: channel.thumbnail_url,
+                subscriber_count: channel.subscriber_count,
+                video_count: channel.video_count,
+              },
+            });
+          }
+        }
       }
 
       return {

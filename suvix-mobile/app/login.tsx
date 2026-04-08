@@ -145,7 +145,7 @@ export default function LoginScreen() {
 
             <View style={styles.footer}>
               <Text style={[styles.footerText, { color: theme.textSecondary }]}>New to SuviX? </Text>
-              <TouchableOpacity onPress={() => { handleImpact(); router.replace('/signup'); }}>
+              <TouchableOpacity onPress={() => { handleImpact(); router.replace('/role-selection'); }}>
                 <Text style={[styles.footerLink, { color: theme.text }]}>Join Now</Text>
               </TouchableOpacity>
             </View>

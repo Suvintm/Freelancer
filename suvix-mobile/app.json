@@ -51,10 +51,10 @@
           "android": {
             "kotlinVersion": "1.9.25",
             "usesCleartextTraffic": true,
-            "newArchEnabled": true
+            "newArchEnabled": false
           },
           "ios": {
-            "newArchEnabled": true
+            "newArchEnabled": false
           }
         }
       ],
@@ -66,14 +66,7 @@
           "isAndroidBackgroundEnabled": true
         }
       ],
-      [
-        "@sentry/react-native/expo",
-        {
-          "url": "https://sentry.io/",
-          "project": "react-native",
-          "organization": "suvix"
-        }
-      ]
+      "@react-native-google-signin/google-signin"
     ],
     "extra": {
       "router": {
@@ -89,7 +82,7 @@
     "updates": {
       "url": "https://u.expo.dev/c64d2453-3758-4664-a5b7-c6f07d60ca40"
     },
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "owner": "suvin1515"
   }
 }

@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   TouchableWithoutFeedback,
   Keyboard,
   ScrollView,
@@ -17,16 +15,14 @@ import {
   Modal,
   useColorScheme
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../src/constants/Colors';
-import SuvixInput from '../src/components/SuvixInput';
 import SuvixButton from '../src/components/SuvixButton';
 import { useAuthStore } from '../src/store/useAuthStore';
-import { api } from '../src/api/client';
-import { CategoryId, CategoryConfig } from '../src/types/category';
+import { CategoryId } from '../src/types/category';
 import { useCategoryStore } from '../src/store/useCategoryStore';
 import * as Haptics from 'expo-haptics';
 import { ActivityIndicator } from 'react-native';
@@ -56,14 +52,10 @@ export default function RoleSelectionScreen() {
   const theme = colorScheme === 'dark' ? Colors.dark : Colors.light;
   const isDark = colorScheme === 'dark';
 
-  const { token, name } = useLocalSearchParams<{ token: string; name: string }>();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [infoCategory, setInfoCategory] = useState<any | null>(null);
-  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isFinalizing, setIsFinalizing] = useState(false);
   
-  const setAuth = useAuthStore((state) => state.setAuth);
   const { categories, isLoading, fetchCategories } = useCategoryStore();
   const router = useRouter();
 
@@ -82,7 +74,11 @@ export default function RoleSelectionScreen() {
     Haptics.impactAsync(style);
   };
 
-  const { tempSignupData, setTempSignupData, clearTempSignupData } = useAuthStore();
+  const { setTempSignupData } = useAuthStore();
+
+  useEffect(() => {
+    fetchCategories().catch(() => {});
+  }, [fetchCategories]);
 
   const handleFinalize = async () => {
     if (!selectedCategory) {
@@ -95,11 +91,22 @@ export default function RoleSelectionScreen() {
     try {
       handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
       
-      // Update global signup buffer
-      setTempSignupData({ categoryId: selectedCategory });
+      const selected = categories.find((c) => c.id === selectedCategory);
+      setTempSignupData({ categoryId: selectedCategory, categorySlug: selected?.slug });
 
-      // ALL roles (including Clients/Normal Users) now proceed to the final step
-      // for an atomic registration write.
+      if (selected?.slug === 'direct_client') {
+        router.push('/signup');
+        return;
+      }
+
+      if (selected?.slug === 'yt_influencer') {
+        router.push({
+          pathname: '/youtube-connect',
+          params: { categoryId: selectedCategory }
+        });
+        return;
+      }
+
       router.push({
         pathname: '/subcategory-selection',
         params: { categoryId: selectedCategory }

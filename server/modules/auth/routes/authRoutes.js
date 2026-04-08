@@ -4,6 +4,7 @@ import {
   registerFull, 
   login, 
   getRoles,
+  getYouTubeChannels,
   refresh,
   logout,
   getMe, 
@@ -22,6 +23,7 @@ router.post("/login", login);
 router.post("/refresh-token", refresh); // Advanced Rotation
 router.post("/logout", logout); // Clear Sessions
 router.get("/roles", getRoles);
+router.post("/youtube/channels", getYouTubeChannels);
 router.get("/check-username/:username", checkUsername);
 router.post("/validate-signup", validateSignup);
 

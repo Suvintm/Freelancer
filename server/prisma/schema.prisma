@@ -1,17 +1,171 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-  provider        = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-// ==========================================
-// NEW PRODUCTION SCHEMA (REFINED ROLE SYSTEM)
-// ==========================================
+model User {
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email             String          @unique @db.VarChar(255)
+  password_hash     String?         @map("password_hash")
+  role              UserRole        @default(suvix_user)
+  auth_provider     AuthProvider?   @default(local) @map("auth_provider")
+  google_id         String?         @unique @map("google_id") @db.VarChar(255)
+  is_verified       Boolean         @default(false) @map("is_verified")
+  is_banned         Boolean         @default(false) @map("is_banned")
+  is_onboarded      Boolean         @default(false) @map("is_onboarded")
+  created_at        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  received_messages Message[]       @relation("MessageReceiver")
+  sent_messages     Message[]       @relation("MessageSender")
+  follows           UserFollow[]    @relation("Follower")
+  following         UserFollow[]    @relation("Following")
+  profile           UserProfile?
+  stats             UserStats?
+  youtubeProfiles   YouTubeProfile?
+  youtube_videos    YouTubeVideo[]
+
+  @@map("users")
+}
+
+model UserProfile {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String             @unique @map("user_id") @db.Uuid
+  username          String             @unique @db.VarChar(100)
+  name              String             @db.VarChar(100)
+  profile_picture   String?            @map("profile_picture")
+  bio               String?
+  mother_tongue     String?            @map("mother_tongue") @db.VarChar(50)
+  auth_provider     AuthProvider?      @default(local) @map("auth_provider")
+  location_city     String?            @map("location_city") @db.VarChar(100)
+  location_state    String?            @map("location_state") @db.VarChar(100)
+  location_country  String?            @default("India") @map("location_country") @db.VarChar(100)
+  phone             String?            @db.VarChar(20)
+  is_phone_verified Boolean            @default(false) @map("is_phone_verified")
+  availability      AvailabilityStatus @default(available)
+  categoryId        String?            @map("role_category_id") @db.Uuid
+  created_at        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  category          RoleCategory?      @relation(fields: [categoryId], references: [id])
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roles             UserRoleMapping[]
+
+  @@map("user_profiles")
+}
+
+model UserFollow {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  followerId  String   @map("follower_id") @db.Uuid
+  followingId String   @map("following_id") @db.Uuid
+  created_at  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  follower    User     @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@map("user_follows")
+}
+
+model RoleCategory {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String            @db.VarChar(100)
+  slug          String            @unique @db.VarChar(100)
+  icon          String?           @db.VarChar(50)
+  roleGroup     RoleGroup         @default(PROVIDER) @map("role_group")
+  description   String?
+  info          String?
+  subCategories RoleSubCategory[]
+  profiles      UserProfile[]
+
+  @@map("role_categories")
+}
+
+model RoleSubCategory {
+  id             String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roleCategoryId String            @map("role_category_id") @db.Uuid
+  name           String            @db.VarChar(100)
+  slug           String            @db.VarChar(100)
+  category       RoleCategory      @relation(fields: [roleCategoryId], references: [id], onDelete: Cascade)
+  userRoles      UserRoleMapping[]
+
+  @@unique([roleCategoryId, slug])
+  @@map("role_sub_categories")
+}
+
+model UserRoleMapping {
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  profileId         String          @map("profile_id") @db.Uuid
+  roleSubCategoryId String          @map("role_sub_category_id") @db.Uuid
+  isPrimary         Boolean         @default(false) @map("is_primary")
+  profile           UserProfile     @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  subCategory       RoleSubCategory @relation(fields: [roleSubCategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, roleSubCategoryId])
+  @@index([profileId, isPrimary])
+  @@map("user_role_mappings")
+}
+
+model UserStats {
+  userId          String   @id @map("user_id") @db.Uuid
+  followers_count Int      @default(0)
+  following_count Int      @default(0)
+  created_at      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_stats")
+}
+
+model YouTubeProfile {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String   @unique @map("user_id") @db.Uuid
+  channel_id       String   @db.VarChar(255)
+  channel_name     String   @db.VarChar(255)
+  subscriber_count Int?     @default(0)
+  video_count      Int?     @default(0)
+  thumbnail_url    String?
+  connected_at     DateTime @default(now()) @map("connected_at") @db.Timestamptz(6)
+  created_at       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at       DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([channel_id])
+  @@map("youtube_profiles")
+}
+
+model YouTubeVideo {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String    @db.Uuid
+  channel_id   String    @db.VarChar(255)
+  video_id     String    @unique @db.VarChar(100)
+  title        String    @db.VarChar(500)
+  thumbnail    String?
+  published_at DateTime? @map("published_at") @db.Timestamptz(6)
+  created_at   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  users        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([channel_id])
+  @@index([user_id, published_at])
+  @@map("youtube_videos")
+}
+
+model Message {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sender_id   String   @map("sender_id") @db.Uuid
+  receiver_id String   @map("receiver_id") @db.Uuid
+  type        String   @default("text") @db.VarChar(20)
+  content     String
+  is_read     Boolean  @default(false) @map("is_read")
+  created_at  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  receiver    User     @relation("MessageReceiver", fields: [receiver_id], references: [id])
+  sender      User     @relation("MessageSender", fields: [sender_id], references: [id])
+
+  @@index([sender_id])
+  @@index([receiver_id])
+  @@map("messages")
+}
 
 enum UserRole {
   admin
@@ -33,187 +187,4 @@ enum AvailabilityStatus {
   available
   busy
   away
-}
-
-model User {
-  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email           String        @unique @db.VarChar(255)
-  password_hash   String?       @map("password_hash")
-  role            UserRole      @default(suvix_user)
-  auth_provider   AuthProvider? @default(local) @map("auth_provider")
-  google_id       String?       @unique @map("google_id") @db.VarChar(255)
-  is_verified     Boolean       @default(false) @map("is_verified")
-  is_banned       Boolean       @default(false) @map("is_banned")
-  is_onboarded    Boolean       @default(false) @map("is_onboarded")
-  created_at      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at      DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  // Relations
-  profile         UserProfile?
-  follows         UserFollow[]  @relation("Follower")
-  following       UserFollow[]  @relation("Following")
-  sent_messages   Message[]     @relation("MessageSender")
-  received_messages Message[]    @relation("MessageReceiver")
-  stats           UserStats?
-  youtubeProfile  YouTubeProfile?
-  youtubeVideos   YouTubeVideo[]
-
-  @@map("users")
-}
-
-model UserProfile {
-  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId            String        @unique @map("user_id") @db.Uuid
-  username          String        @unique @db.VarChar(100)
-  name              String        @db.VarChar(100)
-  profile_picture   String?       @map("profile_picture")
-  bio               String?       @db.Text
-  mother_tongue     String?       @map("mother_tongue") @db.VarChar(50)
-  auth_provider     AuthProvider? @default(local) @map("auth_provider")
-  
-  // Location
-  location_city     String?       @map("location_city") @db.VarChar(100)
-  location_state    String?       @map("location_state") @db.VarChar(100)
-  location_country  String?       @default("India") @map("location_country") @db.VarChar(100)
-  
-  // Contact
-  phone             String?       @db.VarChar(20)
-  is_phone_verified Boolean       @default(false) @map("is_phone_verified")
-  
-  // Status
-  availability      AvailabilityStatus @default(available)
-  
-  // Transitional: keep optional primary category for backward compatibility.
-  // Multi-role identity should be sourced from UserRoleMapping.
-  categoryId        String?       @map("role_category_id") @db.Uuid
-  
-  created_at        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at        DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  // Relations
-  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category          RoleCategory? @relation(fields: [categoryId], references: [id])
-  roles             UserRoleMapping[]
-
-  @@map("user_profiles")
-}
-
-model UserFollow {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  followerId      String   @map("follower_id") @db.Uuid
-  followingId     String   @map("following_id") @db.Uuid
-  created_at      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  follower        User     @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
-  following       User     @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
-
-  @@unique([followerId, followingId])
-  @@map("user_follows")
-}
-
-model RoleCategory {
-  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name            String        @db.VarChar(100)
-  slug            String        @unique @db.VarChar(100)
-  icon            String?       @db.VarChar(50)
-  roleGroup       RoleGroup     @default(PROVIDER) @map("role_group")
-  description     String?       @db.Text
-  info            String?       @db.Text
-  
-  subCategories   RoleSubCategory[]
-  profiles        UserProfile[]
-
-  @@map("role_categories")
-}
-
-model RoleSubCategory {
-  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  roleCategoryId  String        @map("role_category_id") @db.Uuid
-  name            String        @db.VarChar(100)
-  slug            String        @db.VarChar(100)
-  
-  category        RoleCategory  @relation(fields: [roleCategoryId], references: [id], onDelete: Cascade)
-  userRoles       UserRoleMapping[]
-
-  @@unique([roleCategoryId, slug])
-  @@map("role_sub_categories")
-}
-
-model UserRoleMapping {
-  id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  profileId          String          @map("profile_id") @db.Uuid
-  roleSubCategoryId  String          @map("role_sub_category_id") @db.Uuid
-  isPrimary          Boolean         @default(false) @map("is_primary")
-
-  profile            UserProfile     @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  subCategory        RoleSubCategory @relation(fields: [roleSubCategoryId], references: [id], onDelete: Cascade)
-
-  @@unique([profileId, roleSubCategoryId])
-  @@index([profileId, isPrimary])
-  @@map("user_role_mappings")
-}
-
-model UserStats {
-  userId             String    @id @map("user_id") @db.Uuid
-  followers_count    Int       @default(0)
-  following_count    Int       @default(0)
-  created_at         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at         DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("user_stats")
-}
-
-model YouTubeProfile {
-  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId             String    @unique @map("user_id") @db.Uuid
-  channel_id         String    @db.VarChar(255)
-  channel_name       String    @db.VarChar(255)
-  subscriber_count   Int?      @default(0)
-  video_count        Int?      @default(0)
-  thumbnail_url      String?
-  connected_at       DateTime  @default(now()) @map("connected_at") @db.Timestamptz(6)
-  created_at         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at         DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([channel_id])
-  @@map("youtube_profiles")
-}
-
-model YouTubeVideo {
-  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId             String    @map("user_id") @db.Uuid
-  channel_id         String    @db.VarChar(255)
-  video_id           String    @unique @db.VarChar(100)
-  title              String    @db.VarChar(500)
-  thumbnail          String?
-  published_at       DateTime? @map("published_at") @db.Timestamptz(6)
-  created_at         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at         DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, published_at])
-  @@index([channel_id])
-  @@map("youtube_videos")
-}
-
-model Message {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sender_id       String   @map("sender_id") @db.Uuid
-  receiver_id     String   @map("receiver_id") @db.Uuid
-  type            String   @default("text") @db.VarChar(20)
-  content         String   @db.Text
-  is_read         Boolean  @default(false) @map("is_read")
-  created_at      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  sender          User     @relation("MessageSender", fields: [sender_id], references: [id])
-  receiver        User     @relation("MessageReceiver", fields: [receiver_id], references: [id])
-
-  @@index([sender_id])
-  @@index([receiver_id])
-  @@map("messages")
 }

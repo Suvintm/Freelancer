@@ -50,8 +50,8 @@ router.get(
                 return res.redirect(`${FRONTEND_URL}/login?error=no_user`);
             }
 
-            // Check if user needs to select role (new OAuth user)
-            if (user.role === "pending") {
+            // Check if user needs onboarding (new OAuth user)
+            if (!user.is_onboarded) {
                 // Generate a temporary token for role selection
                 const tempToken = jwt.sign(
                     { id: user.id, type: "role_selection" },
@@ -77,19 +77,12 @@ router.get(
 
 router.post("/select-role", authLimiter, async (req, res) => {
     try {
-        const { token, role, phone, country } = req.body;
+        const { token, phone, country, categoryId, roleSubCategoryIds } = req.body;
 
-        if (!token || !role || !phone || !country) {
+        if (!token) {
             return res.status(400).json({
                 success: false,
-                message: "Role, phone and country are required",
-            });
-        }
-
-        if (!["editor", "client"].includes(role)) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid role. Must be 'editor' or 'client'",
+                message: "Onboarding token is required",
             });
         }
 
@@ -111,23 +104,50 @@ router.post("/select-role", authLimiter, async (req, res) => {
             });
         }
 
-        // Update user status
-        const updatedUser = await prisma.user.update({
-            where: { id: decoded.id },
-            data: {
-                role,
-                is_onboarded: true,
-                is_verified: true,
-            }
-        });
+        let parsedSubIds = roleSubCategoryIds;
+        if (typeof roleSubCategoryIds === "string" && roleSubCategoryIds) {
+            try { parsedSubIds = JSON.parse(roleSubCategoryIds); } catch (e) { parsedSubIds = []; }
+        }
+        const finalSubIds = Array.isArray(parsedSubIds) ? parsedSubIds : [];
 
-        // Update profile with onboarding metadata
-        await prisma.userProfile.update({
-            where: { userId: updatedUser.id },
-            data: {
-                location_country: country,
-                phone: phone,
+        // Update user onboarding atomically
+        const updatedUser = await prisma.$transaction(async (tx) => {
+            const user = await tx.user.update({
+                where: { id: decoded.id },
+                data: {
+                    is_onboarded: true,
+                    is_verified: true,
+                }
+            });
+
+            const profile = await tx.userProfile.findUnique({
+                where: { userId: user.id },
+                select: { id: true }
+            });
+
+            if (profile) {
+                await tx.userProfile.update({
+                    where: { userId: user.id },
+                    data: {
+                        ...(country ? { location_country: country } : {}),
+                        ...(phone ? { phone } : {}),
+                        ...(categoryId ? { categoryId } : {}),
+                    }
+                });
+
+                if (finalSubIds.length > 0) {
+                    await tx.userRoleMapping.createMany({
+                        data: finalSubIds.map((subId, index) => ({
+                            profileId: profile.id,
+                            roleSubCategoryId: subId,
+                            isPrimary: index === 0,
+                        })),
+                        skipDuplicates: true,
+                    });
+                }
             }
+
+            return user;
         });
 
         // Generate full token
@@ -137,7 +157,7 @@ router.post("/select-role", authLimiter, async (req, res) => {
             { expiresIn: JWT_EXPIRES_IN }
         );
 
-        logger.info(`[OAuth] Finalized registration (Postgres): ${updatedUser.id} as ${role}`);
+        logger.info(`[OAuth] Finalized onboarding (Postgres): ${updatedUser.id}`);
 
         res.status(200).json({
             success: true,
@@ -217,7 +237,7 @@ router.post("/google/mobile", async (req, res) => {
                         google_id: googleId,
                         auth_provider: "google",
                         is_verified: true,
-                        role: "pending",
+                        role: "suvix_user",
                         is_onboarded: false,
                         password_hash: `OAUTH_MOBILE_${crypto.randomBytes(8).toString("hex")}`,
                     }
@@ -228,6 +248,7 @@ router.post("/google/mobile", async (req, res) => {
                         userId: newUser.id,
                         username: finalUsername,
                         name: finalName,
+                        display_name: finalName,
                         profile_picture: picture,
                         location_country: "IN", 
                     }
@@ -242,8 +263,8 @@ router.post("/google/mobile", async (req, res) => {
             logger.info(`[OAuth Mobile] New user registered: ${normalizedEmail}`);
         }
 
-        // 4. Handle Pending Role
-        if (user.role === "pending") {
+        // 4. Handle pending onboarding
+        if (!user.is_onboarded) {
             const tempToken = jwt.sign(
                 { id: user.id, type: "role_selection" },
                 JWT_SECRET,
@@ -257,6 +278,7 @@ router.post("/google/mobile", async (req, res) => {
                     id: user.id,
                     email: user.email,
                     name: user.profile?.name,
+                    displayName: user.profile?.display_name || user.profile?.name,
                     role: user.role
                 }
             });
@@ -275,6 +297,7 @@ router.post("/google/mobile", async (req, res) => {
             user: {
                 id: user.id,
                 name: user.profile?.name,
+                displayName: user.profile?.display_name || user.profile?.name,
                 email: user.email,
                 role: user.role,
                 profilePicture: user.profile?.profile_picture || picture,

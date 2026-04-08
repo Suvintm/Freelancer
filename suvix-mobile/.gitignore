@@ -42,3 +42,8 @@ yarn-error.*
 /android
 
 .env.local
+.gradle-home/
+android/.gradle/
+android/build/
+node_modules/
+.expo/

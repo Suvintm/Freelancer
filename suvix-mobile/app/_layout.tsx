@@ -11,21 +11,6 @@ import { useDashboardStore } from '../src/store/useDashboardStore';
 import { useCategoryStore } from '../src/store/useCategoryStore';
 import { Image } from 'react-native';
 import { preloadHomeAssets } from '../src/constants/homePreload';
-import * as Sentry from '@sentry/react-native';
-
-const SENTY_DSN = 'https://75a9e29c9099f1cc238a0b0ade5c7dd5@o4511092628652032.ingest.us.sentry.io/4511183274639360';
-
-if (!__DEV__) {
-  try {
-    Sentry.init({
-      dsn: SENTY_DSN,
-      sendDefaultPii: true,
-      enableLogs: false,
-    });
-  } catch (e) {
-    console.warn('[SENTRY] Init skipped due to runtime issue:', e);
-  }
-}
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -38,7 +23,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 const queryClient = new QueryClient();
 
 function InitialRoot() {
-  const { isInitialized, isAuthenticated, token, user, checkAuth, fetchUser } = useAuthStore();
+  const { isInitialized, isAuthenticated, user, checkAuth, fetchUser } = useAuthStore();
   const { fetchClientDashboard, fetchEditorDashboard } = useDashboardStore();
   const segments = useSegments();
   const router = useRouter();
@@ -46,6 +31,7 @@ function InitialRoot() {
   const [dataLoaded, setDataLoaded] = useState(false);
 
   const bootstrapStarted = useRef(false);
+  const dataLoadedRef = useRef(false);
   // Initialize Auth State & Pre-fetch Data on boot
   useEffect(() => {
     if (bootstrapStarted.current) return;
@@ -96,6 +82,7 @@ function InitialRoot() {
         console.error('❌ [BOOT] Critical failure during bootstrap:', e);
       } finally {
         if (isMounted) {
+          dataLoadedRef.current = true;
           setDataLoaded(true);
           console.log('✅ [BOOT] Bootstrap complete.');
         }
@@ -112,8 +99,9 @@ function InitialRoot() {
     }, 2300);
 
     const failSafeTimer = setTimeout(() => {
-      if (isMounted && !dataLoaded) {
+      if (isMounted && !dataLoadedRef.current) {
         console.warn('⚠️ [BOOT] Bootstrap timeout. Forcing app start.');
+        dataLoadedRef.current = true;
         setDataLoaded(true);
       }
     }, 4000); // Tightened to 4s for production feel
@@ -164,20 +152,33 @@ function InitialRoot() {
     if (!isInitialized || !isIntroFinished || !dataLoaded) return;
 
     // Hardened Handoff: 400ms ensures the Native UI is fully settled before the dashboard mount hit
-    const logout = useAuthStore.getState().logout;
     const handoffTimer = setTimeout(() => {
       if (isNavigating.current) return;
 
       const currentSegment = segments[0];
       const inAuthGroup = currentSegment === '(tabs)';
-      const inOnboarding = currentSegment === 'role-selection' || currentSegment === 'subcategory-selection';
-      const inPublicGroup = currentSegment === 'welcome' || currentSegment === 'login' || currentSegment === 'signup' || !currentSegment || currentSegment === 'index';
+      const inOnboarding =
+        currentSegment === 'role-selection' ||
+        currentSegment === 'subcategory-selection' ||
+        currentSegment === 'youtube-connect';
+      const inPublicGroup =
+        currentSegment === 'welcome' ||
+        currentSegment === 'login' ||
+        currentSegment === 'signup';
 
       console.log(`🚦 [GUARD] Auth: ${isAuthenticated} | Seg: ${currentSegment} | Onboarded: ${user?.isOnboarded}`);
 
       // 1. UNAUTHENTICATED
       if (!isAuthenticated || (!user && dataLoaded)) {
-        if (currentSegment !== 'welcome' && currentSegment !== 'login' && currentSegment !== 'signup') {
+        if (!currentSegment || currentSegment === 'index') {
+          console.log('🔓 [GUARD] Redirecting guest from intro to /welcome');
+          isNavigating.current = true;
+          router.replace('/welcome');
+          setTimeout(() => { isNavigating.current = false; }, 1000);
+          return;
+        }
+
+        if (!inPublicGroup && !inOnboarding) {
           console.log('🔓 [GUARD] Redirecting to /welcome');
           isNavigating.current = true;
           router.replace('/welcome');
@@ -215,6 +216,8 @@ function InitialRoot() {
       <Stack.Screen name="login" />
       <Stack.Screen name="signup" />
       <Stack.Screen name="role-selection" />
+      <Stack.Screen name="subcategory-selection" />
+      <Stack.Screen name="youtube-connect" />
       <Stack.Screen name="(tabs)" />
     </Stack>
   );
@@ -232,4 +235,4 @@ function RootLayout() {
   );
 }
 
-export default __DEV__ ? RootLayout : Sentry.wrap(RootLayout);
+export default RootLayout;

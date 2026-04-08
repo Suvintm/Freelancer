@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -46,8 +46,6 @@ export default function SignupScreen() {
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<{ type: 'loading' | 'success' | 'error' | 'none', message: string }>({ type: 'none', message: '' });
-  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
-
   const LANGUAGES = [
     'English', 'Hindi', 'Kannada', 'Telugu', 'Tamil', 
     'Malayalam', 'Marathi', 'Bengali', 'Gujarati', 'Punjabi'
@@ -55,6 +53,8 @@ export default function SignupScreen() {
   
   const router = useRouter();
   const { signIn: googleSignIn, isLoading: isGoogleLoading } = useGoogleAuth();
+  const setAuth = useAuthStore((state) => state.setAuth);
+  const clearTempSignupData = useAuthStore((state) => state.clearTempSignupData);
 
   const handleImpact = (style = Haptics.ImpactFeedbackStyle.Light) => {
     Haptics.impactAsync(style);
@@ -80,6 +80,10 @@ export default function SignupScreen() {
   };
 
   const setTempSignupData = useAuthStore((state) => state.setTempSignupData);
+
+  const tempSignupDataContext = useAuthStore((state) => state.tempSignupData);
+  const isYoutubeCreator = tempSignupDataContext?.categorySlug === 'yt_influencer';
+  const youtubeChannels = tempSignupDataContext?.youtubeChannels || [];
 
   const handleUsernameChange = (text: string) => {
     // Only allow lowercase letters, numbers, underscores, and periods
@@ -124,8 +128,16 @@ export default function SignupScreen() {
         return;
       }
 
-      // 3. Save data to the store's temporary buffer
+      // 3. Save latest user form data in temporary buffer
+      // Retrieve again securely from getState just in case
+      const onboardingData = useAuthStore.getState().tempSignupData || {};
+      const categoryId = onboardingData.categoryId;
+      const categorySlug = onboardingData.categorySlug;
+      const roleSubCategoryIds = onboardingData.roleSubCategoryIds || [];
+      const ytChannels = onboardingData.youtubeChannels || [];
+
       setTempSignupData({
+        ...onboardingData,
         name: fullName.trim(),
         username: username.trim().toLowerCase(),
         email: email.trim().toLowerCase(),
@@ -135,19 +147,67 @@ export default function SignupScreen() {
         profileImage: profileImage
       });
 
-      handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
-      router.push({
-        pathname: '/role-selection',
-        params: { name: fullName || 'SuviX Professional' }
+      if (!categoryId) {
+        handleImpact(Haptics.ImpactFeedbackStyle.Medium);
+        router.push('/role-selection');
+        return;
+      }
+
+      if (categorySlug !== 'direct_client' && roleSubCategoryIds.length === 0) {
+        handleImpact(Haptics.ImpactFeedbackStyle.Medium);
+        if (categorySlug === 'yt_influencer') {
+          router.push({ pathname: '/youtube-connect', params: { categoryId } });
+        } else {
+          router.push({ pathname: '/subcategory-selection', params: { categoryId } });
+        }
+        return;
+      }
+
+      if (categorySlug === 'yt_influencer' && ytChannels.length === 0) {
+        handleImpact(Haptics.ImpactFeedbackStyle.Medium);
+        router.push({ pathname: '/youtube-connect', params: { categoryId } });
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('fullName', fullName.trim());
+      formData.append('username', username.trim().toLowerCase());
+      formData.append('email', email.trim().toLowerCase());
+      formData.append('password', password);
+      formData.append('phone', phone.trim());
+      formData.append('motherTongue', motherTongue);
+      formData.append('categoryId', categoryId);
+      formData.append('roleSubCategoryIds', JSON.stringify(roleSubCategoryIds));
+      if (ytChannels.length > 0) {
+        formData.append('youtubeChannels', JSON.stringify(ytChannels));
+      }
+
+      if (profileImage) {
+        const uriParts = profileImage.split('.');
+        const fileType = uriParts[uriParts.length - 1];
+        formData.append('profilePicture', {
+          uri: profileImage,
+          name: `profile.${fileType}`,
+          type: `image/${fileType}`,
+        } as any);
+      }
+
+      const registerRes = await api.post('/auth/register-full', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
+
+      if (registerRes.data?.success) {
+        await setAuth(registerRes.data.user, registerRes.data.token);
+        clearTempSignupData();
+        handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
+        Alert.alert('Welcome to SuviX', 'Your account has been created successfully.');
+      }
     } catch (error: any) {
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
       
       const errorMessage = error.response?.data?.message || 'Could not prepare your account.';
       
       if (error.response?.status === 409) {
-          // If it's a conflict, it could be email or username. 
-          // We show a specific alert as it's a critical stop.
           if (errorMessage.toLowerCase().includes('username')) {
             setUsernameStatus({ type: 'error', message: errorMessage });
           } else {
@@ -180,6 +240,25 @@ export default function SignupScreen() {
             </View>
 
             <View style={styles.content}>
+
+              {/* YouTube Channels Preview Snippet */}
+              {isYoutubeCreator && youtubeChannels.length > 0 && (
+                <View style={[styles.linkedAccountsCard, { backgroundColor: isDark ? '#1a1a1a' : '#f9f9f9', borderColor: theme.border }]}>
+                  <Text style={[styles.linkedAccountsTitle, { color: theme.textSecondary }]}>Linked YouTube Channels</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                    {youtubeChannels.map((channel: any) => (
+                      <View key={channel.channelId} style={[styles.linkedChannel, { borderColor: theme.border, backgroundColor: theme.primary }]}>
+                        <Image source={{ uri: channel.thumbnailUrl || 'https://placehold.co/40x40.png' }} style={styles.linkedChannelThumb} />
+                        <View style={styles.linkedChannelDetails}>
+                          <Text style={[styles.linkedChannelName, { color: theme.text }]} numberOfLines={1}>{channel.channelName}</Text>
+                          <Text style={[styles.linkedChannelPill, { color: theme.accent }]}>{channel.subCategorySlug?.replace(/_/g, ' ') || 'Niche'}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+
               <View style={styles.inputGroup}>
                 <SuvixInput small label="Full Name" placeholder="Your Name" value={fullName} onChangeText={setFullName} autoCorrect={false} spellCheck={false} textContentType="name" icon={<Feather name="user" size={16} />} />
                 <SuvixInput small label="Username Handle" placeholder="unique_handle" value={username} onChangeText={handleUsernameChange} autoCapitalize="none" autoCorrect={false} spellCheck={false} textContentType="username" icon={<Feather name="at-sign" size={16} />} />
@@ -323,5 +402,11 @@ const styles = StyleSheet.create({
   modalList: { flex: 1 },
   langItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, paddingHorizontal: 16, borderRadius: 12, marginBottom: 4 },
   langItemText: { fontSize: 16, fontWeight: '600' },
+  linkedAccountsCard: { borderWidth: 1, borderRadius: 16, padding: 16, marginBottom: 20 },
+  linkedAccountsTitle: { fontSize: 13, fontWeight: '700', marginBottom: 4 },
+  linkedChannel: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 12, padding: 10, marginRight: 12, minWidth: 160 },
+  linkedChannelThumb: { width: 36, height: 36, borderRadius: 18, marginRight: 10 },
+  linkedChannelDetails: { flex: 1 },
+  linkedChannelName: { fontSize: 13, fontWeight: '800', marginBottom: 2 },
+  linkedChannelPill: { fontSize: 10, fontWeight: '700', textTransform: 'capitalize' },
 });
-

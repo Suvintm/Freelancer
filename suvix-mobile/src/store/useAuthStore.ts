@@ -20,7 +20,19 @@ interface TempSignupData {
   motherTongue?: string; // New
   profileImage?: string | null;
   categoryId?: string;
+  categorySlug?: string;
   roleSubCategoryIds?: string[];
+  youtubeChannels?: {
+    channelId: string;
+    channelName: string;
+    thumbnailUrl?: string | null;
+    subscriberCount?: number;
+    videoCount?: number;
+    subCategoryId?: string;
+    subCategorySlug?: string;
+    isPrimary?: boolean;
+    isVerified?: boolean;
+  }[];
 }
 
 
@@ -41,6 +53,14 @@ interface AuthUser {
   profilePicture?: string;
   location?: string;
   isOnboarded: boolean;
+  youtubeProfile?: {
+    id: string;
+    channel_id: string;
+    channel_name: string;
+    subscriber_count: number;
+    video_count: number;
+    thumbnail_url: string;
+  } | null;
 }
 
 interface AuthState {

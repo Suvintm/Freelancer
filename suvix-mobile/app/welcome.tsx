@@ -1,14 +1,14 @@
 import React, { useState, useRef } from 'react';
-import { StyleSheet, View, Text, Image, TouchableOpacity, Dimensions, Animated, StatusBar, SafeAreaView, useColorScheme } from 'react-native';
+import { StyleSheet, View, Text, Image, TouchableOpacity, Dimensions, StatusBar, SafeAreaView, useColorScheme } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { LucideChevronRight, LucideUserPlus, LucideLogIn } from 'lucide-react-native';
+import { LucideChevronRight } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '../src/constants/Colors';
 import SuvixButton from '../src/components/SuvixButton';
 
-const { width, height } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 
 const ONBOARDING_DATA = [
   {
@@ -49,7 +49,7 @@ export default function WelcomeScreen() {
     }
   };
 
-  const handleAction = (path: '/signup' | '/login') => {
+  const handleAction = (path: '/role-selection' | '/login') => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.replace(path);
   };
@@ -154,8 +154,8 @@ export default function WelcomeScreen() {
             ) : (
               <View style={styles.finalActions}>
                  <SuvixButton 
-                  title="New User? Create Account" 
-                  onPress={() => handleAction('/signup')}
+                  title="New User? Get Started" 
+                  onPress={() => handleAction('/role-selection')}
                   variant="primary"
                   style={{ marginBottom: 12 }}
                 />

@@ -18,7 +18,6 @@ import { Colors } from '../src/constants/Colors';
 import SuvixButton from '../src/components/SuvixButton';
 import { useAuthStore } from '../src/store/useAuthStore';
 import { useCategoryStore } from '../src/store/useCategoryStore';
-import { api } from '../src/api/client';
 import * as Haptics from 'expo-haptics';
 
 export default function SubcategorySelectionScreen() {
@@ -30,7 +29,7 @@ export default function SubcategorySelectionScreen() {
   const router = useRouter();
   const { categories } = useCategoryStore();
   const category = categories.find(c => c.id === categoryId);
-  const { clearTempSignupData, setAuth } = useAuthStore();
+  const { setTempSignupData } = useAuthStore();
   
   // ASSET MAPPING FOR DYNAMIC DATA
   const getCategoryAssets = (slug?: string) => {
@@ -92,53 +91,10 @@ export default function SubcategorySelectionScreen() {
     setLoading(true);
     try {
       handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
-      
-      const data = useAuthStore.getState().tempSignupData;
-      if (!data) throw new Error('Onboarding data is missing. Please restart signup.');
-
-      const formData = new FormData();
-      formData.append('fullName', data.name || '');
-      formData.append('username', data.username || '');
-      formData.append('email', data.email || '');
-      formData.append('password', data.password || '');
-      formData.append('phone', data.phone || '');
-      formData.append('motherTongue', data.motherTongue || 'English');
-      formData.append('categoryId', categoryId || '');
-      formData.append('roleSubCategoryIds', JSON.stringify(selectedSubs));
-
-      if (data.profileImage) {
-        const uriParts = data.profileImage.split('.');
-        const fileType = uriParts[uriParts.length - 1];
-        formData.append('profilePicture', {
-          uri: data.profileImage,
-          name: `profile.${fileType}`,
-          type: `image/${fileType}`,
-        } as any);
-      }
-
-      // CALL THE NEW ATOMIC REGISTER ENDPOINT
-      const response = await api.post('/auth/register-full', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      if (response.data.success) {
-        const { user, token: authToken } = response.data;
-        
-        // 1. CLEAR BUFFERS
-        clearTempSignupData();
-        
-        // 2. SET AUTH (This triggers the Global Layout Guard automatically)
-        await setAuth(user, authToken);
-        
-        // 3. SHOW WELCOME (The guard will handle the navigation in the background)
-        Alert.alert(
-          'SuviX Ready!', 
-          `Your professional account as a ${category?.name} is now active. Welcome to the elite community!`
-        );
-      }
+      setTempSignupData({ roleSubCategoryIds: selectedSubs });
+      router.push('/signup');
     } catch (error: any) {
-       console.error("Registration Error:", error.response?.data || error.message);
-       Alert.alert('Setup Failed', error.response?.data?.message || 'Could not finalize your professional profile.');
+       Alert.alert('Setup Failed', error.message || 'Could not save your sub-category selections.');
     } finally {
       setLoading(false);
     }
@@ -211,7 +167,7 @@ export default function SubcategorySelectionScreen() {
         style={styles.bottomBar}
       >
         <SuvixButton 
-          title="Finish Setup" 
+          title="Continue to Signup" 
           onPress={handleFinish}
           loading={loading}
           disabled={selectedSubs.length === 0}
