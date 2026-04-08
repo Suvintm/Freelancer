@@ -4,6 +4,7 @@ export interface StorySlide {
   id: string;
   image: string;
   caption?: string;
+  durationMs?: number;
 }
 
 export interface StoryItem {

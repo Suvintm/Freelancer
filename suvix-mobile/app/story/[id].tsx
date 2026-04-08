@@ -1,14 +1,14 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  Dimensions, 
-  Image, 
-  TouchableOpacity, 
-  Platform, 
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Animated,
+  Image,
+  TouchableOpacity,
+  Platform,
   StatusBar,
-  Pressable
+  Pressable,
 } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -17,21 +17,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useStories, StoryItem } from '../../src/hooks/useStories';
 
-const { width: SW, height: SH } = Dimensions.get('window');
+const DEFAULT_SLIDE_DURATION_MS = 5000;
+const MIN_SLIDE_DURATION_MS = 2000;
 
-/**
- * PRODUCTION-GRADE IMMERSIVE STORY ENGINE
- * Handles multi-user PagerView and interactive multi-slide navigation.
- */
 export default function StoryEngineScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { data: allStories } = useStories();
   const pagerRef = useRef<PagerView>(null);
 
-  // 1. Determine Initial Page based on ID
   const initialPageIndex = useMemo(() => {
-    const idx = allStories.findIndex(s => s._id === id);
+    const resolvedId = Array.isArray(id) ? id[0] : id;
+    const idx = allStories.findIndex((s) => s._id === resolvedId);
     return idx !== -1 ? idx : 0;
   }, [id, allStories]);
 
@@ -40,29 +37,30 @@ export default function StoryEngineScreen() {
   return (
     <View style={s.container}>
       <StatusBar hidden />
-      
       <PagerView
         ref={pagerRef}
         style={s.pager}
         initialPage={initialPageIndex}
+        overScrollMode="never"
+        offscreenPageLimit={1}
         onPageSelected={(e) => setCurrentPage(e.nativeEvent.position)}
       >
         {allStories.map((story, index) => (
           <View key={story._id} style={s.page}>
-            <StoryThread 
-              story={story} 
+            <StoryThread
+              story={story}
               isActive={index === currentPage}
               onClose={() => router.back()}
               onNextUser={() => {
                 if (index < allStories.length - 1) {
-                    pagerRef.current?.setPage(index + 1);
+                  pagerRef.current?.setPage(index + 1);
                 } else {
-                    router.back();
+                  router.back();
                 }
               }}
               onPrevUser={() => {
                 if (index > 0) {
-                    pagerRef.current?.setPage(index - 1);
+                  pagerRef.current?.setPage(index - 1);
                 }
               }}
             />
@@ -73,91 +71,193 @@ export default function StoryEngineScreen() {
   );
 }
 
-/**
- * Individual User Story Thread Component
- */
-function StoryThread({ 
-  story, 
-  isActive, 
-  onClose, 
-  onNextUser, 
-  onPrevUser 
-}: { 
-  story: StoryItem, 
-  isActive: boolean,
-  onClose: () => void,
-  onNextUser: () => void,
-  onPrevUser: () => void
+function StoryThread({
+  story,
+  isActive,
+  onClose,
+  onNextUser,
+  onPrevUser,
+}: {
+  story: StoryItem;
+  isActive: boolean;
+  onClose: () => void;
+  onNextUser: () => void;
+  onPrevUser: () => void;
 }) {
   const [slideIndex, setSlideIndex] = useState(0);
   const slides = story.slides;
   const currentSlide = slides[slideIndex];
   const router = useRouter();
 
-  // Reset slide index if user swipes away and back
-  useEffect(() => {
-    if (!isActive) {
-        setSlideIndex(0);
-    }
-  }, [isActive]);
+  const progress = useRef(new Animated.Value(0)).current;
+  const slideIndexRef = useRef(0);
+  const isMountedRef = useRef(true);
+  const isActiveRef = useRef(isActive);
+  const canTapRef = useRef(false);
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const unlockTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleNext = () => {
-    if (slideIndex < slides.length - 1) {
-      setSlideIndex(prev => prev + 1);
+  const clearAdvanceTimer = useCallback(() => {
+    if (advanceTimerRef.current) {
+      clearTimeout(advanceTimerRef.current);
+      advanceTimerRef.current = null;
+    }
+  }, []);
+
+  const clearUnlockTapTimer = useCallback(() => {
+    if (unlockTapTimerRef.current) {
+      clearTimeout(unlockTapTimerRef.current);
+      unlockTapTimerRef.current = null;
+    }
+  }, []);
+
+  const stopProgress = useCallback(
+    (resetValue: boolean) => {
+      progress.stopAnimation();
+      if (resetValue) {
+        progress.setValue(0);
+      }
+    },
+    [progress]
+  );
+
+  const lockTapBriefly = useCallback(() => {
+    canTapRef.current = false;
+    clearUnlockTapTimer();
+    unlockTapTimerRef.current = setTimeout(() => {
+      canTapRef.current = true;
+      unlockTapTimerRef.current = null;
+    }, 280);
+  }, [clearUnlockTapTimer]);
+
+  const handleNext = useCallback(() => {
+    clearAdvanceTimer();
+    stopProgress(true);
+
+    if (slideIndexRef.current < slides.length - 1) {
+      setSlideIndex((prev) => prev + 1);
+      slideIndexRef.current = slideIndexRef.current + 1;
+      lockTapBriefly();
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } else {
       onNextUser();
     }
-  };
+  }, [clearAdvanceTimer, lockTapBriefly, onNextUser, slides.length, stopProgress]);
 
-  const handlePrev = () => {
-    if (slideIndex > 0) {
-      setSlideIndex(prev => prev - 1);
+  const handlePrev = useCallback(() => {
+    clearAdvanceTimer();
+    stopProgress(true);
+
+    if (slideIndexRef.current > 0) {
+      setSlideIndex((prev) => prev - 1);
+      slideIndexRef.current = slideIndexRef.current - 1;
+      lockTapBriefly();
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } else {
       onPrevUser();
     }
-  };
+  }, [clearAdvanceTimer, lockTapBriefly, onPrevUser, stopProgress]);
 
-  const handleAddMore = () => {
+  const handleAddMore = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push('/story/create');
-  };
+  }, [router]);
+
+  useEffect(() => {
+    isActiveRef.current = isActive;
+
+    if (!isActive) {
+      canTapRef.current = false;
+      clearAdvanceTimer();
+      stopProgress(true);
+      setSlideIndex(0);
+      slideIndexRef.current = 0;
+      return;
+    }
+
+    lockTapBriefly();
+  }, [clearAdvanceTimer, isActive, lockTapBriefly, stopProgress]);
+
+  useEffect(() => {
+    slideIndexRef.current = slideIndex;
+    if (!isActiveRef.current) return;
+
+    const slide = slides[slideIndex];
+    const duration = Math.max(slide?.durationMs || DEFAULT_SLIDE_DURATION_MS, MIN_SLIDE_DURATION_MS);
+
+    clearAdvanceTimer();
+    stopProgress(true);
+
+    Animated.timing(progress, {
+      toValue: 1,
+      duration,
+      useNativeDriver: false,
+    }).start();
+
+    advanceTimerRef.current = setTimeout(() => {
+      if (!isMountedRef.current || !isActiveRef.current) return;
+      if (slideIndexRef.current !== slideIndex) return;
+      handleNext();
+    }, duration);
+  }, [clearAdvanceTimer, handleNext, progress, slideIndex, slides, stopProgress]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      clearAdvanceTimer();
+      clearUnlockTapTimer();
+      stopProgress(false);
+    };
+  }, [clearAdvanceTimer, clearUnlockTapTimer, stopProgress]);
 
   return (
     <View style={s.threadContainer}>
-      {/* ─── MEDIA CONTENT ─── */}
-      <Image 
-        source={{ uri: currentSlide.image }} 
-        style={StyleSheet.absoluteFill} 
-        resizeMode="cover" 
-      />
+      <Image source={{ uri: currentSlide.image }} style={StyleSheet.absoluteFill} resizeMode="cover" />
 
       <LinearGradient
         colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.8)']}
         style={StyleSheet.absoluteFill}
       />
 
-      {/* ─── GESTURE REGIONS ─── */}
       <View style={s.gestureLayer}>
-        <Pressable style={s.halfRegion} onPress={handlePrev} />
-        <Pressable style={s.halfRegion} onPress={handleNext} />
+        <Pressable
+          style={s.halfRegion}
+          onPress={() => {
+            if (!canTapRef.current) return;
+            handlePrev();
+          }}
+        />
+        <Pressable
+          style={s.halfRegion}
+          onPress={() => {
+            if (!canTapRef.current) return;
+            handleNext();
+          }}
+        />
       </View>
 
-      {/* ─── HEADER ─── */}
       <View style={s.header}>
-        {/* Progress Indicators */}
         <View style={s.progressContainer}>
-           {slides.map((_, i) => (
-             <View key={i} style={s.progressBarTrack}>
-                <View 
+          {slides.map((_, i) => (
+            <View key={i} style={s.progressBarTrack}>
+              {i < slideIndex && <View style={[s.progressBarLevel, { width: '100%' }]} />}
+              {i > slideIndex && <View style={[s.progressBarLevel, { width: '0%' }]} />}
+              {i === slideIndex && (
+                <Animated.View
                   style={[
-                    s.progressBarLevel, 
-                    { width: i < slideIndex ? '100%' : i === slideIndex ? '100%' : '0%' }
-                  ]} 
+                    s.progressBarLevel,
+                    {
+                      width: progress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0%', '100%'],
+                      }),
+                    },
+                  ]}
                 />
-             </View>
-           ))}
+              )}
+            </View>
+          ))}
         </View>
 
         <View style={s.userInfoRow}>
@@ -169,27 +269,25 @@ function StoryThread({
             </View>
           </View>
           <TouchableOpacity onPress={onClose} style={s.closeBtn}>
-             <Ionicons name="close" size={24} color="#fff" />
+            <Ionicons name="close" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* ─── CAPTION ─── */}
       {currentSlide.caption && (
         <View style={s.captionWrapper} pointerEvents="none">
-           <Text style={s.caption}>{currentSlide.caption}</Text>
+          <Text style={s.caption}>{currentSlide.caption}</Text>
         </View>
       )}
 
-      {/* ─── FOOTER (Only for current user story) ─── */}
       {story.isUserStory && (
         <View style={s.footer}>
-           <TouchableOpacity style={s.addBtn} onPress={handleAddMore}>
-              <View style={s.plusCircle}>
-                <Ionicons name="add" size={18} color="#fff" />
-              </View>
-              <Text style={s.addLabel}>Add Post</Text>
-           </TouchableOpacity>
+          <TouchableOpacity style={s.addBtn} onPress={handleAddMore}>
+            <View style={s.plusCircle}>
+              <Ionicons name="add" size={18} color="#fff" />
+            </View>
+            <Text style={s.addLabel}>Add Post</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>

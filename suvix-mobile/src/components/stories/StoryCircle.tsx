@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -11,8 +11,6 @@ import Animated, {
   useAnimatedStyle, 
   withTiming, 
   Easing,
-  runOnJS,
-  withRepeat,
   cancelAnimation
 } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
@@ -23,8 +21,6 @@ import { StoryItem } from '../../hooks/useStories';
 import { useTheme } from '../../context/ThemeContext';
 import { useRouter } from 'expo-router';
 
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-
 /**
  * PREMIUM STORY CIRCLE with 'Dashed Wave' Elevation
  * Features a high-fidelity SVG pulsing wave border that orbits a static avatar.
@@ -33,6 +29,7 @@ export const StoryCircle = React.memo(({ story }: { story: StoryItem }) => {
   const { isDarkMode, theme } = useTheme();
   const router = useRouter();
   const [isNavigating, setIsNavigating] = useState(false);
+  const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Wave Animation Values
   const waveScale = useSharedValue(1);
@@ -62,11 +59,26 @@ export const StoryCircle = React.memo(({ story }: { story: StoryItem }) => {
     }
   };
 
+  useEffect(() => {
+    return () => {
+      if (navTimerRef.current) {
+        clearTimeout(navTimerRef.current);
+        navTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const handlePress = () => {
     if (isNavigating) return;
     setIsNavigating(true);
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    cancelAnimation(waveScale);
+    cancelAnimation(waveRotate);
+    cancelAnimation(waveOpacity);
+    waveScale.value = 1;
+    waveRotate.value = 0;
 
     // 1. Kickstart the 'Dashed Wave' Pulsing Sequence
     waveOpacity.value = withTiming(1, { duration: 150 });
@@ -84,9 +96,10 @@ export const StoryCircle = React.memo(({ story }: { story: StoryItem }) => {
     });
 
     // 2. Scheduled Navigation
-    setTimeout(() => {
-      runOnJS(performNavigation)();
-    }, 800);
+    navTimerRef.current = setTimeout(() => {
+      performNavigation();
+      navTimerRef.current = null;
+    }, 650);
   };
 
   const isSeen = story.isSeen && !story.isUserStory;

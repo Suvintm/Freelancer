@@ -106,7 +106,7 @@ export default function DashboardIndex() {
       >
         {/* Banner Section (Always visible) */}
         <View style={styles.bannerWrapper}>
-          {isReady ? <UnifiedBanner pageName="home" /> : <View style={{ height: 200 }} />}
+          {isReady ? <UnifiedBanner /> : <View style={{ height: 200 }} />}
         </View>
 
         {/* Stories Section (Always visible) */}

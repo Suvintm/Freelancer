@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  Dimensions,
   StatusBar,
   Alert,
   useColorScheme
@@ -21,9 +20,6 @@ import { useAuthStore } from '../src/store/useAuthStore';
 import { useCategoryStore } from '../src/store/useCategoryStore';
 import { api } from '../src/api/client';
 import * as Haptics from 'expo-haptics';
-import { ActivityIndicator } from 'react-native';
-
-const { width } = Dimensions.get('window');
 
 export default function SubcategorySelectionScreen() {
   const colorScheme = useColorScheme();
@@ -34,6 +30,7 @@ export default function SubcategorySelectionScreen() {
   const router = useRouter();
   const { categories } = useCategoryStore();
   const category = categories.find(c => c.id === categoryId);
+  const { clearTempSignupData, setAuth } = useAuthStore();
   
   // ASSET MAPPING FOR DYNAMIC DATA
   const getCategoryAssets = (slug?: string) => {
@@ -51,10 +48,9 @@ export default function SubcategorySelectionScreen() {
   };
 
   const assets = getCategoryAssets(category?.slug);
-  const isYoutube = category?.slug === 'yt_influencer';
-
   // State for multiple selections
   const [selectedSubs, setSelectedSubs] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
 
   if (!category) {
     return (
@@ -63,10 +59,6 @@ export default function SubcategorySelectionScreen() {
       </SafeAreaView>
     );
   }
-
-
-  const { tempSignupData, setTempSignupData, clearTempSignupData, setAuth } = useAuthStore();
-  const [loading, setLoading] = useState(false);
 
   const handleImpact = (style: Haptics.ImpactFeedbackStyle = Haptics.ImpactFeedbackStyle.Light) => {
     Haptics.impactAsync(style);
@@ -103,8 +95,6 @@ export default function SubcategorySelectionScreen() {
       
       const data = useAuthStore.getState().tempSignupData;
       if (!data) throw new Error('Onboarding data is missing. Please restart signup.');
-
-      const backendRole = category?.roleGroup === 'CLIENT' ? 'client' : 'editor';
 
       const formData = new FormData();
       formData.append('fullName', data.name || '');

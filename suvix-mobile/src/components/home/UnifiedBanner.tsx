@@ -3,7 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  Dimensions,
+  useWindowDimensions,
   Image,
   FlatList,
   TouchableOpacity,
@@ -11,64 +11,98 @@ import {
 import { useTheme } from '../../context/ThemeContext';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useBannerData } from '../../hooks/useBannerData';
 
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = width - 48;
-const HEIGHT = CARD_WIDTH / (16 / 9);
+const HORIZONTAL_PADDING = 24;
+const BANNER_ASPECT_RATIO = 16 / 9;
+const AUTO_SCROLL_MS = 4500;
 
-export const UnifiedBanner = ({ data = [] }: any) => {
+type UnifiedBannerProps = {
+  data?: any[];
+  pageName?: string;
+};
+
+export const UnifiedBanner = ({ data }: UnifiedBannerProps) => {
   const { theme } = useTheme();
   const router = useRouter();
+  const { data: fetchedData = [] } = useBannerData();
+  const { width: screenWidth } = useWindowDimensions();
 
   const listRef = useRef<FlatList>(null);
   const [index, setIndex] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isUserDraggingRef = useRef(false);
 
-  // 🔥 Memoize banners
+  const cardWidth = screenWidth;
+  const imageWidth = screenWidth - HORIZONTAL_PADDING * 2;
+  const bannerHeight = imageWidth / BANNER_ASPECT_RATIO;
+
+  const sourceData = Array.isArray(data) && data.length ? data : fetchedData;
+
   const banners = useMemo(() => {
-    return data?.map((item: any) => ({
-      ...item,
-      image: item.thumbnailUrl || item.mediaUrl,
-    })) || [];
-  }, [data]);
+    return (sourceData || [])
+      .map((item: any) => ({
+        ...item,
+        image: item.thumbnailUrl || item.mediaUrl,
+      }))
+      .filter((item: any) => !!item.image);
+  }, [sourceData]);
 
-  // 🚀 Smooth auto scroll (NO setInterval lag)
   useEffect(() => {
-    if (!banners.length) return;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
 
-    const timer = setTimeout(() => {
+    if (banners.length <= 1 || isUserDraggingRef.current) return;
+
+    timerRef.current = setTimeout(() => {
       const next = (index + 1) % banners.length;
       listRef.current?.scrollToOffset({
-        offset: next * width,
+        offset: next * screenWidth,
         animated: true,
       });
       setIndex(next);
-    }, 4000);
+    }, AUTO_SCROLL_MS);
 
-    return () => clearTimeout(timer);
-  }, [index, banners.length]);
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [index, banners.length, screenWidth]);
+
+  useEffect(() => {
+    setIndex(0);
+    listRef.current?.scrollToOffset({
+      offset: 0,
+      animated: false,
+    });
+  }, [banners.length, screenWidth]);
 
   const renderItem = useCallback(({ item }: any) => {
+    const imageSource =
+      typeof item.image === 'string' ? { uri: item.image } : item.image;
+
     return (
-      <View style={[styles.card, { backgroundColor: theme.secondary }]}>
+      <View style={[styles.card, { width: cardWidth, height: bannerHeight }]}>
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={() => item.link && router.push(item.link)}
-          style={{ flex: 1 }}
+          style={[styles.touchable, { backgroundColor: theme.secondary }]}
         >
-          {/* Image */}
           <Image
-            source={{ uri: item.image }}
+            source={imageSource}
             style={styles.image}
             resizeMode="cover"
           />
 
-          {/* Overlay */}
           <LinearGradient
             colors={['rgba(0,0,0,0.7)', 'transparent']}
             style={StyleSheet.absoluteFill}
           />
 
-          {/* Content */}
           <View style={styles.content}>
             <Text style={styles.title}>{item.title}</Text>
             <Text style={styles.desc}>{item.description}</Text>
@@ -76,11 +110,13 @@ export const UnifiedBanner = ({ data = [] }: any) => {
         </TouchableOpacity>
       </View>
     );
-  }, []);
+  }, [bannerHeight, cardWidth, router, theme.secondary]);
 
   if (!banners.length) {
     return (
-      <View style={[styles.card, { backgroundColor: theme.secondary }]} />
+      <View style={[styles.card, { width: cardWidth, height: bannerHeight }]}>
+        <View style={[styles.touchable, { backgroundColor: theme.secondary }]} />
+      </View>
     );
   }
 
@@ -92,24 +128,34 @@ export const UnifiedBanner = ({ data = [] }: any) => {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        keyExtractor={(item, i) => i.toString()}
+        keyExtractor={(item, i) => item._id || i.toString()}
         renderItem={renderItem}
         getItemLayout={(_, i) => ({
-          length: width,
-          offset: width * i,
+          length: screenWidth,
+          offset: screenWidth * i,
           index: i,
         })}
+        onScrollBeginDrag={() => {
+          isUserDraggingRef.current = true;
+          if (timerRef.current) {
+            clearTimeout(timerRef.current);
+            timerRef.current = null;
+          }
+        }}
         onMomentumScrollEnd={(e) => {
-          const i = Math.round(e.nativeEvent.contentOffset.x / width);
+          const i = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+          isUserDraggingRef.current = false;
           setIndex(i);
         }}
-        removeClippedSubviews
+        decelerationRate="fast"
+        snapToInterval={screenWidth}
+        disableIntervalMomentum
+        removeClippedSubviews={false}
         windowSize={3}
         initialNumToRender={1}
         maxToRenderPerBatch={2}
       />
 
-      {/* Pagination Dots */}
       <View style={styles.dots}>
         {banners.map((_: any, i: number) => (
           <View
@@ -127,14 +173,16 @@ export const UnifiedBanner = ({ data = [] }: any) => {
 
 const styles = StyleSheet.create({
   card: {
-    width: width,
-    height: HEIGHT,
-    paddingHorizontal: 24,
+    paddingHorizontal: HORIZONTAL_PADDING,
+  },
+  touchable: {
+    flex: 1,
+    borderRadius: 20,
+    overflow: 'hidden',
   },
   image: {
     width: '100%',
     height: '100%',
-    borderRadius: 20,
   },
   content: {
     position: 'absolute',
