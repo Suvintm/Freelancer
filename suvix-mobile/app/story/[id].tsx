@@ -3,13 +3,19 @@ import {
   View,
   Text,
   StyleSheet,
-  Animated,
   Image,
   TouchableOpacity,
   Platform,
   StatusBar,
   Pressable,
 } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import PagerView from 'react-native-pager-view';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,6 +39,7 @@ export default function StoryEngineScreen() {
   }, [id, allStories]);
 
   const [currentPage, setCurrentPage] = useState(initialPageIndex);
+  const [isPagerInteracting, setIsPagerInteracting] = useState(false);
 
   return (
     <View style={s.container}>
@@ -41,29 +48,38 @@ export default function StoryEngineScreen() {
         ref={pagerRef}
         style={s.pager}
         initialPage={initialPageIndex}
+        orientation="horizontal"
         overScrollMode="never"
         offscreenPageLimit={1}
+        onPageScrollStateChanged={(e) => {
+          setIsPagerInteracting(e.nativeEvent.pageScrollState !== 'idle');
+        }}
         onPageSelected={(e) => setCurrentPage(e.nativeEvent.position)}
       >
         {allStories.map((story, index) => (
           <View key={story._id} style={s.page}>
-            <StoryThread
-              story={story}
-              isActive={index === currentPage}
-              onClose={() => router.back()}
-              onNextUser={() => {
-                if (index < allStories.length - 1) {
-                  pagerRef.current?.setPage(index + 1);
-                } else {
-                  router.back();
-                }
-              }}
-              onPrevUser={() => {
-                if (index > 0) {
-                  pagerRef.current?.setPage(index - 1);
-                }
-              }}
-            />
+            {Math.abs(index - currentPage) <= 1 ? (
+              <StoryThread
+                story={story}
+                isActive={index === currentPage}
+                isPagerInteracting={isPagerInteracting}
+                onClose={() => router.back()}
+                onNextUser={() => {
+                  if (index < allStories.length - 1) {
+                    pagerRef.current?.setPage(index + 1);
+                  } else {
+                    router.back();
+                  }
+                }}
+                onPrevUser={() => {
+                  if (index > 0) {
+                    pagerRef.current?.setPage(index - 1);
+                  }
+                }}
+              />
+            ) : (
+              <View style={s.threadPlaceholder} />
+            )}
           </View>
         ))}
       </PagerView>
@@ -74,12 +90,14 @@ export default function StoryEngineScreen() {
 function StoryThread({
   story,
   isActive,
+  isPagerInteracting,
   onClose,
   onNextUser,
   onPrevUser,
 }: {
   story: StoryItem;
   isActive: boolean;
+  isPagerInteracting: boolean;
   onClose: () => void;
   onNextUser: () => void;
   onPrevUser: () => void;
@@ -89,7 +107,7 @@ function StoryThread({
   const currentSlide = slides[slideIndex];
   const router = useRouter();
 
-  const progress = useRef(new Animated.Value(0)).current;
+  const progress = useSharedValue(0);
   const slideIndexRef = useRef(0);
   const isMountedRef = useRef(true);
   const isActiveRef = useRef(isActive);
@@ -113,9 +131,9 @@ function StoryThread({
 
   const stopProgress = useCallback(
     (resetValue: boolean) => {
-      progress.stopAnimation();
+      cancelAnimation(progress);
       if (resetValue) {
-        progress.setValue(0);
+        progress.value = 0;
       }
     },
     [progress]
@@ -179,8 +197,18 @@ function StoryThread({
   }, [clearAdvanceTimer, isActive, lockTapBriefly, stopProgress]);
 
   useEffect(() => {
+    if (isPagerInteracting) {
+      canTapRef.current = false;
+      clearAdvanceTimer();
+      stopProgress(false);
+    } else if (isActiveRef.current) {
+      lockTapBriefly();
+    }
+  }, [clearAdvanceTimer, isPagerInteracting, lockTapBriefly, stopProgress]);
+
+  useEffect(() => {
     slideIndexRef.current = slideIndex;
-    if (!isActiveRef.current) return;
+    if (!isActiveRef.current || isPagerInteracting) return;
 
     const slide = slides[slideIndex];
     const duration = Math.max(slide?.durationMs || DEFAULT_SLIDE_DURATION_MS, MIN_SLIDE_DURATION_MS);
@@ -188,18 +216,24 @@ function StoryThread({
     clearAdvanceTimer();
     stopProgress(true);
 
-    Animated.timing(progress, {
-      toValue: 1,
+    progress.value = withTiming(1, {
       duration,
-      useNativeDriver: false,
-    }).start();
+      easing: Easing.linear,
+    });
 
     advanceTimerRef.current = setTimeout(() => {
       if (!isMountedRef.current || !isActiveRef.current) return;
       if (slideIndexRef.current !== slideIndex) return;
       handleNext();
     }, duration);
-  }, [clearAdvanceTimer, handleNext, progress, slideIndex, slides, stopProgress]);
+  }, [clearAdvanceTimer, handleNext, isPagerInteracting, progress, slideIndex, slides, stopProgress]);
+
+  useEffect(() => {
+    const nextSlide = slides[slideIndex + 1];
+    if (nextSlide?.image) {
+      Image.prefetch(nextSlide.image).catch(() => {});
+    }
+  }, [slideIndex, slides]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -210,6 +244,10 @@ function StoryThread({
       stopProgress(false);
     };
   }, [clearAdvanceTimer, clearUnlockTapTimer, stopProgress]);
+
+  const activeProgressStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleX: progress.value }],
+  }));
 
   return (
     <View style={s.threadContainer}>
@@ -224,14 +262,14 @@ function StoryThread({
         <Pressable
           style={s.halfRegion}
           onPress={() => {
-            if (!canTapRef.current) return;
+            if (!canTapRef.current || isPagerInteracting) return;
             handlePrev();
           }}
         />
         <Pressable
           style={s.halfRegion}
           onPress={() => {
-            if (!canTapRef.current) return;
+            if (!canTapRef.current || isPagerInteracting) return;
             handleNext();
           }}
         />
@@ -245,15 +283,7 @@ function StoryThread({
               {i > slideIndex && <View style={[s.progressBarLevel, { width: '0%' }]} />}
               {i === slideIndex && (
                 <Animated.View
-                  style={[
-                    s.progressBarLevel,
-                    {
-                      width: progress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ['0%', '100%'],
-                      }),
-                    },
-                  ]}
+                  style={[s.progressBarLevel, s.progressBarAnimated, activeProgressStyle]}
                 />
               )}
             </View>
@@ -298,6 +328,7 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   pager: { flex: 1 },
   page: { flex: 1 },
+  threadPlaceholder: { flex: 1, backgroundColor: '#000' },
   threadContainer: { flex: 1 },
 
   gestureLayer: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', zIndex: 5 },
@@ -326,6 +357,10 @@ const s = StyleSheet.create({
   progressBarLevel: {
     height: '100%',
     backgroundColor: '#fff',
+  },
+  progressBarAnimated: {
+    width: '100%',
+    transformOrigin: 'left center',
   },
 
   userInfoRow: {

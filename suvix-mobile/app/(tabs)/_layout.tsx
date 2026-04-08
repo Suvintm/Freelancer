@@ -2,7 +2,7 @@ import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react'
 import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PagerView from 'react-native-pager-view';
-import { useSegments, useRouter } from 'expo-router';
+import { useSegments } from 'expo-router';
 import { useTheme } from '../../src/context/ThemeContext';
 import { AnimatedTabBar } from '../../src/components/AnimatedTabBar';
 import { TopNavbar } from '../../src/components/TopNavbar';
@@ -30,7 +30,7 @@ export default function TabsLayout() {
   const { user } = useAuthStore();
   const pagerRef = useRef<PagerView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [renderedPages, setRenderedPages] = useState<Set<number>>(new Set([0]));
+  const activeIndexRef = useRef(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const insets = useSafeAreaInsets();
   const segments = useSegments() as string[];
@@ -60,54 +60,39 @@ export default function TabsLayout() {
 
   // 3. Route Sync: Listen for segment changes and sync PagerView
   useEffect(() => {
-    // Expected Segments: ['(tabs)', 'nearby'] or similar
-    let targetIndex = -1;
-    if (segments.length >= 2 && segments[0] === '(tabs)') {
-      const targetTab = segments[1];
-      targetIndex = filteredTabs.findIndex(t => t.name === targetTab);
-    } else if (segments.length === 1 && segments[0] === '(tabs)') {
-      targetIndex = filteredTabs.findIndex(t => t.name === 'index');
-    }
+    if (segments[0] !== '(tabs)') return;
 
-    if (targetIndex !== -1) {
-      if (targetIndex !== activeIndex) {
-        pagerRef.current?.setPage(targetIndex);
-        setActiveIndex(targetIndex);
-      }
-      // Add to lazy set
-      if (!renderedPages.has(targetIndex)) {
-        setRenderedPages(prev => new Set([...Array.from(prev), targetIndex]));
-      }
+    // Important: do not force 'index' when second segment is missing.
+    // This avoids snapping back to Home after local tab presses.
+    const targetTab = segments[1];
+    if (!targetTab) return;
+
+    const targetIndex = filteredTabs.findIndex((t) => t.name === targetTab);
+    if (targetIndex === -1) return;
+
+    if (targetIndex !== activeIndexRef.current) {
+      pagerRef.current?.setPageWithoutAnimation(targetIndex);
+      setActiveIndex(targetIndex);
+      activeIndexRef.current = targetIndex;
     }
-  }, [segments, filteredTabs, renderedPages]);
+  }, [segments, filteredTabs]);
 
   const onPageSelected = useCallback((e: any) => {
     const newIdx = e.nativeEvent.position;
     setActiveIndex(newIdx);
-    if (!renderedPages.has(newIdx)) {
-      setRenderedPages(prev => new Set([...Array.from(prev), newIdx]));
-    }
-  }, [renderedPages]);
+    activeIndexRef.current = newIdx;
+  }, []);
 
   const goToPage = useCallback((index: number) => {
-    pagerRef.current?.setPage(index);
+    if (index === activeIndexRef.current) return;
+
+    pagerRef.current?.setPageWithoutAnimation(index);
     setActiveIndex(index);
-    if (!renderedPages.has(index)) {
-      setRenderedPages(prev => new Set([...Array.from(prev), index]));
-    }
-  }, [renderedPages]);
+    activeIndexRef.current = index;
+  }, []);
 
   // Helper to render the correct screen component
   const renderScreen = (name: string, index: number) => {
-    // Zero-Latency Optimization: Only build the component if it has been visited
-    if (!renderedPages.has(index)) {
-      return (
-        <View style={{ flex: 1, backgroundColor: theme.primary, justifyContent: 'center', alignItems: 'center' }}>
-          {/* Extremely light placeholder to avoid bridge traffic */}
-        </View>
-      );
-    }
-
     switch (name) {
       case 'index':   return <HomeScreen />;
       case 'explore': return <ExploreScreen />;

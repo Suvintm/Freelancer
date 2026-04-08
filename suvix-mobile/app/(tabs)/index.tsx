@@ -38,11 +38,22 @@ export default function DashboardIndex() {
   const { theme } = useTheme();
   const { user, isLoadingUser, isAuthenticated } = useAuthStore();
   const [isReady, setIsReady] = React.useState(false);
+  const [isHomeScrolling, setIsHomeScrolling] = React.useState(false);
+  const scrollIdleTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // STAGGERED INITIALIZATION: Delay heavy Reanimated components to avoid Main Thread choke
   React.useEffect(() => {
     const timer = setTimeout(() => setIsReady(true), 150);
     return () => clearTimeout(timer);
+  }, []);
+
+  React.useEffect(() => {
+    return () => {
+      if (scrollIdleTimerRef.current) {
+        clearTimeout(scrollIdleTimerRef.current);
+        scrollIdleTimerRef.current = null;
+      }
+    };
   }, []);
 
   useFocusEffect(
@@ -102,11 +113,41 @@ export default function DashboardIndex() {
       <ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={{ paddingBottom: 60 }}
-        removeClippedSubviews={true} // Performance optimization for large feeds
+        removeClippedSubviews={false}
+        onScrollBeginDrag={() => {
+          if (scrollIdleTimerRef.current) {
+            clearTimeout(scrollIdleTimerRef.current);
+            scrollIdleTimerRef.current = null;
+          }
+          setIsHomeScrolling(true);
+        }}
+        onMomentumScrollBegin={() => {
+          if (scrollIdleTimerRef.current) {
+            clearTimeout(scrollIdleTimerRef.current);
+            scrollIdleTimerRef.current = null;
+          }
+          setIsHomeScrolling(true);
+        }}
+        onScrollEndDrag={() => {
+          if (scrollIdleTimerRef.current) {
+            clearTimeout(scrollIdleTimerRef.current);
+          }
+          scrollIdleTimerRef.current = setTimeout(() => {
+            setIsHomeScrolling(false);
+            scrollIdleTimerRef.current = null;
+          }, 120);
+        }}
+        onMomentumScrollEnd={() => {
+          if (scrollIdleTimerRef.current) {
+            clearTimeout(scrollIdleTimerRef.current);
+            scrollIdleTimerRef.current = null;
+          }
+          setIsHomeScrolling(false);
+        }}
       >
         {/* Banner Section (Always visible) */}
         <View style={styles.bannerWrapper}>
-          {isReady ? <UnifiedBanner /> : <View style={{ height: 200 }} />}
+          {isReady ? <UnifiedBanner paused={isHomeScrolling} /> : <View style={{ height: 200 }} />}
         </View>
 
         {/* Stories Section (Always visible) */}
@@ -125,7 +166,7 @@ export default function DashboardIndex() {
         </View>
 
         {/* Feature Gallery / Service Quick Links (Always visible) */}
-        {isReady && <FeatureGallery />}
+        {isReady && <FeatureGallery paused={isHomeScrolling} />}
         
         {/* Dynamic Action Module (Static Render) */}
         <View style={styles.moduleSection}>

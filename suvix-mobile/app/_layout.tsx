@@ -10,6 +10,22 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useDashboardStore } from '../src/store/useDashboardStore';
 import { useCategoryStore } from '../src/store/useCategoryStore';
 import { Image } from 'react-native';
+import { preloadHomeAssets } from '../src/constants/homePreload';
+import * as Sentry from '@sentry/react-native';
+
+const SENTY_DSN = 'https://75a9e29c9099f1cc238a0b0ade5c7dd5@o4511092628652032.ingest.us.sentry.io/4511183274639360';
+
+if (!__DEV__) {
+  try {
+    Sentry.init({
+      dsn: SENTY_DSN,
+      sendDefaultPii: true,
+      enableLogs: false,
+    });
+  } catch (e) {
+    console.warn('[SENTRY] Init skipped due to runtime issue:', e);
+  }
+}
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -74,6 +90,8 @@ function InitialRoot() {
         } else {
           console.log('👤 [BOOT] No local token found. Proceeding as Guest.');
         }
+        // 4. Preload home assets while splash/intro is still visible.
+        await preloadHomeAssets(1400);
       } catch (e) {
         console.error('❌ [BOOT] Critical failure during bootstrap:', e);
       } finally {
@@ -202,7 +220,7 @@ function InitialRoot() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
@@ -213,3 +231,5 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+export default __DEV__ ? RootLayout : Sentry.wrap(RootLayout);

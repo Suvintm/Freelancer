@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { StoryCircle } from './StoryCircle';
-import { useStories, StoryItem } from '../../hooks/useStories';
+import { useStories } from '../../hooks/useStories';
 
 /**
  * STORY BAR
@@ -14,10 +14,6 @@ import { useStories, StoryItem } from '../../hooks/useStories';
  */
 export const StoryBar = () => {
   const { data, isLoading } = useStories();
-
-  const handlePress = (story: StoryItem) => {
-    // Taps are handled inside StoryCircle for localized 'Wave' animations
-  };
 
   if (isLoading) {
     return (
@@ -35,6 +31,15 @@ export const StoryBar = () => {
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item._id}
         contentContainerStyle={s.content}
+        removeClippedSubviews
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={5}
+        getItemLayout={(_, index) => ({
+          length: 92,
+          offset: 92 * index,
+          index,
+        })}
         renderItem={({ item }) => (
           <StoryCircle 
             story={item} 

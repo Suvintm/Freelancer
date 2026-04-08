@@ -3,7 +3,10 @@
     "name": "SuviX",
     "slug": "suvix-mobile",
     "version": "1.0.0",
-    "platforms": ["android", "ios"],
+    "platforms": [
+      "android",
+      "ios"
+    ],
     "orientation": "portrait",
     "icon": "./assets/appicon.png",
     "userInterfaceStyle": "light",
@@ -61,6 +64,14 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow SuviX to access your location to find nearby experts.",
           "isAndroidBackgroundEnabled": true
+        }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "suvix"
         }
       ]
     ],

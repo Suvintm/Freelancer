@@ -20,9 +20,10 @@ const AUTO_SCROLL_MS = 4500;
 type UnifiedBannerProps = {
   data?: any[];
   pageName?: string;
+  paused?: boolean;
 };
 
-export const UnifiedBanner = ({ data }: UnifiedBannerProps) => {
+export const UnifiedBanner = ({ data, paused = false }: UnifiedBannerProps) => {
   const { theme } = useTheme();
   const router = useRouter();
   const { data: fetchedData = [] } = useBannerData();
@@ -54,7 +55,7 @@ export const UnifiedBanner = ({ data }: UnifiedBannerProps) => {
       timerRef.current = null;
     }
 
-    if (banners.length <= 1 || isUserDraggingRef.current) return;
+    if (paused || banners.length <= 1 || isUserDraggingRef.current) return;
 
     timerRef.current = setTimeout(() => {
       const next = (index + 1) % banners.length;
@@ -71,7 +72,7 @@ export const UnifiedBanner = ({ data }: UnifiedBannerProps) => {
         timerRef.current = null;
       }
     };
-  }, [index, banners.length, screenWidth]);
+  }, [index, paused, banners.length, screenWidth]);
 
   useEffect(() => {
     setIndex(0);
