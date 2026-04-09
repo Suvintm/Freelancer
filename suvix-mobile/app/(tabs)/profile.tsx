@@ -68,7 +68,7 @@ export default function ProfileIndex() {
   const ActiveProfileModule = PROFILE_REGISTRY[activeModule] || DefaultProfile;
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.primary, paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: theme.primary }}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <ActiveProfileModule />
     </View>

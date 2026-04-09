@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useTheme } from '../../../context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatCount } from '../../../utils/formatters';
 
@@ -17,6 +18,7 @@ const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 export default function DefaultProfile() {
   const { theme } = useTheme();
   const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
 
   if (!user) return null;
 
@@ -25,9 +27,14 @@ export default function DefaultProfile() {
   const roleText = user.primaryRole?.category || user.role || 'Member';
   const bioText = `Building with SuviX as ${roleText}.`;
 
+  const headerOffset = insets.top + 50;
+
   return (
     <View style={[styles.container, { backgroundColor: theme.primary }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={[styles.content, { paddingTop: headerOffset }]}
+      >
         <LinearGradient
           colors={['#101828', '#1d2939', '#344054']}
           start={{ x: 0, y: 0 }}
@@ -150,16 +157,8 @@ const styles = StyleSheet.create({
   miniStat: {
     alignItems: 'center',
   },
-  miniStatValue: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  miniStatLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: 2,
-    opacity: 0.7,
-  },
+  miniStatValue: { fontSize: 18, fontWeight: '900', letterSpacing: -0.5 },
+  miniStatLabel: { fontSize: 10, fontWeight: '700', marginTop: 3, textTransform: 'uppercase', opacity: 0.6, letterSpacing: 0.8 },
   infoBlock: {
     marginTop: 12,
   },

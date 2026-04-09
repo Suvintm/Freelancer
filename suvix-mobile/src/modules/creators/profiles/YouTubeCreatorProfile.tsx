@@ -8,8 +8,11 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  Linking,
+  Alert,
 } from 'react-native';
 import { useTheme } from '../../../context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/Colors';
@@ -22,6 +25,7 @@ const { width } = Dimensions.get('window');
 export default function YouTubeCreatorProfile() {
   const { theme } = useTheme();
   const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
 
   if (!user || !user.youtubeProfile) return null;
 
@@ -29,9 +33,24 @@ export default function YouTubeCreatorProfile() {
   const displayName = user.name || youtubeProfile.channel_name;
   const subCategoryName = user.primaryRole?.subCategory || 'YouTube Creator';
 
+  // Calculate header height (Navbar 50 + Safe Area Inset Top)
+  const headerOffset = insets.top + 50;
+
+  const handleViewChannel = async () => {
+    try {
+      const url = `https://www.youtube.com/channel/${youtubeProfile.channel_id}`;
+      await Linking.openURL(url);
+    } catch (error) {
+      Alert.alert("Error", "Could not open YouTube link. Please check your internet connection or try again later.");
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.primary }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={[styles.content, { paddingTop: headerOffset, flexGrow: 1 }]}
+      >
         
         {/* YT Dynamic Banner */}
         <LinearGradient
@@ -90,18 +109,37 @@ export default function YouTubeCreatorProfile() {
             </Text>
           </View>
 
-          {/* Video Count Anchor */}
-          <View style={[styles.statsHub, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-             <View style={styles.statCell}>
-                <Text style={[styles.statValue, { color: theme.text }]}>
-                  {formatCount(youtubeProfile.video_count)}
-                </Text>
-                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>YouTube Uploads</Text>
-             </View>
-             <View style={[styles.statCell, { borderLeftWidth: 1, borderLeftColor: theme.border }]}>
-                <Text style={[styles.statValue, { color: theme.accent }]}>PRO</Text>
-                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Creator Tier</Text>
-             </View>
+          {/* Linked Channels Section */}
+          <Text style={[styles.sectionTitle, { color: theme.text, marginTop: 22 }]}>Linked Channels</Text>
+          <View style={[styles.channelCard, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
+            <Image 
+              source={youtubeProfile.thumbnail_url ? { uri: youtubeProfile.thumbnail_url } : DEFAULT_AVATAR} 
+              style={styles.channelThumb}
+            />
+            <View style={styles.channelInfo}>
+              <Text style={[styles.channelName, { color: theme.text }]} numberOfLines={1}>{youtubeProfile.channel_name}</Text>
+              <View style={styles.channelStatsRow}>
+                <View style={styles.channelStat}>
+                  <MaterialCommunityIcons name="account-group" size={14} color="#FF0000" />
+                  <Text style={[styles.channelStatText, { color: theme.textSecondary }]}>
+                    {formatCount(youtubeProfile.subscriber_count)}
+                  </Text>
+                </View>
+                <View style={[styles.channelStat, { marginLeft: 12 }]}>
+                  <MaterialCommunityIcons name="movie-play" size={14} color={theme.accent} />
+                  <Text style={[styles.channelStatText, { color: theme.textSecondary }]}>
+                    {formatCount(youtubeProfile.video_count)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+            <View style={styles.cardActions}>
+              <MaterialCommunityIcons name="check-circle" size={16} color="#FF0000" style={{ marginBottom: 8 }} />
+              <TouchableOpacity style={styles.viewBtn} onPress={handleViewChannel}>
+                <Text style={[styles.viewBtnText, { color: theme.accent }]}>View</Text>
+                <MaterialCommunityIcons name="open-in-new" size={12} color={theme.accent} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Creator Toolbox */}
@@ -135,7 +173,7 @@ export default function YouTubeCreatorProfile() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingTop: 0, paddingBottom: 40 },
-  banner: { height: 120, width: '100%', justifyContent: 'center', alignItems: 'center' },
+  banner: { height: 100, width: '100%', justifyContent: 'center', alignItems: 'center' },
   bannerOverlay: { opacity: 0.5 },
   profileWrap: { marginTop: -20, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 20, paddingBottom: 20 },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginTop: -40, gap: 15 },
@@ -145,8 +183,8 @@ const styles = StyleSheet.create({
   headerStats: { flex: 1, justifyContent: 'center' },
   miniStatsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, paddingRight: 5 },
   miniStat: { alignItems: 'center' },
-  miniStatValue: { fontSize: 16, fontWeight: '800' },
-  miniStatLabel: { fontSize: 10, fontWeight: '600', marginTop: 2, opacity: 0.7 },
+  miniStatValue: { fontSize: 18, fontWeight: '900', letterSpacing: -0.5 },
+  miniStatLabel: { fontSize: 10, fontWeight: '700', marginTop: 3, textTransform: 'uppercase', opacity: 0.6, letterSpacing: 0.8 },
   editBtn: { height: 36, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
   editBtnText: { fontSize: 12, fontWeight: '700' },
   infoBlock: { marginTop: 12 },
@@ -154,10 +192,40 @@ const styles = StyleSheet.create({
   name: { fontSize: 20, fontWeight: '800' },
   niche: { fontSize: 11, fontWeight: '900', marginTop: 2, letterSpacing: 1 },
   bio: { fontSize: 13, marginTop: 8, lineHeight: 18 },
-  statsHub: { flexDirection: 'row', marginTop: 20, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
-  statCell: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: 18, fontWeight: '800' },
-  statLabel: { fontSize: 10, fontWeight: '600', marginTop: 2, textTransform: 'uppercase' },
+  channelCard: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginTop: 10, 
+    padding: 12, 
+    borderRadius: 16, 
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2
+  },
+  channelThumb: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#f1f5f9' },
+  channelInfo: { flex: 1, marginLeft: 12 },
+  channelName: { fontSize: 15, fontWeight: '800' },
+  channelStatsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+  channelStat: { flexDirection: 'row', alignItems: 'center' },
+  channelStatText: { fontSize: 11, fontWeight: '700', marginLeft: 4 },
+  cardActions: { 
+    alignItems: 'flex-end', 
+    justifyContent: 'center',
+    paddingLeft: 10
+  },
+  viewBtn: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: 'rgba(255,255,255,0.05)', 
+    paddingHorizontal: 8, 
+    paddingVertical: 5, 
+    borderRadius: 8,
+    gap: 4
+  },
+  viewBtnText: { fontSize: 11, fontWeight: '800' },
   sectionTitle: { fontSize: 18, fontWeight: '800', marginTop: 28, marginBottom: 16 },
   toolbox: { flexDirection: 'row', justifyContent: 'space-between' },
   toolCard: { width: '31%', padding: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
