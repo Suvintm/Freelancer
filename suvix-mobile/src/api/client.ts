@@ -46,13 +46,15 @@ resolveApiUrl();
 // baseURL starts as PROD_URL as a safe default.
 // The request interceptor swaps it to the resolved URL before every request.
 // ──────────────────────────────────────────────────────────────────────────────
+import * as Device from 'expo-device';
+
 export const api: AxiosInstance = axios.create({
   baseURL: PROD_URL,
-  timeout: 10000,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'User-Agent': `${Device.deviceName || 'Unknown Device'} - SuviX Mobile (${Device.osName} ${Device.osVersion})`,
   },
 });
 
@@ -82,17 +84,76 @@ api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
 
 /**
  * RESPONSE INTERCEPTOR
- * 🛡️ PRODUCTION HARDENED: No retries. Each request fires exactly once.
- * Handles global 401 auto-logout only.
+ * 🛡️ PRODUCTION HARDENED: Seamless Session Recovery
+ * Handles 401s by attempting an automatic token refresh.
  */
+let isRefreshing = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
+
+function subscribeTokenRefresh(cb: (token: string) => void) {
+  refreshSubscribers.push(cb);
+}
+
+function onRerfreshed(token: string) {
+  refreshSubscribers.map(cb => cb(token));
+  refreshSubscribers = [];
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      console.warn('🗝️ [API] Session expired (401). Logging out...');
-      const { useAuthStore } = require('../store/useAuthStore');
-      (useAuthStore.getState() as any).logout();
-      return Promise.reject(error);
+    const { config, response } = error;
+    const originalRequest = config as any;
+
+    if (response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise(resolve => {
+          subscribeTokenRefresh((token: string) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            resolve(api(originalRequest));
+          });
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        // @ts-ignore
+        const { useAuthStore } = require('../store/useAuthStore');
+        const refreshToken = useAuthStore.getState().refreshToken;
+
+        if (!refreshToken) throw new Error('No refresh token available');
+
+        console.log('🔄 [API] Attempting seamless session recovery...');
+        const res = await axios.post(`${await resolveApiUrl()}/auth/refresh-token`, { 
+          refreshToken 
+        });
+
+        if (res.data.success) {
+          const { token, refreshToken: newRefreshToken } = res.data;
+          
+          // Update the store
+          await useAuthStore.getState().setTokens(token, newRefreshToken);
+          
+          console.log('✅ [API] Session refreshed successfully.');
+          isRefreshing = false;
+          onRerfreshed(token);
+
+          // Retry the original request
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return api(originalRequest);
+        }
+      } catch (refreshError) {
+        console.error('❌ [API] Session recovery failed:', refreshError);
+        isRefreshing = false;
+        refreshSubscribers = [];
+        
+        // Final logout
+        const { useAuthStore } = require('../store/useAuthStore');
+        useAuthStore.getState().logout();
+        return Promise.reject(refreshError);
+      }
     }
 
     if (__DEV__) {

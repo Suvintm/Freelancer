@@ -169,14 +169,25 @@ export const updateMinimalProfile = asyncHandler(async (req, res) => {
     throw new ApiError(409, "This username is already claimed. Choose another one!");
   }
 
-  // 2. Update Profile & User status
-  const updated = await prisma.userProfile.update({
-    where: { userId },
-    data: {
-      username: normalizedUsername,
-      phone: phone.trim(),
-      updated_at: new Date(),
-    }
+  // 2. Update Profile & User status atomically
+  const updated = await prisma.$transaction(async (tx) => {
+    // Update Profile
+    const profile = await tx.userProfile.update({
+      where: { userId },
+      data: {
+        username: normalizedUsername,
+        phone: phone.trim(),
+        updated_at: new Date(),
+      }
+    });
+
+    // Mark user as onboarded
+    await tx.user.update({
+      where: { id: userId },
+      data: { is_onboarded: true }
+    });
+
+    return profile;
   });
 
   return res.status(200).json({

@@ -251,11 +251,15 @@ const redisProxy = {
     if (!redisAvailable || !client) {
       // Return a mock pipeline that does nothing if Redis is down
       const mock = {
+        set: () => mock,
+        sadd: () => mock,
+        del: () => mock,
         setbit: () => mock,
         getbit: () => mock,
         incr: () => mock,
         expire: () => mock,
-        hincrby: () => mock, // standard ioredis name
+        srem: () => mock,
+        hincrby: () => mock, 
         hIncrBy: () => mock, 
         exec: () => Promise.resolve([]),
       };

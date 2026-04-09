@@ -7,7 +7,8 @@ import axios from "axios";
 import crypto from "crypto";
 import { authLimiter, redis } from "../../../middleware/rateLimiter.js";
 import { OAuth2Client } from "google-auth-library";
-import { generateAccessToken, generateRefreshToken } from "../utils/jwt.js";
+import { generateAccessToken, generateRefreshToken, hashToken } from "../utils/jwt.js";
+import { checkAccountLockout } from "../../../middleware/lockoutMiddleware.js";
 
 const router = express.Router();
 
@@ -62,7 +63,8 @@ router.get(
             const otc = await generateOTC({ 
                 userId: user.id,
                 role: user.role,
-                isOnboarded: user.is_onboarded 
+                isOnboarded: user.is_onboarded,
+                isVerified: user.is_verified
             });
 
             // Redirect with a short-lived exchange code
@@ -112,11 +114,29 @@ router.post("/exchange-code", authLimiter, async (req, res) => {
         if (!user) throw new Error("User associated with code no longer exists");
 
         // Generate production-grade JWTs
+        const familyId = crypto.randomUUID();
         const accessToken = generateAccessToken({ id: user.id, role: user.role });
-        const refreshToken = generateRefreshToken({ id: user.id });
+        const refreshToken = generateRefreshToken({ id: user.id, familyId });
+        const hashedToken = hashToken(refreshToken);
 
-        // Store refresh token in Redis (Session Rotation)
-        await redis.set(`refresh_token:${refreshToken}`, user.id, "EX", 7 * 24 * 60 * 60);
+        // CAPTURE METADATA
+        const userAgent = req.headers["user-agent"] || "OAuth Client";
+        const ip = req.ip || req.connection.remoteAddress;
+
+        const sessionData = JSON.stringify({
+            userId: user.id,
+            familyId,
+            metadata: { userAgent, ip, lastActive: new Date().toISOString() }
+        });
+
+        // ATOMIC SESSION STORAGE (1 Hit)
+        await redis.pipeline()
+            .set(`refresh_token:${hashedToken}`, sessionData, "EX", 7 * 24 * 60 * 60)
+            .sadd(`token_family:${familyId}`, hashedToken)
+            .expire(`token_family:${familyId}`, 7 * 24 * 60 * 60)
+            .exec();
+
+        logger.info(`[SECURITY] OTC Exchange Success: User ${user.id} - New family: ${familyId}`);
 
         res.status(200).json({
             success: true,
@@ -128,6 +148,8 @@ router.post("/exchange-code", authLimiter, async (req, res) => {
                 name: user.profile?.name,
                 username: user.profile?.username,
                 isOnboarded: user.is_onboarded,
+                isVerified: user.is_verified,
+                createdAt: user.created_at,
                 role: user.role,
                 profilePicture: user.profile?.profile_picture,
                 youtubeProfile: user.youtubeProfiles
@@ -139,9 +161,13 @@ router.post("/exchange-code", authLimiter, async (req, res) => {
     }
 });
 
-// ============ MOBILE GOOGLE AUTH (Hardened) ============
-
-router.post("/google/mobile", authLimiter, async (req, res) => {
+/**
+ * MOBILE GOOGLE AUTH: SMART LOGIN / CHECK
+ * Logic: 
+ * 1. If user exists -> Log them in immediately.
+ * 2. If user is new -> Do NOT create record. Returning verified data for Atomic Signup.
+ */
+router.post("/google/mobile", authLimiter, checkAccountLockout, async (req, res) => {
     try {
         const { idToken } = req.body;
 
@@ -149,7 +175,7 @@ router.post("/google/mobile", authLimiter, async (req, res) => {
             return res.status(400).json({ success: false, message: "idToken is required" });
         }
 
-        // PRODUCTION AUDIT FIX: Cryptographically verify token locally
+        // 1. Cryptographically verify token locally
         let payload;
         try {
             const ticket = await client.verifyIdToken({
@@ -165,7 +191,7 @@ router.post("/google/mobile", authLimiter, async (req, res) => {
         const { sub: googleId, email, name, picture } = payload;
         const normalizedEmail = email.toLowerCase();
 
-        // Check if user already exists
+        // 2. Check if user already exists
         let user = await prisma.user.findFirst({
             where: {
                 OR: [
@@ -176,83 +202,228 @@ router.post("/google/mobile", authLimiter, async (req, res) => {
             include: { profile: true }
         });
 
+        // 3. CASE A: User Exists -> Log in immediately
         if (user) {
+            // Update google_id if it was a manual user switching to social
             if (!user.google_id) {
                 user = await prisma.user.update({
                     where: { id: user.id },
-                    data: {
-                        google_id: googleId,
-                        auth_provider: "google",
-                        is_verified: true
-                    },
+                    data: { google_id: googleId, auth_provider: "google", is_verified: true },
                     include: { profile: true }
                 });
             }
-        } else {
-            // New User Registration (Shell Account)
-            // Note: Social Data Gap (Username/Mobile) handled by is_onboarded: false
-            let finalName = name || "User";
-            let finalUsername = finalName.toLowerCase().replace(/\s+/g, "_") + `_${crypto.randomBytes(3).toString("hex")}`;
 
-            user = await prisma.$transaction(async (tx) => {
-                const newUser = await tx.user.create({
-                    data: {
-                        email: normalizedEmail,
-                        google_id: googleId,
-                        auth_provider: "google",
-                        is_verified: true,
-                        role: "suvix_user",
-                        is_onboarded: false,
-                        password_hash: `OAUTH_MOBILE_${crypto.randomBytes(8).toString("hex")}`,
-                    }
-                });
+            // CAPTURE METADATA
+            const userAgent = req.headers["user-agent"] || "Mobile App (Google)";
+            const ip = req.ip || req.connection.remoteAddress;
 
-                await tx.userProfile.create({
-                    data: {
-                        userId: newUser.id,
-                        username: finalUsername,
-                        name: finalName,
-                        display_name: finalName,
-                        profile_picture: picture,
-                        location_country: "IN", 
-                    }
-                });
+            // Generate session context
+            const familyId = crypto.randomUUID();
+            const token = generateAccessToken({ id: user.id, role: user.role });
+            const refreshToken = generateRefreshToken({ id: user.id, familyId });
+            const hashedToken = hashToken(refreshToken);
 
-                return await tx.user.findUnique({
-                    where: { id: newUser.id },
-                    include: { profile: true }
-                });
+            const sessionData = JSON.stringify({
+                userId: user.id,
+                familyId,
+                metadata: { userAgent, ip, lastActive: new Date().toISOString() }
+            });
+
+            // ATOMIC SESSION STORAGE (1 Hit)
+            await redis.pipeline()
+                .set(`refresh_token:${hashedToken}`, sessionData, "EX", 7 * 24 * 60 * 60)
+                .sadd(`token_family:${familyId}`, hashedToken)
+                .expire(`token_family:${familyId}`, 7 * 24 * 60 * 60)
+                .exec();
+
+            logger.info(`[SECURITY] Google Mobile Login: User ${user.id} - New family: ${familyId}`);
+
+            return res.status(200).json({
+                success: true,
+                isNewUser: false,
+                token,
+                refreshToken,
+                user: {
+                    id: user.id,
+                    name: user.profile?.name,
+                    username: user.profile?.username,
+                    email: user.email,
+                    role: user.role,
+                    isOnboarded: user.is_onboarded,
+                    isVerified: user.is_verified,
+                    createdAt: user.created_at,
+                    profilePicture: user.profile?.profile_picture,
+                }
             });
         }
 
-        // Generate Production JWTs
-        const token = generateAccessToken({ id: user.id, role: user.role });
-        const refreshToken = generateRefreshToken({ id: user.id });
+        // 4. CASE B: User is New -> Buffer verified data for Atomic Signup
+        // We do NOT create a record in the DB yet to keep it clean.
+        return res.status(200).json({
+            success: true,
+            isNewUser: true,
+            socialProfile: {
+                email: normalizedEmail,
+                name: name,
+                picture: picture,
+                googleId: googleId
+            }
+        });
 
-        // Store refresh token in Redis
-        await redis.set(`refresh_token:${refreshToken}`, user.id, "EX", 7 * 24 * 60 * 60);
+    } catch (error) {
+        logger.error("[OAuth Mobile Check Failure]:", error.message);
+        res.status(500).json({ success: false, message: "Authentication check failed" });
+    }
+});
 
-        // TODO: Production-Grade OTP Verification will be integrated here later.
+/**
+ * ATOMIC SOCIAL REGISTRATION
+ * Creates the entire user identity in a single database transaction. 
+ * Prevents "Zombie" or incomplete social accounts.
+ */
+router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (req, res) => {
+    try {
+        const { idToken, username, phone, categoryId, roleSubCategoryIds, youtubeChannels } = req.body;
+
+        if (!idToken || !username || !phone) {
+            return res.status(400).json({ success: false, message: "Missing mandatory registration data" });
+        }
+
+        // 1. Re-verify Google Token (Security Guard)
+        let payload;
+        try {
+            const ticket = await client.verifyIdToken({ idToken, audience: GOOGLE_CLIENT_ID });
+            payload = ticket.getPayload();
+        } catch (err) {
+            return res.status(401).json({ success: false, message: "Invalid social authentication" });
+        }
+
+        const { sub: googleId, email, name, picture } = payload;
+        const normalizedEmail = email.toLowerCase();
+        const normalizedUsername = username.toLowerCase().trim();
+
+        // 2. Final Conflict Check
+        const existing = await prisma.user.findFirst({
+            where: { OR: [{ email: normalizedEmail }, { google_id: googleId }] }
+        });
+        if (existing) return res.status(409).json({ success: false, message: "Account already exists" });
+
+        const usernameTaken = await prisma.userProfile.findUnique({ where: { username: normalizedUsername } });
+        if (usernameTaken) return res.status(409).json({ success: false, message: "Handle already taken" });
+
+        // UUID Guard: Ensure we don't pass empty strings to Uuid fields in Prisma
+        const validCategoryId = categoryId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(categoryId) 
+            ? categoryId 
+            : null;
         
-        res.status(200).json({
+        const validRoleSubIds = (roleSubCategoryIds || []).filter(id => 
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+        );
+
+        // 3. ATOMIC TRANSACTION: Create Everything
+        const user = await prisma.$transaction(async (tx) => {
+            const newUser = await tx.user.create({
+                data: {
+                    email: normalizedEmail,
+                    google_id: googleId,
+                    auth_provider: "google",
+                    is_verified: true,
+                    role: "suvix_user",
+                    is_onboarded: true, // Atomic!
+                    password_hash: `OAUTH_ATOMIC_${crypto.randomBytes(8).toString("hex")}`,
+                }
+            });
+
+            const profile = await tx.userProfile.create({
+                data: {
+                    userId: newUser.id,
+                    username: normalizedUsername,
+                    name: name || "User",
+                    profile_picture: null, // Ignore Google photo, use SuviX default
+                    phone: phone.trim(),
+                    location_country: "IN",
+                    ...(validCategoryId ? { categoryId: validCategoryId } : {}),
+                }
+            });
+
+            // Initialize Stats (Production Requirement)
+            await tx.userStats.create({
+                data: { userId: newUser.id }
+            });
+
+            if (validRoleSubIds.length > 0) {
+                await tx.userRoleMapping.createMany({
+                    data: validRoleSubIds.map((subId, index) => ({
+                        profileId: profile.id,
+                        roleSubCategoryId: subId,
+                        isPrimary: index === 0,
+                    }))
+                });
+            }
+
+            if (youtubeChannels && Array.isArray(youtubeChannels)) {
+                for (const chan of youtubeChannels) {
+                    await tx.youTubeProfile.create({
+                        data: {
+                            userId: newUser.id,
+                            channel_id: chan.channelId,
+                            channel_name: chan.channelName,
+                            thumbnail_url: chan.thumbnailUrl,
+                        }
+                    });
+                }
+            }
+
+            return await tx.user.findUnique({
+                where: { id: newUser.id },
+                include: { profile: true }
+            });
+        });
+
+        // CAPTURE METADATA
+        const userAgent = req.headers["user-agent"] || "Mobile App (Google Register)";
+        const ip = req.ip || req.connection.remoteAddress;
+
+        // Generate session context
+        const familyId = crypto.randomUUID();
+        const token = generateAccessToken({ id: user.id, role: user.role });
+        const refreshToken = generateRefreshToken({ id: user.id, familyId });
+        const hashedToken = hashToken(refreshToken);
+
+        const sessionData = JSON.stringify({
+            userId: user.id,
+            familyId,
+            metadata: { userAgent, ip, lastActive: new Date().toISOString() }
+        });
+
+        // ATOMIC SESSION STORAGE (1 Hit)
+        await redis.pipeline()
+            .set(`refresh_token:${hashedToken}`, sessionData, "EX", 7 * 24 * 60 * 60)
+            .sadd(`token_family:${familyId}`, hashedToken)
+            .expire(`token_family:${familyId}`, 7 * 24 * 60 * 60)
+            .exec();
+
+        logger.info(`[SECURITY] Atomic Social Register Success: User ${user.id} - New family: ${familyId}`);
+
+        res.status(201).json({
             success: true,
             token,
             refreshToken,
             user: {
                 id: user.id,
                 name: user.profile?.name,
-                displayName: user.profile?.display_name || user.profile?.name,
                 username: user.profile?.username,
                 email: user.email,
                 role: user.role,
-                isOnboarded: user.is_onboarded,
-                profilePicture: user.profile?.profile_picture || picture,
+                isOnboarded: true,
+                isVerified: user.is_verified,
+                createdAt: user.created_at
             }
         });
 
     } catch (error) {
-        logger.error("[OAuth Mobile] Failure:", error.message);
-        res.status(500).json({ success: false, message: "Security authentication failed" });
+        console.error("❌ [Atomic Social Register Failure]:", error);
+        res.status(500).json({ success: false, message: "Failed to finalize registration" });
     }
 });
 

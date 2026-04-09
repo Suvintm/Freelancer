@@ -197,7 +197,8 @@ export default function SignupScreen() {
       });
 
       if (registerRes.data?.success) {
-        await setAuth(registerRes.data.user, registerRes.data.token);
+        const { user, token, refreshToken } = registerRes.data;
+        await setAuth(user, token, refreshToken);
         clearTempSignupData();
         handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
         Alert.alert('Welcome to SuviX', 'Your account has been created successfully.');

@@ -16,5 +16,3 @@ router.post("/me/profile-picture", authenticate, upload.single("image"), updateP
 router.put("/profile/minimal", authenticate, updateMinimalProfile);
 
 export default router;
-
-export default router;

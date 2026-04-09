@@ -61,9 +61,9 @@ export default function LoginScreen() {
 
       if (response.data.success) {
         handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
-        const { user, token } = response.data;
+        const { user, token, refreshToken } = response.data;
         // Global Navigation handles the redirect once setAuth completes
-        await setAuth(user, token);
+        await setAuth(user, token, refreshToken);
       }
     } catch (error: any) {
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);

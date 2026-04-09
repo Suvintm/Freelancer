@@ -1,7 +1,8 @@
 import { 
   generateAccessToken, 
   generateRefreshToken, 
-  verifyRefreshToken
+  verifyRefreshToken,
+  hashToken
 } from "../utils/jwt.js";
 import { comparePassword } from "../utils/password.js";
 import { registerFullUser as registerService } from "../services/registerService.js";
@@ -9,6 +10,9 @@ import prisma from "../../../config/prisma.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 import { redis } from "../../../middleware/rateLimiter.js";
 import axios from "axios";
+import crypto from "crypto";
+import { trackFailedLogin, resetFailedLogin } from "../../../middleware/lockoutMiddleware.js";
+import logger from "../../../utils/logger.js";
 
 const mapGroupToAppRole = (group, systemRole) => {
   if (systemRole === "admin") return "admin";
@@ -82,38 +86,88 @@ export const refresh = asyncHandler(async (req, res) => {
     const decoded = verifyRefreshToken(refreshToken);
     if (!decoded) throw new ApiError(401, "Invalid or expired refresh token");
 
-    // 2. Check if token is in Redis (Rotation Check)
-    const redisKey = `refresh_token:${refreshToken}`;
-    const isValid = await redis.get(redisKey);
-    if (!isValid) {
+    const { id: userId, familyId } = decoded;
+    const hashedToken = hashToken(refreshToken);
+
+    // 2. Check if token is in Redis (Reuse Detection)
+    const storedData = await redis.get(`refresh_token:${hashedToken}`);
+    
+    if (!storedData) {
         // TOKEN REUSE DETECTED! (Security breach attempt)
-        // In a strictly advanced setup, we might invalidate all user sessions here.
-        throw new ApiError(401, "Token has already been used or is invalid");
+        if (familyId) {
+            logger.error(`[SECURITY] Refresh token reuse detected for user ${userId}. Invalidating family: ${familyId}`);
+            
+            // Nuke the entire family session
+            const familyKey = `token_family:${familyId}`;
+            const familyTokens = await redis.smembers(familyKey);
+            
+            if (familyTokens.length > 0) {
+                const keysToDel = familyTokens.map(t => `refresh_token:${t}`);
+                await redis.del(...keysToDel, familyKey);
+            }
+        }
+        throw new ApiError(401, "Security Alert: This session has been invalidated due to token reuse detection.");
     }
 
-    // 3. One-time use: Revoke the old token
-    await redis.del(redisKey);
+    const sessionData = JSON.parse(storedData);
 
-    // 4. Fetch User with profile
+    // 4. Fetch User
     const user = await prisma.user.findUnique({
-        where: { id: decoded.id },
+        where: { id: userId },
         include: { profile: true }
     });
     if (!user) throw new ApiError(404, "User no longer exists");
 
-    // 5. Issue NEW pair
+    // 5. Issue NEW pair (Keep the same familyId)
     const newAccessToken = generateAccessToken({ id: user.id, role: user.role });
-    const newRefreshToken = generateRefreshToken({ id: user.id });
+    const newRefreshToken = generateRefreshToken({ id: user.id, familyId });
+    const newHashedToken = hashToken(newRefreshToken);
 
-    // 6. Store NEW refresh token in Redis
-    await redis.set(`refresh_token:${newRefreshToken}`, user.id, "EX", 7 * 24 * 60 * 60);
+    // 6. Update Metadata and store in Redis (ONE HIT PIPELINE)
+    const currentSession = JSON.parse(storedData);
+    const userAgent = req.headers["user-agent"] || currentSession.metadata?.userAgent || "Unknown Device";
+    const ip = req.ip || currentSession.metadata?.ip || req.connection.remoteAddress;
+
+    const newSessionData = JSON.stringify({ 
+        userId: user.id, 
+        familyId,
+        metadata: {
+            userAgent,
+            ip,
+            lastActive: new Date().toISOString()
+        }
+    });
+
+    // ATOMIC ROTATION & REFRESH (1 Hit to Upstash)
+    await redis.pipeline()
+        .del(`refresh_token:${hashedToken}`) // Nuke old
+        .srem(`token_family:${familyId}`, hashedToken) // Remove from family
+        .set(`refresh_token:${newHashedToken}`, newSessionData, "EX", 7 * 24 * 60 * 60) // New token
+        .sadd(`token_family:${familyId}`, newHashedToken) // Add new to family
+        .expire(`token_family:${familyId}`, 7 * 24 * 60 * 60) // Keep family set alive
+        .exec();
 
     // 7. Send Response
+    // ---------------------------------------------------------
+    // 💡 [SECURITY] TODO: Add NEW Email OTP Verification here
+    // Steps for later:
+    // 1. Generate 6-digit OTP
+    // 2. Store user data in Redis temporary buffer
+    // 3. Send email to user.email via Resend
+    // 4. Client verifies OTP -> then we call registerService()
+    // ---------------------------------------------------------
+
     res.cookie("refreshToken", newRefreshToken, cookieOptions);
     res.status(200).json({
         success: true,
         token: newAccessToken,
-        refreshToken: newRefreshToken // Also send back for mobile apps
+        refreshToken: newRefreshToken,
+        user: {
+            id: user.id,
+            isOnboarded: user.is_onboarded,
+            isVerified: user.is_verified,
+            role: user.role
+        }
     });
 });
 
@@ -121,7 +175,6 @@ export const refresh = asyncHandler(async (req, res) => {
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   
-  // Explicit Validation (prevents crashes and ensures consistent 400 response)
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!email || !password || !emailRegex.test(email)) {
     throw new ApiError(400, "Valid email and password are required.");
@@ -138,23 +191,50 @@ export const login = asyncHandler(async (req, res) => {
   });
 
   if (!user || user.auth_provider === "google") {
+    await trackFailedLogin(email);
     throw new ApiError(401, "Invalid credentials.");
   }
 
   const isMatch = await comparePassword(password, user.password_hash);
   if (!isMatch) {
+    await trackFailedLogin(email);
     throw new ApiError(401, "Invalid credentials.");
   }
 
+  // SUCCESS: Reset lockout tracking
+  await resetFailedLogin(email);
+
+  // ---------------------------------------------------------
+  // 💡 [SECURITY] TODO: Add Two-Factor Authentication (2FA) here
+  // If user.twoFactorEnabled then return 2fa_required: true
+  // ---------------------------------------------------------
+
+  // START NEW SESSION FAMILY
+  const familyId = crypto.randomUUID();
   const accessToken = generateAccessToken({ id: user.id, role: user.role });
-  const refreshToken = generateRefreshToken({ id: user.id });
+  const refreshToken = generateRefreshToken({ id: user.id, familyId });
+  const hashedToken = hashToken(refreshToken);
 
-  // Store refresh token in Redis for rotation
-  await redis.set(`refresh_token:${refreshToken}`, user.id, "EX", 7 * 24 * 60 * 60);
+  // CAPTURE METADATA FOR ACTIVE SESSION MANAGEMENT
+  const userAgent = req.headers["user-agent"] || "Unknown Device";
+  const ip = req.ip || req.connection.remoteAddress;
 
-  // Set Secure Cookie for Web
+  const sessionData = JSON.stringify({ 
+    userId: user.id, 
+    familyId,
+    metadata: { userAgent, ip, lastActive: new Date().toISOString() }
+  });
+
+  // ATOMIC SESSION STORAGE (1 Hit to Upstash)
+  await redis.pipeline()
+    .set(`refresh_token:${hashedToken}`, sessionData, "EX", 7 * 24 * 60 * 60)
+    .sadd(`token_family:${familyId}`, hashedToken)
+    .expire(`token_family:${familyId}`, 7 * 24 * 60 * 60)
+    .exec();
+
+  logger.info(`[SECURITY] Successful login for user ${user.id} (${email}). New family: ${familyId}`);
+
   res.cookie("refreshToken", refreshToken, cookieOptions);
-
   const primaryIdentity = resolvePrimaryIdentity(user);
 
   res.status(200).json({
@@ -166,15 +246,17 @@ export const login = asyncHandler(async (req, res) => {
       username: user.profile?.username,
       email: user.email,
       role: primaryIdentity.appRole,
-      primaryRole: primaryIdentity, // detailed metadata
+      primaryRole: primaryIdentity,
       profilePicture: user.profile?.profile_picture,
       location: user.profile?.location_country,
       bio: user.profile?.bio,
       isOnboarded: user.is_onboarded,
+      isVerified: user.is_verified,
+      createdAt: user.created_at,
       youtubeProfile: user.youtubeProfiles
     },
     token: accessToken,
-    refreshToken // For Mobile Apps
+    refreshToken
   });
 });
 
@@ -249,8 +331,12 @@ export const getYouTubeChannels = asyncHandler(async (req, res) => {
 
 // ============ ATOMIC REGISTER ============
 export const registerFull = asyncHandler(async (req, res) => {
-  // TODO: Phase 2 — Production-Grade OTP Verification will be integrated here later
-  // This will send an email via Resend/AWS SES before persisting the profile.
+  // ---------------------------------------------------------
+  // 💡 [SECURITY] TODO: Add Email OTP Verification here
+  // Steps for later:
+  // 1. Send OTP to req.body.email
+  // 2. Verify OTP before calling registerService
+  // ---------------------------------------------------------
   console.log("🔒 [SECURITY] OTP Verification placeholder hit — Proceeding with registration for dev.");
 
   const { 
@@ -295,9 +381,20 @@ export const registerFull = asyncHandler(async (req, res) => {
 
   const accessToken = generateAccessToken({ id: userWithProfile.id, role: userWithProfile.role });
   const refreshToken = generateRefreshToken({ id: userWithProfile.id });
+  const hashedToken = hashToken(refreshToken);
 
-  // Store refresh token in Redis
-  await redis.set(`refresh_token:${refreshToken}`, userWithProfile.id, "EX", 7 * 24 * 60 * 60);
+  // CAPTURE METADATA
+  const userAgent = req.headers["user-agent"] || "Mobile App";
+  const ip = req.ip || req.connection.remoteAddress;
+
+  const sessionData = JSON.stringify({ 
+    userId: userWithProfile.id,
+    familyId,
+    metadata: { userAgent, ip, lastActive: new Date().toISOString() }
+  });
+
+  // OPTIMIZED STORAGE (1 Hit)
+  await redis.set(`refresh_token:${hashedToken}`, sessionData, "EX", 7 * 24 * 60 * 60);
 
   // Set Cookie
   res.cookie("refreshToken", refreshToken, cookieOptions);
@@ -318,6 +415,8 @@ export const registerFull = asyncHandler(async (req, res) => {
       bio: userWithProfile.profile.bio,
       primaryRole: primaryIdentity,
       isOnboarded: true,
+      isVerified: userWithProfile.is_verified,
+      createdAt: userWithProfile.created_at
     },
     token: accessToken,
     refreshToken
@@ -330,7 +429,16 @@ export const logout = asyncHandler(async (req, res) => {
     
     // Revoke token if it exists
     if (refreshToken) {
-        await redis.del(`refresh_token:${refreshToken}`);
+        const hashedToken = hashToken(refreshToken);
+        const storedData = await redis.get(`refresh_token:${hashedToken}`);
+        if (storedData) {
+            const { familyId } = JSON.parse(storedData);
+            
+            // ATOMIC REVOKE (1 Hit)
+            const pipe = redis.pipeline().del(`refresh_token:${hashedToken}`);
+            if (familyId) pipe.srem(`token_family:${familyId}`, hashedToken);
+            await pipe.exec();
+        }
     }
 
     // Clear Browser Cookies
@@ -344,6 +452,7 @@ export const logout = asyncHandler(async (req, res) => {
 
 // ============ ME (PROFILE) ============
 export const getMe = asyncHandler(async (req, res) => {
+  logger.info(`📡 [API] Profile hydration requested for user: ${req.user.id}`);
   const user = await prisma.user.findUnique({
     where: { id: req.user.id },
     include: { 
@@ -373,6 +482,8 @@ export const getMe = asyncHandler(async (req, res) => {
       profilePicture: user.profile?.profile_picture,
       bio: user.profile?.bio,
       isOnboarded: user.is_onboarded,
+      isVerified: user.is_verified,
+      createdAt: user.created_at,
       youtubeProfile: user.youtubeProfiles,
       followers: user.stats?.followers_count || 0,
       following: user.stats?.following_count || 0
@@ -415,4 +526,70 @@ export const validateSignup = asyncHandler(async (req, res) => {
   }
 
   res.status(200).json({ success: true, available: true });
+});
+
+// ============ ACTIVE SESSIONS ============
+
+/**
+ * Get all active sessions for the current user.
+ * Returns a list of devices, IPs, and login times.
+ */
+export const getActiveSessions = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    
+    // 1. Scan Redis for all keys matching 'refresh_token:*'
+    // Note: In high-scale prod, use a secondary index (user:sessions:id)
+    // For now, we'll scan which is fine for small/mid scale.
+    const keys = await redis.keys("refresh_token:*");
+    const activeSessions = [];
+
+    for (const key of keys) {
+        const data = await redis.get(key);
+        if (data) {
+            const session = JSON.parse(data);
+            if (session.userId === userId) {
+                activeSessions.push({
+                    id: key.replace("refresh_token:", ""), // The hashed token (safe to share)
+                    ...session.metadata,
+                    isCurrent: req.cookies?.refreshToken && hashToken(req.cookies.refreshToken) === key.replace("refresh_token:", "")
+                });
+            }
+        }
+    }
+
+    res.status(200).json({
+        success: true,
+        sessions: activeSessions.sort((a, b) => new Date(b.lastActive) - new Date(a.lastActive))
+    });
+});
+
+/**
+ * Revoke a specific session (Log out a device remotely).
+ */
+export const revokeSession = asyncHandler(async (req, res) => {
+    const { sessionId } = req.params; // This is the hashed token
+    const userId = req.user.id;
+
+    const sessionData = await redis.get(`refresh_token:${sessionId}`);
+    if (!sessionData) {
+        throw new ApiError(404, "Session not found or already expired");
+    }
+
+    const session = JSON.parse(sessionData);
+    if (session.userId !== userId) {
+        throw new ApiError(403, "You do not have permission to revoke this session");
+    }
+
+    // Nuke it
+    await redis.del(`refresh_token:${sessionId}`);
+    if (session.familyId) {
+        await redis.srem(`token_family:${session.familyId}`, sessionId);
+    }
+
+    logger.info(`[SECURITY] User ${userId} revoked session ${sessionId} remotely.`);
+
+    res.status(200).json({
+        success: true,
+        message: "Session revoked successfully"
+    });
 });

@@ -8,20 +8,28 @@ import { api } from '../api/client';
  * This is hardware-encrypted and doesn't require the extra AsyncStorage dependency.
  */
 const TOKEN_KEY = 'suvix_auth_token';
+const REFRESH_TOKEN_KEY = 'suvix_refresh_token';
 // Note: We no longer store the user object in SecureStore to avoid the 2048-byte limit.
 // The user is fetched fresh on every boot during our splash screen pre-fetch.
 
 interface TempSignupData {
   name?: string;
-  username?: string; // New
+  username?: string;
   email?: string;
   password?: string;
   phone?: string;
-  motherTongue?: string; // New
+  motherTongue?: string;
   profileImage?: string | null;
   categoryId?: string;
   categorySlug?: string;
   roleSubCategoryIds?: string[];
+  googleIdToken?: string; // New: For Atomic Social Registration
+  isSocialSignup?: boolean; // New: Flag for Social flow
+  socialProfile?: { // New: Data verified from Google
+    email: string;
+    name: string;
+    picture?: string;
+  };
   youtubeChannels?: {
     channelId: string;
     channelName: string;
@@ -68,12 +76,14 @@ interface AuthUser {
 
 interface AuthState {
   token: string | null;
+  refreshToken: string | null;
   user: AuthUser | null;
   isAuthenticated: boolean;
   isInitialized: boolean;
   isLoadingUser: boolean;
   tempSignupData: TempSignupData | null;
-  setAuth: (user: any, token: string) => Promise<void>;
+  setAuth: (user: any, token: string, refreshToken: string) => Promise<void>;
+  setTokens: (token: string, refreshToken: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   fetchUser: () => Promise<void>;
@@ -85,6 +95,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   token: null,
+  refreshToken: null,
   user: null,
   isAuthenticated: false,
   isInitialized: false,
@@ -102,11 +113,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const res = await api.post('/auth/exchange-code', { code });
       if (res.data.success) {
-        const { user, token } = res.data;
-        // Securely store token and update state
-        await SecureStore.setItemAsync(TOKEN_KEY, token);
+        const { user, token, refreshToken } = res.data;
+        // Securely store tokens and update state
+        await Promise.all([
+          SecureStore.setItemAsync(TOKEN_KEY, token),
+          SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken)
+        ]);
         set({ 
           token, 
+          refreshToken,
           user: {
             ...user,
             isOnboarded: !!user.is_onboarded || !!user.isOnboarded
@@ -121,19 +136,42 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       throw error;
     }
   },
-  setAuth: async (user, token) => {
+  setAuth: async (user, token, refreshToken) => {
     try {
-      // Store ONLY the token in hardware-encrypted SecureStore
-      await SecureStore.setItemAsync(TOKEN_KEY, token);
-      set({ token, user, isAuthenticated: true });
+      // 🛡️ SECURITY GUARD: Ensure we have strings before calling SecureStore
+      if (typeof token !== 'string' || typeof refreshToken !== 'string') {
+        console.error('❌ [AUTH] setAuth failed: token or refreshToken is not a string.', { token, refreshToken });
+        return;
+      }
+
+      // Store BOTH tokens in hardware-encrypted SecureStore
+      await Promise.all([
+        SecureStore.setItemAsync(TOKEN_KEY, token),
+        SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken)
+      ]);
+      set({ token, refreshToken, user, isAuthenticated: true });
     } catch (error) {
       console.error('Save Auth Error:', error);
     }
   },
+  setTokens: async (token, refreshToken) => {
+    try {
+      await Promise.all([
+        SecureStore.setItemAsync(TOKEN_KEY, token),
+        SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken)
+      ]);
+      set({ token, refreshToken, isAuthenticated: true });
+    } catch (error) {
+      console.error('Update Tokens Error:', error);
+    }
+  },
   logout: async () => {
     try {
-      await SecureStore.deleteItemAsync(TOKEN_KEY);
-      set({ token: null, user: null, isAuthenticated: false });
+      await Promise.all([
+        SecureStore.deleteItemAsync(TOKEN_KEY),
+        SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY)
+      ]);
+      set({ token: null, refreshToken: null, user: null, isAuthenticated: false });
     } catch (error) {
       console.error('Logout Error:', error);
     }
@@ -160,8 +198,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const status = (error as any).response?.status;
       if (status === 401 || status === 403) {
          console.warn('❌ [AUTH] Session expired. Clearing credentials.');
-         await SecureStore.deleteItemAsync(TOKEN_KEY);
-         set({ token: null, user: null, isAuthenticated: false, isLoadingUser: false });
+         await Promise.all([
+            SecureStore.deleteItemAsync(TOKEN_KEY),
+            SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY)
+         ]);
+         set({ token: null, refreshToken: null, user: null, isAuthenticated: false, isLoadingUser: false });
       } else {
          console.log('⚠️ [AUTH] Backend unreachable or error, but keeping session token.');
          set({ isLoadingUser: false });
@@ -170,12 +211,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   checkAuth: async () => {
     try {
-      const token = await SecureStore.getItemAsync(TOKEN_KEY);
+      const [token, refreshToken] = await Promise.all([
+        SecureStore.getItemAsync(TOKEN_KEY),
+        SecureStore.getItemAsync(REFRESH_TOKEN_KEY)
+      ]);
       
       if (token) {
-        // We set token and isAuthenticated, but user stays null until pre-fetched
+        // We set tokens and isAuthenticated, but user stays null until pre-fetched
         set({ 
           token, 
+          refreshToken,
           isAuthenticated: true, 
           isInitialized: true 
         });

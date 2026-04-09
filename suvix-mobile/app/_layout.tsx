@@ -104,7 +104,7 @@ function InitialRoot() {
         dataLoadedRef.current = true;
         setDataLoaded(true);
       }
-    }, 4000); // Tightened to 4s for production feel
+    }, 12000); // 🚀 PRODUCTION TOLERANCE: Increased to 12s for reliable hydration on slow DBs
     
     return () => {
       isMounted = false;
@@ -170,8 +170,16 @@ function InitialRoot() {
       console.log(`🚦 [GUARD] Auth: ${isAuthenticated} | User: ${!!user} | Loading: ${isLoadingUser}`);
 
       // 1. RE-HYDRATION GUARD
+      // We absolutely wait if we're authenticated but still loading the profile
       if (isAuthenticated && !user && isLoadingUser) {
         console.log('⏳ [GUARD] Waiting for user profile hydration...');
+        return;
+      }
+
+      // If bootstrap is done but we still haven't hydrated user despite multiple tries
+      if (isAuthenticated && !user && dataLoaded && !isLoadingUser) {
+        console.log('⚠️ [GUARD] Hydration failed or unreachable. Retrying fetch...');
+        fetchUser(); // Request one more try
         return;
       }
 

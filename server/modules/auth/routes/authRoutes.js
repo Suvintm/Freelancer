@@ -9,11 +9,14 @@ import {
   logout,
   getMe, 
   checkUsername,
-  validateSignup
+  validateSignup,
+  getActiveSessions,
+  revokeSession
 } from "../controllers/authController.js";
 import { authenticate } from "../../../middleware/authMiddleware.js";
 
 import { authLimiter } from "../../../middleware/rateLimiter.js";
+import { checkAccountLockout } from "../../../middleware/lockoutMiddleware.js";
 
 const router = express.Router();
 const storage = multer.memoryStorage();
@@ -21,7 +24,7 @@ const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } }); // 5M
 
 // ============ PUBLIC ROUTES ============
 router.post("/register-full", authLimiter, upload.single("profilePicture"), registerFull);
-router.post("/login", authLimiter, login);
+router.post("/login", authLimiter, checkAccountLockout, login);
 router.post("/refresh-token", authLimiter, refresh); // Advanced Rotation + Rate Limited
 router.post("/logout", logout); // Clear Sessions
 router.get("/roles", getRoles);
@@ -31,5 +34,7 @@ router.post("/validate-signup", validateSignup);
 
 // ============ PRIVATE ROUTES ============
 router.get("/me", authenticate, getMe);
+router.get("/sessions", authenticate, getActiveSessions);
+router.delete("/sessions/:sessionId", authenticate, revokeSession);
 
 export default router;

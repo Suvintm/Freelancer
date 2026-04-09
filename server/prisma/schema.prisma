@@ -27,6 +27,8 @@ model User {
   youtubeProfiles   YouTubeProfile?
   youtube_videos    YouTubeVideo[]
 
+  @@index([role])
+  @@index([is_onboarded])
   @@map("users")
 }
 
@@ -52,6 +54,7 @@ model UserProfile {
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   roles             UserRoleMapping[]
 
+  @@index([categoryId])
   @@map("user_profiles")
 }
 

@@ -13,11 +13,11 @@ import {
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors } from '../../src/constants/Colors';
-import SuvixInput from '../../src/components/SuvixInput';
-import SuvixButton from '../../src/components/SuvixButton';
-import { useAuthStore } from '../../src/store/useAuthStore';
-import { api } from '../../src/api/client';
+import { Colors } from '../src/constants/Colors';
+import SuvixInput from '../src/components/SuvixInput';
+import SuvixButton from '../src/components/SuvixButton';
+import { useAuthStore } from '../src/store/useAuthStore';
+import { api } from '../src/api/client';
 import * as Haptics from 'expo-haptics';
 
 export default function CompleteProfileScreen() {
@@ -26,7 +26,8 @@ export default function CompleteProfileScreen() {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { user, updateUser } = useAuthStore();
+  const { user, updateUser, setAuth, tempSignupData, clearTempSignupData } = useAuthStore();
+  const isSocialPending = tempSignupData?.isSocialSignup;
 
   const handleImpact = (style: Haptics.ImpactFeedbackStyle = Haptics.ImpactFeedbackStyle.Light) => {
     Haptics.impactAsync(style);
@@ -41,20 +42,50 @@ export default function CompleteProfileScreen() {
 
     setLoading(true);
     try {
-      const response = await api.put('/user/profile/minimal', {
-        username: username.toLowerCase().trim(),
-        phone: phone.trim(),
-      });
+      if (isSocialPending && tempSignupData?.googleIdToken) {
+        // CASE: ATOMIC SOCIAL REGISTRATION
+        // We send EVERYTHING together: Google Token + Profile + Roles
+        const res = await api.post('/auth/google/register-atomic', {
+          idToken: tempSignupData.googleIdToken,
+          username: username.toLowerCase().trim(),
+          phone: phone.trim(),
+          categoryId: tempSignupData.categoryId,
+          roleSubCategoryIds: tempSignupData.roleSubCategoryIds,
+          youtubeChannels: tempSignupData.youtubeChannels
+        });
 
-      if (response.data.success) {
-        handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
-        updateUser({ username, phone });
-        // After data gap is filled, proceed to role selection
-        router.push('/role-selection');
+        if (res.data.success) {
+          handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
+          const { user: newUser, token } = res.data;
+          
+          // Clear onboarding buffer and log in
+          clearTempSignupData();
+          await setAuth(newUser, token);
+          router.replace('/(tabs)');
+        }
+      } else {
+        // CASE: STANDARD PROFILE COMPLETION
+        const response = await api.put('/user/profile/minimal', {
+          username: username.toLowerCase().trim(),
+          phone: phone.trim(),
+        });
+
+        if (response.data.success) {
+          handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
+          updateUser({ 
+            username, 
+            phone,
+            isOnboarded: true 
+          });
+          
+          // Finalize onboarding by pushing to the main dashboard
+          router.replace('/(tabs)');
+        }
       }
     } catch (error: any) {
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
-      Alert.alert('Error', error.response?.data?.message || 'That username might already be taken.');
+      const msg = error.response?.data?.message || 'Something went wrong. Please try another handle.';
+      Alert.alert('Registration Error', msg);
     } finally {
       setLoading(false);
     }
