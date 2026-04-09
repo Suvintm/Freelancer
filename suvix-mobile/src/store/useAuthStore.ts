@@ -63,6 +63,7 @@ interface AuthUser {
   } | null;
   followers?: number;
   following?: number;
+  bio?: string;
 }
 
 interface AuthState {
@@ -78,6 +79,7 @@ interface AuthState {
   fetchUser: () => Promise<void>;
   setTempSignupData: (data: Partial<TempSignupData>) => void;
   clearTempSignupData: () => void;
+  updateUser: (updates: Partial<AuthUser>) => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -91,6 +93,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     tempSignupData: { ...(state.tempSignupData || {}), ...data } 
   })),
   clearTempSignupData: () => set({ tempSignupData: null }),
+  updateUser: (updates) => set((state) => ({
+    user: state.user ? { ...state.user, ...updates } : null
+  })),
   setAuth: async (user, token) => {
     try {
       // Store ONLY the token in hardware-encrypted SecureStore

@@ -18,6 +18,7 @@ export const getMyBasicInfo = asyncHandler(async (req, res) => {
           profile_picture: true,
           phone: true,
           location_country: true,
+          bio: true,
         },
       },
     },
@@ -39,6 +40,7 @@ export const getMyBasicInfo = asyncHandler(async (req, res) => {
       profilePicture: user.profile?.profile_picture || "",
       phone: user.profile?.phone || "",
       country: user.profile?.location_country || "",
+      bio: user.profile?.bio || "",
     },
   });
 });
@@ -50,7 +52,7 @@ export const updateMyBasicInfo = asyncHandler(async (req, res) => {
   const userId = req.user?.id;
   if (!userId) throw new ApiError(401, "Unauthorized");
 
-  const { name, username, phone, country } = req.body;
+  const { name, username, phone, country, bio } = req.body;
 
   const profile = await prisma.userProfile.findUnique({
     where: { userId },
@@ -75,6 +77,7 @@ export const updateMyBasicInfo = asyncHandler(async (req, res) => {
       ...(username ? { username: username.toLowerCase().trim() } : {}),
       ...(phone !== undefined ? { phone: String(phone).trim() } : {}),
       ...(country !== undefined ? { location_country: String(country).trim() } : {}),
+      ...(bio !== undefined ? { bio: String(bio).substring(0, 150).trim() } : {}),
       updated_at: new Date(),
     },
     select: {
@@ -83,6 +86,7 @@ export const updateMyBasicInfo = asyncHandler(async (req, res) => {
       phone: true,
       location_country: true,
       profile_picture: true,
+      bio: true,
     },
   });
 
@@ -97,6 +101,7 @@ export const updateMyBasicInfo = asyncHandler(async (req, res) => {
       phone: updated.phone || "",
       country: updated.location_country || "",
       profilePicture: updated.profile_picture || "",
+      bio: updated.bio || "",
     },
   });
 });
