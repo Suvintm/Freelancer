@@ -2,54 +2,80 @@ import React from 'react';
 import { View, Image, StyleSheet, TouchableOpacity, Text, Dimensions } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 const COLUMN_COUNT = 3;
 const SPACING = 1;
-const CARD_SIZE = (width - (COLUMN_COUNT - 1) * SPACING) / COLUMN_COUNT;
+const SQUARE_SIZE = (width - (COLUMN_COUNT - 1) * SPACING) / COLUMN_COUNT;
 
 export interface ContentItem {
   id: string;
   thumbnail: string;
-  type: 'POST' | 'REEL' | 'YT VIDEOS' | 'SHORTS';
+  type: 'POSTS' | 'REELS' | 'YT VIDEOS' | 'SHORTS';
   views?: string;
   likes?: string;
 }
 
 interface ContentCardProps {
   item: ContentItem;
+  mode?: 'grid' | 'reels';
   onPress?: (item: ContentItem) => void;
 }
 
-export const ContentCard: React.FC<ContentCardProps> = ({ item, onPress }) => {
+export const ContentCard: React.FC<ContentCardProps> = ({ item, mode = 'grid', onPress }) => {
   const { theme } = useTheme();
+  const isReelsMode = mode === 'reels';
 
   return (
     <TouchableOpacity 
       activeOpacity={0.8} 
       onPress={() => onPress?.(item)}
-      style={styles.container}
+      style={[
+        styles.container, 
+        isReelsMode ? styles.reelsContainer : styles.gridContainer
+      ]}
     >
       <Image source={{ uri: item.thumbnail }} style={styles.image} />
       
       {/* Type Indicator Overlays */}
-      <View style={styles.overlay}>
-        {item.type === 'REEL' && (
-          <MaterialCommunityIcons name="play-outline" size={18} color="white" />
-        )}
-        {item.type === 'YT VIDEOS' && (
-          <MaterialCommunityIcons name="youtube" size={18} color="white" />
-        )}
-        {item.type === 'SHORTS' && (
-          <MaterialCommunityIcons name="play-box-outline" size={18} color="#FF0000" />
-        )}
-      </View>
+      {!isReelsMode && (
+        <View style={styles.overlay}>
+          {item.type === 'REELS' && (
+            <MaterialCommunityIcons name="play-outline" size={18} color="white" />
+          )}
+          {item.type === 'YT VIDEOS' && (
+            <MaterialCommunityIcons name="youtube" size={18} color="white" />
+          )}
+          {item.type === 'SHORTS' && (
+            <MaterialCommunityIcons name="play-box-outline" size={18} color="#FF0000" />
+          )}
+        </View>
+      )}
 
       {/* View count for reels/videos */}
       {item.views && (
-        <View style={styles.metrics}>
-          <MaterialCommunityIcons name="play" size={12} color="white" />
-          <Text style={styles.metricsText}>{item.views}</Text>
+        <>
+          {isReelsMode && (
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.6)']}
+              style={styles.reelsGradient}
+            />
+          )}
+          <View style={[styles.metrics, isReelsMode && styles.reelsMetrics]}>
+            <MaterialCommunityIcons name="play-outline" size={isReelsMode ? 14 : 12} color="white" />
+            <Text style={[styles.metricsText, isReelsMode && styles.reelsMetricsText]}>{item.views}</Text>
+          </View>
+        </>
+      )}
+
+      {isReelsMode && (
+        <View style={styles.reelsTypeOverlay}>
+          <MaterialCommunityIcons 
+            name={item.type === 'SHORTS' ? "play-box-outline" : "play-outline"} 
+            size={16} 
+            color={item.type === 'SHORTS' ? "#FF0000" : "white"} 
+          />
         </View>
       )}
     </TouchableOpacity>
@@ -58,9 +84,15 @@ export const ContentCard: React.FC<ContentCardProps> = ({ item, onPress }) => {
 
 const styles = StyleSheet.create({
   container: {
-    width: CARD_SIZE,
-    height: CARD_SIZE,
     backgroundColor: '#1a1a1a',
+  },
+  gridContainer: {
+    width: SQUARE_SIZE,
+    height: SQUARE_SIZE,
+  },
+  reelsContainer: {
+    width: SQUARE_SIZE,
+    height: SQUARE_SIZE * 1.6, // Proper 9:16-ish ratio
   },
   image: {
     width: '100%',
@@ -90,5 +122,32 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     marginLeft: 2,
+  },
+  reelsGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 40,
+  },
+  reelsMetrics: {
+    backgroundColor: 'transparent',
+    bottom: 8,
+    left: 8,
+  },
+  reelsMetricsText: {
+    fontSize: 11,
+    fontWeight: '800',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10
+  },
+  reelsTypeOverlay: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    padding: 2,
+    borderRadius: 4,
   }
 });

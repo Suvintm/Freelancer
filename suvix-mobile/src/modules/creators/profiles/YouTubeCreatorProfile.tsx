@@ -24,15 +24,17 @@ import { ContentItem } from '../../shared/content/ContentCard';
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 
 const MOCK_CONTENT: ContentItem[] = [
-  { id: '1', type: 'POST', thumbnail: 'https://picsum.photos/id/10/400/400' },
-  { id: '2', type: 'REEL', thumbnail: 'https://picsum.photos/id/20/400/400', views: '1.2M' },
-  { id: '3', type: 'YT VIDEOS', thumbnail: 'https://picsum.photos/id/30/400/400', views: '450K' },
-  { id: '4', type: 'SHORTS', thumbnail: 'https://picsum.photos/id/40/400/400', views: '2.5M' },
-  { id: '5', type: 'POST', thumbnail: 'https://picsum.photos/id/50/400/400' },
-  { id: '6', type: 'REEL', thumbnail: 'https://picsum.photos/id/60/400/400', views: '800K' },
-  { id: '7', type: 'YT VIDEOS', thumbnail: 'https://picsum.photos/id/70/400/400', views: '1M' },
-  { id: '8', type: 'SHORTS', thumbnail: 'https://picsum.photos/id/80/400/400', views: '500K' },
-  { id: '9', type: 'POST', thumbnail: 'https://picsum.photos/id/90/400/400' },
+  { id: '1', type: 'POSTS', thumbnail: 'https://picsum.photos/id/101/400/400' },
+  { id: '2', type: 'REELS', thumbnail: 'https://picsum.photos/id/201/400/711', views: '1.2M' },
+  { id: '3', type: 'YT VIDEOS', thumbnail: 'https://picsum.photos/id/301/400/400', views: '450K' },
+  { id: '4', type: 'SHORTS', thumbnail: 'https://picsum.photos/id/401/400/711', views: '2.5M' },
+  { id: '5', type: 'POSTS', thumbnail: 'https://picsum.photos/id/501/400/400' },
+  { id: '6', type: 'REELS', thumbnail: 'https://picsum.photos/id/601/400/711', views: '800K' },
+  { id: '7', type: 'YT VIDEOS', thumbnail: 'https://picsum.photos/id/701/400/400', views: '1M' },
+  { id: '8', type: 'SHORTS', thumbnail: 'https://picsum.photos/id/801/400/711', views: '500K' },
+  { id: '9', type: 'POSTS', thumbnail: 'https://picsum.photos/id/901/400/400' },
+  { id: '10', type: 'REELS', thumbnail: 'https://picsum.photos/id/111/400/711', views: '2.1M' },
+  { id: '11', type: 'SHORTS', thumbnail: 'https://picsum.photos/id/121/400/711', views: '3.4M' },
 ];
 
 const { width } = Dimensions.get('window');
@@ -65,6 +67,8 @@ export default function YouTubeCreatorProfile() {
     if (activeTab === 'POSTS') return MOCK_CONTENT;
     return MOCK_CONTENT.filter(item => item.type === activeTab);
   };
+
+  const isReelsTab = activeTab === 'REELS' || activeTab === 'SHORTS';
 
   return (
     <View style={[styles.container, { backgroundColor: theme.primary }]}>
@@ -199,7 +203,7 @@ export default function YouTubeCreatorProfile() {
           </View>
 
           {/* Universal Content Grid */}
-          <ContentGrid data={getFilteredContent()} />
+          <ContentGrid data={getFilteredContent()} mode={isReelsTab ? 'reels' : 'grid'} />
         </View>
       </ScrollView>
     </View>
