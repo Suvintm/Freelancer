@@ -64,7 +64,7 @@ describe("🛡️ Security Tests", () => {
 
     it("CRITICAL: should return 401 with an EXPIRED token", async () => {
       const expiredToken = jwt.sign(
-        { id: users.editor._id.toString() },
+        { id: users.editor.id },
         JWT_SECRET,
         { expiresIn: "1ms" }
       );

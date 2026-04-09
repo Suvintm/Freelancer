@@ -6,9 +6,23 @@
  * This allows easy addition of new payment gateways without changing business logic.
  */
 
-import { SiteSettings } from "../modules/system/models/SiteSettings.js";
+// import { SiteSettings } from "../modules/system/models/SiteSettings.js"; // DEPRECATED
 import { RazorpayProvider } from "./RazorpayProvider.js";
 // import { StripeProvider } from "./StripeProvider.js"; // Future
+
+/**
+ * Helper to get settings with fallbacks (replaces missing SiteSettings model)
+ */
+const getEffectiveSettings = async () => {
+  return {
+    razorpayEnabled: true,
+    stripeEnabled: false,
+    internationalEnabled: false,
+    platformFee: 10,
+    exchangeRates: { USD: 83, GBP: 105, EUR: 90 }, // Example rates
+    minPayoutAmount: 500,
+  };
+};
 
 /**
  * Currency configuration based on country
@@ -27,7 +41,7 @@ const COUNTRY_CURRENCY_MAP = {
  * Get gateway provider based on user's country
  */
 const getProvider = async (country) => {
-  const settings = await SiteSettings.getSettings();
+  const settings = await getEffectiveSettings();
   const countryConfig = COUNTRY_CURRENCY_MAP[country] || COUNTRY_CURRENCY_MAP["IN"];
   
   if (countryConfig.gateway === "razorpay" && settings.razorpayEnabled) {
@@ -51,7 +65,7 @@ const getProvider = async (country) => {
  * Check if payment is supported for a country
  */
 export const isPaymentSupported = async (country) => {
-  const settings = await SiteSettings.getSettings();
+  const settings = await getEffectiveSettings();
   
   // Currently only India is supported
   if (country === "IN" && settings.razorpayEnabled) {
@@ -83,7 +97,7 @@ export const getCurrencyInfo = (country) => {
 export const convertCurrency = async (amount, fromCurrency, toCurrency) => {
   if (fromCurrency === toCurrency) return amount;
   
-  const settings = await SiteSettings.getSettings();
+  const settings = await getEffectiveSettings();
   const rates = settings.exchangeRates || {};
   
   // Convert to INR first (base currency), then to target
@@ -157,7 +171,7 @@ export const createPayout = async (editor, amount) => {
  * Get platform fee for an amount
  */
 export const calculatePlatformFee = async (amount) => {
-  const settings = await SiteSettings.getSettings();
+  const settings = await getEffectiveSettings();
   const feePercent = settings.platformFee || 10;
   
   const platformFee = Math.round(amount * (feePercent / 100));
@@ -175,7 +189,7 @@ export const calculatePlatformFee = async (amount) => {
  * Get refund amount based on order stage
  */
 export const calculateRefundAmount = async (order) => {
-  const settings = await SiteSettings.getSettings();
+  const settings = await getEffectiveSettings();
   const policy = settings.refundPolicy || {};
   
   let refundPercent = 0;

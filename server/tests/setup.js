@@ -1,3 +1,7 @@
+// Synchronize environment for test mode
+process.env.JWT_SECRET = "suvix_dev_secret";
+process.env.NODE_ENV = "test";
+
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import { beforeAll, afterAll, beforeEach, vi } from "vitest";
@@ -27,35 +31,26 @@ vi.mock("../config/redisClient.js", () => ({
 }));
 
 // ─── Mock Prisma ──────────────────────────────────────────────────────────────
+import { testUsers } from "./fixtures/users.js";
+
+// ─── Mock Prisma ──────────────────────────────────────────────────────────────
 vi.mock("../config/prisma.js", () => ({
   default: {
     user: {
       findUnique: vi.fn().mockImplementation(({ where }) => {
-        // Resolve different test user roles based on the email or ID passed in tests
-        // This satisfies both valid UUIDs and MongoDB-style ObjectIDs during tests
-        if (where.email === "banned@test.com" || where.id === "69d245949e9f212dd7ff8acf") {
+        // Find user by email or ID from the fixture
+        const user = Object.values(testUsers).find(u => 
+          u.email === where.email || u.id === where.id
+        );
+        
+        if (user) {
           return Promise.resolve({
-            id: where.id || "69d245949e9f212dd7ff8acf",
-            email: "banned@test.com",
-            role: "client",
-            is_banned: true,
-            ban_reason: "Violation of terms",
+            ...user,
+            is_banned: user.is_banned || false,
+            ban_reason: user.ban_reason || null,
           });
         }
-        if (where.email === "editor@test.com" || where.id?.includes("f0")) {
-          return Promise.resolve({
-            id: where.id || "69d245969e9f212dd7ff8af0",
-            email: "editor@test.com",
-            role: "editor",
-            is_banned: false,
-          });
-        }
-        return Promise.resolve({
-          id: where.id || "69d2459b9e9f212dd7ff8bc3",
-          email: "client@test.com",
-          role: "client",
-          is_banned: false,
-        });
+        return Promise.resolve(null);
       }),
       update: vi.fn().mockResolvedValue({}),
     },

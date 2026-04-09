@@ -88,6 +88,16 @@ export const authenticate = async (req, res, next) => {
     }
 
     if (!user) throw new ApiError(401, "User not found");
+    
+    // Check for banned user (Added for production-level security)
+    if (user.is_banned) {
+        return res.status(403).json({ 
+            success: false, 
+            message: user.ban_reason || "Your account has been suspended.", 
+            isBanned: true,
+            banReason: user.ban_reason
+        });
+    }
 
     // Flatten profile data onto the user object for convenience (standard across app/web)
     if (user.profile) {

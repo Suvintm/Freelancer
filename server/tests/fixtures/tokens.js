@@ -19,7 +19,7 @@ export const loginAndGetToken = async (email, password) => {
  */
 export const generateTestToken = (user) => {
   return jwt.sign(
-    { id: user._id.toString(), role: user.role },
+    { id: user.id, role: user.role },
     JWT_SECRET,
     { expiresIn: "1h" }
   );

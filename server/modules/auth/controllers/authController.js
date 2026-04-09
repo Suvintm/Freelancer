@@ -12,9 +12,9 @@ import axios from "axios";
 
 const mapGroupToAppRole = (group, systemRole) => {
   if (systemRole === "admin") return "admin";
-  if (group === "CLIENT") return "normal_user";
-  if (group === "PROVIDER") return "creator";
-  return "normal_user";
+  if (group === "CLIENT") return "client";
+  if (group === "PROVIDER") return "editor";
+  return "client";
 };
 
 /**
@@ -120,6 +120,12 @@ export const refresh = asyncHandler(async (req, res) => {
 // ============ LOGIN ============
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
+  
+  // Explicit Validation (prevents crashes and ensures consistent 400 response)
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email || !password || !emailRegex.test(email)) {
+    throw new ApiError(400, "Valid email and password are required.");
+  }
 
   const user = await prisma.user.findUnique({
     where: { email: email.toLowerCase().trim() },

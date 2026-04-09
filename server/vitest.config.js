@@ -6,5 +6,9 @@ export default defineConfig({
     environment: "node",
     setupFiles: ["./tests/setup.js"],
     testTimeout: 30000,
+    env: {
+      JWT_SECRET: "suvix_dev_secret",
+      NODE_ENV: "test",
+    },
   },
 });

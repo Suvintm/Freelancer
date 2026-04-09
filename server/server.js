@@ -36,6 +36,7 @@ import passport from "./config/passport.js";
 import authRoutes from "./modules/auth/routes/authRoutes.js";
 import oauthRoutes from "./modules/auth/routes/oauthRoutes.js";
 import userRoutes from "./modules/user/routes/userRoutes.js";
+import paymentGatewayRoutes from "./modules/payments/routes/paymentGatewayRoutes.js";
 
 // Validation logic and other top-level code follows...
  
@@ -277,6 +278,7 @@ app.get("/api/health", (req, res) => {
 
 app.use("/api/auth", vpnCheckMiddleware, authRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/payment-gateway", paymentGatewayRoutes);
 
 // Public maintenance status check (no auth required)
 app.get("/api/maintenance-status", async (req, res) => {
