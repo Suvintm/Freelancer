@@ -214,15 +214,15 @@ export default function YouTubeCreatorProfile() {
               <View style={styles.miniStatsRow}>
                 <View style={styles.miniStat}>
                   <Text style={[styles.miniStatValue, { color: '#FFFFFF' }]}>{formatCount(user.followers)}</Text>
-                  <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Followers</Text>
+                  <Text style={[styles.miniStatLabel, { color: '#FFFFFF' }]}>Followers</Text>
                 </View>
                 <View style={styles.miniStat}>
                   <Text style={[styles.miniStatValue, { color: '#FFFFFF' }]}>{formatCount(user.following)}</Text>
-                  <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Following</Text>
+                  <Text style={[styles.miniStatLabel, { color: '#FFFFFF' }]}>Following</Text>
                 </View>
                 <View style={styles.miniStat}>
-                  <Text style={[styles.miniStatValue, { color: '#FF4444' }]}>{formatCount(youtubeProfile.subscriber_count)}</Text>
-                  <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Subs</Text>
+                  <Text style={[styles.miniStatValue, { color: '#FFFFFF' }]}>{formatCount(MOCK_CONTENT.length)}</Text>
+                  <Text style={[styles.miniStatLabel, { color: '#FFFFFF' }]}>Posts</Text>
                 </View>
               </View>
 
@@ -423,10 +423,10 @@ const styles = StyleSheet.create({
   avatar: { width: 90, height: 90, borderRadius: 45, borderWidth: 4 },
   verifiedBadge: { position: 'absolute', bottom: 2, right: 2, backgroundColor: 'white', borderRadius: 10 },
   headerStats: { flex: 1, justifyContent: 'center' },
-  miniStatsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, paddingRight: 5 },
+  miniStatsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14, paddingRight: 5, marginTop: -8 },
   miniStat: { alignItems: 'center' },
   miniStatValue: { fontSize: 18, fontWeight: '900', letterSpacing: -0.5 },
-  miniStatLabel: { fontSize: 10, fontWeight: '700', marginTop: 3, textTransform: 'uppercase', opacity: 0.6, letterSpacing: 0.8 },
+  miniStatLabel: { fontSize: 10, fontWeight: '700', marginTop: 3, textTransform: 'uppercase', opacity: 0.8, letterSpacing: 0.8 },
   editBtn: { height: 36, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
   editBtnText: { fontSize: 12, fontWeight: '700' },
   infoBlock: { marginTop: 12 },

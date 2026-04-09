@@ -156,7 +156,7 @@ function InitialRoot() {
       if (isNavigating.current) return;
 
       const currentSegment = segments[0];
-      const inAuthGroup = currentSegment === '(tabs)';
+      const inAuthGroup = currentSegment === '(tabs)' || currentSegment === 'notifications';
       const inOnboarding =
         currentSegment === 'role-selection' ||
         currentSegment === 'subcategory-selection' ||

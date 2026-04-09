@@ -20,7 +20,7 @@ import ClientDashboard from '../../src/modules/clients';
 import { UnifiedBanner } from '../../src/components/home/UnifiedBanner';
 import { StoryBar } from '../../src/components/stories/StoryBar';
 import { FeatureGallery } from '../../src/components/home/FeatureGallery';
-import { ScrollView } from 'react-native';
+import { UnifiedFeed } from '../../src/modules/home/discovery/UnifiedFeed';
 
 /**
  * PRODUCTION-GRADE DYNAMIC DASHBOARD (Home Tab)
@@ -112,146 +112,54 @@ export default function DashboardIndex() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.primary }}>
-      <ScrollView 
-        showsVerticalScrollIndicator={false} 
-        contentContainerStyle={{ paddingBottom: 60 }}
-        removeClippedSubviews={false}
-        onScrollBeginDrag={() => {
-          if (scrollIdleTimerRef.current) {
-            clearTimeout(scrollIdleTimerRef.current);
-            scrollIdleTimerRef.current = null;
-          }
-          setIsHomeScrolling(true);
-        }}
-        onMomentumScrollBegin={() => {
-          if (scrollIdleTimerRef.current) {
-            clearTimeout(scrollIdleTimerRef.current);
-            scrollIdleTimerRef.current = null;
-          }
-          setIsHomeScrolling(true);
-        }}
-        onScrollEndDrag={() => {
-          if (scrollIdleTimerRef.current) {
-            clearTimeout(scrollIdleTimerRef.current);
-          }
-          scrollIdleTimerRef.current = setTimeout(() => {
-            setIsHomeScrolling(false);
-            scrollIdleTimerRef.current = null;
-          }, 120);
-        }}
-        onMomentumScrollEnd={() => {
-          if (scrollIdleTimerRef.current) {
-            clearTimeout(scrollIdleTimerRef.current);
-            scrollIdleTimerRef.current = null;
-          }
-          setIsHomeScrolling(false);
-        }}
-      >
-        {/* Banner Section (Always visible) */}
-        <View style={styles.bannerWrapper}>
-          {isReady ? <UnifiedBanner paused={isHomeScrolling} /> : <View style={{ height: 200 }} />}
-        </View>
-
-        {/* Stories Section (Always visible) */}
-        <StoryBar />
-
-        <View style={{ padding: 16, paddingTop: 6 }}>
-          {activeModule === 'creators' && user.youtubeProfile ? (
-            <View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <View style={{ backgroundColor: '#FF0000', padding: 4, borderRadius: 6, marginRight: 8 }}>
-                  <MaterialCommunityIcons name="youtube" size={14} color="white" />
-                </View>
-                <Text style={{ fontSize: 11, fontWeight: '800', color: '#FF0000', letterSpacing: 0.5 }}>
-                  YOUTUBE CREATOR
-                </Text>
-              </View>
-
-              <Text style={{ fontSize: 22, fontWeight: 'bold', color: theme.text }}>
-                Hi {user.name ? user.name.split(' ')[0] : 'Creator'},
-              </Text>
-              
-              <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 4, lineHeight: 18 }}>
-                Growth Partner: <Text style={{ color: theme.accent, fontWeight: '600' }}>{user.primaryRole?.subCategory || 'Content'}</Text>
-              </Text>
-
-              {/* YouTube Feel: Compact Stats Card */}
-              <LinearGradient
-                colors={['#1a1a1a', '#0a0a0a']}
-                style={{
-                  marginTop: 12,
-                  borderRadius: 12,
-                  padding: 12,
-                  borderWidth: 1,
-                  borderColor: '#222'
-                }}
-              >
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#333', overflow: 'hidden', marginRight: 10 }}>
-                        {user.youtubeProfile.thumbnail_url ? (
-                          <Image source={{ uri: user.youtubeProfile.thumbnail_url }} style={{ width: '100%', height: '100%' }} />
-                        ) : (
-                          <View style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}>
-                            <MaterialCommunityIcons name="account" size={18} color="#666" />
-                          </View>
-                        )}
-                      </View>
-                      <View>
-                        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 14 }}>
-                          {user.youtubeProfile.channel_name}
-                        </Text>
-                      </View>
-                   </View>
-                   <View style={{ backgroundColor: '#FF000020', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 }}>
-                      <Text style={{ color: '#FF0000', fontSize: 9, fontWeight: '900' }}>VERIFIED</Text>
-                   </View>
-                </View>
-
-                <View style={{ flexDirection: 'row', marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#222' }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: '#eee', fontWeight: 'bold', fontSize: 14 }}>
-                      {user.youtubeProfile.subscriber_count?.toLocaleString() || '0'}
-                    </Text>
-                    <Text style={{ color: '#666', fontSize: 9, marginTop: 1, textTransform: 'uppercase' }}>Subs</Text>
-                  </View>
-                  <View style={{ flex: 1, borderLeftWidth: 1, borderLeftColor: '#222', paddingLeft: 12 }}>
-                    <Text style={{ color: '#eee', fontWeight: 'bold', fontSize: 14 }}>
-                      {user.youtubeProfile.video_count?.toLocaleString() || '0'}
-                    </Text>
-                    <Text style={{ color: '#666', fontSize: 9, marginTop: 1, textTransform: 'uppercase' }}>Videos</Text>
-                  </View>
-                  <View style={{ flex: 1, borderLeftWidth: 1, borderLeftColor: '#222', paddingLeft: 12 }}>
-                    <Text style={{ color: theme.accent, fontWeight: 'bold', fontSize: 14 }}>
-                      {user.primaryRole?.subCategory || 'Niche'}
-                    </Text>
-                    <Text style={{ color: '#666', fontSize: 9, marginTop: 1, textTransform: 'uppercase' }}>Focus</Text>
-                  </View>
-                </View>
-              </LinearGradient>
+      <UnifiedFeed 
+        ListHeaderComponent={
+          <View>
+            {/* Banner Section (Always visible) */}
+            <View style={styles.bannerWrapper}>
+              {isReady ? <UnifiedBanner paused={isHomeScrolling} /> : <View style={{ height: 200 }} />}
             </View>
-          ) : (
-            <View>
-              <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.text }}>
-                Hi {user.name ? user.name.split(' ')[0] : 'Member'},
-              </Text>
-              <Text style={{ fontSize: 14, color: theme.textSecondary, marginTop: 2 }}>
-                {user.primaryRole?.group === 'PROVIDER' 
-                  ? `Grow your ${user.primaryRole?.category || 'Expertise'}` 
-                  : `Find ${user.primaryRole?.category || 'Service'} experts`}
-              </Text>
-            </View>
-          )}
-        </View>
 
-        {/* Feature Gallery / Service Quick Links (Always visible) */}
-        {isReady && <FeatureGallery paused={isHomeScrolling} />}
-        
-        {/* Dynamic Action Module (Static Render) */}
-        <View style={styles.moduleSection}>
-          <ActiveActionModule />
-        </View>
-      </ScrollView>
+            {/* Stories Section (Always visible) */}
+            <StoryBar />
+
+            <View style={{ padding: 16, paddingTop: 0 }}>
+              {activeModule === 'creators' && user.youtubeProfile ? (
+                <View style={{ marginBottom: 4 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ backgroundColor: '#FF0000', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, marginRight: 8 }}>
+                      <MaterialCommunityIcons name="youtube" size={12} color="white" />
+                    </View>
+                    <Text style={{ fontSize: 10, fontWeight: '900', color: '#FF0000', letterSpacing: 0.8 }}>
+                      YOUTUBE CREATOR
+                    </Text>
+                  </View>
+                  
+                  <Text style={{ fontSize: 16, fontWeight: '900', color: theme.text, marginTop: 4, letterSpacing: -0.3 }}>
+                    Let's grow your channel here
+                  </Text>
+                </View>
+              ) : (
+                <View>
+                  <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.text }}>
+                    Hi {user.name ? user.name.split(' ')[0] : 'Member'},
+                  </Text>
+                  <Text style={{ fontSize: 14, color: theme.textSecondary, marginTop: 2 }}>
+                    {user.primaryRole?.group === 'PROVIDER' 
+                      ? `Grow your ${user.primaryRole?.category || 'Expertise'}` 
+                      : `Find ${user.primaryRole?.category || 'Service'} experts`}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Feature Gallery / Service Quick Links (Always visible) */}
+            {isReady && <FeatureGallery paused={isHomeScrolling} />}
+          </View>
+        }
+        onScrollBeginDrag={() => setIsHomeScrolling(true)}
+        onScrollEndDrag={() => setIsHomeScrolling(false)}
+      />
     </View>
   );
 }
@@ -270,7 +178,7 @@ const styles = StyleSheet.create({
     fontSize: 14
   },
   bannerWrapper: {
-    paddingTop: 80, // Space for the absolute TopNavbar
+    paddingTop: 80, // Restored space for the absolute TopNavbar
   },
   moduleSection: {
     paddingTop: 0,

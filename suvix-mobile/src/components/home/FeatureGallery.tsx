@@ -71,7 +71,7 @@ export const FeatureGallery = ({ paused = false }: FeatureGalleryProps) => {
   const { width: screenWidth } = useWindowDimensions();
   const progress = useSharedValue(0);
 
-  const cardWidth = screenWidth * 0.8;
+  const cardWidth = screenWidth * 0.65;
   const fullCardWidth = cardWidth + CARD_MARGIN;
   const singleSetWidth = fullCardWidth * ORIGINAL_FEATURES.length;
 
@@ -81,22 +81,41 @@ export const FeatureGallery = ({ paused = false }: FeatureGalleryProps) => {
   );
 
   useEffect(() => {
-    cancelAnimation(progress);
-    if (singleSetWidth <= 0 || paused) return;
+    if (paused) {
+      cancelAnimation(progress);
+      return;
+    }
 
-    const wrapped = progress.value % singleSetWidth;
-    progress.value = wrapped;
-    progress.value = withRepeat(
-      withTiming(wrapped + singleSetWidth, {
-        duration: LOOP_DURATION_MS,
-        easing: Easing.linear,
-      }),
-      -1,
-      false
-    );
+    if (singleSetWidth <= 0) return;
+
+    // 1. Calculate how much of the current set we have already scrolled
+    const currentOffset = progress.value % singleSetWidth;
+    const remainingDist = singleSetWidth - currentOffset;
+    
+    // 2. Calculate time proportional to the remaining distance
+    // (LOOP_DURATION_MS / singleSetWidth) = ms per pixel
+    const remainingTime = (remainingDist / singleSetWidth) * LOOP_DURATION_MS;
+
+    // 3. Complete the current cycle with a proportional duration
+    progress.value = withTiming(progress.value + remainingDist, {
+      duration: remainingTime,
+      easing: Easing.linear,
+    }, (finished) => {
+      // 4. Once the partial cycle finishes, resume the infinite loop
+      if (finished && !paused) {
+        progress.value = withRepeat(
+          withTiming(progress.value + singleSetWidth, {
+            duration: LOOP_DURATION_MS,
+            easing: Easing.linear,
+          }),
+          -1,
+          false
+        );
+      }
+    });
 
     return () => cancelAnimation(progress);
-  }, [paused, progress, singleSetWidth]);
+  }, [paused, singleSetWidth]);
 
   const animatedStyle = useAnimatedStyle(() => {
     // Modulo wrap avoids visible "jump to start" hitch.
@@ -137,13 +156,13 @@ export const FeatureGallery = ({ paused = false }: FeatureGalleryProps) => {
 
                 <View style={s.cardContent}>
                   <View style={s.roundIcon}>
-                    <Ionicons name={item.icon as any} size={24} color="#fff" />
+                    <Ionicons name={item.icon as any} size={16} color="#fff" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={s.cardTitle}>{item.title}</Text>
                     <Text style={s.cardDesc}>{item.desc}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#fff" />
+                  <Ionicons name="chevron-forward" size={14} color="#fff" />
                 </View>
               </ImageBackground>
             </TouchableOpacity>
@@ -155,15 +174,15 @@ export const FeatureGallery = ({ paused = false }: FeatureGalleryProps) => {
 };
 
 const s = StyleSheet.create({
-  container: { marginTop: 4, marginBottom: 16 },
+  container: { marginTop: 0, marginBottom: 8 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: HORIZONTAL_PADDING,
-    marginBottom: 10,
+    marginBottom: 6,
   },
-  headerTitle: { fontSize: 12, fontWeight: '900', letterSpacing: 1.5, opacity: 0.9 },
+  headerTitle: { fontSize: 10, fontWeight: '900', letterSpacing: 1.5, opacity: 0.9 },
 
   marqueeContainer: {
     overflow: 'hidden',
@@ -172,8 +191,8 @@ const s = StyleSheet.create({
     flexDirection: 'row',
   },
   card: {
-    height: 124,
-    borderRadius: 28,
+    height: 90,
+    borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
     marginRight: CARD_MARGIN,
@@ -186,15 +205,15 @@ const s = StyleSheet.create({
     gap: 16,
   },
   roundIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
-  cardTitle: { color: '#fff', fontSize: 17, fontWeight: '900', letterSpacing: -0.5 },
-  cardDesc: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '600', marginTop: 3 },
+  cardTitle: { color: '#fff', fontSize: 13, fontWeight: '900', letterSpacing: -0.5 },
+  cardDesc: { color: 'rgba(255,255,255,0.7)', fontSize: 9, fontWeight: '600', marginTop: 2 },
 });

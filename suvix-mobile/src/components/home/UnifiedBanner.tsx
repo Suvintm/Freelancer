@@ -122,7 +122,7 @@ export const UnifiedBanner = ({ data, paused = false }: UnifiedBannerProps) => {
   }
 
   return (
-    <View style={{ marginVertical: 12 }}>
+    <View style={{ marginVertical: 4 }}>
       <FlatList
         ref={listRef}
         data={banners}

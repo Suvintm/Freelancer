@@ -8,14 +8,6 @@ export default function CreatorDashboard() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.text }]}>Creator Activity</Text>
-        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Ready to manage your content and collaborations?</Text>
-      </View>
-      
-      <View style={[styles.placeholder, { backgroundColor: theme.secondary }]}>
-        <Text style={[styles.placeholderText, { color: theme.textSecondary }]}>Content Analytics & Collab Invites coming soon...</Text>
-      </View>
     </View>
   );
 }
