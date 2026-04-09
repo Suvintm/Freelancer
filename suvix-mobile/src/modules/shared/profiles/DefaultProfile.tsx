@@ -54,15 +54,15 @@ export default function DefaultProfile() {
             <View style={styles.headerStats}>
               <View style={styles.miniStatsRow}>
                 <View style={styles.miniStat}>
-                  <Text style={[styles.miniStatValue, { color: theme.text }]}>{formatCount(user.followers)}</Text>
+                  <Text style={[styles.miniStatValue, { color: '#FFFFFF' }]}>{formatCount(user.followers)}</Text>
                   <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Followers</Text>
                 </View>
                 <View style={styles.miniStat}>
-                  <Text style={[styles.miniStatValue, { color: theme.text }]}>{formatCount(user.following)}</Text>
+                  <Text style={[styles.miniStatValue, { color: '#FFFFFF' }]}>{formatCount(user.following)}</Text>
                   <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Following</Text>
                 </View>
                 <View style={styles.miniStat}>
-                  <Text style={[styles.miniStatValue, { color: theme.text }]}>0</Text>
+                  <Text style={[styles.miniStatValue, { color: '#FFFFFF' }]}>0</Text>
                   <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Posts</Text>
                 </View>
               </View>

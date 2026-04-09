@@ -18,7 +18,22 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/Colors';
 import { formatCount } from '../../../utils/formatters';
 
+import { ContentGrid } from '../../shared/content/ContentGrid';
+import { ContentItem } from '../../shared/content/ContentCard';
+
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
+
+const MOCK_CONTENT: ContentItem[] = [
+  { id: '1', type: 'POST', thumbnail: 'https://picsum.photos/id/10/400/400' },
+  { id: '2', type: 'REEL', thumbnail: 'https://picsum.photos/id/20/400/400', views: '1.2M' },
+  { id: '3', type: 'YT VIDEOS', thumbnail: 'https://picsum.photos/id/30/400/400', views: '450K' },
+  { id: '4', type: 'SHORTS', thumbnail: 'https://picsum.photos/id/40/400/400', views: '2.5M' },
+  { id: '5', type: 'POST', thumbnail: 'https://picsum.photos/id/50/400/400' },
+  { id: '6', type: 'REEL', thumbnail: 'https://picsum.photos/id/60/400/400', views: '800K' },
+  { id: '7', type: 'YT VIDEOS', thumbnail: 'https://picsum.photos/id/70/400/400', views: '1M' },
+  { id: '8', type: 'SHORTS', thumbnail: 'https://picsum.photos/id/80/400/400', views: '500K' },
+  { id: '9', type: 'POST', thumbnail: 'https://picsum.photos/id/90/400/400' },
+];
 
 const { width } = Dimensions.get('window');
 
@@ -26,6 +41,7 @@ export default function YouTubeCreatorProfile() {
   const { theme } = useTheme();
   const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
+  const [activeTab, setActiveTab] = React.useState('POSTS');
 
   if (!user || !user.youtubeProfile) return null;
 
@@ -43,6 +59,11 @@ export default function YouTubeCreatorProfile() {
     } catch (error) {
       Alert.alert("Error", "Could not open YouTube link. Please check your internet connection or try again later.");
     }
+  };
+
+  const getFilteredContent = () => {
+    if (activeTab === 'POSTS') return MOCK_CONTENT;
+    return MOCK_CONTENT.filter(item => item.type === activeTab);
   };
 
   return (
@@ -65,7 +86,7 @@ export default function YouTubeCreatorProfile() {
         </LinearGradient>
 
         <View style={[styles.profileWrap, { backgroundColor: theme.primary }]}>
-          <View style={styles.headerRow}>
+          <View style={[styles.headerRow, styles.padded]}>
             <View style={styles.avatarContainer}>
               <Image
                 source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
@@ -79,15 +100,15 @@ export default function YouTubeCreatorProfile() {
             <View style={styles.headerStats}>
               <View style={styles.miniStatsRow}>
                 <View style={styles.miniStat}>
-                  <Text style={[styles.miniStatValue, { color: theme.text }]}>{formatCount(user.followers)}</Text>
+                  <Text style={[styles.miniStatValue, { color: '#FFFFFF' }]}>{formatCount(user.followers)}</Text>
                   <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Followers</Text>
                 </View>
                 <View style={styles.miniStat}>
-                  <Text style={[styles.miniStatValue, { color: theme.text }]}>{formatCount(user.following)}</Text>
+                  <Text style={[styles.miniStatValue, { color: '#FFFFFF' }]}>{formatCount(user.following)}</Text>
                   <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Following</Text>
                 </View>
                 <View style={styles.miniStat}>
-                  <Text style={[styles.miniStatValue, { color: '#FF0000' }]}>{formatCount(youtubeProfile.subscriber_count)}</Text>
+                  <Text style={[styles.miniStatValue, { color: '#FF4444' }]}>{formatCount(youtubeProfile.subscriber_count)}</Text>
                   <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Subs</Text>
                 </View>
               </View>
@@ -98,7 +119,7 @@ export default function YouTubeCreatorProfile() {
             </View>
           </View>
 
-          <View style={styles.infoBlock}>
+          <View style={[styles.infoBlock, styles.padded]}>
             <View style={styles.nameRow}>
                <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
                <MaterialCommunityIcons name="shield-check" size={16} color={theme.accent} style={{ marginLeft: 6 }} />
@@ -110,7 +131,7 @@ export default function YouTubeCreatorProfile() {
           </View>
 
           {/* Linked Channels Section */}
-          <Text style={[styles.sectionTitle, { color: theme.text, marginTop: 22 }]}>Linked Channels</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text, marginTop: 18 }]}>Linked Channels</Text>
           <View style={[styles.channelCard, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
             <Image 
               source={youtubeProfile.thumbnail_url ? { uri: youtubeProfile.thumbnail_url } : DEFAULT_AVATAR} 
@@ -143,27 +164,42 @@ export default function YouTubeCreatorProfile() {
           </View>
 
           {/* Creator Toolbox */}
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Creator Toolbox</Text>
-          <View style={styles.toolbox}>
+          <Text style={[styles.sectionTitle, { color: theme.text, paddingHorizontal: 20 }]}>Creator Toolbox</Text>
+          <View style={[styles.toolbox, styles.padded]}>
              <TouchableOpacity style={[styles.toolCard, { backgroundColor: theme.secondary }]}>
-                <MaterialCommunityIcons name="chart-bell-curve-cumulative" size={24} color="#FF0000" />
+                <MaterialCommunityIcons name="chart-bell-curve-cumulative" size={20} color="#FF0000" />
                 <Text style={[styles.toolText, { color: theme.text }]}>Analytics</Text>
              </TouchableOpacity>
              <TouchableOpacity style={[styles.toolCard, { backgroundColor: theme.secondary }]}>
-                <MaterialCommunityIcons name="briefcase-outline" size={24} color={theme.accent} />
+                <MaterialCommunityIcons name="briefcase-outline" size={20} color={theme.accent} />
                 <Text style={[styles.toolText, { color: theme.text }]}>Opportunities</Text>
              </TouchableOpacity>
              <TouchableOpacity style={[styles.toolCard, { backgroundColor: theme.secondary }]}>
-                <MaterialCommunityIcons name="account-group-outline" size={24} color="#22C55E" />
+                <MaterialCommunityIcons name="account-group-outline" size={20} color="#22C55E" />
                 <Text style={[styles.toolText, { color: theme.text }]}>Collaborate</Text>
              </TouchableOpacity>
           </View>
 
-          <View style={styles.actionRow}>
-             <TouchableOpacity style={[styles.mainAction, { backgroundColor: theme.accent }]}>
-                <Text style={{ color: theme.primary, fontWeight: '700' }}>Manage Portfolios</Text>
-             </TouchableOpacity>
+          {/* Content Tabs */}
+          <View style={[styles.tabBar, { borderBottomColor: theme.border }]}>
+            {['POSTS', 'REELS', 'YT VIDEOS', 'SHORTS'].map((tab) => (
+              <TouchableOpacity 
+                key={tab} 
+                onPress={() => setActiveTab(tab)}
+                style={[styles.tabItem, activeTab === tab && { borderBottomColor: theme.accent }]}
+              >
+                <Text style={[
+                  styles.tabLabel, 
+                  { color: activeTab === tab ? theme.text : theme.textSecondary }
+                ]}>
+                  {tab}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
+
+          {/* Universal Content Grid */}
+          <ContentGrid data={getFilteredContent()} />
         </View>
       </ScrollView>
     </View>
@@ -175,7 +211,8 @@ const styles = StyleSheet.create({
   content: { paddingTop: 0, paddingBottom: 40 },
   banner: { height: 100, width: '100%', justifyContent: 'center', alignItems: 'center' },
   bannerOverlay: { opacity: 0.5 },
-  profileWrap: { marginTop: -20, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 20, paddingBottom: 20 },
+  profileWrap: { marginTop: -20, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 20 },
+  padded: { paddingHorizontal: 20 },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginTop: -40, gap: 15 },
   avatarContainer: { position: 'relative' },
   avatar: { width: 90, height: 90, borderRadius: 45, borderWidth: 4 },
@@ -196,6 +233,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     alignItems: 'center', 
     marginTop: 10, 
+    marginHorizontal: 20,
     padding: 12, 
     borderRadius: 16, 
     borderWidth: 1,
@@ -205,31 +243,58 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2
   },
-  channelThumb: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#f1f5f9' },
+  channelThumb: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#f1f5f9' },
   channelInfo: { flex: 1, marginLeft: 12 },
-  channelName: { fontSize: 15, fontWeight: '800' },
-  channelStatsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+  channelName: { fontSize: 13, fontWeight: '800' },
+  channelStatsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
   channelStat: { flexDirection: 'row', alignItems: 'center' },
-  channelStatText: { fontSize: 11, fontWeight: '700', marginLeft: 4 },
+  channelStatText: { fontSize: 10, fontWeight: '700', marginLeft: 4 },
   cardActions: { 
     alignItems: 'flex-end', 
     justifyContent: 'center',
-    paddingLeft: 10
+    paddingLeft: 8
   },
   viewBtn: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     backgroundColor: 'rgba(255,255,255,0.05)', 
-    paddingHorizontal: 8, 
-    paddingVertical: 5, 
-    borderRadius: 8,
-    gap: 4
+    paddingHorizontal: 6, 
+    paddingVertical: 4, 
+    borderRadius: 6,
+    gap: 3
   },
-  viewBtnText: { fontSize: 11, fontWeight: '800' },
-  sectionTitle: { fontSize: 18, fontWeight: '800', marginTop: 28, marginBottom: 16 },
+  viewBtnText: { fontSize: 10, fontWeight: '800' },
+  sectionTitle: { fontSize: 14, fontWeight: '800', marginTop: 20, marginBottom: 12, paddingHorizontal: 20 },
   toolbox: { flexDirection: 'row', justifyContent: 'space-between' },
-  toolCard: { width: '31%', padding: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  toolText: { fontSize: 11, fontWeight: '700', marginTop: 8 },
-  actionRow: { marginTop: 30 },
-  mainAction: { height: 54, borderRadius: 16, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 }
+  toolCard: { width: '31%', padding: 14, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  toolText: { fontSize: 10, fontWeight: '700', marginTop: 8 },
+  tabBar: { 
+    flexDirection: 'row', 
+    marginTop: 25, 
+    borderBottomWidth: 1, 
+    paddingHorizontal: 5
+  },
+  tabItem: { 
+    flex: 1, 
+    alignItems: 'center', 
+    paddingVertical: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent'
+  },
+  tabLabel: { 
+    fontSize: 11, 
+    fontWeight: '800', 
+    letterSpacing: 0.5 
+  },
+  grid: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    marginTop: 2,
+    gap: 1
+  },
+  gridItem: { 
+    width: (width - 42) / 3, // Accounting for padding and gaps
+    aspectRatio: 1,
+    marginBottom: 1
+  }
 });
