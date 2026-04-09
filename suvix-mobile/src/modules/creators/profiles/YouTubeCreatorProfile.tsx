@@ -14,7 +14,9 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { api } from '../../../api/client';
 import { useTheme } from '../../../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -60,6 +62,7 @@ export default function YouTubeCreatorProfile() {
   const [isBioModalVisible, setBioModalVisible] = React.useState(false);
   const [tempBio, setTempBio] = React.useState(user?.bio || '');
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
   const [selection, setSelection] = React.useState({ start: 0, end: 0 });
 
   if (!user || !user.youtubeProfile) return null;
@@ -106,6 +109,54 @@ export default function YouTubeCreatorProfile() {
     }
   };
 
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'We need camera roll permissions to change your profile picture.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      handleUploadAvatar(result.assets[0].uri);
+    }
+  };
+
+  const handleUploadAvatar = async (uri: string) => {
+    setIsUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      const filename = uri.split('/').pop() || 'profile.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image`;
+
+      // @ts-ignore - FormData expects specialized object for files in RN
+      formData.append('image', { uri, name: filename, type });
+
+      const res = await api.post('/user/me/profile-picture', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (res.data.success) {
+        updateUser({ profilePicture: res.data.profilePicture });
+        Alert.alert("Success", "Profile picture updated!");
+      }
+    } catch (error) {
+      console.error('Upload Avatar Error:', error);
+      Alert.alert("Error", "Could not upload image. Please try again.");
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
   const insertShortcut = (symbol: string) => {
     const before = tempBio.substring(0, selection.start);
     const after = tempBio.substring(selection.end);
@@ -140,10 +191,20 @@ export default function YouTubeCreatorProfile() {
         <View style={[styles.profileWrap, { backgroundColor: theme.primary }]}>
           <View style={[styles.headerRow, styles.padded]}>
             <View style={styles.avatarContainer}>
-              <Image
-                source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
-                style={[styles.avatar, { borderColor: theme.primary }]}
-              />
+              <View style={styles.avatarInner}>
+                <Image
+                  source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
+                  style={[styles.avatar, { borderColor: '#FFFFFF' }]}
+                />
+                {isUploadingAvatar && (
+                  <View style={[styles.avatarLoadingOverlay, { backgroundColor: 'rgba(0,0,0,0.4)' }]}>
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  </View>
+                )}
+              </View>
+              <TouchableOpacity style={styles.avatarEditBtn} onPress={handlePickImage} disabled={isUploadingAvatar}>
+                <MaterialCommunityIcons name="camera-outline" size={16} color="white" />
+              </TouchableOpacity>
               <View style={styles.verifiedBadge}>
                 <MaterialCommunityIcons name="check-decagram" size={20} color="#FF0000" />
               </View>
@@ -554,5 +615,36 @@ const styles = StyleSheet.create({
     padding: 0, // Must match bioInput
     margin: 0,
     textAlignVertical: 'top'
+  },
+  avatarInner: {
+    position: 'relative',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    overflow: 'hidden'
+  },
+  avatarLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  avatarEditBtn: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    backgroundColor: '#FF0000',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    zIndex: 10
   }
 });

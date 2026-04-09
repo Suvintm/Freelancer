@@ -1,5 +1,6 @@
 import prisma from "../../../config/prisma.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
+import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
 
 // @desc    Get current authenticated user basic info
 // @route   GET /api/user/me
@@ -103,5 +104,39 @@ export const updateMyBasicInfo = asyncHandler(async (req, res) => {
       profilePicture: updated.profile_picture || "",
       bio: updated.bio || "",
     },
+  });
+});
+
+// @desc    Update current user profile picture
+// @route   POST /api/user/me/profile-picture
+// @access  Private
+export const updateProfilePicture = asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) throw new ApiError(401, "Unauthorized");
+
+  if (!req.file) {
+    throw new ApiError(400, "Please upload an image file");
+  }
+
+  // Upload to Cloudinary
+  // Prefixing with 'avatars' folder for organization
+  const result = await uploadToCloudinary(req.file.buffer, "avatars", {
+    transformation: [
+      { width: 500, height: 500, crop: "fill", gravity: "face" }
+    ]
+  });
+
+  const profile = await prisma.userProfile.update({
+    where: { userId },
+    data: {
+      profile_picture: result.secure_url,
+      updated_at: new Date(),
+    },
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "Profile picture updated successfully",
+    profilePicture: profile.profile_picture,
   });
 });
