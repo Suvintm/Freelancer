@@ -140,3 +140,49 @@ export const updateProfilePicture = asyncHandler(async (req, res) => {
     profilePicture: profile.profile_picture,
   });
 });
+
+/**
+ * @desc    Social Onboarding: Complete Minimal Profile
+ * @route   PUT /api/user/profile/minimal
+ * @access  Private (Authenticated but not fully onboarded)
+ * Handles the 'Social Data Gap' for Google/OAuth users.
+ */
+export const updateMinimalProfile = asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  const { username, phone } = req.body;
+
+  if (!username || !phone) {
+    throw new ApiError(400, "Username and phone number are required for onboarding.");
+  }
+
+  const normalizedUsername = username.toLowerCase().trim();
+
+  // 1. Check if username is already taken by someone else
+  const existing = await prisma.userProfile.findFirst({
+    where: { 
+      username: normalizedUsername,
+      NOT: { userId }
+    }
+  });
+
+  if (existing) {
+    throw new ApiError(409, "This username is already claimed. Choose another one!");
+  }
+
+  // 2. Update Profile & User status
+  const updated = await prisma.userProfile.update({
+    where: { userId },
+    data: {
+      username: normalizedUsername,
+      phone: phone.trim(),
+      updated_at: new Date(),
+    }
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "Profile updated successfully.",
+    username: updated.username,
+    phone: updated.phone
+  });
+});

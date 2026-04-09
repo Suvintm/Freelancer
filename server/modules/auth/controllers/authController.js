@@ -249,6 +249,10 @@ export const getYouTubeChannels = asyncHandler(async (req, res) => {
 
 // ============ ATOMIC REGISTER ============
 export const registerFull = asyncHandler(async (req, res) => {
+  // TODO: Phase 2 — Production-Grade OTP Verification will be integrated here later
+  // This will send an email via Resend/AWS SES before persisting the profile.
+  console.log("🔒 [SECURITY] OTP Verification placeholder hit — Proceeding with registration for dev.");
+
   const { 
     fullName, username, email, password, phone, 
     motherTongue, country, categoryId, roleSubCategoryIds, youtubeChannels

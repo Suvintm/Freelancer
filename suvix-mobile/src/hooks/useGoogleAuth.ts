@@ -45,19 +45,11 @@ export const useGoogleAuth = () => {
       const res = await api.post('/auth/google/mobile', { idToken });
 
       if (res.data.success) {
-        if (res.data.requiresRoleSelection) {
-          router.push({
-            pathname: '/role-selection',
-            params: { 
-              token: res.data.token, 
-              name: res.data.user.name 
-            }
-          });
-        } else {
-          const { user, token } = res.data;
-          await setAuth(user, token);
-          router.replace('/');
-        }
+        const { user, token } = res.data;
+        // The Global Navigation Guard in _layout.tsx now handles
+        // all redirection logic based on user.isOnboarded.
+        await setAuth(user, token);
+        router.replace('/');
       }
     } catch (error: any) {
       console.error('Google Auth Backend Error:', error.response?.data || error.message);

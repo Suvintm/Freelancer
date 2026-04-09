@@ -80,6 +80,7 @@ interface AuthState {
   setTempSignupData: (data: Partial<TempSignupData>) => void;
   clearTempSignupData: () => void;
   updateUser: (updates: Partial<AuthUser>) => void;
+  exchangeCode: (code: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -96,6 +97,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   updateUser: (updates) => set((state) => ({
     user: state.user ? { ...state.user, ...updates } : null
   })),
+  exchangeCode: async (code) => {
+    set({ isLoadingUser: true });
+    try {
+      const res = await api.post('/auth/exchange-code', { code });
+      if (res.data.success) {
+        const { user, token } = res.data;
+        // Securely store token and update state
+        await SecureStore.setItemAsync(TOKEN_KEY, token);
+        set({ 
+          token, 
+          user: {
+            ...user,
+            isOnboarded: !!user.is_onboarded || !!user.isOnboarded
+          }, 
+          isAuthenticated: true, 
+          isLoadingUser: false 
+        });
+      }
+    } catch (error) {
+      console.error('❌ [AUTH] Code exchange failed:', error);
+      set({ isLoadingUser: false });
+      throw error;
+    }
+  },
   setAuth: async (user, token) => {
     try {
       // Store ONLY the token in hardware-encrypted SecureStore

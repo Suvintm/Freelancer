@@ -160,7 +160,8 @@ function InitialRoot() {
       const inOnboarding =
         currentSegment === 'role-selection' ||
         currentSegment === 'subcategory-selection' ||
-        currentSegment === 'youtube-connect';
+        currentSegment === 'youtube-connect' ||
+        currentSegment === 'complete-profile';
       const inPublicGroup =
         currentSegment === 'welcome' ||
         currentSegment === 'login' ||
@@ -168,8 +169,7 @@ function InitialRoot() {
 
       console.log(`🚦 [GUARD] Auth: ${isAuthenticated} | User: ${!!user} | Loading: ${isLoadingUser}`);
 
-      // 1. RE-HYDRATION GUARD (Critical for staying logged in on Reload)
-      // If we have a token but are still fetching the user, DO NOT redirect yet.
+      // 1. RE-HYDRATION GUARD
       if (isAuthenticated && !user && isLoadingUser) {
         console.log('⏳ [GUARD] Waiting for user profile hydration...');
         return;
@@ -194,8 +194,10 @@ function InitialRoot() {
         return;
       }
 
-      // 3. AUTHENTICATED
+      // 3. AUTHENTICATED & ONBOARDING LOGIC
       const isOnboarded = user?.isOnboarded;
+      const isMissingSocialData = !user?.username || !user?.name;
+
       if (isOnboarded) {
         if (!inAuthGroup) {
           console.log('🚀 [GUARD] Taking user to home dashboard...');
@@ -204,14 +206,22 @@ function InitialRoot() {
           setTimeout(() => { isNavigating.current = false; }, 1200);
         }
       } else {
+        // PRODUCTION-GRADE: Decide where to send un-onboarded user
         if (!inOnboarding) {
-          console.log('📝 [GUARD] Taking user to onboarding...');
-          isNavigating.current = true;
-          router.replace('/role-selection');
-          setTimeout(() => { isNavigating.current = false; }, 1200);
+          if (isMissingSocialData) {
+            console.log('👤 [GUARD] Missing Social Data. Taking user to complete-profile...');
+            isNavigating.current = true;
+            router.replace('/complete-profile');
+            setTimeout(() => { isNavigating.current = false; }, 1200);
+          } else {
+            console.log('📝 [GUARD] Taking user to role-selection...');
+            isNavigating.current = true;
+            router.replace('/role-selection');
+            setTimeout(() => { isNavigating.current = false; }, 1200);
+          }
         }
       }
-    }, 450); // Hardened Production Delay
+    }, 450);
 
     return () => clearTimeout(handoffTimer);
   }, [isInitialized, isAuthenticated, user, segments, isIntroFinished, dataLoaded, router, isLoadingUser]);
