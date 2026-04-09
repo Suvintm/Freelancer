@@ -378,9 +378,10 @@ export const registerFull = asyncHandler(async (req, res) => {
   }
 
   const userWithProfile = await registerService(userData);
+  const familyId = crypto.randomUUID();
 
   const accessToken = generateAccessToken({ id: userWithProfile.id, role: userWithProfile.role });
-  const refreshToken = generateRefreshToken({ id: userWithProfile.id });
+  const refreshToken = generateRefreshToken({ id: userWithProfile.id, familyId });
   const hashedToken = hashToken(refreshToken);
 
   // CAPTURE METADATA

@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Modules
 import YouTubeCreatorProfile from '../../src/modules/creators/profiles/YouTubeCreatorProfile';
+import FitnessInfluencerProfile from '../../src/modules/creators/profiles/FitnessInfluencerProfile';
 import DefaultProfile from '../../src/modules/shared/profiles/DefaultProfile';
 
 /**
@@ -26,6 +27,7 @@ import DefaultProfile from '../../src/modules/shared/profiles/DefaultProfile';
 // 1. Profile Registry
 const PROFILE_REGISTRY: Record<string, React.ComponentType> = {
   creators: YouTubeCreatorProfile,
+  fitness:  FitnessInfluencerProfile,
   default:  DefaultProfile,
 };
 
@@ -38,9 +40,17 @@ export default function ProfileIndex() {
   const activeModule = React.useMemo(() => {
     if (!user || !user.primaryRole) return 'default';
     
-    // Check if user is a YT Creator
-    const categoryName = user.primaryRole.category?.toLowerCase() || '';
-    if (categoryName.includes('youtube') || categoryName.includes('influencer')) {
+    // 🛡️ ROLE ROUTER: Select the specialized experience
+    const categoryId = user.primaryRole.categoryId?.toLowerCase() || '';
+    const categoryLabel = user.primaryRole.category?.toLowerCase() || '';
+
+    // A. Fitness Influencers
+    if (categoryId === 'fitness_expert' || categoryLabel.includes('fitness')) {
+      return 'fitness';
+    }
+
+    // B. YouTube / General Creators
+    if (categoryId === 'yt_influencer' || categoryLabel.includes('youtube') || categoryLabel.includes('influencer')) {
       return 'creators';
     }
 
