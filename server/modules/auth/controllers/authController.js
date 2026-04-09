@@ -169,6 +169,7 @@ export const login = asyncHandler(async (req, res) => {
       primaryRole: primaryIdentity, // detailed metadata
       profilePicture: user.profile?.profile_picture,
       location: user.profile?.location_country,
+      bio: user.profile?.bio,
       isOnboarded: user.is_onboarded,
       youtubeProfile: user.youtubeProfiles
     },
@@ -309,7 +310,8 @@ export const registerFull = asyncHandler(async (req, res) => {
       username: userWithProfile.profile.username,
       email: userWithProfile.email,
       role: primaryIdentity.appRole,
-      profilePicture: userWithProfile.profile.profile_picture,
+      location: userWithProfile.profile.location_country,
+      bio: userWithProfile.profile.bio,
       primaryRole: primaryIdentity,
       isOnboarded: true,
     },
@@ -365,11 +367,12 @@ export const getMe = asyncHandler(async (req, res) => {
       role: primaryIdentity.appRole,
       primaryRole: primaryIdentity,
       profilePicture: user.profile?.profile_picture,
+      bio: user.profile?.bio,
       isOnboarded: user.is_onboarded,
       youtubeProfile: user.youtubeProfiles,
       followers: user.stats?.followers_count || 0,
       following: user.stats?.following_count || 0
-  };
+    };
 
   res.status(200).json({ success: true, user: responseUser });
 });

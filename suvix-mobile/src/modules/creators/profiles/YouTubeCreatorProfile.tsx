@@ -25,6 +25,7 @@ import { formatCount } from '../../../utils/formatters';
 
 import { ContentGrid } from '../../shared/content/ContentGrid';
 import { ContentItem } from '../../shared/content/ContentCard';
+import { SmartText } from '../../shared/content/SmartText';
 
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 
@@ -47,12 +48,19 @@ const { width } = Dimensions.get('window');
 export default function YouTubeCreatorProfile() {
   const { theme } = useTheme();
   const { user, updateUser } = useAuthStore();
+  
+  React.useEffect(() => {
+    if (user?.bio) {
+      setTempBio(user.bio);
+    }
+  }, [user?.bio]);
   const insets = useSafeAreaInsets();
 
   const [activeTab, setActiveTab] = React.useState('POSTS');
   const [isBioModalVisible, setBioModalVisible] = React.useState(false);
   const [tempBio, setTempBio] = React.useState(user?.bio || '');
   const [isSaving, setIsSaving] = React.useState(false);
+  const [selection, setSelection] = React.useState({ start: 0, end: 0 });
 
   if (!user || !user.youtubeProfile) return null;
 
@@ -95,6 +103,16 @@ export default function YouTubeCreatorProfile() {
        Alert.alert("Error", "Could not update bio. Please try again.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const insertShortcut = (symbol: string) => {
+    const before = tempBio.substring(0, selection.start);
+    const after = tempBio.substring(selection.end);
+    const newText = before + symbol + after;
+    
+    if (newText.length <= 150) {
+      setTempBio(newText);
     }
   };
 
@@ -160,16 +178,20 @@ export default function YouTubeCreatorProfile() {
             </View>
             <Text style={[styles.niche, { color: '#FF0000' }]}>{subCategoryName.toUpperCase()}</Text>
             {user.bio ? (
-              <TouchableOpacity 
-                activeOpacity={0.7} 
-                onPress={() => { setTempBio(user.bio || ''); setBioModalVisible(true); }}
-                style={styles.bioWrapper}
-              >
-                <Text style={[styles.bio, { color: theme.textSecondary }]}>
-                  {user.bio}
-                </Text>
-                <MaterialCommunityIcons name="pencil-outline" size={14} color={theme.accent} style={styles.bioEditIcon} />
-              </TouchableOpacity>
+              <View style={styles.bioWrapper}>
+                <View style={{ flex: 1 }}>
+                  <SmartText 
+                    text={user.bio} 
+                    style={[styles.bio, { color: theme.textSecondary }]} 
+                  />
+                </View>
+                <TouchableOpacity 
+                  onPress={() => { setTempBio(user.bio || ''); setBioModalVisible(true); }}
+                  style={styles.bioEditTrigger}
+                >
+                  <MaterialCommunityIcons name="pencil-outline" size={16} color={theme.accent} />
+                </TouchableOpacity>
+              </View>
             ) : (
               <TouchableOpacity 
                 onPress={() => { setTempBio(''); setBioModalVisible(true); }} 
@@ -274,19 +296,37 @@ export default function YouTubeCreatorProfile() {
             </View>
 
             <View style={[styles.inputContainer, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-              <TextInput
-                multiline
-                placeholder="Tell your story..."
-                placeholderTextColor={theme.textSecondary}
-                value={tempBio}
-                onChangeText={setTempBio}
-                maxLength={150}
-                autoFocus
-                style={[styles.bioInput, { color: theme.text }]}
-              />
-              <Text style={[styles.charCount, { color: tempBio.length >= 150 ? '#FF0000' : theme.textSecondary }]}>
-                {tempBio.length}/150
-              </Text>
+              <View style={styles.mirrorContainer}>
+                <SmartText 
+                  text={tempBio} 
+                  showIcons={false}
+                  style={[styles.bioInputMirror, { color: theme.text }]} 
+                />
+                <TextInput
+                  multiline
+                  placeholder="Tell your story..."
+                  placeholderTextColor="transparent"
+                  selectionColor={theme.accent}
+                  value={tempBio}
+                  onChangeText={setTempBio}
+                  onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
+                  maxLength={150}
+                  autoFocus
+                  style={[styles.bioInput, { color: 'transparent' }]}
+                />
+              </View>
+              <View style={[styles.toolbar, { borderTopColor: theme.border }]}>
+                <TouchableOpacity style={styles.toolBtn} onPress={() => insertShortcut('@')}>
+                  <Text style={[styles.toolBtnText, { color: theme.accent }]}>@</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.toolBtn} onPress={() => insertShortcut('🔗')}>
+                  <MaterialCommunityIcons name="link-variant" size={18} color={theme.accent} />
+                </TouchableOpacity>
+                <View style={{ flex: 1 }} />
+                <Text style={[styles.charCount, { color: tempBio.length >= 150 ? '#FF0000' : theme.textSecondary }]}>
+                  {tempBio.length}/150
+                </Text>
+              </View>
             </View>
 
             <TouchableOpacity 
@@ -447,8 +487,10 @@ const styles = StyleSheet.create({
   bioInput: {
     fontSize: 16,
     lineHeight: 22,
-    height: 100,
-    textAlignVertical: 'top'
+    height: 120, // Match minHeight of container
+    textAlignVertical: 'top',
+    padding: 0, // Reset to prevent drifting
+    margin: 0,
   },
   charCount: {
     alignSelf: 'flex-end',
@@ -469,5 +511,48 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '800'
+  },
+  toolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 12,
+    marginTop: 12,
+    borderTopWidth: 1,
+    gap: 12
+  },
+  toolBtn: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    minWidth: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  toolBtnText: {
+    fontSize: 18,
+    fontWeight: '900'
+  },
+  bioEditTrigger: {
+    padding: 8,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 4
+  },
+  mirrorContainer: {
+    position: 'relative',
+    minHeight: 120
+  },
+  bioInputMirror: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    fontSize: 16,
+    lineHeight: 22,
+    padding: 0, // Must match bioInput
+    margin: 0,
+    textAlignVertical: 'top'
   }
 });
