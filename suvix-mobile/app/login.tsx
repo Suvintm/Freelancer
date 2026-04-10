@@ -55,6 +55,8 @@ export default function LoginScreen() {
       return;
     }
     setLoading(true);
+    setShowLoadingOverlay(true); // ✨ Move to start for immediate immersion
+
     try {
       const response = await api.post('/auth/login', {
         email: email.trim().toLowerCase(),
@@ -65,15 +67,15 @@ export default function LoginScreen() {
         handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
         const { user, token, refreshToken } = response.data;
         
-        // ✨ PREMIUM TRANSITION: Show the login success state
-        setShowLoadingOverlay(true);
-        
-        // 1s delay for a smooth professional entry
+        // 1s delay for a smooth professional entry (overlay is already showing)
         setTimeout(async () => {
           await setAuth(user, token, refreshToken);
         }, 1000);
+      } else {
+        setShowLoadingOverlay(false);
       }
     } catch (error: any) {
+      setShowLoadingOverlay(false); // Hide overlay so user can see the error
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
       Alert.alert('Login Failed', error.response?.data?.message || 'Check your credentials.');
     } finally {
@@ -95,7 +97,7 @@ export default function LoginScreen() {
               <Image source={require('../assets/whitebglogo.png')} style={[styles.logo, { tintColor: isDark ? undefined : theme.text }]} resizeMode="contain" />
               <Text style={[styles.title, { color: theme.text }]}>Welcome Back</Text>
             </View>
-
+            
             <View style={styles.form}>
               <View style={styles.inputGroup}>
                 <SuvixInput

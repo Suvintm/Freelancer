@@ -194,24 +194,27 @@ export default function SignupScreen() {
         } as any);
       }
 
+      // ✨ IMMEDIATE IMMERSION: Show overlay before the final heavy API call
+      setShowSuccessOverlay(true);
+
       const registerRes = await api.post('/auth/register-full', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       if (registerRes.data?.success) {
         const { user, token, refreshToken } = registerRes.data;
-        
-        // ✨ PREMIUM TRANSITION: Show overlay first
-        setShowSuccessOverlay(true);
         handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
         
-        // Give the user 1.5s to "feel" the success before the jump
+        // Give the user 1.5s to "feel" the success before the jump (overlay is already showing)
         setTimeout(async () => {
           await setAuth(user, token, refreshToken);
           clearTempSignupData();
         }, 1500);
+      } else {
+        setShowSuccessOverlay(false);
       }
     } catch (error: any) {
+      setShowSuccessOverlay(false); // Hide overlay on error so user can correct form
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
       
       const errorMessage = error.response?.data?.message || 'Could not prepare your account.';
@@ -251,7 +254,6 @@ export default function SignupScreen() {
               
               <Text style={[styles.title, { color: theme.text }]}>Join SuviX</Text>
             </View>
-
             <View style={styles.content}>
 
               {/* YouTube Channels Preview Snippet */}
@@ -315,6 +317,13 @@ export default function SignupScreen() {
                 style={{ marginTop: 4 }}
               />
 
+              <View style={styles.footer}>
+                <Text style={[styles.footerText, { color: theme.textSecondary }]}>Already have an account? </Text>
+                <TouchableOpacity onPress={() => { handleImpact(); router.replace('/login'); }}>
+                  <Text style={[styles.footerLink, { color: theme.text }]}>Login Here</Text>
+                </TouchableOpacity>
+              </View>
+
               <View style={styles.dividerContainer}>
                 <View style={[styles.line, { backgroundColor: theme.border }]} /><Text style={[styles.dividerText, { color: theme.textSecondary }]}>OR</Text><View style={[styles.line, { backgroundColor: theme.border }]} />
               </View>
@@ -328,12 +337,6 @@ export default function SignupScreen() {
                 <Text style={[styles.googleButtonText, { color: theme.text }]}>Continue with Google</Text>
               </TouchableOpacity>
 
-              <View style={styles.footer}>
-                <Text style={[styles.footerText, { color: theme.textSecondary }]}>Existing user? </Text>
-                <TouchableOpacity onPress={() => { handleImpact(); router.replace('/login'); }}>
-                  <Text style={[styles.footerLink, { color: theme.text }]}>Log In</Text>
-                </TouchableOpacity>
-              </View>
             </View>
 
             {/* Language Selection Modal */}
