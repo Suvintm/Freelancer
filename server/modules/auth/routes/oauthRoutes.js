@@ -194,18 +194,28 @@ router.post("/google/mobile", authLimiter, checkAccountLockout, async (req, res)
         }
 
         const { sub: googleId, email, name, picture } = payload;
-        const normalizedEmail = email.toLowerCase();
+        const normalizedEmail = email.toLowerCase().trim();
+        
+        logger.info(`[AUTH] Google Mobile Auth Attempt: ${normalizedEmail}`);
 
-        // 2. Check if user already exists
+        // 2. [PRODUCTION HARDENING]: Check if user already exists
+        // We use mode: 'insensitive' to ensure we capture manual registrations even if
+        // the case doesn't match exactly.
         let user = await prisma.user.findFirst({
             where: {
                 OR: [
                     { google_id: googleId },
-                    { email: normalizedEmail }
+                    { email: { equals: normalizedEmail, mode: 'insensitive' } }
                 ]
             },
             include: USER_INCLUDE
         });
+
+        if (user) {
+            logger.info(`[AUTH] Existing user found matching Google email: ${user.id} (${user.email})`);
+        } else {
+            logger.info(`[AUTH] No existing user found for Google email: ${normalizedEmail}. Proceeding to New User flow.`);
+        }
 
         // 3. CASE A: User Exists -> Log in immediately
         if (user) {
@@ -399,18 +409,9 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
                 });
             }
 
-            if (youtubeChannels && Array.isArray(youtubeChannels)) {
-                for (const chan of youtubeChannels) {
-                    await tx.youTubeProfile.create({
-                        data: {
-                            userId: newUser.id,
-                            channel_id: chan.channelId,
-                            channel_name: chan.channelName,
-                            thumbnail_url: chan.thumbnailUrl,
-                        }
-                    });
-                }
-            }
+            // Removed manual YouTube Profile insertion.
+            // This is now fully deferred to the BullMQ background worker to securely process
+            // Cloudinary thumbnails and 15 related videos without blocking DB performance.
 
             return await tx.user.findUnique({
                 where: { id: newUser.id },
@@ -441,6 +442,19 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
             .exec();
 
         logger.info(`[SECURITY] Atomic Social Register Success: User ${user.id} - New family: ${familyId}`);
+
+        // 🚀 ASYNC WORKER DISPATCH: Hand over heavy YouTube image processing to background queue
+        if (youtubeChannels && Array.isArray(youtubeChannels) && youtubeChannels.length > 0) {
+            import("../../workers/queues.js").then(({ youtubeSyncQueue }) => {
+                if (youtubeSyncQueue) {
+                    youtubeSyncQueue.add('youtube-sync', {
+                        userId: user.id,
+                        channels: youtubeChannels
+                    }, { jobId: `sync_oauth_${user.id}` }).catch(e => logger.error(`[WORKER] Failed to add job: ${e.message}`));
+                    logger.info(`🚀 [WORKER] Dispatched YouTube Sync to BullMQ for newly registered Google user ${user.id}`);
+                }
+            }).catch(e => logger.error(`[WORKER] Import failed in oauthRoutes: ${e.message}`));
+        }
 
         res.status(201).json({
             success: true,

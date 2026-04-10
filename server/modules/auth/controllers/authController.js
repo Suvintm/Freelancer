@@ -48,28 +48,18 @@ export const refresh = asyncHandler(async (req, res) => {
     const storedData = await redis.get(`refresh_token:${hashedToken}`);
     
     if (!storedData) {
-        // TOKEN REUSE DETECTED! (Security breach attempt)
-        if (familyId && redisAvailable) {
-            logger.error(`[SECURITY] Refresh token reuse detected for user ${userId}. Invalidating family: ${familyId}`);
-            
-            // Nuke the entire family session
-            const familyKey = `token_family:${familyId}`;
-            const familyTokens = await redis.sMembers(familyKey);
-            
-            if (familyTokens && familyTokens.length > 0) {
-                const keysToDel = familyTokens.map(t => `refresh_token:${t}`);
-                await redis.del(...keysToDel, familyKey);
-            }
-            throw new ApiError(401, "Security Alert: This session has been invalidated due to token reuse detection.");
+        // PRODUCTION REFINEMENT: If Redis is online but the token is missing,
+        // it may have been purged or already rotated due to a race condition.
+        // We throw 401 but NO LONGER nuke the whole family unless we have explicit proof of fraud.
+        if (redisAvailable) {
+            logger.warn(`[SECURITY] Refresh token missing from Redis for user ${userId}. Session may have expired or was already rotated.`);
+            throw new ApiError(401, "Session expired or invalid. Please log in again.");
         }
 
         // If Redis is down, we allow the refresh if the JWT itself is valid,
         // because we can't verify reuse without the cache.
         if (!redisAvailable) {
             logger.warn(`[SECURITY] Redis offline: Skipping reuse detection for user ${userId}. Availability prioritized.`);
-        } else {
-            // Case where Redis is UP but token is missing (Likely expired or logged out elsewhere)
-            throw new ApiError(401, "Session expired or invalid.");
         }
     }
 
@@ -134,7 +124,17 @@ export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  
+  // 🔍 [DIAGNOSTIC] Log why validation is failing (Scrubbing password for security)
   if (!email || !password || !emailRegex.test(email)) {
+    logger.debug(`[AUTH] Login validation failed for IP ${req.ip}. Body Keys: ${Object.keys(req.body).join(", ")}`);
+    logger.debug(`[AUTH] DEBUG: email=${email}, hasPassword=${!!password}, formatValid=${email ? emailRegex.test(email) : false}`);
+    
+    // Check if the body was possibly sent correctly but parsed weirdly
+    if (Object.keys(req.body).length === 0) {
+        logger.error(`[AUTH] CRITICAL: req.body is EMPTY. Check Content-Type header on mobile app.`);
+    }
+
     throw new ApiError(400, "Valid email and password are required.");
   }
 
@@ -146,6 +146,13 @@ export const login = asyncHandler(async (req, res) => {
   if (!user) {
     await trackFailedLogin(email);
     throw new ApiError(401, "Invalid credentials.");
+  }
+
+  // 🛡️ [SECURITY] ENFORCE ONE-WAY OAUTH RESTRICTION
+  // If the account was created via Google and has NO password, block manual login.
+  if (!user.password_hash && user.google_id) {
+    logger.warn(`[AUTH] Manual login blocked for Google-native user: ${user.id}`);
+    throw new ApiError(403, "This account is linked with Google. Please use the 'Continue with Google' button to sign in.");
   }
 
   const isMatch = await comparePassword(password, user.password_hash);

@@ -25,6 +25,7 @@ import { useAuthStore } from '../src/store/useAuthStore';
 import { useGoogleAuth } from '../src/hooks/useGoogleAuth';
 import { api } from '../src/api/client';
 import * as Haptics from 'expo-haptics';
+import { ProcessingOverlay } from '../src/components/shared/ProcessingOverlay';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -37,6 +38,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   const router = useRouter();
   const { signIn: googleSignIn, isLoading: isGoogleLoading } = useGoogleAuth();
   const setAuth = useAuthStore((state) => state.setAuth);
@@ -62,19 +64,28 @@ export default function LoginScreen() {
       if (response.data.success) {
         handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
         const { user, token, refreshToken } = response.data;
-        // Global Navigation handles the redirect once setAuth completes
-        await setAuth(user, token, refreshToken);
+        
+        // ✨ PREMIUM TRANSITION: Show the login success state
+        setShowLoadingOverlay(true);
+        
+        // 1s delay for a smooth professional entry
+        setTimeout(async () => {
+          await setAuth(user, token, refreshToken);
+        }, 1000);
       }
     } catch (error: any) {
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
       Alert.alert('Login Failed', error.response?.data?.message || 'Check your credentials.');
     } finally {
-      setLoading(false);
+      if (!showLoadingOverlay) {
+        setLoading(false);
+      }
     }
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.primary }]}>
+      <ProcessingOverlay isVisible={showLoadingOverlay} message="Logging you in..." />
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>

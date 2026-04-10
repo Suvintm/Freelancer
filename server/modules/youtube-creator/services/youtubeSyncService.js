@@ -50,7 +50,7 @@ export const persistYouTubeContent = async (userId, channelData, tx = prisma) =>
     // 🛡️ PRODUCTION RESILIENCE: Use findFirst to avoid strict PrismaClient validation while maintaining performance
     const existing = await ytProfileModel.findFirst({
        where: { channel_id: channelId },
-       select: { userId: true }
+       select: { id: true, userId: true }
     });
 
     if (existing && existing.userId !== userId) {

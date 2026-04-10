@@ -25,6 +25,7 @@ import SuvixButton from '../src/components/SuvixButton';
 import { useGoogleAuth } from '../src/hooks/useGoogleAuth';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '../src/store/useAuthStore';
+import { ProcessingOverlay } from '../src/components/shared/ProcessingOverlay';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
@@ -45,6 +46,7 @@ export default function SignupScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<{ type: 'loading' | 'success' | 'error' | 'none', message: string }>({ type: 'none', message: '' });
   const LANGUAGES = [
     'English', 'Hindi', 'Kannada', 'Telugu', 'Tamil', 
@@ -198,10 +200,16 @@ export default function SignupScreen() {
 
       if (registerRes.data?.success) {
         const { user, token, refreshToken } = registerRes.data;
-        await setAuth(user, token, refreshToken);
-        clearTempSignupData();
+        
+        // ✨ PREMIUM TRANSITION: Show overlay first
+        setShowSuccessOverlay(true);
         handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
-        Alert.alert('Welcome to SuviX', 'Your account has been created successfully.');
+        
+        // Give the user 1.5s to "feel" the success before the jump
+        setTimeout(async () => {
+          await setAuth(user, token, refreshToken);
+          clearTempSignupData();
+        }, 1500);
       }
     } catch (error: any) {
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
@@ -218,12 +226,16 @@ export default function SignupScreen() {
         Alert.alert('Signup Error', errorMessage);
       }
     } finally {
-      setLoading(false);
+      // Keep loading true if we are showing the success overlay to prevent flicker
+      if (!showSuccessOverlay) {
+        setLoading(false);
+      }
     }
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.primary }]}>
+      <ProcessingOverlay isVisible={showSuccessOverlay} message="Creating your SuviX profile..." />
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>

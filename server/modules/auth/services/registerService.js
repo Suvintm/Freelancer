@@ -1,7 +1,9 @@
 import prisma from "../../../config/prisma.js";
 import { hashPassword } from "../utils/password.js";
 import { ApiError } from "../../../middleware/errorHandler.js";
+import youtubeApiService from "../../youtube-creator/services/youtubeApiService.js";
 import youtubeSyncService from "../../youtube-creator/services/youtubeSyncService.js";
+import { youtubeSyncQueue } from "../../workers/queues.js";
 import storageService from "../../../utils/storageService.js";
 import logger from "../../../utils/logger.js";
 import mongoose from "mongoose";
@@ -245,44 +247,40 @@ export const registerFullUser = async (userData) => {
         await tx.userRoleMapping.createMany({ data: mappings, skipDuplicates: true });
       }
 
+      // Step D: SEED YOUTUBE SKELETON (Immediate Identity)
+      // This ensures the first response to the mobile app already identifies the user as a Creator.
       if (isYoutubeCategory && normalizedChannels.length > 0) {
-        // 🔄 Use the specialized YouTube Sync Service (Production Pattern)
-        const channel = normalizedChannels[0];
-        // Inject pre-mirrored avatar to save time inside transaction
-        channel.mirroredAvatarUrl = preMirroredYoutubeAvatar; 
+        const mainChannel = normalizedChannels[0];
         
-        const ytProfile = await youtubeSyncService.persistYouTubeContent(newUser.id, channel, tx);
+        // Use the pre-mirrored avatar if available, otherwise fallback to direct URL
+        const finalThumbnail = preMirroredYoutubeAvatar || mainChannel.thumbnail_url;
 
-        // 🔗 HYBRID SYNC: Persistence to MongoDB (Foundation for Dynamic Portfolios)
-        try {
-          const db = mongoose.connection.db;
-          if (db) {
-            await db.collection("profiles").updateOne(
-              { user_id: newUser.id }, 
-              { 
-                $set: {
-                  youtube_channel_id: channel.channel_id,
-                  youtube_channel_name: channel.channel_name,
-                  youtube_thumbnail: ytProfile.thumbnail_url,
-                  youtube_stats: {
-                    subscribers: channel.subscriber_count,
-                    videos: channel.video_count
-                  },
-                  updated_at: new Date()
+        // SAFE MODEL RESOLVER: Handle varying Prisma naming (youTubeProfile vs youtubeProfile)
+        const ytModel = tx.youtubeProfile || tx.youTubeProfile || tx.youtubeProfiles;
+
+        if (ytModel) {
+            await ytModel.create({
+                data: {
+                    userId: newUser.id,
+                    channel_id: mainChannel.channel_id,
+                    channel_name: mainChannel.channel_name,
+                    thumbnail_url: finalThumbnail,
+                    subscriber_count: mainChannel.subscriber_count || 0,
+                    video_count: mainChannel.video_count || 0,
+                    uploads_playlist_id: mainChannel.uploads_playlist_id || null,
                 }
-              },
-              { upsert: true }
-            );
-            logger.info(`✅ MongoDB Sync: YouTube metadata synchronized for user ${newUser.id}`);
-          }
-        } catch (mongoErr) {
-          logger.warn(`⚠️ MongoDB Sync Failed: ${mongoErr.message}`);
+            });
+            logger.info(`✨ [REG-SERVICE] Atomic YouTube Identity seeded for user ${newUser.id}`);
+        } else {
+            logger.error(`❌ [REG-SERVICE] YouTubeProfile model NOT found in transaction client.`);
         }
       }
 
       return {
         ...newUser,
         profile,
+        // Carry channels outward to enqueue them later
+        _deferredYoutubeChannels: (isYoutubeCategory && normalizedChannels.length > 0) ? normalizedChannels : null
       };
     }, {
       timeout: 30000 // Increase timeout to 30s for Neon/Cloudinary latency
@@ -312,6 +310,23 @@ export const registerFullUser = async (userData) => {
     });
 
     logger.info(`Production Registration Success: ${hydratedUser.email} (${hydratedUser.id})`);
+    
+    // 6. ASYNC WORKER DISPATCH: Only after guaranteed DB persistence
+    if (user._deferredYoutubeChannels) {
+      if (youtubeSyncQueue) {
+        // Enqueue the heavy job (Thumbnails URL downloading to Cloudinary)
+        await youtubeSyncQueue.add('youtube-sync', {
+          userId: user.id,
+          channels: user._deferredYoutubeChannels
+        }, { jobId: `sync_${user.id}` }); // De-duplicate by user ID
+        logger.info(`🚀 [WORKER] Dispatched YouTube Sync to BullMQ for ${user.id}`);
+      } else {
+        logger.warn(`⚠️ [WORKER] youtubeSyncQueue not connected! Falling back to synchronous sync...`);
+        // Fallback for local development if Redis is down
+        youtubeSyncService.persistYouTubeContent(user.id, user._deferredYoutubeChannels[0]).catch(e => logger.error(`Sync fallback failed: ${e.message}`));
+      }
+    }
+    
     return hydratedUser;
 
   } catch (error) {

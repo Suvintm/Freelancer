@@ -11,8 +11,6 @@ import mongoSanitize from "@exortek/express-mongo-sanitize";
 import hpp from "hpp";
 import compression from "compression";
 import cookieParser from "cookie-parser";
-import session from "express-session";
-import { RedisStore } from "connect-redis";
 
 // Global BigInt JSON serialization fix
 BigInt.prototype.toJSON = function () {
@@ -44,6 +42,9 @@ import prisma from "./config/prisma.js";
 // Firebase Admin initialization
 import { initFirebaseAdmin } from "./utils/firebaseAdmin.js";
 initFirebaseAdmin();
+
+// Initialize BullMQ Background Workers
+import "./modules/workers/index.js";
 
 // Validate required environment variables
 if (process.env.NODE_ENV !== "test") {
@@ -116,17 +117,9 @@ app.use(compression());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// ============ SESSION & PASSPORT ============
-const redisStore = new RedisStore({ client: redis, prefix: "sess:" });
-app.use(session({
-    store: redisStore,
-    secret: process.env.SESSION_SECRET || process.env.JWT_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: { secure: process.env.NODE_ENV === "production", httpOnly: true, maxAge: 24 * 60 * 60 * 1000 },
-}));
+// ============ PASSPORT ============
+// We only use Passport for OAuth flows (Google), running strictly in session=false mode.
 app.use(passport.initialize());
-app.use(passport.session());
 
 // ============ PRISMA ROUTES (EXEMPT FROM NOSQL SANITIZE) ============
 // These routes handle PostgreSQL data and are safely immune to NoSQL injection.

@@ -21,6 +21,7 @@ import { UnifiedBanner } from '../../src/components/home/UnifiedBanner';
 import { StoryBar } from '../../src/components/stories/StoryBar';
 import { FeatureGallery } from '../../src/components/home/FeatureGallery';
 import { UnifiedFeed } from '../../src/modules/home/discovery/UnifiedFeed';
+import { DashboardSkeleton } from '../../src/modules/home/skeletons/DashboardSkeleton';
 
 /**
  * PRODUCTION-GRADE DYNAMIC DASHBOARD (Home Tab)
@@ -89,14 +90,7 @@ export default function DashboardIndex() {
   const showSkeleton = isLoadingUser || (isAuthenticated && !user);
 
   if (showSkeleton) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.primary }]}>
-        <ActivityIndicator size="large" color={theme.text} />
-        {/* Subtle Skeleton layout for zero-latency feel */}
-        <View style={{ width: '90%', height: 200, backgroundColor: theme.secondary, borderRadius: 20, marginTop: 40 }} />
-        <View style={{ width: '40%', height: 20, backgroundColor: theme.secondary, borderRadius: 10, marginTop: 20, alignSelf: 'flex-start', marginLeft: 20 }} />
-      </View>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (!user) {
