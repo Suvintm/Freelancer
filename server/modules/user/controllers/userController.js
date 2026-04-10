@@ -22,6 +22,14 @@ export const getMyBasicInfo = asyncHandler(async (req, res) => {
           bio: true,
         },
       },
+      youtubeProfiles: {
+        include: {
+          videos: {
+            orderBy: { published_at: 'desc' },
+            take: 20
+          }
+        }
+      }
     },
   });
 
@@ -42,6 +50,8 @@ export const getMyBasicInfo = asyncHandler(async (req, res) => {
       phone: user.profile?.phone || "",
       country: user.profile?.location_country || "",
       bio: user.profile?.bio || "",
+      youtubeProfile: user.youtubeProfiles,
+      youtubeVideos: user.youtubeProfiles?.videos || [],
     },
   });
 });

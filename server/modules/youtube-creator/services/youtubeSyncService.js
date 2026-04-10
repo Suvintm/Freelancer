@@ -89,33 +89,50 @@ export const persistYouTubeContent = async (userId, channelData, tx = prisma) =>
 
     // 3. Mirror and Persist Videos (Atomic Sync)
     if (videos && videos.length > 0) {
-      logger.info(`📽️ [YT-SYNC] Mirroring ${videos.length} videos...`);
+      logger.info(`📽️ [YT-SYNC] Attempting to mirror up to ${videos.length} videos...`);
       
-      const videoRecords = await Promise.all(
-        videos.map(async (v) => {
-          const mirroredThumb = await storageService.uploadFromUrl(v.thumbnail, "youtube-videos");
-          return {
-            video_id: v.id,
-            title: v.title,
-            thumbnail: mirroredThumb || v.thumbnail,
-            published_at: new Date(v.publishedAt),
-            youtubeProfileId: youtubeProfile.id,
-            channel_id: channelId, // Added missing required field
-          };
-        })
-      );
+      try {
+        const videoRecords = [];
+        
+        // Use sequential processing for thumbnails to be nice to Cloudinary/Network
+        // but limit to first 20 for profile performance
+        const videosToSync = videos.slice(0, 20);
 
-      // Clean old videos and insert new ones (Production Fresh-Flush Sync)
-      if (ytVideoModel) {
-        await ytVideoModel.deleteMany({
-          where: { youtubeProfileId: youtubeProfile.id },
-        });
+        for (const v of videosToSync) {
+          try {
+            let mirroredThumb = v.thumbnail;
+            if (v.thumbnail && v.thumbnail.startsWith('http')) {
+              mirroredThumb = await storageService.uploadFromUrl(v.thumbnail, "youtube-videos");
+            }
 
-        await ytVideoModel.createMany({
-          data: videoRecords,
-        });
-      } else {
-        logger.warn("⚠️ [YT-SYNC] youtubeVideo model not found, skipping video persistence.");
+            videoRecords.push({
+              video_id: v.id,
+              title: v.title,
+              thumbnail: mirroredThumb || v.thumbnail,
+              published_at: new Date(v.publishedAt),
+              youtubeProfileId: youtubeProfile.id,
+              channel_id: channelId,
+            });
+          } catch (vErr) {
+            logger.warn(`⚠️ [YT-SYNC] Skipping video ${v.id} due to thumbnail failure: ${vErr.message}`);
+          }
+        }
+
+        // Clean old videos and insert new ones (Production Fresh-Flush Sync)
+        if (ytVideoModel && videoRecords.length > 0) {
+          await ytVideoModel.deleteMany({
+            where: { youtubeProfileId: youtubeProfile.id },
+          });
+
+          await ytVideoModel.createMany({
+            data: videoRecords,
+            skipDuplicates: true,
+          });
+          logger.info(`✅ [YT-SYNC] Successfully persisted ${videoRecords.length} videos.`);
+        }
+      } catch (vidSyncErr) {
+        logger.error(`❌ [YT-SYNC] Video persistence layer failed: ${vidSyncErr.message}`);
+        // We don't throw here - we want the profile sync to at least succeed
       }
     }
 
