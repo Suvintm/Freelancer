@@ -214,4 +214,18 @@ const gracefulShutdown = async (signal) => {
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
+// ─── GLOBAL ERROR HANDLERS (Safety Net) ───────────────────────────────────────────
+// These handle errors that occur outside of Express or asynchronous rejections.
+process.on("unhandledRejection", (reason, promise) => {
+  logger.error("🚨 [UNHANDLED REJECTION] at:", promise, "reason:", reason);
+  // In production, consider sending to Sentry/Crashlytics
+});
+
+process.on("uncaughtException", (error) => {
+  logger.error("🔥 [UNCAUGHT EXCEPTION]:", error.message);
+  logger.error(error.stack);
+  // Standard Production Practice: Restart on uncaught exceptions
+  process.exit(1);
+});
+
 export { app, server };

@@ -13,23 +13,36 @@ let resolvedUrl: string | null = null;
 async function resolveApiUrl(): Promise<string> {
   if (resolvedUrl) return resolvedUrl;
 
-  if (LOCAL_URL) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 3000);
-      const res = await fetch(`${LOCAL_URL}/health`, { signal: controller.signal });
-      clearTimeout(timer);
-      if (res.ok) {
-        console.log('🏠 [API] Local server reachable → using local dev server.');
-        resolvedUrl = LOCAL_URL;
-        return resolvedUrl;
+  const MAX_RETRIES = 2; // Total 3 attempts
+  let attempts = 0;
+
+  while (attempts <= MAX_RETRIES) {
+    if (LOCAL_URL) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 2000); // Shorter timeout for retries
+        const res = await fetch(`${LOCAL_URL}/health`, { signal: controller.signal });
+        clearTimeout(timer);
+        
+        if (res.ok) {
+          console.log('🏠 [API] Local server reachable → using local dev server.');
+          resolvedUrl = LOCAL_URL;
+          return resolvedUrl;
+        }
+      } catch (err) {
+        // Continue to retry or fallback
       }
-    } catch {
-      // Local unreachable — fall through to production
+    }
+    
+    attempts++;
+    if (attempts <= MAX_RETRIES && LOCAL_URL) {
+      // Delay before retry
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log(`📡 [API] Local unreachable, retrying... (${attempts}/${MAX_RETRIES})`);
     }
   }
 
-  console.log('🌐 [API] Local unreachable → falling back to production.');
+  console.log('🌐 [API] Local unreachable after retries → falling back to production.');
   resolvedUrl = PROD_URL;
   return PROD_URL;
 }

@@ -84,7 +84,12 @@ export default function YouTubeCreatorProfile() {
   };
 
   const getFilteredContent = () => {
-    if (activeTab === 'POSTS') return MOCK_CONTENT;
+    if (activeTab === 'POSTS') {
+      return MOCK_CONTENT.filter(item => item.type === 'POSTS');
+    }
+    if (activeTab === 'YOUTUBE VIDEOS') {
+      return MOCK_CONTENT.filter(item => item.type === 'YT VIDEOS' || item.type === 'SHORTS');
+    }
     return MOCK_CONTENT.filter(item => item.type === activeTab);
   };
 
@@ -167,7 +172,7 @@ export default function YouTubeCreatorProfile() {
     }
   };
 
-  const isReelsTab = activeTab === 'REELS' || activeTab === 'SHORTS';
+  const isReelsTab = activeTab === 'REELS';
 
   return (
     <View style={[styles.container, { backgroundColor: theme.primary }]}>
@@ -316,7 +321,7 @@ export default function YouTubeCreatorProfile() {
 
           {/* Content Tabs */}
           <View style={[styles.tabBar, { borderBottomColor: theme.border }]}>
-            {['POSTS', 'REELS', 'YT VIDEOS', 'SHORTS'].map((tab) => (
+            {['POSTS', 'REELS', 'YOUTUBE VIDEOS'].map((tab) => (
               <TouchableOpacity 
                 key={tab} 
                 onPress={() => setActiveTab(tab)}
