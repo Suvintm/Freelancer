@@ -41,16 +41,15 @@ export default function ProfileIndex() {
     if (!user || !user.primaryRole) return 'default';
     
     // 🛡️ ROLE ROUTER: Select the specialized experience
-    const categoryId = user.primaryRole.categoryId?.toLowerCase() || '';
-    const categoryLabel = user.primaryRole.category?.toLowerCase() || '';
+    const categorySlug = user.primaryRole.categorySlug;
 
     // A. Fitness Influencers
-    if (categoryId === 'fitness_expert' || categoryLabel.includes('fitness')) {
+    if (categorySlug === 'fitness_expert') {
       return 'fitness';
     }
 
     // B. YouTube / General Creators
-    if (categoryId === 'yt_influencer' || categoryLabel.includes('youtube') || categoryLabel.includes('influencer')) {
+    if (categorySlug === 'yt_influencer') {
       return 'creators';
     }
 

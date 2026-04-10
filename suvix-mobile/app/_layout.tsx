@@ -204,7 +204,8 @@ function InitialRoot() {
 
       // 3. AUTHENTICATED & ONBOARDING LOGIC
       const isOnboarded = user?.isOnboarded;
-      const isMissingSocialData = !user?.username || !user?.name;
+      // Only check for missing social data if the user is NOT yet onboarded
+      const isMissingSocialData = !isOnboarded && (!user?.username || !user?.name);
 
       if (isOnboarded) {
         if (!inAuthGroup) {

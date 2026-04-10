@@ -56,12 +56,12 @@ export default function CompleteProfileScreen() {
 
         if (res.data.success) {
           handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
-          const { user: newUser, token } = res.data;
+          const { user: newUser, token, refreshToken } = res.data;
           
           // Clear onboarding buffer and log in
           clearTempSignupData();
-          await setAuth(newUser, token);
-          router.replace('/(tabs)');
+          await setAuth(newUser, token, refreshToken);
+          // Auth guard in _layout.tsx will handle routing to /(tabs)
         }
       } else {
         // CASE: STANDARD PROFILE COMPLETION

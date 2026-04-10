@@ -1,6 +1,6 @@
 import prisma from "../../../config/prisma.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
-import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
+import storageService from "../../../utils/storageService.js";
 
 // @desc    Get current authenticated user basic info
 // @route   GET /api/user/me
@@ -118,9 +118,8 @@ export const updateProfilePicture = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Please upload an image file");
   }
 
-  // Upload to Cloudinary
-  // Prefixing with 'avatars' folder for organization
-  const result = await uploadToCloudinary(req.file.buffer, "avatars", {
+  // 💾 Standardized Storage Upload (Universal Service)
+  const result = await storageService.uploadBuffer(req.file.buffer, "avatars", {
     transformation: [
       { width: 500, height: 500, crop: "fill", gravity: "face" }
     ]

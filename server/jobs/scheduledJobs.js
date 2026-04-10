@@ -8,7 +8,7 @@ import FinalOutput from "../modules/marketplace/models/FinalOutput.js";
 import { createNotification } from "../modules/connectivity/controllers/notificationController.js";
 import User from "../modules/user/models/User.js";
 import WalletTransaction from "../modules/payments/models/WalletTransaction.js";
-import { deleteFromCloudinary } from "../utils/cloudinaryStorage.js";
+import storageService from "../utils/storageService.js";
 import logger from "../utils/logger.js";
 import mongoose from "mongoose";
 
@@ -265,13 +265,9 @@ export const cleanupExpiredFinalOutputs = async () => {
     const errors = [];
 
     for (const output of expiredOutputs) {
-      try {
-        // Determine resource type for Cloudinary
-        const resourceType = output.type === "photo" ? "image" : "video";
-        
-        // Delete original file from Cloudinary (large file)
+        // Delete original file from Storage (Universal Service)
         if (output.r2Key) {
-          const deleted = await deleteFromCloudinary(output.r2Key, resourceType);
+          const deleted = await storageService.deleteFile(output.r2Key, resourceType);
           if (deleted) {
             logger.info(`Deleted original file: ${output.r2Key}`);
           }
@@ -279,7 +275,7 @@ export const cleanupExpiredFinalOutputs = async () => {
 
         // Delete preview if exists (medium file)
         if (output.previewKey) {
-          await deleteFromCloudinary(output.previewKey, resourceType);
+          await storageService.deleteFile(output.previewKey, resourceType);
         }
 
         // Keep thumbnail for records (small file - not deleted)

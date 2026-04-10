@@ -28,6 +28,7 @@ import { formatCount } from '../../../utils/formatters';
 import { ContentGrid } from '../../shared/content/ContentGrid';
 import { ContentItem } from '../../shared/content/ContentCard';
 import { SmartText } from '../../shared/content/SmartText';
+import { YouTubeVideoCard } from '../components/YouTubeVideoCard';
 
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 
@@ -58,7 +59,7 @@ export default function YouTubeCreatorProfile() {
   }, [user?.bio]);
   const insets = useSafeAreaInsets();
 
-  const [activeTab, setActiveTab] = React.useState('POSTS');
+  const [activeTab, setActiveTab] = React.useState('YOUTUBE VIDEOS');
   const [isBioModalVisible, setBioModalVisible] = React.useState(false);
   const [tempBio, setTempBio] = React.useState(user?.bio || '');
   const [isSaving, setIsSaving] = React.useState(false);
@@ -87,9 +88,7 @@ export default function YouTubeCreatorProfile() {
     if (activeTab === 'POSTS') {
       return MOCK_CONTENT.filter(item => item.type === 'POSTS');
     }
-    if (activeTab === 'YOUTUBE VIDEOS') {
-      return MOCK_CONTENT.filter(item => item.type === 'YT VIDEOS' || item.type === 'SHORTS');
-    }
+    // We handle YOUTUBE VIDEOS separately to show the feed
     return MOCK_CONTENT.filter(item => item.type === activeTab);
   };
 
@@ -321,7 +320,7 @@ export default function YouTubeCreatorProfile() {
 
           {/* Content Tabs */}
           <View style={[styles.tabBar, { borderBottomColor: theme.border }]}>
-            {['POSTS', 'REELS', 'YOUTUBE VIDEOS'].map((tab) => (
+            {['YOUTUBE VIDEOS', 'POSTS', 'REELS'].map((tab) => (
               <TouchableOpacity 
                 key={tab} 
                 onPress={() => setActiveTab(tab)}
@@ -336,9 +335,33 @@ export default function YouTubeCreatorProfile() {
               </TouchableOpacity>
             ))}
           </View>
-
-          {/* Universal Content Grid */}
-          <ContentGrid data={getFilteredContent()} mode={isReelsTab ? 'reels' : 'grid'} />
+          
+          {/* 📱 DYNAMIC CONTENT RENDERER */}
+          <View style={{ marginTop: 10, paddingBottom: 40 }}>
+            {activeTab === 'YOUTUBE VIDEOS' ? (
+              // 🎥 YouTube Instagram-Style Feed
+              <View style={styles.feedContainer}>
+                {user.youtubeVideos && user.youtubeVideos.length > 0 ? (
+                  user.youtubeVideos.map((video: any) => (
+                    <YouTubeVideoCard key={video.id || video.video_id} video={{
+                        id: video.video_id || video.id,
+                        title: video.title,
+                        thumbnail: video.thumbnail,
+                        published_at: video.published_at || video.publishedAt
+                    }} />
+                  ))
+                ) : (
+                  <View style={styles.emptyFeed}>
+                    <MaterialCommunityIcons name="video-off-outline" size={48} color={theme.textSecondary} />
+                    <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No videos found.</Text>
+                  </View>
+                )}
+              </View>
+            ) : (
+              // 🖼️ Standard Grid for Posts/Reels
+              <ContentGrid data={getFilteredContent()} mode={isReelsTab ? 'reels' : 'grid'} />
+            )}
+          </View>
         </View>
       </ScrollView>
 
@@ -651,5 +674,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 2,
     zIndex: 10
+  },
+  feedContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+  emptyFeed: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 12,
   }
 });

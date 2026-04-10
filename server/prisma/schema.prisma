@@ -25,7 +25,8 @@ model User {
   profile           UserProfile?
   stats             UserStats?
   youtubeProfiles   YouTubeProfile?
-  youtube_videos    YouTubeVideo[]
+  youtube_videos    YouTubeVideo[] // Deprecated relation - keeping for backward compatibility in migrations, will remove after data moved
+
 
   @@index([role])
   @@index([is_onboarded])
@@ -127,31 +128,52 @@ model YouTubeProfile {
   channel_name     String   @db.VarChar(255)
   subscriber_count Int?     @default(0)
   video_count      Int?     @default(0)
-  thumbnail_url    String?
-  connected_at     DateTime @default(now()) @map("connected_at") @db.Timestamptz(6)
-  created_at       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at       DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  thumbnail_url        String?
+  uploads_playlist_id  String?             @map("uploads_playlist_id") @db.VarChar(255)
+  last_synced_at       DateTime?           @map("last_synced_at") @db.Timestamptz(6)
+  video_cache_count    Int                 @default(0) @map("video_cache_count")
+  connected_at         DateTime            @default(now()) @map("connected_at") @db.Timestamptz(6)
+  created_at           DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at           DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
+  user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videos               YouTubeVideo[]
+  sync_logs            YouTubeSyncLog[]
 
-  @@index([channel_id])
+  @@unique([channel_id])
   @@map("youtube_profiles")
 }
 
 model YouTubeVideo {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id      String    @db.Uuid
-  channel_id   String    @db.VarChar(255)
-  video_id     String    @unique @db.VarChar(100)
-  title        String    @db.VarChar(500)
-  thumbnail    String?
-  published_at DateTime? @map("published_at") @db.Timestamptz(6)
-  created_at   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at   DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
-  users        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  youtubeProfileId   String         @map("youtube_profile_id") @db.Uuid
+  user_id            String?        @db.Uuid // Optional to facilitate migration, will remove later
+  channel_id         String         @db.VarChar(255)
+  video_id           String         @unique @db.VarChar(100)
+  title              String         @db.VarChar(500)
+  thumbnail          String?
+  position           Int?           @default(0)
+  is_latest          Boolean        @default(true)
+  published_at       DateTime?      @map("published_at") @db.Timestamptz(6)
+  created_at         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at         DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  youtubeProfile     YouTubeProfile @relation(fields: [youtubeProfileId], references: [id], onDelete: Cascade)
+  user               User?          @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([channel_id])
-  @@index([user_id, published_at])
+  @@index([youtubeProfileId, published_at])
   @@map("youtube_videos")
+}
+
+model YouTubeSyncLog {
+  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  youtubeProfileId  String         @map("youtube_profile_id") @db.Uuid
+  lastSyncedAt      DateTime       @default(now()) @map("last_synced_at") @db.Timestamptz(6)
+  status            String         @db.VarChar(20) // success / failed
+  error_message     String?        @db.Text
+  youtubeProfile    YouTubeProfile @relation(fields: [youtubeProfileId], references: [id], onDelete: Cascade)
+
+  @@index([youtubeProfileId])
+  @@map("youtube_sync_logs")
 }
 
 model Message {

@@ -1,8 +1,8 @@
 import prisma from "../../../config/prisma.js";
 import { hashPassword } from "../utils/password.js";
-import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
-import { mirrorExternalImage } from "../../../utils/assetMirror.js";
 import { ApiError } from "../../../middleware/errorHandler.js";
+import youtubeSyncService from "../../youtube-creator/services/youtubeSyncService.js";
+import storageService from "../../../utils/storageService.js";
 import logger from "../../../utils/logger.js";
 import mongoose from "mongoose";
 
@@ -44,6 +44,26 @@ export const registerFullUser = async (userData) => {
   });
   if (existingProfile) throw new ApiError(400, "Username already taken.");
 
+  // 1.5 Conflict Check: YouTube Channels (Prevent Hijacking)
+  if (youtubeChannels && youtubeChannels.length > 0) {
+    const channelIds = youtubeChannels.map(ch => String(ch.channelId || ch.channel_id || ch.id || "").trim()).filter(Boolean);
+    
+    // Safe Property Resolver
+    const ytModel = prisma.youtubeProfile || prisma.youTubeProfile || prisma.youtubeProfiles;
+    
+    if (ytModel) {
+      const claimedProfiles = await ytModel.findMany({
+        where: { channel_id: { in: channelIds } },
+        select: { channel_name: true }
+      });
+
+      if (claimedProfiles.length > 0) {
+         const names = claimedProfiles.map(p => p.channel_name).join(", ");
+         throw new ApiError(409, `The following YouTube channels are already registered on SuviX: ${names}. Each channel can only be linked to one account.`);
+      }
+    }
+  }
+
   // 2. Hash Password (if local)
   const hashedPassword = password ? await hashPassword(password) : null;
 
@@ -51,10 +71,21 @@ export const registerFullUser = async (userData) => {
   let profilePictureUrl = "";
   if (profilePictureBuffer) {
     try {
-      const uploadResult = await uploadToCloudinary(profilePictureBuffer, "profiles");
-      profilePictureUrl = uploadResult.url;
+      const uploadResult = await storageService.uploadBuffer(profilePictureBuffer, "profiles");
+      profilePictureUrl = uploadResult.secure_url;
     } catch (error) {
-      logger.error("Cloudinary Upload Failed:", error);
+      logger.error("Storage Upload Failed:", error);
+    }
+  }
+
+  // 3.5 Pre-Transaction Performance Optimization (Move Network Calls Out)
+  let preMirroredYoutubeAvatar = null;
+  if (youtubeChannels?.length > 0) {
+    const mainChannel = youtubeChannels[0];
+    const thumb = mainChannel.thumbnailUrl || mainChannel.thumbnail_url || mainChannel.thumbnail;
+    if (thumb) {
+       logger.info(`💾 [REG-SYNC] Pre-mirroring YouTube avatar to avoid transaction timeout...`);
+       preMirroredYoutubeAvatar = await storageService.uploadFromUrl(thumb, "youtube-profiles");
     }
   }
 
@@ -110,6 +141,8 @@ export const registerFullUser = async (userData) => {
                 null,
               isPrimary: ch.isPrimary === true || index === 0,
               is_verified: ch.isVerified !== false,
+              uploads_playlist_id: ch.uploadsPlaylistId || null,
+              videos: ch.videos || [],
             };
           })
           .filter(Boolean);
@@ -213,63 +246,24 @@ export const registerFullUser = async (userData) => {
       }
 
       if (isYoutubeCategory && normalizedChannels.length > 0) {
+        // 🔄 Use the specialized YouTube Sync Service (Production Pattern)
         const channel = normalizedChannels[0];
+        // Inject pre-mirrored avatar to save time inside transaction
+        channel.mirroredAvatarUrl = preMirroredYoutubeAvatar; 
+        
+        const ytProfile = await youtubeSyncService.persistYouTubeContent(newUser.id, channel, tx);
 
-        // 🖼️ MIRROR TO CLOUDINARY (Production Requirement)
-        // We mirror external YT thumbnails to Cloudinary to avoid cross-origin / expiration issues.
-        const mirroredUrl = await mirrorExternalImage(channel.thumbnail_url);
-
-        const existingChannel = await tx.youTubeProfile.findFirst({
-          where: { channel_id: channel.channel_id },
-          select: { id: true, userId: true },
-        });
-
-        if (existingChannel && existingChannel.userId !== newUser.id) {
-          throw new ApiError(409, `Channel ${channel.channel_name} is already connected to another account.`);
-        }
-
-        if (existingChannel) {
-          await tx.youTubeProfile.update({
-            where: { id: existingChannel.id },
-            data: {
-              channel_name: channel.channel_name,
-              thumbnail_url: mirroredUrl, // Store SuviX-owned Cloudinary URL
-              subscriber_count: channel.subscriber_count,
-              video_count: channel.video_count,
-              updated_at: new Date(),
-            },
-          });
-        } else {
-          const userHasProfile = await tx.youTubeProfile.findFirst({
-            where: { userId: newUser.id }
-          });
-
-          if (!userHasProfile) {
-            await tx.youTubeProfile.create({
-              data: {
-                userId: newUser.id,
-                channel_id: channel.channel_id,
-                channel_name: channel.channel_name,
-                thumbnail_url: mirroredUrl, // Store SuviX-owned Cloudinary URL
-                subscriber_count: channel.subscriber_count,
-                video_count: channel.video_count,
-              },
-            });
-          }
-        }
-
-        // 🔗 HYBRID SYNC: Persistence to MongoDB
-        // Sync creator metadata to MongoDB to build the foundation for rich dynamic portfolios.
+        // 🔗 HYBRID SYNC: Persistence to MongoDB (Foundation for Dynamic Portfolios)
         try {
           const db = mongoose.connection.db;
           if (db) {
             await db.collection("profiles").updateOne(
-              { user_id: newUser.id }, // UUID from PostgreSQL
+              { user_id: newUser.id }, 
               { 
                 $set: {
                   youtube_channel_id: channel.channel_id,
                   youtube_channel_name: channel.channel_name,
-                  youtube_thumbnail: mirroredUrl,
+                  youtube_thumbnail: ytProfile.thumbnail_url,
                   youtube_stats: {
                     subscribers: channel.subscriber_count,
                     videos: channel.video_count
@@ -282,7 +276,6 @@ export const registerFullUser = async (userData) => {
             logger.info(`✅ MongoDB Sync: YouTube metadata synchronized for user ${newUser.id}`);
           }
         } catch (mongoErr) {
-          // Warning only: don't crash registration if secondary DB sync fails
           logger.warn(`⚠️ MongoDB Sync Failed: ${mongoErr.message}`);
         }
       }
@@ -291,10 +284,35 @@ export const registerFullUser = async (userData) => {
         ...newUser,
         profile,
       };
+    }, {
+      timeout: 30000 // Increase timeout to 30s for Neon/Cloudinary latency
     });
 
-    logger.info(`Production Registration Success: ${user.email} (${user.id})`);
-    return user;
+    // 5. Hydrate the final user object with all professional relations
+    // This ensure resolvePrimaryIdentity() works correctly on the first response
+    const hydratedUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        profile: {
+          include: { 
+            category: true,
+            roles: { include: { subCategory: { include: { category: true } } } } 
+          }
+        },
+        youtubeProfiles: {
+          include: {
+            videos: {
+              orderBy: { published_at: 'desc' },
+              take: 15
+            }
+          }
+        },
+        stats: true
+      }
+    });
+
+    logger.info(`Production Registration Success: ${hydratedUser.email} (${hydratedUser.id})`);
+    return hydratedUser;
 
   } catch (error) {
     logger.error("Registration Critical Failure:", error);

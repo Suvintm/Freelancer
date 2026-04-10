@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useMemo, memo } from 'react';
 import { 
   View, 
   TextInput, 
@@ -17,7 +17,11 @@ interface SuvixInputProps extends TextInputProps {
   small?: boolean;
 }
 
-const SuvixInput: React.FC<SuvixInputProps> = ({ 
+/**
+ * PRODUCTION-GRADE INPUT COMPONENT
+ * Optimized with React.memo and useRef to prevent typing lag and character duplication.
+ */
+const SuvixInput: React.FC<SuvixInputProps> = memo(({ 
   label, 
   placeholder, 
   value, 
@@ -30,28 +34,34 @@ const SuvixInput: React.FC<SuvixInputProps> = ({
 }) => {
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? Colors.dark : Colors.light;
-  const [focusAnim] = useState(new Animated.Value(0));
+  
+  // ⚡ PERFORMANCE: Use useRef for Animated values to prevent re-creation on re-renders
+  const focusAnim = useRef(new Animated.Value(0)).current;
 
   const handleFocus = () => {
     Animated.timing(focusAnim, {
       toValue: 1,
-      duration: 250,
-      useNativeDriver: false,
+      duration: 200, // Slightly faster for snappier feel
+      useNativeDriver: false, // Color interpolation doesn't support native driver
     }).start();
   };
 
   const handleBlur = () => {
     Animated.timing(focusAnim, {
       toValue: 0,
-      duration: 250,
+      duration: 200,
       useNativeDriver: false,
     }).start();
   };
 
-  const borderColor = focusAnim.interpolate({
+  // ⚡ PERFORMANCE: Memoize interpolation to avoid churn during keypresses
+  const borderColor = useMemo(() => focusAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [theme.border, theme.accent],
-  });
+  }), [theme]);
+
+  // Use the native driver compatible colors or fallbacks
+  const inputBg = theme.inputBg;
 
   return (
     <View style={[styles.container, small && styles.compactContainer]}>
@@ -59,7 +69,7 @@ const SuvixInput: React.FC<SuvixInputProps> = ({
       <Animated.View style={[
         styles.inputContainer, 
         small && styles.compactInputContainer,
-        { borderColor, backgroundColor: theme.inputBg }
+        { borderColor, backgroundColor: inputBg }
       ]}>
         {icon && (
           <View style={styles.iconContainer}>
@@ -90,7 +100,7 @@ const SuvixInput: React.FC<SuvixInputProps> = ({
       </Animated.View>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

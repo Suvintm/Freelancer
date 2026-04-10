@@ -75,12 +75,12 @@ export default function DashboardIndex() {
     if (!user || !user.primaryRole) return 'editors'; // Safe fallback
     
     const roleGroup = user.primaryRole.group;
-    const categoryName = user.primaryRole.category?.toLowerCase() || '';
+    const categorySlug = user.primaryRole.categorySlug;
 
-    if (categoryName.includes('youtube') || categoryName.includes('influencer')) return 'creators';
-    if (categoryName.includes('rental')) return 'rentals';
-    if (categoryName.includes('promoter')) return 'promoters';
-    if (categoryName.includes('editor')) return 'editors';
+    if (categorySlug === 'yt_influencer' || categorySlug === 'fitness_expert') return 'creators';
+    if (categorySlug === 'rental_service') return 'rentals';
+    if (categorySlug === 'brand_promoter') return 'promoters';
+    if (categorySlug === 'service_editor') return 'editors';
 
     return roleGroup === 'CLIENT' ? 'clients' : 'editors';
   }, [user]);

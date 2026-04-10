@@ -185,10 +185,28 @@ const redisProxy = {
     return client.getbit(key, offset);
   },
 
-  // ── Redis Set helpers (used by Collaborative Filtering) ────────────────────
-  sAdd: (key, member) => {
+  // ── Redis Set helpers (Production Circuit Breakers) ────────────────────
+  sAdd: (key, ...members) => {
     if (!redisAvailable || !client) return Promise.resolve(0);
-    return client.sadd(key, member);
+    return client.sadd(key, ...members);
+  },
+  sadd: (key, ...members) => redisProxy.sAdd(key, ...members),
+
+  sMembers: (key) => {
+    if (!redisAvailable || !client) return Promise.resolve([]);
+    return client.smembers(key);
+  },
+  smembers: (key) => redisProxy.sMembers(key),
+
+  sRem: (key, ...members) => {
+    if (!redisAvailable || !client) return Promise.resolve(0);
+    return client.srem(key, ...members);
+  },
+  srem: (key, ...members) => redisProxy.sRem(key, ...members),
+
+  exists: (key) => {
+    if (!redisAvailable || !client) return Promise.resolve(0);
+    return client.exists(key);
   },
   sInter: (...keys) => {
     if (!redisAvailable || !client) return Promise.resolve([]);
@@ -196,39 +214,20 @@ const redisProxy = {
   },
 
   // ── Redis Sorted Set helpers (used by scoreboard algorithm) ────────────────
-  /**
-   * Add/update a member's score in a sorted set.
-   * Used to maintain the real-time reel score board.
-   * O(log N)
-   */
   zAdd: (key, score, member) => {
     if (!redisAvailable || !client) return Promise.resolve();
     return client.zadd(key, score, member);
   },
-
-  /**
-   * Get top-K members by score (highest first). O(log N + K)
-   * @param {string} key
-   * @param {number} start - 0-based start index
-   * @param {number} stop  - 0-based stop index (-1 = all)
-   * @returns {Promise<string[]>} array of member strings
-   */
-  zRevRange: (key, start, stop) => {
+  zrevrange: (key, start, stop) => {
     if (!redisAvailable || !client) return Promise.resolve([]);
     return client.zrevrange(key, start, stop);
   },
+  zRevRange: (key, start, stop) => redisProxy.zrevrange(key, start, stop),
 
-  /**
-   * Get the score of a specific member. O(log N)
-   */
   zScore: (key, member) => {
     if (!redisAvailable || !client) return Promise.resolve(null);
     return client.zscore(key, member);
   },
-
-  /**
-   * Get sorted set size. O(1)
-   */
   zCard: (key) => {
     if (!redisAvailable || !client) return Promise.resolve(0);
     return client.zcard(key);
@@ -238,51 +237,31 @@ const redisProxy = {
     return client.zincrby(key, increment, member);
   },
 
-  // Lua Scripting support
-  eval: (...args) => {
-    if (!redisAvailable || !client) return Promise.resolve(null);
-    return client.eval(...args);
-  },
-
-  /**
-   * Return a redis pipeline.
-   */
-  pipeline: () => {
-    if (!redisAvailable || !client) {
-      // Return a mock pipeline that does nothing if Redis is down
-      const mock = {
-        set: () => mock,
-        sadd: () => mock,
-        del: () => mock,
-        setbit: () => mock,
-        getbit: () => mock,
-        incr: () => mock,
-        expire: () => mock,
-        srem: () => mock,
-        hincrby: () => mock, 
-        hIncrBy: () => mock, 
-        exec: () => Promise.resolve([]),
-      };
-      return mock;
-    }
-    return client.pipeline();
-  },
-
   // ── Redis Hash helpers (used by Bandit/Pacing) ──────────────────────────
-  /**
-   * Increment a hash field. O(1)
-   */
   hIncrBy: (key, field, increment) => {
     if (!redisAvailable || !client) return Promise.resolve(0);
     return client.hincrby(key, field, increment);
   },
-
-  /**
-   * Get all fields/values from a hash. O(N) where N is field count.
-   */
   hGetAll: (key) => {
     if (!redisAvailable || !client) return Promise.resolve({});
     return client.hgetall(key);
+  },
+  hDel: (key, ...fields) => {
+    if (!redisAvailable || !client) return Promise.resolve(0);
+    return client.hdel(key, ...fields);
+  },
+  // ── Pipeline (Atomic Multi-Command) ─────────────────────────────────────
+  // Returns a real pipeline if Redis is available, otherwise a safe no-op chain.
+  pipeline: () => {
+    if (!redisAvailable || !client) {
+      // No-op pipeline: every chained call returns the chain, exec() returns []
+      const noop = { exec: () => Promise.resolve([]) };
+      const proxy = new Proxy(noop, {
+        get: (target, prop) => prop === 'exec' ? target.exec : () => proxy,
+      });
+      return proxy;
+    }
+    return client.pipeline();
   },
 };
 
@@ -319,4 +298,5 @@ export const subscribe = async (channel, callback) => {
   }
 };
 
+export const redis = redisProxy;
 export default redisProxy;

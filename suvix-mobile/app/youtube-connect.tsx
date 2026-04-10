@@ -30,6 +30,12 @@ type YouTubeChannel = {
   thumbnailUrl?: string | null;
   subscriberCount?: number;
   videoCount?: number;
+  videos?: {
+    id: string;
+    title: string;
+    thumbnail: string;
+    publishedAt: string;
+  }[];
 };
 
 type SelectedYouTubeChannelPayload = {
@@ -42,6 +48,12 @@ type SelectedYouTubeChannelPayload = {
   subCategorySlug?: string;
   isPrimary?: boolean;
   isVerified?: boolean;
+  videos?: {
+    id: string;
+    title: string;
+    thumbnail: string;
+    publishedAt: string;
+  }[];
 };
 
 export default function YoutubeConnectScreen() {
@@ -86,27 +98,20 @@ export default function YoutubeConnectScreen() {
   const fetchChannels = async (accessToken: string) => {
     setConnecting(true);
     try {
-      const response = await fetch(
-        "https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true&maxResults=50",
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
+      const { api } = require('../src/api/client');
+      const resData = await api.post('/auth/youtube/channels', { accessToken });
       
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error?.message || "Invalid Google token.");
+      if (!resData.data.success) {
+        throw new Error(resData.data.message || "Invalid Google token.");
       }
 
-      const fetchedChannels: YouTubeChannel[] = (data.items || []).map((item: any) => ({
-        channelId: item.id,
-        channelName: item.snippet?.title || "Untitled Channel",
-        thumbnailUrl:
-          item.snippet?.thumbnails?.high?.url ||
-          item.snippet?.thumbnails?.medium?.url ||
-          item.snippet?.thumbnails?.default?.url ||
-          null,
-        subscriberCount: Number(item.statistics?.subscriberCount || 0),
-        videoCount: Number(item.statistics?.videoCount || 0),
+      const fetchedChannels: YouTubeChannel[] = (resData.data.channels || []).map((item: any) => ({
+        channelId: item.channelId,
+        channelName: item.channelName,
+        thumbnailUrl: item.thumbnailUrl,
+        subscriberCount: item.subscriberCount,
+        videoCount: item.videoCount,
+        videos: item.videos || [],
       }));
 
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -182,6 +187,8 @@ export default function YoutubeConnectScreen() {
           subCategorySlug: selectedSubCategory?.slug,
           isPrimary: index === 0,
           isVerified: true,
+          uploadsPlaylistId: channel.uploadsPlaylistId || null,
+          videos: channel.videos || [],
         };
       })
       .filter((item): item is SelectedYouTubeChannelPayload => !!item);
@@ -414,6 +421,39 @@ export default function YoutubeConnectScreen() {
                           </View>
                         )}
                       </View>
+
+                      {/* 🎬 PREVIEW VIDEOS (LATEST 15) */}
+                      {channel.videos && channel.videos.length > 0 && (
+                        <View style={[styles.videoPreviewContainer, { borderTopColor: theme.border }]}>
+                          <View style={styles.previewHeader}>
+                            <Feather name="play-circle" size={14} color={ytRed} />
+                            <Text style={[styles.previewTitle, { color: theme.textSecondary }]}>
+                              Latest {channel.videos.length} Videos Preview
+                            </Text>
+                            {!activeSubCategoryId && (
+                              <View style={styles.actionPromptBadge}>
+                                <Text style={styles.actionPromptText}>Action Needed: Select Category Below</Text>
+                              </View>
+                            )}
+                          </View>
+                          <ScrollView 
+                            horizontal 
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.videoPreviewScroll}
+                          >
+                            {channel.videos.map((video) => (
+                              <View key={video.id} style={styles.videoCard}>
+                                <Image source={{ uri: video.thumbnail }} style={styles.videoThumb} />
+                                <View style={styles.videoInfo}>
+                                  <Text style={[styles.videoTitle, { color: theme.text }]} numberOfLines={2}>
+                                    {video.title}
+                                  </Text>
+                                </View>
+                              </View>
+                            ))}
+                          </ScrollView>
+                        </View>
+                      )}
                     </View>
                   );
                 })}
@@ -714,5 +754,56 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: '#000',
+  },
+  // Video Preview styles
+  videoPreviewContainer: {
+    paddingTop: 12,
+    marginTop: 8,
+    borderTopWidth: 1,
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 6,
+  },
+  previewTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  videoPreviewScroll: {
+    paddingRight: 20,
+    gap: 10,
+  },
+  videoCard: {
+    width: 140,
+  },
+  videoThumb: {
+    width: 140,
+    height: 78,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  videoInfo: {
+    marginTop: 4,
+  },
+  videoTitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    lineHeight: 14,
+  },
+  actionPromptBadge: {
+    backgroundColor: '#FF0000',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 'auto',
+  },
+  actionPromptText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
 });

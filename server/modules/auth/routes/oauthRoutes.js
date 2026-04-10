@@ -9,6 +9,11 @@ import { authLimiter, redis } from "../../../middleware/rateLimiter.js";
 import { OAuth2Client } from "google-auth-library";
 import { generateAccessToken, generateRefreshToken, hashToken } from "../utils/jwt.js";
 import { checkAccountLockout } from "../../../middleware/lockoutMiddleware.js";
+import { 
+    USER_INCLUDE, 
+    formatAuthResponse, 
+    generateUserTokens 
+} from "../utils/authHelpers.js";
 
 const router = express.Router();
 
@@ -199,17 +204,24 @@ router.post("/google/mobile", authLimiter, checkAccountLockout, async (req, res)
                     { email: normalizedEmail }
                 ]
             },
-            include: { profile: true }
+            include: USER_INCLUDE
         });
 
         // 3. CASE A: User Exists -> Log in immediately
         if (user) {
-            // Update google_id if it was a manual user switching to social
+            // PRODUCTION PATTERN: Link Google ID to their account if not already linked.
+            // CRITICAL: Do NOT change auth_provider — a local user must still be able
+            // to log in with their email + password. We only ADD the google_id.
             if (!user.google_id) {
                 user = await prisma.user.update({
                     where: { id: user.id },
-                    data: { google_id: googleId, auth_provider: "google", is_verified: true },
-                    include: { profile: true }
+                    data: { 
+                        google_id: googleId,
+                        // is_verified = true is safe: Google confirmed they own this email
+                        is_verified: true
+                        // auth_provider intentionally NOT changed — preserve local/google/etc.
+                    },
+                    include: USER_INCLUDE
                 });
             }
 
@@ -219,8 +231,7 @@ router.post("/google/mobile", authLimiter, checkAccountLockout, async (req, res)
 
             // Generate session context
             const familyId = crypto.randomUUID();
-            const token = generateAccessToken({ id: user.id, role: user.role });
-            const refreshToken = generateRefreshToken({ id: user.id, familyId });
+            const { accessToken, refreshToken } = generateUserTokens(user, familyId);
             const hashedToken = hashToken(refreshToken);
 
             const sessionData = JSON.stringify({
@@ -241,19 +252,9 @@ router.post("/google/mobile", authLimiter, checkAccountLockout, async (req, res)
             return res.status(200).json({
                 success: true,
                 isNewUser: false,
-                token,
+                token: accessToken,
                 refreshToken,
-                user: {
-                    id: user.id,
-                    name: user.profile?.name,
-                    username: user.profile?.username,
-                    email: user.email,
-                    role: user.role,
-                    isOnboarded: user.is_onboarded,
-                    isVerified: user.is_verified,
-                    createdAt: user.created_at,
-                    profilePicture: user.profile?.profile_picture,
-                }
+                user: formatAuthResponse(user)
             });
         }
 
@@ -302,11 +303,48 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
         const normalizedEmail = email.toLowerCase();
         const normalizedUsername = username.toLowerCase().trim();
 
-        // 2. Final Conflict Check
+        // 2. Final Conflict Check — Smart Auto-Login instead of hard rejection
         const existing = await prisma.user.findFirst({
-            where: { OR: [{ email: normalizedEmail }, { google_id: googleId }] }
+            where: { OR: [{ email: normalizedEmail }, { google_id: googleId }] },
+            include: USER_INCLUDE
         });
-        if (existing) return res.status(409).json({ success: false, message: "Account already exists" });
+
+        if (existing) {
+            // PRODUCTION PATTERN: Don't reject. Silently log them in to their existing account.
+            logger.info(`[SECURITY] register-atomic: Email ${normalizedEmail} already exists. Auto-logging in.`);
+
+            // Link google_id if they originally registered manually.
+            // CRITICAL: Preserve auth_provider — do NOT overwrite it.
+            let finalUser = existing;
+            if (!existing.google_id) {
+                finalUser = await prisma.user.update({
+                    where: { id: existing.id },
+                    data: { google_id: googleId, is_verified: true },
+                    include: USER_INCLUDE
+                });
+            }
+
+            const userAgent = req.headers["user-agent"] || "Mobile App";
+            const ip = req.ip || req.connection.remoteAddress;
+            const familyId = crypto.randomUUID();
+            const { accessToken, refreshToken } = generateUserTokens(finalUser, familyId);
+            const hashedToken = hashToken(refreshToken);
+
+            await redis.pipeline()
+                .set(`refresh_token:${hashedToken}`, JSON.stringify({ userId: finalUser.id, familyId, metadata: { userAgent, ip, lastActive: new Date().toISOString() } }), "EX", 7 * 24 * 60 * 60)
+                .sadd(`token_family:${familyId}`, hashedToken)
+                .expire(`token_family:${familyId}`, 7 * 24 * 60 * 60)
+                .exec();
+
+            return res.status(200).json({
+                success: true,
+                isNewUser: false,
+                alreadyLoggedIn: true,
+                token: accessToken,
+                refreshToken,
+                user: formatAuthResponse(finalUser)
+            });
+        }
 
         const usernameTaken = await prisma.userProfile.findUnique({ where: { username: normalizedUsername } });
         if (usernameTaken) return res.status(409).json({ success: false, message: "Handle already taken" });
@@ -376,7 +414,7 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
 
             return await tx.user.findUnique({
                 where: { id: newUser.id },
-                include: { profile: true }
+                include: USER_INCLUDE
             });
         });
 
@@ -386,8 +424,7 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
 
         // Generate session context
         const familyId = crypto.randomUUID();
-        const token = generateAccessToken({ id: user.id, role: user.role });
-        const refreshToken = generateRefreshToken({ id: user.id, familyId });
+        const { accessToken, refreshToken } = generateUserTokens(user, familyId);
         const hashedToken = hashToken(refreshToken);
 
         const sessionData = JSON.stringify({
@@ -407,18 +444,9 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
 
         res.status(201).json({
             success: true,
-            token,
+            token: accessToken,
             refreshToken,
-            user: {
-                id: user.id,
-                name: user.profile?.name,
-                username: user.profile?.username,
-                email: user.email,
-                role: user.role,
-                isOnboarded: true,
-                isVerified: user.is_verified,
-                createdAt: user.created_at
-            }
+            user: formatAuthResponse(user)
         });
 
     } catch (error) {
@@ -447,23 +475,45 @@ router.post("/select-role", authLimiter, async (req, res) => {
                 data: { is_onboarded: true }
             });
 
-            if (username || phone || categoryId) {
-                await tx.userProfile.update({
-                    where: { userId: decoded.id },
-                    data: {
-                        ...(username ? { username: username.toLowerCase().trim() } : {}),
-                        ...(phone ? { phone } : {}),
-                        ...(country ? { location_country: country } : {}),
-                        ...(categoryId ? { categoryId } : {}),
-                    }
+            const profile = await tx.userProfile.update({
+                where: { userId: decoded.id },
+                data: {
+                    ...(username ? { username: username.toLowerCase().trim() } : {}),
+                    ...(phone ? { phone } : {}),
+                    ...(country ? { location_country: country } : {}),
+                    ...(categoryId ? { categoryId } : {}),
+                }
+            });
+
+            // Add Role Mappings (Expertise)
+            if (roleSubCategoryIds && Array.isArray(roleSubCategoryIds) && roleSubCategoryIds.length > 0) {
+                // Clear existing mappings if any (unlikely for new user but safe)
+                await tx.userRoleMapping.deleteMany({
+                    where: { profileId: profile.id }
+                });
+
+                await tx.userRoleMapping.createMany({
+                    data: roleSubCategoryIds.map((subId, index) => ({
+                        profileId: profile.id,
+                        roleSubCategoryId: subId,
+                        isPrimary: index === 0,
+                    }))
                 });
             }
-            // Add Role Mappings...
-            return await tx.user.findUnique({ where: { id: decoded.id } });
+
+            return await tx.user.findUnique({
+                where: { id: decoded.id },
+                include: USER_INCLUDE
+            });
         });
 
-        res.status(200).json({ success: true, message: "Onboarding complete", user: updatedUser });
+        res.status(200).json({
+            success: true,
+            message: "Onboarding complete",
+            user: formatAuthResponse(updatedUser)
+        });
     } catch (e) {
+        logger.error("❌ [Select-Role Failure]:", e.message);
         res.status(401).json({ success: false, message: "Onboarding failed" });
     }
 });

@@ -4,7 +4,7 @@
  */
 
 import prisma from "../../../config/prisma.js";
-import { uploadToCloudinary } from "../../../utils/uploadToCloudinary.js";
+import storageService from "../../../utils/storageService.js";
 import { RazorpayProvider } from "../../../services/RazorpayProvider.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 import { calculateProfileCompletion } from "../../profiles/utils/profileUtils.js";
@@ -78,8 +78,8 @@ export const submitKYC = asyncHandler(async (req, res) => {
   if (req.files) {
     const upload = async (fileKey, type) => {
         if (req.files[fileKey]?.[0]) {
-            const result = await uploadToCloudinary(req.files[fileKey][0].buffer, "kyc-documents");
-            return { doc_type: type, url: result.url };
+            const result = await storageService.uploadBuffer(req.files[fileKey][0].buffer, "kyc-documents");
+            return { doc_type: type, url: result.secure_url };
         }
         return null;
     };

@@ -36,10 +36,17 @@ interface TempSignupData {
     thumbnailUrl?: string | null;
     subscriberCount?: number;
     videoCount?: number;
+    uploadsPlaylistId?: string | null;
     subCategoryId?: string;
     subCategorySlug?: string;
     isPrimary?: boolean;
     isVerified?: boolean;
+    videos?: {
+      id: string;
+      title: string;
+      thumbnail: string;
+      publishedAt: string;
+    }[];
   }[];
 }
 
@@ -55,7 +62,9 @@ interface AuthUser {
     category: string;
     subCategory: string;
     categoryId?: string;
+    categorySlug?: string;
     subCategoryId?: string;
+    subCategorySlug?: string;
     is_onboarded: boolean;
   };
   profilePicture?: string;

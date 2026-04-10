@@ -8,64 +8,19 @@ import { comparePassword } from "../utils/password.js";
 import { registerFullUser as registerService } from "../services/registerService.js";
 import prisma from "../../../config/prisma.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
-import { redis } from "../../../middleware/rateLimiter.js";
+import { redis, redisAvailable } from "../../../config/redisClient.js";
 import axios from "axios";
 import crypto from "crypto";
 import { trackFailedLogin, resetFailedLogin } from "../../../middleware/lockoutMiddleware.js";
 import logger from "../../../utils/logger.js";
+import youtubeApiService from "../../youtube-creator/services/youtubeApiService.js";
+import { 
+  USER_INCLUDE, 
+  formatAuthResponse, 
+  generateUserTokens 
+} from "../utils/authHelpers.js";
 
-const mapGroupToAppRole = (group, systemRole) => {
-  if (systemRole === "admin") return "admin";
-  if (group === "CLIENT") return "client";
-  if (group === "PROVIDER") return "editor";
-  return "client";
-};
-
-/**
- * HELPER: Resolve Primary Professional Identity
- * Merges system roles with professional categories to provide a clear UI identity.
- */
-const resolvePrimaryIdentity = (user) => {
-  if (!user.profile) {
-    return {
-      group: 'CLIENT',
-      category: 'General',
-      subCategory: 'Member',
-      appRole: mapGroupToAppRole('CLIENT', user.role),
-      is_onboarded: user.is_onboarded
-    };
-  }
-
-  const primaryMapping =
-    user.profile.roles?.find((mapping) => mapping.isPrimary) ||
-    user.profile.roles?.[0];
-  const subCat = primaryMapping?.subCategory;
-  const cat = user.profile.category || subCat?.category;
-
-  if (!cat && !subCat) {
-    return {
-      group: 'CLIENT',
-      category: 'General',
-      subCategory: 'Member',
-      appRole: mapGroupToAppRole('CLIENT', user.role),
-      is_onboarded: user.is_onboarded
-    };
-  }
-
-  const group = cat?.roleGroup || 'CLIENT';
-
-  return {
-    group,
-    category: cat?.name || 'General',
-    categorySlug: cat?.slug,
-    subCategory: subCat?.name || 'Member',
-    categoryId: cat?.id || user.profile.categoryId,
-    subCategoryId: subCat?.id,
-    subCategorySlug: subCat?.slug,
-    appRole: mapGroupToAppRole(group, user.role),
-    is_onboarded: user.is_onboarded
-  };
-};
+// Centralized Identity Logic moved to utils/authHelpers.js
 
 /**
  * Cookie Options for Production Security
@@ -94,33 +49,41 @@ export const refresh = asyncHandler(async (req, res) => {
     
     if (!storedData) {
         // TOKEN REUSE DETECTED! (Security breach attempt)
-        if (familyId) {
+        if (familyId && redisAvailable) {
             logger.error(`[SECURITY] Refresh token reuse detected for user ${userId}. Invalidating family: ${familyId}`);
             
             // Nuke the entire family session
             const familyKey = `token_family:${familyId}`;
-            const familyTokens = await redis.smembers(familyKey);
+            const familyTokens = await redis.sMembers(familyKey);
             
-            if (familyTokens.length > 0) {
+            if (familyTokens && familyTokens.length > 0) {
                 const keysToDel = familyTokens.map(t => `refresh_token:${t}`);
                 await redis.del(...keysToDel, familyKey);
             }
+            throw new ApiError(401, "Security Alert: This session has been invalidated due to token reuse detection.");
         }
-        throw new ApiError(401, "Security Alert: This session has been invalidated due to token reuse detection.");
+
+        // If Redis is down, we allow the refresh if the JWT itself is valid,
+        // because we can't verify reuse without the cache.
+        if (!redisAvailable) {
+            logger.warn(`[SECURITY] Redis offline: Skipping reuse detection for user ${userId}. Availability prioritized.`);
+        } else {
+            // Case where Redis is UP but token is missing (Likely expired or logged out elsewhere)
+            throw new ApiError(401, "Session expired or invalid.");
+        }
     }
 
     const sessionData = JSON.parse(storedData);
 
-    // 4. Fetch User
+    // 4. Fetch User with standard relations
     const user = await prisma.user.findUnique({
         where: { id: userId },
-        include: { profile: true }
+        include: USER_INCLUDE
     });
     if (!user) throw new ApiError(404, "User no longer exists");
 
-    // 5. Issue NEW pair (Keep the same familyId)
-    const newAccessToken = generateAccessToken({ id: user.id, role: user.role });
-    const newRefreshToken = generateRefreshToken({ id: user.id, familyId });
+    // 5. Issue NEW pair with identity claims
+    const { accessToken: newAccessToken, refreshToken: newRefreshToken } = generateUserTokens(user, familyId);
     const newHashedToken = hashToken(newRefreshToken);
 
     // 6. Update Metadata and store in Redis (ONE HIT PIPELINE)
@@ -162,12 +125,7 @@ export const refresh = asyncHandler(async (req, res) => {
         success: true,
         token: newAccessToken,
         refreshToken: newRefreshToken,
-        user: {
-            id: user.id,
-            isOnboarded: user.is_onboarded,
-            isVerified: user.is_verified,
-            role: user.role
-        }
+        user: formatAuthResponse(user)
     });
 });
 
@@ -182,15 +140,10 @@ export const login = asyncHandler(async (req, res) => {
 
   const user = await prisma.user.findUnique({
     where: { email: email.toLowerCase().trim() },
-    include: { 
-      profile: {
-        include: { roles: { include: { subCategory: { include: { category: true } } } } }
-      },
-      youtubeProfiles: true
-    }
+    include: USER_INCLUDE
   });
 
-  if (!user || user.auth_provider === "google") {
+  if (!user) {
     await trackFailedLogin(email);
     throw new ApiError(401, "Invalid credentials.");
   }
@@ -211,8 +164,7 @@ export const login = asyncHandler(async (req, res) => {
 
   // START NEW SESSION FAMILY
   const familyId = crypto.randomUUID();
-  const accessToken = generateAccessToken({ id: user.id, role: user.role });
-  const refreshToken = generateRefreshToken({ id: user.id, familyId });
+  const { accessToken, refreshToken } = generateUserTokens(user, familyId);
   const hashedToken = hashToken(refreshToken);
 
   // CAPTURE METADATA FOR ACTIVE SESSION MANAGEMENT
@@ -235,26 +187,10 @@ export const login = asyncHandler(async (req, res) => {
   logger.info(`[SECURITY] Successful login for user ${user.id} (${email}). New family: ${familyId}`);
 
   res.cookie("refreshToken", refreshToken, cookieOptions);
-  const primaryIdentity = resolvePrimaryIdentity(user);
 
   res.status(200).json({
     success: true,
-    user: {
-      id: user.id,
-      name: user.profile?.name,
-      displayName: user.profile?.display_name || user.profile?.name,
-      username: user.profile?.username,
-      email: user.email,
-      role: primaryIdentity.appRole,
-      primaryRole: primaryIdentity,
-      profilePicture: user.profile?.profile_picture,
-      location: user.profile?.location_country,
-      bio: user.profile?.bio,
-      isOnboarded: user.is_onboarded,
-      isVerified: user.is_verified,
-      createdAt: user.created_at,
-      youtubeProfile: user.youtubeProfiles
-    },
+    user: formatAuthResponse(user),
     token: accessToken,
     refreshToken
   });
@@ -283,45 +219,38 @@ export const getYouTubeChannels = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Google accessToken is required.");
   }
 
-  let channelPayload;
-  try {
-    const response = await axios.get(
-      "https://www.googleapis.com/youtube/v3/channels",
-      {
-        params: {
-          part: "snippet,statistics",
-          mine: true,
-          maxResults: 50,
-        },
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
-    channelPayload = response.data;
-  } catch (error) {
-    if (error.response) {
-      console.error("Google API Error:", JSON.stringify(error.response.data, null, 2));
-    } else {
-      console.error("Google Request Failed:", error.message);
-    }
-    const status = error.response?.status || 500;
-    if (status === 401) throw new ApiError(401, "Google token expired. Please reconnect YouTube.");
-    if (status === 403) throw new ApiError(403, "YouTube permission denied. Request youtube.readonly scope.");
-    throw new ApiError(502, "Could not fetch YouTube channels from Google.");
-  }
+  const channels = await youtubeApiService.discoverChannels(accessToken);
 
-  const channels = (channelPayload?.items || []).map((item) => ({
-    channelId: item.id,
-    channelName: item.snippet?.title || "Untitled Channel",
-    thumbnailUrl:
-      item.snippet?.thumbnails?.high?.url ||
-      item.snippet?.thumbnails?.medium?.url ||
-      item.snippet?.thumbnails?.default?.url ||
-      null,
-    subscriberCount: Number(item.statistics?.subscriberCount || 0),
-    videoCount: Number(item.statistics?.videoCount || 0),
-  }));
+  // 🛡️ PRODUCTION CHECK: Identify which channels are already on SuviX
+  if (channels && channels.length > 0) {
+    try {
+      const channelIds = channels.map(ch => ch.channelId);
+      
+      // Safe Property Resolver: Prisma naming can vary by version/generation
+      const ytModel = prisma.youtubeProfile || prisma.youTubeProfile || prisma.youtubeProfiles;
+      
+      if (!ytModel) {
+        const availableModels = Object.keys(prisma).filter(k => !k.startsWith('_'));
+        logger.error(`❌ [YT-GUARD] YouTube profile model not found on Prisma client. Available: ${availableModels.join(', ')}`);
+        // Fallback: don't crash discovery if check fails, just mark all as unclaimed
+        channels.forEach(ch => ch.isClaimed = false);
+      } else {
+        const existingProfiles = await ytModel.findMany({
+          where: { channel_id: { in: channelIds } },
+          select: { channel_id: true }
+        });
+
+        const claimedSet = new Set(existingProfiles.map(p => p.channel_id));
+        channels.forEach(ch => {
+          ch.isClaimed = claimedSet.has(ch.channelId);
+        });
+      }
+    } catch (ytError) {
+      logger.error(`⚠️ [YT-GUARD] Duplicate check failed: ${ytError.message}`);
+      // Fail open for discovery; don't block user from seeing their channels
+      channels.forEach(ch => ch.isClaimed = false);
+    }
+  }
 
   res.status(200).json({
     success: true,
@@ -380,8 +309,7 @@ export const registerFull = asyncHandler(async (req, res) => {
   const userWithProfile = await registerService(userData);
   const familyId = crypto.randomUUID();
 
-  const accessToken = generateAccessToken({ id: userWithProfile.id, role: userWithProfile.role });
-  const refreshToken = generateRefreshToken({ id: userWithProfile.id, familyId });
+  const { accessToken, refreshToken } = generateUserTokens(userWithProfile, familyId);
   const hashedToken = hashToken(refreshToken);
 
   // CAPTURE METADATA
@@ -399,26 +327,11 @@ export const registerFull = asyncHandler(async (req, res) => {
 
   // Set Cookie
   res.cookie("refreshToken", refreshToken, cookieOptions);
-
-  const primaryIdentity = resolvePrimaryIdentity(userWithProfile);
   
   res.status(201).json({
     success: true,
     message: "Welcome to SuviX!",
-    user: {
-      id: userWithProfile.id,
-      name: userWithProfile.profile.name,
-      displayName: userWithProfile.profile.display_name || userWithProfile.profile.name,
-      username: userWithProfile.profile.username,
-      email: userWithProfile.email,
-      role: primaryIdentity.appRole,
-      location: userWithProfile.profile.location_country,
-      bio: userWithProfile.profile.bio,
-      primaryRole: primaryIdentity,
-      isOnboarded: true,
-      isVerified: userWithProfile.is_verified,
-      createdAt: userWithProfile.created_at
-    },
+    user: formatAuthResponse(userWithProfile),
     token: accessToken,
     refreshToken
   });
@@ -456,41 +369,15 @@ export const getMe = asyncHandler(async (req, res) => {
   logger.info(`📡 [API] Profile hydration requested for user: ${req.user.id}`);
   const user = await prisma.user.findUnique({
     where: { id: req.user.id },
-    include: { 
-        profile: {
-            include: { 
-                category: true,
-                roles: { include: { subCategory: { include: { category: true } } } } 
-            }
-        },
-        youtubeProfiles: true,
-        stats: true
-    }
+    include: USER_INCLUDE
   });
 
   if (!user) throw new ApiError(404, "User session invalid.");
   
-  const primaryIdentity = resolvePrimaryIdentity(user);
-  
-  const responseUser = {
-      id: user.id,
-      name: user.profile?.name,
-      displayName: user.profile?.display_name || user.profile?.name,
-      username: user.profile?.username,
-      email: user.email,
-      role: primaryIdentity.appRole,
-      primaryRole: primaryIdentity,
-      profilePicture: user.profile?.profile_picture,
-      bio: user.profile?.bio,
-      isOnboarded: user.is_onboarded,
-      isVerified: user.is_verified,
-      createdAt: user.created_at,
-      youtubeProfile: user.youtubeProfiles,
-      followers: user.stats?.followers_count || 0,
-      following: user.stats?.following_count || 0
-    };
-
-  res.status(200).json({ success: true, user: responseUser });
+  res.status(200).json({ 
+    success: true, 
+    user: formatAuthResponse(user) 
+  });
 });
 
 // ============ CHECK USERNAME ============
