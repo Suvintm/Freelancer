@@ -3,9 +3,6 @@ import { useAuthStore } from '../../src/store/useAuthStore';
 import { View, Text, ActivityIndicator, StyleSheet, BackHandler, Image } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../src/context/ThemeContext';
-import { CATEGORIES } from '../../src/constants/categories';
-import { Colors } from '../../src/constants/Colors';
-import { CategoryId } from '../../src/types/category';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 

@@ -109,7 +109,6 @@ interface AuthState {
   setYoutubeVideos: (videos: any[]) => void;
   setTempSignupData: (data: Partial<TempSignupData>) => void;
   clearTempSignupData: () => void;
-  updateUser: (updates: Partial<AuthUser>) => void;
   exchangeCode: (code: string) => Promise<void>;
 }
 
@@ -225,12 +224,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
          console.log('⚠️ [AUTH] Backend unreachable or error, but keeping session token.');
          set({ isLoadingUser: false });
       }
-    }
-  },
-  updateUser: (data) => {
-    const { user } = get();
-    if (user) {
-      set({ user: { ...user, ...data } });
     }
   },
   setYoutubeVideos: (videos) => {

@@ -144,7 +144,7 @@ function InitialRoot() {
       // Disconnect socket to prevent ghost sessions
       disconnect();
     }
-  }, [isAuthenticated, user?.role, fetchEditorDashboard, fetchClientDashboard, dataLoaded]);
+  }, [isAuthenticated, user, fetchEditorDashboard, fetchClientDashboard, dataLoaded]);
 
   // Logic Effect: Hide native splash immediately when initialized to show our animation
   useEffect(() => {
@@ -259,7 +259,7 @@ function InitialRoot() {
     }, 450);
 
     return () => clearTimeout(handoffTimer);
-  }, [isInitialized, isAuthenticated, user, segments, isIntroFinished, dataLoaded, router, isLoadingUser]);
+  }, [isInitialized, isAuthenticated, user, segments, isIntroFinished, dataLoaded, router, isLoadingUser, fetchUser]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

@@ -8,7 +8,6 @@ import { AnimatedTabBar } from '../../src/components/AnimatedTabBar';
 import { TopNavbar } from '../../src/components/TopNavbar';
 import { Sidebar } from '../../src/components/Sidebar';
 import { useAuthStore } from '../../src/store/useAuthStore';
-import { CATEGORIES } from '../../src/constants/categories';
 import { CategoryId } from '../../src/types/category';
 
 // Screens
@@ -54,7 +53,7 @@ export default function TabsLayout() {
       if (tab.providerOnly && roleGroupId !== 'PROVIDER') return false;
       return true;
     });
-  }, [user]);
+  }, [user, ALL_TABS]);
 
   const isReelsActive = false; // Disabled immersive mode for removed reels feed
 
