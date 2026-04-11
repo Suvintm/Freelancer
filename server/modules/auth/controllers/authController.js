@@ -19,6 +19,12 @@ import {
   formatAuthResponse, 
   generateUserTokens 
 } from "../utils/authHelpers.js";
+import { 
+  isValidEmail, 
+  isValidPhone, 
+  isValidPassword, 
+  isValidUsername 
+} from "../../../utils/validation.js";
 
 // Centralized Identity Logic moved to utils/authHelpers.js
 
@@ -123,19 +129,17 @@ export const refresh = asyncHandler(async (req, res) => {
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  
   // 🔍 [DIAGNOSTIC] Log why validation is failing (Scrubbing password for security)
-  if (!email || !password || !emailRegex.test(email)) {
+  if (!email || !password || !isValidEmail(email)) {
     logger.debug(`[AUTH] Login validation failed for IP ${req.ip}. Body Keys: ${Object.keys(req.body).join(", ")}`);
-    logger.debug(`[AUTH] DEBUG: email=${email}, hasPassword=${!!password}, formatValid=${email ? emailRegex.test(email) : false}`);
+    logger.debug(`[AUTH] DEBUG: email=${email}, hasPassword=${!!password}, formatValid=${isValidEmail(email)}`);
     
     // Check if the body was possibly sent correctly but parsed weirdly
-    if (Object.keys(req.body).length === 0) {
+    if (!req.body || Object.keys(req.body).length === 0) {
         logger.error(`[AUTH] CRITICAL: req.body is EMPTY. Check Content-Type header on mobile app.`);
     }
 
-    throw new ApiError(400, "Valid email and password are required.");
+    throw new ApiError(400, "A valid email address and password are required.");
   }
 
   const user = await prisma.user.findUnique({
@@ -401,7 +405,15 @@ export const validateSignup = asyncHandler(async (req, res) => {
   const { email, username } = req.body;
 
   if (!email || !username) {
-    throw new ApiError(400, "Email and username are required for validation");
+    throw new ApiError(400, "Email and username are required for validation.");
+  }
+
+  if (!isValidEmail(email)) {
+    throw new ApiError(400, "Invalid email format. Please use a valid email address.");
+  }
+
+  if (!isValidUsername(username)) {
+    throw new ApiError(400, "Invalid handle format. Handles must be 3-30 characters (letters, numbers, underscore, dot).");
   }
 
   // Check Email (User table)

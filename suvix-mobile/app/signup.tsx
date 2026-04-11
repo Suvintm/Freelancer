@@ -17,6 +17,12 @@ import {
   Modal,
   Switch
 } from 'react-native';
+import { 
+  isValidEmail, 
+  isValidPhone, 
+  isValidPassword, 
+  isValidUsername 
+} from '../src/utils/validation';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
@@ -106,13 +112,40 @@ export default function SignupScreen() {
   const handleSignup = async () => {
     if (loading) return;
     
+    // 1. Basic Field Presence
     if (!fullName || !username || !email || !password || !phone || !motherTongue) {
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
       Alert.alert('Incomplete Form', 'Please fill in all details including your handle and mother tongue.');
       return;
     }
 
+    // 2. Production-Grade Form Validation
+    if (!isValidUsername(username)) {
+      handleImpact(Haptics.ImpactFeedbackStyle.Medium);
+      Alert.alert('Invalid Handle', 'Handles must be 3-30 characters and can only contain letters, numbers, underscores, and periods.');
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      handleImpact(Haptics.ImpactFeedbackStyle.Medium);
+      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      return;
+    }
+
+    if (!isValidPhone(phone)) {
+      handleImpact(Haptics.ImpactFeedbackStyle.Medium);
+      Alert.alert('Invalid Phone', 'Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    if (!isValidPassword(password)) {
+      handleImpact(Haptics.ImpactFeedbackStyle.Medium);
+      Alert.alert('Weak Password', 'Password must be at least 6 characters long.');
+      return;
+    }
+
     setLoading(true);
+
     setUsernameStatus({ type: 'none', message: '' });
 
     try {

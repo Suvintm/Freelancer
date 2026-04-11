@@ -23,6 +23,7 @@ import SuvixInput from '../src/components/SuvixInput';
 import SuvixButton from '../src/components/SuvixButton';
 import { useAuthStore } from '../src/store/useAuthStore';
 import { useGoogleAuth } from '../src/hooks/useGoogleAuth';
+import { isValidEmail } from '../src/utils/validation';
 import { api } from '../src/api/client';
 import * as Haptics from 'expo-haptics';
 import { ProcessingOverlay } from '../src/components/shared/ProcessingOverlay';
@@ -54,6 +55,13 @@ export default function LoginScreen() {
       Alert.alert('Missing Info', 'Email and password are required.');
       return;
     }
+
+    if (!isValidEmail(email)) {
+      handleImpact(Haptics.ImpactFeedbackStyle.Medium);
+      Alert.alert('Invalid Email', 'Please enter a valid email address (e.g., name@example.com).');
+      return;
+    }
+
     setLoading(true);
     setShowLoadingOverlay(true); // ✨ Move to start for immediate immersion
 
