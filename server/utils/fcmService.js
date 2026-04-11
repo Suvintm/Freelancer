@@ -1,21 +1,33 @@
 // server/utils/fcmService.js
 import { getMessaging } from "firebase-admin/messaging";
-import User from "../modules/user/models/User.js";
+import prisma from "../config/prisma.js";
 import logger from "./logger.js";
 import { initFirebaseAdmin } from "./firebaseAdmin.js";
 
 /**
- * Send push notification to a specific user
- * @param {string} userId - Recipient user ID
- * @param {object} fcmPayload - Flat notification data (all fields at top level)
+ * Send push notification to a specific user across all their registered devices.
+ * 
+ * @param {string} userId - Recipient user UUID
+ * @param {object} fcmPayload - Flat notification data (title, body, metadata)
  */
 export const sendPushNotification = async (userId, fcmPayload) => {
   try {
     const app = initFirebaseAdmin();
     if (!app) return;
 
-    const user = await User.findById(userId).select("fcmTokens");
-    if (!user || !user.fcmTokens || user.fcmTokens.length === 0) return;
+    // Fetch user's active push tokens from PostgreSQL
+    const tokens = await prisma.pushToken.findMany({
+      where: { 
+        userId,
+        is_active: true
+      },
+      select: { token: true }
+    });
+
+    if (tokens.length === 0) {
+      logger.debug(`[FCM] No active push tokens for user ${userId}. Skipping.`);
+      return;
+    }
 
     const messaging = getMessaging();
 
@@ -23,69 +35,61 @@ export const sendPushNotification = async (userId, fcmPayload) => {
     const sanitizedData = {};
     Object.entries(fcmPayload).forEach(([key, value]) => {
       if (value !== null && value !== undefined && value !== "") {
-        sanitizedData[key] = String(value);
+        // We only want to send data fields that are strings
+        if (typeof value === "object") {
+            sanitizedData[key] = JSON.stringify(value);
+        } else {
+            sanitizedData[key] = String(value);
+        }
       }
     });
 
-    // ── FCM Message ───────────────────────────────────────────────────────────
-    // ✅ DATA-ONLY: No `notification` block anywhere. This is the ONLY way to guarantee:
-    //    1. SW onBackgroundMessage fires on ALL platforms
-    //    2. Mobile browsers respect custom grouping & stacking
-    //    3. App-closed delivery works correctly
-    const message = {
+    // ── FCM Message Configuration ───────────────────────────────────────────
+    // Including both notification (for OS-level popup) and data (for in-app handling).
+    const baseMessage = {
+      notification: {
+        title: fcmPayload.title || "SuviX",
+        body: fcmPayload.body || "You have a new notification",
+        ...(fcmPayload.imageUrl && { image: fcmPayload.imageUrl })
+      },
       data: sanitizedData,
-
-      android: {
-        priority: "high",
-        // ✅ NO android.notification block — would bypass SW on Android
-      },
-
-      webpush: {
-        headers: {
-          Urgency: "high",
-          TTL: "86400", // 24 hours — survive device sleep/offline
-        },
-        fcmOptions: {
-          link: fcmPayload.link || "/notifications",
-        },
-        // ✅ NO webpush.notification block — would bypass SW
-      },
-
+      android: { priority: "high" },
       apns: {
-        headers: {
-          "apns-priority": "10",
-        },
         payload: {
           aps: {
-            contentAvailable: true, // Wake iOS app in background
+            contentAvailable: true,
             sound: "default",
           },
         },
-        // ✅ NO apns.alert block — keeps it data-only on iOS too
       },
     };
 
-    // ── Send to all registered tokens ─────────────────────────────────────────
-    const sendPromises = user.fcmTokens.map(token =>
-      messaging.send({ ...message, token })
+    // ── Dispatch to all tokens ─────────────────────────────────────────────
+    const sendPromises = tokens.map(({ token }) =>
+      messaging.send({ ...baseMessage, token })
         .catch(async (err) => {
-          // Clean up dead tokens automatically
+          // Automatic Cleanup of Invalid/Expired Tokens
           if (
             err.code === 'messaging/registration-token-not-registered' ||
             err.code === 'messaging/invalid-registration-token'
           ) {
-            await User.findByIdAndUpdate(userId, { $pull: { fcmTokens: token } });
-            logger.info(`Removed stale FCM token for user ${userId}`);
+            await prisma.pushToken.delete({ where: { token } });
+            logger.info(`🗑️ [FCM] Cleaned up stale token for user ${userId}`);
           } else {
-            logger.error(`FCM send error for user ${userId} token ...${token.slice(-6)}: ${err.message}`);
+            // Track the error in the DB for future diagnostics
+            await prisma.pushToken.update({
+              where: { token },
+              data: { last_error: err.message, is_active: false }
+            });
+            logger.error(`❌ [FCM] Push failed for token: ${err.message}`);
           }
         })
     );
 
     await Promise.all(sendPromises);
-    logger.info(`[FCM] Push sent to user ${userId} — "${fcmPayload.title}" (tag: ${fcmPayload.tag || 'none'}, order: ${fcmPayload.orderNumber || 'none'})`);
+    logger.info(`🚀 [FCM] Processed push for user ${userId}: "${fcmPayload.title}"`);
 
   } catch (error) {
-    logger.error("[FCM] sendPushNotification failed:", error.message);
+    logger.error("[FCM] Internal Service Error:", error.message);
   }
 };

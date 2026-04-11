@@ -14,6 +14,9 @@ import logger from "../../../utils/logger.js";
  * @param {Object} tx - Optional Prisma transaction client
  */
 export const persistYouTubeContent = async (userId, channelData, tx = prisma) => {
+  // Initialization
+  const videoRecords = []; // 💉 Defined at top-level to prevent ReferenceErrors in callbacks
+
   try {
     // 🛡️ PRODUCTION DATA MAPPING: Support multiple formats (camelCase, snake_case, or direct ID)
     const channelId = String(channelData.channelId || channelData.channel_id || channelData.id || "").trim();
@@ -92,8 +95,6 @@ export const persistYouTubeContent = async (userId, channelData, tx = prisma) =>
       logger.info(`📽️ [YT-SYNC] Attempting to mirror up to ${videos.length} videos...`);
       
       try {
-        const videoRecords = [];
-        
         // Use sequential processing for thumbnails to be nice to Cloudinary/Network
         // but limit to first 20 for profile performance
         const videosToSync = videos.slice(0, 20);
@@ -136,7 +137,29 @@ export const persistYouTubeContent = async (userId, channelData, tx = prisma) =>
       }
     }
 
+    // ── TRIGGER NOTIFICATION (Production Quality) ───────────────────────────
+    // Notify the user that their profile is ready after the background sync.
+    const { default: notificationService } = await import("../../notification/services/notificationService.js");
+    
+    // We do this asynchronously so it doesn't delay the worker return
+    notificationService.notify({
+      userId,
+      type: 'SYNC_COMPLETE',
+      title: 'YouTube Profile Updated! 🎥',
+      body: `Your latest content from ${youtubeProfile.channel_name} is now live on SuviX.`,
+      imageUrl: youtubeProfile.thumbnail_url,
+      priority: 'HIGH',
+      entityId: youtubeProfile.id,
+      entityType: 'YOUTUBE_PROFILE',
+      metadata: { 
+        type: 'youtube_sync_complete', // FIXED: No longer categorized as onboarding_welcome
+        sync_complete: true,
+        videos: videoRecords // 💉 Surgical Injection for Instant UI Pop (Socket only)
+      }
+    }).catch(err => logger.error(`[NOTIFY-SYNC] Failed to send sync notification: ${err.message}`));
+
     return youtubeProfile;
+
   } catch (error) {
     logger.error(`❌ [YT-SYNC] Persistence failed: ${error.message}`);
     throw error;

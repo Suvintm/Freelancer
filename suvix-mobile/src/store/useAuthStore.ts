@@ -78,6 +78,13 @@ interface AuthUser {
     video_count: number;
     thumbnail_url: string;
   } | null;
+  youtubeVideos?: {
+    id: string;
+    video_id?: string;
+    title: string;
+    thumbnail: string;
+    published_at: string;
+  }[];
   followers?: number;
   following?: number;
   bio?: string;
@@ -96,6 +103,8 @@ interface AuthState {
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   fetchUser: () => Promise<void>;
+  updateUser: (data: Partial<AuthUser>) => void;
+  setYoutubeVideos: (videos: any[]) => void;
   setTempSignupData: (data: Partial<TempSignupData>) => void;
   clearTempSignupData: () => void;
   updateUser: (updates: Partial<AuthUser>) => void;
@@ -201,11 +210,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ user: updatedUser, isAuthenticated: true, isLoadingUser: false });
       }
     } catch (error) {
-      // PRODUCTION GUARD: Only delete token on a STRICT 401 (Unauthorized)
-      // If it's a network error (no response) or 500, we KEEP the token so 
-      // the user isn't kicked out just because the backend was restarting.
+      // PRODUCTION GUARD: Clear credentials if the session is invalid or the user is deleted
       const status = (error as any).response?.status;
-      if (status === 401 || status === 403) {
+      if (status === 401 || status === 403 || status === 404) {
          console.warn('❌ [AUTH] Session expired. Clearing credentials.');
          await Promise.all([
             SecureStore.deleteItemAsync(TOKEN_KEY),
@@ -216,6 +223,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
          console.log('⚠️ [AUTH] Backend unreachable or error, but keeping session token.');
          set({ isLoadingUser: false });
       }
+    }
+  },
+  updateUser: (data) => {
+    const { user } = get();
+    if (user) {
+      set({ user: { ...user, ...data } });
+    }
+  },
+  setYoutubeVideos: (videos) => {
+    const { user } = get();
+    if (user) {
+      set({ user: { ...user, youtubeVideos: videos } });
     }
   },
   checkAuth: async () => {

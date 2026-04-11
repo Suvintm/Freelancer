@@ -11,6 +11,8 @@ import { useDashboardStore } from '../src/store/useDashboardStore';
 import { useCategoryStore } from '../src/store/useCategoryStore';
 import { Image } from 'react-native';
 import { preloadHomeAssets } from '../src/constants/homePreload';
+import { useNotifications } from '../src/hooks/useNotifications';
+import { useSocketStore } from '../src/store/useSocketStore';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -25,6 +27,9 @@ const queryClient = new QueryClient();
 function InitialRoot() {
   const { isInitialized, isAuthenticated, user, checkAuth, fetchUser, isLoadingUser } = useAuthStore();
   const { fetchClientDashboard, fetchEditorDashboard } = useDashboardStore();
+
+  // ── PRODUCTION: Register device for push notifications when authenticated ──
+  useNotifications();
   const segments = useSegments();
   const router = useRouter();
   const [isIntroFinished, setIsIntroFinished] = useState(false);
@@ -113,9 +118,14 @@ function InitialRoot() {
     };
   }, [checkAuth, fetchUser, fetchClientDashboard, fetchEditorDashboard]); 
 
-  // Session Sync Logic: Re-fetch dashboard data when user logs in manually
+  // Session Sync & WebSocket Logic
   useEffect(() => {
+    const { connect, disconnect } = useSocketStore.getState();
+
     if (isAuthenticated && user && dataLoaded) {
+      // Establish Real-Time Connection
+      connect();
+
       // If we are authenticated but the dashboard stats are missing, fetch them
       const syncDashboard = async () => {
         try {
@@ -130,6 +140,9 @@ function InitialRoot() {
       };
       
       syncDashboard();
+    } else if (!isAuthenticated) {
+      // Disconnect socket to prevent ghost sessions
+      disconnect();
     }
   }, [isAuthenticated, user?.role, fetchEditorDashboard, fetchClientDashboard, dataLoaded]);
 

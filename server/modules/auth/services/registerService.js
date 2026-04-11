@@ -27,6 +27,8 @@ export const registerFullUser = async (userData) => {
     categoryId, // Optional primary category (legacy compatibility)
     roleSubCategoryIds = [], // Array of UUIDs
     youtubeChannels = [],
+    pushToken,
+    platform,
     profilePictureBuffer,
     authProvider = "local",
     googleId = null,
@@ -237,6 +239,19 @@ export const registerFullUser = async (userData) => {
         create: { userId: newUser.id },
       });
 
+      // Step B-2. Register VIP Push Token Instantly
+      if (pushToken) {
+        await tx.pushToken.create({
+          data: {
+            userId: newUser.id,
+            token: pushToken,
+            platform: platform ? platform.toUpperCase() : 'ANDROID',
+            is_active: true,
+            device_name: 'SuviX Mobile App'
+          }
+        });
+      }
+
       // Step C: Map Dynamic Roles (Expertise)
       if (normalizedRoleSubCategoryIds.length > 0) {
         const mappings = normalizedRoleSubCategoryIds.map((subId, index) => ({
@@ -311,6 +326,19 @@ export const registerFullUser = async (userData) => {
 
     logger.info(`Production Registration Success: ${hydratedUser.email} (${hydratedUser.id})`);
     
+    // ── TRIGGER WELCOME NOTIFICATION (Elite Quality) ────────────────────────
+    // VIP Token is inserted in the main registration transaction, so this is instant!
+    const { default: notificationService } = await import("../../notification/services/notificationService.js");
+    
+    notificationService.notify({
+      userId: hydratedUser.id,
+      type: 'WELCOME',
+      title: 'Welcome to SuviX! 🚀',
+      body: `We're thrilled to have you here, ${fullName || 'User'}. Your professional profile is now live!`,
+      priority: 'HIGH',
+      metadata: { type: 'onboarding_welcome', onboarding_complete: true }
+    }).catch(err => logger.error(`[NOTIFY-WELCOME] Failed to send welcome notification: ${err.message}`));
+
     // 6. ASYNC WORKER DISPATCH: Only after guaranteed DB persistence
     if (user._deferredYoutubeChannels) {
       if (youtubeSyncQueue) {

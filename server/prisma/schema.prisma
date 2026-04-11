@@ -7,26 +7,29 @@ datasource db {
 }
 
 model User {
-  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email             String          @unique @db.VarChar(255)
-  password_hash     String?         @map("password_hash")
-  role              UserRole        @default(suvix_user)
-  auth_provider     AuthProvider?   @default(local) @map("auth_provider")
-  google_id         String?         @unique @map("google_id") @db.VarChar(255)
-  is_verified       Boolean         @default(false) @map("is_verified")
-  is_banned         Boolean         @default(false) @map("is_banned")
-  is_onboarded      Boolean         @default(false) @map("is_onboarded")
-  created_at        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at        DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
-  received_messages Message[]       @relation("MessageReceiver")
-  sent_messages     Message[]       @relation("MessageSender")
-  follows           UserFollow[]    @relation("Follower")
-  following         UserFollow[]    @relation("Following")
-  profile           UserProfile?
-  stats             UserStats?
-  youtubeProfiles   YouTubeProfile?
-  youtube_videos    YouTubeVideo[] // Deprecated relation - keeping for backward compatibility in migrations, will remove after data moved
-
+  id                     String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username               String?         @unique @db.VarChar(100)
+  email                  String          @unique @db.VarChar(255)
+  password_hash          String?         @map("password_hash")
+  role                   UserRole        @default(suvix_user)
+  auth_provider          AuthProvider?   @default(local) @map("auth_provider")
+  google_id              String?         @unique @map("google_id") @db.VarChar(255)
+  is_verified            Boolean         @default(false) @map("is_verified")
+  is_banned              Boolean         @default(false) @map("is_banned")
+  is_onboarded           Boolean         @default(false) @map("is_onboarded")
+  created_at             DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at             DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  received_messages      Message[]       @relation("MessageReceiver")
+  sent_messages          Message[]       @relation("MessageSender")
+  triggeredNotifications Notification[]  @relation("TriggeredNotifications")
+  notifications          Notification[]  @relation("UserNotifications")
+  pushTokens             PushToken[]
+  follows                UserFollow[]    @relation("Follower")
+  following              UserFollow[]    @relation("Following")
+  profile                UserProfile?
+  stats                  UserStats?
+  youtubeProfiles        YouTubeProfile?
+  youtube_videos         YouTubeVideo[]
 
   @@index([role])
   @@index([is_onboarded])
@@ -122,42 +125,41 @@ model UserStats {
 }
 
 model YouTubeProfile {
-  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId           String   @unique @map("user_id") @db.Uuid
-  channel_id       String   @db.VarChar(255)
-  channel_name     String   @db.VarChar(255)
-  subscriber_count Int?     @default(0)
-  video_count      Int?     @default(0)
-  thumbnail_url        String?
-  uploads_playlist_id  String?             @map("uploads_playlist_id") @db.VarChar(255)
-  last_synced_at       DateTime?           @map("last_synced_at") @db.Timestamptz(6)
-  video_cache_count    Int                 @default(0) @map("video_cache_count")
-  connected_at         DateTime            @default(now()) @map("connected_at") @db.Timestamptz(6)
-  created_at           DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at           DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
-  user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  videos               YouTubeVideo[]
-  sync_logs            YouTubeSyncLog[]
+  id                  String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String           @unique @map("user_id") @db.Uuid
+  channel_id          String           @unique @db.VarChar(255)
+  channel_name        String           @db.VarChar(255)
+  subscriber_count    Int?             @default(0)
+  video_count         Int?             @default(0)
+  thumbnail_url       String?
+  connected_at        DateTime         @default(now()) @map("connected_at") @db.Timestamptz(6)
+  created_at          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at          DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  last_synced_at      DateTime?        @map("last_synced_at") @db.Timestamptz(6)
+  uploads_playlist_id String?          @map("uploads_playlist_id") @db.VarChar(255)
+  video_cache_count   Int              @default(0) @map("video_cache_count")
+  user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sync_logs           YouTubeSyncLog[]
+  videos              YouTubeVideo[]
 
-  @@unique([channel_id])
   @@map("youtube_profiles")
 }
 
 model YouTubeVideo {
-  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  youtubeProfileId   String         @map("youtube_profile_id") @db.Uuid
-  user_id            String?        @db.Uuid // Optional to facilitate migration, will remove later
-  channel_id         String         @db.VarChar(255)
-  video_id           String         @unique @db.VarChar(100)
-  title              String         @db.VarChar(500)
-  thumbnail          String?
-  position           Int?           @default(0)
-  is_latest          Boolean        @default(true)
-  published_at       DateTime?      @map("published_at") @db.Timestamptz(6)
-  created_at         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at         DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
-  youtubeProfile     YouTubeProfile @relation(fields: [youtubeProfileId], references: [id], onDelete: Cascade)
-  user               User?          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String?        @db.Uuid
+  channel_id       String         @db.VarChar(255)
+  video_id         String         @unique @db.VarChar(100)
+  title            String         @db.VarChar(500)
+  thumbnail        String?
+  published_at     DateTime?      @map("published_at") @db.Timestamptz(6)
+  created_at       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at       DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  is_latest        Boolean        @default(true)
+  position         Int?           @default(0)
+  youtubeProfileId String         @map("youtube_profile_id") @db.Uuid
+  user             User?          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  youtubeProfile   YouTubeProfile @relation(fields: [youtubeProfileId], references: [id], onDelete: Cascade)
 
   @@index([channel_id])
   @@index([youtubeProfileId, published_at])
@@ -165,15 +167,57 @@ model YouTubeVideo {
 }
 
 model YouTubeSyncLog {
-  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  youtubeProfileId  String         @map("youtube_profile_id") @db.Uuid
-  lastSyncedAt      DateTime       @default(now()) @map("last_synced_at") @db.Timestamptz(6)
-  status            String         @db.VarChar(20) // success / failed
-  error_message     String?        @db.Text
-  youtubeProfile    YouTubeProfile @relation(fields: [youtubeProfileId], references: [id], onDelete: Cascade)
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  youtubeProfileId String         @map("youtube_profile_id") @db.Uuid
+  lastSyncedAt     DateTime       @default(now()) @map("last_synced_at") @db.Timestamptz(6)
+  status           String         @db.VarChar(20)
+  error_message    String?
+  youtubeProfile   YouTubeProfile @relation(fields: [youtubeProfileId], references: [id], onDelete: Cascade)
 
   @@index([youtubeProfileId])
   @@map("youtube_sync_logs")
+}
+
+model Notification {
+  id         String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String               @map("user_id") @db.Uuid
+  senderId   String?              @map("sender_id") @db.Uuid
+  type       NotificationType
+  priority   NotificationPriority @default(NORMAL)
+  entityId   String?              @map("entity_id")
+  entityType String?              @map("entity_type")
+  title      String               @db.VarChar(255)
+  body       String
+  image_url  String?              @map("image_url")
+  metadata   Json?                @default("{}")
+  is_sent    Boolean              @default(false)
+  is_read    Boolean              @default(false)
+  read_at    DateTime?            @map("read_at")
+  is_deleted Boolean              @default(false)
+  created_at DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  sender     User?                @relation("TriggeredNotifications", fields: [senderId], references: [id])
+  user       User                 @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, created_at])
+  @@index([userId, is_read])
+  @@index([entityId, entityType])
+  @@map("notifications")
+}
+
+model PushToken {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  token        String   @unique
+  platform     Platform @default(ANDROID)
+  device_name  String?  @map("device_name")
+  is_active    Boolean  @default(true)
+  last_error   String?  @map("last_error")
+  last_used_at DateTime @default(now()) @map("last_used_at")
+  created_at   DateTime @default(now()) @map("created_at")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_tokens")
 }
 
 model Message {
@@ -190,6 +234,28 @@ model Message {
   @@index([sender_id])
   @@index([receiver_id])
   @@map("messages")
+}
+
+enum NotificationType {
+  SYSTEM
+  SYNC_COMPLETE
+  MESSAGE
+  ORDER_UPDATE
+  FOLLOW
+  PROMOTION
+  WELCOME
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+}
+
+enum Platform {
+  IOS
+  ANDROID
+  WEB
 }
 
 enum UserRole {

@@ -19,6 +19,7 @@ BigInt.prototype.toJSON = function () {
 
 // Utils
 import logger from "./utils/logger.js";
+import { initSocket } from "./socket.js";
 
 // Middleware
 import { publicApiLimiter, redis } from "./middleware/rateLimiter.js";
@@ -33,6 +34,7 @@ import passport from "./config/passport.js";
 import authRoutes from "./modules/auth/routes/authRoutes.js";
 import oauthRoutes from "./modules/auth/routes/oauthRoutes.js";
 import userRoutes from "./modules/user/routes/userRoutes.js";
+import notificationRoutes from "./modules/notification/routes/notificationRoutes.js";
 import paymentGatewayRoutes from "./modules/payments/routes/paymentGatewayRoutes.js";
 
 // PostgreSQL Support
@@ -58,6 +60,12 @@ if (process.env.NODE_ENV !== "test") {
 
 const app = express();
 const server = http.createServer(app);
+
+// 🔍 DIAGNOSTIC: Global Request Logger
+app.use((req, res, next) => {
+  logger.info(`[DEBUG] ${req.method} ${req.originalUrl}`);
+  next();
+});
 
 // ============ CORE MIDDLEWARE ============
 app.use(cookieParser());
@@ -123,9 +131,10 @@ app.use(passport.initialize());
 
 // ============ PRISMA ROUTES (EXEMPT FROM NOSQL SANITIZE) ============
 // These routes handle PostgreSQL data and are safely immune to NoSQL injection.
-app.use("/api/auth", vpnCheckMiddleware, oauthRoutes);
-app.use("/api/auth", vpnCheckMiddleware, authRoutes);
+app.use("/api/auth", vpnCheckMiddleware, authRoutes); // Priority: Local Auth (/me, /login)
+app.use("/api/auth", vpnCheckMiddleware, oauthRoutes); // Fallback: Social OAuth
 app.use("/api/user", userRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // ============ SECURITY: NOSQL SANITIZATION ============
 // This protects MongoDB-specific routes (Reels, Feed, etc.)
@@ -191,7 +200,8 @@ const startServer = async () => {
   const dbConnected = await connectDB();
   if (!dbConnected) process.exit(1);
   await connectPostgres();
-  server.listen(PORT, () => logger.info(`✅ Server running on port ${PORT}`));
+  initSocket(server);
+  server.listen(PORT, "0.0.0.0", () => logger.info(`✅ Server running on port ${PORT} (reachable at http://0.0.0.0:${PORT})`));
 };
 
 if (process.env.NODE_ENV !== "test") startServer();

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuthStore } from '../../../store/useAuthStore';
+import { useSocketStore } from '../../../store/useSocketStore';
 import {
   View,
   Text,
@@ -50,8 +51,38 @@ const { width } = Dimensions.get('window');
 
 export default function YouTubeCreatorProfile() {
   const { theme } = useTheme();
-  const { user, updateUser } = useAuthStore();
+  const { user, updateUser, fetchUser, setYoutubeVideos } = useAuthStore();
+  const { socket } = useSocketStore();
   
+  // 🔗 WEB SOCKET: Real-time Surgical Sync Listener
+  React.useEffect(() => {
+    if (!socket) return;
+
+    const handleSyncComplete = async (data: any) => {
+      if (data.type === 'SYNC_COMPLETE') {
+        console.log('🔄 [SYNC] Real-time surgical signal received!');
+        
+        // 💉 SURGICAL BYPASS: If the payload contains videos, inject them instantly
+        if (data.metadata?.videos && Array.isArray(data.metadata.videos)) {
+          console.log('✨ [SYNC] Injecting surgical video data (Zero-API Refresh)');
+          setYoutubeVideos(data.metadata.videos);
+        } else {
+          // Fallback: Refresh the whole user if metadata is missing (legacy compat)
+          console.log('📡 [SYNC] Falling back to Full-Profile Refresh');
+          await fetchUser();
+        }
+
+        // 🧼 CLEANUP: Removed disruptive Alert.alert per user request for a "Premium" silent update.
+      }
+    };
+
+    socket.on('notification:new', handleSyncComplete);
+
+    return () => {
+      socket.off('notification:new', handleSyncComplete);
+    };
+  }, [socket, fetchUser]);
+
   React.useEffect(() => {
     if (user?.bio) {
       setTempBio(user.bio);

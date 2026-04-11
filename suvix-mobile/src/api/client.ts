@@ -47,6 +47,13 @@ async function resolveApiUrl(): Promise<string> {
   return PROD_URL;
 }
 
+// 🏠 [PRODUCTION-GRADE] Export current resolved URL for global use (e.g. WebSockets)
+export async function getResolvedBaseUrl(): Promise<string> {
+  const url = await resolveApiUrl();
+  // Ensure we strip trailing /api for Socket.io usage
+  return url.replace(/\/api$/, '') || url;
+}
+
 export function getApiBaseUrl(): string {
   // If we haven't resolved yet, use PROD as a safe fallback
   return resolvedUrl || PROD_URL;

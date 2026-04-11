@@ -277,7 +277,8 @@ export const registerFull = asyncHandler(async (req, res) => {
 
   const { 
     fullName, username, email, password, phone, 
-    motherTongue, country, categoryId, roleSubCategoryIds, youtubeChannels
+    motherTongue, country, categoryId, roleSubCategoryIds, youtubeChannels,
+    pushToken, platform
   } = req.body;
 
   let parsedSubIds = roleSubCategoryIds;
@@ -306,6 +307,7 @@ export const registerFull = asyncHandler(async (req, res) => {
     motherTongue, country, categoryId,
     roleSubCategoryIds: finalSubIds,
     youtubeChannels: Array.isArray(parsedYoutubeChannels) ? parsedYoutubeChannels : [],
+    pushToken, platform,
     profilePictureBuffer: req.file ? req.file.buffer : null
   };
 

@@ -14,10 +14,12 @@ import {
   StatusBar,
   Dimensions,
   useColorScheme,
-  Modal
+  Modal,
+  Switch
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import * as Notifications from 'expo-notifications';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../src/constants/Colors';
 import SuvixInput from '../src/components/SuvixInput';
@@ -45,6 +47,7 @@ export default function SignupScreen() {
   
   const [showPassword, setShowPassword] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<{ type: 'loading' | 'success' | 'error' | 'none', message: string }>({ type: 'none', message: '' });
@@ -194,6 +197,27 @@ export default function SignupScreen() {
         } as any);
       }
 
+      // ✨ VIP PUSH TOKEN: If checked, get native FCM token natively before API call
+      if (pushEnabled) {
+        try {
+          const { status: existingStatus } = await Notifications.getPermissionsAsync();
+          let finalStatus = existingStatus;
+          if (existingStatus !== 'granted') {
+            const { status } = await Notifications.requestPermissionsAsync();
+            finalStatus = status;
+          }
+          if (finalStatus === 'granted') {
+             const tokenData = await Notifications.getDevicePushTokenAsync();
+             if (tokenData && tokenData.data) {
+                formData.append('pushToken', String(tokenData.data));
+                formData.append('platform', Platform.OS.toUpperCase());
+             }
+          }
+        } catch (pushErr: any) {
+          console.warn('⚠️ [PUSH-SIGNUP] Could not retrieve token during signup:', pushErr.message);
+        }
+      }
+
       // ✨ IMMEDIATE IMMERSION: Show overlay before the final heavy API call
       setShowSuccessOverlay(true);
 
@@ -307,6 +331,22 @@ export default function SignupScreen() {
                 <SuvixInput small label="Secure Password" placeholder="••••••••" value={password} onChangeText={setPassword} secureTextEntry={!showPassword} icon={<Feather name="lock" size={16} />} 
                   rightIcon={<TouchableOpacity onPress={() => setShowPassword(!showPassword)}><Feather name={showPassword ? "eye-off" : "eye"} color={theme.textSecondary} size={16} /></TouchableOpacity>} 
                 />
+
+                <View style={[styles.vipSwitchContainer, { borderColor: theme.border, backgroundColor: theme.primary }]}>
+                  <View style={styles.vipSwitchTextContent}>
+                    <Text style={[styles.vipSwitchTitle, { color: theme.text }]}>
+                      🔔 VIP Notifications <Text style={{ color: theme.accent, fontSize: 10, fontWeight: '800' }}>RECOMMENDED</Text>
+                    </Text>
+                    <Text style={[styles.vipSwitchDesc, { color: theme.textSecondary }]}>
+                      Get instantly alerted when clients message or book you.
+                    </Text>
+                  </View>
+                  <Switch 
+                    value={pushEnabled} 
+                    onValueChange={(val) => { handleImpact(); setPushEnabled(val); }} 
+                    trackColor={{ false: theme.border, true: theme.accent }}
+                  />
+                </View>
               </View>
 
               <SuvixButton 
@@ -425,4 +465,9 @@ const styles = StyleSheet.create({
   linkedChannelDetails: { flex: 1 },
   linkedChannelName: { fontSize: 13, fontWeight: '800', marginBottom: 2 },
   linkedChannelPill: { fontSize: 10, fontWeight: '700', textTransform: 'capitalize' },
+  // VIP Switch
+  vipSwitchContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderRadius: 12, borderWidth: 1, marginTop: 4, marginBottom: 8 },
+  vipSwitchTextContent: { flex: 1, paddingRight: 10 },
+  vipSwitchTitle: { fontSize: 13, fontWeight: '800', marginBottom: 2 },
+  vipSwitchDesc: { fontSize: 11, fontWeight: '600' }
 });
