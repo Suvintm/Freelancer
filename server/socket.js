@@ -140,3 +140,24 @@ export const emitToUser = (userId, event, data) => {
   }
   return false;
 };
+
+/**
+ * Forcibly disconnect a user and notify their app to logout.
+ * Used for bans or account deletions.
+ */
+export const kickUser = (userId, reason = "Session invalidated") => {
+    if (!io) return false;
+    const socketId = userSocketMap[userId];
+    if (socketId) {
+        console.log(`🔌 [SOCKET] Kicking user ${userId} for reason: ${reason}`);
+        io.to(socketId).emit("session:invalidated", { reason });
+        // Optional: Actually disconnect the socket after a tiny delay
+        setTimeout(() => {
+            const socket = io.sockets.sockets.get(socketId);
+            if (socket) socket.disconnect(true);
+        }, 500);
+        return true;
+    }
+    return false;
+};
+

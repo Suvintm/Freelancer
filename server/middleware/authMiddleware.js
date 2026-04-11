@@ -48,22 +48,55 @@ export const authenticate = async (req, res, next) => {
       throw new ApiError(401, "Token verification failed");
     }
 
-    // Validate decoded token has required fields
-    if (!decoded || !decoded.id) {
-      throw new ApiError(401, "Invalid token: missing user ID");
+    // 🛡️ HYBRID PRODUCTION GUARD: Always verify 'Proof of Life' in DB for security.
+    // Heavy profile data is still cached in Redis for performance.
+    
+    // 1. JWT Decoded Check (Handled above)
+    const userId = decoded.id;
+
+    // 2. CHECK POSTGRES FIRST (Lightweight existence & ban check)
+    // This is extremely fast (indexed ID) and ensures total session revoke capability.
+    let status;
+    try {
+        status = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, is_banned: true, role: true }
+        });
+    } catch (e) {
+        logger.error(`[AUTH-DB] Proof-of-life check failed: ${e.message}`);
     }
 
-    // Get user — check Redis cache first
-    const cacheKey = CacheKey.userProfile(decoded.id);
+    // 🚩 REVOCATION: If user is missing or banned in DB, we MUST kick them instantly.
+    if (!status) {
+        const cacheKey = CacheKey.userProfile(userId);
+        await deleteCache(cacheKey);
+        
+        // 🧪 [SILENT KICK] Trigger real-time socket logout
+        const { kickUser } = await import("../socket.js");
+        kickUser(userId, "Deleted");
+        
+        throw new ApiError(401, "Your account no longer exists. Please sign up again.");
+    }
+
+    if (status.is_banned) {
+        // 🔥 Real-time kick for Banned status
+        const { kickUser } = await import("../socket.js");
+        kickUser(userId, "Banned");
+
+        throw new ApiError(403, "Your account has been suspended. Please contact support.", true, { isBanned: true });
+    }
+
+    // 3. CACHE HYDRATION (Full Profile Data)
+    const cacheKey = CacheKey.userProfile(userId);
     let user = await getCache(cacheKey);
 
     if (user) {
       if (typeof user === "string") user = JSON.parse(user);
     } else {
-      // Fetch from PostgreSQL (Auth + Profile Split)
+      // Full Hydration (Profile + Categories + Roles)
       try {
         user = await prisma.user.findUnique({
-          where: { id: decoded.id },
+          where: { id: userId },
           include: {
             profile: {
               include: {
@@ -80,26 +113,16 @@ export const authenticate = async (req, res, next) => {
           }
         });
       } catch (prismaError) {
-        logger.error("Prisma query error in authMiddleware:", prismaError);
+        logger.error("Prisma hydration error in authMiddleware:", prismaError);
         throw new ApiError(401, "Authentication database error");
       }
       
       if (user) await setCache(cacheKey, user, TTL.USER_PROFILE);
     }
 
-    if (!user) throw new ApiError(401, "User not found");
+    if (!user) throw new ApiError(401, "User not found during hydration.");
     
-    // Check for banned user (Added for production-level security)
-    if (user.is_banned) {
-        return res.status(403).json({ 
-            success: false, 
-            message: user.ban_reason || "Your account has been suspended.", 
-            isBanned: true,
-            banReason: user.ban_reason
-        });
-    }
-
-    // Flatten profile data onto the user object for convenience (standard across app/web)
+    // Flatten profile data onto the user object (Standard API contract)
     if (user.profile) {
         user.username = user.profile.username;
         user.name = user.profile.name;

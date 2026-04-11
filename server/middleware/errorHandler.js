@@ -2,10 +2,11 @@ import logger from "../utils/logger.js";
 
 // Custom error class for API errors
 export class ApiError extends Error {
-    constructor(statusCode, message, isOperational = true) {
+    constructor(statusCode, message, isOperational = true, meta = {}) {
         super(message);
         this.statusCode = statusCode;
         this.isOperational = isOperational;
+        this.meta = meta; // Stores extra flags like { isBanned: true }
         this.status = `${statusCode}`.startsWith("4") ? "fail" : "error";
         Error.captureStackTrace(this, this.constructor);
     }
@@ -19,11 +20,17 @@ export const notFoundHandler = (req, res, next) => {
 
 // Global error handler middleware
 export const errorHandler = (err, req, res, next) => {
-    console.trace("ERROR_TRACE:", err);
-    let { statusCode, message } = err;
+    let { statusCode, message, meta } = err;
 
     // Default to 500 if no status code
     statusCode = statusCode || 500;
+    meta = meta || {};
+
+    // Only trace unexpected system errors (500s) to keep logs clean
+    if (statusCode >= 500 || !err.isOperational) {
+        console.trace("🔥 [SYSTEM ERROR]:", err);
+    }
+
 
     // ── MongoDB duplicate key error (e.g. email already exists) ──
     if (err.code === 11000) {
@@ -48,17 +55,8 @@ export const errorHandler = (err, req, res, next) => {
         message = "Your session has expired. Please log in again.";
     }
 
-    // Log error details (but don't expose to client)
-    logger.error(`[ErrorHandler] Sending status ${statusCode} for error: ${message}`);
-    
-    logger.error({
-        message: err.message,
-        stack: process.env.NODE_ENV !== "production" ? err.stack : undefined,
-        url: req.originalUrl,
-        method: req.method,
-        ip: req.ip,
-        user: req.user?._id || req.user?.id || "anonymous",
-    });
+    // Log error details
+    logger.error(`[ErrorHandler] ${statusCode} - ${message}`);
 
     // In production, don't leak internal error details for unhandled errors
     if (process.env.NODE_ENV === "production" && !err.isOperational && !err.code && err.name !== "ValidationError") {
@@ -68,9 +66,11 @@ export const errorHandler = (err, req, res, next) => {
     res.status(statusCode).json({
         success: false,
         message,
+        ...meta, // Spread extra metadata into the response
         ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
     });
 };
+
 
 // Async handler wrapper to catch errors in async routes
 export const asyncHandler = (fn) => (req, res, next) => {

@@ -88,7 +88,9 @@ interface AuthUser {
   followers?: number;
   following?: number;
   bio?: string;
+  isBanned?: boolean;
 }
+
 
 interface AuthState {
   token: string | null;

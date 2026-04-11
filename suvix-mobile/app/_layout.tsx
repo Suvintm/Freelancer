@@ -178,9 +178,22 @@ function InitialRoot() {
       const inPublicGroup =
         currentSegment === 'welcome' ||
         currentSegment === 'login' ||
-        currentSegment === 'signup';
+        currentSegment === 'signup' ||
+        currentSegment === 'banned';
 
       console.log(`🚦 [GUARD] Auth: ${isAuthenticated} | User: ${!!user} | Loading: ${isLoadingUser}`);
+
+      // 🚨 CRITICAL: [SECURITY] BAN GUARD
+      // We check this FIRST to ensure a banned user NEVER sees the dashboard.
+      if (user?.isBanned || (user as any)?.is_banned) {
+        if (currentSegment !== 'banned') {
+          console.warn('🚫 [GUARD] User is banned. Redirecting to /banned screen.');
+          isNavigating.current = true;
+          router.replace('/banned');
+          setTimeout(() => { isNavigating.current = false; }, 1000);
+        }
+        return;
+      }
 
       // 1. RE-HYDRATION GUARD
       // We absolutely wait if we're authenticated but still loading the profile

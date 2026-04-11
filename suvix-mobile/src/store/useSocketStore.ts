@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { io, Socket } from 'socket.io-client';
+import { router } from 'expo-router';
 import { useAuthStore } from './useAuthStore';
 import { api } from '../api/client';
 
@@ -47,6 +48,19 @@ export const useSocketStore = create<SocketStore>((set, get) => ({
 
     socket.on('connect_error', (error) => {
       console.warn('⚠️ [SOCKET] Connection Error:', error.message);
+    });
+
+
+    // 🔒 [SECURITY] Session Invalidation Guard
+    // Responds to the "Identity Guard" server-side kick.
+    socket.on('session:invalidated', (data) => {
+      console.warn('🚩 [SOCKET] Session invalidated by server:', data.reason);
+      
+      if (data.reason === 'Banned') {
+        router.replace('/banned');
+      } else {
+        useAuthStore.getState().logout();
+      }
     });
 
     set({ socket });

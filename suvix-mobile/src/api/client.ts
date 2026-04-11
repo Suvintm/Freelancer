@@ -1,4 +1,5 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import { router } from 'expo-router';
 
 const LOCAL_URL = (process.env as any).EXPO_PUBLIC_LOCAL_API_URL as string | undefined;
 const PROD_URL  = (process.env as any).EXPO_PUBLIC_PROD_API_URL  || 'https://api.suvix.in/api';
@@ -176,12 +177,25 @@ api.interceptors.response.use(
       }
     }
 
+
     if (__DEV__) {
-      const method = error.config?.method?.toUpperCase() || 'UNKNOWN';
-      const url = error.config?.url || 'URL';
-      console.error(`❌ [API Error] ${method} ${url}:`, error.message);
+      const isBanned = response?.status === 403 && (response.data as any)?.isBanned;
+      if (!isBanned) {
+        const method = error.config?.method?.toUpperCase() || 'UNKNOWN';
+        const url = error.config?.url || 'URL';
+        console.error(`❌ [API Error] ${method} ${url}:`, error.message);
+      }
+    }
+
+
+    // 🚩 [SECURITY] Absolute Ban Redirect
+    // If we get a 403 with isBanned flag, we MUST redirect to the banned page instantly.
+    if (response?.status === 403 && (response.data as any)?.isBanned) {
+        console.warn('🚫 [SECURITY] User is banned. Redirecting to restricted screen.');
+        router.replace('/banned');
     }
 
     return Promise.reject(error);
   }
 );
+

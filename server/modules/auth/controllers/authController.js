@@ -152,6 +152,14 @@ export const login = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Invalid credentials.");
   }
 
+  // 🚩 [SECURITY] IMMEDIATE BAN CHECK
+  // Block authentication even before password check for maximum safety.
+  if (user.is_banned) {
+    logger.warn(`[AUTH] Login attempt blocked for banned user: ${user.id}`);
+    throw new ApiError(403, "Your account has been suspended. Please contact support.", true, { isBanned: true });
+  }
+
+
   // 🛡️ [SECURITY] ENFORCE ONE-WAY OAUTH RESTRICTION
   // If the account was created via Google and has NO password, block manual login.
   if (!user.password_hash && user.google_id) {

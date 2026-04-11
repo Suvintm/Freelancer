@@ -85,6 +85,13 @@ export default function LoginScreen() {
     } catch (error: any) {
       setShowLoadingOverlay(false); // Hide overlay so user can see the error
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
+      
+      // 🚩 [SECURITY] If the user is banned, the global interceptor will handle redirection.
+      // We skip the alert here to avoid confusing popups.
+      if (error.response?.status === 403 && error.response?.data?.isBanned) {
+        return; 
+      }
+
       Alert.alert('Login Failed', error.response?.data?.message || 'Check your credentials.');
     } finally {
       if (!showLoadingOverlay) {
