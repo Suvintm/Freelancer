@@ -60,7 +60,7 @@ export const authenticate = async (req, res, next) => {
     try {
         status = await prisma.user.findUnique({
             where: { id: userId },
-            select: { id: true, is_banned: true, role: true }
+            select: { id: true, is_banned: true, ban_reason: true, role: true }
         });
     } catch (e) {
         logger.error(`[AUTH-DB] Proof-of-life check failed: ${e.message}`);
@@ -83,7 +83,10 @@ export const authenticate = async (req, res, next) => {
         const { kickUser } = await import("../socket.js");
         kickUser(userId, "Banned");
 
-        throw new ApiError(403, "Your account has been suspended. Please contact support.", true, { isBanned: true });
+        throw new ApiError(403, "Your account has been suspended. Please contact support.", true, { 
+          isBanned: true,
+          banReason: status.ban_reason || "Violation of terms"
+        });
     }
 
     // 3. CACHE HYDRATION (Full Profile Data)
@@ -135,7 +138,11 @@ export const authenticate = async (req, res, next) => {
     next();
   } catch (error) {
     if (error instanceof ApiError) {
-      return res.status(error.statusCode).json({ success: false, message: error.message });
+      return res.status(error.statusCode).json({ 
+        success: false, 
+        message: error.message,
+        ...error.meta 
+      });
     }
     logger.error("Auth Middleware Error:", error);
     return res.status(401).json({ success: false, message: "Not authorized" });

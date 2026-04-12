@@ -17,7 +17,7 @@ const LOCKOUT_WINDOW = 15 * 60; // 15 minutes in seconds
  */
 export const checkAccountLockout = async (req, res, next) => {
     const { email } = req.body;
-    if (!email) return next();
+    if (!email || typeof email !== "string") return next();
 
     const normalizedEmail = email.toLowerCase().trim();
     const lockoutKey = `lockout:${normalizedEmail}`;
@@ -35,7 +35,7 @@ export const checkAccountLockout = async (req, res, next) => {
  * Track a failed login attempt
  */
 export const trackFailedLogin = async (email) => {
-    if (!email) return;
+    if (!email || typeof email !== "string") return;
     const normalizedEmail = email.toLowerCase().trim();
     const countKey = `fail_count:${normalizedEmail}`;
     const lockoutKey = `lockout:${normalizedEmail}`;
@@ -61,7 +61,7 @@ export const trackFailedLogin = async (email) => {
  * Reset failure count on successful login
  */
 export const resetFailedLogin = async (email) => {
-    if (!email) return;
+    if (!email || typeof email !== "string") return;
     const normalizedEmail = email.toLowerCase().trim();
     await redis.del(`fail_count:${normalizedEmail}`);
 };

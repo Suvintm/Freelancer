@@ -166,6 +166,14 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+app.get("/api/maintenance-status", (req, res) => {
+  res.status(200).json({
+    success: true,
+    maintenance: false,
+    message: "System is operational"
+  });
+});
+
 app.get("/", (req, res) => res.json({ success: true, message: "SuviX Backend is running!" }));
 
 // ============ ERROR HANDLING ============

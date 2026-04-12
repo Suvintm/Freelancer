@@ -156,7 +156,10 @@ export const login = asyncHandler(async (req, res) => {
   // Block authentication even before password check for maximum safety.
   if (user.is_banned) {
     logger.warn(`[AUTH] Login attempt blocked for banned user: ${user.id}`);
-    throw new ApiError(403, "Your account has been suspended. Please contact support.", true, { isBanned: true });
+    throw new ApiError(403, "Your account has been suspended. Please contact support.", true, { 
+      isBanned: true,
+      banReason: user.ban_reason || "Violation of terms"
+    });
   }
 
 
