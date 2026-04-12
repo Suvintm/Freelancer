@@ -1,6 +1,7 @@
 import prisma from "../../../config/prisma.js";
 import storageService from "../../../utils/storageService.js";
 import logger from "../../../utils/logger.js";
+import { ApiError } from "../../../middleware/errorHandler.js";
 
 /**
  * PRODUCTION-GRADE YOUTUBE SYNC SERVICE

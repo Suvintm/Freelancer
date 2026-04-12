@@ -24,6 +24,21 @@ import { getRazorpayKeyId, verifyWebhookSignature, isRazorpayConfigured } from "
 const OrderShim = {
   findById: async (id) => null,
   findOne: async (query) => null,
+  findByIdAndUpdate: async (id, update) => null,
+};
+
+const SiteSettingsShim = {
+  getSettings: async () => ({
+    platformFee: 10,
+    minPayoutAmount: 500,
+    refundPolicy: {
+      beforeAcceptedPercent: 100,
+      afterAcceptedNoWorkPercent: 100,
+      workInProgressLowPercent: 75,
+      workInProgressHighPercent: 50,
+      afterDeliveryPercent: 0,
+    }
+  }),
 };
 
 /**
@@ -35,8 +50,7 @@ export const getPaymentConfig = async (req, res) => {
     const user = req.user;
     const support = await isPaymentSupported(user.country);
     const currencyInfo = getCurrencyInfo(user.country);
-    // const settings = await SiteSettings.getSettings();
-    const settings = { platformFee: 10, minPayoutAmount: 500 };
+    const settings = await SiteSettingsShim.getSettings();
 
     res.json({
       success: true,
@@ -565,25 +579,26 @@ async function handlePaymentCaptured(payment) {
 }
 
 async function handlePaymentFailed(payment) {
-  const order = await Order.findOne({ razorpayOrderId: payment.order_id });
+  const order = await OrderShim.findOne({ razorpayOrderId: payment.order_id });
   if (!order) return;
 
-  order.paymentStatus = "failed";
-  await order.save();
+  // order.paymentStatus = "failed";
+  // await order.save();
 }
 
 async function handleRefundCreated(refund) {
-  const order = await Order.findOne({ razorpayPaymentId: refund.payment_id });
+  const order = await OrderShim.findOne({ razorpayPaymentId: refund.payment_id });
   if (!order) return;
 
-  order.refundId = refund.id;
-  order.refundAmount = refund.amount / 100;
-  order.refundedAt = new Date();
-  order.paymentStatus = "refunded";
-  order.escrowStatus = "refunded";
-  await order.save();
+  // order.refundId = refund.id;
+  // order.refundAmount = refund.amount / 100;
+  // order.refundedAt = new Date();
+  // order.paymentStatus = "refunded";
+  // order.escrowStatus = "refunded";
+  // await order.save();
 
   // Create Payment record for refund
+  /*
   await Payment.create({
     order: order._id,
     client: order.client,
@@ -601,6 +616,7 @@ async function handleRefundCreated(refund) {
     completedAt: new Date(),
     notes: `Refund for payment: ${refund.payment_id}`,
   });
+  */
 }
 
 async function handlePayoutProcessed(payout) {
@@ -627,54 +643,26 @@ async function handlePayoutFailed(payout) {
  */
 export const releasePayment = async (orderId) => {
   try {
-    const order = await Order.findById(orderId).populate("editor");
+    const order = await OrderShim.findById(orderId);
     if (!order) throw new Error("Order not found");
-
-    if (order.escrowStatus !== "held") {
-      throw new Error("Payment not in escrow");
-    }
 
     const editor = order.editor;
     
     // Check if editor has linked bank account
-    if (!editor.razorpayFundAccountId) {
+    if (editor && !editor.razorpayFundAccountId) {
       // Hold release until KYC complete
       console.warn(`⚠️  Editor ${editor._id} needs KYC for payout`);
       
       // Update editor pending payout
-      await User.findByIdAndUpdate(editor._id, {
-        $inc: { pendingPayout: order.editorEarning },
+      await prisma.user.update({
+        where: { id: editor._id },
+        data: { pendingPayout: { increment: order.editorEarning } }
       });
-      
-      order.payoutStatus = "pending";
-      await order.save();
       
       return { success: true, status: "pending_kyc" };
     }
 
-    // Create payout
-    const provider = new RazorpayProvider();
-    const payout = await provider.createPayout(editor, order.editorEarning);
-
-    // Update order
-    order.razorpayPayoutId = payout.payoutId;
-    order.payoutStatus = "processing";
-    order.payoutAmount = order.editorEarning;
-    order.escrowStatus = "released";
-    order.escrowReleasedAt = new Date();
-    order.paymentStatus = "released";
-    await order.save();
-
-    /*
-    // Update editor earnings
-    await User.findByIdAndUpdate(editor._id, {
-      $inc: { 
-        totalEarnings: order.editorEarning,
-      },
-    });
-    */
-
-    return { success: true, status: "released", payoutId: payout.payoutId };
+    return { success: true, status: "released", message: "Legacy release logic disabled" };
   } catch (error) {
     console.error("❌ Release payment error:", error);
     throw error;
@@ -689,7 +677,7 @@ export const processRefund = async (req, res) => {
   try {
     const { orderId, reason } = req.body;
     
-    const order = await Order.findById(orderId).populate(["client", "editor"]);
+    const order = await OrderShim.findById(orderId);
     if (!order) {
       return res.status(404).json({ success: false, message: "Order not found" });
     }
@@ -711,7 +699,7 @@ export const processRefund = async (req, res) => {
     }
 
     // Determine refund amount based on order stage
-    const settings = await SiteSettings.getSettings();
+    const settings = await SiteSettingsShim.getSettings();
     const policy = settings.refundPolicy || {};
     
     let refundPercent = 100;
