@@ -25,7 +25,7 @@ export const DUMMY_CATEGORIES: Record<string, CategoryConfig> = {
     defaultModule: 'clients',
     description: 'Discover and hire elite talent for your projects.',
     color: '#FFFFFF',
-    thumbnail: require('../../assets/images/categories/client.png'),
+    thumbnail: require('../../assets/images/categories/client.jpg'),
     overlayIcon: require('../../assets/images/categories/normaluser.png'),
     subCategories: ['General Content', 'Business', 'Personal', 'E-commerce', 'Other'],
     info: 'As a Normal User/Client, you can explore professional content, discover elite talent, and hire the best editors, creators, and artists for your requirements.'
@@ -38,7 +38,7 @@ export const DUMMY_CATEGORIES: Record<string, CategoryConfig> = {
     defaultModule: 'creators',
     description: 'Scale your content and grow your audience presence.',
     color: '#FF0000',
-    thumbnail: require('../../assets/images/categories/youtube.png'),
+    thumbnail: require('../../assets/images/categories/youtube.jpg'),
     overlayIcon: require('../../assets/images/categories/youtubeicon.png'),
     subCategories: [
       'Vlogs', 'Technology', 'Education', 'Fitness', 'Entertainment', 
@@ -55,7 +55,7 @@ export const DUMMY_CATEGORIES: Record<string, CategoryConfig> = {
     defaultModule: 'creators',
     description: 'Professional fitness coaching and wellness content.',
     color: '#2ECC71',
-    thumbnail: require('../../assets/images/categories/fitness.png'),
+    thumbnail: require('../../assets/images/categories/fitness.jpg'),
     overlayIcon: require('../../assets/images/categories/fitnessicon.png'),
     subCategories: [
       'Gym Training', 'Yoga', 'Nutrition', 'Wellness', 'Crossfit', 
@@ -71,7 +71,7 @@ export const DUMMY_CATEGORIES: Record<string, CategoryConfig> = {
     defaultModule: 'creators',
     description: 'Pro vocalists for music and commercial output.',
     color: '#F1C40F',
-    thumbnail: require('../../assets/images/categories/singer.png'),
+    thumbnail: require('../../assets/images/categories/singer.jpg'),
     overlayIcon: require('../../assets/images/categories/singericon.png'),
     subCategories: [
       'Classical', 'Pop', 'Rock', 'Jazz', 'Folk', 'EDM', 
@@ -87,7 +87,7 @@ export const DUMMY_CATEGORIES: Record<string, CategoryConfig> = {
     defaultModule: 'creators',
     description: 'Choreographers and performers for all media.',
     color: '#E91E63',
-    thumbnail: require('../../assets/images/categories/dancer.png'),
+    thumbnail: require('../../assets/images/categories/dancer.jpg'),
     overlayIcon: require('../../assets/images/categories/danceicon.png'),
     subCategories: [
       'Classical', 'Hip Hop', 'Contemporary', 'Bollywood', 'Salsa', 
@@ -103,7 +103,7 @@ export const DUMMY_CATEGORIES: Record<string, CategoryConfig> = {
     defaultModule: 'promoters',
     description: 'High-impact social media growth and advertising.',
     color: '#2980B9',
-    thumbnail: require('../../assets/images/categories/promotions.png'),
+    thumbnail: require('../../assets/images/categories/promotions.jpg'),
     overlayIcon: require('../../assets/images/categories/ads.png'),
     subCategories: [
       'Instagram Ads', 'YouTube Ads', 'SEO', 'Influencer Marketing', 
@@ -121,7 +121,7 @@ export const DUMMY_CATEGORIES: Record<string, CategoryConfig> = {
     defaultModule: 'editors',
     description: 'Professional post-production and high-fidelity editing.',
     color: '#8E44AD',
-    thumbnail: require('../../assets/images/categories/editor.png'),
+    thumbnail: require('../../assets/images/categories/editor.jpg'),
     overlayIcon: require('../../assets/images/categories/editing.png'),
     subCategories: [
       'Short Films', 'Reels / Shorts', 'Commercials', 'YouTube Edits', 
@@ -139,7 +139,7 @@ export const DUMMY_CATEGORIES: Record<string, CategoryConfig> = {
     defaultModule: 'rentals',
     description: 'Rent top-tier professional gear and equipment.',
     color: '#27AE60',
-    thumbnail: require('../../assets/images/categories/rentals.png'),
+    thumbnail: require('../../assets/images/categories/rentals.jpg'),
     overlayIcon: require('../../assets/images/categories/rental.png'),
     subCategories: [
       'Camera Gear', 'Lighting', 'Sound Systems', 'Photography Studios', 'Lenses', 
@@ -158,7 +158,7 @@ export const DUMMY_CATEGORIES: Record<string, CategoryConfig> = {
     defaultModule: 'creators',
     description: 'Cinematic photography for brands and events.',
     color: '#E67E22',
-    thumbnail: require('../../assets/images/categories/photographer.png'),
+    thumbnail: require('../../assets/images/categories/photographer.jpg'),
     overlayIcon: require('../../assets/images/categories/photographer copy.png'),
     subCategories: [
       'Wedding', 'Portrait', 'Product', 'Event', 'Fashion', 
@@ -174,7 +174,7 @@ export const DUMMY_CATEGORIES: Record<string, CategoryConfig> = {
     defaultModule: 'creators',
     description: 'Professional cinematography and event filming.',
     color: '#D35400',
-    thumbnail: require('../../assets/images/categories/videographer.png'),
+    thumbnail: require('../../assets/images/categories/videographer.jpg'),
     subCategories: [
       'Event Filming', 'Cinema', 'Interviews', 'Live Stream', 
       'Travel Filming', 'Music Videos', 'Industrial', 'Real Estate', 'Other'
@@ -189,7 +189,7 @@ export const DUMMY_CATEGORIES: Record<string, CategoryConfig> = {
     defaultModule: 'creators',
     description: 'Elite instrumentalists and producers.',
     color: '#BDC3C7',
-    thumbnail: require('../../assets/images/categories/musician.png'),
+    thumbnail: require('../../assets/images/categories/musician.jpg'),
     subCategories: [
       'Producer', 'Instrumentalist', 'Composer', 'DJ', 
       'Sound Engineering', 'Beat Making', 'Acoustic', 'Other'
@@ -204,7 +204,7 @@ export const DUMMY_CATEGORIES: Record<string, CategoryConfig> = {
     defaultModule: 'creators',
     description: 'Talent for cinema, ads, and digital media.',
     color: '#34495E',
-    thumbnail: require('../../assets/images/categories/actor.png'),
+    thumbnail: require('../../assets/images/categories/actor.jpg'),
     overlayIcon: require('../../assets/images/categories/actors.png'),
     subCategories: [
       'Film', 'Theater', 'Voice Over', 'Commercial', 

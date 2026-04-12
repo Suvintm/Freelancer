@@ -14,22 +14,22 @@ const ONBOARDING_DATA = [
   {
     title: "Scale Your\nContent",
     description: "Join our elite network of professional video editors and blow up your brand with high-fidelity visuals.",
-    image: require('../assets/images/onboarding/onboarding_1.png'),
+    image: require('../assets/images/onboarding/onboarding_1.jpg'),
   },
   {
     title: "Promote with\nPower",
     description: "Run high-impact social media ads and grow your reach with top-tier creators and promoters.",
-    image: require('../assets/images/onboarding/onboarding_2.png'),
+    image: require('../assets/images/onboarding/onboarding_2.jpg'),
   },
   {
     title: "Premium Gear\n& Services",
     description: "Rent top-tier professional equipment or provide specialized services to scale your creative business.",
-    image: require('../assets/images/onboarding/onboarding_3.png'),
+    image: require('../assets/images/onboarding/onboarding_3.jpg'),
   },
   {
     title: "Join the\nEcosystem",
     description: "Unlock the full potential of your talent. Choose your path and start your journey with SuviX today.",
-    image: require('../assets/images/onboarding/onboarding_4.png'),
+    image: require('../assets/images/onboarding/onboarding_4.jpg'),
   }
 ];
 

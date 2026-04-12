@@ -34,15 +34,15 @@ export default function SubcategorySelectionScreen() {
   // ASSET MAPPING FOR DYNAMIC DATA
   const getCategoryAssets = (slug?: string) => {
     switch(slug) {
-      case 'yt_influencer': return { thumb: require('../assets/images/categories/youtube.png'), overlay: require('../assets/images/categories/youtubeicon.png') };
-      case 'direct_client': return { thumb: require('../assets/images/categories/client.png'), overlay: null };
-      case 'fitness_expert': return { thumb: require('../assets/images/categories/fitness.png'), overlay: require('../assets/images/categories/fitnessicon.png') };
-      case 'dancer': return { thumb: require('../assets/images/categories/dancer.png'), overlay: require('../assets/images/categories/danceicon.png') };
-      case 'singer': return { thumb: require('../assets/images/categories/singer.png'), overlay: require('../assets/images/categories/singericon.png') };
-      case 'social_promoter': return { thumb: require('../assets/images/categories/promotions.png'), overlay: require('../assets/images/categories/ads.png') };
-      case 'video_editor': return { thumb: require('../assets/images/categories/editor.png'), overlay: require('../assets/images/categories/editing.png') };
-      case 'rent_service': return { thumb: require('../assets/images/categories/rentals.png'), overlay: require('../assets/images/categories/rental.png') };
-      default: return { thumb: require('../assets/images/categories/editor.png'), overlay: null };
+      case 'yt_influencer': return { thumb: require('../assets/images/categories/youtube.jpg'), overlay: require('../assets/images/categories/youtubeicon.png') };
+      case 'direct_client': return { thumb: require('../assets/images/categories/client.jpg'), overlay: null };
+      case 'fitness_expert': return { thumb: require('../assets/images/categories/fitness.jpg'), overlay: require('../assets/images/categories/fitnessicon.png') };
+      case 'dancer': return { thumb: require('../assets/images/categories/dancer.jpg'), overlay: require('../assets/images/categories/danceicon.png') };
+      case 'singer': return { thumb: require('../assets/images/categories/singer.jpg'), overlay: require('../assets/images/categories/singericon.png') };
+      case 'social_promoter': return { thumb: require('../assets/images/categories/promotions.jpg'), overlay: require('../assets/images/categories/ads.png') };
+      case 'video_editor': return { thumb: require('../assets/images/categories/editor.jpg'), overlay: require('../assets/images/categories/editing.png') };
+      case 'rent_service': return { thumb: require('../assets/images/categories/rentals.jpg'), overlay: require('../assets/images/categories/rental.png') };
+      default: return { thumb: require('../assets/images/categories/editor.jpg'), overlay: null };
     }
   };
 
