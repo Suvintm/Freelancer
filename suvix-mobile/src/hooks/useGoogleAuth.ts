@@ -10,6 +10,8 @@ export const useGoogleAuth = () => {
   const setAuth = useAuthStore((state) => state.setAuth);
   const router = useRouter();
 
+  // 🛡️ [RESILIENCE] Detect Client IDs from environment
+  // Priority: process.env (Babel-injected) -> Fallback to empty string
   const webClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
   const iosClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
 
@@ -20,6 +22,9 @@ export const useGoogleAuth = () => {
         iosClientId,
         offlineAccess: false,
       });
+      console.log('✅ [Google-Auth] Configured with webClientId:', webClientId.substring(0, 10) + '...');
+    } else {
+      console.warn('⚠️ [Google-Auth] webClientId is MISSING. Login will be disabled.');
     }
   }, [webClientId, iosClientId]);
 

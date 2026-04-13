@@ -78,6 +78,15 @@ export default function YoutubeConnectScreen() {
   const iosClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
   const webClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
 
+  useEffect(() => {
+    if (webClientId) {
+      GoogleSignin.configure({
+        webClientId,
+        offlineAccess: true,
+      });
+    }
+  }, [webClientId]);
+
   const category = categories.find((c) => c.id === categoryId);
   const subCategories = category?.subCategories || [];
 
