@@ -13,6 +13,12 @@ if (connection) {
     const syncWorker = new Worker("youtube-sync", youtubeSyncProcessor, {
         connection,
         concurrency: 5, // Process up to 5 YouTube channels simultaneously
+        
+        // 🛡️ PRODUCTION OPTIMIZATION (Upstash Metered Redis)
+        // These settings reduce the frequency of Redis polls which save your 500k/day limit.
+        drainDelay: 60,       // If queue is empty, wait 60 seconds before checking again (Idle period)
+        stalledInterval: 60000, // Check for "frozen" jobs every 60s instead of every 1s
+        lockDuration: 60000,    // Keep the job locked for 60s to prevent multiple checks
     });
 
     syncWorker.on("completed", (job) => {
