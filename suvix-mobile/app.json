@@ -20,6 +20,8 @@
       "backgroundColor": "#000000"
     },
     "android": {
+      "package": "in.suvix.mobile",
+      "googleServicesFile": "./android/app/google-services.json",
       "softwareKeyboardLayoutMode": "pan",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
