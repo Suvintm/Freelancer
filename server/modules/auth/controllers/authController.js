@@ -200,11 +200,17 @@ export const login = asyncHandler(async (req, res) => {
   });
 
   // ATOMIC SESSION STORAGE (1 Hit to Upstash)
-  await redis.pipeline()
-    .set(`refresh_token:${hashedToken}`, sessionData, "EX", 7 * 24 * 60 * 60)
-    .sadd(`token_family:${familyId}`, hashedToken)
-    .expire(`token_family:${familyId}`, 7 * 24 * 60 * 60)
-    .exec();
+  // 🛡️ [RESILIENCE] Wrap Redis call in try-catch to prevent 500 errors if Upstash limit is hit
+  try {
+    await redis.pipeline()
+      .set(`refresh_token:${hashedToken}`, sessionData, "EX", 7 * 24 * 60 * 60)
+      .sadd(`token_family:${familyId}`, hashedToken)
+      .expire(`token_family:${familyId}`, 7 * 24 * 60 * 60)
+      .exec();
+    logger.info(`[SECURITY] Session stored in Redis for user ${user.id}`);
+  } catch (redisError) {
+    logger.error(`⚠️ [REDIS-FAILURE] Could not store session in Redis: ${redisError.message}. Proceeding with DB-only auth.`);
+  }
 
   logger.info(`[SECURITY] Successful login for user ${user.id} (${email}). New family: ${familyId}`);
 

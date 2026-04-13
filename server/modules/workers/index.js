@@ -29,6 +29,14 @@ if (connection) {
         logger.error(`[BullMQ] Job ${job.id} failed: ${err.message}`);
     });
 
+    // 🛡️ [RESILIENCE] Prevent Worker errors from crashing the process
+    syncWorker.on("error", (err) => {
+        // Mute local ECONNREFUSED spam
+        if (err.code !== 'ECONNREFUSED') {
+            logger.error(`[BullMQ-Worker] Error: ${err.message}`);
+        }
+    });
+
     workers.push(syncWorker);
 
     logger.info("✅ [WORKERS] Background Workers are active and listening for jobs.");

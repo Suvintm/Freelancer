@@ -37,15 +37,17 @@ const connect = () => {
 
   try {
     client = new Redis(redisUrl, {
-      // 🛡️ Set to null to avoid MaxRetriesPerRequestError. 
-      // ioredis will keep retrying based on retryStrategy instead of giving up.
       maxRetriesPerRequest: null, 
-      connectTimeout:      10000, // 10s for slow warm-ups
+      connectTimeout:      10000, 
       lazyConnect:          true,
       enableReadyCheck:     true,
       retryStrategy(times) {
-        // Reconnect after 2, 4, 8... up to 10 seconds
-        return Math.min(times * 200, 10000);
+        // 🛡️ [RESILIENCE] Increase retry delay significantly if it keeps failing
+        // If it fails more than 3 times, wait 30 seconds between attempts to stop log spam
+        if (times > 3) {
+            return 30000; 
+        }
+        return Math.min(times * 1000, 10000);
       },
     });
 
@@ -55,11 +57,19 @@ const connect = () => {
     });
 
     client.on("error", (err) => {
-      // Avoid spamming the same error if it keeps failing
+      // 🛡️ [RESILIENCE] Mute redundant "ECONNREFUSED" errors to prevent log flood
+      if (err.code === 'ECONNREFUSED') {
+          if (!client._hasLoggedError) {
+              logger.warn(`[Redis] Connectivity issue: No local Redis found (127.0.0.1:6379). Backend will use DB-only mode.`);
+              client._hasLoggedError = true;
+          }
+          return; // Swallow the error to stop the stack trace spam
+      }
+
       if (redisAvailable || !client.lastError || client.lastError !== err.message) {
         redisAvailable = false;
         client.lastError = err.message;
-        logger.warn(`[Redis] Connectivity issue: ${err.message} — apps will fallback to DB.`);
+        logger.error(`[Redis] Error: ${err.message}`);
       }
     });
 
@@ -75,9 +85,12 @@ const connect = () => {
       connectTimeout: 10000,
       lazyConnect: true,
       retryStrategy(times) {
-        return Math.min(times * 200, 10000);
+        return Math.min(times * 3000, 30000); // Wait up to 30s
       },
     });
+
+    // Mute subClient errors too
+    subClient.on("error", () => {}); 
     subClient.connect().catch(() => {});
 
   } catch (err) {

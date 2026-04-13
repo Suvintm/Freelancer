@@ -46,7 +46,12 @@ import { initFirebaseAdmin } from "./utils/firebaseAdmin.js";
 initFirebaseAdmin();
 
 // Initialize BullMQ Background Workers
-import "./modules/workers/index.js";
+// 🛡️ [RESILIENCE] Disable workers in production to stop Redis request flood
+if (process.env.NODE_ENV !== "production") {
+    import("./modules/workers/index.js");
+} else {
+    logger.warn("⚠️ [WORKER] Background workers disabled in production to preserve Redis quota.");
+}
 
 // Validate required environment variables
 if (process.env.NODE_ENV !== "test") {

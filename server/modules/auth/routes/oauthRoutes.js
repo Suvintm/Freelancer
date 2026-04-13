@@ -9,6 +9,7 @@ import { authLimiter, redis } from "../../../middleware/rateLimiter.js";
 import { OAuth2Client } from "google-auth-library";
 import { generateAccessToken, generateRefreshToken, hashToken } from "../utils/jwt.js";
 import { checkAccountLockout } from "../../../middleware/lockoutMiddleware.js";
+import youtubeSyncService from "../../youtube-creator/services/youtubeSyncService.js";
 import { 
     USER_INCLUDE, 
     formatAuthResponse, 
@@ -135,11 +136,16 @@ router.post("/exchange-code", authLimiter, async (req, res) => {
         });
 
         // ATOMIC SESSION STORAGE (1 Hit)
-        await redis.pipeline()
-            .set(`refresh_token:${hashedToken}`, sessionData, "EX", 7 * 24 * 60 * 60)
-            .sadd(`token_family:${familyId}`, hashedToken)
-            .expire(`token_family:${familyId}`, 7 * 24 * 60 * 60)
-            .exec();
+        // 🛡️ [RESILIENCE] Skip Redis session if limit is hit
+        try {
+            await redis.pipeline()
+                .set(`refresh_token:${hashedToken}`, sessionData, "EX", 7 * 24 * 60 * 60)
+                .sadd(`token_family:${familyId}`, hashedToken)
+                .expire(`token_family:${familyId}`, 7 * 24 * 60 * 60)
+                .exec();
+        } catch (err) {
+            logger.error(`⚠️ [REDIS-FAILURE] Session storage skipped in exchange-code: ${err.message}`);
+        }
 
         logger.info(`[SECURITY] OTC Exchange Success: User ${user.id} - New family: ${familyId}`);
 
@@ -251,11 +257,16 @@ router.post("/google/mobile", authLimiter, checkAccountLockout, async (req, res)
             });
 
             // ATOMIC SESSION STORAGE (1 Hit)
-            await redis.pipeline()
-                .set(`refresh_token:${hashedToken}`, sessionData, "EX", 7 * 24 * 60 * 60)
-                .sadd(`token_family:${familyId}`, hashedToken)
-                .expire(`token_family:${familyId}`, 7 * 24 * 60 * 60)
-                .exec();
+            // 🛡️ [RESILIENCE] Skip Redis session if limit is hit
+            try {
+                await redis.pipeline()
+                    .set(`refresh_token:${hashedToken}`, sessionData, "EX", 7 * 24 * 60 * 60)
+                    .sadd(`token_family:${familyId}`, hashedToken)
+                    .expire(`token_family:${familyId}`, 7 * 24 * 60 * 60)
+                    .exec();
+            } catch (err) {
+                logger.error(`⚠️ [REDIS-FAILURE] Session storage skipped in google/mobile: ${err.message}`);
+            }
 
             logger.info(`[SECURITY] Google Mobile Login: User ${user.id} - New family: ${familyId}`);
 
@@ -340,11 +351,16 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
             const { accessToken, refreshToken } = generateUserTokens(finalUser, familyId);
             const hashedToken = hashToken(refreshToken);
 
-            await redis.pipeline()
-                .set(`refresh_token:${hashedToken}`, JSON.stringify({ userId: finalUser.id, familyId, metadata: { userAgent, ip, lastActive: new Date().toISOString() } }), "EX", 7 * 24 * 60 * 60)
-                .sadd(`token_family:${familyId}`, hashedToken)
-                .expire(`token_family:${familyId}`, 7 * 24 * 60 * 60)
-                .exec();
+            // 🛡️ [RESILIENCE] Skip Redis session if limit is hit
+            try {
+                await redis.pipeline()
+                    .set(`refresh_token:${hashedToken}`, JSON.stringify({ userId: finalUser.id, familyId, metadata: { userAgent, ip, lastActive: new Date().toISOString() } }), "EX", 7 * 24 * 60 * 60)
+                    .sadd(`token_family:${familyId}`, hashedToken)
+                    .expire(`token_family:${familyId}`, 7 * 24 * 60 * 60)
+                    .exec();
+            } catch (err) {
+                logger.error(`⚠️ [REDIS-FAILURE] Session storage skipped in register-atomic (existing): ${err.message}`);
+            }
 
             return res.status(200).json({
                 success: true,
@@ -435,25 +451,32 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
         });
 
         // ATOMIC SESSION STORAGE (1 Hit)
-        await redis.pipeline()
-            .set(`refresh_token:${hashedToken}`, sessionData, "EX", 7 * 24 * 60 * 60)
-            .sadd(`token_family:${familyId}`, hashedToken)
-            .expire(`token_family:${familyId}`, 7 * 24 * 60 * 60)
-            .exec();
+        // 🛡️ [RESILIENCE] Skip Redis session if limit is hit
+        try {
+            await redis.pipeline()
+                .set(`refresh_token:${hashedToken}`, sessionData, "EX", 7 * 24 * 60 * 60)
+                .sadd(`token_family:${familyId}`, hashedToken)
+                .expire(`token_family:${familyId}`, 7 * 24 * 60 * 60)
+                .exec();
+        } catch (err) {
+            logger.error(`⚠️ [REDIS-FAILURE] Session storage skipped in register-atomic (new): ${err.message}`);
+        }
 
         logger.info(`[SECURITY] Atomic Social Register Success: User ${user.id} - New family: ${familyId}`);
 
-        // 🚀 ASYNC WORKER DISPATCH: Hand over heavy YouTube image processing to background queue
+        // 🚀 DIRECT SYNC: Hand over YouTube processing to immediate service instead of background queue
         if (youtubeChannels && Array.isArray(youtubeChannels) && youtubeChannels.length > 0) {
-            import("../../workers/queues.js").then(({ youtubeSyncQueue }) => {
-                if (youtubeSyncQueue) {
-                    youtubeSyncQueue.add('youtube-sync', {
-                        userId: user.id,
-                        channels: youtubeChannels
-                    }, { jobId: `sync_oauth_${user.id}` }).catch(e => logger.error(`[WORKER] Failed to add job: ${e.message}`));
-                    logger.info(`🚀 [WORKER] Dispatched YouTube Sync to BullMQ for newly registered Google user ${user.id}`);
+            logger.info(`✨ [OAUTH-SYNC] Triggering direct sync for user ${user.id}`);
+            (async () => {
+                for (const channel of youtubeChannels) {
+                    try {
+                        await youtubeSyncService.persistYouTubeContent(user.id, channel);
+                        logger.info(`✅ [OAUTH-SYNC] Successfully synced channel ${channel.channelId || channel.id} for user ${user.id}`);
+                    } catch (syncError) {
+                        logger.error(`❌ [OAUTH-SYNC] Direct sync failed for channel ${channel.channelId || channel.id}: ${syncError.message}`);
+                    }
                 }
-            }).catch(e => logger.error(`[WORKER] Import failed in oauthRoutes: ${e.message}`));
+            })();
         }
 
         res.status(201).json({

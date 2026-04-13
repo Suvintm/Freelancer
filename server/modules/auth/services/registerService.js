@@ -339,20 +339,22 @@ export const registerFullUser = async (userData) => {
       metadata: { type: 'onboarding_welcome', onboarding_complete: true }
     }).catch(err => logger.error(`[NOTIFY-WELCOME] Failed to send welcome notification: ${err.message}`));
 
-    // 6. ASYNC WORKER DISPATCH: Only after guaranteed DB persistence
+    // 6. 🚀 DIRECT SYNC: We no longer dispatcher to background BullMQ workers in production
+    // This prevents hitting Redis request limits and ensures instant data availability.
     if (user._deferredYoutubeChannels) {
-      if (youtubeSyncQueue) {
-        // Enqueue the heavy job (Thumbnails URL downloading to Cloudinary)
-        await youtubeSyncQueue.add('youtube-sync', {
-          userId: user.id,
-          channels: user._deferredYoutubeChannels
-        }, { jobId: `sync_${user.id}` }); // De-duplicate by user ID
-        logger.info(`🚀 [WORKER] Dispatched YouTube Sync to BullMQ for ${user.id}`);
-      } else {
-        logger.warn(`⚠️ [WORKER] youtubeSyncQueue not connected! Falling back to synchronous sync...`);
-        // Fallback for local development if Redis is down
-        youtubeSyncService.persistYouTubeContent(user.id, user._deferredYoutubeChannels[0]).catch(e => logger.error(`Sync fallback failed: ${e.message}`));
-      }
+        logger.info(`✨ [REG-SERVICE] Starting direct sync for ${user.id} (${user._deferredYoutubeChannels.length} channels)`);
+        
+        // Use a detached safe async execution to avoid blocking the registration response
+        (async () => {
+            for (const channel of user._deferredYoutubeChannels) {
+                try {
+                    await youtubeSyncService.persistYouTubeContent(user.id, channel);
+                    logger.info(`✅ [REG-SERVICE] Successfully synced channel ${channel.channel_id} for user ${user.id}`);
+                } catch (syncError) {
+                    logger.error(`❌ [REG-SERVICE] Direct sync failed for channel ${channel.channel_id}: ${syncError.message}`);
+                }
+            }
+        })();
     }
     
     return hydratedUser;
