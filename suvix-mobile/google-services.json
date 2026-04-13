@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "154559332423",
+    "project_id": "suvix-2b3f9",
+    "storage_bucket": "suvix-2b3f9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:154559332423:android:4df6d6e76ed6dbeb587162",
+        "android_client_info": {
+          "package_name": "in.suvix.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCqYr9m1uOdV7-K8wlSL3WnwVmziQKWb1w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
