@@ -11,66 +11,22 @@ const PROD_URL  = (process.env as any).EXPO_PUBLIC_PROD_API_URL  || 'https://api
 // ──────────────────────────────────────────────────────────────────────────────
 let resolvedUrl: string | null = null;
 
-async function resolveApiUrl(): Promise<string> {
-  if (resolvedUrl) return resolvedUrl;
-
-  const MAX_RETRIES = 2; // Total 3 attempts
-  let attempts = 0;
-
-  while (attempts <= MAX_RETRIES) {
-    if (LOCAL_URL) {
-      try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 2000); // Shorter timeout for retries
-        const res = await fetch(`${LOCAL_URL}/health`, { signal: controller.signal });
-        clearTimeout(timer);
-        
-        if (res.ok) {
-          console.log('🏠 [API] Local server reachable → using local dev server.');
-          resolvedUrl = LOCAL_URL;
-          return resolvedUrl;
-        }
-      } catch (err) {
-        // Continue to retry or fallback
-      }
-    }
-    
-    attempts++;
-    if (attempts <= MAX_RETRIES && LOCAL_URL) {
-      // Delay before retry
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log(`📡 [API] Local unreachable, retrying... (${attempts}/${MAX_RETRIES})`);
-    }
-  }
-
-  console.log('🌐 [API] Local unreachable after retries → falling back to production.');
-  resolvedUrl = PROD_URL;
-  return PROD_URL;
-}
-
-// 🏠 [PRODUCTION-GRADE] Export current resolved URL for global use (e.g. WebSockets)
-export async function getResolvedBaseUrl(): Promise<string> {
-  const url = await resolveApiUrl();
-  // Ensure we strip trailing /api for Socket.io usage
-  return url.replace(/\/api$/, '') || url;
-}
+const API_BASE_URL = (process.env as any).EXPO_PUBLIC_API_URL || 'https://api.suvix.in/api';
 
 export function getApiBaseUrl(): string {
-  // If we haven't resolved yet, use PROD as a safe fallback
-  return resolvedUrl || PROD_URL;
+  return API_BASE_URL;
 }
 
-// Kick off the URL resolution immediately at startup (non-blocking)
-resolveApiUrl();
+export async function getResolvedBaseUrl(): Promise<string> {
+  // Strip trailing /api for Socket.io
+  return API_BASE_URL.replace(/\/api$/, '') || API_BASE_URL;
+}
 
 // ─── Axios Instance ────────────────────────────────────────────────────────────
-// baseURL starts as PROD_URL as a safe default.
-// The request interceptor swaps it to the resolved URL before every request.
-// ──────────────────────────────────────────────────────────────────────────────
 import * as Device from 'expo-device';
 
 export const api: AxiosInstance = axios.create({
-  baseURL: PROD_URL,
+  baseURL: API_BASE_URL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -85,9 +41,6 @@ export const api: AxiosInstance = axios.create({
  * 2. Attaches the Auth Token from Zustand store.
  */
 api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-  // Set the resolved base URL dynamically
-  config.baseURL = await resolveApiUrl();
-
   // @ts-ignore - Dynamic require to break circular dependency
   const { useAuthStore } = require('../store/useAuthStore');
   const token = (useAuthStore.getState() as any).token;
@@ -178,12 +131,14 @@ api.interceptors.response.use(
     }
 
 
-    if (__DEV__) {
-      const isBanned = response?.status === 403 && (response.data as any)?.isBanned;
-      if (!isBanned) {
-        const method = error.config?.method?.toUpperCase() || 'UNKNOWN';
-        const url = error.config?.url || 'URL';
-        console.error(`❌ [API Error] ${method} ${url}:`, error.message);
+    const isBanned = response?.status === 403 && (response.data as any)?.isBanned;
+    if (!isBanned) {
+      const method = error.config?.method?.toUpperCase() || 'UNKNOWN';
+      const url = error.config?.url || 'URL';
+      const status = response?.status || 'NETWORK_ERROR';
+      console.error(`❌ [API Error] ${method} ${url} (Status: ${status}):`, error.message);
+      if (response?.data) {
+        console.error('📦 [API Response Data]:', JSON.stringify(response.data));
       }
     }
 

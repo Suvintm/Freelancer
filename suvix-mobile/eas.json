@@ -14,7 +14,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_PROD_API_URL": "https://api.suvix.in/api"
+        "EXPO_PUBLIC_API_URL": "https://api.suvix.in/api"
       }
     },
     "production": {
