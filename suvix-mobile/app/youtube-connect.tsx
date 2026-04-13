@@ -23,6 +23,7 @@ import * as Haptics from 'expo-haptics';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import Constants from 'expo-constants';
 
 type YouTubeChannel = {
   channelId: string;
@@ -74,18 +75,22 @@ export default function YoutubeConnectScreen() {
   const [connecting, setConnecting] = useState(false);
   const [pickerExpandedFor, setPickerExpandedFor] = useState<string | null>(null);
 
-  const androidClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '';
-  const iosClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
-  const webClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
+  // 🛡️ [RESILIENCE] Detect Client IDs from Expo Constants (Reliable for Production APK)
+  const extra = Constants.expoConfig?.extra || {};
+  const androidClientId = extra.googleAndroidClientId || '';
+  const iosClientId = extra.googleIosClientId || '';
+  const webClientId = extra.googleWebClientId || '';
 
   useEffect(() => {
     if (webClientId) {
       GoogleSignin.configure({
         webClientId,
+        iosClientId,
         offlineAccess: true,
+        scopes: ['https://www.googleapis.com/auth/youtube.readonly'],
       });
     }
-  }, [webClientId]);
+  }, [webClientId, iosClientId]);
 
   const category = categories.find((c) => c.id === categoryId);
   const subCategories = category?.subCategories || [];
@@ -94,15 +99,6 @@ export default function YoutubeConnectScreen() {
     fetchCategories().catch(() => {});
   }, [fetchCategories]);
 
-  useEffect(() => {
-    import('@react-native-google-signin/google-signin').then(({ GoogleSignin }) => {
-      GoogleSignin.configure({
-        webClientId,
-        iosClientId,
-        scopes: ['https://www.googleapis.com/auth/youtube.readonly'],
-      });
-    });
-  }, [webClientId, iosClientId]);
 
   const fetchChannels = async (accessToken: string) => {
     setConnecting(true);

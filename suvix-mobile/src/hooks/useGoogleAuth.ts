@@ -2,6 +2,7 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import { useEffect, useState, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 import { useAuthStore } from '../store/useAuthStore';
 import { api } from '../api/client';
 
@@ -10,10 +11,10 @@ export const useGoogleAuth = () => {
   const setAuth = useAuthStore((state) => state.setAuth);
   const router = useRouter();
 
-  // 🛡️ [RESILIENCE] Detect Client IDs from environment
-  // Priority: process.env (Babel-injected) -> Fallback to empty string
-  const webClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
-  const iosClientId = (process.env as any).EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
+  // 🛡️ [RESILIENCE] Detect Client IDs from Expo Constants (Reliable for Production APK)
+  const extra = Constants.expoConfig?.extra || {};
+  const webClientId = extra.googleWebClientId || '';
+  const iosClientId = extra.googleIosClientId || '';
 
   useEffect(() => {
     if (webClientId) {
