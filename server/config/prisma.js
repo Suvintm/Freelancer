@@ -23,12 +23,15 @@ const prisma = new PrismaClient({ adapter });
 
 export const connectPostgres = async () => {
   try {
+    const maskedUrl = process.env.DATABASE_URL?.replace(/:([^:@]+)@/, ':****@');
+    logger.debug(`[PostgreSQL] Attempting connection to: ${maskedUrl}`);
     // With adapters, we just test the pool connectivity
     await pool.query('SELECT 1');
     logger.info("[PostgreSQL] Connected to Neon DB via Adapter ✅");
     return true;
   } catch (error) {
-    logger.error("[PostgreSQL] Connection failed:", error.message);
+    logger.error("[PostgreSQL] Connection failed!");
+    console.error(error); // Log the full error stack to the terminal
     return false;
   }
 };
