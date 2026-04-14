@@ -278,10 +278,25 @@ export default function YouTubeCreatorProfile() {
               <TouchableOpacity style={[styles.editBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
                  <Text style={[styles.editBtnText, { color: theme.text }]}>Settings</Text>
               </TouchableOpacity>
+
+              <View style={styles.miniToolboxRow}>
+                <TouchableOpacity style={[styles.miniToolItem, { backgroundColor: theme.secondary }]}>
+                  <MaterialCommunityIcons name="chart-bell-curve-cumulative" size={14} color="#FF0000" />
+                  <Text style={[styles.miniToolText, { color: theme.text }]}>Analytics</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.miniToolItem, { backgroundColor: theme.secondary }]}>
+                  <MaterialCommunityIcons name="briefcase-outline" size={14} color={theme.accent} />
+                  <Text style={[styles.miniToolText, { color: theme.text }]}>Deals</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.miniToolItem, { backgroundColor: theme.secondary }]}>
+                  <MaterialCommunityIcons name="account-group-outline" size={14} color="#22C55E" />
+                  <Text style={[styles.miniToolText, { color: theme.text }]}>Collab</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
 
-          <View style={[styles.infoBlock, styles.padded]}>
+          <View style={[styles.infoBlock, styles.padded, { marginTop: 4 }]}>
             <View style={styles.nameRow}>
                <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
                <MaterialCommunityIcons name="shield-check" size={16} color={theme.accent} style={{ marginLeft: 6 }} />
@@ -322,27 +337,33 @@ export default function YouTubeCreatorProfile() {
               contentContainerStyle={styles.milestoneScroll}
             >
               {[
-                { label: 'Silver', count: 100000, img: SILVER_BTN },
-                { label: 'Gold', count: 1000000, img: GOLD_BTN },
-                { label: 'Diamond', count: 10000000, img: DIAMOND_BTN },
+                { label: 'Silver', count: 100, img: SILVER_BTN },
+                { label: 'Gold', count: 1000, img: GOLD_BTN },
+                { label: 'Diamond', count: 10000, img: DIAMOND_BTN },
               ].map((milestone) => {
-                const isLocked = totalSubscribers < milestone.count;
+                const unlockedChannels = youtubeProfiles.filter(p => (p.subscriber_count || 0) >= milestone.count).length;
+                const isPartiallyUnlocked = unlockedChannels > 0;
+                const isFullyUnlocked = unlockedChannels === youtubeProfiles.length && youtubeProfiles.length > 0;
+                
                 return (
                   <View key={milestone.label} style={styles.milestoneCard}>
-                    <View style={styles.badgeWrapper}>
+                    <View style={[
+                      styles.badgeWrapper, 
+                      { backgroundColor: theme.secondary, borderColor: theme.border }
+                    ]}>
                       <Image source={milestone.img} style={styles.milestoneImg} />
-                      {isLocked && (
+                      {!isPartiallyUnlocked && (
                         <View style={styles.lockOverlay}>
                           <MaterialCommunityIcons name="lock" size={20} color="#FFFFFF" />
                         </View>
                       )}
                     </View>
-                    <Text style={[styles.milestoneLabel, { color: isLocked ? theme.textSecondary : theme.text }]}>
+                    <Text style={[styles.milestoneLabel, { color: !isPartiallyUnlocked ? theme.textSecondary : theme.text }]}>
                       {milestone.label}
                     </Text>
-                    {isLocked && (
-                      <Text style={styles.milestoneReq}>{formatCount(milestone.count)} Req</Text>
-                    )}
+                    <Text style={[styles.milestoneStatus, { color: isPartiallyUnlocked ? theme.accent : theme.textSecondary }]}>
+                      {unlockedChannels} / {youtubeProfiles.length} Unlocked
+                    </Text>
                   </View>
                 );
               })}
@@ -375,6 +396,16 @@ export default function YouTubeCreatorProfile() {
                       <Text style={styles.primaryBadgeText}>PRIMARY</Text>
                     </View>
                   )}
+                  {/* Channel Achievement Badges (Highest Only) */}
+                  <View style={styles.channelBadgeRow}>
+                    {(channel.subscriber_count || 0) >= 10000 ? (
+                      <Image source={DIAMOND_BTN} style={styles.miniBadge} />
+                    ) : (channel.subscriber_count || 0) >= 1000 ? (
+                      <Image source={GOLD_BTN} style={styles.miniBadge} />
+                    ) : (channel.subscriber_count || 0) >= 100 ? (
+                      <Image source={SILVER_BTN} style={styles.miniBadge} />
+                    ) : null}
+                  </View>
                 </View>
                 <View style={styles.channelStatsRow}>
                   <View style={styles.channelStat}>
@@ -401,22 +432,6 @@ export default function YouTubeCreatorProfile() {
             </View>
           ))}
 
-          {/* Creator Toolbox */}
-          <Text style={[styles.sectionTitle, { color: theme.text, paddingHorizontal: 20 }]}>Creator Toolbox</Text>
-          <View style={[styles.toolbox, styles.padded]}>
-             <TouchableOpacity style={[styles.toolCard, { backgroundColor: theme.secondary }]}>
-                <MaterialCommunityIcons name="chart-bell-curve-cumulative" size={20} color="#FF0000" />
-                <Text style={[styles.toolText, { color: theme.text }]}>Analytics</Text>
-             </TouchableOpacity>
-             <TouchableOpacity style={[styles.toolCard, { backgroundColor: theme.secondary }]}>
-                <MaterialCommunityIcons name="briefcase-outline" size={20} color={theme.accent} />
-                <Text style={[styles.toolText, { color: theme.text }]}>Opportunities</Text>
-             </TouchableOpacity>
-             <TouchableOpacity style={[styles.toolCard, { backgroundColor: theme.secondary }]}>
-                <MaterialCommunityIcons name="account-group-outline" size={20} color="#22C55E" />
-                <Text style={[styles.toolText, { color: theme.text }]}>Collaborate</Text>
-             </TouchableOpacity>
-          </View>
 
           {/* Content Tabs */}
           <View style={[styles.tabBar, { borderBottomColor: theme.border }]}>
@@ -563,13 +578,11 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: 'rgba(255,255,255,0.03)',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
   },
   milestoneImg: {
     width: 52,
@@ -593,6 +606,23 @@ const styles = StyleSheet.create({
     color: '#FF0000',
     marginTop: 2,
   },
+  milestoneStatus: {
+    fontSize: 9,
+    fontWeight: '800',
+    marginTop: 2,
+    textTransform: 'uppercase',
+  },
+  channelBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 10,
+    gap: 5,
+  },
+  miniBadge: {
+    width: 32,
+    height: 32,
+    resizeMode: 'contain',
+  },
   banner: { height: 100, width: '100%', justifyContent: 'center', alignItems: 'center' },
   bannerOverlay: { opacity: 0.5 },
   profileWrap: { marginTop: -20, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 20 },
@@ -608,7 +638,27 @@ const styles = StyleSheet.create({
   miniStatLabel: { fontSize: 10, fontWeight: '700', marginTop: 3, textTransform: 'uppercase', opacity: 0.8, letterSpacing: 0.8 },
   editBtn: { height: 36, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
   editBtnText: { fontSize: 12, fontWeight: '700' },
-  infoBlock: { marginTop: 12 },
+  miniToolboxRow: {
+    flexDirection: 'row',
+    marginTop: 10,
+    gap: 6,
+  },
+  miniToolItem: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 2,
+  },
+  miniToolText: {
+    fontSize: 8,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  infoBlock: {
+ marginTop: 12 },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
   name: { fontSize: 20, fontWeight: '800' },
   niche: { fontSize: 11, fontWeight: '900', marginTop: 2, letterSpacing: 1 },
