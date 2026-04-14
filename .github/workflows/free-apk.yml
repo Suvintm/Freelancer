@@ -59,6 +59,13 @@ jobs:
             exit 1
           fi
 
+      - name: 🔍 Display SHA1 Fingerprint
+        working-directory: suvix-mobile/android
+        run: |
+          echo "👇 COPY THIS SHA1 TO GOOGLE CLOUD 👇"
+          keytool -list -v -keystore release.jks -alias "${{ secrets.ANDROID_KEY_ALIAS }}" -storepass "${{ secrets.ANDROID_KEY_PASSWORD }}" | grep SHA1 || echo "Could not find SHA1"
+          echo "👆 COPY THIS SHA1 TO GOOGLE CLOUD 👆"
+
       - name: 🔨 Build with Gradle
         working-directory: suvix-mobile/android
         run: |

@@ -29,7 +29,6 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "package": "in.suvix.mobile",
       "statusBar": {
         "translucent": true
       }
