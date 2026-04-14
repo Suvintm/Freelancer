@@ -22,7 +22,7 @@ import { api } from '../../../api/client';
 import { useTheme } from '../../../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { Colors } from '../../../constants/Colors';
 import { formatCount } from '../../../utils/formatters';
 
@@ -30,6 +30,7 @@ import { ContentGrid } from '../../shared/content/ContentGrid';
 import { ContentItem } from '../../shared/content/ContentCard';
 import { SmartText } from '../../shared/content/SmartText';
 import { YouTubeVideoCard } from '../components/YouTubeVideoCard';
+import { useRouter } from 'expo-router';
 
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 
@@ -53,6 +54,7 @@ export default function YouTubeCreatorProfile() {
   const { theme } = useTheme();
   const { user, updateUser, fetchUser, setYoutubeVideos } = useAuthStore();
   const { socket } = useSocketStore();
+  const router = useRouter();
   
   // 🔗 WEB SOCKET: Real-time Surgical Sync Listener
   React.useEffect(() => {
@@ -300,7 +302,16 @@ export default function YouTubeCreatorProfile() {
           </View>
 
           {/* Linked Channels Section */}
-          <Text style={[styles.sectionTitle, { color: theme.text, marginTop: 18 }]}>Linked Channels</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: theme.text, marginTop: 0 }]}>Linked Channels</Text>
+            <TouchableOpacity 
+              style={[styles.addChannelBtn, { backgroundColor: theme.secondary, borderColor: theme.accent }]}
+              onPress={() => router.push('/creators/manual-link')}
+            >
+              <Feather name="plus-circle" size={14} color={theme.accent} />
+              <Text style={[styles.addChannelBtnText, { color: theme.accent }]}>Add Another</Text>
+            </TouchableOpacity>
+          </View>
           <View style={[styles.channelCard, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
             <Image 
               source={youtubeProfile.thumbnail_url ? { uri: youtubeProfile.thumbnail_url } : DEFAULT_AVATAR} 
@@ -394,7 +405,7 @@ export default function YouTubeCreatorProfile() {
             )}
           </View>
         </View>
-      </ScrollView>
+    </ScrollView>
 
       {/* Bio Update Modal */}
       <Modal
@@ -543,6 +554,27 @@ const styles = StyleSheet.create({
   },
   viewBtnText: { fontSize: 10, fontWeight: '800' },
   sectionTitle: { fontSize: 14, fontWeight: '800', marginTop: 20, marginBottom: 12, paddingHorizontal: 20 },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 20,
+    marginTop: 18,
+    marginBottom: 8,
+  },
+  addChannelBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  addChannelBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    marginLeft: 6,
+  },
   toolbox: { flexDirection: 'row', justifyContent: 'space-between' },
   toolCard: { width: '31%', padding: 14, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   toolText: { fontSize: 10, fontWeight: '700', marginTop: 8 },

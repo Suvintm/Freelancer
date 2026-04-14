@@ -36,6 +36,7 @@ import oauthRoutes from "./modules/auth/routes/oauthRoutes.js";
 import userRoutes from "./modules/user/routes/userRoutes.js";
 import notificationRoutes from "./modules/notification/routes/notificationRoutes.js";
 import paymentGatewayRoutes from "./modules/payments/routes/paymentGatewayRoutes.js";
+import youtubeRoutes from "./modules/youtube-creator/routes/youtubeRoutes.js";
 
 // PostgreSQL Support
 import { connectPostgres } from "./config/prisma.js";
@@ -140,6 +141,7 @@ app.use("/api/auth", vpnCheckMiddleware, authRoutes); // Priority: Local Auth (/
 app.use("/api/auth", vpnCheckMiddleware, oauthRoutes); // Fallback: Social OAuth
 app.use("/api/user", userRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/youtube-creator", youtubeRoutes);
 
 // ============ SECURITY: NOSQL SANITIZATION ============
 // This protects MongoDB-specific routes (Reels, Feed, etc.)
