@@ -1,0 +1,340 @@
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  ScrollView,
+  TouchableOpacity,
+  Dimensions,
+  Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+} from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { api } from '../../../api/client';
+import { useAuthStore } from '../../../store/useAuthStore';
+import { useTheme } from '../../../context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { formatCount } from '../../../utils/formatters';
+
+const { width } = Dimensions.get('window');
+const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
+
+/**
+ * PERFECTED PREMIUM CLIENT PROFILE
+ * Indistinguishable from the YouTube Creator layout.
+ */
+export default function ClientProfile() {
+  const { theme, isDarkMode } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { user, updateUser } = useAuthStore();
+
+  const [isBioModalVisible, setBioModalVisible] = React.useState(false);
+  const [tempBio, setTempBio] = React.useState(user?.bio || '');
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
+
+  if (!user) return null;
+
+  // 📐 SURGICAL LAYOUT: Match Navbar Offset
+  const headerOffset = insets.top + 50;
+
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'We need camera roll permissions to change your profile picture.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      handleUploadAvatar(result.assets[0].uri);
+    }
+  };
+
+  const handleUploadAvatar = async (uri: string) => {
+    setIsUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      const filename = uri.split('/').pop() || 'profile.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image`;
+
+      // @ts-ignore
+      formData.append('image', { uri, name: filename, type });
+
+      const res = await api.post('/user/me/profile-picture', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (res.data.success) {
+        updateUser({ profilePicture: res.data.profilePicture });
+        Alert.alert("Success", "Profile picture updated!");
+      }
+    } catch (error) {
+      console.error('Upload Avatar Error:', error);
+      Alert.alert("Error", "Could not upload image. Please try again.");
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleUpdateBio = async () => {
+    if (tempBio.length > 150) {
+      Alert.alert("Limit Exceeded", "Bio must be 150 characters or less.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const res = await api.patch('/user/me', { bio: tempBio });
+      if (res.data.success) {
+        updateUser({ bio: tempBio });
+        setBioModalVisible(false);
+      }
+    } catch (error) {
+       console.error('Update Bio Error:', error);
+       Alert.alert("Error", "Could not update bio. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.primary }]}>
+      <ScrollView 
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.content, { paddingTop: headerOffset, flexGrow: 1 }]}
+      >
+        
+        {/* 1. UNIFIED PREMIUM BANNER (1:1 SYNC) */}
+        <LinearGradient
+          colors={isDarkMode ? ['#4338ca', '#1e1b4b', '#000000'] : ['#6366f1', '#4338ca', '#312e81']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.banner}
+        >
+          <View style={styles.bannerOverlay}>
+            <MaterialCommunityIcons name="account-star-outline" size={40} color="rgba(255,255,255,0.2)" />
+          </View>
+        </LinearGradient>
+
+        <View style={[styles.profileWrap, { backgroundColor: theme.primary }]}>
+          <View style={[styles.headerRow, styles.padded]}>
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatarInner}>
+                <Image
+                  source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
+                  style={[styles.avatar, { borderColor: '#FFFFFF' }]}
+                />
+                {isUploadingAvatar && (
+                  <View style={styles.avatarLoadingOverlay}>
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  </View>
+                )}
+              </View>
+              <TouchableOpacity style={styles.avatarEditBtn} onPress={handlePickImage} disabled={isUploadingAvatar}>
+                <MaterialCommunityIcons name="camera-outline" size={16} color="white" />
+              </TouchableOpacity>
+              <View style={styles.verifiedBadge}>
+                <MaterialCommunityIcons name="check-decagram" size={20} color="#007AFF" />
+              </View>
+            </View>
+
+            <View style={styles.headerStats}>
+              <View style={styles.miniStatsRow}>
+                <View style={styles.miniStat}>
+                  <Text style={[styles.miniStatValue, { color: theme.text }]}>{formatCount(user.followers || 0)}</Text>
+                  <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Followers</Text>
+                </View>
+                <View style={styles.miniStat}>
+                  <Text style={[styles.miniStatValue, { color: theme.text }]}>{formatCount(user.following || 0)}</Text>
+                  <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Following</Text>
+                </View>
+                <View style={styles.miniStat}>
+                  <Text style={[styles.miniStatValue, { color: theme.text }]}>0</Text>
+                  <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Posts</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.editBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
+                onPress={() => setBioModalVisible(true)}
+              >
+                 <Text style={[styles.editBtnText, { color: theme.text }]}>Edit Profile</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* 2. IDENTITY BLOCK */}
+          <View style={[styles.infoBlock, styles.padded]}>
+            <View style={styles.nameRow}>
+               <Text style={[styles.name, { color: theme.text }]}>{user.name}</Text>
+               <MaterialCommunityIcons name="shield-check" size={16} color="#007AFF" style={{ marginLeft: 6 }} />
+            </View>
+            <Text style={[styles.roleLabel, { color: '#007AFF' }]}>SUVIX MEMBER</Text>
+            
+            {user.bio ? (
+              <View style={styles.bioWrapper}>
+                <Text style={[styles.bio, { color: theme.textSecondary }]}>{user.bio}</Text>
+                <TouchableOpacity onPress={() => setBioModalVisible(true)} style={styles.bioEditTrigger}>
+                  <MaterialCommunityIcons name="pencil-outline" size={16} color={theme.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity onPress={() => setBioModalVisible(true)} style={[styles.addBioBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
+                <MaterialCommunityIcons name="pencil-plus-outline" size={18} color={theme.textSecondary} />
+                <Text style={[styles.addBioText, { color: theme.textSecondary }]}>Add profile bio</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* 3. ENTERTAINMENT HUB SECTION */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>My Entertainment Hub</Text>
+            <TouchableOpacity>
+              <Text style={{ color: '#007AFF', fontSize: 13, fontWeight: '600' }}>View All</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
+            {[1, 2, 3].map((i) => (
+              <TouchableOpacity key={i} style={[styles.videoCard, { backgroundColor: theme.secondary }]}>
+                <View style={styles.videoThumbPlaceholder}>
+                   <Ionicons name="play" size={30} color="#fff" />
+                </View>
+                <View style={styles.videoInfo}>
+                  <Text style={[styles.videoTitle, { color: theme.text }]} numberOfLines={1}>Saved Content...</Text>
+                  <Text style={[styles.videoSub, { color: theme.textSecondary }]}>Watched 2d ago</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* 4. MANAGEMENT DASHBOARD */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 12 }]}>Management Dashboard</Text>
+          <View style={styles.grid}>
+            {[
+              { label: 'My Orders', icon: 'wallet-outline' },
+              { label: 'Messages', icon: 'chat-processing-outline' },
+              { label: 'Hired Experts', icon: 'account-group-outline' },
+              { label: 'Settings', icon: 'cog-outline' }
+            ].map((item, idx) => (
+              <TouchableOpacity key={idx} style={[styles.gridItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
+                <MaterialCommunityIcons name={item.icon as any} size={24} color={theme.text} />
+                <Text style={[styles.gridLabel, { color: theme.text }]}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
+
+      {/* Bio Modal */}
+      <Modal visible={isBioModalVisible} transparent animationType="fade">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.primary, borderColor: theme.border }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Bio</Text>
+              <TouchableOpacity onPress={() => setBioModalVisible(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={theme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              multiline
+              placeholder="Tell your story..."
+              placeholderTextColor={theme.textSecondary}
+              value={tempBio}
+              onChangeText={setTempBio}
+              maxLength={150}
+              style={[styles.bioInput, { color: theme.text, backgroundColor: theme.secondary, borderColor: theme.border }]}
+            />
+            <TouchableOpacity onPress={handleUpdateBio} style={[styles.saveBtn, { backgroundColor: '#007AFF' }]}>
+              <Text style={styles.saveBtnText}>{isSaving ? 'Saving...' : 'Save Biography'}</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  content: { paddingTop: 0, paddingBottom: 40 },
+  banner: { height: 100, width: '100%', justifyContent: 'center', alignItems: 'center' },
+  bannerOverlay: { opacity: 0.3 },
+  profileWrap: { marginTop: -20, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 10 },
+  padded: { paddingHorizontal: 20 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginTop: -40, gap: 15 },
+  avatarContainer: { position: 'relative', zIndex: 10, elevation: 12 },
+  avatarInner: { 
+    width: 90, 
+    height: 90, 
+    borderRadius: 45, 
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8
+  },
+  avatar: { width: '100%', height: '100%', borderRadius: 45, borderWidth: 4 },
+  avatarLoadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
+  avatarEditBtn: { position: 'absolute', top: 0, left: 0, backgroundColor: '#007AFF', width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', zIndex: 11 },
+  verifiedBadge: { position: 'absolute', bottom: 2, right: 2, backgroundColor: 'white', borderRadius: 10, zIndex: 11 },
+  headerStats: { flex: 1, justifyContent: 'center' },
+  miniStatsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14, paddingRight: 5, marginTop: -8 },
+  miniStat: { alignItems: 'center' },
+  miniStatValue: { fontSize: 18, fontWeight: '900' },
+  miniStatLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', opacity: 0.8 },
+  editBtn: { height: 36, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  editBtnText: { fontSize: 12, fontWeight: '700' },
+  infoBlock: { marginTop: 15 },
+  nameRow: { flexDirection: 'row', alignItems: 'center' },
+  name: { fontSize: 20, fontWeight: '800' },
+  roleLabel: { fontSize: 11, fontWeight: '900', marginTop: 2, letterSpacing: 1 },
+  bio: { fontSize: 13, marginTop: 8, lineHeight: 18, flex: 1 },
+  bioWrapper: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  bioEditTrigger: { padding: 4 },
+  addBioBtn: { flexDirection: 'row', alignItems: 'center', marginTop: 10, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', gap: 10 },
+  addBioText: { fontSize: 13, fontWeight: '700' },
+  section: { marginTop: 24, paddingHorizontal: 20 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  sectionTitle: { fontSize: 16, fontWeight: '800' },
+  horizontalScroll: { paddingRight: 20, gap: 12 },
+  videoCard: { width: 200, borderRadius: 16, overflow: 'hidden' },
+  videoThumbPlaceholder: { height: 110, backgroundColor: '#334155', alignItems: 'center', justifyContent: 'center' },
+  videoInfo: { padding: 10 },
+  videoTitle: { fontSize: 13, fontWeight: '700' },
+  videoSub: { fontSize: 11, marginTop: 2 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  gridItem: { width: (width - 50) / 2, height: 100, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  gridLabel: { marginTop: 8, fontSize: 13, fontWeight: '700' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  modalContent: { padding: 24, borderTopLeftRadius: 32, borderTopRightRadius: 32, borderWidth: 1, minHeight: '40%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 18, fontWeight: '900' },
+  bioInput: { fontSize: 16, borderRadius: 12, borderWidth: 1, padding: 16, minHeight: 100, textAlignVertical: 'top' },
+  saveBtn: { marginTop: 20, height: 50, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  saveBtnText: { color: 'white', fontSize: 15, fontWeight: '800' },
+});

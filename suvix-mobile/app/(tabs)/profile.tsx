@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // Modules
 import YouTubeCreatorProfile from '../../src/modules/creators/profiles/YouTubeCreatorProfile';
 import FitnessInfluencerProfile from '../../src/modules/creators/profiles/FitnessInfluencerProfile';
+import ClientProfile from '../../src/modules/clients/profiles/ClientProfile';
 import DefaultProfile from '../../src/modules/shared/profiles/DefaultProfile';
 
 /**
@@ -28,6 +29,7 @@ import DefaultProfile from '../../src/modules/shared/profiles/DefaultProfile';
 const PROFILE_REGISTRY: Record<string, React.ComponentType> = {
   creators: YouTubeCreatorProfile,
   fitness:  FitnessInfluencerProfile,
+  clients:  ClientProfile,
   default:  DefaultProfile,
 };
 
@@ -41,7 +43,8 @@ export default function ProfileIndex() {
     if (!user || !user.primaryRole) return 'default';
     
     // 🛡️ ROLE ROUTER: Select the specialized experience
-    const categorySlug = user.primaryRole.categorySlug;
+    const categorySlug = user.primaryRole?.categorySlug;
+    const roleGroup = user.primaryRole?.group;
 
     // A. Fitness Influencers
     if (categorySlug === 'fitness_expert') {
@@ -51,6 +54,11 @@ export default function ProfileIndex() {
     // B. YouTube / General Creators
     if (categorySlug === 'yt_influencer') {
       return 'creators';
+    }
+
+    // C. Normal Users / Clients
+    if (roleGroup === 'CLIENT') {
+      return 'clients';
     }
 
     return 'default';

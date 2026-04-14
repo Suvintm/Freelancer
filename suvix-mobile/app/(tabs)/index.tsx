@@ -114,35 +114,7 @@ export default function DashboardIndex() {
             {/* Stories Section (Always visible) */}
             <StoryBar />
 
-            <View style={{ padding: 16, paddingTop: 0 }}>
-              {activeModule === 'creators' && user.youtubeProfile ? (
-                <View style={{ marginBottom: 4 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{ backgroundColor: '#FF0000', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, marginRight: 8 }}>
-                      <MaterialCommunityIcons name="youtube" size={12} color="white" />
-                    </View>
-                    <Text style={{ fontSize: 10, fontWeight: '900', color: '#FF0000', letterSpacing: 0.8 }}>
-                      YOUTUBE CREATOR
-                    </Text>
-                  </View>
-                  
-                  <Text style={{ fontSize: 16, fontWeight: '900', color: theme.text, marginTop: 4, letterSpacing: -0.3 }}>
-                    Let's grow your channel here
-                  </Text>
-                </View>
-              ) : (
-                <View>
-                  <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.text }}>
-                    Hi {user.name ? user.name.split(' ')[0] : 'Member'},
-                  </Text>
-                  <Text style={{ fontSize: 14, color: theme.textSecondary, marginTop: 2 }}>
-                    {user.primaryRole?.group === 'PROVIDER' 
-                      ? `Grow your ${user.primaryRole?.category || 'Expertise'}` 
-                      : `Find ${user.primaryRole?.category || 'Service'} experts`}
-                  </Text>
-                </View>
-              )}
-            </View>
+            <View style={{ height: 16 }} />
 
             {/* Feature Gallery / Service Quick Links (Always visible) */}
             {isReady && <FeatureGallery paused={isHomeScrolling} />}
