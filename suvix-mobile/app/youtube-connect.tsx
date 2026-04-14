@@ -37,6 +37,7 @@ type YouTubeChannel = {
     thumbnail: string;
     publishedAt: string;
   }[];
+  isClaimed?: boolean;
 };
 
 type SelectedYouTubeChannelPayload = {
@@ -69,11 +70,21 @@ export default function YoutubeConnectScreen() {
   const setTempSignupData = useAuthStore((state) => state.setTempSignupData);
 
   const [connected, setConnected] = useState(false);
-  const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
-  const [channelToSubCategory, setChannelToSubCategory] = useState<Record<string, string>>({});
-  const [channels, setChannels] = useState<YouTubeChannel[]>([]);
   const [connecting, setConnecting] = useState(false);
   const [pickerExpandedFor, setPickerExpandedFor] = useState<string | null>(null);
+
+  // 🛡️ [PERSISTENCE] Connect to Global Discovery Store
+  const { 
+    youtubeDiscovery, 
+    addDiscoveredChannels, 
+    toggleYoutubeChannelSelection, 
+    setYoutubeChannelCategory,
+    clearYoutubeDiscovery 
+  } = useAuthStore();
+
+  const channels = youtubeDiscovery.channels;
+  const selectedChannels = youtubeDiscovery.selectedChannelIds;
+  const channelToSubCategory = youtubeDiscovery.categorizations;
 
   // 🛡️ [RESILIENCE] Detect Client IDs from Expo Constants (Reliable for Production APK)
   const extra = Constants.expoConfig?.extra || {};
@@ -99,6 +110,13 @@ export default function YoutubeConnectScreen() {
     fetchCategories().catch(() => {});
   }, [fetchCategories]);
 
+  // 🛡️ [RESILIENCE] Auto-detect connection if channels already exist in global store
+  useEffect(() => {
+    if (channels.length > 0) {
+      setConnected(true);
+    }
+  }, [channels.length]);
+
 
   const fetchChannels = async (accessToken: string) => {
     setConnecting(true);
@@ -117,13 +135,14 @@ export default function YoutubeConnectScreen() {
         subscriberCount: item.subscriberCount,
         videoCount: item.videoCount,
         videos: item.videos || [],
+        isClaimed: item.isClaimed || false,
       }));
+      
+      console.log('📱 [YT-DEBUG] Received from Server:', JSON.stringify(fetchedChannels, null, 2));
 
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setChannels(fetchedChannels);
+      addDiscoveredChannels(fetchedChannels);
       setConnected(true);
-      setSelectedChannels([]);
-      setChannelToSubCategory({});
       setPickerExpandedFor(null);
     } catch (error: any) {
       Alert.alert('YouTube Connect Failed', error.message || 'Could not fetch your channels from Google.');
@@ -137,25 +156,28 @@ export default function YoutubeConnectScreen() {
   };
 
   const toggleChannel = (channelId: string) => {
+    const channel = channels.find(ch => ch.channelId === channelId);
+    if (channel?.isClaimed) {
+        Alert.alert("Already Claimed", "This YouTube channel is already linked to another SuviX account. If you believe this is an error, please contact SuviX Support.");
+        return;
+    }
     handleImpact();
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setSelectedChannels((current) => {
-      if (current.includes(channelId)) {
-        if (pickerExpandedFor === channelId) setPickerExpandedFor(null);
-        return current.filter((id) => id !== channelId);
-      }
-      return [...current, channelId];
-    });
+    toggleYoutubeChannelSelection(channelId);
+    if (!selectedChannels.includes(channelId) && pickerExpandedFor === channelId) {
+      setPickerExpandedFor(null);
+    }
   };
 
   const assignSubCategory = (channelId: string, subCategoryId: string) => {
+    const channel = channels.find(ch => ch.channelId === channelId);
+    if (channel?.isClaimed) return;
     handleImpact();
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setChannelToSubCategory((current) => ({ ...current, [channelId]: subCategoryId }));
-    setSelectedChannels((current) => {
-      if (!current.includes(channelId)) return [...current, channelId];
-      return current;
-    });
+    setYoutubeChannelCategory(channelId, subCategoryId);
+    if (!selectedChannels.includes(channelId)) {
+        toggleYoutubeChannelSelection(channelId);
+    }
     setPickerExpandedFor(null);
   };
 
@@ -277,21 +299,49 @@ export default function YoutubeConnectScreen() {
 
         {/* STEP 1: Connect Account */}
         <View style={styles.stepBlock}>
-          <Text style={[styles.stepLabel, { color: ytRed }]}>STEP 1 : AUTHORIZE</Text>
-          <Text style={[styles.stepTitle, { color: theme.text }]}>Select your Google Account</Text>
+          <Text style={[styles.stepLabel, { color: theme.textSecondary }]}>STEP 1 : IDENTITY SYNC</Text>
+          <Text style={[styles.stepTitle, { color: theme.text }]}>YouTube Integration</Text>
           <Text style={[styles.stepDesc, { color: theme.textSecondary }]}>
-            Securely confirm your identity to fetch your channel ownership. <Text style={{fontWeight: '700', color: theme.text}}>Important: Please choose the exact email account associated with your YouTube Channel.</Text> (Note: You can sync multiple channels from the same email).
+            Securely verify your ownership to sync metrics and unlock official creator badges. 💡 <Text style={{fontWeight: '700', color: theme.text}}>Pro Tip: Link multiple channels from different accounts by tapping "Add Another" below.</Text>
           </Text>
 
+          {/* 🛡️ PREMIUM IDENTITY GUIDE */}
+          <View style={[styles.guideCard, { backgroundColor: isDark ? '#161A22' : '#F0F4F8', borderColor: isDark ? '#2D3748' : '#D1DCE5' }]}>
+            <View style={styles.guideHeader}>
+                <Ionicons name="shield-checkmark" size={16} color={isDark ? '#4A90E2' : '#007AFF'} />
+                <Text style={[styles.guideTitle, { color: theme.text }]}>Identity Discovery Settings</Text>
+            </View>
+            <Text style={[styles.guideText, { color: theme.textSecondary }]}>
+                To ensure a successful sync, please keep in mind:
+            </Text>
+            <View style={styles.guideStep}>
+                <View style={[styles.guideDot, { backgroundColor: isDark ? '#4A90E2' : '#007AFF' }]} />
+                <Text style={[styles.guideStepText, { color: theme.text }]}>
+                    <Text style={{fontWeight: '700'}}>Primary Setup:</Text> Google shares your currently active identity first.
+                </Text>
+            </View>
+            <View style={styles.guideStep}>
+                <View style={[styles.guideDot, { backgroundColor: safeGreen }]} />
+                <Text style={[styles.guideStepText, { color: theme.text }]}>
+                    <Text style={{fontWeight: '700'}}>Sub-Channels:</Text> If a second channel is missing, add it later from your <Text style={{fontWeight: '700'}}>Profile</Text>.
+                </Text>
+            </View>
+            <View style={[styles.proTipBox, { backgroundColor: isDark ? '#1c1c1c' : '#ffffff', borderLeftWidth: 3, borderLeftColor: safeGreen }]}>
+                <Text style={[styles.proTipText, { color: theme.textSecondary }]}>
+                   💡 <Text style={{fontWeight: '800', color: theme.text}}>Pro Tip:</Text> Switch identities in your YouTube App first to quickly link a specific brand channel here.
+                </Text>
+            </View>
+          </View>
+
           <TouchableOpacity 
-            style={[styles.ytButton, { opacity: connecting ? 0.7 : 1 }]} 
+            style={[styles.ytButton, { backgroundColor: connected ? theme.secondary : ytRed, opacity: connecting ? 0.7 : 1 }]} 
             onPress={handleConnectYouTube} 
             disabled={connecting}
             activeOpacity={0.8}
           >
-            <Ionicons name="logo-youtube" size={20} color="#fff" style={{ marginRight: 10 }} />
-            <Text style={styles.ytButtonText}>
-              {connected ? 'Sync a Different Account' : 'Securely Add YouTube Account'}
+            <Ionicons name={connected ? "person-add" : "logo-youtube"} size={20} color={connected ? theme.text : "#fff"} style={{ marginRight: 10 }} />
+            <Text style={[styles.ytButtonText, { color: connected ? theme.text : "#fff" }]}>
+              {connected ? 'Link Another Identity' : 'Securely Add YouTube Account'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -309,8 +359,8 @@ export default function YoutubeConnectScreen() {
         {connected && !connecting && (
           <View style={styles.stepBlock}>
             <View style={styles.divider} />
-            <Text style={[styles.stepLabel, { color: ytRed }]}>STEP 2 : CONFIGURE</Text>
-            <Text style={[styles.stepTitle, { color: theme.text }]}>Select & Categorize</Text>
+            <Text style={[styles.stepLabel, { color: theme.textSecondary }]}>STEP 2 : CONFIGURE IDENTITY</Text>
+            <Text style={[styles.stepTitle, { color: theme.text }]}>Selection & Verification</Text>
             
             {/* Critical Instructional Warning */}
             <View style={[styles.infoCard, { backgroundColor: isDark ? '#1F1A00' : '#FFF9E5', borderColor: isDark ? '#332900' : '#FFE899' }]}>
@@ -359,8 +409,19 @@ export default function YoutubeConnectScreen() {
                           <Text style={[styles.channelStats, { color: isDark ? '#aaa' : '#666' }]}>
                             <Feather name="users" size={12} /> {(channel.subscriberCount || 0).toLocaleString()} • {channel.videoCount} videos
                           </Text>
+                          {channel.isClaimed && (
+                            <View style={[styles.claimedBadge, { backgroundColor: isDark ? '#332900' : '#FFF9E5', borderColor: isDark ? '#FFDA44' : '#FFE899' }]}>
+                              <Feather name="lock" size={10} color={isDark ? '#FFDA44' : '#CC9900'} />
+                              <Text style={[styles.claimedBadgeText, { color: isDark ? '#FFDA44' : '#CC9900' }]}>THIS ACCOUNT IS ALREADY IN USE BY ANOTHER USER</Text>
+                            </View>
+                          )}
                         </View>
-                        <View style={[styles.checkbox, { borderColor: isSelected ? ytRed : theme.border }, isSelected && { backgroundColor: ytRed }]}>
+                        <View style={[
+                          styles.checkbox, 
+                          { borderColor: channel.isClaimed ? theme.border : (isSelected ? ytRed : theme.border) }, 
+                          isSelected && { backgroundColor: ytRed },
+                          channel.isClaimed && { opacity: 0.3 }
+                        ]}>
                           {isSelected && <Feather name="check" size={16} color="#fff" />}
                         </View>
                       </TouchableOpacity>
@@ -372,10 +433,12 @@ export default function YoutubeConnectScreen() {
                             styles.addCategoryBtn, 
                             activeSubCategoryId 
                               ? { backgroundColor: isDark ? 'rgba(0, 200, 83, 0.15)' : '#E6F9F0', borderColor: safeGreen } 
-                              : { backgroundColor: theme.primary, borderColor: theme.border }
+                              : { backgroundColor: theme.primary, borderColor: theme.border },
+                            channel.isClaimed && { opacity: 0.5 }
                           ]}
                           activeOpacity={0.7}
                           onPress={() => {
+                            if (channel.isClaimed) return;
                             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                             setPickerExpandedFor(isPickerOpen ? null : channel.channelId);
                           }}
@@ -512,12 +575,12 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 150,
+    paddingBottom: 220, // Increased for footer accessibility
   },
   heroBanner: {
     borderRadius: 16,
     padding: 20,
-    marginBottom: 24,
+    marginBottom: 20,
     borderWidth: 1,
   },
   heroIconWrap: {
@@ -810,5 +873,75 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '800',
     textTransform: 'uppercase',
+  },
+  // Guide Styles
+  guideCard: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 20,
+    marginTop: 4,
+  },
+  guideHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  guideTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  guideText: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  guideStep: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+    paddingLeft: 4,
+  },
+  guideDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  guideStepText: {
+    fontSize: 12,
+  },
+  guideHint: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 10,
+    fontStyle: 'italic',
+  },
+  proTipBox: {
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  proTipText: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '600',
+  },
+  claimedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 10,
+    gap: 6,
+    borderWidth: 1.5,
+  },
+  claimedBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
 });

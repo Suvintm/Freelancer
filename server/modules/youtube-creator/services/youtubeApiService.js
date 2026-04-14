@@ -32,6 +32,10 @@ export const discoverChannels = async (accessToken) => {
     );
 
     const rawChannels = channelResponse.data.items || [];
+    logger.info(`🔍 [YT-API] Google returned ${rawChannels.length} channels for this token.`);
+    rawChannels.forEach((ch, idx) => {
+      logger.info(`   [${idx}] Name: ${ch.snippet?.title} | ID: ${ch.id}`);
+    });
     
     // 2. Hydrate each channel with its latest 15 videos
     const hydratedChannels = await Promise.all(

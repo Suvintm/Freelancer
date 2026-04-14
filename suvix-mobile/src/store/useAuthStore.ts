@@ -110,6 +110,17 @@ interface AuthState {
   setTempSignupData: (data: Partial<TempSignupData>) => void;
   clearTempSignupData: () => void;
   exchangeCode: (code: string) => Promise<void>;
+
+  // 🎬 YOUTUBE DISCOVERY PERSISTENCE (Multi-Account Support)
+  youtubeDiscovery: {
+    channels: any[];
+    selectedChannelIds: string[];
+    categorizations: Record<string, string>;
+  };
+  addDiscoveredChannels: (newChannels: any[]) => void;
+  toggleYoutubeChannelSelection: (channelId: string) => void;
+  setYoutubeChannelCategory: (channelId: string, categoryId: string) => void;
+  clearYoutubeDiscovery: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -120,6 +131,49 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isInitialized: false,
   isLoadingUser: false,
   tempSignupData: null,
+  
+  // 🎬 YOUTUBE DISCOVERY IMPLEMENTATION
+  youtubeDiscovery: {
+    channels: [],
+    selectedChannelIds: [],
+    categorizations: {},
+  },
+
+  addDiscoveredChannels: (newChannels) => set((state) => {
+    const existingIds = new Set(state.youtubeDiscovery.channels.map(ch => ch.channelId));
+    const uniqueNew = newChannels.filter(ch => !existingIds.has(ch.channelId));
+    return {
+      youtubeDiscovery: {
+        ...state.youtubeDiscovery,
+        channels: [...state.youtubeDiscovery.channels, ...uniqueNew]
+      }
+    };
+  }),
+
+  toggleYoutubeChannelSelection: (channelId) => set((state) => {
+    const currentSelected = state.youtubeDiscovery.selectedChannelIds;
+    const isSelected = currentSelected.includes(channelId);
+    return {
+      youtubeDiscovery: {
+        ...state.youtubeDiscovery,
+        selectedChannelIds: isSelected 
+          ? currentSelected.filter(id => id !== channelId)
+          : [...currentSelected, channelId]
+      }
+    };
+  }),
+
+  setYoutubeChannelCategory: (channelId, categoryId) => set((state) => ({
+    youtubeDiscovery: {
+      ...state.youtubeDiscovery,
+      categorizations: { ...state.youtubeDiscovery.categorizations, [channelId]: categoryId }
+    }
+  })),
+
+  clearYoutubeDiscovery: () => set({ 
+    youtubeDiscovery: { channels: [], selectedChannelIds: [], categorizations: {} } 
+  }),
+
   setTempSignupData: (data) => set((state) => ({ 
     tempSignupData: { ...(state.tempSignupData || {}), ...data } 
   })),
