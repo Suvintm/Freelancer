@@ -90,19 +90,12 @@ export default function YouTubeCreatorProfile() {
     };
   }, [socket, fetchUser]);
 
-  React.useEffect(() => {
-    if (user?.bio) {
-      setTempBio(user.bio);
-    }
-  }, [user?.bio]);
   const insets = useSafeAreaInsets();
 
   const [activeTab, setActiveTab] = React.useState('YT POSTS');
   const [isBioModalVisible, setBioModalVisible] = React.useState(false);
-  const [tempBio, setTempBio] = React.useState(user?.bio || '');
-  const [isSaving, setIsSaving] = React.useState(false);
+  const [isSavingBio, setIsSavingBio] = React.useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
-  const [selection, setSelection] = React.useState({ start: 0, end: 0 });
 
   if (!user || !user.youtubeProfile || user.youtubeProfile.length === 0) return null;
 
@@ -137,24 +130,24 @@ export default function YouTubeCreatorProfile() {
     return MOCK_CONTENT.filter(item => item.type === activeTab);
   };
 
-  const handleUpdateBio = async () => {
-    if (tempBio.length > 150) {
-      Alert.alert("Limit Exceeded", "Bio must be 150 characters or less.");
+  const handleUpdateBio = async (newBio: string) => {
+    if (newBio.length > 250) {
+      Alert.alert("Limit Exceeded", "Bio must be 250 characters or less.");
       return;
     }
 
-    setIsSaving(true);
+    setBioModalVisible(false); // Close Modal immediately for responsive feel
+    setIsSavingBio(true);
     try {
-      const res = await api.patch('/user/me', { bio: tempBio });
+      const res = await api.patch('/user/me', { bio: newBio });
       if (res.data.success) {
-        updateUser({ bio: tempBio });
-        setBioModalVisible(false);
+        updateUser({ bio: newBio });
       }
     } catch (error) {
        console.error('Update Bio Error:', error);
        Alert.alert("Error", "Could not update bio. Please try again.");
     } finally {
-      setIsSaving(false);
+      setIsSavingBio(false);
     }
   };
 
@@ -206,15 +199,6 @@ export default function YouTubeCreatorProfile() {
     }
   };
 
-  const insertShortcut = (symbol: string) => {
-    const before = tempBio.substring(0, selection.start);
-    const after = tempBio.substring(selection.end);
-    const newText = before + symbol + after;
-    
-    if (newText.length <= 150) {
-      setTempBio(newText);
-    }
-  };
 
   const isReelsTab = activeTab === 'REELS';
 
@@ -302,7 +286,12 @@ export default function YouTubeCreatorProfile() {
                <MaterialCommunityIcons name="shield-check" size={16} color={theme.accent} style={{ marginLeft: 6 }} />
             </View>
             <Text style={[styles.niche, { color: '#FF0000' }]}>{subCategoryName.toUpperCase()}</Text>
-            {user.bio ? (
+            {isSavingBio ? (
+              <View style={styles.bioLoadingWrap}>
+                <ActivityIndicator size="small" color={theme.accent} />
+                <Text style={[styles.bioLoadingText, { color: theme.textSecondary }]}>Updating bio...</Text>
+              </View>
+            ) : user.bio ? (
               <View style={styles.bioWrapper}>
                 <View style={{ flex: 1 }}>
                   <SmartText 
@@ -311,7 +300,7 @@ export default function YouTubeCreatorProfile() {
                   />
                 </View>
                 <TouchableOpacity 
-                  onPress={() => { setTempBio(user.bio || ''); setBioModalVisible(true); }}
+                   onPress={() => setBioModalVisible(true)}
                   style={styles.bioEditTrigger}
                 >
                   <MaterialCommunityIcons name="pencil-outline" size={16} color={theme.accent} />
@@ -319,7 +308,7 @@ export default function YouTubeCreatorProfile() {
               </View>
             ) : (
               <TouchableOpacity 
-                onPress={() => { setTempBio(''); setBioModalVisible(true); }} 
+                onPress={() => setBioModalVisible(true)} 
                 style={[styles.addBioBtn, { borderColor: theme.border, backgroundColor: theme.secondary }]}
               >
                 <MaterialCommunityIcons name="pencil-plus-outline" size={18} color={theme.accent} />
@@ -480,79 +469,104 @@ export default function YouTubeCreatorProfile() {
         </View>
     </ScrollView>
 
-      {/* Bio Update Modal */}
-      <Modal
-        visible={isBioModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setBioModalVisible(false)}
-      >
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalOverlay}
-        >
-          <View style={[styles.modalContent, { backgroundColor: theme.primary, borderColor: theme.border }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Bio</Text>
-              <TouchableOpacity onPress={() => setBioModalVisible(false)}>
-                <MaterialCommunityIcons name="close" size={24} color={theme.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={[styles.inputContainer, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-              <View style={styles.mirrorContainer}>
-                <SmartText 
-                  text={tempBio} 
-                  showIcons={false}
-                  style={[styles.bioInputMirror, { color: theme.text }]} 
-                />
-                <TextInput
-                  multiline
-                  placeholder="Tell your story..."
-                  placeholderTextColor="transparent"
-                  selectionColor={theme.accent}
-                  value={tempBio}
-                  onChangeText={setTempBio}
-                  onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
-                  maxLength={150}
-                  autoFocus
-                  style={[styles.bioInput, { color: 'transparent' }]}
-                />
-              </View>
-              <View style={[styles.toolbar, { borderTopColor: theme.border }]}>
-                <TouchableOpacity style={styles.toolBtn} onPress={() => insertShortcut('@')}>
-                  <Text style={[styles.toolBtnText, { color: theme.accent }]}>@</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.toolBtn} onPress={() => insertShortcut('🔗')}>
-                  <MaterialCommunityIcons name="link-variant" size={18} color={theme.accent} />
-                </TouchableOpacity>
-                <View style={{ flex: 1 }} />
-                <Text style={[styles.charCount, { color: tempBio.length >= 150 ? '#FF0000' : theme.textSecondary }]}>
-                  {tempBio.length}/150
-                </Text>
-              </View>
-            </View>
-
-            <TouchableOpacity 
-              disabled={isSaving}
-              onPress={handleUpdateBio}
-              style={[styles.saveBtn, { backgroundColor: theme.accent }]}
-            >
-              {isSaving ? (
-                <Text style={styles.saveBtnText}>Saving...</Text>
-              ) : (
-                <>
-                  <Text style={styles.saveBtnText}>Save Biography</Text>
-                  <MaterialCommunityIcons name="check-circle" size={18} color="white" />
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      {/* Bio Update Modal (Optimized) */}
+      <BioEditModal 
+        visible={isBioModalVisible} 
+        onClose={() => setBioModalVisible(false)}
+        onSave={handleUpdateBio}
+        initialBio={user.bio || ''}
+        theme={theme}
+      />
     </View>
   );
 }
+
+
+// --------------------------------------------------------------------------
+// 👤 SUB-COMPONENT: BioEditModal (Isolated state for 60fps typing)
+// --------------------------------------------------------------------------
+const BioEditModal = React.memo(({ visible, onClose, onSave, initialBio, theme }: any) => {
+  const [localBio, setLocalBio] = React.useState(initialBio);
+  const [selection, setSelection] = React.useState({ start: 0, end: 0 });
+
+  React.useEffect(() => {
+    if (visible) {
+      setLocalBio(initialBio);
+    }
+  }, [visible, initialBio]);
+
+  const insertShortcut = (symbol: string) => {
+    const before = localBio.substring(0, selection.start);
+    const after = localBio.substring(selection.end);
+    const newText = before + symbol + after;
+    if (newText.length <= 250) setLocalBio(newText);
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide">
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={modalStyles.overlay}>
+        <View style={[modalStyles.content, { backgroundColor: theme.primary, borderColor: theme.border }]}>
+          <View style={modalStyles.header}>
+            <Text style={[modalStyles.title, { color: theme.text }]}>Edit Bio</Text>
+            <TouchableOpacity onPress={onClose}>
+              <MaterialCommunityIcons name="close" size={24} color={theme.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={[modalStyles.inputContainer, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
+            <TextInput
+              multiline
+              autoFocus
+              maxLength={250}
+              placeholder="Tell your fans something about yourself..."
+              placeholderTextColor={theme.textSecondary}
+              style={[modalStyles.input, { color: theme.text }]}
+              value={localBio}
+              onChangeText={setLocalBio}
+              onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
+            />
+            <View style={modalStyles.charCountRow}>
+              <Text style={[modalStyles.charCount, { color: localBio.length > 200 ? '#FF0000' : theme.textSecondary }]}>
+                {localBio.length} / 250
+              </Text>
+            </View>
+          </View>
+
+          <View style={modalStyles.shortcuts}>
+            {['🔥', '🚀', '✨', '📸', '⚡️'].map(s => (
+              <TouchableOpacity key={s} onPress={() => insertShortcut(s)} style={[modalStyles.shortcutBtn, { backgroundColor: theme.secondary }]}>
+                <Text style={modalStyles.shortcutText}>{s}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <TouchableOpacity 
+            style={[modalStyles.saveBtn, { backgroundColor: theme.accent }]}
+            onPress={() => onSave(localBio)}
+          >
+            <Text style={modalStyles.saveBtnText}>Save Changes</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+});
+
+const modalStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  content: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, borderTopWidth: 1 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  title: { fontSize: 18, fontWeight: '800' },
+  inputContainer: { borderRadius: 16, borderWidth: 1, padding: 12, minHeight: 120 },
+  input: { fontSize: 15, fontWeight: '500', lineHeight: 22, height: 100, textAlignVertical: 'top' },
+  charCountRow: { alignItems: 'flex-end', marginTop: 8 },
+  charCount: { fontSize: 10, fontWeight: '700' },
+  shortcuts: { flexDirection: 'row', marginTop: 15, gap: 10 },
+  shortcutBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  shortcutText: { fontSize: 18 },
+  saveBtn: { height: 50, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginTop: 25 },
+  saveBtnText: { color: 'white', fontSize: 16, fontWeight: '800' },
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -662,6 +676,19 @@ const styles = StyleSheet.create({
   nameRow: { flexDirection: 'row', alignItems: 'center' },
   name: { fontSize: 20, fontWeight: '800' },
   niche: { fontSize: 11, fontWeight: '900', marginTop: 2, letterSpacing: 1 },
+  bioLoadingWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 8,
+    padding: 10,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 8,
+  },
+  bioLoadingText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   bio: { fontSize: 13, marginTop: 8, lineHeight: 18, flex: 1 },
   bioWrapper: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   bioEditIcon: { marginTop: 10 },

@@ -36,7 +36,7 @@ export const SmartText: React.FC<SmartTextProps> = ({ text, style, numberOfLines
   };
 
   return (
-    <Text style={style} numberOfLines={numberOfLines}>
+    <Text style={[style, { textAlignVertical: 'top' }]} numberOfLines={numberOfLines}>
       {parts.map((part, index) => {
         if (part.type === 'mention') {
           return (
@@ -57,12 +57,13 @@ export const SmartText: React.FC<SmartTextProps> = ({ text, style, numberOfLines
               style={[styles.url, { color: theme.accent }]}
               onPress={() => handleUrlPress(part.content)}
             >
-              {showIcons && <MaterialCommunityIcons name="link-variant" size={12} color={theme.accent} />}
-              {part.content.replace(/^https?:\/\//, '')}
+              <MaterialCommunityIcons name="link-variant" size={12} color={theme.accent} />
+              {' '}{part.content.replace(/^https?:\/\//, '')}
             </Text>
           );
         }
 
+        // Return regular text, preserving all line breaks (\n) and whitespace
         return <Text key={index}>{part.content}</Text>;
       })}
     </Text>
