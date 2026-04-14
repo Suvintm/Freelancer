@@ -53,7 +53,12 @@ export const sendPushNotification = async (userId, fcmPayload) => {
         ...(fcmPayload.imageUrl && { image: fcmPayload.imageUrl })
       },
       data: sanitizedData,
-      android: { priority: "high" },
+      android: {
+        priority: "high",
+        notification: {
+          channelId: "suvix-default"
+        }
+      },
       apns: {
         payload: {
           aps: {
