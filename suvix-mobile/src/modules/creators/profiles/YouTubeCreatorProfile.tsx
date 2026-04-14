@@ -32,6 +32,11 @@ import { SmartText } from '../../shared/content/SmartText';
 import { YouTubeVideoCard } from '../components/YouTubeVideoCard';
 import { useRouter } from 'expo-router';
 
+// 🏆 Achievement Assets
+const SILVER_BTN = require('../../../../assets/images/playbutton/silverbtn.png');
+const GOLD_BTN = require('../../../../assets/images/playbutton/goldenbtn.png');
+const DIAMOND_BTN = require('../../../../assets/images/playbutton/diamondbtn.png');
+
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 
 const MOCK_CONTENT: ContentItem[] = [
@@ -92,25 +97,32 @@ export default function YouTubeCreatorProfile() {
   }, [user?.bio]);
   const insets = useSafeAreaInsets();
 
-  const [activeTab, setActiveTab] = React.useState('YOUTUBE VIDEOS');
+  const [activeTab, setActiveTab] = React.useState('YT POSTS');
   const [isBioModalVisible, setBioModalVisible] = React.useState(false);
   const [tempBio, setTempBio] = React.useState(user?.bio || '');
   const [isSaving, setIsSaving] = React.useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
   const [selection, setSelection] = React.useState({ start: 0, end: 0 });
 
-  if (!user || !user.youtubeProfile) return null;
+  if (!user || !user.youtubeProfile || user.youtubeProfile.length === 0) return null;
 
-  const { youtubeProfile } = user;
-  const displayName = user.name || youtubeProfile.channel_name;
+  const youtubeProfiles = user.youtubeProfile;
+  // Use primary channel or first channel for main identity
+  const primaryChannel = youtubeProfiles.find(p => p.is_primary) || youtubeProfiles[0];
+  
+  // Aggregate Stats for Header
+  const totalSubscribers = youtubeProfiles.reduce((acc, p) => acc + (p.subscriber_count || 0), 0);
+  const totalVideos = youtubeProfiles.reduce((acc, p) => acc + (p.video_count || 0), 0);
+  
+  const displayName = user.name || primaryChannel.channel_name;
   const subCategoryName = user.primaryRole?.subCategory || 'YouTube Creator';
 
   // Calculate header height (Navbar 50 + Safe Area Inset Top)
   const headerOffset = insets.top + 50;
 
-  const handleViewChannel = async () => {
+  const handleViewChannel = async (channelId: string) => {
     try {
-      const url = `https://www.youtube.com/channel/${youtubeProfile.channel_id}`;
+      const url = `https://www.youtube.com/channel/${channelId}`;
       await Linking.openURL(url);
     } catch (error) {
       Alert.alert("Error", "Could not open YouTube link. Please check your internet connection or try again later.");
@@ -121,7 +133,7 @@ export default function YouTubeCreatorProfile() {
     if (activeTab === 'POSTS') {
       return MOCK_CONTENT.filter(item => item.type === 'POSTS');
     }
-    // We handle YOUTUBE VIDEOS separately to show the feed
+    // We handle YT POSTS separately to show the feed
     return MOCK_CONTENT.filter(item => item.type === activeTab);
   };
 
@@ -258,7 +270,7 @@ export default function YouTubeCreatorProfile() {
                   <Text style={[styles.miniStatLabel, { color: '#FFFFFF' }]}>Following</Text>
                 </View>
                 <View style={styles.miniStat}>
-                  <Text style={[styles.miniStatValue, { color: '#FFFFFF' }]}>{formatCount(MOCK_CONTENT.length)}</Text>
+                  <Text style={[styles.miniStatValue, { color: '#FFFFFF' }]}>{formatCount(totalVideos)}</Text>
                   <Text style={[styles.miniStatLabel, { color: '#FFFFFF' }]}>Posts</Text>
                 </View>
               </View>
@@ -301,9 +313,45 @@ export default function YouTubeCreatorProfile() {
             )}
           </View>
 
+          {/* 🏆 Milestone Achievements Row */}
+          <View style={[styles.milestoneSection, styles.padded]}>
+            <Text style={[styles.sectionTitleSmall, { color: theme.textSecondary }]}>YT CREATOR MILESTONES</Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.milestoneScroll}
+            >
+              {[
+                { label: 'Silver', count: 100000, img: SILVER_BTN },
+                { label: 'Gold', count: 1000000, img: GOLD_BTN },
+                { label: 'Diamond', count: 10000000, img: DIAMOND_BTN },
+              ].map((milestone) => {
+                const isLocked = totalSubscribers < milestone.count;
+                return (
+                  <View key={milestone.label} style={styles.milestoneCard}>
+                    <View style={styles.badgeWrapper}>
+                      <Image source={milestone.img} style={styles.milestoneImg} />
+                      {isLocked && (
+                        <View style={styles.lockOverlay}>
+                          <MaterialCommunityIcons name="lock" size={20} color="#FFFFFF" />
+                        </View>
+                      )}
+                    </View>
+                    <Text style={[styles.milestoneLabel, { color: isLocked ? theme.textSecondary : theme.text }]}>
+                      {milestone.label}
+                    </Text>
+                    {isLocked && (
+                      <Text style={styles.milestoneReq}>{formatCount(milestone.count)} Req</Text>
+                    )}
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </View>
+
           {/* Linked Channels Section */}
           <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: theme.text, marginTop: 0 }]}>Linked Channels</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text, marginTop: 0 }]}>Linked Channels ({youtubeProfiles.length})</Text>
             <TouchableOpacity 
               style={[styles.addChannelBtn, { backgroundColor: theme.secondary, borderColor: theme.accent }]}
               onPress={() => router.push('/creators/manual-link')}
@@ -312,36 +360,46 @@ export default function YouTubeCreatorProfile() {
               <Text style={[styles.addChannelBtnText, { color: theme.accent }]}>Add Another</Text>
             </TouchableOpacity>
           </View>
-          <View style={[styles.channelCard, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-            <Image 
-              source={youtubeProfile.thumbnail_url ? { uri: youtubeProfile.thumbnail_url } : DEFAULT_AVATAR} 
-              style={styles.channelThumb}
-            />
-            <View style={styles.channelInfo}>
-              <Text style={[styles.channelName, { color: theme.text }]} numberOfLines={1}>{youtubeProfile.channel_name}</Text>
-              <View style={styles.channelStatsRow}>
-                <View style={styles.channelStat}>
-                  <MaterialCommunityIcons name="account-group" size={14} color="#FF0000" />
-                  <Text style={[styles.channelStatText, { color: theme.textSecondary }]}>
-                    {formatCount(youtubeProfile.subscriber_count)}
-                  </Text>
+          
+          {youtubeProfiles.map((channel, index) => (
+            <View key={channel.id || channel.channel_id} style={[styles.channelCard, { backgroundColor: theme.secondary, borderColor: theme.border, marginTop: index === 0 ? 0 : 10 }]}>
+              <Image 
+                source={channel.thumbnail_url ? { uri: channel.thumbnail_url } : DEFAULT_AVATAR} 
+                style={styles.channelThumb}
+              />
+              <View style={styles.channelInfo}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={[styles.channelName, { color: theme.text }]} numberOfLines={1}>{channel.channel_name}</Text>
+                  {channel.is_primary && (
+                    <View style={styles.primaryBadge}>
+                      <Text style={styles.primaryBadgeText}>PRIMARY</Text>
+                    </View>
+                  )}
                 </View>
-                <View style={[styles.channelStat, { marginLeft: 12 }]}>
-                  <MaterialCommunityIcons name="movie-play" size={14} color={theme.accent} />
-                  <Text style={[styles.channelStatText, { color: theme.textSecondary }]}>
-                    {formatCount(youtubeProfile.video_count)}
-                  </Text>
+                <View style={styles.channelStatsRow}>
+                  <View style={styles.channelStat}>
+                    <MaterialCommunityIcons name="account-group" size={14} color="#FF0000" />
+                    <Text style={[styles.channelStatText, { color: theme.textSecondary }]}>
+                      {formatCount(channel.subscriber_count)}
+                    </Text>
+                  </View>
+                  <View style={[styles.channelStat, { marginLeft: 12 }]}>
+                    <MaterialCommunityIcons name="movie-play" size={14} color={theme.accent} />
+                    <Text style={[styles.channelStatText, { color: theme.textSecondary }]}>
+                      {formatCount(channel.video_count)}
+                    </Text>
+                  </View>
                 </View>
               </View>
+              <View style={styles.cardActions}>
+                <MaterialCommunityIcons name="check-circle" size={16} color="#FF0000" style={{ marginBottom: 8 }} />
+                <TouchableOpacity style={styles.viewBtn} onPress={() => handleViewChannel(channel.channel_id)}>
+                  <Text style={[styles.viewBtnText, { color: theme.accent }]}>View</Text>
+                  <MaterialCommunityIcons name="open-in-new" size={12} color={theme.accent} />
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={styles.cardActions}>
-              <MaterialCommunityIcons name="check-circle" size={16} color="#FF0000" style={{ marginBottom: 8 }} />
-              <TouchableOpacity style={styles.viewBtn} onPress={handleViewChannel}>
-                <Text style={[styles.viewBtnText, { color: theme.accent }]}>View</Text>
-                <MaterialCommunityIcons name="open-in-new" size={12} color={theme.accent} />
-              </TouchableOpacity>
-            </View>
-          </View>
+          ))}
 
           {/* Creator Toolbox */}
           <Text style={[styles.sectionTitle, { color: theme.text, paddingHorizontal: 20 }]}>Creator Toolbox</Text>
@@ -362,7 +420,7 @@ export default function YouTubeCreatorProfile() {
 
           {/* Content Tabs */}
           <View style={[styles.tabBar, { borderBottomColor: theme.border }]}>
-            {['YOUTUBE VIDEOS', 'POSTS', 'REELS'].map((tab) => (
+            {['YT POSTS', 'POSTS', 'REELS'].map((tab) => (
               <TouchableOpacity 
                 key={tab} 
                 onPress={() => setActiveTab(tab)}
@@ -380,7 +438,7 @@ export default function YouTubeCreatorProfile() {
           
           {/* 📱 DYNAMIC CONTENT RENDERER */}
           <View style={{ marginTop: 10, paddingBottom: 40 }}>
-            {activeTab === 'YOUTUBE VIDEOS' ? (
+            {activeTab === 'YT POSTS' ? (
               // 🎥 YouTube Instagram-Style Feed
               <View style={styles.feedContainer}>
                 {user.youtubeVideos && user.youtubeVideos.length > 0 ? (
@@ -395,7 +453,7 @@ export default function YouTubeCreatorProfile() {
                 ) : (
                   <View style={styles.emptyFeed}>
                     <MaterialCommunityIcons name="video-off-outline" size={48} color={theme.textSecondary} />
-                    <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No videos found.</Text>
+                    <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No posts found.</Text>
                   </View>
                 )}
               </View>
@@ -484,6 +542,57 @@ export default function YouTubeCreatorProfile() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingTop: 0, paddingBottom: 40 },
+  milestoneSection: {
+    marginTop: 20,
+    marginBottom: 5,
+  },
+  sectionTitleSmall: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+    marginBottom: 12,
+  },
+  milestoneScroll: {
+    paddingRight: 20,
+  },
+  milestoneCard: {
+    alignItems: 'center',
+    marginRight: 24,
+  },
+  badgeWrapper: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  milestoneImg: {
+    width: 52,
+    height: 52,
+    resizeMode: 'contain',
+  },
+  lockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  milestoneLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 8,
+  },
+  milestoneReq: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FF0000',
+    marginTop: 2,
+  },
   banner: { height: 100, width: '100%', justifyContent: 'center', alignItems: 'center' },
   bannerOverlay: { opacity: 0.5 },
   profileWrap: { marginTop: -20, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 20 },
@@ -606,6 +715,18 @@ const styles = StyleSheet.create({
     width: (width - 42) / 3, // Accounting for padding and gaps
     aspectRatio: 1,
     marginBottom: 1
+  },
+  primaryBadge: {
+    backgroundColor: '#FF0000',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  primaryBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '900',
   },
   modalOverlay: {
     flex: 1,

@@ -29,7 +29,7 @@ model User {
   following              UserFollow[]    @relation("Following")
   profile                UserProfile?
   stats                  UserStats?
-  youtubeProfiles        YouTubeProfile?
+  youtubeProfiles        YouTubeProfile[]
   youtube_videos         YouTubeVideo[]
 
   @@index([role])
@@ -96,6 +96,7 @@ model RoleSubCategory {
   slug           String            @db.VarChar(100)
   category       RoleCategory      @relation(fields: [roleCategoryId], references: [id], onDelete: Cascade)
   userRoles      UserRoleMapping[]
+  youtubeProfiles YouTubeProfile[]
 
   @@unique([roleCategoryId, slug])
   @@map("role_sub_categories")
@@ -127,7 +128,8 @@ model UserStats {
 
 model YouTubeProfile {
   id                  String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId              String           @unique @map("user_id") @db.Uuid
+  userId              String           @map("user_id") @db.Uuid
+  is_primary          Boolean          @default(false)
   channel_id          String           @unique @db.VarChar(255)
   channel_name        String           @db.VarChar(255)
   subscriber_count    Int?             @default(0)
@@ -139,6 +141,10 @@ model YouTubeProfile {
   last_synced_at      DateTime?        @map("last_synced_at") @db.Timestamptz(6)
   uploads_playlist_id String?          @map("uploads_playlist_id") @db.VarChar(255)
   video_cache_count   Int              @default(0) @map("video_cache_count")
+  subCategoryId       String?          @map("sub_category_id") @db.Uuid
+  language            String?          @db.VarChar(50)
+  
+  subCategory         RoleSubCategory? @relation(fields: [subCategoryId], references: [id])
   user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   sync_logs           YouTubeSyncLog[]
   videos              YouTubeVideo[]

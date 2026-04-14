@@ -117,8 +117,10 @@ export const formatAuthResponse = (user) => {
     isOnboarded: user.is_onboarded,
     isVerified: user.is_verified,
     createdAt: user.created_at,
-    youtubeProfile: user.youtubeProfiles || null,
-    youtubeVideos: user.youtubeProfiles?.videos || [],
+    youtubeProfile: user.youtubeProfiles || [],
+    youtubeVideos: (user.youtubeProfiles || [])
+      .flatMap(p => p.videos || [])
+      .sort((a, b) => new Date(b.published_at || b.publishedAt) - new Date(a.published_at || a.publishedAt)),
     followers: user.stats?.followers_count || 0,
     following: user.stats?.following_count || 0
   };

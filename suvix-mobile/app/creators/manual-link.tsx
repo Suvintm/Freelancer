@@ -21,6 +21,7 @@ import { useTheme } from '../../src/context/ThemeContext';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { api } from '../../src/api/client';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -33,15 +34,42 @@ export default function ManualLinkScreen() {
   
   const [currentStep, setCurrentStep] = useState<Step>('IDENTIFY');
   const [channelUrl, setChannelUrl] = useState('');
-  const [timer, setTimer] = useState(300); // 5 minutes in seconds
-  const [verificationCode] = useState(`SUVIX-${Math.floor(10000 + Math.random() * 90000)}`);
+  const [timer, setTimer] = useState(900); // 15 minutes default
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [channelData, setChannelData] = useState<any>(null);
+  const [subCategories, setSubCategories] = useState<any[]>([]);
   
   // Form State
-  const [selectedCategory, setSelectedCategory] = useState('Entertainment');
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [selectedCategoryName, setSelectedCategoryName] = useState('Select Category');
   const [selectedLanguage, setSelectedLanguage] = useState('English');
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+
+  const LANGUAGES = ['English', 'Hindi', 'Tamil', 'Telugu', 'Kannada', 'Malayalam', 'Bengali', 'Marathi', 'Gujarati', 'Punjabi', 'Spanish', 'French', 'Other'];
 
   // Animation values
   const [fadeAnim] = useState(new Animated.Value(1));
+
+  // Category Fetch Logic
+  useEffect(() => {
+    const fetchMeta = async () => {
+      try {
+        const res = await api.get('/youtube-creator/meta/subcategories');
+        if (res.data.success) {
+          setSubCategories(res.data.data);
+          if (res.data.data.length > 0) {
+            setSelectedCategoryId(res.data.data[0].id);
+            setSelectedCategoryName(res.data.data[0].name);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch subcategories:", err);
+      }
+    };
+    fetchMeta();
+  }, []);
 
   // Timer Logic
   useEffect(() => {
@@ -80,17 +108,76 @@ export default function ManualLinkScreen() {
     // Silent success for premium feel
   };
 
-  const handleVerify = () => {
-    handleNextStep('LOADING');
-    // Simulated verification delay
-    setTimeout(() => {
-      handleNextStep('PREVIEW');
-    }, 2500);
+  const handleInitiate = async () => {
+    if (!channelUrl) {
+      Alert.alert("Error", "Please enter a channel handle or URL first.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await api.post('/youtube-creator/manual-verify/initiate', {
+        channelInput: channelUrl,
+        subCategoryId: selectedCategoryId,
+        language: selectedLanguage,
+      });
+
+      if (response.data.success) {
+        setVerificationCode(response.data.data.token);
+        setTimer(response.data.data.expiresIn);
+        handleNextStep('VERIFY');
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "Failed to start verification.";
+      Alert.alert("Notice", msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleFinalConfirm = () => {
-    Alert.alert("Request Received", "Channel verification in progress. We will notify you once linked!");
-    router.back();
+  const handleVerify = async () => {
+    handleNextStep('LOADING');
+    try {
+      const response = await api.post('/youtube-creator/manual-verify/check', {
+        channelInput: channelUrl,
+        token: verificationCode,
+      });
+
+      if (response.data.success) {
+        setChannelData(response.data.data.profile); // Update this based on your service return
+        handleNextStep('PREVIEW');
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "Verification failed.";
+      Alert.alert("Verification Error", msg);
+      handleNextStep('VERIFY');
+    }
+  };
+
+  const handleRegenerate = async () => {
+    try {
+      const response = await api.post('/youtube-creator/manual-verify/regenerate', {
+        channelInput: channelUrl,
+      });
+
+      if (response.data.success) {
+        setVerificationCode(response.data.data.token);
+        setTimer(response.data.data.expiresIn);
+        Alert.alert("Success", "A new verification code has been generated.");
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "Regeneration failed.";
+      Alert.alert("Error", msg);
+    }
+  };
+
+  const handleFinalConfirm = async () => {
+    // Refresh the local user state to include the new channel
+    const fetchUser = useAuthStore.getState().fetchUser;
+    if (fetchUser) await fetchUser();
+
+    Alert.alert("Channel Linked!", "Successfully added the channel to your SuviX profile.");
+    router.replace('/(tabs)/profile');
   };
 
   const renderIdentify = () => (
@@ -114,36 +201,91 @@ export default function ManualLinkScreen() {
 
       <View style={styles.row}>
         <View style={{ flex: 1, marginRight: 8 }}>
-          <Text style={[styles.label, { color: theme.textSecondary }]}>Category</Text>
-          <TouchableOpacity style={[styles.dropdown, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-            <Text style={{ color: theme.text }}>{selectedCategory}</Text>
-            <Feather name="chevron-down" size={16} color={theme.textSecondary} />
+          <Text style={[styles.label, { color: theme.textSecondary }]}>Niche / Category</Text>
+          <TouchableOpacity 
+            style={[styles.dropdown, { backgroundColor: theme.secondary, borderColor: theme.border }]}
+            onPress={() => setShowCategoryDropdown(!showCategoryDropdown)}
+          >
+            <Text style={{ color: theme.text }} numberOfLines={1}>{selectedCategoryName}</Text>
+            <Feather name={showCategoryDropdown ? "chevron-up" : "chevron-down"} size={16} color={theme.textSecondary} />
           </TouchableOpacity>
+          {showCategoryDropdown && (
+            <View style={[styles.dropdownMenu, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
+               <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
+                {subCategories.map((item) => (
+                  <TouchableOpacity 
+                    key={item.id} 
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      setSelectedCategoryId(item.id);
+                      setSelectedCategoryName(item.name);
+                      setShowCategoryDropdown(false);
+                    }}
+                  >
+                    <Text style={{ color: theme.text }}>{item.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
         </View>
         <View style={{ flex: 1, marginLeft: 8 }}>
-          <Text style={[styles.label, { color: theme.textSecondary }]}>Language</Text>
-          <TouchableOpacity style={[styles.dropdown, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>Content Language</Text>
+          <TouchableOpacity 
+            style={[styles.dropdown, { backgroundColor: theme.secondary, borderColor: theme.border }]}
+            onPress={() => setShowLanguageDropdown(!showLanguageDropdown)}
+          >
             <Text style={{ color: theme.text }}>{selectedLanguage}</Text>
-            <Feather name="chevron-down" size={16} color={theme.textSecondary} />
+            <Feather name={showLanguageDropdown ? "chevron-up" : "chevron-down"} size={16} color={theme.textSecondary} />
           </TouchableOpacity>
+          {showLanguageDropdown && (
+            <View style={[styles.dropdownMenu, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
+               <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
+                {LANGUAGES.map((lang) => (
+                  <TouchableOpacity 
+                    key={lang} 
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      setSelectedLanguage(lang);
+                      setShowLanguageDropdown(false);
+                    }}
+                  >
+                    <Text style={{ color: theme.text }}>{lang}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
         </View>
       </View>
 
       <TouchableOpacity 
         style={[styles.primaryButton, { backgroundColor: theme.accent }]}
-        onPress={() => handleNextStep('VERIFY')}
+        onPress={handleInitiate}
+        disabled={isLoading}
       >
-        <Text style={styles.primaryButtonText}>Continue to Verification</Text>
-        <Feather name="arrow-right" size={18} color="#000" />
+        {isLoading ? (
+          <ActivityIndicator color="#000" />
+        ) : (
+          <>
+            <Text style={styles.primaryButtonText}>Continue to Verification</Text>
+            <Feather name="arrow-right" size={18} color="#000" />
+          </>
+        )}
       </TouchableOpacity>
     </View>
   );
 
   const renderVerify = () => (
     <View style={styles.stepContent}>
-      <View style={styles.timerBadge}>
-        <Feather name="clock" size={14} color="#FF6B6B" />
-        <Text style={styles.timerText}>{formatTime(timer)}</Text>
+      <View style={styles.timerContainer}>
+        <View style={[styles.timerBadge, { opacity: timer <= 60 ? 1 : 0.8 }]}>
+          <Feather name="clock" size={14} color={timer <= 60 ? "#FF6B6B" : theme.textSecondary} />
+          <Text style={[styles.timerText, { color: timer <= 60 ? "#FF6B6B" : theme.textSecondary }]}>{formatTime(timer)}</Text>
+        </View>
+        {timer === 0 && (
+          <Text style={{ color: '#FF6B6B', fontSize: 12, fontWeight: '700', marginLeft: 12 }}>Code Expired</Text>
+        )}
       </View>
 
       <Text style={[styles.title, { color: theme.text }]}>Add Verification Code</Text>
@@ -182,6 +324,14 @@ export default function ManualLinkScreen() {
       
       <TouchableOpacity 
         style={styles.secondaryActionBtn}
+        onPress={handleRegenerate}
+      >
+        <Text style={[styles.secondaryActionBtnText, { color: theme.accent }]}>Regenerate Code</Text>
+        <Feather name="refresh-cw" size={14} color={theme.accent} style={{ marginLeft: 6 }} />
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={styles.secondaryActionBtn}
         onPress={() => Linking.openURL('https://studio.youtube.com')}
       >
         <Text style={[styles.secondaryActionBtnText, { color: theme.textSecondary }]}>Go to YouTube Studio</Text>
@@ -208,20 +358,27 @@ export default function ManualLinkScreen() {
       </Text>
 
       <View style={[styles.previewCard, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-        <Image source={{ uri: 'https://placehold.co/100x100.png' }} style={styles.previewThumb} />
+        <Image 
+          source={{ uri: channelData?.thumbnail_url || 'https://placehold.co/100x100.png' }} 
+          style={styles.previewThumb} 
+        />
         <View style={styles.previewInfo}>
-          <Text style={[styles.previewName, { color: theme.text }]}>Tech Insider Pro</Text>
+          <Text style={[styles.previewName, { color: theme.text }]}>{channelData?.channel_name || 'YouTube Channel'}</Text>
           <View style={styles.previewStats}>
             <View style={styles.statChip}>
               <MaterialCommunityIcons name="account-group" size={12} color="#FF0000" />
-              <Text style={[styles.statChipText, { color: theme.textSecondary }]}>154K</Text>
+              <Text style={[styles.statChipText, { color: theme.textSecondary }]}>
+                {channelData?.subscriber_count ? `${(channelData.subscriber_count / 1000).toFixed(1)}K` : '0'}
+              </Text>
             </View>
             <View style={[styles.statChip, { marginLeft: 8 }]}>
               <MaterialCommunityIcons name="movie-play" size={12} color={theme.accent} />
-              <Text style={[styles.statChipText, { color: theme.textSecondary }]}>420</Text>
+              <Text style={[styles.statChipText, { color: theme.textSecondary }]}>
+                {channelData?.video_count || '0'}
+              </Text>
             </View>
           </View>
-          <Text style={[styles.previewNiche, { color: theme.accent }]}>{selectedCategory}</Text>
+          <Text style={[styles.previewNiche, { color: theme.accent }]}>{selectedCategoryName}</Text>
         </View>
         <View style={styles.verifiedBadge}>
           <MaterialCommunityIcons name="check-decagram" size={24} color="#FF0000" />
@@ -371,6 +528,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    zIndex: 10,
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    top: 64,
+    left: 0,
+    right: 0,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 8,
+    zIndex: 1000,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+      },
+      android: { elevation: 10 },
+    }),
+  },
+  dropdownItem: {
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   primaryButton: {
     height: 60,
@@ -415,15 +598,19 @@ const styles = StyleSheet.create({
     right: 20,
     padding: 10,
   },
+  timerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   timerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     alignSelf: 'flex-start',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    marginBottom: 20,
   },
   timerText: {
     color: '#FF6B6B',

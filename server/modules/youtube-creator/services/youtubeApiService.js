@@ -100,6 +100,59 @@ export const discoverChannels = async (accessToken) => {
   }
 };
 
+/**
+ * Fetch public channel data using API KEY (1 Unit Cost)
+ * Supports fetching by ID or by Handle.
+ * @param {object} params - { identifier, type: 'id' | 'handle' }
+ */
+export const getChannelPublicData = async ({ identifier, type }) => {
+  const API_KEY = process.env.YOUTUBE_API_KEY;
+  if (!API_KEY) {
+    throw new ApiError(500, "YouTube API Key is not configured on the server.");
+  }
+
+  try {
+    logger.info(`📡 [YT-API] Public fetch: ${type}=${identifier}`);
+    
+    const queryParams = {
+      part: "snippet,statistics,brandingSettings,contentDetails",
+      key: API_KEY,
+    };
+
+    if (type === "handle") {
+      queryParams.forHandle = identifier.replace("@", "");
+    } else {
+      queryParams.id = identifier;
+    }
+
+    const response = await axios.get("https://www.googleapis.com/youtube/v3/channels", {
+      params: queryParams,
+    });
+
+    const items = response.data.items || [];
+    if (items.length === 0) {
+      throw new ApiError(404, `No YouTube channel found for ${identifier}`);
+    }
+
+    const channel = items[0];
+    return {
+      channelId: channel.id,
+      title: channel.snippet.title,
+      description: channel.snippet.description,
+      customUrl: channel.snippet.customUrl,
+      thumbnailUrl: channel.snippet.thumbnails?.high?.url || channel.snippet.thumbnails?.default?.url,
+      subscriberCount: parseInt(channel.statistics?.subscriberCount || "0"),
+      videoCount: parseInt(channel.statistics?.videoCount || "0"),
+      uploadsPlaylistId: channel.contentDetails?.relatedPlaylists?.uploads || null,
+    };
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    logger.error(`❌ [YT-API] Public Channel fetch failed: ${error.message}`);
+    throw new ApiError(error.response?.status || 502, "Failed to verify channel directly with YouTube.");
+  }
+};
+
 export default {
   discoverChannels,
+  getChannelPublicData,
 };
