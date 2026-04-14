@@ -241,8 +241,15 @@ export const registerFullUser = async (userData) => {
 
       // Step B-2. Register VIP Push Token Instantly
       if (pushToken) {
-        await tx.pushToken.create({
-          data: {
+        await tx.pushToken.upsert({
+          where: { token: pushToken },
+          update: {
+            userId: newUser.id,
+            platform: platform ? platform.toUpperCase() : 'ANDROID',
+            is_active: true,
+            last_used_at: new Date()
+          },
+          create: {
             userId: newUser.id,
             token: pushToken,
             platform: platform ? platform.toUpperCase() : 'ANDROID',
