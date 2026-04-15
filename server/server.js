@@ -38,6 +38,7 @@ import notificationRoutes from "./modules/notification/routes/notificationRoutes
 import paymentGatewayRoutes from "./modules/payments/routes/paymentGatewayRoutes.js";
 import youtubeRoutes from "./modules/youtube-creator/routes/youtubeRoutes.js";
 import mediaRoutes from "./modules/storage/media.routes.js";
+import socialRoutes from "./modules/social/routes/postRoutes.js";
 
 // PostgreSQL Support
 import { connectPostgres } from "./config/prisma.js";
@@ -150,6 +151,7 @@ app.use("/api/auth", vpnCheckMiddleware, oauthRoutes); // Fallback: Social OAuth
 app.use("/api/user", userRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/media", mediaRoutes);
+app.use("/api/social", socialRoutes);
 app.use("/api/youtube-creator", youtubeRoutes);
 
 // ============ SECURITY: NOSQL SANITIZATION ============
