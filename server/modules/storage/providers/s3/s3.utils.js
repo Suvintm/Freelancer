@@ -18,10 +18,17 @@ import crypto from "crypto";
 export const buildS3Key = (filename, folder, userId = null) => {
   const timestamp = Date.now();
   const random = crypto.randomBytes(4).toString("hex");
-  const sanitizedName = filename.toLowerCase().replace(/[^a-z0-9.-]/g, "_");
+  
+  // 🧼 [CLEANUP] Ensure filename is safe and standardized
+  const extension = filename.split(".").pop().toLowerCase();
+  const sanitizedName = filename
+    .toLowerCase()
+    .split(".")[0]
+    .replace(/[^a-z0-9]/g, "_")
+    .substring(0, 30); // Cap filename length
   
   const base = userId ? `${folder}/${userId}` : folder;
-  return `${base}/${timestamp}-${random}-${sanitizedName}`;
+  return `${base}/${timestamp}_${random}_${sanitizedName}.${extension}`;
 };
 
 /**

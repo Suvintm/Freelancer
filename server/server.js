@@ -56,10 +56,17 @@ if (process.env.NODE_ENV !== "production") {
 
 // Validate required environment variables
 if (process.env.NODE_ENV !== "test") {
-  const requiredEnvVars = ["MONGO_URI", "JWT_SECRET", "CLOUDINARY_CLOUD_NAME"];
+  const requiredEnvVars = [
+    "MONGO_URI", 
+    "JWT_SECRET", 
+    "CLOUDINARY_CLOUD_NAME", 
+    "AWS_ACCESS_KEY_ID", 
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_S3_BUCKET"
+  ];
   const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
   if (missingEnvVars.length > 0) {
-    logger.error(`Missing required environment variables: ${missingEnvVars.join(", ")}`);
+    logger.error(`❌ [STARTUP] Missing required environment variables: ${missingEnvVars.join(", ")}`);
     process.exit(1);
   }
 }
