@@ -1,28 +1,44 @@
+import logger from "../../utils/logger.js";
+import * as s3Provider from "./providers/s3/s3.service.js";
+import * as r2Provider from "./providers/r2/r2.service.js";
+
 /**
- * ⭐ STORAGE PROVIDER — ABSTRACTION LAYER
- *
- * THIS IS THE ONLY FILE THE REST OF THE APP SHOULD IMPORT.
- * Never import s3.service.js or r2.service.js directly.
- *
- * Controls which storage backend is active via:
- *   STORAGE_PROVIDER=s3   → uses AWS S3
- *   STORAGE_PROVIDER=r2   → uses Cloudflare R2
- *
- * This means switching from S3 to R2 (or back) is a single env variable change.
- * Zero code changes needed in controllers or services.
- *
- * Usage:
- *   import storage from "../storage/storageProvider.js";
- *   await storage.uploadObject(buffer, key, options);
- *   const url = await storage.getSignedUrl(key);
+ * ⭐ STORAGE SERVICE — THE BRAIN
+ * 
+ * This is the ONLY file the rest of the app should import.
+ * Decides which provider to use based on the STORAGE_PROVIDER environment variable.
  */
 
-// TODO (Phase 1): Import and switch based on STORAGE_PROVIDER env var
-//
-// import * as s3 from "./s3/s3.service.js";
-// import * as r2 from "./r2/r2.service.js";
-//
-// const provider = process.env.STORAGE_PROVIDER === "r2" ? r2 : s3;
-// export default provider;
+const PROVIDER_TYPE = process.env.STORAGE_PROVIDER || "s3";
 
-export default {};
+/**
+ * Pick the provider based on ENV
+ */
+const getProvider = () => {
+  switch (PROVIDER_TYPE.toLowerCase()) {
+    case "s3":
+      return s3Provider;
+    case "r2":
+      return r2Provider;
+    default:
+      logger.warn(`⚠️ [STORAGE] Unknown provider "${PROVIDER_TYPE}", defaulting to S3`);
+      return s3Provider;
+  }
+};
+
+const provider = getProvider();
+
+logger.info(`🏗️ [STORAGE] Active Provider: ${PROVIDER_TYPE.toUpperCase()}`);
+
+// Export the active provider's API
+export const {
+  uploadObject,
+  getSignedUrl,
+  deleteObjects
+} = provider;
+
+export default {
+  uploadObject,
+  getSignedUrl,
+  deleteObjects
+};

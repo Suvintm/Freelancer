@@ -4,23 +4,24 @@ import logger from "../../utils/logger.js";
 /**
  * 🛰️ AWS S3 CONFIGURATION (PRODUCTION READY)
  * 
- * This file initializes the AWS S3 Client using SDK v3.
- * SDK v3 is modular, resulting in smaller bundle sizes and better performance.
- * 
- * Future Integration:
- * - Implement retries & custom request handlers.
- * - Integration with AWS X-Ray for tracing.
+ * Uses SDK v3 for modular performance.
+ * Validates credentials and region from .env.
  */
 
-// Placeholder for S3 Client initialization
-// const s3Client = new S3Client({
-//   region: process.env.AWS_REGION,
-//   credentials: {
-//     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-//     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-//   },
-// });
+const AWS_REGION = process.env.AWS_REGION || "ap-south-1";
 
-logger.info("📦 [S3] Service initialized (Configuration Layer Ready)");
+if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+  logger.error("❌ [S3] AWS Credentials missing from environment!");
+}
 
-export default {}; // Exporting empty for now as per "no logic" request
+export const s3Client = new S3Client({
+  region: AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
+
+logger.info(`📦 [S3] Client initialized for region: ${AWS_REGION}`);
+
+export default s3Client;
