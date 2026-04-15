@@ -98,8 +98,36 @@ export const deleteObjects = async (keys) => {
   }
 };
 
+/**
+ * Fetch an object from S3 as a Buffer
+ * @param {string} key - S3 object key
+ */
+export const getObject = async (key) => {
+  try {
+    const command = new GetObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: key,
+    });
+
+    const response = await s3Client.send(command);
+    const streamToBuffer = (stream) =>
+      new Promise((resolve, reject) => {
+        const chunks = [];
+        stream.on("data", (chunk) => chunks.push(chunk));
+        stream.on("error", reject);
+        stream.on("end", () => resolve(Buffer.concat(chunks)));
+      });
+
+    return await streamToBuffer(response.Body);
+  } catch (error) {
+    logger.error(`❌ [S3] GetObject failure: ${error.message}`);
+    throw error;
+  }
+};
+
 export default {
   uploadObject,
   getSignedUrl,
   deleteObjects,
+  getObject,
 };

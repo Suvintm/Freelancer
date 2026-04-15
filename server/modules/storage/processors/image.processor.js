@@ -1,13 +1,12 @@
 import sharp from "sharp";
-import { buildS3Key, getContentType } from "../providers/s3/s3.utils.js";
+import { encode } from "blurhash";
+import { buildS3Key } from "../providers/s3/s3.utils.js";
 import { STORAGE_FOLDERS } from "../providers/s3/s3.constants.js";
 import storage from "../storage.service.js";
 import logger from "../../../utils/logger.js";
 
 /**
  * 🖼️ IMAGE PROCESSOR (PRODUCTION READY)
- * 
- * Handles compression, formatting, and variant generation.
  */
 
 const VARIANT_SIZES = {
@@ -17,53 +16,50 @@ const VARIANT_SIZES = {
 };
 
 /**
- * Process an image and generate production-ready variants
- * 
- * @param {Buffer} rawBuffer - Original image bytes
- * @param {string} userId - Owner ID for path building
- * @param {string} postId - Media ID
- * @param {string} filename - Original filename for extension extraction
- * @returns {Promise<object>} - Mapping of variants to S3 keys/URLs
+ * Generate a Blurhash from an image buffer
  */
-export const processImage = async (rawBuffer, userId, postId, filename = "image.jpg") => {
+const generateBlurhash = async (buffer) => {
   try {
-    logger.info(`🖼️ [PROCESSOR] Starting image pipeline for: ${postId}`);
+    const { data, info } = await sharp(buffer)
+      .raw()
+      .ensureAlpha()
+      .resize(32, 32, { fit: "inside" })
+      .toBuffer({ resolveWithObject: true });
 
-    const results = {};
-    const pipeline = sharp(rawBuffer)
-      .rotate() // Auto-rotate based on EXIF
-      .webp({ quality: 80 }); // Convert all to WebP for massive savings
+    return encode(new Uint8ClampedArray(data), info.width, info.height, 4, 4);
+  } catch (err) {
+    logger.error(`⚠️ [BLURHASH] Failed: ${err.message}`);
+    return null;
+  }
+};
 
-    // Generate variants in parallel
+export const processImage = async (rawBuffer, userId, mediaId) => {
+  try {
+    logger.info(`🖼️ [PROCESSOR] Processing Image: ${mediaId}`);
+
+    // 1. Generate Blurhash (Premium Feature)
+    const blurhash = await generateBlurhash(rawBuffer);
+
+    const variants = {};
+    const pipeline = sharp(rawBuffer).rotate().webp({ quality: 80 });
+
+    // 2. Generate Variants
     const variantPromises = Object.entries(VARIANT_SIZES).map(async ([name, width]) => {
       const resizedBuffer = await pipeline
         .clone()
         .resize(width, null, { withoutEnlargement: true })
         .toBuffer();
 
-      const key = buildS3Key(`${name.toLowerCase()}.webp`, STORAGE_FOLDERS.IMAGES, `${userId}/${postId}`);
-      
-      await storage.uploadObject(resizedBuffer, key, {
-        contentType: "image/webp"
-      });
-
-      results[name.toLowerCase()] = key;
+      const key = buildS3Key(`${name.toLowerCase()}.webp`, STORAGE_FOLDERS.IMAGES, `${userId}/${mediaId}`);
+      await storage.uploadObject(resizedBuffer, key, { contentType: "image/webp" });
+      variants[name.toLowerCase()] = key;
     });
-
-    // Also store one "Original" archive as WebP but full size
-    variantPromises.push((async () => {
-      const originalBuffer = await pipeline.toBuffer();
-      const key = buildS3Key("original.webp", STORAGE_FOLDERS.IMAGES, `${userId}/${postId}`);
-      await storage.uploadObject(originalBuffer, key, { contentType: "image/webp" });
-      results.original = key;
-    })());
 
     await Promise.all(variantPromises);
 
-    logger.info(`✅ [PROCESSOR] Image variants generated for: ${postId}`);
-    return results;
+    return { variants, blurhash };
   } catch (error) {
-    logger.error(`❌ [PROCESSOR] Pipeline failed: ${error.message}`);
+    logger.error(`❌ [PROCESSOR] Failure: ${error.message}`);
     throw error;
   }
 };

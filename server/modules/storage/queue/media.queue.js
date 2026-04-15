@@ -1,26 +1,45 @@
+import { Queue } from "bullmq";
+import Redis from "ioredis";
+import logger from "../../../utils/logger.js";
+
 /**
- * 📦 MEDIA QUEUE DEFINITION
- *
- * Defines the BullMQ queue for async media processing.
- * All uploads land here — the API responds instantly, processing happens in background.
- *
- * Queue Name: "media-processing"
- *
- * TODO (Phase 2): Initialize and export queue using existing BullMQ/Redis setup.
+ * 📦 MEDIA PROCESSING QUEUE
  */
 
-// import { Queue } from "bullmq";
-// import { redis } from "../../config/redisClient.js";
-//
-// export const mediaQueue = new Queue("media-processing", {
-//   connection: redis,
-//   defaultJobOptions: {
-//     attempts: 3,
-//     backoff: { type: "exponential", delay: 5000 },
-//     removeOnComplete: true,
-//     removeOnFail: 100,
-//   },
-// });
+const getRedisConnection = () => {
+  let redisUrl = process.env.REDIS_URL;
+  const redisToken = process.env.REDIS_TOKEN;
 
-export const QUEUE_NAME = "media-processing";
-export default {};
+  if (!redisUrl) {
+    logger.warn("[Media-Queue] REDIS_URL not set — functionality disabled.");
+    return null;
+  }
+
+  if (redisUrl.startsWith("https://") && redisToken) {
+    const host = redisUrl.replace("https://", "");
+    redisUrl = `rediss://default:${redisToken}@${host}:6379`;
+  }
+
+  return new Redis(redisUrl, {
+    maxRetriesPerRequest: null, // Required by BullMQ
+    connectTimeout: 10000,
+  });
+};
+
+const connection = getRedisConnection();
+
+export const mediaQueue = connection ? new Queue("media-processing", {
+  connection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: { type: "exponential", delay: 5000 },
+    removeOnComplete: true,
+    removeOnFail: 100,
+  }
+}) : null;
+
+if (connection) {
+  logger.info("[Media-Queue] BullMQ Initialized ✅");
+}
+
+export default mediaQueue;

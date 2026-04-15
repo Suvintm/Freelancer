@@ -31,6 +31,8 @@ model User {
   stats                  UserStats?
   youtubeProfiles        YouTubeProfile[]
   youtube_videos         YouTubeVideo[]
+  posts                  Post[]
+  media                  Media[]
 
   @@index([role])
   @@index([is_onboarded])
@@ -285,4 +287,68 @@ enum AvailabilityStatus {
   available
   busy
   away
+}
+
+model Post {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String     @map("user_id") @db.Uuid
+  caption     String?    @db.Text
+  type        PostType   @default(IMAGE)
+  isReel      Boolean    @default(false) @map("is_reel")
+  visibility  Visibility @default(PUBLIC)
+  created_at  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at  DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media       Media[]
+
+  @@index([userId, created_at])
+  @@map("posts")
+}
+
+model Media {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId      String?     @map("post_id") @db.Uuid
+  userId      String      @map("user_id") @db.Uuid
+  type        MediaType   @default(IMAGE)
+  storageKey  String      @map("storage_key")
+  mimeType    String?     @map("mime_type")
+  size        Int?
+  width       Int?
+  height      Int?
+  duration    Int?
+  variants    Json?
+  blurhash    String?
+  status      MediaStatus @default(PENDING)
+  created_at  DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  post        Post?       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@index([userId])
+  @@map("media")
+}
+
+enum PostType {
+  IMAGE
+  VIDEO
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+enum MediaStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+  FOLLOWERS
 }

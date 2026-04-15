@@ -34,11 +34,13 @@ logger.info(`🏗️ [STORAGE] Active Provider: ${PROVIDER_TYPE.toUpperCase()}`)
 export const {
   uploadObject,
   getSignedUrl,
-  deleteObjects
+  deleteObjects,
+  getObject
 } = provider;
 
 export default {
   uploadObject,
   getSignedUrl,
-  deleteObjects
+  deleteObjects,
+  getObject
 };

@@ -1,35 +1,82 @@
+import { Worker } from "bullmq";
+import Redis from "ioredis";
+import prisma from "../../../config/prisma.js";
+import storage from "../storage.service.js";
+import { processImage } from "../processors/image.processor.js";
+import logger from "../../../utils/logger.js";
+
 /**
- * ⚙️ MEDIA WORKER
- *
- * BullMQ worker that picks up jobs from the "media-processing" queue.
- * Orchestrates the full processing pipeline per job type.
- *
- * Flow:
- *   Job received → safety checks → dedup check → image/video processor → CDN upload → DB update → socket notify
- *
- * TODO (Phase 2 / Phase 3): Implement full pipeline.
+ * 🛠️ MEDIA WORKER (PRODUCTION ENGINE)
+ * Handles image compression and metadata generation in background.
  */
 
-// import { Worker } from "bullmq";
-// import { QUEUE_NAME } from "./media.queue.js";
-// import { processImage } from "../processors/image.processor.js";
-// import { processVideo } from "../processors/video.processor.js";
-// import { runSafetyChecks } from "../processors/safety.processor.js";
-// import { hashFile, findDuplicate } from "../processors/dedup.processor.js";
+const getRedisConnection = () => {
+  let redisUrl = process.env.REDIS_URL;
+  const redisToken = process.env.REDIS_TOKEN;
 
-// export const startMediaWorker = () => {
-//   const worker = new Worker(QUEUE_NAME, async (job) => {
-//     const { type, userId, mediaId, rawKey } = job.data;
-//
-//     // Step 1: Safety
-//     // Step 2: Dedup
-//     // Step 3: Process (image or video)
-//     // Step 4: Upload processed to S3/R2
-//     // Step 5: Update DB (status: ready)
-//     // Step 6: Emit socket event (media:ready)
-//   }, { connection: redis });
-//
-//   return worker;
-// };
+  if (redisUrl?.startsWith("https://") && redisToken) {
+    const host = redisUrl.replace("https://", "");
+    redisUrl = `rediss://default:${redisToken}@${host}:6379`;
+  }
 
-export default {};
+  return new Redis(redisUrl, {
+    maxRetriesPerRequest: null,
+    connectTimeout: 10000,
+  });
+};
+
+const connection = getRedisConnection();
+
+export const mediaWorker = new Worker(
+  "media-processing",
+  async (job) => {
+    const { mediaId, userId, key, type } = job.data;
+    logger.info(`👷 [WORKER] Processing Job ${job.id} for Media: ${mediaId}`);
+
+    try {
+      // 1. Fetch RAW file from S3
+      const rawBuffer = await storage.getObject(key);
+
+      if (type === "IMAGE") {
+        // 2. Process with Sharp (WebP variants + Blurhash)
+        const { variants, blurhash } = await processImage(rawBuffer, userId, mediaId);
+
+        // 3. Update Database
+        await prisma.media.update({
+          where: { id: mediaId },
+          data: {
+            variants,
+            blurhash,
+            status: "READY",
+          },
+        });
+
+        logger.info(`✨ [WORKER] Media READY: ${mediaId}`);
+      }
+
+      // 4. CLEANUP (Optional): Delete the RAW upload to save space
+      // await storage.deleteObjects(key);
+
+    } catch (error) {
+      logger.error(`❌ [WORKER] Job ${job.id} FAILED: ${error.message}`);
+      
+      await prisma.media.update({
+        where: { id: mediaId },
+        data: { status: "FAILED" },
+      });
+
+      throw error; // Let BullMQ handle retries
+    }
+  },
+  { connection, concurrency: 5 } // Process 5 images at once
+);
+
+mediaWorker.on("completed", (job) => {
+  logger.info(`✅ [WORKER] Job ${job.id} completed successfully`);
+});
+
+mediaWorker.on("failed", (job, err) => {
+  logger.error(`❌ [WORKER] Job ${job.id} failed: ${err.message}`);
+});
+
+export default mediaWorker;
