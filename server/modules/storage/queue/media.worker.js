@@ -3,11 +3,12 @@ import Redis from "ioredis";
 import prisma from "../../../config/prisma.js";
 import storage from "../storage.service.js";
 import { processImage } from "../processors/image.processor.js";
+import { processVideo } from "../processors/video.processor.js";
 import logger from "../../../utils/logger.js";
 
 /**
  * 🛠️ MEDIA WORKER (PRODUCTION ENGINE)
- * Handles image compression and metadata generation in background.
+ * Handles both Image and Video processing asynchronously.
  */
 
 const getRedisConnection = () => {
@@ -31,31 +32,32 @@ export const mediaWorker = new Worker(
   "media-processing",
   async (job) => {
     const { mediaId, userId, key, type } = job.data;
-    logger.info(`👷 [WORKER] Processing Job ${job.id} for Media: ${mediaId}`);
+    logger.info(`👷 [WORKER] Processing Media: ${mediaId} (${type})`);
 
     try {
       // 1. Fetch RAW file from S3
       const rawBuffer = await storage.getObject(key);
+      let results = {};
 
-      if (type === "IMAGE") {
-        // 2. Process with Sharp (WebP variants + Blurhash)
+      if (type === "VIDEO") {
+        // 2. Process Video (Transcode + Thumb)
+        results = await processVideo(rawBuffer, userId, mediaId);
+      } else {
+        // 3. Process Image (WebP variants + Blurhash)
         const { variants, blurhash } = await processImage(rawBuffer, userId, mediaId);
-
-        // 3. Update Database
-        await prisma.media.update({
-          where: { id: mediaId },
-          data: {
-            variants,
-            blurhash,
-            status: "READY",
-          },
-        });
-
-        logger.info(`✨ [WORKER] Media READY: ${mediaId}`);
+        results = { variants, blurhash };
       }
 
-      // 4. CLEANUP (Optional): Delete the RAW upload to save space
-      // await storage.deleteObjects(key);
+      // 4. Update Database
+      await prisma.media.update({
+        where: { id: mediaId },
+        data: {
+          ...results,
+          status: "READY",
+        },
+      });
+
+      logger.info(`✨ [WORKER] Media READY: ${mediaId}`);
 
     } catch (error) {
       logger.error(`❌ [WORKER] Job ${job.id} FAILED: ${error.message}`);
@@ -65,10 +67,10 @@ export const mediaWorker = new Worker(
         data: { status: "FAILED" },
       });
 
-      throw error; // Let BullMQ handle retries
+      throw error; 
     }
   },
-  { connection, concurrency: 5 } // Process 5 images at once
+  { connection, concurrency: 2 } 
 );
 
 mediaWorker.on("completed", (job) => {
