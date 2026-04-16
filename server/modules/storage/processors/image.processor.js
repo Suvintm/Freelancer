@@ -37,13 +37,17 @@ export const processImage = async (rawBuffer, userId, mediaId) => {
   try {
     logger.info(`🖼️ [PROCESSOR] Processing Image: ${mediaId}`);
 
-    // 1. Generate Blurhash (Premium Feature)
+    // 1. Extract Metadata (Dimensions and Size)
+    const metadata = await sharp(rawBuffer).metadata();
+    const { width, height, size } = metadata;
+
+    // 2. Generate Blurhash (Premium Feature)
     const blurhash = await generateBlurhash(rawBuffer);
 
     const variants = {};
     const pipeline = sharp(rawBuffer).rotate().webp({ quality: 80 });
 
-    // 2. Generate Variants
+    // 3. Generate Variants
     const variantPromises = Object.entries(VARIANT_SIZES).map(async ([name, width]) => {
       const resizedBuffer = await pipeline
         .clone()
@@ -57,7 +61,13 @@ export const processImage = async (rawBuffer, userId, mediaId) => {
 
     await Promise.all(variantPromises);
 
-    return { variants, blurhash };
+    return { 
+      variants, 
+      blurhash,
+      width,
+      height,
+      size
+    };
   } catch (error) {
     logger.error(`❌ [PROCESSOR] Failure: ${error.message}`);
     throw error;

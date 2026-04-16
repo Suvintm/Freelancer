@@ -1,5 +1,6 @@
 import prisma from "../../../config/prisma.js";
 import logger from "../../../utils/logger.js";
+import { buildCdnUrl } from "../../storage/cdn/cdn.utils.js";
 
 /**
  * 📝 POST CONTROLLER (SOCIAL MODULE)
@@ -101,9 +102,28 @@ export const getFeed = async (req, res) => {
       take: parseInt(limit),
     });
 
+    // 🚀 PRODUCTION REFINEMENT: Transform keys to full CDN URLs
+    const transformedPosts = posts.map(post => ({
+      ...post,
+      media: post.media.map(m => {
+        const variants = m.variants || {};
+        const fullVariants = {};
+        
+        // Convert relative S3 keys to full CDN URLs
+        Object.entries(variants).forEach(([key, value]) => {
+          fullVariants[key] = buildCdnUrl(value);
+        });
+
+        return {
+          ...m,
+          variants: fullVariants
+        };
+      })
+    }));
+
     res.json({
       success: true,
-      data: posts,
+      data: transformedPosts,
       page: parseInt(page),
     });
   } catch (error) {

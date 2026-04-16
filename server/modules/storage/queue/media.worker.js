@@ -4,11 +4,12 @@ import prisma from "../../../config/prisma.js";
 import storage from "../storage.service.js";
 import { processImage } from "../processors/image.processor.js";
 import { processVideo } from "../processors/video.processor.js";
+import { hashFile, findDuplicate } from "../processors/dedup.processor.js";
 import logger from "../../../utils/logger.js";
 
 /**
  * 🛠️ MEDIA WORKER (PRODUCTION ENGINE)
- * Handles both Image and Video processing asynchronously.
+ * Handles both Image and Video processing asynchronously with DEDUPLICATION.
  */
 
 const getRedisConnection = () => {
@@ -39,13 +40,29 @@ export const mediaWorker = new Worker(
       const rawBuffer = await storage.getObject(key);
       let results = {};
 
-      if (type === "VIDEO") {
-        // 2. Process Video (Transcode + Thumb)
-        results = await processVideo(rawBuffer, userId, mediaId);
+      // 2. DEDUPLICATION CHECK (Production Feature)
+      const hash = hashFile(rawBuffer);
+      const duplicate = await findDuplicate(hash);
+
+      if (duplicate) {
+        logger.info(`♻️ [WORKER] Duplicate found for ${mediaId}. Reusing existing data.`);
+        results = {
+          variants: duplicate.variants,
+          blurhash: duplicate.blurhash,
+          width: duplicate.width,
+          height: duplicate.height,
+          duration: duplicate.duration,
+          size: duplicate.size,
+          hash: hash
+        };
       } else {
-        // 3. Process Image (WebP variants + Blurhash)
-        const { variants, blurhash } = await processImage(rawBuffer, userId, mediaId);
-        results = { variants, blurhash };
+        // 3. Process fresh content (with Metadata Extraction)
+        if (type === "VIDEO") {
+          results = await processVideo(rawBuffer, userId, mediaId);
+        } else {
+          results = await processImage(rawBuffer, userId, mediaId);
+        }
+        results.hash = hash;
       }
 
       // 4. Update Database

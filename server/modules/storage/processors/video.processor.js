@@ -59,7 +59,27 @@ export const processVideo = async (rawBuffer, userId, mediaId) => {
 
     await Promise.all([compressionPromise, thumbnailPromise]);
 
-    // 3. Upload to S3
+    // 3. Extract Metadata (Dimensions and Duration) using ffprobe
+    const metadataPromise = new Promise((resolve) => {
+      ffmpeg.ffprobe(outputPath, (err, metadata) => {
+        if (err) {
+          logger.warn(`⚠️ [VIDEO-METADATA] Failed to probe: ${err.message}`);
+          resolve({});
+        } else {
+          const stream = metadata.streams.find(s => s.codec_type === "video");
+          resolve({
+            width: stream?.width,
+            height: stream?.height,
+            duration: Math.round(metadata.format.duration || 0),
+            size: fs.statSync(outputPath).size
+          });
+        }
+      });
+    });
+
+    const metadata = await metadataPromise;
+
+    // 4. Upload to S3
     const videoKey = buildS3Key("optimized.mp4", STORAGE_FOLDERS.VIDEOS, `${userId}/${mediaId}`);
     const thumbKey = buildS3Key("thumbnail.jpg", STORAGE_FOLDERS.VIDEOS, `${userId}/${mediaId}`);
 
@@ -74,7 +94,8 @@ export const processVideo = async (rawBuffer, userId, mediaId) => {
       variants: {
         video: videoKey,
         thumbnail: thumbKey
-      }
+      },
+      ...metadata
     };
   } catch (error) {
     logger.error(`❌ [VIDEO-PROCESSOR] failure: ${error.message}`);
