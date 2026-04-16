@@ -1,36 +1,53 @@
-import logger from "../../../utils/logger.js";
+import { validateYouTubePayload } from "../jobValidator.js";
+import { sampledLogger } from "../sampledLogger.js";
 import { persistYouTubeContent } from "../../youtube-creator/services/youtubeSyncService.js";
 
 /**
- * YouTube Sync Processor
- * 
+ * 📺 YOUTUBE SYNC PROCESSOR
+ *
  * Consumes jobs from the `youtube-sync` queue.
- * This worker takes the heavy lifting of mapping YouTube data, downloading thumbnails, 
- * uploading them to Cloudinary, and saving to Prisma, completely out of the main thread.
+ * Decoupled from BullMQ — this is pure business logic.
+ *
+ * Flow:
+ *  1. Validate payload (fail fast)
+ *  2. Iterate over channels and persist each one
+ *  3. On per-channel failure → fail entire job (triggers BullMQ retry)
  */
 export default async function youtubeSyncProcessor(job) {
-    const { userId, channels } = job.data;
-    
-    logger.info(`⚙️ [WORKER] Processing YouTube Sync job ${job.id} for user ${userId} with ${channels?.length || 0} channels`);
+  const { userId, channels, triggerReason } = job.data;
 
-    if (!userId || !channels || !Array.isArray(channels) || channels.length === 0) {
-        logger.warn(`⚠️ [WORKER] Ignored empty or invalid YouTube Sync job ${job.id}`);
-        return; // Complete without error since there's nothing to process
+  // ── STEP 1: Fail fast on bad payloads ─────────────────────────────────────
+  validateYouTubePayload(job.data);
+
+  sampledLogger.success("YT Sync started", {
+    jobId: job.id,
+    userId,
+    channelCount: channels.length,
+    triggerReason,
+  });
+
+  let processedCount = 0;
+
+  for (const channel of channels) {
+    try {
+      await persistYouTubeContent(userId, channel);
+      processedCount++;
+      await job.updateProgress(Math.round((processedCount / channels.length) * 100));
+    } catch (error) {
+      sampledLogger.error(
+        "YT Sync channel failed",
+        error,
+        { jobId: job.id, userId, channelId: channel.channelId ?? "unknown" }
+      );
+      // Throw so BullMQ triggers retry for the whole job
+      throw new Error(`Channel sync failed: ${error.message}`);
     }
+  }
 
-    let processedCount = 0;
-
-    for (const channel of channels) {
-        try {
-            // Re-use the battle-tested service logic, but now it runs safely in the background
-            await persistYouTubeContent(userId, channel);
-            processedCount++;
-        } catch (error) {
-            logger.error(`❌ [WORKER] Failed to persist channel ${channel.channelId || 'unknown'} in job ${job.id}: ${error.message}`);
-            // We throw here so BullMQ knows this specific job failed and will trigger its retry logic
-            throw new Error(`Channel sync failed: ${error.message}`);
-        }
-    }
-
-    logger.info(`✅ [WORKER] Completed YouTube Sync job ${job.id}. Processed ${processedCount}/${channels.length} channels.`);
+  sampledLogger.success("YT Sync completed", {
+    jobId: job.id,
+    userId,
+    processed: processedCount,
+    total: channels.length,
+  });
 }

@@ -2,7 +2,7 @@ import prisma from "../../config/prisma.js";
 import storage from "./storage.service.js";
 import { buildS3Key } from "./providers/s3/s3.utils.js";
 import { STORAGE_FOLDERS } from "./providers/s3/s3.constants.js";
-import { mediaQueue } from "../workers/queues.js";
+import { addMediaJob } from "../workers/queues.js";
 import logger from "../../utils/logger.js";
 
 /**
@@ -80,13 +80,8 @@ export const confirmUpload = async (req, res) => {
       data: { status: "PROCESSING" },
     });
 
-    // Enqueue background processing job
-    await mediaQueue.add("process-media", {
-      mediaId,
-      userId,
-      key: media.storageKey,
-      type: media.type,
-    });
+    // Enqueue with helper — handles dedup (jobId) + per-user rate limit
+    await addMediaJob(mediaId, media.storageKey, userId, media.type);
 
     res.json({
       success: true,
@@ -94,6 +89,9 @@ export const confirmUpload = async (req, res) => {
       status: "PROCESSING",
     });
   } catch (error) {
+    if (error.message?.includes("Rate limit exceeded")) {
+      return res.status(429).json({ success: false, message: error.message });
+    }
     logger.error(`❌ [MEDIA_API] confirmUpload failure: ${error.message}`);
     res.status(500).json({ success: false, message: "Failed to start processing" });
   }

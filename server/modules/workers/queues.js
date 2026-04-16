@@ -1,65 +1,145 @@
 import "../../config/env.js";
-import { Queue } from "bullmq";
-import Redis from "ioredis";
+import { getRedisConnection } from "./connection.js";
+import { createQueue } from "./queueFactory.js";
+import logger from "../../utils/logger.js";
 
-// Centralized Redis Connection Helper for BullMQ
-const getRedisConnection = () => {
-    let redisUrl = process.env.REDIS_URL;
-    const redisToken = process.env.REDIS_TOKEN;
+/**
+ * 📦 CENTRALIZED QUEUE REGISTRY
+ *
+ * All queues are defined here. Application code imports queue
+ * HELPER FUNCTIONS from this file — not the raw queue objects.
+ *
+ * Helper functions enforce:
+ *  - Job deduplication (via jobId)
+ *  - Per-user rate limiting
+ *  - Debounce windows (YouTube sync)
+ *  - Correct payload structure (IDs and keys only, no buffers)
+ */
 
-    if (!redisUrl) return null;
-
-    if (redisUrl.startsWith("https://") && redisToken) {
-        const host = redisUrl.replace("https://", "");
-        redisUrl = `rediss://default:${redisToken}@${host}:6379`;
-    }
-
-    const conn = new Redis(redisUrl, {
-        maxRetriesPerRequest: null,
-        connectTimeout: 10000,
-    });
-
-    // 🛡️ [RESILIENCE] Mute BullMQ primary connection errors
-    conn.on("error", (err) => {
-        // Only log if it's not a standard connection refusal, or keep it quiet for local dev
-        if (err.code !== 'ECONNREFUSED') {
-            console.error(`[BullMQ-Redis] Error: ${err.message}`);
-        }
-    });
-
-    return conn;
+// ─── PRIORITY MATRIX ──────────────────────────────────────────────────────────
+// Lower number = Higher priority in BullMQ
+export const PRIORITY = {
+  CRITICAL: 1,    // User-triggered, blocking (e.g., payment, profile upload)
+  HIGH: 2,        // Time-sensitive media (reel processing)
+  MEDIUM: 3,      // Background syncs (YouTube)
+  LOW: 5,         // Analytics, batch jobs
+  BACKGROUND: 10, // Cleanup, archiving
 };
 
-export const connection = getRedisConnection();
+// ─── QUEUE DEFINITIONS ────────────────────────────────────────────────────────
 
 /**
  * YouTube Sync Queue
- * Used to dispatch heavy image/video persistence tasks out of the main thread.
+ * Sync is non-urgent — aggressive cleanup, medium priority
  */
-export const youtubeSyncQueue = connection ? new Queue("youtube-sync", {
-    connection,
-    defaultJobOptions: {
-        attempts: 3,
-        backoff: { type: "exponential", delay: 5000 }, 
-        removeOnComplete: true, 
-        removeOnFail: { count: 1000 }, 
-    }
-}) : null;
+export const youtubeSyncQueue = createQueue("youtube-sync", {
+  attempts: 4,
+  backoff: { type: "exponential", delay: 5000 }, // 5s → 10s → 20s → 40s
+  removeOnComplete: { age: 300, count: 200 },     // Keep 5 min for debugging
+  removeOnFail: { age: 86400, count: 50 },        // Keep failures 24h
+});
 
 /**
- * 📦 Media Processing Queue
- * Handles image/video optimization and metadata extraction.
+ * Media Processing Queue
+ * Media is user-visible — keep some history, higher priority
  */
-export const mediaQueue = connection ? new Queue("media-processing", {
-    connection,
-    defaultJobOptions: {
-        attempts: 3,
-        backoff: { type: "exponential", delay: 5000 },
-        removeOnComplete: true,
-        removeOnFail: 100,
-    }
-}) : null;
+export const mediaQueue = createQueue("media-processing", {
+  attempts: 3,
+  backoff: { type: "exponential", delay: 2000 }, // 2s → 4s → 8s
+  removeOnComplete: { age: 60, count: 500 },     // Delete after 60s
+  removeOnFail: { age: 3600, count: 100 },       // Keep failures 1h
+});
 
-// 🛡️ [RESILIENCE] Prevent Queue errors from crashing the process
-if (youtubeSyncQueue) youtubeSyncQueue.on("error", () => {});
-if (mediaQueue) mediaQueue.on("error", () => {});
+// ─── HELPER: YOUTUBE SYNC ENQUEUER ────────────────────────────────────────────
+
+const DEBOUNCE_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
+/**
+ * Schedule a YouTube sync with built-in debounce.
+ * If the same user triggers a sync multiple times in 15 minutes,
+ * only ONE job is created. BullMQ silently ignores duplicates.
+ *
+ * @param {string} userId
+ * @param {object[]} channels
+ * @param {string} triggerReason - "manual" | "scheduled"
+ */
+export async function scheduleYouTubeSync(userId, channels, triggerReason = "manual") {
+  if (!youtubeSyncQueue) {
+    logger.warn("[Queue] youtubeSyncQueue unavailable — Redis not connected.");
+    return null;
+  }
+
+  // 15-minute time-bucket deduplication
+  const windowBucket = Math.floor(Date.now() / DEBOUNCE_WINDOW_MS);
+  const jobId = `yt_sync_${userId}_${windowBucket}`;
+
+  const job = await youtubeSyncQueue.add(
+    "sync-youtube",
+    { userId, channels, triggerReason, requestedAt: Date.now() },
+    {
+      jobId,  // Duplicate jobs within the same 15-min window are silently ignored
+      priority: triggerReason === "manual" ? PRIORITY.MEDIUM : PRIORITY.LOW,
+    }
+  );
+
+  logger.info(`📅 [Queue] YouTube Sync scheduled. JobId: ${jobId}`);
+  return job;
+}
+
+// ─── HELPER: MEDIA JOB ENQUEUER ───────────────────────────────────────────────
+
+const RATE_LIMIT_WINDOW_SECONDS = 60;
+const RATE_LIMIT_MAX_PER_WINDOW = 10;
+
+/**
+ * Add a media processing job with deduplication and per-user rate limiting.
+ * Rate limit: max 10 uploads per 60 seconds per user.
+ *
+ * @param {string} mediaId
+ * @param {string} s3Key       - S3 object key (NOT the buffer)
+ * @param {string} userId
+ * @param {string} type        - "IMAGE" | "VIDEO"
+ * @param {number} priority    - Use PRIORITY constants
+ */
+export async function addMediaJob(mediaId, s3Key, userId, type = "IMAGE", priority = PRIORITY.HIGH) {
+  if (!mediaQueue) {
+    logger.warn("[Queue] mediaQueue unavailable — Redis not connected.");
+    return null;
+  }
+
+  // ── Per-user rate limit enforcement ────────────────────────────────────────
+  const connection = getRedisConnection();
+  if (connection) {
+    const rateLimitKey = `rate:media:${userId}`;
+    const current = await connection.incr(rateLimitKey);
+    if (current === 1) {
+      await connection.expire(rateLimitKey, RATE_LIMIT_WINDOW_SECONDS);
+    }
+    if (current > RATE_LIMIT_MAX_PER_WINDOW) {
+      throw new Error(
+        `Rate limit exceeded: max ${RATE_LIMIT_MAX_PER_WINDOW} uploads per minute. Please wait.`
+      );
+    }
+  }
+
+  // ── Enqueue with deduplication via jobId ───────────────────────────────────
+  const job = await mediaQueue.add(
+    "process-media",
+    {
+      mediaId,
+      key: s3Key,       // S3 key reference — NOT the buffer
+      userId,
+      type,
+      requestedAt: Date.now(),
+    },
+    {
+      jobId: `media_${mediaId}`, // Same mediaId = same jobId = dedup
+      priority,
+    }
+  );
+
+  return job;
+}
+
+// ─── EXPORTS ──────────────────────────────────────────────────────────────────
+export const connection = getRedisConnection();
