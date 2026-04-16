@@ -13,12 +13,13 @@ export const S3_REGION = process.env.AWS_REGION;
  * 📂 PRODUCTION FOLDER STRUCTURE
  */
 export const STORAGE_FOLDERS = {
-  AVATARS: "profile-photos",           // User profile pictures
-  THUMBNAILS: "creators/thumbnails",   // YouTube/Video thumbnails
-  PORTFOLIO: "creators/portfolio",     // Creator asset uploads
-  UPLOADS: "temp/uploads",             // Temporary landing for user uploads
-  DRAFTS: "temp/drafts",               // Saved but unpublished content
-  FINAL_OUTPUTS: "protected/deliverables" // Client-specific content (Requires Signed URLs)
+  RAW: "uploads/raw",                 // Original uploads (untouched)
+  IMAGES: "uploads/processed/images", // Optimized image variants
+  VIDEOS: "uploads/processed/videos", // Transcoded video variants
+  AVATARS: "uploads/avatars",         // User profile pictures
+  THUMBNAILS: "creators/thumbnails",
+  PORTFOLIO: "creators/portfolio",
+  DRAFTS: "temp/drafts",
 };
 
 /**

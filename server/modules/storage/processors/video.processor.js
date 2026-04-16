@@ -28,9 +28,11 @@ export const processVideo = async (rawBuffer, userId, mediaId) => {
     logger.info(`🎥 [VIDEO-PROCESSOR] Starting: ${mediaId}`);
     
     // 1. Write buffer to disk (FFmpeg needs a file path)
+    logger.info(`💾 [VIDEO] Buffering raw stream to disk...`);
     fs.writeFileSync(inputPath, rawBuffer);
 
     // 2. Transcode & Compress & Generate Thumbnail (Parallel)
+    logger.info(`🔥 [FFMPEG] Starting Transcode Engine (720px H.264 optimization)...`);
     const compressionPromise = new Promise((resolve, reject) => {
       ffmpeg(inputPath)
         .output(outputPath)
@@ -40,11 +42,15 @@ export const processVideo = async (rawBuffer, userId, mediaId) => {
         .videoBitrate("2000k")
         .outputOptions("-crf 23") // Good balance of quality/size
         .outputOptions("-preset fast")
-        .on("end", resolve)
+        .on("end", () => {
+          logger.info(`   🎬 [FFMPEG] Optimization complete.`);
+          resolve();
+        })
         .on("error", reject)
         .run();
     });
 
+    logger.info(`🖼️ [FFMPEG] Extracting high-res Reel thumbnail...`);
     const thumbnailPromise = new Promise((resolve, reject) => {
         ffmpeg(inputPath)
           .screenshots({
@@ -53,13 +59,17 @@ export const processVideo = async (rawBuffer, userId, mediaId) => {
             folder: path.dirname(thumbPath),
             size: "720x1280", // Vertical Reel format
           })
-          .on("end", resolve)
+          .on("end", () => {
+            logger.info(`   📸 [FFMPEG] Thumbnail captured.`);
+            resolve();
+          })
           .on("error", reject);
       });
 
     await Promise.all([compressionPromise, thumbnailPromise]);
 
     // 3. Extract Metadata (Dimensions and Duration) using ffprobe
+    logger.info(`📡 [FFPROBE] Probing final deliverables...`);
     const metadataPromise = new Promise((resolve) => {
       ffmpeg.ffprobe(outputPath, (err, metadata) => {
         if (err) {
@@ -80,9 +90,10 @@ export const processVideo = async (rawBuffer, userId, mediaId) => {
     const metadata = await metadataPromise;
 
     // 4. Upload to S3
-    const videoKey = buildS3Key("optimized.mp4", STORAGE_FOLDERS.VIDEOS, `${userId}/${mediaId}`);
-    const thumbKey = buildS3Key("thumbnail.jpg", STORAGE_FOLDERS.VIDEOS, `${userId}/${mediaId}`);
+    const videoKey = buildS3Key("optimized", STORAGE_FOLDERS.VIDEOS, userId, mediaId);
+    const thumbKey = buildS3Key("thumbnail", STORAGE_FOLDERS.VIDEOS, userId, mediaId);
 
+    logger.info(`📦 [S3] Storing high-performance video variants...`);
     await Promise.all([
       storage.uploadObject(fs.readFileSync(outputPath), videoKey, { contentType: "video/mp4" }),
       storage.uploadObject(fs.readFileSync(thumbPath), thumbKey, { contentType: "image/jpeg" })

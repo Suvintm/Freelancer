@@ -39,27 +39,33 @@ export const processImage = async (rawBuffer, userId, mediaId) => {
 
     // 1. Extract Metadata (Dimensions and Size)
     const metadata = await sharp(rawBuffer).metadata();
-    const { width, height, size } = metadata;
+    const { width, height, size, format } = metadata;
+    logger.info(`📸 [SHARP] Format: ${format.toUpperCase()} | Dimensions: ${width}x${height} | Size: ${(size / 1024).toFixed(2)}KB`);
+    if (format === 'heic') logger.info('💡 [SHARP] Converting HEIC to optimized webp format...');
 
     // 2. Generate Blurhash (Premium Feature)
+    logger.info(`✨ [BLURHASH] Generating elite visual placeholder...`);
     const blurhash = await generateBlurhash(rawBuffer);
 
     const variants = {};
     const pipeline = sharp(rawBuffer).rotate().webp({ quality: 80 });
 
     // 3. Generate Variants
+    logger.info(`🎨 [VARIANTS] Generating 3 optimized versions (Instagram Style)...`);
     const variantPromises = Object.entries(VARIANT_SIZES).map(async ([name, width]) => {
+      logger.info(`   🚜 Resizing -> ${name} (${width}px)...`);
       const resizedBuffer = await pipeline
         .clone()
         .resize(width, null, { withoutEnlargement: true })
         .toBuffer();
 
-      const key = buildS3Key(`${name.toLowerCase()}.webp`, STORAGE_FOLDERS.IMAGES, `${userId}/${mediaId}`);
+      const key = buildS3Key(name.toLowerCase(), STORAGE_FOLDERS.IMAGES, userId, mediaId);
       await storage.uploadObject(resizedBuffer, key, { contentType: "image/webp" });
       variants[name.toLowerCase()] = key;
     });
 
     await Promise.all(variantPromises);
+    logger.info(`✅ [PROCESSOR] Image processing complete for: ${mediaId}`);
 
     return { 
       variants, 

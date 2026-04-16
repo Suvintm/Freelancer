@@ -63,6 +63,23 @@ export const useSocketStore = create<SocketStore>((set, get) => ({
       }
     });
 
+    // 📊 [MEDIA] Progress & Status Handlers
+    socket.on('media:progress', (data: { mediaId: string; progress: number }) => {
+      const { useUploadStore } = require('./useUploadStore');
+      useUploadStore.getState().updateProgress(data.progress);
+    });
+
+    socket.on('media:status', (data: { mediaId: string; status: string; error?: string }) => {
+      const { useUploadStore } = require('./useUploadStore');
+      if (data.status === 'READY') {
+        useUploadStore.getState().setSuccess('Post Ready! ✅');
+      } else if (data.status === 'FAILED') {
+        useUploadStore.getState().setFailed(data.error);
+      } else if (data.status === 'PROCESSING') {
+        useUploadStore.getState().setProcessing();
+      }
+    });
+
     set({ socket });
   },
 

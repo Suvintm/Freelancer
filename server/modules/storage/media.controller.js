@@ -30,7 +30,9 @@ export const getUploadUrl = async (req, res) => {
     });
 
     // 2. Generate unique S3 key for RAW storage
-    const rawKey = buildS3Key(filename, STORAGE_FOLDERS.RAW, userId);
+    const originalExt = filename.split(".").pop();
+    logger.info(`🛰️ [MEDIA_API] Generating Signed URL for original.${originalExt}`);
+    const rawKey = buildS3Key("original", STORAGE_FOLDERS.RAW, userId, media.id, originalExt);
 
     // 3. Generate Signed PUT URL (valid for 5 mins)
     const signedUrl = await storage.getSignedUrl(rawKey, { 

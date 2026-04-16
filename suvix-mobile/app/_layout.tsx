@@ -169,7 +169,7 @@ function InitialRoot() {
       if (isNavigating.current) return;
 
       const currentSegment = segments[0];
-      const inAuthGroup = currentSegment === '(tabs)' || currentSegment === 'notifications' || currentSegment === 'creators';
+      const inAuthGroup = currentSegment === '(tabs)' || currentSegment === 'notifications' || currentSegment === 'creators' || currentSegment === 'create-post';
       const inOnboarding =
         currentSegment === 'role-selection' ||
         currentSegment === 'subcategory-selection' ||
@@ -270,8 +270,9 @@ function InitialRoot() {
       <Stack.Screen name="role-selection" />
       <Stack.Screen name="subcategory-selection" />
       <Stack.Screen name="youtube-connect" />
+      <Stack.Screen name="create-post" />
       <Stack.Screen name="(tabs)" />
-    </Stack>
+      </Stack>
   );
 }
 

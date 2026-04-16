@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-dotenv.config();
+dotenv.config(); // Triggering restart for Prisma Client update
 
 import "./config/env.js";
 import express from "express";

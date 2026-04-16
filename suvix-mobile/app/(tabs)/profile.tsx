@@ -13,6 +13,8 @@ import {
 import { useTheme } from '../../src/context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // Modules
 import YouTubeCreatorProfile from '../../src/modules/creators/profiles/YouTubeCreatorProfile';
@@ -37,6 +39,7 @@ export default function ProfileIndex() {
   const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
   const { user, isLoadingUser, isAuthenticated } = useAuthStore();
+  const router = useRouter();
 
   // Determine which module to load based on user metadata
   const activeModule = React.useMemo(() => {
@@ -88,6 +91,15 @@ export default function ProfileIndex() {
     <View style={{ flex: 1, backgroundColor: theme.primary }}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <ActiveProfileModule />
+      
+      {/* 🚀 FLOAT ACTION: Create Post */}
+      <TouchableOpacity 
+        style={[styles.fab, { backgroundColor: theme.accent }]} 
+        onPress={() => router.push('/create-post')}
+        activeOpacity={0.8}
+      >
+        <MaterialCommunityIcons name="plus" size={30} color="white" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -217,7 +229,22 @@ const styles = StyleSheet.create({
   },
   gridItem: {
     width: '33.15%',
-    aspectRatio: 1,
     borderRadius: 0,
+    aspectRatio: 1,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 100,
+    right: 25,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
   },
 });
