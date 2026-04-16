@@ -46,9 +46,20 @@ export const youtubeSyncQueue = connection ? new Queue("youtube-sync", {
     }
 }) : null;
 
-// 🛡️ [RESILIENCE] Prevent Queue errors from crashing the process
-if (youtubeSyncQueue) {
-    youtubeSyncQueue.on("error", () => {}); // Mute queue connection errors
-}
+/**
+ * 📦 Media Processing Queue
+ * Handles image/video optimization and metadata extraction.
+ */
+export const mediaQueue = connection ? new Queue("media-processing", {
+    connection,
+    defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: "exponential", delay: 5000 },
+        removeOnComplete: true,
+        removeOnFail: 100,
+    }
+}) : null;
 
-// Add more queues here as needed in the future (e.g., emailQueue, analyticsQueue)
+// 🛡️ [RESILIENCE] Prevent Queue errors from crashing the process
+if (youtubeSyncQueue) youtubeSyncQueue.on("error", () => {});
+if (mediaQueue) mediaQueue.on("error", () => {});

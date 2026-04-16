@@ -2,50 +2,45 @@ import { Worker } from "bullmq";
 import logger from "../../utils/logger.js";
 import { connection } from "./queues.js";
 import youtubeSyncProcessor from "./processors/youtubeSyncProcessor.js";
+import mediaProcessor from "./processors/mediaProcessor.js";
 
 const workers = [];
 
 if (connection) {
-    logger.info("🚀 [WORKERS] Initializing BullMQ Background Workers...");
+    logger.info("🚀 [WORKERS] Initializing BullMQ Background Workers Hub...");
 
     // 1. YouTube Sync Worker
-    // Bind the youtube-sync queue to its designated processor
     const syncWorker = new Worker("youtube-sync", youtubeSyncProcessor, {
         connection,
-        concurrency: 5, // Process up to 5 YouTube channels simultaneously
-        
-        // 🛡️ PRODUCTION OPTIMIZATION (Upstash Metered Redis)
-        // These settings reduce the frequency of Redis polls which save your 500k/day limit.
-        drainDelay: 60,       // If queue is empty, wait 60 seconds before checking again (Idle period)
-        stalledInterval: 60000, // Check for "frozen" jobs every 60s instead of every 1s
-        lockDuration: 60000,    // Keep the job locked for 60s to prevent multiple checks
+        concurrency: 5, 
+        drainDelay: 60,
+        stalledInterval: 60000,
+        lockDuration: 60000,
     });
 
-    syncWorker.on("completed", (job) => {
-        logger.debug(`[BullMQ] Processed Job ${job.id} on queue youtube-sync safely processed.`);
+    // 2. Media Processing Worker
+    const mediaWorker = new Worker("media-processing", mediaProcessor, {
+      connection,
+      concurrency: 2, // Standard image/video processing concurrency
+      drainDelay: 10,  // Faster response for user uploads
     });
 
-    syncWorker.on("failed", (job, err) => {
-        logger.error(`[BullMQ] Job ${job.id} failed: ${err.message}`);
-    });
+    // Event Logging
+    syncWorker.on("completed", (job) => logger.debug(`[BullMQ] YT Sync Job ${job.id} done.`));
+    syncWorker.on("failed", (job, err) => logger.error(`[BullMQ] YT Sync Job ${job.id} failed: ${err.message}`));
 
-    // 🛡️ [RESILIENCE] Prevent Worker errors from crashing the process
-    syncWorker.on("error", (err) => {
-        // Mute local ECONNREFUSED spam
-        if (err.code !== 'ECONNREFUSED') {
-            logger.error(`[BullMQ-Worker] Error: ${err.message}`);
-        }
-    });
+    mediaWorker.on("completed", (job) => logger.info(`✅ [BullMQ] Media Job ${job.id} processed successfully.`));
+    mediaWorker.on("failed", (job, err) => logger.error(`❌ [BullMQ] Media Job ${job.id} failed: ${err.message}`));
 
-    workers.push(syncWorker);
+    workers.push(syncWorker, mediaWorker);
 
-    logger.info("✅ [WORKERS] Background Workers are active and listening for jobs.");
+    logger.info("✅ [WORKERS] All Background Workers Active (YouTube + Media).");
 } else {
     logger.warn("⚠️ [WORKERS] Redis connection missing. Background Workers will NOT start.");
 }
 
 /**
- * Graceful shutdown handling for Microservice deployments
+ * Graceful shutdown handling
  */
 const shutdown = async () => {
     logger.info("🛑 [WORKERS] Shutting down workers gracefully...");

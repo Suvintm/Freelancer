@@ -2,7 +2,7 @@ import prisma from "../../config/prisma.js";
 import storage from "./storage.service.js";
 import { buildS3Key } from "./providers/s3/s3.utils.js";
 import { STORAGE_FOLDERS } from "./providers/s3/s3.constants.js";
-import { mediaQueue } from "./queue/media.queue.js";
+import { mediaQueue } from "../workers/queues.js";
 import logger from "../../utils/logger.js";
 
 /**
