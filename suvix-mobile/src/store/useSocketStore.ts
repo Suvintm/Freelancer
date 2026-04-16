@@ -69,12 +69,34 @@ export const useSocketStore = create<SocketStore>((set, get) => ({
       useUploadStore.getState().updateProgress(data.progress);
     });
 
-    socket.on('media:status', (data: { mediaId: string; status: string; error?: string }) => {
+    socket.on('media:status', async (data: { mediaId: string; status: string; error?: string; type?: string }) => {
       const { useUploadStore } = require('./useUploadStore');
+      const Notifications = require('expo-notifications');
+
       if (data.status === 'READY') {
         useUploadStore.getState().setSuccess('Post Ready! ✅');
+        
+        // 🔔 [NOTIFICATION] Trigger local OS alert
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "Success! 🎉",
+            body: `Your ${data.type?.toLowerCase() || 'post'} is now live and ready to view.`,
+            data: { mediaId: data.mediaId, type: 'MEDIA_READY' },
+          },
+          trigger: null, // show immediately
+        });
       } else if (data.status === 'FAILED') {
         useUploadStore.getState().setFailed(data.error);
+        
+        // ⚠️ [NOTIFICATION] Notify user of failure
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "Processing Failed ❌",
+            body: "There was an issue optimizing your media. Please try again.",
+            data: { mediaId: data.mediaId, type: 'MEDIA_FAILED' },
+          },
+          trigger: null,
+        });
       } else if (data.status === 'PROCESSING') {
         useUploadStore.getState().setProcessing();
       }

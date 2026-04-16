@@ -14,6 +14,7 @@ import {
   Alert 
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSocketStore } from '../../../store/useSocketStore';
 import { useProfilePosts } from '../../../hooks/useProfilePosts';
 import { useProfileReels } from '../../../hooks/useProfileReels';
 import { ContentGrid } from '../content/ContentGrid';
@@ -40,6 +41,7 @@ export const ProfileContentTabs: React.FC<ProfileContentTabsProps> = ({
 }) => {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(extraTabs.length > 0 ? extraTabs[0] : 'POSTS');
+  const { socket } = useSocketStore();
 
   // 🎣 MEDIA HOOKS
   const { 
@@ -59,6 +61,23 @@ export const ProfileContentTabs: React.FC<ProfileContentTabsProps> = ({
     isLoading: isLoadingReels,
     refetch: refetchReels
   } = useProfileReels(userId);
+
+  // 📡 [REAL-TIME] Listen for processing updates
+  React.useEffect(() => {
+    if (!socket) return;
+
+    socket.on('media:status', (data: { status: string }) => {
+      if (data.status === 'READY') {
+        console.log('📡 [SOCKET] Media READY received, refreshing grid...');
+        refetchPosts();
+        refetchReels();
+      }
+    });
+
+    return () => {
+      socket.off('media:status');
+    };
+  }, [socket, refetchPosts, refetchReels]);
 
   const posts = postData?.pages.flatMap(page => page.items) || [];
   const reels = reelData?.pages.flatMap(page => page.items) || [];

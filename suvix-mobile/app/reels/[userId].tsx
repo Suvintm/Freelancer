@@ -83,17 +83,25 @@ export default function ReelFeedScreen() {
     }
   }).current;
 
+  // 📡 [STABILITY] Only show fullscreen loader if we have NO data at all.
   if (isLoading && reels.length === 0) {
       return (
           <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
               <ActivityIndicator color="white" size="large" />
+              <Text style={{ color: 'rgba(255,255,255,0.4)', marginTop: 15, fontSize: 12 }}>
+                Loading Premium Reels...
+              </Text>
           </View>
       );
   }
 
+  const safeInitialIndex = initialIndex && reels.length > parseInt(initialIndex as string) 
+    ? parseInt(initialIndex as string) 
+    : 0;
+
   return (
     <View style={styles.container}>
-      {/* BACK BUTTON */}
+      {/* 🔝 BACK NAVIGATION */}
       <TouchableOpacity 
         style={[styles.backButton, { top: insets.top + 10 }]} 
         onPress={() => router.back()}
@@ -112,8 +120,11 @@ export default function ReelFeedScreen() {
         decelerationRate="fast"
         showsVerticalScrollIndicator={false}
         onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
-        initialScrollIndex={initialIndex && reels.length > parseInt(initialIndex as string) ? parseInt(initialIndex as string) : 0}
+        viewabilityConfig={{ 
+          itemVisiblePercentThreshold: 50,
+          minimumViewTime: 100
+        }}
+        initialScrollIndex={safeInitialIndex}
         getItemLayout={(data, index) => ({
           length: height,
           offset: height * index,

@@ -100,7 +100,7 @@ api.interceptors.response.use(
         if (!refreshToken) throw new Error('No refresh token available');
 
         console.log('🔄 [API] Attempting seamless session recovery...');
-        const res = await axios.post(`${await resolveApiUrl()}/auth/refresh-token`, { 
+        const res = await axios.post(`${API_BASE_URL}/auth/refresh-token`, { 
           refreshToken 
         });
 

@@ -19,7 +19,7 @@ export const getProfilePosts = async (targetUserId, cursor = null) => {
     where: {
       userId: targetUserId,
       visibility: "PUBLIC",
-      isReel: false, // Standard Posts tab
+      // Removed isReel filter to show both Posts and Reels in the unified grid
     },
     include: {
       media: {

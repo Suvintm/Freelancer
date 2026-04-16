@@ -38,7 +38,13 @@ export const ContentCard: React.FC<ContentCardProps> = ({ item, mode = 'grid', o
       ]}
     >
       {item.thumbnail && !item.isProcessing ? (
-        <Image source={{ uri: item.thumbnail }} style={styles.image} />
+        <Image 
+          source={{ uri: item.thumbnail }} 
+          style={styles.image} 
+          onError={(e) => {
+            console.error(`🖼️ [BLACK-SCREEN-DIAGNOSTIC] | ID: ${item.id} | URL: ${item.thumbnail} | Error:`, e.nativeEvent.error);
+          }}
+        />
       ) : (
         <View style={styles.placeholderContainer}>
           <ActivityIndicator size="small" color={theme.accent} />
