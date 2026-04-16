@@ -169,7 +169,14 @@ function InitialRoot() {
       if (isNavigating.current) return;
 
       const currentSegment = segments[0];
-      const inAuthGroup = currentSegment === '(tabs)' || currentSegment === 'notifications' || currentSegment === 'creators' || currentSegment === 'create-post';
+      const inAuthGroup = 
+        currentSegment === '(tabs)' || 
+        currentSegment === 'notifications' || 
+        currentSegment === 'creators' || 
+        currentSegment === 'create-post' ||
+        currentSegment === 'gallery' ||
+        currentSegment === 'reels' ||
+        currentSegment === 'story';
       const inOnboarding =
         currentSegment === 'role-selection' ||
         currentSegment === 'subcategory-selection' ||
