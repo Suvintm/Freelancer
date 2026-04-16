@@ -345,6 +345,7 @@ enum MediaStatus {
   PENDING
   PROCESSING
   READY
+  RETRYING
   FAILED
 }
 

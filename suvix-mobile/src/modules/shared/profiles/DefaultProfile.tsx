@@ -13,14 +13,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatCount } from '../../../utils/formatters';
 
+import { ProfileContentTabs } from '../../shared/profiles/ProfileContentTabs';
+import { useRouter } from 'expo-router';
+import { Image as ExpoImage } from 'expo-image';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { ActivityIndicator } from 'react-native';
+import { useState } from 'react';
+
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 
 export default function DefaultProfile() {
   const { theme } = useTheme();
   const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
-
-  if (!user) return null;
+  const router = useRouter();
 
   const displayName = user.name || 'SuviX User';
   const username = user.username ? `@${user.username}` : '@suvix_member';
@@ -28,6 +34,7 @@ export default function DefaultProfile() {
   const bioText = `Building with SuviX as ${roleText}.`;
 
   const headerOffset = insets.top + 50;
+
 
   return (
     <View style={[styles.container, { backgroundColor: theme.primary }]}>
@@ -44,10 +51,13 @@ export default function DefaultProfile() {
 
         <View style={[styles.profileWrap, { backgroundColor: theme.primary, borderBottomColor: theme.border }]}>
           <View style={styles.profileRow}>
+            {/* ...Avatar Code... */}
             <View style={styles.avatarContainer}>
-              <Image
+              <ExpoImage
                 source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
                 style={styles.avatar}
+                contentFit="cover"
+                transition={200}
               />
             </View>
 
@@ -62,8 +72,8 @@ export default function DefaultProfile() {
                   <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Following</Text>
                 </View>
                 <View style={styles.miniStat}>
-                  <Text style={[styles.miniStatValue, { color: '#FFFFFF' }]}>0</Text>
-                  <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Posts</Text>
+                  <Text style={[styles.miniStatValue, { color: '#FFFFFF' }]}>PRO</Text>
+                  <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Member</Text>
                 </View>
               </View>
 
@@ -91,20 +101,12 @@ export default function DefaultProfile() {
           </View>
         </View>
 
-        <View style={[styles.sectionHeader, { borderTopColor: theme.border, borderBottomColor: theme.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>POSTS</Text>
-          <Text style={[styles.sectionTitleMuted, { color: theme.textSecondary }]}>REELS</Text>
-          <Text style={[styles.sectionTitleMuted, { color: theme.textSecondary }]}>TAGGED</Text>
-        </View>
-
-        <View style={styles.grid}>
-          <View style={[styles.gridItem, { backgroundColor: theme.secondary }]} />
-          <View style={[styles.gridItem, { backgroundColor: theme.secondary }]} />
-          <View style={[styles.gridItem, { backgroundColor: theme.secondary }]} />
-          <View style={[styles.gridItem, { backgroundColor: theme.secondary }]} />
-          <View style={[styles.gridItem, { backgroundColor: theme.secondary }]} />
-          <View style={[styles.gridItem, { backgroundColor: theme.secondary }]} />
-        </View>
+        {/* 📱 CENTRALIZED MEDIA ENGINE */}
+        <ProfileContentTabs 
+          userId={user.id} 
+          theme={theme} 
+          onRepairSuccess={() => {}}
+        />
       </ScrollView>
     </View>
   );
@@ -192,36 +194,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
-  sectionHeader: {
-    marginTop: 6,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.7,
-  },
-  sectionTitleMuted: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.7,
-  },
-  grid: {
-    marginTop: 2,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: 1,
-  },
-  gridItem: {
-    width: '33.15%',
-    aspectRatio: 1,
-    borderRadius: 0,
+  emptyText: {
+    marginTop: 10,
+    fontSize: 13,
+    fontWeight: '600',
+    opacity: 0.8,
   },
 });

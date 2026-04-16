@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Image, StyleSheet, TouchableOpacity, Text, Dimensions } from 'react-native';
+import { View, Image, StyleSheet, TouchableOpacity, Text, Dimensions, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,6 +15,7 @@ export interface ContentItem {
   type: 'POSTS' | 'REELS' | 'YT VIDEOS' | 'SHORTS';
   views?: string;
   likes?: string;
+  isProcessing?: boolean;
 }
 
 interface ContentCardProps {
@@ -36,7 +37,16 @@ export const ContentCard: React.FC<ContentCardProps> = ({ item, mode = 'grid', o
         isReelsMode ? styles.reelsContainer : styles.gridContainer
       ]}
     >
-      <Image source={{ uri: item.thumbnail }} style={styles.image} />
+      {item.thumbnail && !item.isProcessing ? (
+        <Image source={{ uri: item.thumbnail }} style={styles.image} />
+      ) : (
+        <View style={styles.placeholderContainer}>
+          <ActivityIndicator size="small" color={theme.accent} />
+          <Text style={[styles.placeholderText, { color: theme.textSecondary }]}>
+            {item.isProcessing ? 'Processing' : ''}
+          </Text>
+        </View>
+      )}
       
       {/* Type Indicator Overlays */}
       {!isReelsMode && (
@@ -149,5 +159,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.2)',
     padding: 2,
     borderRadius: 4,
+  },
+  placeholderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#111',
+  },
+  placeholderText: {
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 8,
+    textTransform: 'uppercase',
   }
 });

@@ -6,6 +6,7 @@ import { hashFile, findDuplicate } from "../../storage/processors/dedup.processo
 import { validateMediaPayload } from "../jobValidator.js";
 import { sampledLogger } from "../sampledLogger.js";
 import { emitToUser } from "../../../socket.js";
+import logger from "../../../utils/logger.js";
 
 /**
  * 🎬 MEDIA PROCESSOR
@@ -43,8 +44,10 @@ const mediaProcessor = async (job) => {
     // ── STEP 3: Fetch RAW file from S3 ──────────────────────────────────────
     await job.updateProgress(10);
     emitToUser(userId, "media:progress", { mediaId, progress: 10 });
-    logger.info(`📥 [S3] Downloading raw binary: ${key}`);
+    logger.info(`📥 [S3-FETCH] Downloading raw binary: ${key}`);
     const rawBuffer = await storage.getObject(key);
+    logger.info(`📦 [SIZE] Received ${rawBuffer.length} bytes for Media: ${mediaId}`);
+    
     await job.updateProgress(25);
     emitToUser(userId, "media:progress", { mediaId, progress: 25 });
 
@@ -56,6 +59,7 @@ const mediaProcessor = async (job) => {
     const duplicate = await findDuplicate(hash);
 
     if (duplicate) {
+      logger.info(`♻️ [DEDUP-HIT] Found existing media with hash: ${hash}. Linking to: ${duplicate.id}`);
       sampledLogger.success("Media dedup hit", { mediaId, existingId: duplicate.id });
       results = {
         variants: duplicate.variants,
@@ -70,18 +74,20 @@ const mediaProcessor = async (job) => {
       emitToUser(userId, "media:progress", { mediaId, progress: 90 });
     } else {
       // ── STEP 6: Process fresh content ───────────────────────────────────
+      logger.info(`🔥 [PROCESS] Processing fresh ${type} content for Media: ${mediaId}`);
       if (type === "VIDEO") {
         results = await processVideo(rawBuffer, userId, mediaId);
       } else {
         results = await processImage(rawBuffer, userId, mediaId);
       }
       results.hash = hash;
+      logger.info(`✅ [PROCESS-DONE] Completed processing for Media: ${mediaId}`);
       await job.updateProgress(90);
       emitToUser(userId, "media:progress", { mediaId, progress: 90 });
     }
 
     // ── STEP 7: Update DB — READY ─────────────────────────────────────────
-    logger.info(`💾 [DB] Finalizing media record for: ${mediaId}`);
+    logger.info(`💾 [DB-WRITE] Committing READY status and metadata for: ${mediaId}`);
     await prisma.media.update({
       where: { id: mediaId },
       data: { ...results, status: "READY" },
@@ -90,21 +96,20 @@ const mediaProcessor = async (job) => {
     await job.updateProgress(100);
     emitToUser(userId, "media:status", { mediaId, status: "READY", type });
     const durationMs = Date.now() - startTime;
+    logger.info(`✨ [SUCCESS] Job finished in ${durationMs}ms for Media: ${mediaId}`);
     sampledLogger.success("Media processed", { jobId: job.id, mediaId, type, durationMs });
     return { mediaId, success: true };
 
   } catch (error) {
     // ── STEP 8: Smart failure handling ───────────────────────────────────────
-    // On a retry attempt → set RETRYING so the user knows it's not permanently broken
-    // On the FINAL attempt → FAILED
+    logger.error(`❌ [WORKER-FAIL] Processing failed for Media: ${mediaId}. Error: ${error.stack}`);
+    
     const isFinalAttempt = job.attemptsMade >= (job.opts.attempts ?? 3) - 1;
 
     await prisma.media.update({
       where: { id: mediaId },
       data: {
         status: isFinalAttempt ? "FAILED" : "PROCESSING",
-        // Note: RETRYING is not a Prisma enum value yet.
-        // If you want to show RETRYING: add it to schema.prisma MediaStatus enum.
       },
     });
 

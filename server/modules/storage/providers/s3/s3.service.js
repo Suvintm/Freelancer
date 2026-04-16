@@ -2,7 +2,8 @@ import {
   PutObjectCommand, 
   DeleteObjectCommand, 
   DeleteObjectsCommand,
-  GetObjectCommand
+  GetObjectCommand,
+  ListObjectsV2Command
 } from "@aws-sdk/client-s3";
 import { getSignedUrl as getPresignedUrl } from "@aws-sdk/s3-request-presigner";
 import s3Client from "./s3.config.js";
@@ -23,9 +24,11 @@ export const uploadObject = async (body, key, options = {}) => {
   try {
     const { 
       contentType = "application/octet-stream", 
+      // 🚀 PRODUCTION STRATEGY: 1 year immutable cache by default
       cacheControl = "public, max-age=31536000, immutable" 
     } = options;
 
+    logger.info(`🛰️ [S3-PUT] Uploading ${key} (${body.length} bytes, ${contentType})`);
     const command = new PutObjectCommand({
       Bucket: S3_BUCKET_NAME,
       Key: key,
@@ -35,10 +38,10 @@ export const uploadObject = async (body, key, options = {}) => {
     });
 
     const result = await s3Client.send(command);
-    logger.info(`✅ [S3] Uploaded successfully: ${key}`);
+    logger.info(`✅ [S3-PUT] Success: ${key} (ETag: ${result.ETag})`);
     return { key, etag: result.ETag };
   } catch (error) {
-    logger.error(`❌ [S3] Upload failure: ${error.message}`);
+    logger.error(`❌ [S3-PUT] Failure: ${key}. Error: ${error.stack}`);
     throw error;
   }
 };
@@ -51,6 +54,7 @@ export const uploadObject = async (body, key, options = {}) => {
 export const getSignedUrl = async (key, options = {}) => {
   try {
     const { type = "GET", expiresIn = 3600 } = options;
+    logger.info(`🛰️ [S3-SIGN] Generating ${type} URL for: ${key} (Expires: ${expiresIn}s)`);
     
     const CommandClass = type === "GET" ? GetObjectCommand : PutObjectCommand;
     const command = new CommandClass({
@@ -58,9 +62,11 @@ export const getSignedUrl = async (key, options = {}) => {
       Key: key,
     });
 
-    return await getPresignedUrl(s3Client, command, { expiresIn });
+    const url = await getPresignedUrl(s3Client, command, { expiresIn });
+    logger.info(`🔗 [S3-URL] Generated: ${url.substring(0, 50)}...`);
+    return url;
   } catch (error) {
-    logger.error(`❌ [S3] Signed URL generation failed: ${error.message}`);
+    logger.error(`❌ [S3-SIGN] Failure: ${key}. Error: ${error.stack}`);
     throw error;
   }
 };
@@ -99,11 +105,66 @@ export const deleteObjects = async (keys) => {
 };
 
 /**
+ * Delete an entire "folder" (all objects with a prefix)
+ * Handles pagination for folders containing more than 1,000 files.
+ * @param {string} prefix - The folder path/prefix to delete
+ */
+export const deleteFolder = async (prefix) => {
+  try {
+    if (!prefix) return;
+
+    const folderPrefix = prefix.endsWith("/") ? prefix : `${prefix}/`;
+    let continuationToken = null;
+    let totalDeleted = 0;
+
+    do {
+      // 1. List objects with continuation token support
+      const listCommand = new ListObjectsV2Command({
+        Bucket: S3_BUCKET_NAME,
+        Prefix: folderPrefix,
+        ContinuationToken: continuationToken,
+      });
+
+      const listResponse = await s3Client.send(listCommand);
+      
+      if (!listResponse.Contents || listResponse.Contents.length === 0) {
+        break; 
+      }
+
+      // 2. Batch delete the current page of results (max 1,000)
+      const deleteCommand = new DeleteObjectsCommand({
+        Bucket: S3_BUCKET_NAME,
+        Delete: {
+          Objects: listResponse.Contents.map((obj) => ({ Key: obj.Key })),
+          Quiet: true,
+        },
+      });
+
+      await s3Client.send(deleteCommand);
+      totalDeleted += listResponse.Contents.length;
+
+      // 3. Check if more pages exist
+      continuationToken = listResponse.IsTruncated ? listResponse.NextContinuationToken : null;
+    } while (continuationToken);
+
+    if (totalDeleted > 0) {
+      logger.info(`🗑️ [S3] Recursive Deletion Success: ${folderPrefix} (${totalDeleted} files)`);
+    }
+    
+    return true;
+  } catch (error) {
+    logger.error(`❌ [S3] Recursive Deletion Failure: ${error.message}`);
+    return false;
+  }
+};
+
+/**
  * Fetch an object from S3 as a Buffer
  * @param {string} key - S3 object key
  */
 export const getObject = async (key) => {
   try {
+    logger.info(`🛰️ [S3-GET] Fetching object: ${key}`);
     const command = new GetObjectCommand({
       Bucket: S3_BUCKET_NAME,
       Key: key,
@@ -114,13 +175,18 @@ export const getObject = async (key) => {
       new Promise((resolve, reject) => {
         const chunks = [];
         stream.on("data", (chunk) => chunks.push(chunk));
-        stream.on("error", reject);
+        stream.on("error", (err) => {
+           logger.error(`❌ [S3-STREAM] Error reading stream: ${err.stack}`);
+           reject(err);
+        });
         stream.on("end", () => resolve(Buffer.concat(chunks)));
       });
 
-    return await streamToBuffer(response.Body);
+    const buffer = await streamToBuffer(response.Body);
+    logger.info(`✅ [S3-GET] Success. Received ${buffer.length} bytes for: ${key}`);
+    return buffer;
   } catch (error) {
-    logger.error(`❌ [S3] GetObject failure: ${error.message}`);
+    logger.error(`❌ [S3-GET] Failure: ${key}. Error: ${error.stack}`);
     throw error;
   }
 };
@@ -129,5 +195,6 @@ export default {
   uploadObject,
   getSignedUrl,
   deleteObjects,
+  deleteFolder,
   getObject,
 };

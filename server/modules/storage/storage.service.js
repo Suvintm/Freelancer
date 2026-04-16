@@ -35,6 +35,7 @@ export const {
   uploadObject,
   getSignedUrl,
   deleteObjects,
+  deleteFolder,
   getObject
 } = provider;
 
@@ -42,5 +43,6 @@ export default {
   uploadObject,
   getSignedUrl,
   deleteObjects,
+  deleteFolder,
   getObject
 };

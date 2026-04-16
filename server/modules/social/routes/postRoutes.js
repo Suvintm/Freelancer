@@ -1,6 +1,6 @@
 import express from "express";
 import { authenticate } from "../../../middleware/authMiddleware.js";
-import { createPost, getFeed } from "../controllers/postController.js";
+import { createPost, getFeed, deletePost } from "../controllers/postController.js";
 
 /**
  * 📝 SOCIAL ROUTES
@@ -14,6 +14,7 @@ const router = express.Router();
  * @access  Private
  */
 router.post("/posts", authenticate, createPost);
+router.delete("/posts/:postId", authenticate, deletePost);
 
 /**
  * @route   GET /api/social/feed

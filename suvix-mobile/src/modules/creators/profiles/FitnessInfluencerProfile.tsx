@@ -15,6 +15,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { ProfileContentTabs } from '../../shared/profiles/ProfileContentTabs';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../../../api/client';
 import { useTheme } from '../../../context/ThemeContext';
@@ -23,8 +24,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { formatCount } from '../../../utils/formatters';
 
-import { ContentGrid } from '../../shared/content/ContentGrid';
-import { ContentItem } from '../../shared/content/ContentCard';
 import { SmartText } from '../../shared/content/SmartText';
 
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
@@ -42,19 +41,12 @@ const PROGRAMS = [
   { id: '3', title: 'Stamina & HIIT', duration: '6 Weeks', price: '₹1,999', icon: 'lightning-bolt' },
 ];
 
-const MOCK_CONTENT: ContentItem[] = [
-  { id: 'r1', type: 'REELS', thumbnail: 'https://picsum.photos/id/201/400/711', views: '450K' },
-  { id: 'r2', type: 'REELS', thumbnail: 'https://picsum.photos/id/202/400/711', views: '1.2M' },
-  { id: 'r3', type: 'REELS', thumbnail: 'https://picsum.photos/id/203/400/711', views: '800K' },
-  { id: 'r4', type: 'REELS', thumbnail: 'https://picsum.photos/id/204/400/711', views: '2.5M' },
-  { id: 'p1', type: 'POSTS', thumbnail: 'https://picsum.photos/id/101/400/400' },
-  { id: 'p2', type: 'POSTS', thumbnail: 'https://picsum.photos/id/102/400/400' },
-];
 
 export default function FitnessInfluencerProfile() {
   const { theme } = useTheme();
-  const { user, updateUser } = useAuthStore();
+  const { user, updateUser, fetchUser } = useAuthStore();
   
+
   React.useEffect(() => {
     if (user?.bio) {
       setTempBio(user.bio);
@@ -62,7 +54,6 @@ export default function FitnessInfluencerProfile() {
   }, [user?.bio]);
   const insets = useSafeAreaInsets();
 
-  const [activeTab, setActiveTab] = React.useState('REELS');
   const [isBioModalVisible, setBioModalVisible] = React.useState(false);
   const [tempBio, setTempBio] = React.useState(user?.bio || '');
   const [isSaving, setIsSaving] = React.useState(false);
@@ -171,10 +162,7 @@ export default function FitnessInfluencerProfile() {
     }
   };
 
-  const getFilteredContent = () => {
-    if (activeTab === 'POSTS') return MOCK_CONTENT.filter(it => it.type === 'POSTS');
-    return MOCK_CONTENT.filter(it => it.type === 'REELS');
-  };
+
 
   return (
     <View style={[styles.container, { backgroundColor: theme.primary }]}>
@@ -227,14 +215,17 @@ export default function FitnessInfluencerProfile() {
                   <Text style={[styles.miniStatValue, { color: '#FFFFFF' }]}>{formatCount(user.following)}</Text>
                   <Text style={[styles.miniStatLabel, { color: '#FFFFFF' }]}>Following</Text>
                 </View>
-                <View style={styles.miniStat}>
-                  <Text style={[styles.miniStatValue, { color: '#FFFFFF' }]}>{formatCount(MOCK_CONTENT.length)}</Text>
-                  <Text style={[styles.miniStatLabel, { color: '#FFFFFF' }]}>Posts</Text>
+                <View style={[styles.miniStat, { opacity: 0.8 }]}>
+                  <Text style={[styles.miniStatValue, { color: '#FFFFFF' }]}>PRO</Text>
+                  <Text style={[styles.miniStatLabel, { color: '#FFFFFF' }]}>Elite</Text>
                 </View>
               </View>
 
-              <TouchableOpacity style={[styles.editBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-                 <Text style={[styles.editBtnText, { color: theme.text }]}>Dashboard</Text>
+              <TouchableOpacity 
+                onPress={handleRepairMedia}
+                style={[styles.editBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
+              >
+                 <Text style={[styles.editBtnText, { color: theme.text }]}>Repair Media</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -332,25 +323,21 @@ export default function FitnessInfluencerProfile() {
             </LinearGradient>
           </TouchableOpacity>
 
-          {/* CONTENT TABS */}
-          <View style={[styles.tabBar, { borderBottomColor: theme.border }]}>
-            {['REELS', 'POSTS', 'DIET TIPS'].map((tab) => (
-              <TouchableOpacity 
-                key={tab} 
-                onPress={() => setActiveTab(tab)}
-                style={[styles.tabItem, activeTab === tab && { borderBottomColor: '#2ECC71' }]}
-              >
-                <Text style={[
-                  styles.tabLabel, 
-                  { color: activeTab === tab ? theme.text : theme.textSecondary }
-                ]}>
-                  {tab}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <ContentGrid data={getFilteredContent()} mode={activeTab === 'REELS' ? 'reels' : 'grid'} />
+          {/* 📱 CENTRALIZED MEDIA ENGINE */}
+          <ProfileContentTabs 
+            userId={user.id} 
+            theme={theme} 
+            extraTabs={['DIET TIPS']}
+            onRepairSuccess={() => fetchUser()}
+            renderCustomTab={(tab) => (
+              <View style={{ paddingVertical: 40, alignItems: 'center', opacity: 0.6 }}>
+                 <MaterialCommunityIcons name="nutrition" size={60} color={theme.textSecondary} />
+                 <Text style={{ color: theme.text, marginTop: 15, fontSize: 16, fontWeight: '700' }}>
+                   No diet tips shared yet
+                 </Text>
+              </View>
+            )}
+          />
         </View>
       </ScrollView>
 

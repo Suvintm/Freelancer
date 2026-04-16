@@ -15,17 +15,19 @@ import crypto from "crypto";
  * @param {string} userId - User ID for scoping
  * @param {string} mediaId - Media ID for grouping original + variants
  * @param {string} originalExt - Original extension for RAW files
+ * @param {string} enforcedExt - Force a specific extension (e.g. 'webp')
  * @returns {string} - The sanitized, unique S3 Key
  */
-export const buildS3Key = (name, folder, userId, mediaId, originalExt = null) => {
+export const buildS3Key = (name, folder, userId, mediaId, originalExt = null, enforcedExt = null) => {
   const cleanName = (name || "original")
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "_")
     .substring(0, 30);
   
   // RAW files keep original extension. Processed files use optimized (webp/mp4)
-  let ext = originalExt ? originalExt.replace(".", "") : (folder.includes("video") ? "mp4" : "webp");
-  if (folder.includes("raw") && !originalExt) {
+  let ext = enforcedExt || (originalExt ? originalExt.replace(".", "") : (folder.includes("video") ? "mp4" : "webp"));
+  
+  if (folder.includes("raw") && !originalExt && !enforcedExt) {
      // Safety fallback if no extension provided for raw
      ext = "bin"; 
   }

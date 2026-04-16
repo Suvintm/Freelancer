@@ -14,14 +14,15 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { api } from '../../../api/client';
+import { ProfileContentTabs } from '../../shared/profiles/ProfileContentTabs';
+import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { useTheme } from '../../../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { formatCount } from '../../../utils/formatters';
+import { api } from '../../../api/client';
+import * as ImagePicker from 'expo-image-picker';
 
 const { width } = Dimensions.get('window');
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
@@ -33,7 +34,10 @@ const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 export default function ClientProfile() {
   const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
-  const { user, updateUser } = useAuthStore();
+  const { user, updateUser, fetchUser } = useAuthStore();
+  const router = useRouter();
+
+
 
   const [isBioModalVisible, setBioModalVisible] = React.useState(false);
   const [tempBio, setTempBio] = React.useState(user?.bio || '');
@@ -44,6 +48,7 @@ export default function ClientProfile() {
 
   // 📐 SURGICAL LAYOUT: Match Navbar Offset
   const headerOffset = insets.top + 50;
+
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -117,8 +122,7 @@ export default function ClientProfile() {
   return (
     <View style={[styles.container, { backgroundColor: theme.primary }]}>
       <ScrollView 
-        style={styles.container}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={false} 
         contentContainerStyle={[styles.content, { paddingTop: headerOffset, flexGrow: 1 }]}
       >
         
@@ -166,85 +170,86 @@ export default function ClientProfile() {
                   <Text style={[styles.miniStatValue, { color: theme.text }]}>{formatCount(user.following || 0)}</Text>
                   <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Following</Text>
                 </View>
-                <View style={styles.miniStat}>
-                  <Text style={[styles.miniStatValue, { color: theme.text }]}>0</Text>
-                  <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Posts</Text>
+                <View 
+                  style={[styles.miniStat, { opacity: 0.5 }]}
+                >
+                  <Text style={[styles.miniStatValue, { color: theme.text }]}>PRO</Text>
+                  <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Member</Text>
                 </View>
-              </View>
-
-              <TouchableOpacity 
-                style={[styles.editBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
-                onPress={() => setBioModalVisible(true)}
-              >
-                 <Text style={[styles.editBtnText, { color: theme.text }]}>Edit Profile</Text>
-              </TouchableOpacity>
             </View>
           </View>
+        </View>
 
-          {/* 2. IDENTITY BLOCK */}
+        {/* 2. IDENTITY BLOCK (NAME, BIO) */}
           <View style={[styles.infoBlock, styles.padded]}>
             <View style={styles.nameRow}>
-               <Text style={[styles.name, { color: theme.text }]}>{user.name}</Text>
-               <MaterialCommunityIcons name="shield-check" size={16} color="#007AFF" style={{ marginLeft: 6 }} />
+               <Text style={[styles.name, { color: theme.text }]}>{user.name || 'SuviX Member'}</Text>
+               <MaterialCommunityIcons name="shield-check" size={18} color="#007AFF" style={{ marginLeft: 6 }} />
             </View>
-            <Text style={[styles.roleLabel, { color: '#007AFF' }]}>SUVIX MEMBER</Text>
+            <Text style={[styles.roleLabel, { color: '#007AFF' }]}>CLIENT MEMBER</Text>
             
-            {user.bio ? (
-              <View style={styles.bioWrapper}>
-                <Text style={[styles.bio, { color: theme.textSecondary }]}>{user.bio}</Text>
-                <TouchableOpacity onPress={() => setBioModalVisible(true)} style={styles.bioEditTrigger}>
-                  <MaterialCommunityIcons name="pencil-outline" size={16} color={theme.textSecondary} />
-                </TouchableOpacity>
+            <View style={styles.bioWrapper}>
+               <Text style={[styles.bio, { color: theme.textSecondary }]}>
+                 {user.bio || 'Building with SuviX...'}
+               </Text>
+               <TouchableOpacity onPress={() => setBioModalVisible(true)} style={styles.bioEditTrigger}>
+                  <MaterialCommunityIcons name="pencil-outline" size={16} color={theme.accent} />
+               </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* 📱 CENTRALIZED MEDIA ENGINE */}
+          <ProfileContentTabs 
+            userId={user.id} 
+            theme={theme} 
+            extraTabs={['DASHBOARD']}
+            onRepairSuccess={() => fetchUser()}
+            renderCustomTab={(tab) => (
+              <View>
+                {/* 3. ENTERTAINMENT HUB SECTION */}
+                <View style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>My Entertainment Hub</Text>
+                    <TouchableOpacity>
+                      <Text style={{ color: '#007AFF', fontSize: 13, fontWeight: '600' }}>View All</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
+                    {[1, 2, 3].map((i) => (
+                      <TouchableOpacity key={i} style={[styles.videoCard, { backgroundColor: theme.secondary }]}>
+                        <View style={styles.videoThumbPlaceholder}>
+                           <Ionicons name="play" size={30} color="#fff" />
+                        </View>
+                        <View style={styles.videoInfo}>
+                          <Text style={[styles.videoTitle, { color: theme.text }]} numberOfLines={1}>Saved Content...</Text>
+                          <Text style={[styles.videoSub, { color: theme.textSecondary }]}>Watched 2d ago</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+
+                {/* 4. MANAGEMENT DASHBOARD */}
+                <View style={styles.section}>
+                  <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 12 }]}>Management Dashboard</Text>
+                  <View style={styles.grid}>
+                    {[
+                      { label: 'My Orders', icon: 'wallet-outline' },
+                      { label: 'Messages', icon: 'chat-processing-outline' },
+                      { label: 'Hired Experts', icon: 'account-group-outline' },
+                      { label: 'Settings', icon: 'cog-outline' }
+                    ].map((item, idx) => (
+                      <TouchableOpacity key={idx} style={[styles.gridItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
+                        <MaterialCommunityIcons name={item.icon as any} size={24} color={theme.text} />
+                        <Text style={[styles.gridLabel, { color: theme.text }]}>{item.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
               </View>
-            ) : (
-              <TouchableOpacity onPress={() => setBioModalVisible(true)} style={[styles.addBioBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-                <MaterialCommunityIcons name="pencil-plus-outline" size={18} color={theme.textSecondary} />
-                <Text style={[styles.addBioText, { color: theme.textSecondary }]}>Add profile bio</Text>
-              </TouchableOpacity>
             )}
-          </View>
-        </View>
-
-        {/* 3. ENTERTAINMENT HUB SECTION */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>My Entertainment Hub</Text>
-            <TouchableOpacity>
-              <Text style={{ color: '#007AFF', fontSize: 13, fontWeight: '600' }}>View All</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-            {[1, 2, 3].map((i) => (
-              <TouchableOpacity key={i} style={[styles.videoCard, { backgroundColor: theme.secondary }]}>
-                <View style={styles.videoThumbPlaceholder}>
-                   <Ionicons name="play" size={30} color="#fff" />
-                </View>
-                <View style={styles.videoInfo}>
-                  <Text style={[styles.videoTitle, { color: theme.text }]} numberOfLines={1}>Saved Content...</Text>
-                  <Text style={[styles.videoSub, { color: theme.textSecondary }]}>Watched 2d ago</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* 4. MANAGEMENT DASHBOARD */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 12 }]}>Management Dashboard</Text>
-          <View style={styles.grid}>
-            {[
-              { label: 'My Orders', icon: 'wallet-outline' },
-              { label: 'Messages', icon: 'chat-processing-outline' },
-              { label: 'Hired Experts', icon: 'account-group-outline' },
-              { label: 'Settings', icon: 'cog-outline' }
-            ].map((item, idx) => (
-              <TouchableOpacity key={idx} style={[styles.gridItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-                <MaterialCommunityIcons name={item.icon as any} size={24} color={theme.text} />
-                <Text style={[styles.gridLabel, { color: theme.text }]}>{item.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          />
         </View>
 
         <View style={{ height: 100 }} />
@@ -281,6 +286,9 @@ export default function ClientProfile() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  tabBar: { flexDirection: 'row', borderBottomWidth: 1, paddingHorizontal: 15 },
+  tabItem: { paddingVertical: 12, marginRight: 25, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabLabel: { fontSize: 13, fontWeight: '800', letterSpacing: 0.5 },
   content: { paddingTop: 0, paddingBottom: 40 },
   banner: { height: 100, width: '100%', justifyContent: 'center', alignItems: 'center' },
   bannerOverlay: { opacity: 0.3 },

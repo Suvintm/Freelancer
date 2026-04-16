@@ -1,6 +1,7 @@
 import prisma from "../../../config/prisma.js";
 import logger from "../../../utils/logger.js";
-import { buildCdnUrl } from "../../storage/cdn/cdn.utils.js";
+import { resolveMediaForApi } from "../../../utils/mediaResolver.js";
+import { purgeMediaFiles } from "../../storage/purge.utils.js";
 
 /**
  * 📝 POST CONTROLLER (SOCIAL MODULE)
@@ -102,23 +103,10 @@ export const getFeed = async (req, res) => {
       take: parseInt(limit),
     });
 
-    // 🚀 PRODUCTION REFINEMENT: Transform keys to full CDN URLs
+    // 🚀 PRODUCTION REFINEMENT: Use Centralized Media Resolver
     const transformedPosts = posts.map(post => ({
       ...post,
-      media: post.media.map(m => {
-        const variants = m.variants || {};
-        const fullVariants = {};
-        
-        // Convert relative S3 keys to full CDN URLs
-        Object.entries(variants).forEach(([key, value]) => {
-          fullVariants[key] = buildCdnUrl(value);
-        });
-
-        return {
-          ...m,
-          variants: fullVariants
-        };
-      })
+      media: post.media.map(m => resolveMediaForApi(m))
     }));
 
     res.json({
@@ -132,4 +120,41 @@ export const getFeed = async (req, res) => {
   }
 };
 
-export default { createPost, getFeed };
+/**
+ * @desc    Delete a Post and its Media
+ * @route   DELETE /api/social/posts/:postId
+ */
+export const deletePost = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const userId = req.user.id;
+
+    // 1. Fetch post with media to get keys before DB deletion
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      include: { media: true }
+    });
+
+    if (!post || post.userId !== userId) {
+      return res.status(404).json({ success: false, message: "Post not found or unauthorized" });
+    }
+
+    // 2. PURGE S3 STORAGE (Critical Step)
+    await Promise.all(post.media.map(m => purgeMediaFiles(m)));
+
+    // 3. Delete from Database
+    await prisma.post.delete({
+      where: { id: postId }
+    });
+
+    res.json({
+      success: true,
+      message: "Post and associated media permanently deleted."
+    });
+  } catch (error) {
+    logger.error(`❌ [POST_CTRL] deletePost failure: ${error.message}`);
+    res.status(500).json({ success: false, message: "Failed to delete post" });
+  }
+};
+
+export default { createPost, getFeed, deletePost };

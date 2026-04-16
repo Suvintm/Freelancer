@@ -20,6 +20,7 @@ export const getUploadUrl = async (req, res) => {
     const userId = req.user.id;
 
     // 1. Create PENDING record in DB
+    logger.info(`🛰️ [MEDIA-UPLOAD] Step 1: Creating pending record for user: ${userId}`);
     const media = await prisma.media.create({
       data: {
         userId,
@@ -31,8 +32,8 @@ export const getUploadUrl = async (req, res) => {
 
     // 2. Generate unique S3 key for RAW storage
     const originalExt = filename.split(".").pop();
-    logger.info(`🛰️ [MEDIA_API] Generating Signed URL for original.${originalExt}`);
     const rawKey = buildS3Key("original", STORAGE_FOLDERS.RAW, userId, media.id, originalExt);
+    logger.info(`🛰️ [S3-SIGN] Generating Signed PUT URL. Key: ${rawKey}`);
 
     // 3. Generate Signed PUT URL (valid for 5 mins)
     const signedUrl = await storage.getSignedUrl(rawKey, { 
@@ -46,6 +47,7 @@ export const getUploadUrl = async (req, res) => {
       data: { storageKey: rawKey, mimeType: contentType },
     });
 
+    logger.info(`✅ [MEDIA-API] Initialized. MediaId: ${media.id}`);
     res.json({
       success: true,
       mediaId: media.id,
@@ -53,7 +55,7 @@ export const getUploadUrl = async (req, res) => {
       key: rawKey,
     });
   } catch (error) {
-    logger.error(`❌ [MEDIA_API] getUploadUrl failure: ${error.message}`);
+    logger.error(`❌ [MEDIA-API] getUploadUrl failure: ${error.stack}`);
     res.status(500).json({ success: false, message: "Failed to generate upload URL" });
   }
 };
@@ -67,22 +69,26 @@ export const confirmUpload = async (req, res) => {
   try {
     const { mediaId } = req.body;
     const userId = req.user.id;
+    logger.info(`🔔 [MEDIA-CONFIRM] User ${userId} confirming upload for Media: ${mediaId}`);
 
     const media = await prisma.media.findUnique({
       where: { id: mediaId },
     });
 
     if (!media || media.userId !== userId) {
+      logger.warn(`⚠️ [MEDIA-CONFIRM] Unauthorized or missing media: ${mediaId}`);
       return res.status(404).json({ success: false, message: "Media not found" });
     }
 
     // Update status to PROCESSING
+    logger.info(`🔄 [MEDIA-STATUS] Transitions ${mediaId} to PROCESSING`);
     await prisma.media.update({
       where: { id: mediaId },
       data: { status: "PROCESSING" },
     });
 
     // Enqueue with helper — handles dedup (jobId) + per-user rate limit
+    logger.info(`🚀 [QUEUE] Enqueueing media processing job for: ${mediaId}`);
     await addMediaJob(mediaId, media.storageKey, userId, media.type);
 
     res.json({
@@ -92,9 +98,10 @@ export const confirmUpload = async (req, res) => {
     });
   } catch (error) {
     if (error.message?.includes("Rate limit exceeded")) {
+      logger.warn(`🚫 [RATE-LIMIT] ${userId} exceeded media upload limit`);
       return res.status(429).json({ success: false, message: error.message });
     }
-    logger.error(`❌ [MEDIA_API] confirmUpload failure: ${error.message}`);
+    logger.error(`❌ [MEDIA-API] confirmUpload failure: ${error.stack}`);
     res.status(500).json({ success: false, message: "Failed to start processing" });
   }
 };

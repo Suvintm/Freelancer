@@ -26,9 +26,7 @@ import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { Colors } from '../../../constants/Colors';
 import { formatCount } from '../../../utils/formatters';
 
-import { ContentGrid } from '../../shared/content/ContentGrid';
-import { ContentItem } from '../../shared/content/ContentCard';
-import { SmartText } from '../../shared/content/SmartText';
+import { ProfileContentTabs } from '../../shared/profiles/ProfileContentTabs';
 import { YouTubeVideoCard } from '../components/YouTubeVideoCard';
 import { useRouter } from 'expo-router';
 
@@ -39,19 +37,6 @@ const DIAMOND_BTN = require('../../../../assets/images/playbutton/diamondbtn.png
 
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 
-const MOCK_CONTENT: ContentItem[] = [
-  { id: '1', type: 'POSTS', thumbnail: 'https://picsum.photos/id/101/400/400' },
-  { id: '2', type: 'REELS', thumbnail: 'https://picsum.photos/id/201/400/711', views: '1.2M' },
-  { id: '3', type: 'YT VIDEOS', thumbnail: 'https://picsum.photos/id/301/400/400', views: '450K' },
-  { id: '4', type: 'SHORTS', thumbnail: 'https://picsum.photos/id/401/400/711', views: '2.5M' },
-  { id: '5', type: 'POSTS', thumbnail: 'https://picsum.photos/id/501/400/400' },
-  { id: '6', type: 'REELS', thumbnail: 'https://picsum.photos/id/601/400/711', views: '800K' },
-  { id: '7', type: 'YT VIDEOS', thumbnail: 'https://picsum.photos/id/701/400/400', views: '1M' },
-  { id: '8', type: 'SHORTS', thumbnail: 'https://picsum.photos/id/801/400/711', views: '500K' },
-  { id: '9', type: 'POSTS', thumbnail: 'https://picsum.photos/id/901/400/400' },
-  { id: '10', type: 'REELS', thumbnail: 'https://picsum.photos/id/111/400/711', views: '2.1M' },
-  { id: '11', type: 'SHORTS', thumbnail: 'https://picsum.photos/id/121/400/711', views: '3.4M' },
-];
 
 const { width } = Dimensions.get('window');
 
@@ -60,6 +45,8 @@ export default function YouTubeCreatorProfile() {
   const { user, updateUser, fetchUser, setYoutubeVideos } = useAuthStore();
   const { socket } = useSocketStore();
   const router = useRouter();
+
+  // 🛰️ FETCH PRODUCTION MEDIA
   
   // 🔗 WEB SOCKET: Real-time Surgical Sync Listener
   React.useEffect(() => {
@@ -92,7 +79,6 @@ export default function YouTubeCreatorProfile() {
 
   const insets = useSafeAreaInsets();
 
-  const [activeTab, setActiveTab] = React.useState('YT POSTS');
   const [isBioModalVisible, setBioModalVisible] = React.useState(false);
   const [isSavingBio, setIsSavingBio] = React.useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
@@ -122,13 +108,7 @@ export default function YouTubeCreatorProfile() {
     }
   };
 
-  const getFilteredContent = () => {
-    if (activeTab === 'POSTS') {
-      return MOCK_CONTENT.filter(item => item.type === 'POSTS');
-    }
-    // We handle YT POSTS separately to show the feed
-    return MOCK_CONTENT.filter(item => item.type === activeTab);
-  };
+  
 
   const handleUpdateBio = async (newBio: string) => {
     if (newBio.length > 250) {
@@ -200,7 +180,6 @@ export default function YouTubeCreatorProfile() {
   };
 
 
-  const isReelsTab = activeTab === 'REELS';
 
   return (
     <View style={[styles.container, { backgroundColor: theme.primary }]}>
@@ -259,9 +238,13 @@ export default function YouTubeCreatorProfile() {
                 </View>
               </View>
 
-              <TouchableOpacity style={[styles.editBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
+              <TouchableOpacity 
+                onPress={() => router.push('/dashboard')}
+                style={[styles.editBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
+              >
                  <Text style={[styles.editBtnText, { color: theme.text }]}>Settings</Text>
               </TouchableOpacity>
+              
 
               <View style={styles.miniToolboxRow}>
                 <TouchableOpacity style={[styles.miniToolItem, { backgroundColor: theme.secondary }]}>
@@ -422,28 +405,13 @@ export default function YouTubeCreatorProfile() {
           ))}
 
 
-          {/* Content Tabs */}
-          <View style={[styles.tabBar, { borderBottomColor: theme.border }]}>
-            {['YT POSTS', 'POSTS', 'REELS'].map((tab) => (
-              <TouchableOpacity 
-                key={tab} 
-                onPress={() => setActiveTab(tab)}
-                style={[styles.tabItem, activeTab === tab && { borderBottomColor: theme.accent }]}
-              >
-                <Text style={[
-                  styles.tabLabel, 
-                  { color: activeTab === tab ? theme.text : theme.textSecondary }
-                ]}>
-                  {tab}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          
-          {/* 📱 DYNAMIC CONTENT RENDERER */}
-          <View style={{ marginTop: 10, paddingBottom: 40 }}>
-            {activeTab === 'YT POSTS' ? (
-              // 🎥 YouTube Instagram-Style Feed
+          {/* 📱 CENTRALIZED MEDIA ENGINE */}
+          <ProfileContentTabs 
+            userId={user.id}
+            theme={theme}
+            extraTabs={['YT POSTS']}
+            onRepairSuccess={() => fetchUser()}
+            renderCustomTab={(tab) => (
               <View style={styles.feedContainer}>
                 {user.youtubeVideos && user.youtubeVideos.length > 0 ? (
                   user.youtubeVideos.map((video: any) => (
@@ -461,11 +429,8 @@ export default function YouTubeCreatorProfile() {
                   </View>
                 )}
               </View>
-            ) : (
-              // 🖼️ Standard Grid for Posts/Reels
-              <ContentGrid data={getFilteredContent()} mode={isReelsTab ? 'reels' : 'grid'} />
             )}
-          </View>
+          />
         </View>
     </ScrollView>
 
