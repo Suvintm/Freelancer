@@ -18,6 +18,7 @@ model User {
   is_banned              Boolean         @default(false) @map("is_banned")
   ban_reason             String?         @map("ban_reason")
   is_onboarded           Boolean         @default(false) @map("is_onboarded")
+  token_version          Int             @default(0) @map("token_version")
   created_at             DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at             DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
   received_messages      Message[]       @relation("MessageReceiver")

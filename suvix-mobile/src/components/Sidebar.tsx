@@ -137,7 +137,13 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           <SidebarItem 
             icon="settings-outline" 
             label="Settings" 
-            onPress={() => {}} 
+            onPress={() => handleNavigate('/settings')} 
+            color={palette.text}
+          />
+          <SidebarItem 
+            icon="swap-horizontal-outline" 
+            label="Switch Account" 
+            onPress={() => handleNavigate('/settings')} 
             color={palette.text}
           />
         </View>

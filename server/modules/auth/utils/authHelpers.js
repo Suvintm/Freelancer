@@ -82,19 +82,24 @@ export const resolvePrimaryIdentity = (user) => {
 
 /**
  * HELPER: Generate Production Tokens with Identity Claims
+ * @param {object} user - Full user object from DB (must include token_version)
+ * @param {string} familyId - Unique ID for this token family (for rotation/reuse detection)
+ * @param {string} [deviceId] - Optional device fingerprint for session binding
  */
-export const generateUserTokens = (user, familyId) => {
+export const generateUserTokens = (user, familyId, deviceId = null) => {
   const identity = resolvePrimaryIdentity(user);
   const payload = {
     id: user.id,
     role: user.role,
     categorySlug: identity.categorySlug,
-    isOnboarded: user.is_onboarded
+    isOnboarded: user.is_onboarded,
+    tokenVersion: user.token_version ?? 0, // For "logout all devices" invalidation
+    ...(deviceId && { deviceId }),          // For session binding
   };
 
   return {
     accessToken: generateAccessToken(payload),
-    refreshToken: generateRefreshToken({ id: user.id, familyId })
+    refreshToken: generateRefreshToken({ id: user.id, familyId, ...(deviceId && { deviceId }) })
   };
 };
 

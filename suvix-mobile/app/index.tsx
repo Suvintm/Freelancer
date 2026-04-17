@@ -1,18 +1,23 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import AnimatedSplashScreen from '../src/components/AnimatedSplashScreen';
+import { useAuthStore } from '../src/store/useAuthStore';
 
 /**
  * PRODUCTION-LEVEL ANIMATED INTRO (SuviX)
  * This screen hosts the high-end Reanimated 3 splash experience.
  */
 export default function Index() {
+  const isBootstrapComplete = useAuthStore(state => state.isBootstrapComplete);
+  const setIsIntroFinished = useAuthStore(state => state.setIsIntroFinished);
+
   return (
     <View style={styles.container}>
       <AnimatedSplashScreen 
+        isReady={isBootstrapComplete}
         onAnimationFinish={() => {
-          // The checkAuth and redirect logic is handled in _layout.tsx
-          // based on the isIntroFinished state.
+          console.log('🎬 [BOOT] Splash complete. Handing off to Layout Guard.');
+          setIsIntroFinished(true);
         }} 
       />
     </View>

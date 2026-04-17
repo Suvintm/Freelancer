@@ -7,8 +7,12 @@ const REDIS_SECRET = process.env.REDIS_SECRET || JWT_SECRET;
 
 // Access token: Short-lived (15 minutes) for security
 const ACCESS_TOKEN_EXPIRES = "15m";
-// Refresh token: Long-lived (7 days) for session persistence
-const REFRESH_TOKEN_EXPIRES = "7d";
+// Refresh token: Long-lived (30 days) for multi-account session persistence
+const REFRESH_TOKEN_EXPIRES = "30d";
+
+// Redis TTL constants (seconds) — exported for use in controllers
+export const ACCESS_TOKEN_TTL_MS = 15 * 60 * 1000; // 15 min in ms (for client-side expiry tracking)
+export const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days in seconds
 
 /**
  * PRODUCTION-GRADE SECURITY: Token Hashing

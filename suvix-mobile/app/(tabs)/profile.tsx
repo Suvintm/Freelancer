@@ -21,6 +21,7 @@ import YouTubeCreatorProfile from '../../src/modules/creators/profiles/YouTubeCr
 import FitnessInfluencerProfile from '../../src/modules/creators/profiles/FitnessInfluencerProfile';
 import ClientProfile from '../../src/modules/clients/profiles/ClientProfile';
 import DefaultProfile from '../../src/modules/shared/profiles/DefaultProfile';
+import { ProfileSkeleton } from '../../src/modules/shared/skeletons/ProfileSkeleton';
 
 /**
  * PRODUCTION-GRADE DYNAMIC PROFILE (Profile Tab)
@@ -68,12 +69,7 @@ export default function ProfileIndex() {
   }, [user]);
 
   if (isLoadingUser || (isAuthenticated && !user)) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.primary }]}>
-        <ActivityIndicator size="large" color={theme.text} />
-        <Text style={[styles.loadingText, { color: theme.text }]}>Synchronizing Profile...</Text>
-      </View>
-    );
+    return <ProfileSkeleton />;
   }
 
   if (!user) {

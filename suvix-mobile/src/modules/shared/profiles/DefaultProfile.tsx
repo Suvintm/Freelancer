@@ -7,6 +7,7 @@ import {
   Image,
   ScrollView,
   TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
 import { useTheme } from '../../../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,17 +17,30 @@ import { formatCount } from '../../../utils/formatters';
 import { ProfileContentTabs } from '../../shared/profiles/ProfileContentTabs';
 import { useRouter } from 'expo-router';
 import { Image as ExpoImage } from 'expo-image';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator } from 'react-native';
 import { useState } from 'react';
+import { ProfileSkeleton } from '../../shared/skeletons/ProfileSkeleton';
 
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 
 export default function DefaultProfile() {
   const { theme } = useTheme();
-  const { user } = useAuthStore();
+  const { user, setIsRefreshing, isLoadingUser } = useAuthStore();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+
+  const onRefresh = React.useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await useAuthStore.getState().fetchUser();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [setIsRefreshing]);
+
+  if (isLoadingUser && !user) return <ProfileSkeleton />;
+  if (!user) return null;
 
   const displayName = user.name || 'SuviX User';
   const username = user.username ? `@${user.username}` : '@suvix_member';
@@ -41,6 +55,14 @@ export default function DefaultProfile() {
       <ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={[styles.content, { paddingTop: headerOffset }]}
+        refreshControl={
+          <RefreshControl 
+            refreshing={isRefreshing} 
+            onRefresh={onRefresh} 
+            tintColor={theme.accent} 
+            colors={[theme.accent]} 
+          />
+        }
       >
         <LinearGradient
           colors={['#101828', '#1d2939', '#344054']}
@@ -95,7 +117,16 @@ export default function DefaultProfile() {
           </View>
 
           <View style={styles.infoBlock}>
-            <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
+               <TouchableOpacity 
+                  onPress={() => router.push('/settings')}
+                  style={{ padding: 8, marginLeft: 4 }}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons name="cog-outline" size={20} color={theme.textSecondary} />
+                </TouchableOpacity>
+            </View>
             <Text style={[styles.username, { color: theme.textSecondary }]}>{username}</Text>
             <Text style={[styles.bio, { color: theme.textSecondary }]}>{bioText}</Text>
           </View>

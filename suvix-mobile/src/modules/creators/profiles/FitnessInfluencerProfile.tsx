@@ -14,6 +14,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { ProfileContentTabs } from '../../shared/profiles/ProfileContentTabs';
 import * as ImagePicker from 'expo-image-picker';
@@ -21,10 +22,11 @@ import { api } from '../../../api/client';
 import { useTheme } from '../../../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { formatCount } from '../../../utils/formatters';
 
 import { SmartText } from '../../shared/content/SmartText';
+import { ProfileSkeleton } from '../../shared/skeletons/ProfileSkeleton';
 
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 const { width } = Dimensions.get('window');
@@ -44,7 +46,7 @@ const PROGRAMS = [
 
 export default function FitnessInfluencerProfile() {
   const { theme } = useTheme();
-  const { user, updateUser, fetchUser } = useAuthStore();
+  const { user, updateUser, fetchUser, setIsRefreshing, isLoadingUser } = useAuthStore();
   
 
   React.useEffect(() => {
@@ -60,6 +62,16 @@ export default function FitnessInfluencerProfile() {
   const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
   const [selection, setSelection] = React.useState({ start: 0, end: 0 });
 
+  const onRefresh = React.useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchUser();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchUser, setIsRefreshing]);
+
+  if (isLoadingUser && !user) return <ProfileSkeleton />;
   if (!user) return null;
 
   const displayName = user.name || user.username || 'Fitness Pro';
@@ -152,6 +164,18 @@ export default function FitnessInfluencerProfile() {
     }
   };
 
+  const handleRepairMedia = async () => {
+    try {
+      const res = await api.post('/media/recovery/reset', {});
+      if (res.data.success) {
+        Alert.alert("Recovery Triggered", `Reset ${res.data.count} media jobs.`);
+        fetchUser();
+      }
+    } catch (error) {
+      Alert.alert("Error", "Could not trigger recovery.");
+    }
+  };
+
   const insertShortcut = (symbol: string) => {
     const before = tempBio.substring(0, selection.start);
     const after = tempBio.substring(selection.end);
@@ -169,6 +193,14 @@ export default function FitnessInfluencerProfile() {
       <ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={[styles.content, { paddingTop: headerOffset, flexGrow: 1 }]}
+        refreshControl={
+          <RefreshControl 
+            refreshing={isRefreshing} 
+            onRefresh={onRefresh} 
+            tintColor={theme.accent} 
+            colors={[theme.accent]} 
+          />
+        }
       >
         
         {/* Dynamic Fitness Banner ( emerald green identity ) */}
@@ -234,6 +266,14 @@ export default function FitnessInfluencerProfile() {
             <View style={styles.nameRow}>
                <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
                <MaterialCommunityIcons name="shield-check" size={16} color={theme.accent} style={{ marginLeft: 6 }} />
+               
+                <TouchableOpacity 
+                  onPress={() => router.push('/settings')}
+                  style={styles.settingsIcon}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="settings-outline" size={20} color={theme.textSecondary} />
+                </TouchableOpacity>
             </View>
             <Text style={[styles.niche, { color: '#2ECC71' }]}>{subCategoryName.toUpperCase()}</Text>
             {user.bio ? (
@@ -457,6 +497,10 @@ const styles = StyleSheet.create({
   infoBlock: { marginTop: 12 },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
   name: { fontSize: 20, fontWeight: '800' },
+  settingsIcon: {
+    padding: 8,
+    marginLeft: 4,
+  },
   niche: { fontSize: 11, fontWeight: '900', marginTop: 2, letterSpacing: 1 },
   bio: { fontSize: 13, marginTop: 8, lineHeight: 18, flex: 1 },
   bioWrapper: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },

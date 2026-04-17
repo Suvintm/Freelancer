@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useAuthStore } from './useAuthStore';
 
 export type FeedItemType = 'POST' | 'REEL' | 'SUGGESTION_EDITORS' | 'SUGGESTION_RENTALS';
 
@@ -68,8 +69,10 @@ const MOCK_RENTALS = [
 export const useDiscoveryStore = create<DiscoveryState>((set) => ({
   feed: [],
   isLoading: false,
-  refreshFeed: () => {
+  refreshFeed: async () => {
+    const { setIsRefreshing } = useAuthStore.getState();
     set({ isLoading: true });
+    setIsRefreshing(true);
     
     const newFeed: FeedItem[] = [
       { id: 'p1', type: 'POST', data: MOCK_POSTS[0] },
@@ -80,8 +83,10 @@ export const useDiscoveryStore = create<DiscoveryState>((set) => ({
       { id: 'r2_reel', type: 'REEL', data: MOCK_REELS[1] },
     ];
 
-    setTimeout(() => {
-      set({ feed: newFeed, isLoading: false });
-    }, 500);
+    // Artificial delay for skeletal animation impact
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    set({ feed: newFeed, isLoading: false });
+    setIsRefreshing(false);
   }
 }));

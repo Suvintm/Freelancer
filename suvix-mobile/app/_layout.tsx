@@ -2,10 +2,14 @@ import 'react-native-gesture-handler';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../src/store/useAuthStore';
+import { useAccountVault } from '../src/hooks/useAccountVault';
 import { useEffect, useState, useRef } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
-import { ThemeProvider } from '../src/context/ThemeContext';
+import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
+import { AccountSwitchOverlay } from '../src/components/shared/AccountSwitchOverlay';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { getDeviceId } from '../src/hooks/useDeviceId';
+import { CrossAccountBanner } from '../src/components/shared/CrossAccountBanner';
 
 import { useDashboardStore } from '../src/store/useDashboardStore';
 import { useCategoryStore } from '../src/store/useCategoryStore';
@@ -25,18 +29,28 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 const queryClient = new QueryClient();
 
 function InitialRoot() {
-  const { isInitialized, isAuthenticated, user, checkAuth, fetchUser, isLoadingUser } = useAuthStore();
+  const { 
+    isInitialized, 
+    isAuthenticated, 
+    user, 
+    checkAuth, 
+    fetchUser, 
+    isLoadingUser, 
+    isBootstrapComplete,
+    setIsBootstrapComplete,
+    isIntroFinished,
+    dataLoaded,
+    switchingToAccount
+  } = useAuthStore();
+  const { isDarkMode } = useTheme();
   const { fetchClientDashboard, fetchEditorDashboard } = useDashboardStore();
 
   // ── PRODUCTION: Register device for push notifications when authenticated ──
   useNotifications();
   const segments = useSegments();
   const router = useRouter();
-  const [isIntroFinished, setIsIntroFinished] = useState(false);
-  const [dataLoaded, setDataLoaded] = useState(false);
 
   const bootstrapStarted = useRef(false);
-  const dataLoadedRef = useRef(false);
   // Initialize Auth State & Pre-fetch Data on boot
   useEffect(() => {
     if (bootstrapStarted.current) return;
@@ -47,16 +61,28 @@ function InitialRoot() {
     async function bootstrap() {
       try {
         console.log('🚀 [BOOT] Starting bootstrap sequence...');
+        // 0. Initialize permanent Device ID (must be first — needed for all auth requests)
+        await getDeviceId();
+
         // 1. Initial Local Auth Check (Token sync)
+        console.log('🔐 [BOOT] Re-hydrating secure session...');
         await checkAuth();
 
-        // 2. Pre-fetch Dynamic Roles/Categories for Onboarding
-        useCategoryStore.getState().fetchCategories().catch(() => {});
-        
-        // 3. Fetch fresh user data if we have a token
+        // 2. Double-check token sync after hydration
         const currentToken = useAuthStore.getState().token;
-        if (currentToken) {
-          console.log('🗝️ [BOOT] Token found, pre-fetching profile...');
+        if (!currentToken) {
+           // One final attempt to pull active account if store sync was slow
+           const activeTokens = await useAccountVault.getState().getActiveTokens();
+           if (activeTokens) {
+             useAuthStore.getState().setTokens(activeTokens.accessToken, activeTokens.refreshToken);
+             console.log('⚡ [BOOT] Hot-swapped missing tokens from vault.');
+           }
+        }
+        
+        // 3. Fetch fresh user data if we have a qualified session
+        const token = useAuthStore.getState().token;
+        if (token) {
+          console.log('🗝️ [BOOT] Active session found, pre-fetching profile...');
           await fetchUser();
           
           const currentUser = useAuthStore.getState().user;
@@ -87,8 +113,7 @@ function InitialRoot() {
         console.error('❌ [BOOT] Critical failure during bootstrap:', e);
       } finally {
         if (isMounted) {
-          dataLoadedRef.current = true;
-          setDataLoaded(true);
+          setIsBootstrapComplete(true);
           console.log('✅ [BOOT] Bootstrap complete.');
         }
       }
@@ -96,25 +121,12 @@ function InitialRoot() {
     
     bootstrap();
 
-    const timer = setTimeout(() => {
-      if (isMounted) {
-        setIsIntroFinished(true);
-        console.log('🎬 [BOOT] Intro animation finished.');
-      }
-    }, 2300);
-
-    const failSafeTimer = setTimeout(() => {
-      if (isMounted && !dataLoadedRef.current) {
-        console.warn('⚠️ [BOOT] Bootstrap timeout. Forcing app start.');
-        dataLoadedRef.current = true;
-        setDataLoaded(true);
-      }
-    }, 12000); // 🚀 PRODUCTION TOLERANCE: Increased to 12s for reliable hydration on slow DBs
+    // 🎬 REMOVED: The hardcoded timer is gone. 
+    // isIntroFinished will now be set by the AnimatedSplashScreen component
+    // via a callback when it's actually done and data is ready.
     
     return () => {
       isMounted = false;
-      clearTimeout(timer);
-      clearTimeout(failSafeTimer);
     };
   }, [checkAuth, fetchUser, fetchClientDashboard, fetchEditorDashboard]); 
 
@@ -161,8 +173,8 @@ function InitialRoot() {
   const isNavigating = useRef(false);
 
   useEffect(() => {
-    // Only fire when EVERYTHING is ready
-    if (!isInitialized || !isIntroFinished || !dataLoaded) return;
+    // Only fire when EVERYTHING is ready (Data + Intro Animation)
+    if (!isInitialized || !isIntroFinished || !isBootstrapComplete) return;
 
     // Hardened Handoff: 400ms ensures the Native UI is fully settled before the dashboard mount hit
     const handoffTimer = setTimeout(() => {
@@ -176,7 +188,9 @@ function InitialRoot() {
         currentSegment === 'create-post' ||
         currentSegment === 'gallery' ||
         currentSegment === 'reels' ||
-        currentSegment === 'story';
+        currentSegment === 'story' ||
+        currentSegment === 'settings' ||
+        currentSegment === 'sessions';
       const inOnboarding =
         currentSegment === 'role-selection' ||
         currentSegment === 'subcategory-selection' ||
@@ -186,12 +200,17 @@ function InitialRoot() {
         currentSegment === 'welcome' ||
         currentSegment === 'login' ||
         currentSegment === 'signup' ||
-        currentSegment === 'banned';
+        currentSegment === 'banned' ||
+        currentSegment === 'forgot-password';
 
-      console.log(`🚦 [GUARD] Auth: ${isAuthenticated} | User: ${!!user} | Loading: ${isLoadingUser}`);
+      // Anything that isn't public or onboarding is considered an 'Auth-Only' area.
+      // 🚩 CRITICAL: If segment is undefined or 'index', we are at the app root and MUST redirect.
+      const isAtRoot = !currentSegment || currentSegment === 'index';
+      const isRestrictedArea = inPublicGroup || inOnboarding || isAtRoot;
+
+      console.log(`🚦 [GUARD] Segment: ${currentSegment} | Auth: ${isAuthenticated} | User: ${!!user} | Loading: ${isLoadingUser}`);
 
       // 🚨 CRITICAL: [SECURITY] BAN GUARD
-      // We check this FIRST to ensure a banned user NEVER sees the dashboard.
       if (user?.isBanned || (user as any)?.is_banned) {
         if (currentSegment !== 'banned') {
           console.warn('🚫 [GUARD] User is banned. Redirecting to /banned screen.');
@@ -203,51 +222,50 @@ function InitialRoot() {
       }
 
       // 1. RE-HYDRATION GUARD
-      // We absolutely wait if we're authenticated but still loading the profile
       if (isAuthenticated && !user && isLoadingUser) {
         console.log('⏳ [GUARD] Waiting for user profile hydration...');
         return;
       }
 
-      // If bootstrap is done but we still haven't hydrated user despite multiple tries
       if (isAuthenticated && !user && dataLoaded && !isLoadingUser) {
         console.log('⚠️ [GUARD] Hydration failed or unreachable. Retrying fetch...');
-        fetchUser(); // Request one more try
+        fetchUser();
         return;
       }
 
       // 2. UNAUTHENTICATED
+      // Guests are allowed to visit Public areas (Welcome/Login) AND Onboarding areas (Category selection)
       if (!isAuthenticated || (!user && dataLoaded)) {
-        if (!currentSegment || currentSegment === 'index') {
+        if (!currentSegment || currentSegment === 'index' || (!inPublicGroup && !inOnboarding)) {
           console.log('🔓 [GUARD] Redirecting guest to /welcome');
           isNavigating.current = true;
           router.replace('/welcome');
           setTimeout(() => { isNavigating.current = false; }, 1000);
           return;
         }
-
-        if (!inPublicGroup && !inOnboarding) {
-          console.log('🔓 [GUARD] Redirecting to /welcome');
-          isNavigating.current = true;
-          router.replace('/welcome');
-          setTimeout(() => { isNavigating.current = false; }, 1000);
-        }
         return;
       }
 
       // 3. AUTHENTICATED & ONBOARDING LOGIC
-      const isOnboarded = user?.isOnboarded;
-      // Only check for missing social data if the user is NOT yet onboarded
+      const { isOnboarded } = user || {};
+      const isAddingAccount = useAuthStore.getState().isAddingAccount;
       const isMissingSocialData = !isOnboarded && (!user?.username || !user?.name);
 
-      if (isOnboarded) {
-        if (!inAuthGroup) {
-          console.log('🚀 [GUARD] Taking user to home dashboard...');
+      if (isOnboarded && !isAddingAccount) {
+        // If the user is fully onboarded and not in "Add Account" mode, 
+        // they should be redirected back to the dashboard if they try to visit login/welcome.
+        if (isRestrictedArea && currentSegment !== 'banned') {
+          console.log('🚀 [GUARD] Taking onboarded user to home dashboard...');
           isNavigating.current = true;
           router.replace('/(tabs)');
           setTimeout(() => { isNavigating.current = false; }, 1200);
         }
-      } else {
+      } else if (isOnboarded && isAddingAccount && currentSegment === '(tabs)') {
+        // ✨ AUTO-CLEANUP: If the user is on onboarded but isAddingAccount is still true 
+        // while they are in the tabs (e.g., they clicked back to get home), reset the flag.
+        console.log('🧹 [GUARD] Resetting isAddingAccount mode (User returned home)');
+        useAuthStore.getState().setIsAddingAccount(false);
+      } else if (!isOnboarded) {
         // PRODUCTION-GRADE: Decide where to send un-onboarded user
         if (!inOnboarding) {
           if (isMissingSocialData) {
@@ -269,17 +287,30 @@ function InitialRoot() {
   }, [isInitialized, isAuthenticated, user, segments, isIntroFinished, dataLoaded, router, isLoadingUser, fetchUser]);
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="welcome" />
-      <Stack.Screen name="login" />
-      <Stack.Screen name="signup" />
-      <Stack.Screen name="role-selection" />
-      <Stack.Screen name="subcategory-selection" />
-      <Stack.Screen name="youtube-connect" />
-      <Stack.Screen name="create-post" />
-      <Stack.Screen name="(tabs)" />
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="welcome" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="signup" />
+        <Stack.Screen name="role-selection" />
+        <Stack.Screen name="subcategory-selection" />
+        <Stack.Screen name="youtube-connect" />
+        <Stack.Screen name="create-post" />
+        <Stack.Screen name="notifications" />
+        <Stack.Screen name="settings" />
+        <Stack.Screen name="sessions" />
+        <Stack.Screen name="(tabs)" />
       </Stack>
+
+      {/* 🔮 PREMIUM ACCOUNT SWITCH OVERLAY */}
+      {switchingToAccount && (
+        <AccountSwitchOverlay 
+          account={switchingToAccount} 
+          isDark={isDarkMode} 
+        />
+      )}
+    </>
   );
 }
 
@@ -289,10 +320,18 @@ function RootLayout() {
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
           <InitialRoot />
+          {/* 🔔 Cross-account notification banner — floats above all screens */}
+          <ThemeAwareBanner />
         </QueryClientProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );
+}
+
+/** Thin wrapper to access theme inside RootLayout */
+function ThemeAwareBanner() {
+  const { isDarkMode } = useTheme();
+  return <CrossAccountBanner isDark={isDarkMode} />;
 }
 
 export default RootLayout;

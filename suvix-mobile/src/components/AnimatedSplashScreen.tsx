@@ -34,6 +34,7 @@ const SPRING = { damping: 18, stiffness: 200, mass: 0.8 };
 
 interface Props {
   onAnimationFinish: () => void;
+  isReady: boolean; // 🚀 New: Signal from store that data is hydrated
 }
 
 function FloatingParticle({ delay }: { delay: number }) {
@@ -74,7 +75,7 @@ function Sparkle({ sv, dx, dy }: { sv: Animated.SharedValue<number>; dx: number;
   return <Animated.View style={[styles.sparkle, animatedStyle]} />;
 }
 
-export default function AnimatedSplashScreen({ onAnimationFinish }: Props) {
+export default function AnimatedSplashScreen({ onAnimationFinish, isReady }: Props) {
   const containerOpacity = useSharedValue(1);
   const iconScale = useSharedValue(0.4);
   const iconOpacity = useSharedValue(0);
@@ -89,6 +90,8 @@ export default function AnimatedSplashScreen({ onAnimationFinish }: Props) {
   const spark2 = useSharedValue(0);
   const spark3 = useSharedValue(0);
   const spark4 = useSharedValue(0);
+  
+  const [internalAnimDone, setInternalAnimDone] = React.useState(false);
 
   const startAnimations = useCallback(() => {
     iconScale.value = withSequence(withTiming(0.4, { duration: T.ICON_IN }), withSpring(1, SPRING));
@@ -110,8 +113,19 @@ export default function AnimatedSplashScreen({ onAnimationFinish }: Props) {
     spark3.value = sparkAnim(T.SPARKLE_IN + 120);
     spark4.value = sparkAnim(T.SPARKLE_IN + 180);
 
-    containerOpacity.value = withSequence(withTiming(1, { duration: T.EXIT }), withTiming(0, { duration: 500 }, (f) => f && runOnJS(onAnimationFinish)()));
-  }, [onAnimationFinish, containerOpacity, iconOpacity, iconRotate, iconScale, spark1, spark2, spark3, spark4, textOpacity, textTranslateX, xOpacity, xRotate, xScale]);
+    containerOpacity.value = withTiming(1, { duration: T.EXIT }, (f) => {
+      if (f) runOnJS(setInternalAnimDone)(true);
+    });
+  }, [containerOpacity, iconOpacity, iconRotate, iconScale, spark1, spark2, spark3, spark4, textOpacity, textTranslateX, xOpacity, xRotate, xScale, setInternalAnimDone]);
+
+  // 🏁 FINAL HANDOFF: Only exit when BOTH the animation is done AND data is ready
+  useEffect(() => {
+    if (internalAnimDone && isReady) {
+      containerOpacity.value = withTiming(0, { duration: 600, easing: Easing.out(Easing.quad) }, (f) => {
+        if (f) runOnJS(onAnimationFinish)();
+      });
+    }
+  }, [internalAnimDone, isReady, onAnimationFinish, containerOpacity]);
 
   useEffect(() => { startAnimations(); }, [startAnimations]);
 

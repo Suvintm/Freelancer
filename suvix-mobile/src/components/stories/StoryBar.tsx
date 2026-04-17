@@ -3,8 +3,8 @@ import {
   View, 
   FlatList, 
   StyleSheet, 
-  ActivityIndicator,
 } from 'react-native';
+import { Skeleton } from '../shared/Skeleton';
 import { StoryCircle } from './StoryCircle';
 import { useStories } from '../../hooks/useStories';
 
@@ -17,8 +17,13 @@ export const StoryBar = () => {
 
   if (isLoading) {
     return (
-      <View style={s.loader}>
-        <ActivityIndicator color="rgba(255,255,255,0.3)" />
+      <View style={[s.outer, { flexDirection: 'row', paddingLeft: 16 }]}>
+        {[1, 2, 3, 4, 5].map((i) => (
+          <View key={i} style={{ marginRight: 20, alignItems: 'center' }}>
+            <Skeleton circle height={64} width={64} />
+            <Skeleton height={10} width={40} style={{ marginTop: 8 }} />
+          </View>
+        ))}
       </View>
     );
   }

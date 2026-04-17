@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { DashboardSkeleton } from '../skeletons/DashboardSkeleton';
 import { FlashList } from '@shopify/flash-list';
 import { useDiscoveryStore, FeedItem } from '../../../store/useDiscoveryStore';
 import { PostItem } from './items/PostItem';
@@ -37,11 +38,7 @@ export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEn
   };
 
   if (isLoading && feed.length === 0) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.text} />
-      </View>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (

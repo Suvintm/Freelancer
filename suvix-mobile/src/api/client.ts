@@ -37,17 +37,27 @@ export const api: AxiosInstance = axios.create({
 
 /**
  * REQUEST INTERCEPTOR
- * 1. Resolves the correct API URL (local or production) before each request.
- * 2. Attaches the Auth Token from Zustand store.
+ * 1. Attaches the Auth Token from the active account in the vault.
+ * 2. Attaches the permanent Device ID for session binding.
  */
 api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-  // @ts-ignore - Dynamic require to break circular dependency
+  // @ts-ignore
   const { useAuthStore } = require('../store/useAuthStore');
   const token = (useAuthStore.getState() as any).token;
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // Attach permanent device fingerprint
+  const { getDeviceIdSync } = require('../hooks/useDeviceId');
+  const deviceId = getDeviceIdSync();
+  if (deviceId) {
+    config.headers['X-Device-ID'] = deviceId;
+  }
+
+  // Attach human-readable device name for session management
+  config.headers['X-Device-Name'] = Device.deviceName || 'Unknown Device';
 
   if (__DEV__) {
     console.log(`📡 [API] ${config.method?.toUpperCase()} → ${config.baseURL}${config.url}`);
@@ -80,6 +90,15 @@ api.interceptors.response.use(
     const originalRequest = config as any;
 
     if (response?.status === 401 && !originalRequest._retry) {
+      // 🛡️ INFINITE REFRESH LOOP GUARD: Never retry if this IS the refresh endpoint
+      if (originalRequest.url?.includes('/auth/refresh-token')) {
+        isRefreshing = false;
+        refreshSubscribers = [];
+        const { useAuthStore } = require('../store/useAuthStore');
+        await useAuthStore.getState().logout();
+        return Promise.reject(error);
+      }
+
       if (isRefreshing) {
         return new Promise(resolve => {
           subscribeTokenRefresh((token: string) => {
@@ -95,7 +114,15 @@ api.interceptors.response.use(
       try {
         // @ts-ignore
         const { useAuthStore } = require('../store/useAuthStore');
-        const refreshToken = useAuthStore.getState().refreshToken;
+        const { refreshToken, isLoadingUser } = useAuthStore.getState();
+
+        // 🛡️ IDENTITY SWITCH GUARD: If the app is currently loading a new user (switching),
+        // do NOT attempt a silent refresh of the OLD session. Let the switch finish.
+        if (isLoadingUser) {
+          isRefreshing = false;
+          console.warn('⚠️ [API] Session recovery suppressed during active switch.');
+          return Promise.reject(error);
+        }
 
         if (!refreshToken) throw new Error('No refresh token available');
 

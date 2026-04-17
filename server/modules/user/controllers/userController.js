@@ -1,6 +1,9 @@
 import prisma from "../../../config/prisma.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 import storageService from "../../../utils/storageService.js";
+import { redis, redisAvailable } from "../../../config/redisClient.js";
+import { emitToUser } from "../../../socket.js";
+import logger from "../../../utils/logger.js";
 
 // @desc    Get current authenticated user basic info
 // @route   GET /api/user/me
@@ -101,19 +104,36 @@ export const updateMyBasicInfo = asyncHandler(async (req, res) => {
     },
   });
 
+  const responseUser = {
+    id: userId,
+    role: req.user.role,
+    name: updated.name || "",
+    username: updated.username || "",
+    phone: updated.phone || "",
+    country: updated.location_country || "",
+    profilePicture: updated.profile_picture || "",
+    bio: updated.bio || "",
+  };
+
+  // 🧹 [CACHE] Invalidate user cache and broadcast surgical update
+  if (redisAvailable) {
+    const cacheKey = `user_cache:${userId}`;
+    await redis.del(cacheKey).catch(e => logger.warn(`[CACHE] Eviction failed: ${e.message}`));
+    
+    // 🛰️ [SOCKET] Surgical Broadcast
+    emitToUser(userId, "user:profile_updated", { 
+      bio: updated.bio, 
+      name: updated.name,
+      displayName: updated.name,
+      username: updated.username,
+      location: updated.location_country
+    });
+  }
+
   return res.status(200).json({
     success: true,
     message: "User profile updated",
-    user: {
-      id: userId,
-      role: req.user.role,
-      name: updated.name || "",
-      username: updated.username || "",
-      phone: updated.phone || "",
-      country: updated.location_country || "",
-      profilePicture: updated.profile_picture || "",
-      bio: updated.bio || "",
-    },
+    user: responseUser,
   });
 });
 
@@ -142,6 +162,14 @@ export const updateProfilePicture = asyncHandler(async (req, res) => {
       updated_at: new Date(),
     },
   });
+
+  // 🧹 [CACHE] Invalidate cache
+  if (redisAvailable) {
+    await redis.del(`user_cache:${userId}`).catch(() => {});
+    
+    // 🛰️ [SOCKET] Surgical Sync
+    emitToUser(userId, "user:profile_updated", { profilePicture: profile.profile_picture });
+  }
 
   return res.status(200).json({
     success: true,

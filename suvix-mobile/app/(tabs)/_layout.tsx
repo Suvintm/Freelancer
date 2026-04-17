@@ -7,6 +7,8 @@ import { useTheme } from '../../src/context/ThemeContext';
 import { AnimatedTabBar } from '../../src/components/AnimatedTabBar';
 import { TopNavbar } from '../../src/components/TopNavbar';
 import { Sidebar } from '../../src/components/Sidebar';
+import { AccountSwitcherSheet } from '../../src/components/shared/AccountSwitcherSheet';
+import BottomSheet from '@gorhom/bottom-sheet';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { CategoryId } from '../../src/types/category';
 
@@ -25,7 +27,7 @@ import ProfileScreen from './profile';
  */
 
 export default function TabsLayout() {
-  const { theme } = useTheme();
+  const { theme, isDarkMode } = useTheme();
   const { user } = useAuthStore();
   const pagerRef = useRef<PagerView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -33,6 +35,12 @@ export default function TabsLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const insets = useSafeAreaInsets();
   const segments = useSegments() as string[];
+
+  // ── Account Switcher ───────────────────────────────────────────────────────
+  const switcherSheetRef = useRef<BottomSheet>(null);
+  const openSwitcher = useCallback(() => {
+    switcherSheetRef.current?.expand();
+  }, []);
 
   // 1. Define Universal Tab Base
   const ALL_TABS = useMemo(() => [
@@ -126,7 +134,10 @@ export default function TabsLayout() {
         ]}
         pointerEvents="box-none"
       >
-        <TopNavbar onMenuPress={() => setIsSidebarOpen(true)} />
+        <TopNavbar 
+          onMenuPress={() => setIsSidebarOpen(true)} 
+          onProfilePress={openSwitcher}
+        />
       </View>
 
       <PagerView
@@ -150,6 +161,12 @@ export default function TabsLayout() {
         tabs={filteredTabs}
         onTabPress={goToPage}
         hidden={isReelsActive}
+      />
+
+      {/* 👥 Global Account Switcher */}
+      <AccountSwitcherSheet
+        sheetRef={switcherSheetRef}
+        isDark={isDarkMode}
       />
     </View>
   );

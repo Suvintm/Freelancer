@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, StyleSheet, Image, TouchableOpacity, Platform, Dimensions } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Platform, Dimensions } from 'react-native';
 const { width } = Dimensions.get('window');
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
@@ -19,6 +19,9 @@ import Animated, {
   cancelAnimation,
   withSequence
 } from 'react-native-reanimated';
+import BottomSheet from '@gorhom/bottom-sheet';
+import { useAccountVault } from '../hooks/useAccountVault';
+import { AccountSwitcherSheet } from './shared/AccountSwitcherSheet';
 
 /** Modern rounded hamburger menu icon */
 const RoundedMenuIcon = ({ color }: { color: string }) => (
@@ -33,15 +36,26 @@ import { useUploadStore } from '../store/useUploadStore';
 
 interface TopNavbarProps {
   onMenuPress: () => void;
+  onProfilePress: () => void;
 }
 
-export const TopNavbar = ({ onMenuPress }: TopNavbarProps) => {
+export const TopNavbar = ({ onMenuPress, onProfilePress }: TopNavbarProps) => {
   const { user } = useAuthStore();
   const { isDarkMode, toggleTheme } = useTheme();
   const { isVisible, progress: uploadProgress, message, status } = useUploadStore();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  
+
+  // ── Account Switcher Sheet ─────────────────────────────────────────────────
+  const { getAllAccounts } = useAccountVault();
+  const allAccounts = getAllAccounts();
+  const extraAccountCount = Math.max(0, allAccounts.length - 1);
+
+  const handleProfilePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onProfilePress();
+  };
+
   const NAVBAR_HEIGHT = 50;
   const EXTRA_PROGRESS_HEIGHT = 30;
   
@@ -51,11 +65,6 @@ export const TopNavbar = ({ onMenuPress }: TopNavbarProps) => {
   // Sync Logic & UX Buffering
   const queryClient = useQueryClient();
   const isFetching = useIsFetching() > 0;
-  const [isRefreshing, setIsRefreshing] = React.useState(false);
-  
-  const showLoading = isFetching || isRefreshing;
-
-  const rotation = useSharedValue(0);
   const progressAnim = useSharedValue(-width); // API Loading bar
 
   // 🛰️ [ANIMATION] Handle Navbar Expansion & Progress Bar
@@ -69,14 +78,12 @@ export const TopNavbar = ({ onMenuPress }: TopNavbarProps) => {
     }
   }, [isVisible, uploadProgress]);
 
+  const { isRefreshing } = useAuthStore();
+  const showLoading = isFetching || isRefreshing;
+
   // Trigger animations when showLoading is true
   React.useEffect(() => {
     if (showLoading) {
-      rotation.value = withRepeat(
-        withTiming(360, { duration: 1000, easing: Easing.linear }),
-        -1,
-        false
-      );
       progressAnim.value = withRepeat(
         withSequence(
           withTiming(0, { duration: 1500, easing: Easing.bezier(0.4, 0, 0.2, 1) }),
@@ -86,16 +93,10 @@ export const TopNavbar = ({ onMenuPress }: TopNavbarProps) => {
         false
       );
     } else {
-      cancelAnimation(rotation);
       cancelAnimation(progressAnim);
-      rotation.value = withTiming(0, { duration: 300 });
       progressAnim.value = withTiming(-width, { duration: 300 });
     }
-  }, [showLoading, rotation, progressAnim, width]);
-
-  const spinStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
-  }));
+  }, [showLoading, progressAnim, width]);
 
   const apiProgressStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: progressAnim.value }],
@@ -115,14 +116,6 @@ export const TopNavbar = ({ onMenuPress }: TopNavbarProps) => {
     opacity: expansion.value > 0 ? 1 : 0,
   }));
 
-  const handleRefresh = async () => {
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-    setIsRefreshing(true);
-    setTimeout(() => setIsRefreshing(false), 1500);
-    queryClient.refetchQueries({ stale: true, type: 'active' });
-  };
 
   const palette = isDarkMode ? Colors.dark : Colors.light;
 
@@ -160,11 +153,6 @@ export const TopNavbar = ({ onMenuPress }: TopNavbarProps) => {
 
         {/* RIGHT: Actions */}
         <View style={styles.rightSection}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleRefresh} activeOpacity={0.7}>
-            <Animated.View style={spinStyle}>
-              <Ionicons name="refresh-outline" size={22} color={isDarkMode ? '#888' : '#666'} />
-            </Animated.View>
-          </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionButton} onPress={toggleTheme} activeOpacity={0.7}>
             <Ionicons name={isDarkMode ? "sunny-outline" : "moon-outline"} size={22} color={isDarkMode ? palette.accent : '#666'} />
@@ -180,6 +168,33 @@ export const TopNavbar = ({ onMenuPress }: TopNavbarProps) => {
           >
             <Ionicons name="notifications-outline" size={22} color={isDarkMode ? '#FFF' : '#000'} />
             <View style={[styles.notifBadge, { backgroundColor: '#ef4444' }]} />
+          </TouchableOpacity>
+
+          {/* 👤 Avatar — tap to open Account Switcher */}
+          <TouchableOpacity
+            style={styles.avatarButton}
+            onPress={handleProfilePress}
+            activeOpacity={0.8}
+          >
+            {user?.profilePicture ? (
+              <Image source={{ uri: user.profilePicture }} style={styles.avatarImg} />
+            ) : (
+              <View style={[styles.avatarPlaceholder, { backgroundColor: isDarkMode ? '#27272a' : '#e4e4e7' }]}>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: isDarkMode ? '#FFF' : '#374151' }}>
+                  {(user?.name || user?.username || 'S')[0].toUpperCase()}
+                </Text>
+              </View>
+            )}
+            {/* Badge: number of additional accounts OR a plus icon if single-account */}
+            {extraAccountCount > 0 ? (
+              <View style={styles.accountCountBadge}>
+                <Text style={styles.accountCountText}>+{extraAccountCount}</Text>
+              </View>
+            ) : (
+              <View style={[styles.addAccountBadge, { borderColor: palette.tabBar }]}>
+                <Ionicons name="add" size={10} color="#FFFFFF" />
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -217,7 +232,6 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     zIndex: 50,
-    overflow: 'hidden',
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(0,0,0,0.05)',
   },
@@ -299,5 +313,58 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     borderWidth: 1.5,
     borderColor: 'transparent',
+  },
+  // ── Account Switcher Avatar ────────────────────────────────────────────────
+  avatarButton: {
+    position: 'relative',
+    marginLeft: 4,
+    padding: 4,
+  },
+  avatarImg: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1.5,
+    borderColor: '#8B5CF6',
+  },
+  avatarPlaceholder: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#8B5CF650',
+  },
+  accountCountBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#8B5CF6',
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    minWidth: 16,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  accountCountText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  addAccountBadge: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    backgroundColor: '#8B5CF6',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#000', // Matches theme or provides contrast
   },
 });

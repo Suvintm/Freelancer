@@ -3,6 +3,7 @@ import prisma from "../config/prisma.js";
 import { ApiError } from "./errorHandler.js";
 import logger from "../utils/logger.js";
 import { getCache, setCache, deleteCache, CacheKey, TTL } from "../utils/cache.js";
+import { redis, redisAvailable } from "../config/redisClient.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -87,6 +88,38 @@ export const authenticate = async (req, res, next) => {
           isBanned: true,
           banReason: status.ban_reason || "Violation of terms"
         });
+    }
+
+    // 🛡️ TOKEN VERSION CHECK — Enforces "Log Out All Devices"
+    // We cache the DB value for 30 seconds to avoid a DB hit on every API request.
+    // Busted immediately when logoutAll is called.
+    if (decoded.tokenVersion !== undefined) {
+      try {
+        const versionCacheKey = `token_version:${userId}`;
+        let currentVersion = redisAvailable ? await redis.get(versionCacheKey) : null;
+
+        if (currentVersion === null) {
+          // Cache miss — hit the DB and prime the cache
+          const freshUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { token_version: true }
+          });
+          currentVersion = freshUser?.token_version ?? 0;
+          if (redisAvailable) {
+            await redis.set(versionCacheKey, String(currentVersion), "EX", 30); // 30-second TTL
+          }
+        }
+
+        if (decoded.tokenVersion !== parseInt(String(currentVersion), 10)) {
+          logger.warn(`[SECURITY] token_version mismatch for user ${userId}. JWT: ${decoded.tokenVersion}, DB: ${currentVersion}. Rejecting.`);
+          throw new ApiError(401, "Session invalidated. Please log in again.");
+        }
+      } catch (versionError) {
+        if (versionError instanceof ApiError) throw versionError;
+        // If DB check itself fails (e.g. schema mismatch), log and continue
+        // We ensure we don't crash the whole app just for a secondary check.
+        logger.error(`[AUTH] token_version check failed: ${versionError.message}. Availability prioritized.`);
+      }
     }
 
     // 3. CACHE HYDRATION (Full Profile Data)

@@ -16,19 +16,21 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../../../api/client';
 import { useTheme } from '../../../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/Colors';
 import { formatCount } from '../../../utils/formatters';
 
 import { ProfileContentTabs } from '../../shared/profiles/ProfileContentTabs';
 import { YouTubeVideoCard } from '../components/YouTubeVideoCard';
 import { useRouter } from 'expo-router';
+import { ProfileSkeleton } from '../../shared/skeletons/ProfileSkeleton';
 
 // 🏆 Achievement Assets
 const SILVER_BTN = require('../../../../assets/images/playbutton/silverbtn.png');
@@ -42,12 +44,10 @@ const { width } = Dimensions.get('window');
 
 export default function YouTubeCreatorProfile() {
   const { theme } = useTheme();
-  const { user, updateUser, fetchUser, setYoutubeVideos } = useAuthStore();
+  const { user, updateUser, fetchUser, setYoutubeVideos, setIsRefreshing, isLoadingUser, isRefreshing } = useAuthStore();
   const { socket } = useSocketStore();
   const router = useRouter();
 
-  // 🛰️ FETCH PRODUCTION MEDIA
-  
   // 🔗 WEB SOCKET: Real-time Surgical Sync Listener
   React.useEffect(() => {
     if (!socket) return;
@@ -56,17 +56,11 @@ export default function YouTubeCreatorProfile() {
       if (data.type === 'SYNC_COMPLETE') {
         console.log('🔄 [SYNC] Real-time surgical signal received!');
         
-        // 💉 SURGICAL BYPASS: If the payload contains videos, inject them instantly
         if (data.metadata?.videos && Array.isArray(data.metadata.videos)) {
-          console.log('✨ [SYNC] Injecting surgical video data (Zero-API Refresh)');
           setYoutubeVideos(data.metadata.videos);
         } else {
-          // Fallback: Refresh the whole user if metadata is missing (legacy compat)
-          console.log('📡 [SYNC] Falling back to Full-Profile Refresh');
           await fetchUser();
         }
-
-        // 🧼 CLEANUP: Removed disruptive Alert.alert per user request for a "Premium" silent update.
       }
     };
 
@@ -83,6 +77,16 @@ export default function YouTubeCreatorProfile() {
   const [isSavingBio, setIsSavingBio] = React.useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
 
+  const onRefresh = React.useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchUser();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchUser, setIsRefreshing]);
+
+  if (isLoadingUser && !user) return <ProfileSkeleton />;
   if (!user || !user.youtubeProfile || user.youtubeProfile.length === 0) return null;
 
   const youtubeProfiles = user.youtubeProfile;
@@ -186,6 +190,14 @@ export default function YouTubeCreatorProfile() {
       <ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={[styles.content, { paddingTop: headerOffset, flexGrow: 1 }]}
+        refreshControl={
+          <RefreshControl 
+            refreshing={isRefreshing} 
+            onRefresh={onRefresh} 
+            tintColor={theme.accent} 
+            colors={[theme.accent]} 
+          />
+        }
       >
         
         {/* YT Dynamic Banner */}
@@ -264,10 +276,18 @@ export default function YouTubeCreatorProfile() {
           </View>
 
           <View style={[styles.infoBlock, styles.padded, { marginTop: 4 }]}>
-            <View style={styles.nameRow}>
-               <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
-               <MaterialCommunityIcons name="shield-check" size={16} color={theme.accent} style={{ marginLeft: 6 }} />
-            </View>
+             <View style={styles.nameRow}>
+                <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
+                <MaterialCommunityIcons name="shield-check" size={16} color={theme.accent} style={{ marginLeft: 6 }} />
+                
+                <TouchableOpacity 
+                  onPress={() => router.push('/settings')}
+                  style={styles.settingsIcon}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="settings-outline" size={20} color={theme.textSecondary} />
+                </TouchableOpacity>
+             </View>
             <Text style={[styles.niche, { color: '#FF0000' }]}>{subCategoryName.toUpperCase()}</Text>
             {isSavingBio ? (
               <View style={styles.bioLoadingWrap}>
@@ -640,6 +660,10 @@ const styles = StyleSheet.create({
  marginTop: 12 },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
   name: { fontSize: 20, fontWeight: '800' },
+  settingsIcon: {
+    padding: 8,
+    marginLeft: 4,
+  },
   niche: { fontSize: 11, fontWeight: '900', marginTop: 2, letterSpacing: 1 },
   bioLoadingWrap: {
     flexDirection: 'row',

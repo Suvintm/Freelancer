@@ -24,7 +24,7 @@ import {
   isValidUsername 
 } from '../src/utils/validation';
 import { useRouter } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../src/constants/Colors';
@@ -264,7 +264,9 @@ export default function SignupScreen() {
         
         // Give the user 1.5s to "feel" the success before the jump (overlay is already showing)
         setTimeout(async () => {
+          const { setIsAddingAccount } = useAuthStore.getState();
           await setAuth(user, token, refreshToken);
+          setIsAddingAccount(false);
           clearTempSignupData();
         }, 1500);
       } else {
@@ -302,6 +304,16 @@ export default function SignupScreen() {
           <ScrollView contentContainerStyle={styles.scrollContent} scrollEnabled={SCREEN_HEIGHT < 850} showsVerticalScrollIndicator={false}>
             
             <View style={styles.header}>
+              <TouchableOpacity 
+                style={styles.backButton}
+                onPress={() => {
+                  handleImpact();
+                  useAuthStore.getState().setIsAddingAccount(false);
+                  router.canGoBack() ? router.back() : router.replace('/(tabs)');
+                }}
+              >
+                <Ionicons name="arrow-back" size={24} color={theme.text} />
+              </TouchableOpacity>
               <Image source={require('../assets/whitebglogo.png')} style={[styles.logo, { tintColor: isDark ? undefined : theme.text }]} resizeMode="contain" />
               
               <TouchableOpacity onPress={pickImage} style={[styles.avatarWrapper, { borderColor: theme.border }]} activeOpacity={0.8}>
@@ -449,7 +461,14 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   keyboardView: { flex: 1 },
   scrollContent: { flexGrow: 1, paddingHorizontal: 32, justifyContent: 'center', paddingVertical: 10 },
-  header: { alignItems: 'center', marginBottom: 12 },
+  header: { alignItems: 'center', marginBottom: 12, position: 'relative' },
+  backButton: {
+    position: 'absolute',
+    left: -10,
+    top: 0,
+    zIndex: 100,
+    padding: 10
+  },
   logo: { width: 80, height: 32, marginBottom: 4 },
   avatarWrapper: { width: 60, height: 60, borderRadius: 30, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center', marginBottom: 8, position: 'relative' },
   avatar: { width: 54, height: 54, borderRadius: 27 },

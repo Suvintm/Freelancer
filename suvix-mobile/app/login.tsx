@@ -15,13 +15,14 @@ import {
   Dimensions,
   useColorScheme
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../src/constants/Colors';
 import SuvixInput from '../src/components/SuvixInput';
 import SuvixButton from '../src/components/SuvixButton';
 import { useAuthStore } from '../src/store/useAuthStore';
+import { useAccountVault } from '../src/hooks/useAccountVault';
 import { useGoogleAuth } from '../src/hooks/useGoogleAuth';
 import { isValidEmail } from '../src/utils/validation';
 import { api } from '../src/api/client';
@@ -35,14 +36,38 @@ export default function LoginScreen() {
   const theme = colorScheme === 'dark' ? Colors.dark : Colors.light;
   const isDark = colorScheme === 'dark';
 
-  const [email, setEmail] = useState('');
+  // ── Add-Account Mode ──────────────────────────────────────────────────────
+  // When mode=add: login is for ADDING a second account, not replacing the current one
+  // When mode=reauth: a stored account's token expired, needs password re-entry
+  const params = useLocalSearchParams<{ mode?: string; email?: string }>();
+  const isAddingAccount = useAuthStore(state => state.isAddingAccount); // Global state
+  const isAddMode = params.mode === 'add' || isAddingAccount;           // Respect both
+  const isReauthMode = params.mode === 'reauth';
+  const prefillEmail = params.email ?? '';
+
+  const [email, setEmail] = useState(prefillEmail);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   const router = useRouter();
   const { signIn: googleSignIn, isLoading: isGoogleLoading } = useGoogleAuth();
-  const setAuth = useAuthStore((state) => state.setAuth);
+  const { user, isAuthenticated, setAuth } = useAuthStore();
+  const vault = useAccountVault();
+
+  // 🏁 AUTO-REDIRECT: Detect when a Google/Social login succeeds in Add-Account mode
+  // Since isAuthenticated may already be true (multi-account), we watch for ID changes.
+  React.useEffect(() => {
+    if (isAuthenticated && user && isAddingAccount) {
+       console.log('✨ [AUTH] New account detected! Cleaning up and redirecting...');
+       useAuthStore.getState().setIsAddingAccount(false);
+       
+       // Smooth handoff to dashboard
+       setTimeout(() => {
+         router.replace('/(tabs)');
+       }, 500);
+    }
+  }, [user?.id, isAuthenticated, isAddingAccount, router]);
 
   const handleImpact = (style = Haptics.ImpactFeedbackStyle.Light) => {
     Haptics.impactAsync(style);
@@ -63,7 +88,7 @@ export default function LoginScreen() {
     }
 
     setLoading(true);
-    setShowLoadingOverlay(true); // ✨ Move to start for immediate immersion
+    setShowLoadingOverlay(true);
 
     try {
       const response = await api.post('/auth/login', {
@@ -73,23 +98,38 @@ export default function LoginScreen() {
 
       if (response.data.success) {
         handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
-        const { user, token, refreshToken } = response.data;
-        
-        // 1s delay for a smooth professional entry (overlay is already showing)
+        const { user, token, refreshToken, accessTokenExpiresAt } = response.data;
+
         setTimeout(async () => {
-          await setAuth(user, token, refreshToken);
-        }, 1000);
+          const { setIsAddingAccount, isAddingAccount } = useAuthStore.getState();
+
+          // ── PROCESS AUTH ──
+          // setAuth internally handles adding/updating the account in the vault
+          await setAuth(user, token, refreshToken, { accessTokenExpiresAt });
+
+          // Reset Add Account mode if it was active
+          setIsAddingAccount(false);
+          setShowLoadingOverlay(false);
+
+          if (isAddingAccount || isReauthMode) {
+            console.log('✅ [AUTH] Account added/re-verified successfully.');
+            // Navigate back or to tabs
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(tabs)');
+            }
+          }
+        }, 1200);
       } else {
         setShowLoadingOverlay(false);
       }
     } catch (error: any) {
-      setShowLoadingOverlay(false); // Hide overlay so user can see the error
+      setShowLoadingOverlay(false);
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
-      
-      // 🚩 [SECURITY] If the user is banned, the global interceptor will handle redirection.
-      // We skip the alert here to avoid confusing popups.
+
       if (error.response?.status === 403 && error.response?.data?.isBanned) {
-        return; 
+        return;
       }
 
       Alert.alert('Login Failed', error.response?.data?.message || 'Check your credentials.');
@@ -100,17 +140,54 @@ export default function LoginScreen() {
     }
   };
 
+  // ── Render ────────────────────────────────────────────────────────────────
+  const overlayMessage = isAddMode
+    ? 'Adding account...'
+    : isReauthMode
+    ? 'Verifying account...'
+    : 'Logging you in...';
+
+  const titleText = isAddMode
+    ? 'Add Account'
+    : isReauthMode
+    ? 'Log back in'
+    : 'Welcome Back';
+
+  const subtitleText = isAddMode
+    ? 'Sign in with a different account'
+    : isReauthMode
+    ? `Re-enter your password for @${prefillEmail}`
+    : '';
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.primary }]}>
-      <ProcessingOverlay isVisible={showLoadingOverlay} message="Logging you in..." />
+      <ProcessingOverlay isVisible={showLoadingOverlay} message={overlayMessage} />
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+
+      {/* Back button in Add-Account / Reauth mode */}
+      {(isAddMode || isReauthMode) && (
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => {
+            handleImpact();
+            useAuthStore.getState().setIsAddingAccount(false);
+            router.canGoBack() ? router.back() : router.replace('/(tabs)');
+          }}
+        >
+          <Ionicons name="arrow-back" size={22} color={theme.text} />
+        </TouchableOpacity>
+      )}
+
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>
           <ScrollView contentContainerStyle={styles.scrollContent} scrollEnabled={SCREEN_HEIGHT < 700} showsVerticalScrollIndicator={false}>
-            
+
             <View style={styles.header}>
               <Image source={require('../assets/whitebglogo.png')} style={[styles.logo, { tintColor: isDark ? undefined : theme.text }]} resizeMode="contain" />
-              <Text style={[styles.title, { color: theme.text }]}>Welcome Back</Text>
+              <Text style={[styles.title, { color: theme.text }]}>{titleText}</Text>
+              {subtitleText ? (
+                <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{subtitleText}</Text>
+              ) : null}
             </View>
             
             <View style={styles.form}>
@@ -186,6 +263,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  backButton: { position: 'absolute', top: 52, left: 20, zIndex: 10, padding: 8 },
   keyboardView: { flex: 1 },
   scrollContent: { 
     flexGrow: 1, 
@@ -196,6 +274,7 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', marginBottom: 24 },
   logo: { width: 100, height: 40, marginBottom: 8 },
   title: { fontSize: 24, fontWeight: '900', letterSpacing: -0.5 },
+  subtitle: { fontSize: 13, fontWeight: '500', marginTop: 4, textAlign: 'center' },
   form: { width: '100%' },
   inputGroup: { marginBottom: 4 },
   forgotPassword: { 

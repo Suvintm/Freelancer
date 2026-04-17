@@ -2,7 +2,9 @@ import {
   generateAccessToken, 
   generateRefreshToken, 
   verifyRefreshToken,
-  hashToken
+  hashToken,
+  REFRESH_TOKEN_TTL_SECONDS,
+  ACCESS_TOKEN_TTL_MS
 } from "../utils/jwt.js";
 import { comparePassword } from "../utils/password.js";
 import { registerFullUser as registerService } from "../services/registerService.js";
@@ -69,7 +71,8 @@ export const refresh = asyncHandler(async (req, res) => {
         }
     }
 
-    const sessionData = JSON.parse(storedData);
+    // 3. Parse session data for identity checks
+    const currentSession = JSON.parse(storedData);
 
     // 4. Fetch User with standard relations
     const user = await prisma.user.findUnique({
@@ -79,20 +82,25 @@ export const refresh = asyncHandler(async (req, res) => {
     if (!user) throw new ApiError(404, "User no longer exists");
 
     // 5. Issue NEW pair with identity claims
-    const { accessToken: newAccessToken, refreshToken: newRefreshToken } = generateUserTokens(user, familyId);
+    // Read device_id from header (soft check — log mismatch but still allow)
+    const incomingDeviceId = req.headers["x-device-id"] || null;
+    const storedDeviceId = currentSession.deviceId || null;
+    if (storedDeviceId && incomingDeviceId && storedDeviceId !== incomingDeviceId) {
+        logger.warn(`[SECURITY] device_id mismatch on refresh for user ${userId}. Stored: ${storedDeviceId} | Incoming: ${incomingDeviceId}`);
+        // Not blocking — may be caused by VPN or carrier IP change. Log only.
+    }
+
+    const { accessToken: newAccessToken, refreshToken: newRefreshToken } = generateUserTokens(user, familyId, incomingDeviceId);
     const newHashedToken = hashToken(newRefreshToken);
 
     // 6. Update Metadata and store in Redis (ONE HIT PIPELINE)
-    const currentSession = JSON.parse(storedData);
-    const userAgent = req.headers["user-agent"] || currentSession.metadata?.userAgent || "Unknown Device";
-    const ip = req.ip || currentSession.metadata?.ip || req.connection.remoteAddress;
-
     const newSessionData = JSON.stringify({ 
         userId: user.id, 
         familyId,
+        deviceId: currentSession.deviceId,
         metadata: {
-            userAgent,
-            ip,
+            userAgent: req.headers["user-agent"] || currentSession.metadata?.userAgent || "Unknown Device",
+            ip: req.ip || currentSession.metadata?.ip || req.connection.remoteAddress,
             lastActive: new Date().toISOString()
         }
     });
@@ -101,9 +109,9 @@ export const refresh = asyncHandler(async (req, res) => {
     await redis.pipeline()
         .del(`refresh_token:${hashedToken}`) // Nuke old
         .srem(`token_family:${familyId}`, hashedToken) // Remove from family
-        .set(`refresh_token:${newHashedToken}`, newSessionData, "EX", 7 * 24 * 60 * 60) // New token
+        .set(`refresh_token:${newHashedToken}`, newSessionData, "EX", REFRESH_TOKEN_TTL_SECONDS) // New token (30d)
         .sadd(`token_family:${familyId}`, newHashedToken) // Add new to family
-        .expire(`token_family:${familyId}`, 7 * 24 * 60 * 60) // Keep family set alive
+        .expire(`token_family:${familyId}`, REFRESH_TOKEN_TTL_SECONDS) // Keep family set alive
         .exec();
 
     // 7. Send Response
@@ -184,9 +192,36 @@ export const login = asyncHandler(async (req, res) => {
   // If user.twoFactorEnabled then return 2fa_required: true
   // ---------------------------------------------------------
 
+  // Read device_id from request header (generated once per install by mobile app)
+  const deviceId = req.headers["x-device-id"] || null;
+  const deviceName = req.headers["x-device-name"] || "Unknown Device";
+
+  // 🛡️ SESSION LIMIT: Max 5 active sessions per user. Evict oldest if limit hit.
+  try {
+    const allKeys = await redis.keys("refresh_token:*");
+    const userSessions = [];
+    for (const key of allKeys) {
+      const data = await redis.get(key);
+      if (data) {
+        const session = JSON.parse(data);
+        if (session.userId === user.id) {
+          userSessions.push({ key, lastActive: session.metadata?.lastActive });
+        }
+      }
+    }
+    if (userSessions.length >= 5) {
+      userSessions.sort((a, b) => new Date(a.lastActive) - new Date(b.lastActive));
+      const oldest = userSessions[0];
+      await redis.del(oldest.key);
+      logger.info(`[SECURITY] 5-session limit: Evicted oldest session for user ${user.id}`);
+    }
+  } catch (limitErr) {
+    logger.warn(`[SECURITY] Session limit check failed: ${limitErr.message}. Proceeding.`);
+  }
+
   // START NEW SESSION FAMILY
   const familyId = crypto.randomUUID();
-  const { accessToken, refreshToken } = generateUserTokens(user, familyId);
+  const { accessToken, refreshToken } = generateUserTokens(user, familyId, deviceId);
   const hashedToken = hashToken(refreshToken);
 
   // CAPTURE METADATA FOR ACTIVE SESSION MANAGEMENT
@@ -196,18 +231,21 @@ export const login = asyncHandler(async (req, res) => {
   const sessionData = JSON.stringify({ 
     userId: user.id, 
     familyId,
-    metadata: { userAgent, ip, lastActive: new Date().toISOString() }
+    deviceId,
+    metadata: { userAgent, ip, deviceName, lastActive: new Date().toISOString() }
   });
 
-  // ATOMIC SESSION STORAGE (1 Hit to Upstash)
+  // ATOMIC SESSION STORAGE (30-day TTL)
   // 🛡️ [RESILIENCE] Wrap Redis call in try-catch to prevent 500 errors if Upstash limit is hit
   try {
     await redis.pipeline()
-      .set(`refresh_token:${hashedToken}`, sessionData, "EX", 7 * 24 * 60 * 60)
+      .set(`refresh_token:${hashedToken}`, sessionData, "EX", REFRESH_TOKEN_TTL_SECONDS)
       .sadd(`token_family:${familyId}`, hashedToken)
-      .expire(`token_family:${familyId}`, 7 * 24 * 60 * 60)
+      .expire(`token_family:${familyId}`, REFRESH_TOKEN_TTL_SECONDS)
+      .sadd(`user_sessions:${user.id}`, hashedToken)             // Secondary index for fast user lookups
+      .expire(`user_sessions:${user.id}`, REFRESH_TOKEN_TTL_SECONDS)
       .exec();
-    logger.info(`[SECURITY] Session stored in Redis for user ${user.id}`);
+    logger.info(`[SECURITY] Session stored in Redis for user ${user.id} (device: ${deviceId || 'unknown'})`);
   } catch (redisError) {
     logger.error(`⚠️ [REDIS-FAILURE] Could not store session in Redis: ${redisError.message}. Proceeding with DB-only auth.`);
   }
@@ -220,7 +258,8 @@ export const login = asyncHandler(async (req, res) => {
     success: true,
     user: formatAuthResponse(user),
     token: accessToken,
-    refreshToken
+    refreshToken,
+    accessTokenExpiresAt: Date.now() + ACCESS_TOKEN_TTL_MS  // Client uses this to proactively refresh
   });
 });
 
@@ -338,8 +377,10 @@ export const registerFull = asyncHandler(async (req, res) => {
 
   const userWithProfile = await registerService(userData);
   const familyId = crypto.randomUUID();
+  const deviceId = req.headers["x-device-id"] || null;
+  const deviceName = req.headers["x-device-name"] || "Unknown Device";
 
-  const { accessToken, refreshToken } = generateUserTokens(userWithProfile, familyId);
+  const { accessToken, refreshToken } = generateUserTokens(userWithProfile, familyId, deviceId);
   const hashedToken = hashToken(refreshToken);
 
   // CAPTURE METADATA
@@ -349,11 +390,16 @@ export const registerFull = asyncHandler(async (req, res) => {
   const sessionData = JSON.stringify({ 
     userId: userWithProfile.id,
     familyId,
-    metadata: { userAgent, ip, lastActive: new Date().toISOString() }
+    deviceId,
+    metadata: { userAgent, ip, deviceName, lastActive: new Date().toISOString() }
   });
 
-  // OPTIMIZED STORAGE (1 Hit)
-  await redis.set(`refresh_token:${hashedToken}`, sessionData, "EX", 7 * 24 * 60 * 60);
+  // OPTIMIZED STORAGE (30-day TTL)
+  await redis.pipeline()
+    .set(`refresh_token:${hashedToken}`, sessionData, "EX", REFRESH_TOKEN_TTL_SECONDS)
+    .sadd(`user_sessions:${userWithProfile.id}`, hashedToken)
+    .expire(`user_sessions:${userWithProfile.id}`, REFRESH_TOKEN_TTL_SECONDS)
+    .exec();
 
   // Set Cookie
   res.cookie("refreshToken", refreshToken, cookieOptions);
@@ -363,7 +409,8 @@ export const registerFull = asyncHandler(async (req, res) => {
     message: "Welcome to SuviX!",
     user: formatAuthResponse(userWithProfile),
     token: accessToken,
-    refreshToken
+    refreshToken,
+    accessTokenExpiresAt: Date.now() + ACCESS_TOKEN_TTL_MS
   });
 });
 
@@ -388,6 +435,16 @@ export const logout = asyncHandler(async (req, res) => {
     // Clear Browser Cookies
     res.clearCookie("refreshToken", cookieOptions);
     
+    // Also remove from secondary user index
+    if (refreshToken) {
+        const hashedToken = hashToken(refreshToken);
+        const storedData = await redis.get(`refresh_token:${hashedToken}`);
+        if (storedData) {
+            const { userId } = JSON.parse(storedData);
+            if (userId) await redis.srem(`user_sessions:${userId}`, hashedToken);
+        }
+    }
+
     res.status(200).json({
         success: true,
         message: "Logged out successfully"
@@ -396,17 +453,49 @@ export const logout = asyncHandler(async (req, res) => {
 
 // ============ ME (PROFILE) ============
 export const getMe = asyncHandler(async (req, res) => {
-  logger.info(`📡 [API] Profile hydration requested for user: ${req.user.id}`);
+  const userId = req.user.id;
+  const cacheKey = `user_cache:${userId}`;
+
+  // 1. Check Redis Cache First
+  if (redisAvailable) {
+    try {
+      const cachedUser = await redis.get(cacheKey);
+      if (cachedUser) {
+        logger.info(`⚡ [CACHE] Serving profile for user ${userId} from Redis`);
+        return res.status(200).json({ 
+          success: true, 
+          user: JSON.parse(cachedUser),
+          _fromCache: true 
+        });
+      }
+    } catch (cacheErr) {
+      logger.warn(`⚠️ [CACHE] Redis get failed: ${cacheErr.message}. Falling back to DB.`);
+    }
+  }
+
+  // 2. Fallback to DB
+  logger.info(`📡 [API] Profile hydration (Cache Miss) for user: ${userId}`);
   const user = await prisma.user.findUnique({
-    where: { id: req.user.id },
+    where: { id: userId },
     include: USER_INCLUDE
   });
 
   if (!user) throw new ApiError(404, "User session invalid.");
   
+  const formattedUser = formatAuthResponse(user);
+
+  // 3. Populate Cache for subsequent refreshes (5-minute TTL)
+  if (redisAvailable) {
+    try {
+      await redis.set(cacheKey, JSON.stringify(formattedUser), "EX", 300);
+    } catch (cacheSetErr) {
+      logger.error(`❌ [CACHE] Redis set failed: ${cacheSetErr.message}`);
+    }
+  }
+  
   res.status(200).json({ 
     success: true, 
-    user: formatAuthResponse(user) 
+    user: formattedUser 
   });
 });
 
@@ -518,4 +607,82 @@ export const revokeSession = asyncHandler(async (req, res) => {
         success: true,
         message: "Session revoked successfully"
     });
+});
+
+// ============ LOGOUT ALL DEVICES ============
+
+/**
+ * 🚨 Nuclear Logout — Invalidates ALL sessions across ALL devices instantly.
+ *
+ * Strategy:
+ * 1. Increment token_version in DB → all existing JWTs immediately fail the middleware check
+ * 2. Use the secondary index (user_sessions:userId) to efficiently delete all Redis sessions
+ * 3. Clear the token_version Redis cache so middleware sees the new version within milliseconds
+ */
+export const logoutAll = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+
+  // STEP 1: Increment token_version → instantly invalidates all existing JWTs
+  await prisma.user.update({
+    where: { id: userId },
+    data: { token_version: { increment: 1 } }
+  });
+  logger.info(`[SECURITY] token_version incremented for user ${userId} (logout-all)`);
+
+  // STEP 2: Use secondary index to delete all sessions efficiently
+  const sessionHashes = await redis.smembers(`user_sessions:${userId}`);
+  if (sessionHashes && sessionHashes.length > 0) {
+    const pipe = redis.pipeline();
+    for (const hash of sessionHashes) {
+      pipe.del(`refresh_token:${hash}`);
+    }
+    pipe.del(`user_sessions:${userId}`);
+    await pipe.exec();
+    logger.info(`[SECURITY] Deleted ${sessionHashes.length} Redis sessions for user ${userId}`);
+  }
+
+  // STEP 3: Bust the token_version cache so middleware picks up the new version instantly
+  await redis.del(`token_version:${userId}`);
+
+  // STEP 4: Clear browser cookie
+  res.clearCookie("refreshToken", cookieOptions);
+
+  res.status(200).json({
+    success: true,
+    message: "You have been logged out of all devices successfully.",
+    sessionsRevoked: sessionHashes?.length ?? 0
+  });
+});
+
+/**
+ * 🛰️ VAULT SANITIZER — Validates a list of User IDs against the database.
+ * Used by the mobile app on boot to purge local "ghost" accounts that 
+ * were deleted from the server side.
+ */
+export const validateVault = asyncHandler(async (req, res) => {
+  const { userIds } = req.body;
+
+  if (!userIds || !Array.isArray(userIds)) {
+    return res.status(400).json({
+      success: false,
+      message: "An array of userIds is required for validation."
+    });
+  }
+
+  // Find which of these IDs currently exist in the DB
+  const existingUsers = await prisma.user.findMany({
+    where: {
+      id: { in: userIds }
+    },
+    select: {
+      id: true
+    }
+  });
+
+  const validIds = existingUsers.map(u => u.id);
+
+  res.status(200).json({
+    success: true,
+    validIds
+  });
 });

@@ -102,6 +102,12 @@ export const useSocketStore = create<SocketStore>((set, get) => ({
       }
     });
 
+    // 👤 [IDENTITY] Surgical Profile Sync
+    socket.on('user:profile_updated', (data: any) => {
+      console.log('📡 [SOCKET] Surgical profile update received:', Object.keys(data));
+      useAuthStore.getState().surgicallyUpdateUser(data);
+    });
+
     set({ socket });
   },
 

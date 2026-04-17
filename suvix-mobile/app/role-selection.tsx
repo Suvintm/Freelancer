@@ -196,8 +196,19 @@ export default function RoleSelectionScreen() {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-            
             <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+              {/* Back Button for Add Account Scenario */}
+              <TouchableOpacity 
+                style={styles.backButton} 
+                onPress={() => {
+                  handleImpact();
+                  useAuthStore.getState().setIsAddingAccount(false);
+                  router.canGoBack() ? router.back() : router.replace('/(tabs)');
+                }}
+              >
+                <Feather name="arrow-left" size={24} color={theme.text} />
+              </TouchableOpacity>
+
               <Image source={require('../assets/whitebglogo.png')} style={[styles.logo, { tintColor: isDark ? undefined : theme.text }]} resizeMode="contain" />
               <Text style={[styles.title, { color: theme.text }]}>Choose Your Path</Text>
               <Text style={[styles.disclaimer, { color: theme.textSecondary }]}>Wisely choose your category by checking the info of each category on the respective category info icon</Text>
@@ -265,6 +276,13 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { paddingHorizontal: 24, paddingTop: 10 },
   header: { alignItems: 'center', marginBottom: 20 },
+  backButton: {
+    position: 'absolute',
+    left: 0,
+    top: 5,
+    padding: 8,
+    zIndex: 100,
+  },
   logo: { width: 90, height: 36, marginBottom: 8 },
   title: { fontSize: 26, fontWeight: '900', letterSpacing: -0.5 },
   disclaimer: { fontSize: 11, textAlign: 'center', marginTop: 8, paddingHorizontal: 20, fontStyle: 'italic' },

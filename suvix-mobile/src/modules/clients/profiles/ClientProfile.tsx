@@ -13,16 +13,19 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { ProfileContentTabs } from '../../shared/profiles/ProfileContentTabs';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../store/useAuthStore';
+import { ProfileSkeleton } from '../../shared/skeletons/ProfileSkeleton';
 import { useTheme } from '../../../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { api } from '../../../api/client';
 import * as ImagePicker from 'expo-image-picker';
+import { formatCount } from '../../../utils/formatters';
 
 const { width } = Dimensions.get('window');
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
@@ -34,7 +37,7 @@ const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 export default function ClientProfile() {
   const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
-  const { user, updateUser, fetchUser } = useAuthStore();
+  const { user, updateUser, fetchUser, setIsRefreshing, isLoadingUser } = useAuthStore();
   const router = useRouter();
 
 
@@ -44,6 +47,16 @@ export default function ClientProfile() {
   const [isSaving, setIsSaving] = React.useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
 
+  const onRefresh = React.useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchUser();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchUser, setIsRefreshing]);
+
+  if (isLoadingUser && !user) return <ProfileSkeleton />;
   if (!user) return null;
 
   // 📐 SURGICAL LAYOUT: Match Navbar Offset
@@ -124,6 +137,14 @@ export default function ClientProfile() {
       <ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={[styles.content, { paddingTop: headerOffset, flexGrow: 1 }]}
+        refreshControl={
+          <RefreshControl 
+            refreshing={isRefreshing} 
+            onRefresh={onRefresh} 
+            tintColor={theme.accent} 
+            colors={[theme.accent]} 
+          />
+        }
       >
         
         {/* 1. UNIFIED PREMIUM BANNER (1:1 SYNC) */}
@@ -185,6 +206,14 @@ export default function ClientProfile() {
             <View style={styles.nameRow}>
                <Text style={[styles.name, { color: theme.text }]}>{user.name || 'SuviX Member'}</Text>
                <MaterialCommunityIcons name="shield-check" size={18} color="#007AFF" style={{ marginLeft: 6 }} />
+               
+               <TouchableOpacity 
+                  onPress={() => router.push('/settings')}
+                  style={styles.settingsIcon}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="settings-outline" size={20} color={theme.textSecondary} />
+                </TouchableOpacity>
             </View>
             <Text style={[styles.roleLabel, { color: '#007AFF' }]}>CLIENT MEMBER</Text>
             
@@ -320,6 +349,10 @@ const styles = StyleSheet.create({
   infoBlock: { marginTop: 15 },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
   name: { fontSize: 20, fontWeight: '800' },
+  settingsIcon: {
+    padding: 8,
+    marginLeft: 4,
+  },
   roleLabel: { fontSize: 11, fontWeight: '900', marginTop: 2, letterSpacing: 1 },
   bio: { fontSize: 13, marginTop: 8, lineHeight: 18, flex: 1 },
   bioWrapper: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
