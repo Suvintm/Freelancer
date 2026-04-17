@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Dimensions, useColorScheme, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/Colors';
+import { useTheme } from '../../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -24,9 +25,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   style,
   circle = false,
 }) => {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? Colors.dark : Colors.light;
+  const { isDarkMode: isDark } = useTheme();
 
   // Shimmer animation state
   const animatedValue = useRef(new Animated.Value(0)).current;
@@ -35,7 +34,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
     Animated.loop(
       Animated.timing(animatedValue, {
         toValue: 1,
-        duration: 1500,
+        duration: 1800, // Slower, smoother movement for premium visibility
         useNativeDriver: true,
       })
     ).start();
@@ -46,8 +45,9 @@ export const Skeleton: React.FC<SkeletonProps> = ({
     outputRange: [-width, width],
   });
 
-  const baseColor = isDark ? '#1A1A1A' : '#E1E9EE';
-  const highlightColor = isDark ? '#2A2A2A' : '#F2F8FC';
+  // Premium High-Contrast Shimmer Colors (Zinc Palette)
+  const baseColor = isDark ? '#18181B' : '#F4F4F5';    // Zinc 900 / Zinc 100 (Balanced)
+  const highlightColor = isDark ? '#3F3F46' : '#FFFFFF'; // Zinc 700 / Pure White
 
   return (
     <View

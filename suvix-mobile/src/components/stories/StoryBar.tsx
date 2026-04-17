@@ -12,8 +12,13 @@ import { useStories } from '../../hooks/useStories';
  * STORY BAR
  * Provides a high-performance horizontal feed for creator stories.
  */
-export const StoryBar = () => {
-  const { data, isLoading } = useStories();
+interface StoryBarProps {
+  isLoading?: boolean;
+}
+
+export const StoryBar = ({ isLoading: forcedLoading }: StoryBarProps) => {
+  const { data, isLoading: internalLoading } = useStories();
+  const isLoading = forcedLoading || internalLoading;
 
   if (isLoading) {
     return (

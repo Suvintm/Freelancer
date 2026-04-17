@@ -10,6 +10,8 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useTheme } from '../../../context/ThemeContext';
+import { useRefreshManager } from '../../../hooks/useRefreshManager';
+import { Colors } from '../../../constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatCount } from '../../../utils/formatters';
@@ -20,13 +22,13 @@ import { Image as ExpoImage } from 'expo-image';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator } from 'react-native';
 import { useState } from 'react';
-import { ProfileSkeleton } from '../../shared/skeletons/ProfileSkeleton';
+import { ProfileSkeleton, ProfileSkeletonContent } from '../../shared/skeletons/ProfileSkeleton';
 
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 
 export default function DefaultProfile() {
   const { theme } = useTheme();
-  const { user, setIsRefreshing, isLoadingUser } = useAuthStore();
+  const { user, isRefreshing, setIsRefreshing, isLoadingUser, fetchUser } = useAuthStore();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -37,7 +39,9 @@ export default function DefaultProfile() {
     } finally {
       setIsRefreshing(false);
     }
-  }, [setIsRefreshing]);
+  }, [fetchUser, setIsRefreshing]);
+
+  const handleRefresh = useRefreshManager(onRefresh);
 
   if (isLoadingUser && !user) return <ProfileSkeleton />;
   if (!user) return null;
@@ -58,12 +62,18 @@ export default function DefaultProfile() {
         refreshControl={
           <RefreshControl 
             refreshing={isRefreshing} 
-            onRefresh={onRefresh} 
-            tintColor={theme.accent} 
-            colors={[theme.accent]} 
+            onRefresh={handleRefresh} 
+            tintColor={theme.isDarkMode ? theme.accent : '#FF3040'} 
+            colors={[theme.isDarkMode ? theme.accent : '#FF3040']} 
+            progressViewOffset={80}
+            progressBackgroundColor={theme.secondary}
           />
         }
       >
+        {isRefreshing ? (
+          <ProfileSkeletonContent />
+        ) : (
+          <>
         <LinearGradient
           colors={['#101828', '#1d2939', '#344054']}
           start={{ x: 0, y: 0 }}
@@ -138,6 +148,8 @@ export default function DefaultProfile() {
           theme={theme} 
           onRepairSuccess={() => {}}
         />
+          </>
+        )}
       </ScrollView>
     </View>
   );

@@ -11,6 +11,7 @@ import { AccountSwitcherSheet } from '../../src/components/shared/AccountSwitche
 import BottomSheet from '@gorhom/bottom-sheet';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { CategoryId } from '../../src/types/category';
+import { RefreshLimitBadge } from '../../src/components/shared/RefreshLimitBadge';
 
 // Screens
 import HomeScreen from './index';
@@ -168,6 +169,8 @@ export default function TabsLayout() {
         sheetRef={switcherSheetRef}
         isDark={isDarkMode}
       />
+
+      <RefreshLimitBadge />
     </View>
   );
 }

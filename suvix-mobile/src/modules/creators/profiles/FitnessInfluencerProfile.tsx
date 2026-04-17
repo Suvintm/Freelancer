@@ -26,7 +26,8 @@ import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { formatCount } from '../../../utils/formatters';
 
 import { SmartText } from '../../shared/content/SmartText';
-import { ProfileSkeleton } from '../../shared/skeletons/ProfileSkeleton';
+import { ProfileSkeleton, ProfileSkeletonContent } from '../../shared/skeletons/ProfileSkeleton';
+import { useRefreshManager } from '../../../hooks/useRefreshManager';
 
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 const { width } = Dimensions.get('window');
@@ -70,6 +71,8 @@ export default function FitnessInfluencerProfile() {
       setIsRefreshing(false);
     }
   }, [fetchUser, setIsRefreshing]);
+
+  const handleRefresh = useRefreshManager(onRefresh);
 
   if (isLoadingUser && !user) return <ProfileSkeleton />;
   if (!user) return null;
@@ -196,13 +199,18 @@ export default function FitnessInfluencerProfile() {
         refreshControl={
           <RefreshControl 
             refreshing={isRefreshing} 
-            onRefresh={onRefresh} 
-            tintColor={theme.accent} 
-            colors={[theme.accent]} 
+            onRefresh={handleRefresh} 
+            tintColor={theme.isDarkMode ? theme.accent : '#FF3040'} 
+            colors={[theme.isDarkMode ? theme.accent : '#FF3040']} 
+            progressViewOffset={80}
+            progressBackgroundColor={theme.secondary}
           />
         }
       >
-        
+        {isRefreshing ? (
+          <ProfileSkeletonContent />
+        ) : (
+          <>
         {/* Dynamic Fitness Banner ( emerald green identity ) */}
         <LinearGradient
           colors={['#2ECC71', '#27AE60', '#000000']}
@@ -379,6 +387,8 @@ export default function FitnessInfluencerProfile() {
             )}
           />
         </View>
+          </>
+        )}
       </ScrollView>
 
       {/* Bio Update Modal */}

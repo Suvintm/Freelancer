@@ -18,8 +18,9 @@ import {
 import { ProfileContentTabs } from '../../shared/profiles/ProfileContentTabs';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../store/useAuthStore';
-import { ProfileSkeleton } from '../../shared/skeletons/ProfileSkeleton';
+import { ProfileSkeleton, ProfileSkeletonContent } from '../../shared/skeletons/ProfileSkeleton';
 import { useTheme } from '../../../context/ThemeContext';
+import { useRefreshManager } from '../../../hooks/useRefreshManager';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -55,6 +56,8 @@ export default function ClientProfile() {
       setIsRefreshing(false);
     }
   }, [fetchUser, setIsRefreshing]);
+
+  const handleRefresh = useRefreshManager(onRefresh);
 
   if (isLoadingUser && !user) return <ProfileSkeleton />;
   if (!user) return null;
@@ -140,12 +143,18 @@ export default function ClientProfile() {
         refreshControl={
           <RefreshControl 
             refreshing={isRefreshing} 
-            onRefresh={onRefresh} 
-            tintColor={theme.accent} 
-            colors={[theme.accent]} 
+            onRefresh={handleRefresh} 
+            tintColor={theme.isDarkMode ? theme.accent : '#FF3040'} 
+            colors={[theme.isDarkMode ? theme.accent : '#FF3040']} 
+            progressViewOffset={80}
+            progressBackgroundColor={theme.secondary}
           />
         }
       >
+        {isRefreshing ? (
+          <ProfileSkeletonContent />
+        ) : (
+          <>
         
         {/* 1. UNIFIED PREMIUM BANNER (1:1 SYNC) */}
         <LinearGradient
@@ -282,6 +291,8 @@ export default function ClientProfile() {
         </View>
 
         <View style={{ height: 100 }} />
+          </>
+        )}
       </ScrollView>
 
       {/* Bio Modal */}

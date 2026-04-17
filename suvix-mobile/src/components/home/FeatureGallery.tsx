@@ -20,6 +20,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { Skeleton } from '../shared/Skeleton';
+import { ScrollView } from 'react-native';
 
 const CARD_MARGIN = 16;
 const HORIZONTAL_PADDING = 24;
@@ -63,9 +65,10 @@ const ORIGINAL_FEATURES: FeatureCard[] = [
 
 type FeatureGalleryProps = {
   paused?: boolean;
+  isLoading?: boolean;
 };
 
-export const FeatureGallery = ({ paused = false }: FeatureGalleryProps) => {
+export const FeatureGallery = ({ paused = false, isLoading = false }: FeatureGalleryProps) => {
   const { theme } = useTheme();
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
@@ -129,6 +132,32 @@ export const FeatureGallery = ({ paused = false }: FeatureGalleryProps) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push(route as any);
   };
+
+  if (isLoading) {
+    return (
+      <View style={s.container}>
+        <View style={s.header}>
+          <Skeleton height={10} width={100} borderRadius={4} />
+          <Skeleton circle height={14} width={14} />
+        </View>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          contentContainerStyle={{ paddingLeft: HORIZONTAL_PADDING }}
+        >
+          {[1, 2, 3].map((i) => (
+            <Skeleton 
+              key={i} 
+              height={90} 
+              width={cardWidth} 
+              borderRadius={20} 
+              style={{ marginRight: CARD_MARGIN }} 
+            />
+          ))}
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <View style={s.container}>

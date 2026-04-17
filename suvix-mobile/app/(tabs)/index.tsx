@@ -18,6 +18,7 @@ import { UnifiedBanner } from '../../src/components/home/UnifiedBanner';
 import { StoryBar } from '../../src/components/stories/StoryBar';
 import { FeatureGallery } from '../../src/components/home/FeatureGallery';
 import { UnifiedFeed } from '../../src/modules/home/discovery/UnifiedFeed';
+import { useDiscoveryStore } from '../../src/store/useDiscoveryStore';
 import { DashboardSkeleton } from '../../src/modules/home/skeletons/DashboardSkeleton';
 
 /**
@@ -84,7 +85,7 @@ export default function DashboardIndex() {
   }, [user]);
 
   // ZERO-LATENCY FALLBACK: If user is authenticated but data is 1ms late, show the skeleton
-  const showSkeleton = isLoadingUser || (isAuthenticated && !user);
+  const showSkeleton = !user && (isLoadingUser || isAuthenticated);
 
   if (showSkeleton) {
     return <DashboardSkeleton />;
@@ -101,25 +102,33 @@ export default function DashboardIndex() {
   // 3. Render Unified Home Feed
   const ActiveActionModule = MODULE_REGISTRY[activeModule] || EditorDashboard;
 
+  const { feed, isLoading: isDiscoveryLoading } = useDiscoveryStore();
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.primary }}>
       <UnifiedFeed 
         ListHeaderComponent={
           <View>
-            {/* Banner Section (Always visible) */}
+            {/* Banner Section (Always persistent) */}
             <View style={styles.bannerWrapper}>
-              {isReady ? <UnifiedBanner paused={isHomeScrolling} /> : <View style={{ height: 200 }} />}
+              {isReady ? (
+                <UnifiedBanner paused={isHomeScrolling} />
+              ) : (
+                <View style={{ height: 200 }} />
+              )}
             </View>
-
-            {/* Stories Section (Always visible) */}
-            <StoryBar />
-
-            <View style={{ height: 16 }} />
-
-            {/* Feature Gallery / Service Quick Links (Always visible) */}
-            {isReady && <FeatureGallery paused={isHomeScrolling} />}
-          </View>
-        }
+ 
+             {/* Stories Section (Always visible) */}
+             <StoryBar isLoading={isDiscoveryLoading} />
+ 
+             <View style={{ height: 16 }} />
+ 
+             {/* Feature Gallery / Service Quick Links (Always visible) */}
+             {isReady && (
+               <FeatureGallery paused={isHomeScrolling} isLoading={isDiscoveryLoading} />
+             )}
+           </View>
+         }
         onScrollBeginDrag={() => setIsHomeScrolling(true)}
         onScrollEndDrag={() => setIsHomeScrolling(false)}
       />

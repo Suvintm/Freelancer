@@ -30,7 +30,8 @@ import { formatCount } from '../../../utils/formatters';
 import { ProfileContentTabs } from '../../shared/profiles/ProfileContentTabs';
 import { YouTubeVideoCard } from '../components/YouTubeVideoCard';
 import { useRouter } from 'expo-router';
-import { ProfileSkeleton } from '../../shared/skeletons/ProfileSkeleton';
+import { ProfileSkeleton, ProfileSkeletonContent } from '../../shared/skeletons/ProfileSkeleton';
+import { useRefreshManager } from '../../../hooks/useRefreshManager';
 
 // 🏆 Achievement Assets
 const SILVER_BTN = require('../../../../assets/images/playbutton/silverbtn.png');
@@ -85,6 +86,8 @@ export default function YouTubeCreatorProfile() {
       setIsRefreshing(false);
     }
   }, [fetchUser, setIsRefreshing]);
+
+  const handleRefresh = useRefreshManager(onRefresh);
 
   if (isLoadingUser && !user) return <ProfileSkeleton />;
   if (!user || !user.youtubeProfile || user.youtubeProfile.length === 0) return null;
@@ -193,13 +196,18 @@ export default function YouTubeCreatorProfile() {
         refreshControl={
           <RefreshControl 
             refreshing={isRefreshing} 
-            onRefresh={onRefresh} 
-            tintColor={theme.accent} 
-            colors={[theme.accent]} 
+            onRefresh={handleRefresh} 
+            tintColor={theme.isDarkMode ? theme.accent : '#FF3040'} 
+            colors={[theme.isDarkMode ? theme.accent : '#FF3040']} 
+            progressViewOffset={80}
+            progressBackgroundColor={theme.secondary}
           />
         }
       >
-        
+        {isRefreshing ? (
+          <ProfileSkeletonContent />
+        ) : (
+          <>
         {/* YT Dynamic Banner */}
         <LinearGradient
           colors={['#FF0000', '#990000', '#000000']}
@@ -452,7 +460,9 @@ export default function YouTubeCreatorProfile() {
             )}
           />
         </View>
-    </ScrollView>
+          </>
+        )}
+      </ScrollView>
 
       {/* Bio Update Modal (Optimized) */}
       <BioEditModal 

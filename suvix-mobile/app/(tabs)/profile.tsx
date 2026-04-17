@@ -68,7 +68,9 @@ export default function ProfileIndex() {
     return 'default';
   }, [user]);
 
-  if (isLoadingUser || (isAuthenticated && !user)) {
+  const showSkeleton = !user && (isLoadingUser || isAuthenticated);
+
+  if (showSkeleton) {
     return <ProfileSkeleton />;
   }
 
