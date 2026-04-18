@@ -1,16 +1,12 @@
 import React from 'react';
 import { StyleSheet, View, TouchableOpacity } from 'react-native';
-import Animated, { 
-  useAnimatedStyle, 
-  useSharedValue, 
-  withSpring,
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
   runOnJS,
   useAnimatedReaction,
 } from 'react-native-reanimated';
-import { 
-  GestureDetector, 
-  Gesture,
-} from 'react-native-gesture-handler';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 
 interface DraggableItemProps {
@@ -21,21 +17,19 @@ interface DraggableItemProps {
   onSelect?: () => void;
   onDelete?: () => void;
   onEdit?: () => void;
-  // --- 🛰️ GLOBAL CONTROL BRIDGE ---
   activeX?: Animated.SharedValue<number>;
   activeY?: Animated.SharedValue<number>;
   activeScale?: Animated.SharedValue<number>;
   activeRotation?: Animated.SharedValue<number>;
-  onUpdate?: (data: { x: number; y: number; scale: number; rotation: number }) => void;
+  activeWidth?: Animated.SharedValue<number>;
+  isResizing?: Animated.SharedValue<boolean>;
+  initialWidth?: number;
+  onUpdate?: (data: { x: number; y: number; scale: number; rotation: number; width?: number }) => void;
 }
 
-/**
- * 🚀 PROFESSIONAL DRAGGABLE ENGINE (Enhanced with Selection & Global Bridge)
- * Handles Pan, Pinch, Rotate, and Tap gestures on the UI thread.
- */
-export const DraggableItem: React.FC<DraggableItemProps> = ({ 
-  children, 
-  initialX = 0, 
+export const DraggableItem: React.FC<DraggableItemProps> = ({
+  children,
+  initialX = 0,
   initialY = 0,
   isSelected = false,
   onSelect,
@@ -45,126 +39,150 @@ export const DraggableItem: React.FC<DraggableItemProps> = ({
   activeY,
   activeScale,
   activeRotation,
+  activeWidth,
+  isResizing,
+  initialWidth,
   onUpdate,
 }) => {
   const localX = useSharedValue(initialX);
   const localY = useSharedValue(initialY);
   const localScale = useSharedValue(1);
   const localRotation = useSharedValue(0);
+  const localWidth = useSharedValue(initialWidth ?? 280);
 
-  // --- 🛰️ UI-THREAD SYNC ENGINE (Instagram-Grade Stabilization) ---
-  // This mirrors global values into local values while selected,
-  // ensuring that when deselected, they stay exactly where they were left.
+  // Mirror global shared values into locals while this item is selected.
   useAnimatedReaction(
     () => ({
       x: activeX?.value,
       y: activeY?.value,
       s: activeScale?.value,
       r: activeRotation?.value,
+      w: activeWidth?.value,
     }),
-    (current) => {
-      if (isSelected) {
-        if (current.x !== undefined) localX.value = current.x;
-        if (current.y !== undefined) localY.value = current.y;
-        if (current.s !== undefined) localScale.value = current.s;
-        if (current.r !== undefined) localRotation.value = current.r;
-      }
+    (cur) => {
+      if (!isSelected) return;
+      if (cur.x !== undefined) localX.value = cur.x;
+      if (cur.y !== undefined) localY.value = cur.y;
+      if (cur.s !== undefined) localScale.value = cur.s;
+      if (cur.r !== undefined) localRotation.value = cur.r;
+      if (cur.w !== undefined) localWidth.value = cur.w;
     },
-    [isSelected]
+    [isSelected],
   );
 
   const startX = useSharedValue(0);
   const startY = useSharedValue(0);
+  const startResizeWidth = useSharedValue(0);
 
-  // 1. Pan Gesture (Selection & Local-only movement)
   const panGesture = Gesture.Pan()
-    .enabled(!isSelected) // Global controller takes over when selected
-    .onBegin(() => {
-      if (onSelect) runOnJS(onSelect)();
-    })
+    .enabled(!isSelected)
+    .onBegin(() => { if (onSelect) runOnJS(onSelect)(); })
     .onStart(() => {
       startX.value = localX.value;
       startY.value = localY.value;
       if (onSelect) runOnJS(onSelect)();
     })
-    .onUpdate((event) => {
-      localX.value = startX.value + event.translationX;
-      localY.value = startY.value + event.translationY;
+    .onUpdate((e) => {
+      localX.value = startX.value + e.translationX;
+      localY.value = startY.value + e.translationY;
     });
 
-  // 2. Pinch Gesture (Local-only)
   const pinchGesture = Gesture.Pinch()
     .enabled(!isSelected)
-    .onUpdate((event) => {
-      localScale.value = event.scale;
-    });
+    .onUpdate((e) => { localScale.value = e.scale; });
 
-  // 3. Rotation Gesture (Local-only)
   const rotationGesture = Gesture.Rotation()
     .enabled(!isSelected)
-    .onUpdate((event) => {
-      localRotation.value = event.rotation;
-    });
+    .onUpdate((e) => { localRotation.value = e.rotation; });
 
-  // 4. Tap Gesture (Selection Focus)
   const tapGesture = Gesture.Tap()
+    .onStart(() => { if (onSelect) runOnJS(onSelect)(); });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // ✅ THE FIX: widthPanGesture must update activeWidth.value directly.
+  //
+  //    Previously it only updated localWidth.value, but animatedStyle reads
+  //    activeWidth.value when the item is selected. The text had no way to
+  //    know the container was being resized, so it never reflowed.
+  // ─────────────────────────────────────────────────────────────────────
+  const widthPanGesture = Gesture.Pan()
     .onStart(() => {
-        if (onSelect) runOnJS(onSelect)();
+      if (isResizing) isResizing.value = true;
+      // Seed from activeWidth when selected, localWidth otherwise.
+      startResizeWidth.value = activeWidth ? activeWidth.value : localWidth.value;
+    })
+    .onUpdate((e) => {
+      const newW = Math.max(80, startResizeWidth.value + e.translationX);
+      localWidth.value = newW;
+      if (activeWidth) activeWidth.value = newW; // ← KEY FIX
+    })
+    .onEnd(() => {
+      if (isResizing) isResizing.value = false;
+      const finalW = activeWidth ? activeWidth.value : localWidth.value;
+      if (onUpdate) {
+        runOnJS(onUpdate)({
+          x: localX.value,
+          y: localY.value,
+          scale: localScale.value,
+          rotation: localRotation.value,
+          width: finalW,
+        });
+      }
     });
 
   const animatedStyle = useAnimatedStyle(() => {
-    const finalX = activeX ? activeX.value : localX.value;
-    const finalY = activeY ? activeY.value : localY.value;
-    const finalScale = activeScale ? activeScale.value : localScale.value;
-    const finalRotation = activeRotation ? activeRotation.value : localRotation.value;
+    const fx = activeX ? activeX.value : localX.value;
+    const fy = activeY ? activeY.value : localY.value;
+    const fs = activeScale ? activeScale.value : localScale.value;
+    const fr = activeRotation ? activeRotation.value : localRotation.value;
+    const fw = activeWidth ? activeWidth.value : localWidth.value;
 
     return {
-        transform: [
-          { translateX: finalX },
-          { translateY: finalY },
-          { scale: finalScale },
-          { rotate: `${(finalRotation * 180) / Math.PI}deg` },
-        ],
-        position: 'absolute',
-        alignSelf: 'center',
-        top: '40%',
+      width: fw,
+      transform: [
+        { translateX: fx },
+        { translateY: fy },
+        { scale: fs },
+        { rotate: `${(fr * 180) / Math.PI}deg` },
+      ],
+      position: 'absolute' as const,
+      alignSelf: 'center' as const,
+      top: '40%' as any,
     };
   });
 
   const composed = Gesture.Simultaneous(
     tapGesture,
-    Gesture.Simultaneous(panGesture, Gesture.Simultaneous(pinchGesture, rotationGesture))
+    Gesture.Simultaneous(panGesture, Gesture.Simultaneous(pinchGesture, rotationGesture)),
   );
 
   return (
     <GestureDetector gesture={composed}>
       <Animated.View style={[animatedStyle, s.itemContainer]}>
-        {/* Selection Border (Canva Style) */}
         {isSelected && <View style={s.selectionBorder} />}
-        
+
         {children}
 
-        {/* Action Handles */}
         {isSelected && (
           <>
-            {/* Delete Handle */}
-            <TouchableOpacity 
-              onPress={onDelete} 
-              style={s.deleteHandle}
-              activeOpacity={0.7}
-            >
-                <Ionicons name="close-circle" size={24} color="#FF3040" />
+            <TouchableOpacity onPress={onDelete} style={s.deleteHandle} activeOpacity={0.8}>
+              <Ionicons name="close-circle" size={26} color="#FF3040" />
             </TouchableOpacity>
 
-            {/* Edit Handle (Pencil) */}
             {onEdit && (
-              <TouchableOpacity 
-                onPress={onEdit} 
-                style={s.editHandle}
-                activeOpacity={0.7}
-              >
-                  <Ionicons name="pencil" size={20} color="#3897f0" />
+              <TouchableOpacity onPress={onEdit} style={s.editHandle} activeOpacity={0.8}>
+                <Ionicons name="pencil" size={16} color="#3897f0" />
               </TouchableOpacity>
+            )}
+
+            {initialWidth !== undefined && (
+              <GestureDetector gesture={widthPanGesture}>
+                <View style={s.resizeHandle}>
+                  <View style={s.resizePill}>
+                    <Ionicons name="swap-horizontal-outline" size={13} color="#3897f0" />
+                  </View>
+                </View>
+              </GestureDetector>
             )}
           </>
         )}
@@ -174,9 +192,7 @@ export const DraggableItem: React.FC<DraggableItemProps> = ({
 };
 
 const s = StyleSheet.create({
-  itemContainer: {
-    padding: 2, // Buffer for selection border
-  },
+  itemContainer: { padding: 2 },
   selectionBorder: {
     ...StyleSheet.absoluteFillObject,
     borderWidth: 2,
@@ -186,32 +202,53 @@ const s = StyleSheet.create({
   },
   deleteHandle: {
     position: 'absolute',
-    top: -12,
-    right: -12,
+    top: -13, right: -13,
     backgroundColor: '#fff',
-    borderRadius: 12,
-    zIndex: 10,
+    borderRadius: 13,
+    zIndex: 20,
     elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   editHandle: {
     position: 'absolute',
-    top: -12,
-    left: -12,
-    width: 24,
-    height: 24,
+    top: -13, left: -13,
+    width: 26, height: 26,
     backgroundColor: '#fff',
-    borderRadius: 12,
-    zIndex: 10,
+    borderRadius: 13,
+    zIndex: 20,
     elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  resizeHandle: {
+    position: 'absolute',
+    right: -28,
+    top: '50%',
+    marginTop: -22,
+    width: 44, height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 25,
+  },
+  resizePill: {
+    width: 28, height: 28,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#3897f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
 });

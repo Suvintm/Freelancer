@@ -1,15 +1,17 @@
-
 export type StoryObjectType = 'TEXT' | 'STICKER' | 'IMAGE';
 
 export interface StoryObject {
     id: string;
     type: StoryObjectType;
-    content: string; // Text string or Sticker ID/URI
+    content: string;
     x: number;
     y: number;
     scale: number;
     rotation: number;
-    // Styling
+    // ── Text Styling ──
     fontStyle?: 'Modern' | 'Classic' | 'Italic' | 'Neon' | 'Typewriter' | 'Cursive' | 'Comic';
     color?: string;
+    textBackground?: boolean;
+    textAlign?: 'left' | 'center' | 'right';
+    width?: number;
 }
