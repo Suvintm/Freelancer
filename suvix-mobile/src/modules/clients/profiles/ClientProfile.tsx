@@ -66,7 +66,7 @@ export default function ClientProfile() {
   const headerOffset = insets.top + 50;
 
 
-  const handlePickImage = async () => {
+  const handlePickMedia = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission Required', 'We need camera roll permissions to change your profile picture.');
@@ -171,17 +171,27 @@ export default function ClientProfile() {
         <View style={[styles.profileWrap, { backgroundColor: theme.primary }]}>
           <View style={[styles.headerRow, styles.padded]}>
             <View style={styles.avatarContainer}>
-              <View style={styles.avatarInner}>
+              <TouchableOpacity 
+                style={styles.avatarInner} 
+                onPress={() => router.push('/story/create')}
+                activeOpacity={0.9}
+              >
                 <Image
                   source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
-                  style={[styles.avatar, { borderColor: '#FFFFFF' }]}
+                  style={[styles.avatar, { borderColor: theme.primary }]}
                 />
                 {isUploadingAvatar && (
                   <View style={styles.avatarLoadingOverlay}>
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   </View>
                 )}
-              </View>
+
+                {/* ➕ PROFESSIONAL STORY PLUS BADGE (SuviX Red) */}
+                <View style={[styles.storyPlusBadge, { borderColor: theme.primary }]}>
+                  <MaterialCommunityIcons name="plus" size={14} color="#FFFFFF" />
+                </View>
+              </TouchableOpacity>
+              
               <TouchableOpacity style={styles.avatarEditBtn} onPress={handlePickImage} disabled={isUploadingAvatar}>
                 <MaterialCommunityIcons name="camera-outline" size={16} color="white" />
               </TouchableOpacity>
@@ -206,9 +216,18 @@ export default function ClientProfile() {
                   <Text style={[styles.miniStatValue, { color: theme.text }]}>PRO</Text>
                   <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Member</Text>
                 </View>
+                </View>
+              </View>
+
+              <TouchableOpacity 
+                onPress={() => router.push('/story/create')}
+                style={[styles.editBtn, { backgroundColor: '#FF3040', borderColor: '#FF3040', marginTop: 10 }]}
+              >
+                <MaterialCommunityIcons name="plus" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
+                <Text style={[styles.editBtnText, { color: '#FFFFFF' }]}>Add Story</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        </View>
 
         {/* 2. IDENTITY BLOCK (NAME, BIO) */}
           <View style={[styles.infoBlock, styles.padded]}>
@@ -288,7 +307,6 @@ export default function ClientProfile() {
               </View>
             )}
           />
-        </View>
 
         <View style={{ height: 100 }} />
           </>
@@ -336,30 +354,114 @@ const styles = StyleSheet.create({
   padded: { paddingHorizontal: 20 },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginTop: -40, gap: 15 },
   avatarContainer: { position: 'relative', zIndex: 10, elevation: 12 },
-  avatarInner: { 
-    width: 90, 
-    height: 90, 
-    borderRadius: 45, 
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8
+  avatarInner: {
+    position: 'relative',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
   },
-  avatar: { width: '100%', height: '100%', borderRadius: 45, borderWidth: 4 },
-  avatarLoadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
-  avatarEditBtn: { position: 'absolute', top: 0, left: 0, backgroundColor: '#007AFF', width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', zIndex: 11 },
-  verifiedBadge: { position: 'absolute', bottom: 2, right: 2, backgroundColor: 'white', borderRadius: 10, zIndex: 11 },
+  avatar: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 4,
+  },
+  avatarLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 45,
+    overflow: 'hidden'
+  },
+  avatarEditBtn: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    backgroundColor: '#FF3040',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    zIndex: 20
+  },
+  verifiedBadge: { 
+    position: 'absolute', 
+    top: 2, 
+    right: 2, 
+    backgroundColor: 'white', 
+    borderRadius: 10, 
+    zIndex: 25 
+  },
   headerStats: { flex: 1, justifyContent: 'center' },
   miniStatsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14, paddingRight: 5, marginTop: -8 },
   miniStat: { alignItems: 'center' },
   miniStatValue: { fontSize: 18, fontWeight: '900' },
   miniStatLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', opacity: 0.8 },
-  editBtn: { height: 36, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  editBtn: { height: 36, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center', flexDirection: 'row' },
   editBtnText: { fontSize: 12, fontWeight: '700' },
   infoBlock: { marginTop: 15 },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
-  name: { fontSize: 20, fontWeight: '800' },
+  name: { fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
+  avatarWrapper: { position: 'relative' },
+  avatarInner: {
+    position: 'relative',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+  },
+  avatarLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 45,
+    overflow: 'hidden'
+  },
+  avatarEditBtn: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    backgroundColor: '#FF3040',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    zIndex: 20
+  },
+  storyPlusBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#FF3040',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 30,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
   settingsIcon: {
     padding: 8,
     marginLeft: 4,

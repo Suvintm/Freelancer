@@ -84,14 +84,23 @@ export default function DefaultProfile() {
         <View style={[styles.profileWrap, { backgroundColor: theme.primary, borderBottomColor: theme.border }]}>
           <View style={styles.profileRow}>
             {/* ...Avatar Code... */}
-            <View style={styles.avatarContainer}>
+            <TouchableOpacity 
+              style={styles.avatarContainer} 
+              onPress={() => router.push('/story/create')}
+              activeOpacity={0.9}
+            >
               <ExpoImage
                 source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
-                style={styles.avatar}
+                style={[styles.avatar, { borderColor: theme.primary }]}
                 contentFit="cover"
                 transition={200}
               />
-            </View>
+              
+              {/* ➕ PROFESSIONAL STORY PLUS BADGE (SuviX Red) */}
+              <View style={[styles.storyPlusBadge, { borderColor: theme.primary }]}>
+                <MaterialCommunityIcons name="plus" size={14} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
 
             <View style={styles.headerStats}>
               <View style={styles.miniStatsRow}>
@@ -114,13 +123,14 @@ export default function DefaultProfile() {
                   activeOpacity={0.9}
                   style={[styles.actionBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
                 >
-                  <Text style={[styles.actionText, { color: theme.text }]}>Edit</Text>
+                  <Text style={[styles.actionText, { color: theme.text }]}>Settings</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   activeOpacity={0.9}
-                  style={[styles.actionBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
+                  onPress={() => router.push('/story/create')}
+                  style={[styles.actionBtn, { backgroundColor: '#FF3040', borderColor: '#FF3040' }]}
                 >
-                  <Text style={[styles.actionText, { color: theme.text }]}>Share</Text>
+                  <Text style={[styles.actionText, { color: '#FFFFFF' }]}>Add Story</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -180,15 +190,34 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     position: 'relative',
+    zIndex: 10,
+    elevation: 10,
   },
   avatar: {
     width: 86,
     height: 86,
     borderRadius: 43,
     borderWidth: 3,
-    borderColor: '#ffffff',
     backgroundColor: '#0f172a',
     marginTop: -37,
+  },
+  storyPlusBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#FF3040',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 30,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
   },
   headerStats: {
     flex: 1,

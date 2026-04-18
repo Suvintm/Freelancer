@@ -138,7 +138,7 @@ export default function YouTubeCreatorProfile() {
     }
   };
 
-  const handlePickImage = async () => {
+  const handlePickMedia = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission Required', 'We need camera roll permissions to change your profile picture.');
@@ -223,22 +223,32 @@ export default function YouTubeCreatorProfile() {
         <View style={[styles.profileWrap, { backgroundColor: theme.primary }]}>
           <View style={[styles.headerRow, styles.padded]}>
             <View style={styles.avatarContainer}>
-              <View style={styles.avatarInner}>
+              <TouchableOpacity 
+                style={styles.avatarInner} 
+                onPress={() => router.push('/story/create')}
+                activeOpacity={0.9}
+              >
                 <Image
                   source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
-                  style={[styles.avatar, { borderColor: '#FFFFFF' }]}
+                  style={[styles.avatar, { borderColor: theme.primary }]}
                 />
                 {isUploadingAvatar && (
                   <View style={[styles.avatarLoadingOverlay, { backgroundColor: 'rgba(0,0,0,0.4)' }]}>
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   </View>
                 )}
-              </View>
-              <TouchableOpacity style={styles.avatarEditBtn} onPress={handlePickImage} disabled={isUploadingAvatar}>
+                
+                {/* ➕ PROFESSIONAL STORY PLUS BADGE (SuviX Red) */}
+                <View style={[styles.storyPlusBadge, { borderColor: theme.primary }]}>
+                  <MaterialCommunityIcons name="plus" size={14} color="#FFFFFF" />
+                </View>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.avatarEditBtn} onPress={handlePickMedia} disabled={isUploadingAvatar}>
                 <MaterialCommunityIcons name="camera-outline" size={16} color="white" />
               </TouchableOpacity>
               <View style={styles.verifiedBadge}>
-                <MaterialCommunityIcons name="check-decagram" size={20} color="#FF0000" />
+                <MaterialCommunityIcons name="check-decagram" size={20} color="#FF3040" />
               </View>
             </View>
 
@@ -258,12 +268,22 @@ export default function YouTubeCreatorProfile() {
                 </View>
               </View>
 
-              <TouchableOpacity 
-                onPress={() => router.push('/dashboard')}
-                style={[styles.editBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
-              >
-                 <Text style={[styles.editBtnText, { color: theme.text }]}>Settings</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity 
+                  onPress={() => router.push('/dashboard')}
+                  style={[styles.editBtn, { flex: 1, backgroundColor: theme.secondary, borderColor: theme.border }]}
+                >
+                  <Text style={[styles.editBtnText, { color: theme.text }]}>Settings</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  onPress={() => router.push('/story/create')}
+                  style={[styles.editBtn, { flex: 1, backgroundColor: '#FF3040', borderColor: '#FF3040' }]}
+                >
+                  <MaterialCommunityIcons name="plus" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
+                  <Text style={[styles.editBtnText, { color: '#FFFFFF' }]}>Add Story</Text>
+                </TouchableOpacity>
+              </View>
               
 
               <View style={styles.miniToolboxRow}>
@@ -904,23 +924,46 @@ const styles = StyleSheet.create({
     margin: 0,
     textAlignVertical: 'top'
   },
+  verifiedBadge: { 
+    position: 'absolute', 
+    top: 2, 
+    right: 2, 
+    backgroundColor: 'white', 
+    borderRadius: 10, 
+    zIndex: 25 
+  },
+  headerStats: { flex: 1, justifyContent: 'center' },
+  miniStatsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14, paddingRight: 5, marginTop: -8 },
+  miniStat: { alignItems: 'center' },
+  miniStatValue: { fontSize: 18, fontWeight: '900' },
+  miniStatLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', opacity: 0.8 },
+  editBtn: { height: 36, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center', flexDirection: 'row' },
+  editBtnText: { fontSize: 12, fontWeight: '700' },
+  miniToolboxRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 14, gap: 8 },
+  miniToolItem: { flex: 1, height: 32, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  miniToolText: { fontSize: 10, fontWeight: '800' },
+  infoBlock: { marginTop: 15 },
+  nameRow: { flexDirection: 'row', alignItems: 'center' },
+  name: { fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
+  avatarWrapper: { position: 'relative' },
   avatarInner: {
     position: 'relative',
     width: 90,
     height: 90,
     borderRadius: 45,
-    overflow: 'hidden'
   },
   avatarLoadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    borderRadius: 45,
+    overflow: 'hidden'
   },
   avatarEditBtn: {
     position: 'absolute',
     top: 0,
     left: 0,
-    backgroundColor: '#FF0000',
+    backgroundColor: '#FF3040',
     width: 28,
     height: 28,
     borderRadius: 14,
@@ -933,7 +976,25 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
-    zIndex: 10
+    zIndex: 20
+  },
+  storyPlusBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#FF3040',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 30,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
   },
   feedContainer: {
     flexDirection: 'row',

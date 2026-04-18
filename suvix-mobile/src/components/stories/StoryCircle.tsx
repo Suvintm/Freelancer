@@ -5,6 +5,7 @@ import {
   Image, 
   StyleSheet, 
   Pressable, 
+  TouchableOpacity,
 } from 'react-native';
 import Animated, { 
   useSharedValue, 
@@ -155,9 +156,14 @@ export const StoryCircle = React.memo(({ story }: { story: StoryItem }) => {
             )}
 
             {story.isUserStory && (
-                <View style={s.plusBadge}>
+                <TouchableOpacity 
+                    style={s.plusBadge} 
+                    onPress={() => router.push('/story/create')}
+                    activeOpacity={0.8}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
                     <Ionicons name="add" size={14} color="#FFF" />
-                </View>
+                </TouchableOpacity>
             )}
         </View>
         

@@ -6,7 +6,8 @@ import {
 } from 'react-native';
 import { Skeleton } from '../shared/Skeleton';
 import { StoryCircle } from './StoryCircle';
-import { useStories } from '../../hooks/useStories';
+import { useStories, StoryItem } from '../../hooks/useStories';
+import { useAuthStore } from '../../store/useAuthStore';
 
 /**
  * STORY BAR
@@ -17,8 +18,25 @@ interface StoryBarProps {
 }
 
 export const StoryBar = ({ isLoading: forcedLoading }: StoryBarProps) => {
-  const { data, isLoading: internalLoading } = useStories();
+  const { data: rawData, isLoading: internalLoading } = useStories();
+  const { user } = useAuthStore();
   const isLoading = forcedLoading || internalLoading;
+
+  const data = React.useMemo(() => {
+    const hasUserStory = (rawData || []).some(s => s.isUserStory);
+    if (hasUserStory || !user) return rawData || [];
+
+    // Prepend a 'Ghost' Story Circle for adding
+    const ghostUserStory: StoryItem = {
+      _id: 'user_story_ghost',
+      username: 'Your Story',
+      avatar: user.profilePicture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150',
+      isUserStory: true,
+      hasActiveStory: false,
+      slides: []
+    };
+    return [ghostUserStory, ...(rawData || [])];
+  }, [rawData, user]);
 
   if (isLoading) {
     return (
