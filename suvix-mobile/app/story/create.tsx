@@ -847,7 +847,7 @@ export default function AddStoryScreen() {
                         activeRotation={obj.id === selectedObjectId ? activeRotation : undefined}
                         activeWidth={obj.id === selectedObjectId ? activeWidth : undefined}
                         isResizing={obj.id === selectedObjectId ? isResizing : undefined}
-                        initialWidth={obj.width}
+                        initialWidth={obj.type === 'TEXT' ? (obj.width ?? screenWidth * 0.8) : undefined}
                         initialX={obj.x}
                         initialY={obj.y}
                         opacity={obj.opacity ?? 1}
