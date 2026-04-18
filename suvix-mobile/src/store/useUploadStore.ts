@@ -7,9 +7,10 @@ interface UploadState {
   status: UploadStatus;
   message: string;
   isVisible: boolean;
+  uploadType: 'POST' | 'STORY'; // New field to distinguish progress UI
   
   // Actions
-  startUpload: (mediaType: 'IMAGE' | 'VIDEO') => void;
+  startUpload: (mediaType: 'IMAGE' | 'VIDEO' | 'STORY', uploadType?: 'POST' | 'STORY') => void;
   updateProgress: (progress: number) => void;
   setProcessing: () => void;
   setSuccess: (message?: string) => void;
@@ -26,13 +27,15 @@ export const useUploadStore = create<UploadState>((set, get) => ({
   status: 'idle',
   message: '',
   isVisible: false,
+  uploadType: 'POST',
 
-  startUpload: (mediaType) => {
+  startUpload: (mediaType, uploadType = 'POST') => {
     set({
       status: 'uploading',
       progress: 0,
-      message: `Uploading ${mediaType.toLowerCase()}...`,
+      message: uploadType === 'STORY' ? `Adding to your Story...` : `Uploading ${mediaType.toLowerCase()}...`,
       isVisible: true,
+      uploadType,
     });
   },
 
@@ -40,10 +43,12 @@ export const useUploadStore = create<UploadState>((set, get) => ({
     const currentStatus = get().status;
     let message = get().message;
 
+    const type = get().uploadType;
+
     if (currentStatus === 'processing') {
-      message = `Optimizing media... ${progress}%`;
+      message = type === 'STORY' ? `Optimizing story quality... ${progress}%` : `Optimizing media... ${progress}%`;
     } else if (currentStatus === 'uploading') {
-      message = `Uploading to S3... ${progress}%`;
+      message = type === 'STORY' ? `Uploading to SuviX Story Engine... ${progress}%` : `Uploading to S3... ${progress}%`;
     }
 
     set({ progress, message });

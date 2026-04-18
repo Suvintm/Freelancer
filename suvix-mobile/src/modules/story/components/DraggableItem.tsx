@@ -30,6 +30,9 @@ interface Props {
   onUpdate?: (data: { x: number; y: number; scale: number; rotation: number; width?: number }) => void;
   // Snap guide callbacks (optional)
   onSnapChange?: (snapX: boolean, snapY: boolean) => void;
+  // Interaction hooks for playback control
+  onInteractionStart?: () => void;
+  onInteractionEnd?: () => void;
 }
 
 const SNAP_THRESHOLD = 12;
@@ -54,6 +57,8 @@ export const DraggableItem: React.FC<Props> = ({
   opacity = 1,
   onUpdate,
   onSnapChange,
+  onInteractionStart,
+  onInteractionEnd,
 }) => {
   const localX        = useSharedValue(initialX);
   const localY        = useSharedValue(initialY);
@@ -67,7 +72,7 @@ export const DraggableItem: React.FC<Props> = ({
   const startRotation     = useSharedValue(0);
   const startResizeWidth  = useSharedValue(0);
 
-  // Mirror active shared values → local when this item is selected
+  // Mirror active shared values -> local when this item is selected
   useAnimatedReaction(
     () => ({
       x: activeX?.value,
@@ -110,6 +115,7 @@ export const DraggableItem: React.FC<Props> = ({
       startX.value = localX.value;
       startY.value = localY.value;
       if (onSelect) runOnJS(onSelect)();
+      if (onInteractionStart) runOnJS(onInteractionStart)();
     })
     .onUpdate((e) => {
       if (isResizing?.value) return;
@@ -128,12 +134,16 @@ export const DraggableItem: React.FC<Props> = ({
         localScale.value, localRotation.value, localWidth.value,
       );
       runOnJS(notifySnap)(99, 99); // clear snap guides
+      if (onInteractionEnd) runOnJS(onInteractionEnd)();
     });
 
   // ── Pinch ────────────────────────────────────────────────────────────────────
   const pinchGesture = Gesture.Pinch()
     .enabled(!gesturesDisabled && !isSelected)
-    .onStart(() => { startScale.value = localScale.value; })
+    .onStart(() => { 
+      startScale.value = localScale.value;
+      if (onInteractionStart) runOnJS(onInteractionStart)();
+    })
     .onUpdate((e) => {
       if (!isResizing?.value) localScale.value = startScale.value * e.scale;
     })
@@ -142,12 +152,16 @@ export const DraggableItem: React.FC<Props> = ({
         localX.value, localY.value,
         localScale.value, localRotation.value, localWidth.value,
       );
+      if (onInteractionEnd) runOnJS(onInteractionEnd)();
     });
 
   // ── Rotation ─────────────────────────────────────────────────────────────────
   const rotGesture = Gesture.Rotation()
     .enabled(!gesturesDisabled && !isSelected)
-    .onStart(() => { startRotation.value = localRotation.value; })
+    .onStart(() => { 
+      startRotation.value = localRotation.value;
+      if (onInteractionStart) runOnJS(onInteractionStart)();
+    })
     .onUpdate((e) => {
       if (!isResizing?.value) localRotation.value = startRotation.value + e.rotation;
     })
@@ -156,6 +170,7 @@ export const DraggableItem: React.FC<Props> = ({
         localX.value, localY.value,
         localScale.value, localRotation.value, localWidth.value,
       );
+      if (onInteractionEnd) runOnJS(onInteractionEnd)();
     });
 
   // ── Width resize handle ───────────────────────────────────────────────────────
@@ -163,6 +178,7 @@ export const DraggableItem: React.FC<Props> = ({
     .onStart(() => {
       if (isResizing) isResizing.value = true;
       startResizeWidth.value = activeWidth?.value ?? localWidth.value;
+      if (onInteractionStart) runOnJS(onInteractionStart)();
     })
     .onUpdate((e) => {
       // Use translationX but factor in scale to make it feel natural
@@ -177,6 +193,7 @@ export const DraggableItem: React.FC<Props> = ({
         localX.value, localY.value,
         localScale.value, localRotation.value, fw,
       );
+      if (onInteractionEnd) runOnJS(onInteractionEnd)();
     });
 
   const composed = Gesture.Simultaneous(

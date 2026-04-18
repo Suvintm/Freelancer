@@ -2,7 +2,7 @@
 // Story Module — Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type StoryObjectType = 'TEXT' | 'STICKER' | 'IMAGE';
+export type StoryObjectType = 'TEXT' | 'STICKER' | 'IMAGE' | 'VIDEO';
 
 export type FontStyle =
   | 'Modern'

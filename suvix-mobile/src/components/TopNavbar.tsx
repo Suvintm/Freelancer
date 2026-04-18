@@ -42,7 +42,7 @@ interface TopNavbarProps {
 export const TopNavbar = ({ onMenuPress, onProfilePress }: TopNavbarProps) => {
   const { user } = useAuthStore();
   const { isDarkMode, toggleTheme } = useTheme();
-  const { isVisible, progress: uploadProgress, message, status } = useUploadStore();
+  const { isVisible, progress: uploadProgress, message, status, uploadType } = useUploadStore();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -113,7 +113,8 @@ export const TopNavbar = ({ onMenuPress, onProfilePress }: TopNavbarProps) => {
 
   const progressSectionStyle = useAnimatedStyle(() => ({
     height: expansion.value,
-    opacity: expansion.value > 0 ? 1 : 0,
+    opacity: expansion.value / EXTRA_PROGRESS_HEIGHT,
+    overflow: 'hidden',
   }));
 
 
@@ -210,7 +211,7 @@ export const TopNavbar = ({ onMenuPress, onProfilePress }: TopNavbarProps) => {
           <Animated.View style={[
             styles.uploadBarFill, 
             uploadBarStyle, 
-            { backgroundColor: status === 'failed' ? '#ef4444' : status === 'success' ? '#22c55e' : palette.accent }
+            { backgroundColor: status === 'failed' ? '#ef4444' : status === 'success' ? '#22c55e' : (uploadType === 'STORY' ? '#E1306C' : palette.accent) }
           ]} />
         </View>
       </Animated.View>

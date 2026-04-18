@@ -33,9 +33,10 @@ import { LinearGradient }                 from 'expo-linear-gradient';
 import * as Haptics                       from 'expo-haptics';
 import { useTheme }                       from '../../src/context/ThemeContext';
 import { GestureDetector, Gesture }       from 'react-native-gesture-handler';
-import { useSharedValue, runOnJS }        from 'react-native-reanimated';
+import { useSharedValue, runOnJS, useAnimatedReaction } from 'react-native-reanimated';
 import ViewShot, { captureRef }           from 'react-native-view-shot';
 import * as MediaLibrary                  from 'expo-media-library';
+import { useUploadStore }                 from '../../src/store/useUploadStore';
 
 import {
   StoryObject, CanvasBg, DrawPath,
@@ -45,6 +46,7 @@ import { DraggableItem }       from '../../src/modules/story/components/Draggabl
 import { CanvasTextItem }      from '../../src/modules/story/components/CanvasTextItem';
 import { CanvasStickerItem, EMOJI_STICKERS } from '../../src/modules/story/components/CanvasStickerItem';
 import { CanvasImageItem }     from '../../src/modules/story/components/CanvasImageItem';
+import { CanvasVideoItem }     from '../../src/modules/story/components/CanvasVideoItem';
 import { DrawingCanvas }       from '../../src/modules/story/components/DrawingCanvas';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -169,6 +171,9 @@ export default function AddStoryScreen() {
   const [editingObjectId,  setEditingObjectId]  = useState<string | null>(null);
   const [isUploading,      setIsUploading]      = useState(false);
   const [isSaving,         setIsSaving]         = useState(false);
+  const [isInteracting,    setIsInteracting]    = useState(false);
+  const [isResizingState,  setIsResizingState]  = useState(false);
+  const [isGlobalPaused,   setIsGlobalPaused]   = useState(false);
   const [toolMode,         setToolMode]         = useState<ToolMode>('select');
   const [storyDuration,    setStoryDuration]    = useState(15);
 
@@ -276,6 +281,15 @@ export default function AddStoryScreen() {
   const activeWidth    = useSharedValue(screenWidth * 0.8);
   const isResizing     = useSharedValue(false);
 
+  // Sync isResizing shared value to React State to stop render-warnings and stabilize playback
+  useAnimatedReaction(
+    () => isResizing.value,
+    (resizing) => {
+      runOnJS(setIsResizingState)(resizing);
+    },
+    []
+  );
+
   // ── Permissions ────────────────────────────────────────────────────────────
   const [mediaStatus, requestMediaPermission] = ImagePicker.useMediaLibraryPermissions();
 
@@ -293,9 +307,12 @@ export default function AddStoryScreen() {
   }, [pushHistory]);
 
   const handleSelectObject = useCallback((id: string | null) => {
+    const isDeselect = selectedObjectId === id && id !== null;
+    const targetId = isDeselect ? null : id;
+
     setObjects(prev => {
-      if (!id) return prev;
-      const idx = prev.findIndex(o => o.id === id);
+      if (!targetId) return prev;
+      const idx = prev.findIndex(o => o.id === targetId);
       if (idx === -1) return prev;
       const arr  = [...prev];
       const [item] = arr.splice(idx, 1);
@@ -303,8 +320,8 @@ export default function AddStoryScreen() {
       return arr;
     });
 
-    if (id) {
-      const target = objectsRef.current.find(o => o.id === id);
+    if (targetId) {
+      const target = objectsRef.current.find(o => o.id === targetId);
       if (target) {
         activeX.value        = target.x;
         activeY.value        = target.y;
@@ -312,10 +329,11 @@ export default function AddStoryScreen() {
         activeRotation.value = target.rotation ?? 0;
         activeWidth.value    = target.width ?? screenWidth * 0.8;
       }
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    setSelectedObjectId(id);
-    if (id) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, [activeX, activeY, activeScale, activeRotation, activeWidth, screenWidth]);
+    
+    setSelectedObjectId(targetId);
+  }, [activeX, activeY, activeScale, activeRotation, activeWidth, screenWidth, selectedObjectId]);
 
   const handleDeleteObject = useCallback((id: string) => {
     pushHistory();
@@ -385,7 +403,7 @@ export default function AddStoryScreen() {
         }
       }
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ['images', 'videos'],
         allowsEditing: false,
         quality: 1,
       });
@@ -393,8 +411,9 @@ export default function AddStoryScreen() {
         pushHistory();
         const asset = result.assets[0];
         const logW = screenWidth * 0.7;
+        const type: StoryObjectType = asset.type === 'video' ? 'VIDEO' : 'IMAGE';
         const newObj: StoryObject = {
-          id: Date.now().toString(), type: 'IMAGE',
+          id: Date.now().toString(), type,
           content: asset.uri,
           x: 0, y: 0, scale: 1, rotation: 0,
           imageFilter: 'none',
@@ -419,7 +438,7 @@ export default function AddStoryScreen() {
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ['images', 'videos'],
         allowsEditing: false,
         quality: 1,
       });
@@ -427,8 +446,9 @@ export default function AddStoryScreen() {
         pushHistory();
         const asset = result.assets[0];
         const logW = screenWidth * 0.7;
+        const type: StoryObjectType = asset.type === 'video' ? 'VIDEO' : 'IMAGE';
         const newObj: StoryObject = {
-          id: Date.now().toString(), type: 'IMAGE',
+          id: Date.now().toString(), type,
           content: asset.uri,
           x: 0, y: 0, scale: 1, rotation: 0,
           imageFilter: 'none',
@@ -545,7 +565,46 @@ export default function AddStoryScreen() {
     ]);
   };
 
-  // ── Save / Share ───────────────────────────────────────────────────────────
+  // ── Save / Share / Fit Media ───────────────────────────────────────────────────────────
+
+  const handleFitMedia = () => {
+    const selectedObject = objects.find(o => o.id === selectedObjectId);
+    if (!selectedObject || (selectedObject.type !== 'IMAGE' && selectedObject.type !== 'VIDEO')) return;
+    pushHistory();
+    
+    const mediaRatio = selectedObject.aspectRatio || 1;
+    const canvasRatio = canvasWidth / canvasHeight;
+    
+    let newWidth, newHeight;
+    
+    if (mediaRatio > canvasRatio) {
+      // Media is wider -> Fit width
+      newWidth = canvasWidth;
+      newHeight = canvasWidth / mediaRatio;
+    } else {
+      // Media is taller -> Fit height
+      newHeight = canvasHeight;
+      newWidth = canvasHeight * mediaRatio;
+    }
+
+    // Since DraggableItem relies on `top: 40%`, we must counteract this offset to perfectly center the media
+    const perfectlyCenteredY = (canvasHeight * 0.1) - (newHeight / 2);
+
+    setObjects(prev => prev.map(obj => 
+      obj.id === selectedObject.id 
+      ? { ...obj, width: newWidth, height: newHeight, x: 0, y: perfectlyCenteredY, scale: 1, rotation: 0 } 
+      : obj
+    ));
+    
+    // Reset the active gesture nodes so UI doesn't jump on next touch
+    activeX.value = 0;
+    activeY.value = perfectlyCenteredY;
+    activeScale.value = 1;
+    activeRotation.value = 0;
+    activeWidth.value = newWidth;
+    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
 
   const handleSaveToGallery = async () => {
     try {
@@ -584,10 +643,24 @@ export default function AddStoryScreen() {
     setIsUploading(true);
     setSelectedObjectId(null);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setTimeout(() => {
-      Alert.alert('Story Posted!', `Your ${storyDuration}s story is live on your Infinity Feed.`);
-      router.back();
-    }, 1500);
+    
+    // Navigate home instantly
+    router.back();
+
+    // Trigger the global Top Navbar upload progress bar, explicitly marked as 'STORY'
+    const { startUpload, updateProgress, setSuccess } = useUploadStore.getState();
+    startUpload('VIDEO', 'STORY');
+    
+    let progress = 0;
+    const intervalId = setInterval(() => {
+      progress += Math.floor(Math.random() * 15) + 5;
+      if (progress >= 100) {
+        clearInterval(intervalId as any);
+        setSuccess('Story added to Infinity Feed! 🔥');
+      } else {
+        updateProgress(progress);
+      }
+    }, 400);
   };
 
   // ── Global gestures (object drag/pinch/rotate from parent) ─────────────────
@@ -796,10 +869,20 @@ export default function AddStoryScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleCapturePhoto}
-                style={[s.glassBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
+                style={[s.glassBtn, { backgroundColor: theme.secondary, borderColor: theme.border, marginBottom: 12 }]}
               >
                 <Ionicons name="camera-outline" size={20} color={theme.text} />
               </TouchableOpacity>
+              
+              {/* Fit Media to Canvas */}
+              {selectedObject && (selectedObject.type === 'IMAGE' || selectedObject.type === 'VIDEO') && (
+                <TouchableOpacity
+                  onPress={handleFitMedia}
+                  style={[s.glassBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
+                >
+                  <Ionicons name="expand-outline" size={20} color={theme.text} />
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* ─── CANVAS ──────────────────────────────────────────────────── */}
@@ -863,9 +946,15 @@ export default function AddStoryScreen() {
                           saveObjectState(obj.id, data.x, data.y, data.scale, data.rotation, data.width ?? obj.width ?? screenWidth * 0.8)
                         }
                         onSnapChange={setSnapX.bind(null) as any}
+                        onInteractionStart={() => setIsInteracting(true)}
+                        onInteractionEnd={() => setIsInteracting(false)}
                       >
                         {obj.type === 'TEXT'    ? <CanvasTextItem item={obj} />    :
                          obj.type === 'STICKER' ? <CanvasStickerItem item={obj} /> :
+                         obj.type === 'VIDEO'   ? <CanvasVideoItem 
+                                                    item={obj} 
+                                                    isPaused={(obj.id === selectedObjectId && (isResizingState || isInteracting)) || toolMode !== 'select' || isGlobalPaused} 
+                                                  /> :
                                                   <CanvasImageItem item={obj} />}
                       </DraggableItem>
                     ))}
@@ -920,6 +1009,26 @@ export default function AddStoryScreen() {
                   </TouchableOpacity>
 
                   <View style={s.objToolDivider} />
+
+                  {/* Video Playback Toggle */}
+                  {selectedObject.type === 'VIDEO' && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setIsGlobalPaused(!isGlobalPaused);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }}
+                      style={[s.filterChip, isGlobalPaused && s.filterChipActive]}
+                    >
+                      <Ionicons 
+                        name={isGlobalPaused ? "play" : "pause"} 
+                        size={16} 
+                        color={isGlobalPaused ? "#fff" : "#000"} 
+                      />
+                      <Text style={[s.filterChipTxt, !isGlobalPaused && { color: '#000' }]}>
+                        {isGlobalPaused ? 'Play Video' : 'Pause Video'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
 
                   {/* Image filter pills */}
                   {selectedObject.type === 'IMAGE' &&
