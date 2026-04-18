@@ -76,7 +76,8 @@
           "defaultChannel": "suvix-default",
           "sounds": []
         }
-      ]
+      ],
+      "expo-media-library"
 
     ],
     "extra": {

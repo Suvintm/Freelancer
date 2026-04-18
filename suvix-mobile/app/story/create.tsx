@@ -27,6 +27,11 @@ import { DraggableItem } from '../../src/modules/story/components/DraggableItem'
 import { CanvasTextItem } from '../../src/modules/story/components/CanvasTextItem';
 import { CanvasStickerItem } from '../../src/modules/story/components/CanvasStickerItem';
 import { CanvasImageItem } from '../../src/modules/story/components/CanvasImageItem';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { useSharedValue, runOnJS } from 'react-native-reanimated';
+import ViewShot, { captureRef } from 'react-native-view-shot';
+import * as MediaLibrary from 'expo-media-library';
+import { useRef } from 'react';
 
 
 
@@ -71,6 +76,20 @@ export default function AddStoryScreen() {
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [canvasBg, setCanvasBg] = useState('#000000');
   const [bgIndex, setBgIndex] = useState(0);
+  const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const canvasRef = useRef<View>(null);
+
+  // -- 🚀 GLOBAL GESTURE ENGINE SHARED VALUES --
+  const activeX = useSharedValue(0);
+  const activeY = useSharedValue(0);
+  const activeScale = useSharedValue(1);
+  const activeRotation = useSharedValue(0);
+
+  const startX = useSharedValue(0);
+  const startY = useSharedValue(0);
+  const startScale = useSharedValue(1);
+  const startRotation = useSharedValue(0);
 
   const BG_PRESETS = [
     '#000000', // Default Black
@@ -115,6 +134,7 @@ export default function AddStoryScreen() {
                 rotation: 0,
             };
             setObjects(prev => [...prev, newObj]);
+            handleSelectObject(newObj.id);
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }
     } catch (err) {
@@ -149,6 +169,7 @@ export default function AddStoryScreen() {
                 rotation: 0,
             };
             setObjects(prev => [...prev, newObj]);
+            handleSelectObject(newObj.id);
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         }
     } catch (err) {
@@ -175,6 +196,46 @@ export default function AddStoryScreen() {
     }, 1500);
   };
 
+  const handleSaveToGallery = async () => {
+    try {
+        const { status: libStatus } = await MediaLibrary.requestPermissionsAsync();
+        if (libStatus !== 'granted') {
+            Alert.alert("Permission Error", "SuviX needs gallery access to save your stories.");
+            return;
+        }
+
+        setIsSaving(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+        // Allow UI to hide before snapshot
+        setTimeout(async () => {
+            const uri = await captureRef(canvasRef, {
+                format: "jpg",
+                quality: 1,
+                result: "tmpfile",
+            });
+
+            const asset = await MediaLibrary.createAssetAsync(uri);
+            const albumName = "SuviX Stories";
+            const album = await MediaLibrary.getAlbumAsync(albumName);
+
+            if (album === null) {
+                await MediaLibrary.createAlbumAsync(albumName, asset, false);
+            } else {
+                await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+            }
+
+            setIsSaving(false);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Alert.alert("Success", "Story saved to your gallery!");
+        }, 100);
+    } catch (err) {
+        console.error("[STORY] Save Error:", err);
+        setIsSaving(false);
+        Alert.alert("Error", "Could not save story to gallery.");
+    }
+  };
+
   const toggleFontStyle = () => {
     Haptics.selectionAsync();
     const styles: StoryObject['fontStyle'][] = ['Modern', 'Classic', 'Neon', 'Typewriter'];
@@ -197,6 +258,7 @@ export default function AddStoryScreen() {
           setObjects(prev => [...prev, newObj]);
           setCurrentText('');
           setActiveTextInput(false);
+          handleSelectObject(newObj.id);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
         setActiveTextInput(true);
@@ -215,8 +277,102 @@ export default function AddStoryScreen() {
     };
     setObjects(prev => [...prev, newObj]);
     setShowStickerPicker(false);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    handleSelectObject(newObj.id);
   };
+  const handleSelectObject = (id: string | null) => {
+    if (selectedObjectId === id) return;
+    
+    // Sync PREVIOUSLY selected object before switching
+    if (selectedObjectId) {
+        saveObjectState(selectedObjectId, activeX.value, activeY.value, activeScale.value, activeRotation.value);
+    }
+
+    setSelectedObjectId(id);
+
+    if (id) {
+        // --- 🎭 AUTO-LAYERING (Bring to Front) ---
+        // Move the selected object to the end of the array to render it on top
+        setObjects(prev => {
+            const index = prev.findIndex(o => o.id === id);
+            if (index === -1) return prev;
+            const newArr = [...prev];
+            const [item] = newArr.splice(index, 1);
+            newArr.push(item);
+            return newArr;
+        });
+
+        const obj = objects.find(o => o.id === id);
+        if (obj) {
+            activeX.value = obj.x;
+            activeY.value = obj.y;
+            activeScale.value = obj.scale;
+            activeRotation.value = obj.rotation;
+        }
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const saveObjectState = (id: string, x: number, y: number, s: number, r: number) => {
+    setObjects(prev => prev.map(obj => 
+        obj.id === id ? { ...obj, x, y, scale: s, rotation: r } : obj
+    ));
+  };
+
+  const handleDeleteObject = (id: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setObjects(prev => prev.filter(obj => obj.id !== id));
+    if (selectedObjectId === id) setSelectedObjectId(null);
+  };
+
+  // -- 🕹️ GLOBAL GESTURE HANDLERS --
+  const panGesture = Gesture.Pan()
+    .enabled(!!selectedObjectId)
+    .onStart(() => {
+        startX.value = activeX.value;
+        startY.value = activeY.value;
+    })
+    .onUpdate((event) => {
+        activeX.value = startX.value + event.translationX;
+        activeY.value = startY.value + event.translationY;
+    })
+    .onEnd(() => {
+        if (selectedObjectId) {
+            runOnJS(saveObjectState)(selectedObjectId, activeX.value, activeY.value, activeScale.value, activeRotation.value);
+        }
+    });
+
+  const pinchGesture = Gesture.Pinch()
+    .enabled(!!selectedObjectId)
+    .onStart(() => {
+        startScale.value = activeScale.value;
+    })
+    .onUpdate((event) => {
+        activeScale.value = startScale.value * event.scale;
+    })
+    .onEnd(() => {
+        if (selectedObjectId) {
+            runOnJS(saveObjectState)(selectedObjectId, activeX.value, activeY.value, activeScale.value, activeRotation.value);
+        }
+    });
+
+  const rotationGesture = Gesture.Rotation()
+    .enabled(!!selectedObjectId)
+    .onStart(() => {
+        startRotation.value = activeRotation.value;
+    })
+    .onUpdate((event) => {
+        activeRotation.value = startRotation.value + event.rotation;
+    })
+    .onEnd(() => {
+        if (selectedObjectId) {
+            runOnJS(saveObjectState)(selectedObjectId, activeX.value, activeY.value, activeScale.value, activeRotation.value);
+        }
+    });
+
+  const globalGestures = Gesture.Simultaneous(panGesture, Gesture.Simultaneous(pinchGesture, rotationGesture));
+  const bgTapGesture = Gesture.Tap().onEnd(() => {
+      runOnJS(handleSelectObject)(null);
+  });
 
   // REMOVED: PICKER fallback. Screen is always in EDIT mode.
 
@@ -274,42 +430,74 @@ export default function AddStoryScreen() {
 
           {/* 🎨 9:16 INFINITY CANVAS ENGINE */}
           <View style={s.canvasWrapper}>
-            <View style={[s.canvas, { width: canvasWidth, height: canvasHeight, backgroundColor: canvasBg, borderRadius: canvasWidth === screenWidth ? 0 : 24 }]}>
-                
-                {/* 🎯 EMPTY STATE HUB (Guides User) */}
-                {objects.length === 0 && (
-                    <View style={s.emptyHub}>
-                        <TouchableOpacity style={s.hubBtn} onPress={handleAddPhoto} activeOpacity={0.8}>
-                            <View style={s.hubIconBox}>
-                                <Ionicons name="images" size={28} color="#fff" />
-                            </View>
-                            <Text style={s.hubBtnTxt}>Add Media</Text>
-                        </TouchableOpacity>
-
-                        <View style={s.hubDivider} />
-
-                        <TouchableOpacity style={s.hubBtn} onPress={handleCapturePhoto} activeOpacity={0.8}>
-                            <View style={[s.hubIconBox, { backgroundColor: '#FF3040' }]}>
-                                <Ionicons name="camera" size={28} color="#fff" />
-                            </View>
-                            <Text style={s.hubBtnTxt}>Live Picture</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
-
-                {/* INTERACTIVE OBJECTS LAYER */}
-                {objects.map((obj) => (
-                    <DraggableItem key={obj.id}>
-                        {obj.type === 'TEXT' ? (
-                            <CanvasTextItem item={obj} />
-                        ) : obj.type === 'STICKER' ? (
-                            <CanvasStickerItem item={obj} />
-                        ) : (
-                            <CanvasImageItem item={obj} />
-                        )}
-                    </DraggableItem>
-                ))}
+            {/* 🕹️ SIDEBAR TOOLS (Vertical Left) */}
+            <View style={[s.sidebar, { top: insets.top + 80 }]}>
+                <TouchableOpacity 
+                    style={[s.glassBtn, { backgroundColor: theme.secondary, borderColor: theme.border, marginBottom: 16 }]} 
+                    onPress={handleSaveToGallery}
+                    disabled={isSaving}
+                >
+                    {isSaving ? <ActivityIndicator size="small" color={theme.text} /> : <Ionicons name="download" size={24} color={theme.text} />}
+                </TouchableOpacity>
             </View>
+
+            <ViewShot 
+              ref={canvasRef} 
+              options={{ format: "jpg", quality: 1 }}
+              style={[s.canvas, { width: canvasWidth, height: canvasHeight, backgroundColor: canvasBg, borderRadius: canvasWidth === screenWidth ? 0 : 24 }]}
+            >
+                {/* 🕹️ GESTURE INTERACTION LAYER (Global Canvas Controller) */}
+                <GestureDetector gesture={Gesture.Exclusive(globalGestures, bgTapGesture)}>
+                    <View style={StyleSheet.absoluteFill}>
+                        {/* 🎯 EMPTY STATE HUB (Guides User) */}
+                        {objects.length === 0 && (
+                            <View style={s.emptyHub}>
+                                <TouchableOpacity style={s.hubBtn} onPress={handleAddPhoto} activeOpacity={0.8}>
+                                    <View style={s.hubIconBox}>
+                                        <Ionicons name="images" size={28} color="#fff" />
+                                    </View>
+                                    <Text style={s.hubBtnTxt}>Add Media</Text>
+                                </TouchableOpacity>
+
+                                <View style={s.hubDivider} />
+
+                                <TouchableOpacity style={s.hubBtn} onPress={handleCapturePhoto} activeOpacity={0.8}>
+                                    <View style={[s.hubIconBox, { backgroundColor: '#FF3040' }]}>
+                                        <Ionicons name="camera" size={28} color="#fff" />
+                                    </View>
+                                    <Text style={s.hubBtnTxt}>Live Picture</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+
+                        {/* INTERACTIVE OBJECTS LAYER */}
+                        {objects.map((obj) => (
+                            <DraggableItem 
+                              key={obj.id}
+                              isSelected={!isSaving && selectedObjectId === obj.id}
+                              onSelect={() => handleSelectObject(obj.id)}
+                              onDelete={() => handleDeleteObject(obj.id)}
+                              // --- GLOBAL CONTROL BRIDGE ---
+                              activeX={obj.id === selectedObjectId ? activeX : undefined}
+                              activeY={obj.id === selectedObjectId ? activeY : undefined}
+                              activeScale={obj.id === selectedObjectId ? activeScale : undefined}
+                              activeRotation={obj.id === selectedObjectId ? activeRotation : undefined}
+                              // Passed initial pure state
+                              initialX={obj.x}
+                              initialY={obj.y}
+                            >
+                                {obj.type === 'TEXT' ? (
+                                    <CanvasTextItem item={obj} />
+                                ) : obj.type === 'STICKER' ? (
+                                    <CanvasStickerItem item={obj} />
+                                ) : (
+                                    <CanvasImageItem item={obj} />
+                                )}
+                            </DraggableItem>
+                        ))}
+                    </View>
+                </GestureDetector>
+            </ViewShot>
           </View>
 
           {/* 🚀 ACTION FOOTER */}
@@ -570,5 +758,12 @@ const s = StyleSheet.create({
     width: 40,
     backgroundColor: 'rgba(255,255,255,0.1)',
     marginVertical: 30,
+  },
+  sidebar: {
+    position: 'absolute',
+    left: 20,
+    zIndex: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
