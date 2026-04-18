@@ -13,8 +13,16 @@ import {
   StatusBar,
   Alert,
   ActivityIndicator,
-  useWindowDimensions
+  useWindowDimensions,
+  ScrollView
 } from 'react-native';
+import { useFonts } from 'expo-font';
+import { Inter_900Black } from '@expo-google-fonts/inter/900Black';
+import { Pacifico_400Regular } from '@expo-google-fonts/pacifico/400Regular';
+import { PlayfairDisplay_700Bold } from '@expo-google-fonts/playfair-display/700Bold';
+import { PlayfairDisplay_700Bold_Italic } from '@expo-google-fonts/playfair-display/700Bold_Italic';
+import { Bangers_400Regular } from '@expo-google-fonts/bangers/400Regular';
+import { SpecialElite_400Regular } from '@expo-google-fonts/special-elite/400Regular';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -77,6 +85,26 @@ export default function AddStoryScreen() {
   const [canvasBg, setCanvasBg] = useState('#000000');
   const [bgIndex, setBgIndex] = useState(0);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
+  const [editingObjectId, setEditingObjectId] = useState<string | null>(null);
+  
+  const [fontsLoaded] = useFonts({
+    Inter_900Black,
+    Pacifico_400Regular,
+    PlayfairDisplay_700Bold,
+    PlayfairDisplay_700Bold_Italic,
+    Bangers_400Regular,
+    SpecialElite_400Regular,
+  });
+
+  const FONT_OPTIONS: { id: StoryObject['fontStyle']; label: string; family: string }[] = [
+    { id: 'Modern', label: 'Modern', family: 'Inter_900Black' },
+    { id: 'Classic', label: 'Elegant', family: 'PlayfairDisplay_700Bold' },
+    { id: 'Italic', label: 'Italic', family: 'PlayfairDisplay_700Bold_Italic' },
+    { id: 'Neon', label: 'Neon', family: 'Inter_900Black' },
+    { id: 'Typewriter', label: 'Mono', family: 'SpecialElite_400Regular' },
+    { id: 'Cursive', label: 'Hand', family: 'Pacifico_400Regular' },
+    { id: 'Comic', label: 'Punch', family: 'Bangers_400Regular' },
+  ];
   const [isSaving, setIsSaving] = useState(false);
   const canvasRef = useRef<View>(null);
 
@@ -90,6 +118,7 @@ export default function AddStoryScreen() {
   const startY = useSharedValue(0);
   const startScale = useSharedValue(1);
   const startRotation = useSharedValue(0);
+
 
   const BG_PRESETS = [
     '#000000', // Default Black
@@ -238,31 +267,59 @@ export default function AddStoryScreen() {
 
   const toggleFontStyle = () => {
     Haptics.selectionAsync();
-    const styles: StoryObject['fontStyle'][] = ['Modern', 'Classic', 'Neon', 'Typewriter'];
+    const styles: StoryObject['fontStyle'][] = ['Modern', 'Classic', 'Italic', 'Neon', 'Typewriter', 'Cursive', 'Comic'];
     const nextIndex = (styles.indexOf(selectedFont) + 1) % styles.length;
     setSelectedFont(styles[nextIndex]);
   };
 
   const handleAddText = () => {
       if (currentText.trim()) {
-          const newObj: StoryObject = {
-              id: Date.now().toString(),
-              type: 'TEXT',
-              content: currentText,
-              x: 0,
-              y: 0,
-              scale: 1,
-              rotation: 0,
-              fontStyle: selectedFont,
-          };
-          setObjects(prev => [...prev, newObj]);
+          if (editingObjectId) {
+              // --- 🛰️ TEXT UPDATE ENGINE ---
+              setObjects(prev => prev.map(obj => 
+                  obj.id === editingObjectId 
+                    ? { ...obj, content: currentText, fontStyle: selectedFont } 
+                    : obj
+              ));
+              setEditingObjectId(null);
+          } else {
+              // --- 🚀 NEW TEXT CREATION ---
+              const newObj: StoryObject = {
+                  id: Date.now().toString(),
+                  type: 'TEXT',
+                  content: currentText,
+                  x: 0,
+                  y: 0,
+                  scale: 1,
+                  rotation: 0,
+                  fontStyle: selectedFont,
+              };
+              setObjects(prev => [...prev, newObj]);
+              handleSelectObject(newObj.id);
+          }
           setCurrentText('');
           setActiveTextInput(false);
-          handleSelectObject(newObj.id);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
-        setActiveTextInput(true);
+        setEditingObjectId(null);
+        setActiveTextInput(false); // Close if empty
       }
+  };
+
+  const handleEditText = (id: string) => {
+    const obj = objects.find(o => o.id === id);
+    if (obj && obj.type === 'TEXT') {
+        setCurrentText(obj.content);
+        setSelectedFont(obj.fontStyle || 'Modern');
+        setEditingObjectId(id);
+        setActiveTextInput(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const handleFontSelect = (fontId: StoryObject['fontStyle']) => {
+    setSelectedFont(fontId);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   const handleAddSticker = (stickerId: string) => {
@@ -375,6 +432,16 @@ export default function AddStoryScreen() {
   });
 
   // REMOVED: PICKER fallback. Screen is always in EDIT mode.
+ 
+  // --- 🛡️ FONT RENDERING GUARD ---
+  if (!fontsLoaded) {
+      return (
+          <View style={[s.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }]}>
+              <ActivityIndicator size="large" color="#fff" />
+              <Text style={{ color: '#fff', marginTop: 12, fontWeight: '600' }}>Initializing Creative Suite...</Text>
+          </View>
+      );
+  }
 
   return (
     <View style={[s.container, { backgroundColor: theme.primary }]}>
@@ -386,192 +453,231 @@ export default function AddStoryScreen() {
         style={StyleSheet.absoluteFill}
       />
 
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-          style={s.content}
-        >
-          {/* 🛠️ NAVIGATION & TOOLS */}
-          <View style={[s.header, { marginTop: insets.top }]}>
-            <TouchableOpacity onPress={() => router.back()} style={[s.glassBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-              <Ionicons name="close" size={24} color={theme.text} />
-            </TouchableOpacity>
-
-            <View style={s.rightActions}>
-              <TouchableOpacity 
-                style={[s.glassBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]} 
-                onPress={cycleBg}
-              >
-                <Text style={{ color: theme.text, fontWeight: '900', fontSize: 10 }}>BG</Text>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        style={s.content}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={{ flex: 1 }}>
+            {/* 🛠️ NAVIGATION & TOOLS */}
+            <View style={[s.header, { marginTop: insets.top }]}>
+              <TouchableOpacity onPress={() => router.back()} style={[s.glassBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
+                <Ionicons name="close" size={24} color={theme.text} />
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={[s.glassBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]} 
-                onPress={() => setActiveTextInput(true)}
-              >
-                <MaterialCommunityIcons name="format-text" size={24} color={theme.text} />
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[s.glassBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]} 
-                onPress={() => setShowStickerPicker(true)}
-              >
-                <Ionicons name="happy" size={22} color={theme.text} />
-              </TouchableOpacity>
+              <View style={s.rightActions}>
+                <TouchableOpacity 
+                  style={[s.glassBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]} 
+                  onPress={cycleBg}
+                >
+                  <Text style={{ color: theme.text, fontWeight: '900', fontSize: 10 }}>BG</Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={[s.glassBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]} 
-                onPress={handleAddPhoto} 
-              >
-                <Ionicons name="images" size={20} color={theme.text} />
-              </TouchableOpacity>
+                <TouchableOpacity 
+                   onPress={() => setShowStickerPicker(true)}
+                   style={[s.glassBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
+                >
+                  <Ionicons name="happy-outline" size={24} color={theme.text} />
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                   onPress={() => setActiveTextInput(true)}
+                   style={[s.glassBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
+                >
+                  <Ionicons name="text" size={24} color={theme.text} />
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
 
-          {/* 🎨 9:16 INFINITY CANVAS ENGINE */}
-          <View style={s.canvasWrapper}>
-            {/* 🕹️ SIDEBAR TOOLS (Vertical Left) */}
+            {/* 🕹️ SIDEBAR TOOLS (Vertical Right) */}
             <View style={[s.sidebar, { top: insets.top + 80 }]}>
                 <TouchableOpacity 
-                    style={[s.glassBtn, { backgroundColor: theme.secondary, borderColor: theme.border, marginBottom: 16 }]} 
-                    onPress={handleSaveToGallery}
-                    disabled={isSaving}
+                   onPress={handleSaveToGallery} 
+                   style={[s.glassBtn, { backgroundColor: theme.secondary, borderColor: theme.border, marginBottom: 16 }]}
+                   disabled={isSaving}
                 >
-                    {isSaving ? <ActivityIndicator size="small" color={theme.text} /> : <Ionicons name="download" size={24} color={theme.text} />}
+                  <Ionicons name={isSaving ? "sync-outline" : "download-outline"} size={22} color={theme.text} />
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                   onPress={handleAddPhoto} 
+                   style={[s.glassBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
+                >
+                  <Ionicons name="images-outline" size={22} color={theme.text} />
                 </TouchableOpacity>
             </View>
 
-            <ViewShot 
-              ref={canvasRef} 
-              options={{ format: "jpg", quality: 1 }}
-              style={[s.canvas, { width: canvasWidth, height: canvasHeight, backgroundColor: canvasBg, borderRadius: canvasWidth === screenWidth ? 0 : 24 }]}
-            >
-                {/* 🕹️ GESTURE INTERACTION LAYER (Global Canvas Controller) */}
-                <GestureDetector gesture={Gesture.Exclusive(globalGestures, bgTapGesture)}>
-                    <View style={StyleSheet.absoluteFill}>
-                        {/* 🎯 EMPTY STATE HUB (Guides User) */}
-                        {objects.length === 0 && (
-                            <View style={s.emptyHub}>
-                                <TouchableOpacity style={s.hubBtn} onPress={handleAddPhoto} activeOpacity={0.8}>
-                                    <View style={s.hubIconBox}>
+            {/* 🎨 INFINITY CANVAS ENGINE */}
+            <View style={s.canvasWrapper}>
+                <ViewShot ref={canvasRef} options={{ format: "jpg", quality: 0.9 }}>
+                    <GestureDetector gesture={Gesture.Exclusive(globalGestures, bgTapGesture)}>
+                        <View style={[s.canvas, { width: canvasWidth, height: canvasHeight, backgroundColor: canvasBg }]}>
+                            
+                            {objects.length === 0 && !activeTextInput && (
+                                <View style={s.editorWrapper}>
+                                    <View style={[s.hubIconBox, { backgroundColor: 'rgba(255,255,255,0.1)', marginBottom: 12 }]}>
                                         <Ionicons name="images" size={28} color="#fff" />
                                     </View>
                                     <Text style={s.hubBtnTxt}>Add Media</Text>
-                                </TouchableOpacity>
+                                </View>
+                            )}
 
-                                <View style={s.hubDivider} />
-
-                                <TouchableOpacity style={s.hubBtn} onPress={handleCapturePhoto} activeOpacity={0.8}>
-                                    <View style={[s.hubIconBox, { backgroundColor: '#FF3040' }]}>
-                                        <Ionicons name="camera" size={28} color="#fff" />
-                                    </View>
-                                    <Text style={s.hubBtnTxt}>Live Picture</Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
-
-                        {/* INTERACTIVE OBJECTS LAYER */}
-                        {objects.map((obj) => (
-                            <DraggableItem 
-                              key={obj.id}
-                              isSelected={!isSaving && selectedObjectId === obj.id}
-                              onSelect={() => handleSelectObject(obj.id)}
-                              onDelete={() => handleDeleteObject(obj.id)}
-                              // --- GLOBAL CONTROL BRIDGE ---
-                              activeX={obj.id === selectedObjectId ? activeX : undefined}
-                              activeY={obj.id === selectedObjectId ? activeY : undefined}
-                              activeScale={obj.id === selectedObjectId ? activeScale : undefined}
-                              activeRotation={obj.id === selectedObjectId ? activeRotation : undefined}
-                              // Passed initial pure state
-                              initialX={obj.x}
-                              initialY={obj.y}
-                            >
-                                {obj.type === 'TEXT' ? (
-                                    <CanvasTextItem item={obj} />
-                                ) : obj.type === 'STICKER' ? (
-                                    <CanvasStickerItem item={obj} />
-                                ) : (
-                                    <CanvasImageItem item={obj} />
-                                )}
-                            </DraggableItem>
-                        ))}
-                    </View>
-                </GestureDetector>
-            </ViewShot>
-          </View>
-
-          {/* 🚀 ACTION FOOTER */}
-          {!activeTextInput && !showStickerPicker && (
-            <View style={[s.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-                <TouchableOpacity 
-                    style={[s.shareBtn, { backgroundColor: '#FF3040' }]} 
-                    onPress={handleShare}
-                    disabled={isUploading}
-                    activeOpacity={0.8}
-                >
-                {isUploading ? (
-                    <ActivityIndicator color="#fff" />
-                ) : (
-                    <>
-                    <Text style={s.shareBtnTxt}>Share Story</Text>
-                    <View style={s.shareCircle}>
-                        <Ionicons name="send" size={14} color="#FF3040" />
-                    </View>
-                    </>
-                )}
-                </TouchableOpacity>
+                            {/* INTERACTIVE OBJECTS LAYER */}
+                            {objects.map((obj) => (
+                                <DraggableItem 
+                                  key={obj.id}
+                                  isSelected={!isSaving && selectedObjectId === obj.id}
+                                  onSelect={() => handleSelectObject(obj.id)}
+                                  onDelete={() => handleDeleteObject(obj.id)}
+                                  onEdit={obj.type === 'TEXT' ? () => handleEditText(obj.id) : undefined}
+                                  // --- GLOBAL CONTROL BRIDGE ---
+                                  activeX={obj.id === selectedObjectId ? activeX : undefined}
+                                  activeY={obj.id === selectedObjectId ? activeY : undefined}
+                                  activeScale={obj.id === selectedObjectId ? activeScale : undefined}
+                                  activeRotation={obj.id === selectedObjectId ? activeRotation : undefined}
+                                  // Passed initial pure state
+                                  initialX={obj.x}
+                                  initialY={obj.y}
+                                >
+                                    {obj.type === 'TEXT' ? (
+                                        <CanvasTextItem item={obj} />
+                                    ) : obj.type === 'STICKER' ? (
+                                        <CanvasStickerItem item={obj} />
+                                    ) : (
+                                        <CanvasImageItem item={obj} />
+                                    )}
+                                </DraggableItem>
+                            ))}
+                        </View>
+                    </GestureDetector>
+                </ViewShot>
             </View>
-          )}
 
-          {/* 📝 TEXT INPUT MODAL OVERLAY */}
-          {activeTextInput && (
-              <View style={[StyleSheet.absoluteFill, s.textInputOverlay]}>
-                  <View style={[s.textInputHeader, { marginTop: insets.top }]}>
-                    <TouchableOpacity onPress={toggleFontStyle} style={s.fontStyleBtn}>
-                        <Text style={s.fontStyleBtnTxt}>{selectedFont}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={handleAddText}>
-                        <Text style={s.doneBtnTxt}>Done</Text>
-                    </TouchableOpacity>
-                  </View>
-                  
-                  <View style={s.textInputCenter}>
-                    <TextInput
-                        autoFocus
-                        style={[s.captionInput, { color: '#fff' }]}
-                        value={currentText}
-                        onChangeText={setCurrentText}
-                        placeholder="Type something..."
-                        placeholderTextColor="rgba(255,255,255,0.4)"
-                        multiline
-                    />
-                  </View>
+            {/* 🚀 ACTION FOOTER */}
+            {!activeTextInput && !showStickerPicker && (
+              <View style={[s.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+                  <TouchableOpacity 
+                      style={[s.shareBtn, { backgroundColor: '#FF3040' }]} 
+                      onPress={handleShare}
+                      disabled={isUploading}
+                      activeOpacity={0.8}
+                  >
+                  {isUploading ? (
+                      <ActivityIndicator color="#fff" />
+                  ) : (
+                      <>
+                      <Text style={s.shareBtnTxt}>Share Story</Text>
+                      <View style={s.shareCircle}>
+                          <Ionicons name="send" size={14} color="#FF3040" />
+                      </View>
+                      </>
+                  )}
+                  </TouchableOpacity>
               </View>
-          )}
+            )}
+          </View>
+        </TouchableWithoutFeedback>
 
-          {/* ☺ STICKER PICKER OVERLAY */}
-          {showStickerPicker && (
-              <View style={[StyleSheet.absoluteFill, s.stickerPicker]}>
-                   <View style={[s.stickerHeader, { marginTop: insets.top }]}>
-                        <TouchableOpacity onPress={() => setShowStickerPicker(false)}>
-                            <Ionicons name="chevron-down" size={32} color="#fff" />
-                        </TouchableOpacity>
-                   </View>
-                   <View style={s.stickerGrid}>
-                        {['heart', 'star', 'fire', 'verified', 'happy'].map(id => (
-                            <TouchableOpacity key={id} onPress={() => handleAddSticker(id)} style={s.stickerBox}>
-                                {id === 'heart' && <Ionicons name="heart" size={40} color="#FF3040" />}
-                                {id === 'star' && <Ionicons name="star" size={40} color="#FFD700" />}
-                                {id === 'fire' && <MaterialCommunityIcons name="fire" size={40} color="#FF4500" />}
-                                {id === 'verified' && <MaterialCommunityIcons name="check-decagram" size={40} color="#3897f0" />}
-                                {id === 'happy' && <Ionicons name="happy" size={40} color="#fff" />}
+        {/* 📝 TEXT INPUT MODAL OVERLAY */}
+        {activeTextInput && (
+            <View style={[StyleSheet.absoluteFill, s.textInputOverlay]}>
+                <View style={[s.textInputHeader, { marginTop: insets.top }]}>
+                  <TouchableOpacity onPress={toggleFontStyle} style={s.fontStyleBtn}>
+                      <Text style={[
+                          s.fontStyleBtnTxt, 
+                          { fontFamily: FONT_OPTIONS.find(f => f.id === selectedFont)?.family || 'System' }
+                      ]}>
+                          {FONT_OPTIONS.find(f => f.id === selectedFont)?.label}
+                      </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleAddText}>
+                      <Text style={s.doneBtnTxt}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+                
+                  <View style={s.textInputCenter}>
+                      <TextInput
+                          autoFocus
+                          style={[
+                              s.captionInput, 
+                              { 
+                                  color: '#fff', 
+                                  fontFamily: FONT_OPTIONS.find(f => f.id === selectedFont)?.family || 'System' 
+                              },
+                              selectedFont === 'Neon' && {
+                                  textShadowColor: 'rgba(255, 255, 255, 0.8)',
+                                  textShadowOffset: { width: 0, height: 0 },
+                                  textShadowRadius: 15,
+                              }
+                          ]}
+                          value={currentText}
+                          onChangeText={setCurrentText}
+                          placeholder="Type something..."
+                          placeholderTextColor="rgba(255,255,255,0.4)"
+                          multiline
+                      />
+                  </View>
+
+                {/* 🕹️ HORIZONTAL FONT PICKER (Instagram-Style) */}
+                <View style={s.fontPickerWrapper}>
+                    <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={false}
+                        keyboardShouldPersistTaps="always"
+                        decelerationRate="fast"
+                        snapToInterval={80}
+                        snapToAlignment="center"
+                        nestedScrollEnabled={true}
+                        contentContainerStyle={s.fontPickerScroll}
+                    >
+                        {FONT_OPTIONS.map((f) => (
+                            <TouchableOpacity 
+                                key={f.id}
+                                onPress={() => setSelectedFont(f.id)}
+                                style={[
+                                    s.fontBubble,
+                                    selectedFont === f.id && s.fontBubbleActive,
+                                    { marginRight: 12 }
+                                ]}
+                            >
+                                <Text 
+                                  style={[
+                                      s.fontBubbleTxt, 
+                                      { fontFamily: f.family },
+                                      selectedFont === f.id && { color: '#000' }
+                                  ]}
+                                >
+                                    {f.label}
+                                </Text>
                             </TouchableOpacity>
                         ))}
-                   </View>
-              </View>
-          )}
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+                    </ScrollView>
+                </View>
+            </View>
+        )}
+
+        {/* ☺ STICKER PICKER OVERLAY */}
+        {showStickerPicker && (
+            <View style={[StyleSheet.absoluteFill, s.stickerPicker]}>
+                 <View style={[s.stickerHeader, { marginTop: insets.top }]}>
+                      <TouchableOpacity onPress={() => setShowStickerPicker(false)}>
+                          <Ionicons name="chevron-down" size={32} color="#fff" />
+                      </TouchableOpacity>
+                 </View>
+                 <View style={s.stickerGrid}>
+                      {['heart', 'star', 'fire', 'verified', 'happy'].map(id => (
+                          <TouchableOpacity key={id} onPress={() => handleAddSticker(id)} style={s.stickerBox}>
+                              {id === 'heart' && <Ionicons name="heart" size={40} color="#FF3040" />}
+                              {id === 'star' && <Ionicons name="star" size={40} color="#FFD700" />}
+                              {id === 'fire' && <MaterialCommunityIcons name="fire" size={40} color="#FF4500" />}
+                              {id === 'verified' && <MaterialCommunityIcons name="check-decagram" size={40} color="#3897f0" />}
+                              {id === 'happy' && <Ionicons name="happy" size={40} color="#fff" />}
+                          </TouchableOpacity>
+                      ))}
+                 </View>
+            </View>
+        )}
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -599,6 +705,12 @@ const s = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
   },
   rightActions: { flexDirection: 'row', gap: 12 },
+  sidebar: {
+    position: 'absolute',
+    right: 20,
+    zIndex: 100,
+    alignItems: 'center',
+  },
   canvasWrapper: {
     flex: 1,
     justifyContent: 'center',
@@ -622,7 +734,6 @@ const s = StyleSheet.create({
   },
   captionInput: {
     fontSize: 32,
-    fontWeight: '900',
     textAlign: 'center',
     width: '100%',
     letterSpacing: -1,
@@ -687,9 +798,7 @@ const s = StyleSheet.create({
   },
   fontStyleBtnTxt: {
     color: '#fff',
-    fontWeight: '800',
     fontSize: 13,
-    textTransform: 'uppercase',
   },
   doneBtnTxt: {
     color: '#fff',
@@ -710,6 +819,34 @@ const s = StyleSheet.create({
     height: 80,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  fontPickerWrapper: {
+    height: 60,
+    width: '100%',
+    zIndex: 2000,
+  },
+  fontPickerScroll: {
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+  },
+  fontBubble: {
+    height: 44,
+    minWidth: 44,
+    paddingHorizontal: 16,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  fontBubbleActive: {
+    backgroundColor: '#fff',
+    borderColor: '#fff',
+  },
+  fontBubbleTxt: {
+    color: '#fff',
+    fontSize: 14,
   },
   stickerGrid: {
     flexDirection: 'row',

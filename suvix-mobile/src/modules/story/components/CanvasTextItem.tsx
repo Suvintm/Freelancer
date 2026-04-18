@@ -13,17 +13,18 @@ interface CanvasTextItemProps {
 export const CanvasTextItem: React.FC<CanvasTextItemProps> = ({ item }) => {
   const getFontStyle = () => {
     switch (item.fontStyle) {
-      case 'Classic': return { fontFamily: 'serif', fontWeight: '400' };
+      case 'Classic': return { fontFamily: 'PlayfairDisplay_700Bold' };
+      case 'Italic': return { fontFamily: 'PlayfairDisplay_700Bold_Italic' };
       case 'Neon': return { 
-          fontFamily: 'System', 
-          fontWeight: '900',
+          fontFamily: 'Inter_900Black', 
           textShadowColor: 'rgba(255, 48, 64, 0.8)',
           textShadowOffset: { width: 0, height: 0 },
           textShadowRadius: 15,
-          color: '#fff' 
       };
-      case 'Typewriter': return { fontFamily: 'monospace' };
-      default: return { fontFamily: 'System', fontWeight: '900' }; // Modern
+      case 'Typewriter': return { fontFamily: 'SpecialElite_400Regular' };
+      case 'Cursive': return { fontFamily: 'Pacifico_400Regular' };
+      case 'Comic': return { fontFamily: 'Bangers_400Regular' };
+      default: return { fontFamily: 'Inter_900Black' }; // Modern
     }
   };
 

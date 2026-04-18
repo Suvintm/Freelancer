@@ -77,7 +77,8 @@
           "sounds": []
         }
       ],
-      "expo-media-library"
+      "expo-media-library",
+      "expo-font"
 
     ],
     "extra": {

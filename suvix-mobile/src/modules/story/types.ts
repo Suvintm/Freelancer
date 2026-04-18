@@ -10,6 +10,6 @@ export interface StoryObject {
     scale: number;
     rotation: number;
     // Styling
-    fontStyle?: 'Modern' | 'Classic' | 'Neon' | 'Typewriter';
+    fontStyle?: 'Modern' | 'Classic' | 'Italic' | 'Neon' | 'Typewriter' | 'Cursive' | 'Comic';
     color?: string;
 }

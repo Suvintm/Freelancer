@@ -20,6 +20,7 @@ interface DraggableItemProps {
   isSelected?: boolean;
   onSelect?: () => void;
   onDelete?: () => void;
+  onEdit?: () => void;
   // --- 🛰️ GLOBAL CONTROL BRIDGE ---
   activeX?: Animated.SharedValue<number>;
   activeY?: Animated.SharedValue<number>;
@@ -39,6 +40,7 @@ export const DraggableItem: React.FC<DraggableItemProps> = ({
   isSelected = false,
   onSelect,
   onDelete,
+  onEdit,
   activeX,
   activeY,
   activeScale,
@@ -142,8 +144,10 @@ export const DraggableItem: React.FC<DraggableItemProps> = ({
         
         {children}
 
-        {/* Delete Handle */}
+        {/* Action Handles */}
         {isSelected && (
+          <>
+            {/* Delete Handle */}
             <TouchableOpacity 
               onPress={onDelete} 
               style={s.deleteHandle}
@@ -151,6 +155,18 @@ export const DraggableItem: React.FC<DraggableItemProps> = ({
             >
                 <Ionicons name="close-circle" size={24} color="#FF3040" />
             </TouchableOpacity>
+
+            {/* Edit Handle (Pencil) */}
+            {onEdit && (
+              <TouchableOpacity 
+                onPress={onEdit} 
+                style={s.editHandle}
+                activeOpacity={0.7}
+              >
+                  <Ionicons name="pencil" size={20} color="#3897f0" />
+              </TouchableOpacity>
+            )}
+          </>
         )}
       </Animated.View>
     </GestureDetector>
@@ -180,5 +196,22 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+  },
+  editHandle: {
+    position: 'absolute',
+    top: -12,
+    left: -12,
+    width: 24,
+    height: 24,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    zIndex: 10,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
