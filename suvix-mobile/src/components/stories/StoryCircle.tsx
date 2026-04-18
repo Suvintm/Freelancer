@@ -17,7 +17,7 @@ import Animated, {
 import Svg, { Circle } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { StoryItem } from '../../hooks/useStories';
 import { useTheme } from '../../context/ThemeContext';
 import { useRouter } from 'expo-router';
@@ -167,12 +167,17 @@ export const StoryCircle = React.memo(({ story }: { story: StoryItem }) => {
             )}
         </View>
         
-        <Text 
-            style={[s.username, { color: theme.text }, isSeen && s.seenUsername]} 
-            numberOfLines={1}
-        >
-            {story.username}
-        </Text>
+        <View style={s.usernameContainer}>
+          <Text 
+              style={[s.username, { color: theme.text }, isSeen && s.seenUsername]} 
+              numberOfLines={1}
+          >
+              {story.username}
+          </Text>
+          {story.verifiedColor && (
+              <MaterialCommunityIcons name="check-decagram" size={13} color={story.verifiedColor} style={s.verifiedIcon} />
+          )}
+        </View>
       </Pressable>
     </View>
   );
@@ -251,11 +256,22 @@ const s = StyleSheet.create({
     alignItems: 'center',
     zIndex: 10,
   },
+  usernameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+    maxWidth: '100%',
+  },
   username: {
     fontSize: 11,
     textAlign: 'center',
     fontWeight: '500',
     letterSpacing: -0.2,
+    maxWidth: 55, // Leaves room for badge
+  },
+  verifiedIcon: {
+    marginLeft: 2,
   },
   seenUsername: {
     opacity: 0.5,

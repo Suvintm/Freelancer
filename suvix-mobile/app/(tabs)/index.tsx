@@ -84,6 +84,8 @@ export default function DashboardIndex() {
     return roleGroup === 'CLIENT' ? 'clients' : 'editors';
   }, [user]);
 
+  const { feed, isLoading: isDiscoveryLoading } = useDiscoveryStore();
+
   // ZERO-LATENCY FALLBACK: If user is authenticated but data is 1ms late, show the skeleton
   const showSkeleton = !user && (isLoadingUser || isAuthenticated);
 
@@ -101,8 +103,6 @@ export default function DashboardIndex() {
 
   // 3. Render Unified Home Feed
   const ActiveActionModule = MODULE_REGISTRY[activeModule] || EditorDashboard;
-
-  const { feed, isLoading: isDiscoveryLoading } = useDiscoveryStore();
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.primary }}>

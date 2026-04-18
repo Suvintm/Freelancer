@@ -10,6 +10,7 @@ import { SuggestionCarousel } from './items/SuggestionCarousel';
 import { useTheme } from '../../../context/ThemeContext';
 import { RefreshControl } from 'react-native';
 import { useRefreshManager } from '../../../hooks/useRefreshManager';
+import { NativeAdBanner } from '../../../components/ads/NativeAdBanner';
 
 interface UnifiedFeedProps {
   ListHeaderComponent?: React.ComponentType<any> | React.ReactElement | null;
@@ -27,9 +28,22 @@ export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEn
     refreshFeed();
   }, []);
 
-  const displayData = (isLoading && feed.length > 0) 
-    ? Array.from({ length: 6 }, (_, i) => ({ id: `skel-${i}`, type: 'SKELETON' as const }))
-    : feed;
+  const displayData = React.useMemo(() => {
+    const baseData = (isLoading && feed.length > 0) 
+      ? Array.from({ length: 6 }, (_, i) => ({ id: `skel-${i}`, type: 'SKELETON' as const }))
+      : feed;
+    
+    // 🧬 Interleave Ads every 4 items
+    const dataWithAds: any[] = [];
+    baseData.forEach((item, index) => {
+      dataWithAds.push(item);
+      if ((index + 1) % 4 === 0) {
+        dataWithAds.push({ id: `ad-${index}`, type: 'AD' });
+      }
+    });
+
+    return dataWithAds;
+  }, [feed, isLoading]);
 
   const renderItem = ({ item }: { item: any }) => {
     if (item.type === 'SKELETON') {
@@ -56,6 +70,8 @@ export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEn
         return <SuggestionCarousel type="EDITORS" data={item.data} />;
       case 'SUGGESTION_RENTALS':
         return <SuggestionCarousel type="RENTALS" data={item.data} />;
+      case 'AD':
+        return <NativeAdBanner />;
       default:
         return null;
     }

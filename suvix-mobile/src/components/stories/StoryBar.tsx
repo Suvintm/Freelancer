@@ -1,9 +1,12 @@
 import React from 'react';
 import { 
   View, 
+  Text,
   FlatList, 
   StyleSheet, 
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTheme } from '../../context/ThemeContext';
 import { Skeleton } from '../shared/Skeleton';
 import { StoryCircle } from './StoryCircle';
 import { useStories, StoryItem } from '../../hooks/useStories';
@@ -18,7 +21,8 @@ interface StoryBarProps {
 }
 
 export const StoryBar = ({ isLoading: forcedLoading }: StoryBarProps) => {
-  const { data: rawData, isLoading: internalLoading } = useStories();
+  const { data: rawData, isLoading: internalLoading, isFallbackData } = useStories();
+  const { theme } = useTheme();
   const { user } = useAuthStore();
   const isLoading = forcedLoading || internalLoading;
 
@@ -74,6 +78,21 @@ export const StoryBar = ({ isLoading: forcedLoading }: StoryBarProps) => {
           />
         )}
       />
+
+      {isFallbackData && (
+        <View style={[s.fallbackCard, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
+          <View style={[s.iconBox, { backgroundColor: theme.primary }]}>
+            <MaterialCommunityIcons name="cards-playing-outline" size={18} color={theme.text} />
+          </View>
+          <View style={s.fallbackTextWrapper}>
+            <Text style={[s.fallbackTitle, { color: theme.text }]}>Showcase Stories</Text>
+            <Text style={[s.fallbackSubtitle, { color: theme.textSecondary }]}>
+              Follow friends and experts to start seeing their stories here.
+            </Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={18} color={theme.textSecondary} />
+        </View>
+      )}
     </View>
   );
 };
@@ -91,5 +110,41 @@ const s = StyleSheet.create({
     height: 104,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  fallbackCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  iconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fallbackTextWrapper: {
+    flex: 1,
+    marginLeft: 12,
+    marginRight: 8,
+  },
+  fallbackTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  fallbackSubtitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    lineHeight: 16,
   },
 });

@@ -78,8 +78,16 @@
         }
       ],
       "expo-media-library",
-      "expo-font"
-
+      "expo-font",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "android_app_id": "ca-app-pub-5640382821262813~5733993852",
+          "androidAppId": "ca-app-pub-5640382821262813~5733993852",
+          "ios_app_id": "ca-app-pub-5640382821262813~3174241695",
+          "iosAppId": "ca-app-pub-5640382821262813~3174241695"
+        }
+      ]
     ],
     "extra": {
       "router": {

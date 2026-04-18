@@ -32,6 +32,7 @@ import { YouTubeVideoCard } from '../components/YouTubeVideoCard';
 import { useRouter } from 'expo-router';
 import { ProfileSkeleton, ProfileSkeletonContent } from '../../shared/skeletons/ProfileSkeleton';
 import { useRefreshManager } from '../../../hooks/useRefreshManager';
+import { SmartText } from '../../shared/content/SmartText';
 
 // 🏆 Achievement Assets
 const SILVER_BTN = require('../../../../assets/images/playbutton/silverbtn.png');
@@ -923,78 +924,6 @@ const styles = StyleSheet.create({
     padding: 0, // Must match bioInput
     margin: 0,
     textAlignVertical: 'top'
-  },
-  verifiedBadge: { 
-    position: 'absolute', 
-    top: 2, 
-    right: 2, 
-    backgroundColor: 'white', 
-    borderRadius: 10, 
-    zIndex: 25 
-  },
-  headerStats: { flex: 1, justifyContent: 'center' },
-  miniStatsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14, paddingRight: 5, marginTop: -8 },
-  miniStat: { alignItems: 'center' },
-  miniStatValue: { fontSize: 18, fontWeight: '900' },
-  miniStatLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', opacity: 0.8 },
-  editBtn: { height: 36, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center', flexDirection: 'row' },
-  editBtnText: { fontSize: 12, fontWeight: '700' },
-  miniToolboxRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 14, gap: 8 },
-  miniToolItem: { flex: 1, height: 32, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
-  miniToolText: { fontSize: 10, fontWeight: '800' },
-  infoBlock: { marginTop: 15 },
-  nameRow: { flexDirection: 'row', alignItems: 'center' },
-  name: { fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
-  avatarWrapper: { position: 'relative' },
-  avatarInner: {
-    position: 'relative',
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-  },
-  avatarLoadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 45,
-    overflow: 'hidden'
-  },
-  avatarEditBtn: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    backgroundColor: '#FF3040',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    zIndex: 20
-  },
-  storyPlusBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#FF3040',
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 3,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 30,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
   },
   feedContainer: {
     flexDirection: 'row',

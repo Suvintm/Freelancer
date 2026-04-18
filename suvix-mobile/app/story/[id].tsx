@@ -8,6 +8,7 @@ import {
   Platform,
   StatusBar,
   Pressable,
+  Dimensions,
 } from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -21,10 +22,16 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStories, StoryItem } from '../../src/hooks/useStories';
 
 const DEFAULT_SLIDE_DURATION_MS = 5000;
 const MIN_SLIDE_DURATION_MS = 2000;
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const CANVAS_WIDTH = screenWidth;
+const CANVAS_HEIGHT = screenWidth * (16 / 9);
+const CANVAS_OFFSET = Math.max(0, (screenHeight - CANVAS_HEIGHT) / 2);
 
 export default function StoryEngineScreen() {
   const { id } = useLocalSearchParams();
@@ -106,6 +113,7 @@ function StoryThread({
   const slides = story.slides;
   const currentSlide = slides[slideIndex];
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const progress = useSharedValue(0);
   const slideIndexRef = useRef(0);
@@ -138,6 +146,30 @@ function StoryThread({
     },
     [progress]
   );
+  
+  const isPausedRef = useRef(false);
+  const holdStartTimeRef = useRef(0);
+
+  const startAnimation = useCallback((startingProgress = 0) => {
+    if (!isActiveRef.current || isPagerInteracting) return;
+    const slide = slides[slideIndexRef.current];
+    const duration = Math.max(slide?.durationMs || DEFAULT_SLIDE_DURATION_MS, MIN_SLIDE_DURATION_MS);
+    const remainingDuration = duration * (1 - startingProgress);
+
+    clearAdvanceTimer();
+    progress.value = startingProgress;
+    isPausedRef.current = false;
+
+    progress.value = withTiming(1, {
+      duration: remainingDuration,
+      easing: Easing.linear,
+    });
+
+    advanceTimerRef.current = setTimeout(() => {
+      if (!isMountedRef.current || !isActiveRef.current || isPausedRef.current) return;
+      handleNext();
+    }, remainingDuration);
+  }, [clearAdvanceTimer, handleNext, isPagerInteracting, progress, slides]);
 
   const lockTapBriefly = useCallback(() => {
     canTapRef.current = false;
@@ -209,24 +241,11 @@ function StoryThread({
   useEffect(() => {
     slideIndexRef.current = slideIndex;
     if (!isActiveRef.current || isPagerInteracting) return;
-
-    const slide = slides[slideIndex];
-    const duration = Math.max(slide?.durationMs || DEFAULT_SLIDE_DURATION_MS, MIN_SLIDE_DURATION_MS);
-
-    clearAdvanceTimer();
+    
+    // Always start fresh from 0 when slide index changes
     stopProgress(true);
-
-    progress.value = withTiming(1, {
-      duration,
-      easing: Easing.linear,
-    });
-
-    advanceTimerRef.current = setTimeout(() => {
-      if (!isMountedRef.current || !isActiveRef.current) return;
-      if (slideIndexRef.current !== slideIndex) return;
-      handleNext();
-    }, duration);
-  }, [clearAdvanceTimer, handleNext, isPagerInteracting, progress, slideIndex, slides, stopProgress]);
+    startAnimation(0);
+  }, [startAnimation, isPagerInteracting, slideIndex, stopProgress]);
 
   useEffect(() => {
     const nextSlide = slides[slideIndex + 1];
@@ -251,31 +270,63 @@ function StoryThread({
 
   return (
     <View style={s.threadContainer}>
-      <Image source={{ uri: currentSlide.image }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      
+      {/* 📱 9:16 RESTRICTED CANVAS Engine (Matching Create Mode) */}
+      <View style={s.canvasBoundingBox}>
+        <Image source={{ uri: currentSlide.image }} style={StyleSheet.absoluteFill} resizeMode="cover" />
 
-      <LinearGradient
-        colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.8)']}
-        style={StyleSheet.absoluteFill}
-      />
+        <LinearGradient
+          colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.8)']}
+          style={StyleSheet.absoluteFill}
+        />
+      </View>
 
       <View style={s.gestureLayer}>
         <Pressable
           style={s.halfRegion}
+          onPressIn={() => {
+            holdStartTimeRef.current = Date.now();
+            isPausedRef.current = true;
+            clearAdvanceTimer();
+            cancelAnimation(progress);
+          }}
+          onPressOut={() => {
+            if (!isPausedRef.current) return;
+            const heldTime = Date.now() - holdStartTimeRef.current;
+            if (heldTime > 200) {
+              startAnimation(progress.value);
+            }
+          }}
           onPress={() => {
+            if (Date.now() - holdStartTimeRef.current > 200) return;
             if (!canTapRef.current || isPagerInteracting) return;
             handlePrev();
           }}
         />
         <Pressable
           style={s.halfRegion}
+          onPressIn={() => {
+            holdStartTimeRef.current = Date.now();
+            isPausedRef.current = true;
+            clearAdvanceTimer();
+            cancelAnimation(progress);
+          }}
+          onPressOut={() => {
+            if (!isPausedRef.current) return;
+            const heldTime = Date.now() - holdStartTimeRef.current;
+            if (heldTime > 200) {
+              startAnimation(progress.value);
+            }
+          }}
           onPress={() => {
+            if (Date.now() - holdStartTimeRef.current > 200) return;
             if (!canTapRef.current || isPagerInteracting) return;
             handleNext();
           }}
         />
       </View>
 
-      <View style={s.header}>
+      <View style={[s.header, { top: Math.max(insets.top + 10, Platform.OS === 'ios' ? 44 : 24) }]}>
         <View style={s.progressContainer}>
           {slides.map((_, i) => (
             <View key={i} style={s.progressBarTrack}>
@@ -329,14 +380,22 @@ const s = StyleSheet.create({
   pager: { flex: 1 },
   page: { flex: 1 },
   threadPlaceholder: { flex: 1, backgroundColor: '#000' },
-  threadContainer: { flex: 1 },
+  threadContainer: { flex: 1, position: 'relative' },
+
+  canvasBoundingBox: {
+    width: CANVAS_WIDTH,
+    height: CANVAS_HEIGHT,
+    marginTop: CANVAS_OFFSET,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#111',
+  },
 
   gestureLayer: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', zIndex: 5 },
   halfRegion: { flex: 1 },
 
   header: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 44 : 24,
     width: '100%',
     paddingHorizontal: 16,
     zIndex: 10,
