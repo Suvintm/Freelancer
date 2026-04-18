@@ -386,17 +386,21 @@ export default function AddStoryScreen() {
       }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [9, 16],
+        allowsEditing: false,
         quality: 1,
       });
       if (!result.canceled && result.assets?.[0]?.uri) {
         pushHistory();
+        const asset = result.assets[0];
+        const logW = screenWidth * 0.7;
         const newObj: StoryObject = {
           id: Date.now().toString(), type: 'IMAGE',
-          content: result.assets[0].uri,
+          content: asset.uri,
           x: 0, y: 0, scale: 1, rotation: 0,
           imageFilter: 'none',
+          width: logW,
+          height: logW / (asset.width / asset.height),
+          aspectRatio: asset.width / asset.height,
         };
         setObjects(prev => [...prev, newObj]);
         handleSelectObject(newObj.id);
@@ -416,17 +420,21 @@ export default function AddStoryScreen() {
       }
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [9, 16],
+        allowsEditing: false,
         quality: 1,
       });
       if (!result.canceled && result.assets?.[0]?.uri) {
         pushHistory();
+        const asset = result.assets[0];
+        const logW = screenWidth * 0.7;
         const newObj: StoryObject = {
           id: Date.now().toString(), type: 'IMAGE',
-          content: result.assets[0].uri,
+          content: asset.uri,
           x: 0, y: 0, scale: 1, rotation: 0,
           imageFilter: 'none',
+          width: logW,
+          height: logW / (asset.width / asset.height),
+          aspectRatio: asset.width / asset.height,
         };
         setObjects(prev => [...prev, newObj]);
         handleSelectObject(newObj.id);

@@ -42,8 +42,9 @@ export interface StoryObject {
   textBackgroundColor?: string;
   textAlign?: TextAlign;
   textEffect?: TextEffect;
-  width?: number;
   fontSize?: number;
+  height?: number;
+  aspectRatio?: number;
 
   // ── Image ─────────────────────────────────────────────────────────────────
   imageFilter?: ImageFilter;

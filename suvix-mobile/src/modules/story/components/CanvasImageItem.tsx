@@ -1,6 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Image } from 'react-native';
+import { StyleSheet, View, Image } from 'react-native';
 import { StoryObject, ImageFilter } from '../types';
 
 interface Props { item: StoryObject; }
@@ -22,12 +21,15 @@ export const CanvasImageItem: React.FC<Props> = ({ item }) => {
   const filterKey = (item.imageFilter ?? 'none') as ImageFilter;
   const cfg       = FILTERS[filterKey];
 
+  // Dynamically use original aspect ratio or default to 4:3
+  const aspectRatio = item.aspectRatio || 4 / 3;
+
   return (
-    <View style={s.wrapper}>
+    <View style={[s.wrapper, { aspectRatio }]}>
       <Image
         source={{ uri: item.content }}
         style={s.image}
-        resizeMode="cover"
+        resizeMode="contain"
       />
       {cfg && (
         <View
@@ -44,7 +46,6 @@ export const CanvasImageItem: React.FC<Props> = ({ item }) => {
 const s = StyleSheet.create({
   wrapper: {
     width: '100%',
-    aspectRatio: 4 / 3,
     borderRadius: 8,
     overflow: 'hidden',
   },
