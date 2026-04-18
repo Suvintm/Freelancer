@@ -165,7 +165,8 @@ export const DraggableItem: React.FC<Props> = ({
       startResizeWidth.value = activeWidth?.value ?? localWidth.value;
     })
     .onUpdate((e) => {
-      const nw = Math.max(80, startResizeWidth.value + e.translationX);
+      // Use translationX but factor in scale to make it feel natural
+      const nw = Math.max(80, startResizeWidth.value + (e.translationX / (activeScale?.value ?? 1)));
       localWidth.value = nw;
       if (activeWidth) activeWidth.value = nw;
     })
@@ -238,7 +239,7 @@ export const DraggableItem: React.FC<Props> = ({
               <GestureDetector gesture={widthPanGesture}>
                 <View style={s.resizeHit}>
                   <View style={s.resizePill}>
-                    <Ionicons name="swap-horizontal-outline" size={12} color="#3897f0" />
+                    <Ionicons name="swap-horizontal-outline" size={16} color="#3897f0" />
                   </View>
                 </View>
               </GestureDetector>
@@ -286,17 +287,17 @@ const s = StyleSheet.create({
     shadowOpacity: 0.3, shadowRadius: 4,
   },
   resizeHit: {
-    position: 'absolute', right: -28, bottom: -6,
-    width: 44, height: 44, justifyContent: 'center', alignItems: 'center',
-    zIndex: 30,
+    position: 'absolute', right: -32, bottom: -12,
+    width: 60, height: 60, justifyContent: 'center', alignItems: 'center',
+    zIndex: 50,
   },
   resizePill: {
-    width: 28, height: 28, backgroundColor: '#fff', borderRadius: 14,
-    borderWidth: 1.5, borderColor: '#3897f0',
+    width: 36, height: 36, backgroundColor: '#fff', borderRadius: 18,
+    borderWidth: 2, borderColor: '#3897f0',
     justifyContent: 'center', alignItems: 'center',
-    elevation: 4,
+    elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2, shadowRadius: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3, shadowRadius: 5,
   },
 });

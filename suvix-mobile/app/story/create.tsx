@@ -198,44 +198,62 @@ export default function AddStoryScreen() {
   const [snapY, setSnapY] = useState(false);
 
   // ── History ────────────────────────────────────────────────────────────────
-  const historyRef     = useRef<StoryObject[][]>([]);
-  const redoHistoryRef = useRef<StoryObject[][]>([]);
+  interface HistoryState {
+    objects: StoryObject[];
+    paths: DrawPath[];
+  }
+
+  const historyRef     = useRef<HistoryState[]>([]);
+  const redoHistoryRef = useRef<HistoryState[]>([]);
+
   const objectsRef     = useRef<StoryObject[]>(objects);
+  const drawPathsRef   = useRef<DrawPath[]>(drawPaths);
   useEffect(() => { objectsRef.current = objects; }, [objects]);
+  useEffect(() => { drawPathsRef.current = drawPaths; }, [drawPaths]);
 
   const pushHistory = useCallback(() => {
-    historyRef.current     = [...historyRef.current.slice(-20), objectsRef.current.map(o => ({ ...o }))];
+    historyRef.current = [
+      ...historyRef.current.slice(-25),
+      {
+        objects: objectsRef.current.map(o => ({ ...o })),
+        paths:   drawPathsRef.current.map(p => ({ ...p })),
+      },
+    ];
     redoHistoryRef.current = [];
   }, []);
 
   const handleUndo = useCallback(() => {
     if (historyRef.current.length === 0) {
-      // Also undo last draw path
-      if (drawPaths.length > 0) {
-        setDrawPaths(p => p.slice(0, -1));
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        return;
-      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       return;
     }
-    redoHistoryRef.current.push(objectsRef.current.map(o => ({ ...o })));
-    const prev = historyRef.current[historyRef.current.length - 1];
-    historyRef.current = historyRef.current.slice(0, -1);
-    setObjects(prev);
+    // Push current to redo stack
+    redoHistoryRef.current.push({
+      objects: objectsRef.current.map(o => ({ ...o })),
+      paths:   drawPathsRef.current.map(p => ({ ...p })),
+    });
+
+    const prev = historyRef.current.pop()!;
+    setObjects(prev.objects);
+    setDrawPaths(prev.paths);
     setSelectedObjectId(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  }, [drawPaths]);
+  }, []);
 
   const handleRedo = useCallback(() => {
     if (redoHistoryRef.current.length === 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       return;
     }
-    historyRef.current.push(objectsRef.current.map(o => ({ ...o })));
-    const next = redoHistoryRef.current[redoHistoryRef.current.length - 1];
-    redoHistoryRef.current = redoHistoryRef.current.slice(0, -1);
-    setObjects(next);
+    // Push current back to history
+    historyRef.current.push({
+      objects: objectsRef.current.map(o => ({ ...o })),
+      paths:   drawPathsRef.current.map(p => ({ ...p })),
+    });
+
+    const next = redoHistoryRef.current.pop()!;
+    setObjects(next.objects);
+    setDrawPaths(next.paths);
     setSelectedObjectId(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, []);
@@ -268,10 +286,11 @@ export default function AddStoryScreen() {
   const saveObjectState = useCallback((
     id: string, x: number, y: number, s: number, r: number, w: number,
   ) => {
+    pushHistory();
     setObjects(prev => prev.map(obj =>
       obj.id === id ? { ...obj, x, y, scale: s, rotation: r, width: w } : obj,
     ));
-  }, []);
+  }, [pushHistory]);
 
   const handleSelectObject = useCallback((id: string | null) => {
     setObjects(prev => {
@@ -321,14 +340,17 @@ export default function AddStoryScreen() {
   }, [pushHistory, handleSelectObject]);
 
   const handleUpdateOpacity = useCallback((id: string, opacity: number) => {
+    pushHistory();
     setObjects(prev => prev.map(o => o.id === id ? { ...o, opacity } : o));
-  }, []);
+  }, [pushHistory]);
 
   const handleUpdateFilter = useCallback((id: string, filter: ImageFilter) => {
+    pushHistory();
     setObjects(prev => prev.map(o => o.id === id ? { ...o, imageFilter: filter } : o));
-  }, []);
+  }, [pushHistory]);
 
   const handleBringToFront = useCallback((id: string) => {
+    pushHistory();
     setObjects(prev => {
       const idx = prev.findIndex(o => o.id === id);
       if (idx === -1 || idx === prev.length - 1) return prev;
@@ -337,9 +359,10 @@ export default function AddStoryScreen() {
       arr.push(item);
       return arr;
     });
-  }, []);
+  }, [pushHistory]);
 
   const handleSendToBack = useCallback((id: string) => {
+    pushHistory();
     setObjects(prev => {
       const idx = prev.findIndex(o => o.id === id);
       if (idx === -1 || idx === 0) return prev;
@@ -348,7 +371,7 @@ export default function AddStoryScreen() {
       arr.unshift(item);
       return arr;
     });
-  }, []);
+  }, [pushHistory]);
 
   // ── Media handlers ─────────────────────────────────────────────────────────
 
@@ -362,12 +385,12 @@ export default function AddStoryScreen() {
         }
       }
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [9, 16],
         quality: 1,
       });
-      if (!result.canceled) {
+      if (!result.canceled && result.assets?.[0]?.uri) {
         pushHistory();
         const newObj: StoryObject = {
           id: Date.now().toString(), type: 'IMAGE',
@@ -392,12 +415,12 @@ export default function AddStoryScreen() {
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [9, 16],
         quality: 1,
       });
-      if (!result.canceled) {
+      if (!result.canceled && result.assets?.[0]?.uri) {
         pushHistory();
         const newObj: StoryObject = {
           id: Date.now().toString(), type: 'IMAGE',
@@ -496,8 +519,9 @@ export default function AddStoryScreen() {
   // ── Drawing handlers ───────────────────────────────────────────────────────
 
   const handlePathComplete = useCallback((path: DrawPath) => {
+    pushHistory();
     setDrawPaths(prev => [...prev, path]);
-  }, []);
+  }, [pushHistory]);
 
   const handleClearDrawing = () => {
     Alert.alert('Clear Drawing', 'Remove all brush strokes?', [
@@ -505,6 +529,7 @@ export default function AddStoryScreen() {
       {
         text: 'Clear', style: 'destructive',
         onPress: () => {
+          pushHistory();
           setDrawPaths([]);
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
         },
@@ -674,7 +699,7 @@ export default function AddStoryScreen() {
                 >
                   <Ionicons
                     name="arrow-undo-outline" size={20}
-                    color={historyRef.current.length > 0 || drawPaths.length > 0
+                    color={historyRef.current.length > 0
                       ? theme.text : 'rgba(255,255,255,0.25)'}
                   />
                 </TouchableOpacity>

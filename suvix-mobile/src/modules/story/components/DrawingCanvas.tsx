@@ -1,13 +1,20 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Path as SvgPath } from 'react-native-svg';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { runOnJS } from 'react-native-reanimated';
+import Animated, {
+  useSharedValue,
+  useAnimatedProps,
+  runOnJS,
+} from 'react-native-reanimated';
 import { DrawPath } from '../types';
+
+const AnimatedPath = Animated.createAnimatedComponent(SvgPath);
 
 // ── Smooth quadratic-bezier path builder ──────────────────────────────────────
 
 function buildPath(pts: { x: number; y: number }[]): string {
+  'worklet';
   if (pts.length === 0) return '';
   if (pts.length === 1) return `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)} l 0.01 0`;
   if (pts.length === 2) {
@@ -33,8 +40,8 @@ interface Props {
   brushColor: string;
   brushSize: number;
   isEraser: boolean;
-  eraserBgColor: string;   // canvas bg colour so eraser paints correctly
-  interactive: boolean;    // false → static render only (pointerEvents="none")
+  eraserBgColor: string;
+  interactive: boolean;
   onPathComplete?: (path: DrawPath) => void;
 }
 
@@ -49,51 +56,50 @@ export const DrawingCanvas: React.FC<Props> = ({
   interactive,
   onPathComplete,
 }) => {
-  const [livePathD, setLivePathD] = useState('');
-  const pointsRef        = useRef<{ x: number; y: number }[]>([]);
-  // Keep refs to latest values so gesture callbacks always have current state
-  const brushColorRef    = useRef(brushColor);
-  const brushSizeRef     = useRef(brushSize);
-  const isEraserRef      = useRef(isEraser);
-  const eraserBgColorRef = useRef(eraserBgColor);
+  const livePathD        = useSharedValue('');
+  const points           = useSharedValue<{ x: number; y: number }[]>([]);
 
-  brushColorRef.current    = brushColor;
-  brushSizeRef.current     = brushSize;
-  isEraserRef.current      = isEraser;
-  eraserBgColorRef.current = eraserBgColor;
+  // Refs for callbacks
+  const configRef = useRef({ brushColor, brushSize, isEraser, eraserBgColor });
+  configRef.current = { brushColor, brushSize, isEraser, eraserBgColor };
 
-  const addPoint = useCallback((x: number, y: number) => {
-    pointsRef.current.push({ x, y });
-    setLivePathD(buildPath(pointsRef.current));
-  }, []);
-
-  const finishPath = useCallback(() => {
-    if (!pointsRef.current.length || !onPathComplete) return;
-    const erase    = isEraserRef.current;
-    const pathData = buildPath(pointsRef.current);
+  const onPathEnded = (finalD: string) => {
+    if (!onPathComplete || !finalD) return;
+    const { brushColor, brushSize, isEraser, eraserBgColor } = configRef.current;
     onPathComplete({
       id: `${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      d: pathData,
-      color:       erase ? eraserBgColorRef.current : brushColorRef.current,
-      strokeWidth: erase ? brushSizeRef.current * 5 : brushSizeRef.current,
+      d: finalD,
+      color:       isEraser ? eraserBgColor : brushColor,
+      strokeWidth: isEraser ? brushSize * 5 : brushSize,
       opacity:     1,
-      isEraser:    erase,
+      isEraser:    isEraser,
     });
-    pointsRef.current = [];
-    setLivePathD('');
-  }, [onPathComplete]);
+    livePathD.value = '';
+    points.value    = [];
+  };
 
   const gesture = Gesture.Pan()
     .minDistance(0)
     .onStart((e) => {
-      pointsRef.current = [{ x: e.x, y: e.y }];
-      runOnJS(setLivePathD)(buildPath(pointsRef.current));
+      points.value = [{ x: e.x, y: e.y }];
+      livePathD.value = buildPath(points.value);
     })
-    .onUpdate((e) => { runOnJS(addPoint)(e.x, e.y); })
-    .onEnd(() => { runOnJS(finishPath)(); });
+    .onUpdate((e) => {
+      points.value = [...points.value, { x: e.x, y: e.y }];
+      livePathD.value = buildPath(points.value);
+    })
+    .onEnd(() => {
+      if (points.value.length > 0) {
+        runOnJS(onPathEnded)(livePathD.value);
+      }
+    });
+
+  const animatedProps = useAnimatedProps(() => ({
+    d: livePathD.value,
+  }));
 
   const livePaintColor = isEraser ? eraserBgColor : brushColor;
-  const livePaintWidth = isEraser ? brushSize * 5  : brushSize;
+  const livePaintWidth = isEraser ? brushSize * 5 : brushSize;
 
   const svgContent = (
     <Svg width={width} height={height}>
@@ -108,16 +114,14 @@ export const DrawingCanvas: React.FC<Props> = ({
           fill="none"
         />
       ))}
-      {livePathD ? (
-        <SvgPath
-          d={livePathD}
-          stroke={livePaintColor}
-          strokeWidth={livePaintWidth}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
-      ) : null}
+      <AnimatedPath
+        animatedProps={animatedProps}
+        stroke={livePaintColor}
+        strokeWidth={livePaintWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
     </Svg>
   );
 
@@ -131,9 +135,9 @@ export const DrawingCanvas: React.FC<Props> = ({
 
   return (
     <GestureDetector gesture={gesture}>
-      <View style={[s.layer, { width, height }]} pointerEvents="box-only">
+      <Animated.View style={[s.layer, { width, height }]} pointerEvents="box-only">
         {svgContent}
-      </View>
+      </Animated.View>
     </GestureDetector>
   );
 };
