@@ -26,6 +26,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/Colors';
 import { formatCount } from '../../../utils/formatters';
+import { BlurView } from 'expo-blur';
 
 import { ProfileContentTabs } from '../../shared/profiles/ProfileContentTabs';
 import { ContentGrid } from '../../shared/content/ContentGrid';
@@ -81,7 +82,8 @@ export default function YouTubeCreatorProfile() {
 
   const insets = useSafeAreaInsets();
 
-  const [isBioModalVisible, setBioModalVisible] = React.useState(false);
+  const [isBioModalVisible, setIsBioModalVisible] = React.useState(false);
+  const [isAvatarModalVisible, setIsAvatarModalVisible] = React.useState(false);
   const [isSavingBio, setIsSavingBio] = React.useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
 
@@ -130,7 +132,7 @@ export default function YouTubeCreatorProfile() {
       return;
     }
 
-    setBioModalVisible(false); // Close Modal immediately for responsive feel
+    setIsBioModalVisible(false); // Close Modal immediately for responsive feel
     setIsSavingBio(true);
     try {
       const res = await api.patch('/user/me', { bio: newBio });
@@ -232,7 +234,7 @@ export default function YouTubeCreatorProfile() {
             <View style={styles.avatarContainer}>
               <TouchableOpacity 
                 style={styles.avatarInner} 
-                onPress={handlePickMedia}
+                onPress={() => setIsAvatarModalVisible(true)}
                 activeOpacity={0.9}
                 disabled={isUploadingAvatar}
               >
@@ -244,10 +246,45 @@ export default function YouTubeCreatorProfile() {
                   transition={200}
                 />
                 
-                {/* 📸 CAMERA OVERLAY (Attached to profile circle) */}
-                <View style={[styles.avatarEditBadge, { borderColor: theme.primary }]}>
+                {/* 🚀 PREMIUM AVATAR PREVIEW MODAL */}
+                <Modal
+                  visible={isAvatarModalVisible}
+                  transparent
+                  animationType="fade"
+                  onRequestClose={() => setIsAvatarModalVisible(false)}
+                >
+                  <TouchableOpacity 
+                    style={styles.modalOverlay} 
+                    activeOpacity={1} 
+                    onPress={() => setIsAvatarModalVisible(false)}
+                  >
+                    <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill}>
+                      <View style={styles.modalContentCentered}>
+                         <TouchableOpacity 
+                            style={styles.closeModalBtn} 
+                            onPress={() => setIsAvatarModalVisible(false)}
+                          >
+                            <Ionicons name="close-circle" size={36} color="white" />
+                         </TouchableOpacity>
+
+                         <Image
+                            source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
+                            style={[styles.enlargedAvatar, { borderColor: theme.primary }]}
+                            contentFit="cover"
+                          />
+                      </View>
+                    </BlurView>
+                  </TouchableOpacity>
+                </Modal>
+
+                {/* 📸 CAMERA OVERLAY (Tappable for Edit) */}
+                <TouchableOpacity 
+                  style={[styles.avatarEditBadge, { borderColor: theme.primary }]}
+                  onPress={handlePickMedia}
+                  activeOpacity={0.8}
+                >
                   <MaterialCommunityIcons name="camera" size={12} color="#FFFFFF" />
-                </View>
+                </TouchableOpacity>
 
                 {isUploadingAvatar && (
                   <View style={[styles.avatarLoadingOverlay, { backgroundColor: 'rgba(0,0,0,0.4)' }]}>
@@ -993,5 +1030,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     marginTop: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContentCentered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeModalBtn: {
+    position: 'absolute',
+    top: 60,
+    right: 30,
+    zIndex: 100,
+  },
+  enlargedAvatar: {
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    borderWidth: 6,
   }
 });

@@ -18,6 +18,8 @@ import { Colors } from '../../../constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatCount } from '../../../utils/formatters';
+import { BlurView } from 'expo-blur';
+import { Modal } from 'react-native';
 
 import { ProfileContentTabs } from '../../shared/profiles/ProfileContentTabs';
 import { useRouter } from 'expo-router';
@@ -57,6 +59,7 @@ export default function DefaultProfile() {
   const headerOffset = insets.top + 50;
 
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isAvatarModalVisible, setIsAvatarModalVisible] = useState(false);
 
   const handlePickMedia = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -143,7 +146,7 @@ export default function DefaultProfile() {
             {/* ...Avatar Code... */}
             <TouchableOpacity 
               style={styles.avatarContainer} 
-              onPress={handlePickMedia}
+              onPress={() => setIsAvatarModalVisible(true)}
               activeOpacity={0.9}
               disabled={isUploadingAvatar}
             >
@@ -154,10 +157,44 @@ export default function DefaultProfile() {
                 transition={200}
               />
               
-              {/* 📸 CAMERA OVERLAY (Attached to profile circle) */}
-              <View style={[styles.avatarEditBadge, { borderColor: theme.primary }]}>
+              {/* 🚀 PREMIUM AVATAR PREVIEW MODAL */}
+              <Modal
+                visible={isAvatarModalVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setIsAvatarModalVisible(false)}
+              >
+                <TouchableOpacity 
+                  style={styles.modalOverlay} 
+                  activeOpacity={1} 
+                  onPress={() => setIsAvatarModalVisible(false)}
+                >
+                  <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill}>
+                    <View style={styles.modalContentCentered}>
+                       <TouchableOpacity 
+                          style={styles.closeModalBtn} 
+                          onPress={() => setIsAvatarModalVisible(false)}
+                        >
+                          <Ionicons name="close-circle" size={36} color="white" />
+                       </TouchableOpacity>
+
+                       <ExpoImage
+                          source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
+                          style={[styles.enlargedAvatar, { borderColor: theme.primary }]}
+                        />
+                    </View>
+                  </BlurView>
+                </TouchableOpacity>
+              </Modal>
+
+              {/* 📸 CAMERA OVERLAY (Tappable for Edit) */}
+              <TouchableOpacity 
+                style={[styles.avatarEditBadge, { borderColor: theme.primary }]}
+                onPress={handlePickMedia}
+                activeOpacity={0.8}
+              >
                 <MaterialCommunityIcons name="camera" size={12} color="#FFFFFF" />
-              </View>
+              </TouchableOpacity>
 
               {isUploadingAvatar && (
                 <View style={styles.avatarLoadingOverlay}>
@@ -291,6 +328,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 43,
     overflow: 'hidden'
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContentCentered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeModalBtn: {
+    position: 'absolute',
+    top: 60,
+    right: 30,
+    zIndex: 100,
+  },
+  enlargedAvatar: {
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    borderWidth: 6,
   },
   headerStats: {
     flex: 1,

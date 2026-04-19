@@ -27,6 +27,7 @@ import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { api } from '../../../api/client';
 import * as ImagePicker from 'expo-image-picker';
 import { formatCount } from '../../../utils/formatters';
+import { BlurView } from 'expo-blur';
 
 const { width } = Dimensions.get('window');
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
@@ -43,8 +44,9 @@ export default function ClientProfile() {
 
 
 
-  const [isBioModalVisible, setBioModalVisible] = React.useState(false);
+  const [isBioModalVisible, setIsBioModalVisible] = React.useState(false);
   const [tempBio, setTempBio] = React.useState(user?.bio || '');
+  const [isAvatarModalVisible, setIsAvatarModalVisible] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
 
@@ -125,7 +127,7 @@ export default function ClientProfile() {
       const res = await api.patch('/user/me', { bio: tempBio });
       if (res.data.success) {
         updateUser({ bio: tempBio });
-        setBioModalVisible(false);
+        setIsBioModalVisible(false);
       }
     } catch (error) {
        console.error('Update Bio Error:', error);
@@ -173,7 +175,7 @@ export default function ClientProfile() {
             <View style={styles.avatarContainer}>
               <TouchableOpacity 
                 style={styles.avatarInner} 
-                onPress={handlePickMedia}
+                onPress={() => setIsAvatarModalVisible(true)}
                 activeOpacity={0.9}
                 disabled={isUploadingAvatar}
               >
@@ -182,10 +184,44 @@ export default function ClientProfile() {
                   style={[styles.avatar, { borderColor: theme.primary }]}
                 />
                 
-                {/* 📸 CAMERA OVERLAY (Attached to profile circle) */}
-                <View style={[styles.avatarEditBadge, { borderColor: theme.primary }]}>
+                {/* 🚀 PREMIUM AVATAR PREVIEW MODAL */}
+                <Modal
+                  visible={isAvatarModalVisible}
+                  transparent
+                  animationType="fade"
+                  onRequestClose={() => setIsAvatarModalVisible(false)}
+                >
+                  <TouchableOpacity 
+                    style={styles.modalOverlay} 
+                    activeOpacity={1} 
+                    onPress={() => setIsAvatarModalVisible(false)}
+                  >
+                    <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill}>
+                      <View style={styles.modalContentCentered}>
+                         <TouchableOpacity 
+                            style={styles.closeModalBtn} 
+                            onPress={() => setIsAvatarModalVisible(false)}
+                          >
+                            <Ionicons name="close-circle" size={36} color="white" />
+                         </TouchableOpacity>
+
+                         <Image
+                            source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
+                            style={[styles.enlargedAvatar, { borderColor: theme.primary }]}
+                          />
+                      </View>
+                    </BlurView>
+                  </TouchableOpacity>
+                </Modal>
+
+                {/* 📸 CAMERA OVERLAY (Tappable for Edit) */}
+                <TouchableOpacity 
+                   style={[styles.avatarEditBadge, { borderColor: theme.primary }]}
+                   onPress={handlePickMedia}
+                   activeOpacity={0.8}
+                >
                   <MaterialCommunityIcons name="camera" size={12} color="#FFFFFF" />
-                </View>
+                </TouchableOpacity>
 
                 {isUploadingAvatar && (
                   <View style={styles.avatarLoadingOverlay}>
@@ -244,7 +280,7 @@ export default function ClientProfile() {
                <Text style={[styles.bio, { color: theme.textSecondary }]}>
                  {user.bio || 'Building with SuviX...'}
                </Text>
-               <TouchableOpacity onPress={() => setBioModalVisible(true)} style={styles.bioEditTrigger}>
+               <TouchableOpacity onPress={() => setIsBioModalVisible(true)} style={styles.bioEditTrigger}>
                   <MaterialCommunityIcons name="pencil-outline" size={16} color={theme.accent} />
                </TouchableOpacity>
             </View>
@@ -314,7 +350,7 @@ export default function ClientProfile() {
           <View style={[styles.modalContent, { backgroundColor: theme.primary, borderColor: theme.border }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Bio</Text>
-              <TouchableOpacity onPress={() => setBioModalVisible(false)}>
+              <TouchableOpacity onPress={() => setIsBioModalVisible(false)}>
                 <MaterialCommunityIcons name="close" size={24} color={theme.textSecondary} />
               </TouchableOpacity>
             </View>
@@ -368,25 +404,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 45,
     overflow: 'hidden'
-  },
-  avatarEditBtn: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    backgroundColor: '#FF3040',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    zIndex: 20
   },
   headerStats: { flex: 1, justifyContent: 'center' },
   miniStatsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14, paddingRight: 5, marginTop: -8 },

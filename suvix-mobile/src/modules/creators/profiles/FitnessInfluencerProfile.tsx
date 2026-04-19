@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { formatCount } from '../../../utils/formatters';
+import { BlurView } from 'expo-blur';
 
 import { SmartText } from '../../shared/content/SmartText';
 import { ProfileSkeleton, ProfileSkeletonContent } from '../../shared/skeletons/ProfileSkeleton';
@@ -57,7 +58,8 @@ export default function FitnessInfluencerProfile() {
   }, [user?.bio]);
   const insets = useSafeAreaInsets();
 
-  const [isBioModalVisible, setBioModalVisible] = React.useState(false);
+  const [isBioModalVisible, setIsBioModalVisible] = React.useState(false);
+  const [isAvatarModalVisible, setIsAvatarModalVisible] = React.useState(false);
   const [tempBio, setTempBio] = React.useState(user?.bio || '');
   const [isSaving, setIsSaving] = React.useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
@@ -157,7 +159,7 @@ export default function FitnessInfluencerProfile() {
       const res = await api.patch('/user/me', { bio: tempBio });
       if (res.data.success) {
         updateUser({ bio: tempBio });
-        setBioModalVisible(false);
+        setIsBioModalVisible(false);
       }
     } catch (error) {
        console.error('Update Bio Error:', error);
@@ -228,7 +230,7 @@ export default function FitnessInfluencerProfile() {
             <View style={styles.avatarContainer}>
               <TouchableOpacity 
                 style={styles.avatarInner} 
-                onPress={handlePickMedia}
+                onPress={() => setIsAvatarModalVisible(true)}
                 activeOpacity={0.9}
                 disabled={isUploadingAvatar}
               >
@@ -237,10 +239,44 @@ export default function FitnessInfluencerProfile() {
                   style={[styles.avatar, { borderColor: theme.primary }]}
                 />
                 
-                {/* 📸 CAMERA OVERLAY (Attached to profile circle) */}
-                <View style={[styles.avatarEditBadge, { borderColor: theme.primary }]}>
+                {/* 🚀 PREMIUM AVATAR PREVIEW MODAL */}
+                <Modal
+                  visible={isAvatarModalVisible}
+                  transparent
+                  animationType="fade"
+                  onRequestClose={() => setIsAvatarModalVisible(false)}
+                >
+                  <TouchableOpacity 
+                    style={styles.modalOverlay} 
+                    activeOpacity={1} 
+                    onPress={() => setIsAvatarModalVisible(false)}
+                  >
+                    <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill}>
+                      <View style={styles.modalContentCentered}>
+                         <TouchableOpacity 
+                            style={styles.closeModalBtn} 
+                            onPress={() => setIsAvatarModalVisible(false)}
+                          >
+                            <Ionicons name="close-circle" size={36} color="white" />
+                         </TouchableOpacity>
+
+                         <Image
+                            source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
+                            style={[styles.enlargedAvatar, { borderColor: theme.primary }]}
+                          />
+                      </View>
+                    </BlurView>
+                  </TouchableOpacity>
+                </Modal>
+
+                {/* 📸 CAMERA OVERLAY (Tappable for Edit) */}
+                <TouchableOpacity 
+                   style={[styles.avatarEditBadge, { borderColor: theme.primary }]}
+                   onPress={handlePickMedia}
+                   activeOpacity={0.8}
+                >
                   <MaterialCommunityIcons name="camera" size={12} color="#FFFFFF" />
-                </View>
+                </TouchableOpacity>
 
                 {isUploadingAvatar && (
                   <View style={[styles.avatarLoadingOverlay, { backgroundColor: 'rgba(0,0,0,0.4)' }]}>
@@ -275,7 +311,7 @@ export default function FitnessInfluencerProfile() {
                 </TouchableOpacity>
 
                 <TouchableOpacity 
-                  onPress={() => router.push('/story/create')}
+                  onPress={() => {}}
                   style={[styles.editBtn, { flex: 1, backgroundColor: '#FF3040', borderColor: '#FF3040' }]}
                 >
                   <MaterialCommunityIcons name="plus" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
@@ -291,7 +327,7 @@ export default function FitnessInfluencerProfile() {
                 <MaterialCommunityIcons name="check-decagram" size={18} color="#2ECC71" style={{ marginLeft: 6 }} />
                
                 <TouchableOpacity 
-                  onPress={() => router.push('/settings')}
+                  onPress={() => {}}
                   style={styles.settingsIcon}
                   activeOpacity={0.7}
                 >
@@ -308,7 +344,7 @@ export default function FitnessInfluencerProfile() {
                   />
                 </View>
                 <TouchableOpacity 
-                  onPress={() => { setTempBio(user.bio || ''); setBioModalVisible(true); }}
+                  onPress={() => { setTempBio(user.bio || ''); setIsBioModalVisible(true); }}
                   style={styles.bioEditTrigger}
                 >
                   <MaterialCommunityIcons name="pencil-outline" size={16} color={theme.accent} />
@@ -316,7 +352,7 @@ export default function FitnessInfluencerProfile() {
               </View>
             ) : (
               <TouchableOpacity 
-                onPress={() => { setTempBio(''); setBioModalVisible(true); }} 
+                onPress={() => { setTempBio(''); setIsBioModalVisible(true); }} 
                 style={[styles.addBioBtn, { borderColor: theme.border, backgroundColor: theme.secondary }]}
               >
                 <MaterialCommunityIcons name="pencil-plus-outline" size={18} color={theme.accent} />
@@ -411,7 +447,7 @@ export default function FitnessInfluencerProfile() {
         visible={isBioModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setBioModalVisible(false)}
+        onRequestClose={() => setIsBioModalVisible(false)}
       >
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -420,7 +456,7 @@ export default function FitnessInfluencerProfile() {
           <View style={[styles.modalContent, { backgroundColor: theme.primary, borderColor: theme.border }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Motivation Bio</Text>
-              <TouchableOpacity onPress={() => setBioModalVisible(false)}>
+              <TouchableOpacity onPress={() => setIsBioModalVisible(false)}>
                 <MaterialCommunityIcons name="close" size={24} color={theme.textSecondary} />
               </TouchableOpacity>
             </View>
@@ -497,7 +533,7 @@ const styles = StyleSheet.create({
   infoBlock: { marginTop: 15 },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
   name: { fontSize: 18, fontWeight: '900', letterSpacing: -0.5 },
-  avatarWrapper: { position: 'relative' },
+  avatarContainer: { position: 'relative' },
   avatarInner: {
     position: 'relative',
     width: 90,
@@ -511,25 +547,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 45,
     overflow: 'hidden'
-  },
-  avatarEditBtn: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    backgroundColor: '#FF3040',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    zIndex: 20
   },
   avatarEditBadge: {
     position: 'absolute',
