@@ -12,10 +12,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../context/ThemeContext';
 
-const { width } = Dimensions.get('window');
-const COLUMN_COUNT = 3;
-const GAP = 1.5;
-const CELL_SIZE = (width - GAP * (COLUMN_COUNT - 1)) / COLUMN_COUNT;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export interface ContentItem {
   id: string;
@@ -24,6 +21,8 @@ export interface ContentItem {
   type: 'POSTS' | 'REELS' | 'YT VIDEOS' | 'SHORTS';
   views?: string;
   likes?: string;
+  title?: string; // New: Video Title
+  channelAvatar?: string; // New: Channel Profile Picture
   isProcessing?: boolean;
   isMock?: boolean;
 }
@@ -31,19 +30,24 @@ export interface ContentItem {
 interface ContentCardProps {
   item: ContentItem;
   mode?: 'grid' | 'reels';
+  columns?: number; // New: Dynamic Column Count
   onPress?: (item: ContentItem) => void;
 }
 
 export const ContentCard: React.FC<ContentCardProps> = ({
   item,
   mode = 'grid',
+  columns = 3,
   onPress,
 }) => {
   const { theme } = useTheme();
   const [hasError, setHasError] = React.useState(false);
 
+  // 📐 Precise Layout Calculation
+  const GAP = 1.5;
+  const cellSize = (SCREEN_WIDTH - GAP * (columns - 1)) / columns;
   const isReels = mode === 'reels';
-  const cellHeight = isReels ? CELL_SIZE * 1.55 : CELL_SIZE;
+  const cellHeight = isReels ? cellSize * 1.55 : cellSize;
 
   const isVideo = item.type === 'REELS' || item.type === 'YT VIDEOS' || item.type === 'SHORTS';
   const isYoutube = item.type === 'YT VIDEOS' || item.type === 'SHORTS';
@@ -52,7 +56,7 @@ export const ContentCard: React.FC<ContentCardProps> = ({
     <TouchableOpacity
       activeOpacity={0.78}
       onPress={() => onPress?.(item)}
-      style={[styles.card, { width: CELL_SIZE, height: cellHeight }]}
+      style={[styles.card, { width: cellSize, height: cellHeight }]}
     >
       {/* Thumbnail */}
       {item.thumbnail && !item.isProcessing && !hasError ? (
@@ -88,13 +92,34 @@ export const ContentCard: React.FC<ContentCardProps> = ({
         </View>
       )}
 
-      {/* Gradient for reels */}
-      {isReels && (
+      {/* 🔴 BRANDING: Channel Avatar (Top Level) */}
+      {item.channelAvatar && !isReels && (
+        <View style={styles.avatarOverlay} pointerEvents="none">
+          <Image 
+            source={{ uri: item.channelAvatar }} 
+            style={styles.channelThumb} 
+            contentFit="cover"
+            cachePolicy="memory-disk"
+          />
+        </View>
+      )}
+
+      {/* Gradient for text contrast (Always for YT, or for reels) */}
+      {(isReels || (isYoutube && item.title)) && (
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.65)']}
-          style={StyleSheet.absoluteFill}
+          colors={['transparent', 'rgba(0,0,0,0.85)']}
+          style={styles.bottomGradient}
           pointerEvents="none"
         />
+      )}
+
+      {/* 📝 METADATA: Title (Bottom Level) */}
+      {item.title && isYoutube && !isReels && (
+        <View style={styles.titleArea} pointerEvents="none">
+          <Text style={styles.videoTitle} numberOfLines={2}>
+            {item.title}
+          </Text>
+        </View>
       )}
 
       {/* Type badge (top-right) */}
@@ -197,5 +222,47 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: '#FF3040',
+  },
+  avatarOverlay: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  channelThumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+    backgroundColor: '#000',
+  },
+  bottomGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '45%',
+  },
+  titleArea: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    right: 8,
+    zIndex: 5,
+  },
+  videoTitle: {
+    color: '#fff',
+    fontSize: 9.5,
+    fontWeight: '800',
+    lineHeight: 12,
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
 });

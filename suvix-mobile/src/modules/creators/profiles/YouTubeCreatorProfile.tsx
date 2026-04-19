@@ -507,13 +507,15 @@ export default function YouTubeCreatorProfile() {
             extraTabs={['YT POSTS']}
             onRepairSuccess={() => fetchUser()}
             renderCustomTab={(tab) => {
-              if (tab !== 'YT POSTS') return null;
+              const primaryChannel = youtubeProfiles.find(p => p.is_primary) || youtubeProfiles[0];
+              const channelAvatar = primaryChannel?.thumbnail_url;
 
               const videoItems = (user.youtubeVideos || []).map((video: any) => ({
                 id: video.video_id || video.id,
                 thumbnail: video.thumbnail,
                 type: 'YT VIDEOS' as const,
                 title: video.title,
+                channelAvatar: channelAvatar, // 🔴 Brand identity on card
                 published_at: video.published_at || video.publishedAt,
                 // 🛰️ NORMALIZE FOR GRID ENGINE
                 isProcessing: false
@@ -526,11 +528,12 @@ export default function YouTubeCreatorProfile() {
               };
 
               return (
-                <View style={styles.feedContainer}>
+                <View style={styles.feedContainerEdge}>
                   {videoItems.length > 0 ? (
                     <ContentGrid 
                       data={videoItems}
                       mode="grid"
+                      columns={2} // 📱 2-column premium layout
                       onItemPress={handleItemPress}
                     />
                   ) : (
@@ -1011,6 +1014,13 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+  feedContainerEdge: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 0,
     paddingTop: 10,
   },
   emptyFeed: {

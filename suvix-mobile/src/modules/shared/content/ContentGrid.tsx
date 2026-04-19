@@ -5,10 +5,16 @@ import { ContentCard, ContentItem } from './ContentCard';
 interface ContentGridProps {
   data: ContentItem[];
   mode?: 'grid' | 'reels';
+  columns?: number;
   onItemPress?: (item: ContentItem) => void;
 }
 
-export const ContentGrid: React.FC<ContentGridProps> = ({ data, mode = 'grid', onItemPress }) => {
+export const ContentGrid: React.FC<ContentGridProps> = ({ 
+  data, 
+  mode = 'grid', 
+  columns = 3,
+  onItemPress 
+}) => {
   return (
     <View style={styles.grid}>
       {data.map((item) => (
@@ -16,6 +22,7 @@ export const ContentGrid: React.FC<ContentGridProps> = ({ data, mode = 'grid', o
           key={item.id} 
           item={item} 
           mode={mode}
+          columns={columns}
           onPress={onItemPress} 
         />
       ))}
