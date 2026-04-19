@@ -534,6 +534,7 @@ export default function YouTubeCreatorProfile() {
                       data={videoItems}
                       mode="grid"
                       columns={2} // 📱 2-column premium layout
+                      gap={8}     // 📐 Match container gap for precise width
                       onItemPress={handleItemPress}
                     />
                   ) : (
@@ -1020,8 +1021,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingHorizontal: 0,
+    paddingHorizontal: 8,
     paddingTop: 10,
+    gap: 8,
   },
   emptyFeed: {
     alignItems: 'center',

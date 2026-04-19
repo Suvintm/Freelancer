@@ -13,6 +13,7 @@ export const ContentGrid: React.FC<ContentGridProps> = ({
   data, 
   mode = 'grid', 
   columns = 3,
+  gap,
   onItemPress 
 }) => {
   return (
@@ -23,6 +24,7 @@ export const ContentGrid: React.FC<ContentGridProps> = ({
           item={item} 
           mode={mode}
           columns={columns}
+          gap={gap}
           onPress={onItemPress} 
         />
       ))}

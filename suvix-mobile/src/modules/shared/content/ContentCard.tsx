@@ -30,7 +30,8 @@ export interface ContentItem {
 interface ContentCardProps {
   item: ContentItem;
   mode?: 'grid' | 'reels';
-  columns?: number; // New: Dynamic Column Count
+  columns?: number;
+  gap?: number; // New: Pass custom gap for math
   onPress?: (item: ContentItem) => void;
 }
 
@@ -38,14 +39,21 @@ export const ContentCard: React.FC<ContentCardProps> = ({
   item,
   mode = 'grid',
   columns = 3,
+  gap: customGap,
   onPress,
 }) => {
   const { theme } = useTheme();
   const [hasError, setHasError] = React.useState(false);
 
   // 📐 Precise Layout Calculation
-  const GAP = 1.5;
-  const cellSize = (SCREEN_WIDTH - GAP * (columns - 1)) / columns;
+  // If columns are 2, we assume a more padded layout (Tiles).
+  // If 3, we assume flush layout (Standard).
+  const HORIZONTAL_PADDING = columns === 2 ? 16 : 0; 
+  const GAP = customGap ?? 1.5;
+  
+  const availableWidth = SCREEN_WIDTH - HORIZONTAL_PADDING;
+  const cellSize = (availableWidth - GAP * (columns - 1)) / columns;
+  
   const isReels = mode === 'reels';
   const cellHeight = isReels ? cellSize * 1.55 : cellSize;
 
@@ -56,7 +64,11 @@ export const ContentCard: React.FC<ContentCardProps> = ({
     <TouchableOpacity
       activeOpacity={0.78}
       onPress={() => onPress?.(item)}
-      style={[styles.card, { width: cellSize, height: cellHeight }]}
+      style={[
+        styles.card, 
+        { width: cellSize, height: cellHeight },
+        isYoutube && { borderRadius: 10 } // Premium rounded edges for YT
+      ]}
     >
       {/* Thumbnail */}
       {item.thumbnail && !item.isProcessing && !hasError ? (
