@@ -150,9 +150,8 @@ export const updateProfilePicture = asyncHandler(async (req, res) => {
 
   // 💾 Standardized Storage Upload (Universal Service)
   const result = await storageService.uploadBuffer(req.file.buffer, "avatars", {
-    transformation: [
-      { width: 500, height: 500, crop: "fill", gravity: "face" }
-    ]
+    userId,
+    contentType: req.file.mimetype
   });
 
   const profile = await prisma.userProfile.update({

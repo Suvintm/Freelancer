@@ -75,7 +75,7 @@ export const registerFullUser = async (userData) => {
   let profilePictureUrl = "";
   if (profilePictureBuffer) {
     try {
-      const uploadResult = await storageService.uploadBuffer(profilePictureBuffer, "profiles");
+      const uploadResult = await storageService.uploadBuffer(profilePictureBuffer, "avatars/onboarding");
       profilePictureUrl = uploadResult.secure_url;
     } catch (error) {
       logger.error("Storage Upload Failed:", error);

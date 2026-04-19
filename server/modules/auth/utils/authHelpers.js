@@ -117,7 +117,7 @@ export const formatAuthResponse = (user) => {
     email: user.email,
     role: identity.appRole,
     primaryRole: identity,
-    profilePicture: user.profile?.profile_picture,
+    profilePicture: smartResolveMediaUrl(user.profile?.profile_picture),
     location: user.profile?.location_country,
     bio: user.profile?.bio,
     isOnboarded: user.is_onboarded,

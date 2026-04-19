@@ -78,7 +78,11 @@ export const submitKYC = asyncHandler(async (req, res) => {
   if (req.files) {
     const upload = async (fileKey, type) => {
         if (req.files[fileKey]?.[0]) {
-            const result = await storageService.uploadBuffer(req.files[fileKey][0].buffer, "kyc-documents");
+            const result = await storageService.uploadBuffer(
+                req.files[fileKey][0].buffer, 
+                "kyc-documents",
+                { userId, contentType: req.files[fileKey][0].mimetype }
+            );
             return { doc_type: type, url: result.secure_url };
         }
         return null;

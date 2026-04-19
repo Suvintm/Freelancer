@@ -10,7 +10,7 @@ import crypto from "crypto";
  * between storage providers.
  */
 
-const DEFAULT_AVATAR = "https://suvix-media-storage.s3.ap-south-1.amazonaws.com/assets/default-avatar.png";
+const DEFAULT_AVATAR = "https://cdn.suvix.in/assets/default-avatar.png";
 
 /**
  * Mirror an image from a URL to our storage provider (S3)
@@ -36,56 +36,57 @@ export const uploadFromUrl = async (url, folder = "general") => {
 };
 
 /**
- * Upload a raw file buffer to our storage provider (e.g., from Multer)
+ * Upload a raw file buffer to our storage provider (S3)
  * 
  * @param {Buffer} fileBuffer - The file buffer to upload
- * @param {string} folder - Destination folder
- * @param {Object} options - Additional Cloudinary options (transformations, etc.)
- * @returns {Promise<Object>} - The full Cloudinary upload result
+ * @param {string} folder - Destination folder (e.g., 'avatars', 'kyc')
+ * @param {Object} options - Additional options (userId, filename, etc.)
+ * @returns {Promise<Object>} - Standardized result object with secure_url (the key)
  */
 export const uploadBuffer = async (fileBuffer, folder = "general", options = {}) => {
-  return new Promise((resolve, reject) => {
-    logger.info(`💾 [STORAGE] Uploading buffer to folder: ${folder}`);
+  try {
+    const { userId = "system", filename: customFilename, contentType = "image/jpeg" } = options;
     
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        folder: `suvix/${folder}`,
-        resource_type: "auto",
-        access_mode: "public",
-        ...options
-      },
-      (error, result) => {
-        if (error) {
-          logger.error(`❌ [STORAGE] Buffer upload failed: ${error.message}`);
-          return reject(new Error(`Upload failed: ${error.message}`));
-        }
-        resolve(result);
-      }
-    );
-
-    stream.end(fileBuffer);
-  });
+    // 🏷️ Standardized Key Strategy: uploads/{folder}/{timestamp}_{random}.{ext}
+    const timestamp = Date.now();
+    const random = crypto.randomBytes(4).toString("hex");
+    const filename = customFilename || `${timestamp}_${random}.${contentType.split("/")[1] || "jpg"}`;
+    
+    const key = `uploads/${folder}/${userId}/${filename}`;
+    
+    logger.info(`💾 [STORAGE] Uploading buffer to S3: ${key}`);
+    
+    await storage.uploadObject(fileBuffer, key, {
+      contentType,
+      isPublic: true // Avatars/General thumbails are public for CDN
+    });
+    
+    return {
+      secure_url: key, // We store the key, smartResolveMediaUrl handles the rest
+      public_id: key,
+      key
+    };
+  } catch (error) {
+    logger.error(`❌ [STORAGE] Buffer upload failed: ${error.message}`);
+    throw error;
+  }
 };
 
 /**
- * Delete a file from the storage provider
+ * Delete a file from the storage provider (S3)
  * 
- * @param {string} publicId - The Cloudinary public ID or R2 Key
- * @param {string} resourceType - 'image', 'video', or 'raw'
+ * @param {string} key - The S3 Key
  * @returns {Promise<boolean>} - Success status
  */
-export const deleteFile = async (publicId, resourceType = "auto") => {
+export const deleteFile = async (key) => {
   try {
-    if (!publicId) return false;
+    if (!key) return false;
     
-    logger.info(`🗑️ [STORAGE] Deleting asset: ${publicId}`);
+    logger.info(`🗑️ [STORAGE] Deleting asset from S3: ${key}`);
     
-    const result = await cloudinary.uploader.destroy(publicId, {
-      resource_type: resourceType,
-      invalidate: true, // Clear CDN cache
-    });
+    await storage.deleteObjects([key]);
     
-    return result.result === "ok";
+    return true;
   } catch (error) {
     logger.error(`❌ [STORAGE] Deletion failed: ${error.message}`);
     return false;
@@ -93,26 +94,15 @@ export const deleteFile = async (publicId, resourceType = "auto") => {
 };
 
 /**
- * Generate a secure, signed URL for temporary file access
- * Used for Final Output Delivery where files are not public.
+ * Generate a secure, signed URL for temporary file access (S3)
  * 
- * @param {string} publicId - Asset ID
- * @param {Object} options - Validity and format options
- * @returns {string} - The signed URL
+ * @param {string} key - S3 Key
+ * @param {Object} options - Validity options
+ * @returns {Promise<string>} - The signed URL
  */
-export const getSignedAccessUrl = (publicId, options = {}) => {
-  const { expiresIn = 86400, resourceType = "video", format } = options;
-  const expiresAt = Math.round(Date.now() / 1000) + expiresIn;
-
-  return cloudinary.url(publicId, {
-    resource_type: resourceType,
-    format: format,
-    sign_url: true,
-    type: "authenticated",
-    expires_at: expiresAt,
-    secure: true,
-    flags: "attachment", // Force download for final outputs
-  });
+export const getSignedAccessUrl = async (key, options = {}) => {
+  const { expiresIn = 86400 } = options;
+  return await storage.getSignedUrl(key, expiresIn);
 };
 
 /**
