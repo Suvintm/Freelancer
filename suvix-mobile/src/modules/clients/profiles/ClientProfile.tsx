@@ -39,7 +39,7 @@ const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 export default function ClientProfile() {
   const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
-  const { user, updateUser, fetchUser, setIsRefreshing, isLoadingUser } = useAuthStore();
+  const { user, updateUser, fetchUser, setIsRefreshing, isLoadingUser, isRefreshing } = useAuthStore();
   const router = useRouter();
 
 
@@ -247,16 +247,24 @@ export default function ClientProfile() {
                   <Text style={[styles.miniStatValue, { color: theme.text }]}>PRO</Text>
                   <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Member</Text>
                 </View>
-                </View>
               </View>
 
-              <TouchableOpacity 
-                onPress={() => router.push('/story/create')}
-                style={[styles.editBtn, { backgroundColor: '#FF3040', borderColor: '#FF3040', marginTop: 10 }]}
-              >
-                <MaterialCommunityIcons name="plus" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
-                <Text style={[styles.editBtnText, { color: '#FFFFFF' }]}>Add Story</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                <TouchableOpacity 
+                   onPress={() => router.push('/settings')}
+                   style={[styles.editBtn, { flex: 1, backgroundColor: theme.secondary, borderColor: theme.border }]}
+                >
+                  <Text style={[styles.editBtnText, { color: theme.text }]}>Settings</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  onPress={() => router.push('/story/create')}
+                  style={[styles.editBtn, { flex: 1, backgroundColor: '#FF3040', borderColor: '#FF3040' }]}
+                >
+                  <MaterialCommunityIcons name="plus" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
+                  <Text style={[styles.editBtnText, { color: '#FFFFFF' }]}>Add Story</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
 
@@ -265,14 +273,6 @@ export default function ClientProfile() {
              <View style={styles.nameRow}>
                 <Text style={[styles.name, { color: theme.text }]}>{user.name || 'SuviX Member'}</Text>
                 <MaterialCommunityIcons name="check-decagram" size={18} color="#007AFF" style={{ marginLeft: 6 }} />
-               
-               <TouchableOpacity 
-                  onPress={() => router.push('/settings')}
-                  style={styles.settingsIcon}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="settings-outline" size={20} color={theme.textSecondary} />
-                </TouchableOpacity>
             </View>
             <Text style={[styles.roleLabel, { color: '#007AFF' }]}>CLIENT MEMBER</Text>
             
@@ -310,8 +310,8 @@ export default function ClientProfile() {
                            <Ionicons name="play" size={30} color="#fff" />
                         </View>
                         <View style={styles.videoInfo}>
-                          <Text style={[styles.videoTitle, { color: theme.text }]} numberOfLines={1}>Saved Content...</Text>
-                          <Text style={[styles.videoSub, { color: theme.textSecondary }]}>Watched 2d ago</Text>
+                           <Text style={[styles.videoTitle, { color: theme.text }]} numberOfLines={1}>Saved Content...</Text>
+                           <Text style={[styles.videoSub, { color: theme.textSecondary }]}>Watched 2d ago</Text>
                         </View>
                       </TouchableOpacity>
                     ))}
@@ -339,6 +339,7 @@ export default function ClientProfile() {
             )}
           />
 
+        </View>
         <View style={{ height: 100 }} />
           </>
         )}
@@ -462,4 +463,26 @@ const styles = StyleSheet.create({
   bioInput: { fontSize: 16, borderRadius: 12, borderWidth: 1, padding: 16, minHeight: 100, textAlignVertical: 'top' },
   saveBtn: { marginTop: 20, height: 50, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   saveBtnText: { color: 'white', fontSize: 15, fontWeight: '800' },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContentCentered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeModalBtn: {
+    position: 'absolute',
+    top: 60,
+    right: 30,
+    zIndex: 100,
+  },
+  enlargedAvatar: {
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    borderWidth: 6,
+  },
 });

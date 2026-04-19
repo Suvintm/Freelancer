@@ -48,7 +48,7 @@ const PROGRAMS = [
 
 export default function FitnessInfluencerProfile() {
   const { theme } = useTheme();
-  const { user, updateUser, fetchUser, setIsRefreshing, isLoadingUser } = useAuthStore();
+  const { user, updateUser, fetchUser, setIsRefreshing, isLoadingUser, isRefreshing } = useAuthStore();
   
 
   React.useEffect(() => {
@@ -304,14 +304,14 @@ export default function FitnessInfluencerProfile() {
 
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <TouchableOpacity 
-                  onPress={handleRepairMedia}
-                  style={[styles.editBtn, { flex: 1, backgroundColor: theme.secondary, borderColor: theme.border }]}
+                   onPress={() => router.push('/settings')}
+                   style={[styles.editBtn, { flex: 1, backgroundColor: theme.secondary, borderColor: theme.border }]}
                 >
-                  <Text style={[styles.editBtnText, { color: theme.text }]}>Repair Media</Text>
+                  <Text style={[styles.editBtnText, { color: theme.text }]}>Settings</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
-                  onPress={() => {}}
+                  onPress={() => router.push('/story/create')}
                   style={[styles.editBtn, { flex: 1, backgroundColor: '#FF3040', borderColor: '#FF3040' }]}
                 >
                   <MaterialCommunityIcons name="plus" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
@@ -325,14 +325,6 @@ export default function FitnessInfluencerProfile() {
              <View style={styles.nameRow}>
                 <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
                 <MaterialCommunityIcons name="check-decagram" size={18} color="#2ECC71" style={{ marginLeft: 6 }} />
-               
-                <TouchableOpacity 
-                  onPress={() => {}}
-                  style={styles.settingsIcon}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="settings-outline" size={20} color={theme.textSecondary} />
-                </TouchableOpacity>
             </View>
             <Text style={[styles.niche, { color: '#2ECC71' }]}>{subCategoryName.toUpperCase()}</Text>
             {user.bio ? (
@@ -615,18 +607,30 @@ const styles = StyleSheet.create({
   tabBar: { flexDirection: 'row', marginTop: 25, borderBottomWidth: 1, paddingHorizontal: 5 },
   tabItem: { flex: 1, alignItems: 'center', paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },
   tabLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalContent: { padding: 24, borderTopLeftRadius: 32, borderTopRightRadius: 32, borderWidth: 1, borderBottomWidth: 0, minHeight: '50%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 18, fontWeight: '900' },
-  inputContainer: { borderRadius: 16, padding: 16, borderWidth: 1, minHeight: 120 },
-  bioInput: { fontSize: 16, lineHeight: 22, height: 120, textAlignVertical: 'top', padding: 0, margin: 0 },
-  charCount: { alignSelf: 'flex-end', fontSize: 12, fontWeight: '700', marginTop: 8 },
-  saveBtn: { marginTop: 24, height: 56, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  saveBtnText: { color: 'white', fontSize: 16, fontWeight: '800' },
-  toolbar: { flexDirection: 'row', alignItems: 'center', paddingTop: 12, marginTop: 12, borderTopWidth: 1, gap: 12 },
-  toolBtn: { padding: 8, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.05)', minWidth: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  toolBtnText: { fontSize: 18, fontWeight: '900' },
-  mirrorContainer: { position: 'relative', minHeight: 120 },
-  bioInputMirror: { position: 'absolute', top: 0, left: 0, right: 0, fontSize: 16, lineHeight: 22, padding: 0, margin: 0, textAlignVertical: 'top' },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContentCentered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeModalBtn: {
+    position: 'absolute',
+    top: 60,
+    right: 30,
+    zIndex: 100,
+  },
+  enlargedAvatar: {
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    borderWidth: 6,
+  },
+  modalOverlay_bio: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  modalContent_bio: { padding: 24, borderTopLeftRadius: 32, borderTopRightRadius: 32, borderWidth: 1, borderBottomWidth: 0, minHeight: '50%' },
+  modalHeader_bio: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle_bio: { fontSize: 18, fontWeight: '900' },
 });

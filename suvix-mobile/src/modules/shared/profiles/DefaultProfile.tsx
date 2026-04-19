@@ -222,6 +222,7 @@ export default function DefaultProfile() {
               <View style={styles.actionRow}>
                 <TouchableOpacity
                   activeOpacity={0.9}
+                  onPress={() => router.push('/settings')}
                   style={[styles.actionBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
                 >
                   <Text style={[styles.actionText, { color: theme.text }]}>Settings</Text>
@@ -241,14 +242,7 @@ export default function DefaultProfile() {
              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
                <MaterialCommunityIcons name="check-decagram" size={16} color={theme.accent} style={{ marginLeft: 6 }} />
-                <TouchableOpacity 
-                  onPress={() => router.push('/settings')}
-                  style={{ padding: 8, marginLeft: 4 }}
-                  activeOpacity={0.7}
-                >
-                  <MaterialCommunityIcons name="cog-outline" size={20} color={theme.textSecondary} />
-                </TouchableOpacity>
-            </View>
+             </View>
             <Text style={[styles.username, { color: theme.textSecondary }]}>{username}</Text>
             <Text style={[styles.bio, { color: theme.textSecondary }]}>{bioText}</Text>
           </View>

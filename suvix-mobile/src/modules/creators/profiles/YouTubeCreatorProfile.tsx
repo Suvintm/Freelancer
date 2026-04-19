@@ -312,7 +312,7 @@ export default function YouTubeCreatorProfile() {
 
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <TouchableOpacity 
-                  onPress={() => router.push('/dashboard')}
+                  onPress={() => router.push('/settings')}
                   style={[styles.editBtn, { flex: 1, backgroundColor: theme.secondary, borderColor: theme.border }]}
                 >
                   <Text style={[styles.editBtnText, { color: theme.text }]}>Settings</Text>
@@ -349,14 +349,6 @@ export default function YouTubeCreatorProfile() {
              <View style={styles.nameRow}>
                 <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
                 <MaterialCommunityIcons name="check-decagram" size={18} color="#FF3040" style={{ marginLeft: 6 }} />
-                
-                <TouchableOpacity 
-                   onPress={() => router.push('/settings')}
-                   style={styles.settingsIcon}
-                   activeOpacity={0.7}
-                >
-                  <MaterialCommunityIcons name="cog-outline" size={20} color={theme.textSecondary} />
-                </TouchableOpacity>
              </View>
             <Text style={[styles.niche, { color: '#FF0000' }]}>{subCategoryName.toUpperCase()}</Text>
             {isSavingBio ? (
