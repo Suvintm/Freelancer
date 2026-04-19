@@ -168,7 +168,7 @@ export const processVideo = async (rawBuffer, userId, mediaId) => {
       variants: {
         video: videoKey,
         hls: `${STORAGE_FOLDERS.VIDEOS}/${userId}/${mediaId}/hls/master.m3u8`,
-        thumbnail: thumbKey
+        thumb: thumbKey
       },
       ...metadata
     };

@@ -105,9 +105,9 @@ export const resolveMediaForApi = (media) => {
     urls = {
       hls: variants.hls ? smartResolveMediaUrl(variants.hls) : null,
       video: variants.video ? smartResolveMediaUrl(variants.video) : null,
-      thumb: variants.thumbnail ? smartResolveMediaUrl(variants.thumbnail) : null,
-      feed: variants.thumbnail ? smartResolveMediaUrl(variants.thumbnail) : null,
-      full: variants.thumbnail ? smartResolveMediaUrl(variants.thumbnail) : null,
+      thumb: smartResolveMediaUrl(variants.thumb || variants.thumbnail),
+      feed: smartResolveMediaUrl(variants.feed || variants.thumbnail),
+      full: smartResolveMediaUrl(variants.full || variants.thumbnail),
     };
   } else {
     // 🧱 LEGACY PATH: Use old storageKey logic
