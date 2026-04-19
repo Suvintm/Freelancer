@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
   banner: { height: 100, width: '100%', justifyContent: 'center', alignItems: 'center' },
   bannerOverlay: { opacity: 0.3 },
   profileWrap: { marginTop: -20, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 10 },
-  padded: { paddingHorizontal: 20 },
+  padded: { paddingHorizontal: 25 },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginTop: -40, gap: 15 },
   avatarContainer: { position: 'relative', zIndex: 10, elevation: 12 },
   avatarInner: {

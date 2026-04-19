@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   },
   profileWrap: {
     marginTop: -28,
-    paddingHorizontal: 12,
+    paddingHorizontal: 25,
     paddingBottom: 14,
     borderBottomWidth: 1,
   },

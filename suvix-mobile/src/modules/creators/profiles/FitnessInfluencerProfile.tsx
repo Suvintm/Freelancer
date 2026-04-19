@@ -514,7 +514,7 @@ const styles = StyleSheet.create({
   banner: { height: 100, width: '100%', justifyContent: 'center', alignItems: 'center' },
   bannerOverlay: { opacity: 0.5 },
   profileWrap: { marginTop: -20, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 20 },
-  padded: { paddingHorizontal: 20 },
+  padded: { paddingHorizontal: 25 },
   headerStats: { flex: 1, justifyContent: 'center' },
   miniStatsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14, paddingRight: 5, marginTop: -8 },
   miniStat: { alignItems: 'center' },

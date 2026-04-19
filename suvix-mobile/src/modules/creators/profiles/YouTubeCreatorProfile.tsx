@@ -719,7 +719,7 @@ const styles = StyleSheet.create({
   banner: { height: 100, width: '100%', justifyContent: 'center', alignItems: 'center' },
   bannerOverlay: { opacity: 0.5 },
   profileWrap: { marginTop: -20, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 20 },
-  padded: { paddingHorizontal: 20 },
+  padded: { paddingHorizontal: 25 },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginTop: -40, gap: 15 },
   avatarContainer: { position: 'relative' },
   avatar: { width: 90, height: 90, borderRadius: 45, borderWidth: 4 },
