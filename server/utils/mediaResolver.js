@@ -44,39 +44,102 @@ export const resolveVideoUrls = (userId, mediaId) => {
 };
 
 /**
+ * 🛰️ SMART MEDIA RESOLVER
+ * Converts any S3 path or raw URL into a finalized SuviX Proxy URL (cdn.suvix.in).
+ * Handles backward compatibility for full S3 URLs stored in DB.
+ */
+export const smartResolveMediaUrl = (storageKey) => {
+  if (!storageKey) return null;
+
+  // 1. If it's already a clean SuviX CDN URL, return it
+  if (CDN_BASE_URL && storageKey.startsWith(CDN_BASE_URL)) return storageKey;
+
+  // 2. If it's a raw S3 URL belonging to our bucket, strip the bucket domain 
+  // to force it through the SuviX Proxy (BASE_URL).
+  if (S3_BASE_URL && storageKey.startsWith(S3_BASE_URL)) {
+    const relativeKey = storageKey.replace(`${S3_BASE_URL}/`, "");
+    return `${BASE_URL}/${relativeKey}`;
+  }
+
+  // 3. If it's an external URL (not ours), return it as-is
+  if (storageKey.startsWith('http')) return storageKey;
+
+  // 4. Standard path: Prefix with BASE_URL
+  const cleanKey = storageKey.startsWith('/') ? storageKey.substring(1) : storageKey;
+  return `${BASE_URL}/${cleanKey}`;
+};
+
+/**
  * 👤 AVATAR RESOLVER
  */
 export const resolveAvatarUrl = (userId, filename) => {
   if (!filename) return null;
-  if (filename.startsWith('http')) return filename;
-  return `${CDN_BASE_URL || S3_BASE_URL}/uploads/avatars/${userId}/${filename}`;
+  // Use smart resolver to handle mirrored YouTube profiles
+  return smartResolveMediaUrl(filename.startsWith('http') || filename.includes('/') 
+    ? filename 
+    : `uploads/avatars/${userId}/${filename}`);
 };
 
 /**
  * 📦 MASTER RESOLVER (API PREP)
+ * 
+ * "Smart Resolution" Bridge:
+ * 1. If 'variants' exist (modern post) -> use them with highest priority.
+ * 2. If 'variants' missing (legacy post) -> fallback to raw 'storageKey'.
  */
 export const resolveMediaForApi = (media) => {
   if (!media) return null;
-  const { id, userId, type, status, blurhash } = media;
+  const { id, userId, type, status, blurhash, storageKey, variants } = media;
   
-  if (status !== "READY") {
+  // 🧱 LEGACY & HYBRID CHECK: If we have a key, we can probably show it.
+  const hasContent = (variants && Object.keys(variants).length > 0) || !!storageKey;
+
+  if (status !== "READY" && !hasContent) {
     return { id, type, status, urls: null };
   }
 
-  const urls = type === "VIDEO" 
-    ? resolveVideoUrls(userId, id) 
-    : resolveImageUrls(userId, id);
+  let urls = {};
+
+  if (variants && Object.keys(variants).length > 0) {
+    // 🚀 MODERN PATH: Map saved S3 keys to absolute URLs
+    urls = {
+      hls: variants.hls ? smartResolveMediaUrl(variants.hls) : null,
+      video: variants.video ? smartResolveMediaUrl(variants.video) : null,
+      thumb: variants.thumbnail ? smartResolveMediaUrl(variants.thumbnail) : null,
+      feed: variants.thumbnail ? smartResolveMediaUrl(variants.thumbnail) : null,
+      full: variants.thumbnail ? smartResolveMediaUrl(variants.thumbnail) : null,
+    };
+  } else {
+    // 🧱 LEGACY PATH: Use old storageKey logic
+    const path = smartResolveMediaUrl(storageKey);
+    
+    if (type === "VIDEO") {
+      urls = {
+        hls: null, 
+        video: path,
+        fallback: path,
+        thumb: null
+      };
+    } else {
+      urls = {
+        thumb: path,
+        feed: path,
+        full: path
+      };
+    }
+  }
 
   return {
     id,
     type,
-    status,
+    status: status === "READY" || hasContent ? "READY" : status, // Normalize status for UI
     blurhash,
     urls,
     thumbnail: {
       id,
       url: urls.thumb,
-      blurhash
+      blurhash,
+      status: status === "READY" || hasContent ? "READY" : status
     },
     thumbnailUrl: urls.thumb
   };
@@ -86,5 +149,6 @@ export default {
   resolveImageUrls,
   resolveVideoUrls,
   resolveAvatarUrl,
-  resolveMediaForApi
+  resolveMediaForApi,
+  smartResolveMediaUrl
 };

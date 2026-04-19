@@ -63,7 +63,7 @@ export const useSocketStore = create<SocketStore>((set, get) => ({
       }
     });
 
-    // 📊 [MEDIA] Progress & Status Handlers
+    // 📊 [MEDIA] Progress & Status Handlers (Centralized)
     socket.on('media:progress', (data: { mediaId: string; progress: number }) => {
       const { useUploadStore } = require('./useUploadStore');
       useUploadStore.getState().updateProgress(data.progress);
@@ -71,34 +71,69 @@ export const useSocketStore = create<SocketStore>((set, get) => ({
 
     socket.on('media:status', async (data: { mediaId: string; status: string; error?: string; type?: string }) => {
       const { useUploadStore } = require('./useUploadStore');
+      const { useToastStore } = require('./useToastStore');
+      const { queryClient } = require('../../app/_layout');
+      const { api } = require('../api/client');
       const Notifications = require('expo-notifications');
 
+      console.log(`🏁 [SOCKET] Global Media Status: ${data.status} for ${data.mediaId}`);
+
       if (data.status === 'READY') {
-        useUploadStore.getState().setSuccess('Post Ready! ✅');
+        useUploadStore.getState().setSuccess('Upload complete! ✅');
         
-        // 🔔 [NOTIFICATION] Trigger local OS alert
+        // 🍬 [TOAST] Show premium popup feedback
+        useToastStore.getState().showToast('Post Live! 🎉', 'success');
+
+        // 🔄 [AUTO-REFRESH] Invalidate profile and feed queries
+        queryClient.invalidateQueries({ queryKey: ['profilePosts'] });
+        queryClient.invalidateQueries({ queryKey: ['profileReels'] });
+        queryClient.invalidateQueries({ queryKey: ['feed'] });
+
+        // 🔔 [NOTIFICATION] Backup System Alert
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: "Success! 🎉",
-            body: `Your ${data.type?.toLowerCase() || 'post'} is now live and ready to view.`,
+            title: "Post Live! 🎉",
+            body: `Your ${data.type?.toLowerCase() || 'content'} is now ready to view.`,
             data: { mediaId: data.mediaId, type: 'MEDIA_READY' },
           },
-          trigger: null, // show immediately
+          trigger: null,
         });
       } else if (data.status === 'FAILED') {
         useUploadStore.getState().setFailed(data.error);
+        useToastStore.getState().showToast('Processing Failed', 'error');
         
-        // ⚠️ [NOTIFICATION] Notify user of failure
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: "Processing Failed ❌",
-            body: "There was an issue optimizing your media. Please try again.",
-            data: { mediaId: data.mediaId, type: 'MEDIA_FAILED' },
+            title: "Upload Failed ❌",
+            body: data.error || "Something went wrong during processing.",
           },
           trigger: null,
         });
       } else if (data.status === 'PROCESSING') {
         useUploadStore.getState().setProcessing();
+        useUploadStore.getState().setMediaId(data.mediaId);
+
+        // 🛡️ [STATE-RESOLVER] Backup mechanism for lost socket signals
+        // If we don't hear 'READY' or 'FAILED' within 15s, manually poll the status once.
+        setTimeout(async () => {
+          const currentStatus = useUploadStore.getState().status;
+          const activeId = useUploadStore.getState().activeMediaId;
+          
+          if (currentStatus === 'processing' && activeId === data.mediaId) {
+            console.log('📡 [RESOLVER] Socket signal delayed. Manually polling status for:', data.mediaId);
+            try {
+              const res = await api.get(`/media/${data.mediaId}/status`);
+              if (res.data.success && res.data.status === 'READY') {
+                console.log('✅ [RESOLVER] Media actually READY. Force-completing UI.');
+                useUploadStore.getState().setSuccess('Post Ready! ✅');
+                useToastStore.getState().showToast('Post Live! 🎉', 'success');
+                queryClient.invalidateQueries({ queryKey: ['profilePosts'] });
+              }
+            } catch (err) {
+              console.error('❌ [RESOLVER] Manual status check failed:', err);
+            }
+          }
+        }, 15000);
       }
     });
 

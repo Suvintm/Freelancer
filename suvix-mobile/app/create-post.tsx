@@ -117,6 +117,7 @@ export default function CreatePostScreen() {
       await uploadFile();
 
       // 3. Confirm Upload (Triggers Worker Flow)
+      useUploadStore.getState().setMediaId(urlData.mediaId); // 🛰️ Handshake for background tracking
       setProcessing();
       const { data: confirmData } = await api.post('/media/confirm', {
         mediaId: urlData.mediaId,

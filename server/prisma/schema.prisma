@@ -254,6 +254,8 @@ enum NotificationType {
   FOLLOW
   PROMOTION
   WELCOME
+  MEDIA_READY
+  MEDIA_FAILED
 }
 
 enum NotificationPriority {

@@ -2,6 +2,7 @@ import prisma from "../../../config/prisma.js";
 import storageService from "../../../utils/storageService.js";
 import logger from "../../../utils/logger.js";
 import { ApiError } from "../../../middleware/errorHandler.js";
+import { smartResolveMediaUrl } from "../../../utils/mediaResolver.js";
 
 /**
  * PRODUCTION-GRADE YOUTUBE SYNC SERVICE
@@ -39,7 +40,7 @@ export const persistYouTubeContent = async (userId, channelData, tx = prisma) =>
     let mirroredAvatar = channelData.mirroredAvatarUrl || channelData.mirrored_avatar_url;
     if (!mirroredAvatar && thumbnailUrl) {
       logger.info(`💾 [YT-SYNC] Mirroring avatar inside transaction (Warning: This is slower)`);
-      mirroredAvatar = await storageService.uploadFromUrl(thumbnailUrl, "youtube-profiles");
+      mirroredAvatar = await storageService.uploadFromUrl(thumbnailUrl, "uploads/avatars/youtube");
     }
 
     // Safe Model Resolvers
@@ -103,9 +104,7 @@ export const persistYouTubeContent = async (userId, channelData, tx = prisma) =>
         for (const v of videosToSync) {
           try {
             let mirroredThumb = v.thumbnail;
-            if (v.thumbnail && v.thumbnail.startsWith('http')) {
-              mirroredThumb = await storageService.uploadFromUrl(v.thumbnail, "youtube-videos");
-            }
+              mirroredThumb = await storageService.uploadFromUrl(v.thumbnail, "uploads/processed/images/youtube");
 
             videoRecords.push({
               video_id: v.id,
@@ -143,19 +142,42 @@ export const persistYouTubeContent = async (userId, channelData, tx = prisma) =>
     const { default: notificationService } = await import("../../notification/services/notificationService.js");
     
     // We do this asynchronously so it doesn't delay the worker return
+    logger.info(`📡 [NOTIFY-SYNC] Sending sync signal for user ${userId} with ${videoRecords.length} videos.`);
+    if (videoRecords.length > 0) {
+      logger.info(`🔍 [SYNC-DEBUG] Sample Video URL: ${videoRecords[0].thumbnail}`);
+    }
+
     notificationService.notify({
       userId,
       type: 'SYNC_COMPLETE',
       title: 'YouTube Profile Updated! 🎥',
       body: `Your latest content from ${youtubeProfile.channel_name} is now live on SuviX.`,
-      imageUrl: youtubeProfile.thumbnail_url,
+      imageUrl: smartResolveMediaUrl(youtubeProfile.thumbnail_url),
       priority: 'HIGH',
       entityId: youtubeProfile.id,
       entityType: 'YOUTUBE_PROFILE',
       metadata: { 
-        type: 'youtube_sync_complete', // FIXED: No longer categorized as onboarding_welcome
+        type: 'youtube_sync_complete', 
         sync_complete: true,
-        videos: videoRecords // 💉 Surgical Injection for Instant UI Pop (Socket only)
+        videos: videoRecords.map(v => {
+          const resolvedUrl = smartResolveMediaUrl(v.thumbnail);
+          return {
+            id: v.video_id,
+            title: v.title,
+            thumbnail: resolvedUrl,
+            published_at: v.published_at,
+            // 🛰️ NORMALIZE FOR UNIFIED ENGINE
+            media: {
+              type: 'IMAGE',
+              status: 'READY',
+              urls: {
+                thumb: resolvedUrl,
+                feed: resolvedUrl,
+                full: resolvedUrl
+              }
+            }
+          };
+        })
       }
     }).catch(err => logger.error(`[NOTIFY-SYNC] Failed to send sync notification: ${err.message}`));
 

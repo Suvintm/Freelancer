@@ -1,10 +1,8 @@
 import React, { useMemo, useCallback } from 'react';
 import { useAuthStore } from '../../src/store/useAuthStore';
-import { View, Text, ActivityIndicator, StyleSheet, BackHandler, Image } from 'react-native';
+import { View, Text, StyleSheet, BackHandler } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../src/context/ThemeContext';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 
 // Modules
 import CreatorDashboard from '../../src/modules/creators';
@@ -100,9 +98,6 @@ export default function DashboardIndex() {
       </View>
     );
   }
-
-  // 3. Render Unified Home Feed
-  const ActiveActionModule = MODULE_REGISTRY[activeModule] || EditorDashboard;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.primary }}>

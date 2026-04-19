@@ -66,9 +66,9 @@ export const getUploadUrl = async (req, res) => {
  * Transitions status to PROCESSING and kicks off background job.
  */
 export const confirmUpload = async (req, res) => {
+  const userId = req.user.id;
   try {
     const { mediaId } = req.body;
-    const userId = req.user.id;
     logger.info(`🔔 [MEDIA-CONFIRM] User ${userId} confirming upload for Media: ${mediaId}`);
 
     const media = await prisma.media.findUnique({

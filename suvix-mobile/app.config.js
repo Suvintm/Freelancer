@@ -1,4 +1,8 @@
+require('dotenv').config();
+
 export default ({ config }) => {
+  console.log(`🔨 [BUILD] Configuring AdMob with Android ID: ${process.env.EXPO_PUBLIC_ADMOB_ANDROID_APP_ID ? 'DETECTED' : 'MISSING'}`);
+
   return {
     ...config,
     extra: {
@@ -13,10 +17,10 @@ export default ({ config }) => {
       [
         "react-native-google-mobile-ads",
         {
-          "android_app_id": "ca-app-pub-5640382821262813~5733993852",
-          "androidAppId": "ca-app-pub-5640382821262813~5733993852",
-          "ios_app_id": "ca-app-pub-5640382821262813~3174241695",
-          "iosAppId": "ca-app-pub-5640382821262813~3174241695"
+          "android_app_id": process.env.EXPO_PUBLIC_ADMOB_ANDROID_APP_ID,
+          "androidAppId": process.env.EXPO_PUBLIC_ADMOB_ANDROID_APP_ID,
+          "ios_app_id": process.env.EXPO_PUBLIC_ADMOB_IOS_APP_ID,
+          "iosAppId": process.env.EXPO_PUBLIC_ADMOB_IOS_APP_ID
         }
       ]
     ]

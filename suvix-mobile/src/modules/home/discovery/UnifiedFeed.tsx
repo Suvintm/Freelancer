@@ -10,7 +10,8 @@ import { SuggestionCarousel } from './items/SuggestionCarousel';
 import { useTheme } from '../../../context/ThemeContext';
 import { RefreshControl } from 'react-native';
 import { useRefreshManager } from '../../../hooks/useRefreshManager';
-import { NativeAdBanner } from '../../../components/ads/NativeAdBanner';
+import { PremiumNativeAd } from '../../../components/ads/PremiumNativeAd';
+import { useAdPool } from '../../../hooks/useAdPool';
 
 interface UnifiedFeedProps {
   ListHeaderComponent?: React.ComponentType<any> | React.ReactElement | null;
@@ -21,8 +22,15 @@ interface UnifiedFeedProps {
 export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEndDrag }: UnifiedFeedProps) => {
   const { theme } = useTheme();
   const { feed, isLoading, refreshFeed } = useDiscoveryStore();
+  const NATIVE_AD_UNIT_ID = process.env.EXPO_PUBLIC_ADMOB_NATIVE_UNIT_ID || 'ca-app-pub-3940256099942544/2247696110';
 
-  const handleRefresh = useRefreshManager(refreshFeed);
+  // 🏊‍♂️ 1. AD POOL MANAGER (Preloads 5 ads)
+  const { ads, refreshAds } = useAdPool(NATIVE_AD_UNIT_ID, 5);
+
+  const handleRefresh = useRefreshManager(() => {
+    refreshAds();
+    refreshFeed();
+  });
 
   React.useEffect(() => {
     refreshFeed();
@@ -33,17 +41,36 @@ export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEn
       ? Array.from({ length: 6 }, (_, i) => ({ id: `skel-${i}`, type: 'SKELETON' as const }))
       : feed;
     
-    // 🧬 Interleave Ads every 4 items
+    // 🧬 Interleave 5 Ad Slots every 3 items, regardless of pool state
     const dataWithAds: any[] = [];
+    let injectedAds = 0;
+
     baseData.forEach((item, index) => {
       dataWithAds.push(item);
-      if ((index + 1) % 4 === 0) {
-        dataWithAds.push({ id: `ad-${index}`, type: 'AD' });
+      
+      // Inject an AD slot every 3 items up to 5 total
+      if ((index + 1) % 3 === 0 && injectedAds < 5) {
+        dataWithAds.push({ 
+          id: `ad-${index}`, 
+          type: 'AD', 
+          adData: ads[injectedAds] || null // Pass the ad if ready, otherwise null (loading state)
+        });
+        injectedAds++;
       }
     });
 
+    // If we have remaining slots to fill ensure we have 5 total
+    while (injectedAds < 5) {
+      dataWithAds.push({
+        id: `ad-extra-${injectedAds}`,
+        type: 'AD',
+        adData: ads[injectedAds] || null
+      });
+      injectedAds++;
+    }
+
     return dataWithAds;
-  }, [feed, isLoading]);
+  }, [feed, isLoading, ads]);
 
   const renderItem = ({ item }: { item: any }) => {
     if (item.type === 'SKELETON') {
@@ -71,7 +98,7 @@ export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEn
       case 'SUGGESTION_RENTALS':
         return <SuggestionCarousel type="RENTALS" data={item.data} />;
       case 'AD':
-        return <NativeAdBanner />;
+        return <PremiumNativeAd preloadedAd={item.adData} />;
       default:
         return null;
     }

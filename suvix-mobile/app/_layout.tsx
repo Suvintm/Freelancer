@@ -17,6 +17,7 @@ import { Image } from 'react-native';
 import { preloadHomeAssets } from '../src/constants/homePreload';
 import { useNotifications } from '../src/hooks/useNotifications';
 import { useSocketStore } from '../src/store/useSocketStore';
+import MobileAds from 'react-native-google-mobile-ads';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -26,7 +27,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
  * Handled with Global Auth Guards and optimized Boot sequence.
  * This is the ONLY place where automatic redirects are handled.
  */
-const queryClient = new QueryClient();
+export const queryClient = new QueryClient();
 
 function InitialRoot() {
   const { 
@@ -63,6 +64,10 @@ function InitialRoot() {
         console.log('🚀 [BOOT] Starting bootstrap sequence...');
         // 0. Initialize permanent Device ID (must be first — needed for all auth requests)
         await getDeviceId();
+
+        // 0a. Initialize Google Ads Engine
+        console.log('📡 [BOOT] Initializing AdMob engine...');
+        await MobileAds().initialize().catch(err => console.error('❌ [BOOT] AdMob Init failed:', err));
 
         // 1. Initial Local Auth Check (Token sync)
         console.log('🔐 [BOOT] Re-hydrating secure session...');
@@ -314,6 +319,8 @@ function InitialRoot() {
   );
 }
 
+import { GlobalToast } from '../src/components/GlobalToast';
+
 function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -322,6 +329,8 @@ function RootLayout() {
           <InitialRoot />
           {/* 🔔 Cross-account notification banner — floats above all screens */}
           <ThemeAwareBanner />
+          {/* 🍬 Premium Success/Failure Toasts */}
+          <GlobalToast />
         </QueryClientProvider>
       </ThemeProvider>
     </GestureHandlerRootView>

@@ -6,6 +6,7 @@ import { hashFile, findDuplicate } from "../../storage/processors/dedup.processo
 import { validateMediaPayload } from "../jobValidator.js";
 import { sampledLogger } from "../sampledLogger.js";
 import { emitToUser } from "../../../socket.js";
+import notificationService from "../../notification/services/notificationService.js";
 import logger from "../../../utils/logger.js";
 
 /**
@@ -55,6 +56,8 @@ const mediaProcessor = async (job) => {
 
     // ── STEP 4 & 5: Deduplication Check ─────────────────────────────────────
     logger.info(`🔍 [DEDUP] Calculating SHA-256 hash for integrity check...`);
+    await job.updateProgress(35);
+    emitToUser(userId, "media:progress", { mediaId, progress: 35 });
     const hash = hashFile(rawBuffer);
     const duplicate = await findDuplicate(hash);
 
@@ -75,6 +78,9 @@ const mediaProcessor = async (job) => {
     } else {
       // ── STEP 6: Process fresh content ───────────────────────────────────
       logger.info(`🔥 [PROCESS] Processing fresh ${type} content for Media: ${mediaId}`);
+      await job.updateProgress(55);
+      emitToUser(userId, "media:progress", { mediaId, progress: 55 });
+      
       if (type === "VIDEO") {
         results = await processVideo(rawBuffer, userId, mediaId);
       } else {
@@ -82,6 +88,8 @@ const mediaProcessor = async (job) => {
       }
       results.hash = hash;
       logger.info(`✅ [PROCESS-DONE] Completed processing for Media: ${mediaId}`);
+      await job.updateProgress(75);
+      emitToUser(userId, "media:progress", { mediaId, progress: 75 });
       await job.updateProgress(90);
       emitToUser(userId, "media:progress", { mediaId, progress: 90 });
     }
@@ -95,6 +103,17 @@ const mediaProcessor = async (job) => {
 
     await job.updateProgress(100);
     emitToUser(userId, "media:status", { mediaId, status: "READY", type });
+
+    // 🔔 [NOTIFICATION] Persistent Push Alert
+    await notificationService.notify({
+      userId,
+      type: "MEDIA_READY",
+      title: "Post Live! 🎉",
+      body: `Your ${type.toLowerCase()} has been processed and is now visible on your profile.`,
+      entityId: mediaId,
+      entityType: "MEDIA"
+    }).catch(e => logger.error(`[NOTIFICATION] Failed to send push: ${e.message}`));
+
     const durationMs = Date.now() - startTime;
     logger.info(`✨ [SUCCESS] Job finished in ${durationMs}ms for Media: ${mediaId}`);
     sampledLogger.success("Media processed", { jobId: job.id, mediaId, type, durationMs });
@@ -115,6 +134,16 @@ const mediaProcessor = async (job) => {
 
     if (isFinalAttempt) {
       emitToUser(userId, "media:status", { mediaId, status: "FAILED", error: error.message });
+
+      // 🔔 [NOTIFICATION] Persistent Push Alert (Failure)
+      await notificationService.notify({
+        userId,
+        type: "MEDIA_FAILED",
+        title: "Upload Failed ❌",
+        body: "Something went wrong during media optimization. Tap to retry.",
+        entityId: mediaId,
+        entityType: "MEDIA"
+      }).catch(e => logger.error(`[NOTIFICATION] Failed to send failure push: ${e.message}`));
     }
 
     sampledLogger.error("Media processing failed", error, {

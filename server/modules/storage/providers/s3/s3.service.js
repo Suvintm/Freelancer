@@ -6,8 +6,10 @@ import {
   ListObjectsV2Command
 } from "@aws-sdk/client-s3";
 import { getSignedUrl as getPresignedUrl } from "@aws-sdk/s3-request-presigner";
+import axios from "axios";
+import crypto from "crypto";
 import s3Client from "./s3.config.js";
-import { S3_BUCKET_NAME } from "./s3.constants.js";
+import { S3_BUCKET_NAME, S3_REGION } from "./s3.constants.js";
 import logger from "../../../../utils/logger.js";
 
 /**
@@ -191,10 +193,45 @@ export const getObject = async (key) => {
   }
 };
 
+/**
+ * Mirror an external URL to S3
+ * @param {string} url - Remote image URL
+ * @param {string} folder - Destination folder under 'uploads/mirrored'
+ */
+export const mirrorRemoteUrl = async (url, folder = "general") => {
+  try {
+    if (!url) throw new Error("URL is required for mirroring");
+
+    logger.info(`🛰️ [S3-MIRROR] Fetching remote asset: ${url}`);
+    
+    // 1. Download the asset
+    const response = await axios.get(url, { responseType: "arraybuffer", timeout: 10000 });
+    const buffer = Buffer.from(response.data);
+    const contentType = response.headers["content-type"] || "image/jpeg";
+    
+    // 2. Determine extension
+    const ext = contentType.split("/")[1]?.split("+")[0] || "jpg";
+    
+    // 3. Generate unique key (Aligned with Cloudflare Proxy whitelists)
+    const hash = crypto.createHash("md5").update(url).digest("hex");
+    const key = `${folder}/${hash}.${ext}`;
+
+    // 4. Upload to S3
+    await uploadObject(buffer, key, { contentType });
+
+    // 5. Build storage key (Return relative key for central resolution via cdn.suvix.in)
+    return key;
+  } catch (error) {
+    logger.error(`❌ [S3-MIRROR] Failed to mirror ${url}. Error: ${error.message}`);
+    throw error;
+  }
+};
+
 export default {
   uploadObject,
   getSignedUrl,
   deleteObjects,
   deleteFolder,
   getObject,
+  mirrorRemoteUrl,
 };

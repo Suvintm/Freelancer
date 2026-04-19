@@ -1,6 +1,7 @@
 import "../../config/env.js";
 import { getRedisConnection } from "./connection.js";
 import { createQueue } from "./queueFactory.js";
+import redisProxy from "../../config/redisClient.js";
 import logger from "../../utils/logger.js";
 
 /**
@@ -89,17 +90,13 @@ export async function scheduleYouTubeSync(userId, channels, triggerReason = "man
 // ─── HELPER: MEDIA JOB ENQUEUER ───────────────────────────────────────────────
 
 const RATE_LIMIT_WINDOW_SECONDS = 60;
-const RATE_LIMIT_MAX_PER_WINDOW = 10;
+const RATE_LIMIT_MAX_PER_WINDOW = 15; // Increased slightly for power users
 
 /**
  * Add a media processing job with deduplication and per-user rate limiting.
- * Rate limit: max 10 uploads per 60 seconds per user.
- *
- * @param {string} mediaId
- * @param {string} s3Key       - S3 object key (NOT the buffer)
- * @param {string} userId
- * @param {string} type        - "IMAGE" | "VIDEO"
- * @param {number} priority    - Use PRIORITY constants
+ * Rate limit: max 15 uploads per 60 seconds per user.
+ * 
+ * 🛡️ [RESILIENCE] Uses the redisProxy to prevent "Connection is closed" crashes.
  */
 export async function addMediaJob(mediaId, s3Key, userId, type = "IMAGE", priority = PRIORITY.HIGH) {
   if (!mediaQueue) {
@@ -107,19 +104,23 @@ export async function addMediaJob(mediaId, s3Key, userId, type = "IMAGE", priori
     return null;
   }
 
-  // ── Per-user rate limit enforcement ────────────────────────────────────────
-  const connection = getRedisConnection();
-  if (connection) {
+  // ── Per-user rate limit enforcement (Fail-Safe) ────────────────────────────
+  try {
     const rateLimitKey = `rate:media:${userId}`;
-    const current = await connection.incr(rateLimitKey);
+    const current = await redisProxy.incr(rateLimitKey);
+    
     if (current === 1) {
-      await connection.expire(rateLimitKey, RATE_LIMIT_WINDOW_SECONDS);
+      await redisProxy.expire(rateLimitKey, RATE_LIMIT_WINDOW_SECONDS);
     }
+    
     if (current > RATE_LIMIT_MAX_PER_WINDOW) {
-      throw new Error(
-        `Rate limit exceeded: max ${RATE_LIMIT_MAX_PER_WINDOW} uploads per minute. Please wait.`
-      );
+      throw new Error(`Rate limit exceeded: max ${RATE_LIMIT_MAX_PER_WINDOW} uploads per minute. Please wait.`);
     }
+  } catch (err) {
+    // If it's a rate limit error, rethrow it so the controller can send 429
+    if (err.message.includes("Rate limit exceeded")) throw err;
+    // Otherwise, it's a Redis connection error — LOG it but DO NOT block the upload
+    logger.error(`⚠️ [Redis-Proxy] Rate limiter bypass due to connectivity: ${err.message}`);
   }
 
   // ── Enqueue with deduplication via jobId ───────────────────────────────────
@@ -127,13 +128,13 @@ export async function addMediaJob(mediaId, s3Key, userId, type = "IMAGE", priori
     "process-media",
     {
       mediaId,
-      key: s3Key,       // S3 key reference — NOT the buffer
+      key: s3Key,
       userId,
       type,
       requestedAt: Date.now(),
     },
     {
-      jobId: `media_${mediaId}`, // Same mediaId = same jobId = dedup
+      jobId: `media_${mediaId}`,
       priority,
     }
   );

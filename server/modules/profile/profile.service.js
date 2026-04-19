@@ -23,10 +23,26 @@ export const getProfilePosts = async (targetUserId, cursor = null) => {
     },
     include: {
       media: {
-        where: { status: "READY" },
         take: 1, // Only first media for the grid thumbnail
         orderBy: { created_at: "asc" },
       },
+      user: {
+        include: {
+          profile: {
+            select: {
+              name: true,
+              username: true,
+              profile_picture: true,
+              category: {
+                select: {
+                  slug: true,
+                  roleGroup: true
+                }
+              }
+            }
+          }
+        }
+      }
     },
     take: PAGE_SIZE + 1, // Fetch extra one to detect hasNextPage
     ...(cursor && { skip: 1, cursor: { id: cursor } }),
@@ -43,13 +59,16 @@ export const getProfilePosts = async (targetUserId, cursor = null) => {
       type: post.type,
       caption: post.caption,
       createdAt: post.created_at,
-      // 🛰️ Standardize media structure for ProfileContentTabs
-      media: resolveMediaForApi(firstMedia),
-      thumbnail: firstMedia ? {
-        id: firstMedia.id,
-        blurhash: firstMedia.blurhash,
-        url: resolveMediaForApi(firstMedia).thumbnailUrl
-      } : null
+      // 🛰️ Standardize author structure for Premium Overlay
+      author: post.user?.profile ? {
+        name: post.user.profile.name,
+        username: post.user.profile.username,
+        profilePicture: post.user.profile.profile_picture,
+        category: post.user.profile.category?.slug,
+        roleGroup: post.user.profile.category?.roleGroup || 'CLIENT'
+      } : null,
+      media: firstMedia ? resolveMediaForApi(firstMedia) : null,
+      thumbnail: firstMedia ? resolveMediaForApi(firstMedia).thumbnail : null
     };
   });
 
@@ -68,10 +87,26 @@ export const getProfileReels = async (targetUserId, cursor = null) => {
     },
     include: {
       media: {
-        where: { status: "READY" },
         take: 1,
         orderBy: { created_at: "asc" },
       },
+      user: {
+        include: {
+          profile: {
+            select: {
+              name: true,
+              username: true,
+              profile_picture: true,
+              category: {
+                select: {
+                  slug: true,
+                  roleGroup: true
+                }
+              }
+            }
+          }
+        }
+      }
     },
     take: PAGE_SIZE + 1,
     ...(cursor && { skip: 1, cursor: { id: cursor } }),
@@ -87,7 +122,14 @@ export const getProfileReels = async (targetUserId, cursor = null) => {
       caption: reel.caption,
       createdAt: reel.created_at,
       // 🛰️ Standardize media structure for ProfileContentTabs
-      media: resolveMediaForApi(firstMedia)
+      media: resolveMediaForApi(firstMedia),
+      author: reel.user?.profile ? {
+        name: reel.user.profile.name,
+        username: reel.user.profile.username,
+        profilePicture: reel.user.profile.profile_picture,
+        category: reel.user.profile.category?.slug,
+        roleGroup: reel.user.profile.category?.roleGroup || 'CLIENT'
+      } : null
     };
   });
 

@@ -10,8 +10,8 @@ import logger from "../../../utils/logger.js";
  */
 
 const VARIANT_SIZES = {
-  THUMB: 360,
-  FEED: 720,
+  THUMB: 480,
+  FEED: 1024,
   FULL: 1080
 };
 
@@ -48,7 +48,7 @@ export const processImage = async (rawBuffer, userId, mediaId) => {
     const blurhash = await generateBlurhash(rawBuffer);
 
     const variants = {};
-    const pipeline = sharp(rawBuffer).rotate().webp({ quality: 80 });
+    const pipeline = sharp(rawBuffer).rotate().webp({ quality: 90 });
 
     // 3. Generate Variants
     logger.info(`🎨 [VARIANTS] Generating 3 optimized versions (Instagram Style)...`);

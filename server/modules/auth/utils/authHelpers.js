@@ -1,4 +1,5 @@
 import { generateAccessToken, generateRefreshToken } from "./jwt.js";
+import { smartResolveMediaUrl } from "../../../utils/mediaResolver.js";
 
 /**
  * HELPER: Map Role Groups to Frontend Roles
@@ -122,9 +123,28 @@ export const formatAuthResponse = (user) => {
     isOnboarded: user.is_onboarded,
     isVerified: user.is_verified,
     createdAt: user.created_at,
-    youtubeProfile: user.youtubeProfiles || [],
+    youtubeProfile: (user.youtubeProfiles || []).map(p => ({
+      ...p,
+      thumbnail_url: smartResolveMediaUrl(p.thumbnail_url)
+    })),
     youtubeVideos: (user.youtubeProfiles || [])
-      .flatMap(p => p.videos || [])
+      .flatMap(p => (p.videos || []).map(v => {
+        const resolvedUrl = smartResolveMediaUrl(v.thumbnail);
+        return {
+          ...v,
+          thumbnail: resolvedUrl, // 🚀 FIX: Resolved URL for legacy UI components
+          // 🛰️ NORMALIZE FOR UNIFIED MEDIA ENGINE
+          media: {
+            type: 'IMAGE',
+            status: 'READY',
+            urls: {
+              thumb: resolvedUrl,
+              feed: resolvedUrl,
+              full: resolvedUrl
+            }
+          }
+        };
+      }))
       .sort((a, b) => new Date(b.published_at || b.publishedAt) - new Date(a.published_at || a.publishedAt)),
     followers: user.stats?.followers_count || 0,
     following: user.stats?.following_count || 0

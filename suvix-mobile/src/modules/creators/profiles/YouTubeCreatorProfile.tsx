@@ -1,11 +1,11 @@
 import React from 'react';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { useSocketStore } from '../../../store/useSocketStore';
+import { Image } from 'expo-image';
 import {
   View,
   Text,
   StyleSheet,
-  Image,
   ScrollView,
   TouchableOpacity,
   Dimensions,
@@ -28,7 +28,7 @@ import { Colors } from '../../../constants/Colors';
 import { formatCount } from '../../../utils/formatters';
 
 import { ProfileContentTabs } from '../../shared/profiles/ProfileContentTabs';
-import { YouTubeVideoCard } from '../components/YouTubeVideoCard';
+import { ContentGrid } from '../../shared/content/ContentGrid';
 import { useRouter } from 'expo-router';
 import { ProfileSkeleton, ProfileSkeletonContent } from '../../shared/skeletons/ProfileSkeleton';
 import { useRefreshManager } from '../../../hooks/useRefreshManager';
@@ -50,6 +50,9 @@ export default function YouTubeCreatorProfile() {
   const { socket } = useSocketStore();
   const router = useRouter();
 
+  // 🛡️ [STATE] Track profile image load failures for linked channels
+  const [avatarErrors, setAvatarErrors] = React.useState<Record<string, boolean>>({});
+
   // 🔗 WEB SOCKET: Real-time Surgical Sync Listener
   React.useEffect(() => {
     if (!socket) return;
@@ -57,10 +60,13 @@ export default function YouTubeCreatorProfile() {
     const handleSyncComplete = async (data: any) => {
       if (data.type === 'SYNC_COMPLETE') {
         console.log('🔄 [SYNC] Real-time surgical signal received!');
+        console.log('📦 [SYNC-META]:', JSON.stringify(data.metadata || {}, null, 2));
         
         if (data.metadata?.videos && Array.isArray(data.metadata.videos)) {
+          console.log(`🎬 [SYNC] Injecting ${data.metadata.videos.length} videos into store.`);
           setYoutubeVideos(data.metadata.videos);
         } else {
+          console.log('⚠️ [SYNC] No video metadata found in signal, fetching full profile...');
           await fetchUser();
         }
       }
@@ -232,6 +238,9 @@ export default function YouTubeCreatorProfile() {
                 <Image
                   source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
                   style={[styles.avatar, { borderColor: theme.primary }]}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  transition={200}
                 />
                 {isUploadingAvatar && (
                   <View style={[styles.avatarLoadingOverlay, { backgroundColor: 'rgba(0,0,0,0.4)' }]}>
@@ -372,7 +381,7 @@ export default function YouTubeCreatorProfile() {
                       styles.badgeWrapper, 
                       { backgroundColor: theme.secondary, borderColor: theme.border }
                     ]}>
-                      <Image source={milestone.img} style={styles.milestoneImg} />
+                      <Image source={milestone.img} style={styles.milestoneImg} contentFit="contain" />
                       {!isPartiallyUnlocked && (
                         <View style={styles.lockOverlay}>
                           <MaterialCommunityIcons name="lock" size={20} color="#FFFFFF" />
@@ -403,13 +412,25 @@ export default function YouTubeCreatorProfile() {
             </TouchableOpacity>
           </View>
           
-          {youtubeProfiles.map((channel, index) => (
-            <View key={channel.id || channel.channel_id} style={[styles.channelCard, { backgroundColor: theme.secondary, borderColor: theme.border, marginTop: index === 0 ? 0 : 10 }]}>
-              <Image 
-                source={channel.thumbnail_url ? { uri: channel.thumbnail_url } : DEFAULT_AVATAR} 
-                style={styles.channelThumb}
-              />
-              <View style={styles.channelInfo}>
+          {youtubeProfiles.map((channel, index) => {
+            const channelKey = channel.id || channel.channel_id;
+            const hasError = avatarErrors[channelKey];
+            const profileUri = channel.thumbnail_url;
+
+            return (
+              <View key={channelKey} style={[styles.channelCard, { backgroundColor: theme.secondary, borderColor: theme.border, marginTop: index === 0 ? 0 : 10 }]}>
+                <Image 
+                  source={profileUri && !hasError ? { uri: profileUri } : DEFAULT_AVATAR} 
+                  style={styles.channelThumb}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  transition={200}
+                  onError={() => {
+                    console.warn(`❌ [YT-PROFILE] Failed to load avatar: ${profileUri}`);
+                    setAvatarErrors(prev => ({ ...prev, [channelKey]: true }));
+                  }}
+                />
+                <View style={styles.channelInfo}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Text style={[styles.channelName, { color: theme.text }]} numberOfLines={1}>{channel.channel_name}</Text>
                   {channel.is_primary && (
@@ -420,11 +441,11 @@ export default function YouTubeCreatorProfile() {
                   {/* Channel Achievement Badges (Highest Only) */}
                   <View style={styles.channelBadgeRow}>
                     {(channel.subscriber_count || 0) >= 10000 ? (
-                      <Image source={DIAMOND_BTN} style={styles.miniBadge} />
+                      <Image source={DIAMOND_BTN} style={styles.miniBadge} contentFit="contain" />
                     ) : (channel.subscriber_count || 0) >= 1000 ? (
-                      <Image source={GOLD_BTN} style={styles.miniBadge} />
+                      <Image source={GOLD_BTN} style={styles.miniBadge} contentFit="contain" />
                     ) : (channel.subscriber_count || 0) >= 100 ? (
-                      <Image source={SILVER_BTN} style={styles.miniBadge} />
+                      <Image source={SILVER_BTN} style={styles.miniBadge} contentFit="contain" />
                     ) : null}
                   </View>
                 </View>
@@ -451,7 +472,8 @@ export default function YouTubeCreatorProfile() {
                 </TouchableOpacity>
               </View>
             </View>
-          ))}
+          );
+        })}
 
 
           {/* 📱 CENTRALIZED MEDIA ENGINE */}
@@ -460,25 +482,42 @@ export default function YouTubeCreatorProfile() {
             theme={theme}
             extraTabs={['YT POSTS']}
             onRepairSuccess={() => fetchUser()}
-            renderCustomTab={(tab) => (
-              <View style={styles.feedContainer}>
-                {user.youtubeVideos && user.youtubeVideos.length > 0 ? (
-                  user.youtubeVideos.map((video: any) => (
-                    <YouTubeVideoCard key={video.id || video.video_id} video={{
-                        id: video.video_id || video.id,
-                        title: video.title,
-                        thumbnail: video.thumbnail,
-                        published_at: video.published_at || video.publishedAt
-                    }} />
-                  ))
-                ) : (
-                  <View style={styles.emptyFeed}>
-                    <MaterialCommunityIcons name="video-off-outline" size={48} color={theme.textSecondary} />
-                    <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No posts found.</Text>
-                  </View>
-                )}
-              </View>
-            )}
+            renderCustomTab={(tab) => {
+              if (tab !== 'YT POSTS') return null;
+
+              const videoItems = (user.youtubeVideos || []).map((video: any) => ({
+                id: video.video_id || video.id,
+                thumbnail: video.thumbnail,
+                type: 'YT VIDEOS' as const,
+                title: video.title,
+                published_at: video.published_at || video.publishedAt,
+                // 🛰️ NORMALIZE FOR GRID ENGINE
+                isProcessing: false
+              }));
+
+              const handleItemPress = (item: any) => {
+                const url = `https://www.youtube.com/watch?v=${item.id}`;
+                console.log(`🎬 [YT-OPEN] Launching: ${url}`);
+                Linking.openURL(url);
+              };
+
+              return (
+                <View style={styles.feedContainer}>
+                  {videoItems.length > 0 ? (
+                    <ContentGrid 
+                      data={videoItems}
+                      mode="grid"
+                      onItemPress={handleItemPress}
+                    />
+                  ) : (
+                    <View style={styles.emptyFeed}>
+                      <MaterialCommunityIcons name="video-off-outline" size={48} color={theme.textSecondary} />
+                      <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No posts found.</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            }}
           />
         </View>
           </>

@@ -1,4 +1,4 @@
-import cloudinary from "../config/cloudinary.js";
+import storage from "../modules/storage/storage.service.js";
 import logger from "./logger.js";
 import crypto from "crypto";
 
@@ -8,19 +8,12 @@ import crypto from "crypto";
  * This service acts as the central hub for all file operations (Cloudinary, and potentially AWS S3/R2).
  * By centralizing these operations, we ensure consistency, better logging, and easy migration
  * between storage providers.
- * 
- * KEY FEATURES:
- * - URL Mirroring (Fetch from external source like YouTube)
- * - Buffer Uploads (For multi-part form data / profile pictures)
- * - Managed File Deletion
- * - Signed URL Generation (For secure final output delivery)
  */
 
-const DEFAULT_AVATAR = "https://res.cloudinary.com/suvix/image/upload/v1/assets/default-avatar.png";
+const DEFAULT_AVATAR = "https://suvix-media-storage.s3.ap-south-1.amazonaws.com/assets/default-avatar.png";
 
 /**
- * Mirror an image from a URL to our storage provider
- * Uses Cloudinary's native URL fetch to avoid server-side buffer overhead.
+ * Mirror an image from a URL to our storage provider (S3)
  * 
  * @param {string} url - The source image URL
  * @param {string} folder - Destination folder (e.g., 'youtube-thumbnails')
@@ -30,16 +23,11 @@ export const uploadFromUrl = async (url, folder = "general") => {
   try {
     if (!url) return DEFAULT_AVATAR;
     
-    logger.info(`💾 [STORAGE] Mirroring URL to folder: ${folder}`);
+    logger.info(`💾 [STORAGE] Mirroring URL to S3 folder: ${folder}`);
     
-    const result = await cloudinary.uploader.upload(url, {
-      folder: `suvix/${folder}`,
-      resource_type: "image",
-      format: "webp", // Convert to modern format for performance
-      quality: "auto",
-    });
+    const mirroredUrl = await storage.mirrorRemoteUrl(url, folder);
     
-    return result.secure_url;
+    return mirroredUrl;
   } catch (error) {
     logger.error(`❌ [STORAGE] Mirroring failed: ${error.message}`);
     // Rollback to default avatar to prevent UI breakage

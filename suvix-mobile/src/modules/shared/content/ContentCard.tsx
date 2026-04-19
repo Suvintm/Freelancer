@@ -1,21 +1,31 @@
 import React from 'react';
-import { View, Image, StyleSheet, TouchableOpacity, Text, Dimensions, ActivityIndicator } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Text,
+  Dimensions,
+  ActivityIndicator,
+} from 'react-native';
+import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useTheme } from '../../../context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '../../../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 const COLUMN_COUNT = 3;
-const SPACING = 1;
-const SQUARE_SIZE = (width - (COLUMN_COUNT - 1) * SPACING) / COLUMN_COUNT;
+const GAP = 1.5;
+const CELL_SIZE = (width - GAP * (COLUMN_COUNT - 1)) / COLUMN_COUNT;
 
 export interface ContentItem {
   id: string;
   thumbnail: string;
+  blurhash?: string;
   type: 'POSTS' | 'REELS' | 'YT VIDEOS' | 'SHORTS';
   views?: string;
   likes?: string;
   isProcessing?: boolean;
+  isMock?: boolean;
 }
 
 interface ContentCardProps {
@@ -24,68 +34,102 @@ interface ContentCardProps {
   onPress?: (item: ContentItem) => void;
 }
 
-export const ContentCard: React.FC<ContentCardProps> = ({ item, mode = 'grid', onPress }) => {
+export const ContentCard: React.FC<ContentCardProps> = ({
+  item,
+  mode = 'grid',
+  onPress,
+}) => {
   const { theme } = useTheme();
-  const isReelsMode = mode === 'reels';
+  const [hasError, setHasError] = React.useState(false);
+
+  const isReels = mode === 'reels';
+  const cellHeight = isReels ? CELL_SIZE * 1.55 : CELL_SIZE;
+
+  const isVideo = item.type === 'REELS' || item.type === 'YT VIDEOS' || item.type === 'SHORTS';
+  const isYoutube = item.type === 'YT VIDEOS' || item.type === 'SHORTS';
 
   return (
-    <TouchableOpacity 
-      activeOpacity={0.8} 
+    <TouchableOpacity
+      activeOpacity={0.78}
       onPress={() => onPress?.(item)}
-      style={[
-        styles.container, 
-        isReelsMode ? styles.reelsContainer : styles.gridContainer
-      ]}
+      style={[styles.card, { width: CELL_SIZE, height: cellHeight }]}
     >
-      {item.thumbnail && !item.isProcessing ? (
-        <Image source={{ uri: item.thumbnail }} style={styles.image} />
+      {/* Thumbnail */}
+      {item.thumbnail && !item.isProcessing && !hasError ? (
+        <Image
+          source={{ uri: item.thumbnail }}
+          placeholder={item.blurhash}
+          style={styles.image}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={200}
+          onError={(e) => {
+            console.warn(`❌ [CONTENT-CARD] Failed to load: ${item.thumbnail}`, e);
+            setHasError(true);
+          }}
+        />
       ) : (
-        <View style={styles.placeholderContainer}>
-          <ActivityIndicator size="small" color={theme.accent} />
-          <Text style={[styles.placeholderText, { color: theme.textSecondary }]}>
-            {item.isProcessing ? 'Processing' : ''}
+        <View style={[styles.placeholder, { backgroundColor: theme.secondary ?? '#1a1a1a' }]}>
+          {item.isProcessing ? (
+            <>
+              <ActivityIndicator size="small" color={theme.accent ?? '#FF3040'} />
+              <Text style={[styles.processingText, { color: theme.textSecondary ?? '#666' }]}>
+                Processing
+              </Text>
+            </>
+          ) : (
+            <MaterialCommunityIcons 
+              name={isYoutube ? "youtube" : "image-off-outline"} 
+              size={isYoutube ? 32 : 22} 
+              color={isYoutube ? "#FF0000" : "rgba(255,255,255,0.2)"} 
+              style={isYoutube ? { opacity: 0.8 } : {}}
+            />
+          )}
+        </View>
+      )}
+
+      {/* Gradient for reels */}
+      {isReels && (
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.65)']}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      )}
+
+      {/* Type badge (top-right) */}
+      <View style={styles.badgeArea} pointerEvents="none">
+        {item.type === 'REELS' && (
+          <MaterialCommunityIcons name="movie-play-outline" size={15} color="white" />
+        )}
+        {item.type === 'YT VIDEOS' && (
+          <MaterialCommunityIcons name="youtube" size={15} color="#FF0000" />
+        )}
+        {item.type === 'SHORTS' && (
+          <View style={styles.shortsBadge}>
+            <Text style={styles.shortsText}>#S</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Views (bottom-left) */}
+      {item.views && (
+        <View style={styles.viewsRow} pointerEvents="none">
+          <MaterialCommunityIcons
+            name="play-outline"
+            size={isReels ? 13 : 11}
+            color="rgba(255,255,255,0.9)"
+          />
+          <Text style={[styles.viewsText, isReels && styles.viewsTextLarge]}>
+            {item.views}
           </Text>
         </View>
       )}
-      
-      {/* Type Indicator Overlays */}
-      {!isReelsMode && (
-        <View style={styles.overlay}>
-          {item.type === 'REELS' && (
-            <MaterialCommunityIcons name="play-outline" size={18} color="white" />
-          )}
-          {item.type === 'YT VIDEOS' && (
-            <MaterialCommunityIcons name="youtube" size={18} color="white" />
-          )}
-          {item.type === 'SHORTS' && (
-            <MaterialCommunityIcons name="play-box-outline" size={18} color="#FF0000" />
-          )}
-        </View>
-      )}
 
-      {/* View count for reels/videos */}
-      {item.views && (
-        <>
-          {isReelsMode && (
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.6)']}
-              style={styles.reelsGradient}
-            />
-          )}
-          <View style={[styles.metrics, isReelsMode && styles.reelsMetrics]}>
-            <MaterialCommunityIcons name="play-outline" size={isReelsMode ? 14 : 12} color="white" />
-            <Text style={[styles.metricsText, isReelsMode && styles.reelsMetricsText]}>{item.views}</Text>
-          </View>
-        </>
-      )}
-
-      {isReelsMode && (
-        <View style={styles.reelsTypeOverlay}>
-          <MaterialCommunityIcons 
-            name={item.type === 'SHORTS' ? "play-box-outline" : "play-outline"} 
-            size={16} 
-            color={item.type === 'SHORTS' ? "#FF0000" : "white"} 
-          />
+      {/* Processing shimmer overlay */}
+      {item.isProcessing && (
+        <View style={styles.processingOverlay} pointerEvents="none">
+          <View style={styles.processingDot} />
         </View>
       )}
     </TouchableOpacity>
@@ -93,83 +137,65 @@ export const ContentCard: React.FC<ContentCardProps> = ({ item, mode = 'grid', o
 };
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#1a1a1a',
+  card: {
+    backgroundColor: '#111',
+    overflow: 'hidden',
   },
-  gridContainer: {
-    width: SQUARE_SIZE,
-    height: SQUARE_SIZE,
+  image: { width: '100%', height: '100%' },
+  placeholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
   },
-  reelsContainer: {
-    width: SQUARE_SIZE,
-    height: SQUARE_SIZE * 1.6, // Proper 9:16-ish ratio
+  processingText: {
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  overlay: {
+  badgeArea: {
     position: 'absolute',
     top: 6,
     right: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
   },
-  metrics: {
+  shortsBadge: {
+    backgroundColor: '#FF0000',
+    borderRadius: 3,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  shortsText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '900',
+  },
+  viewsRow: {
     position: 'absolute',
     bottom: 6,
     left: 6,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    paddingHorizontal: 4,
-    borderRadius: 4,
+    gap: 2,
   },
-  metricsText: {
-    color: 'white',
+  viewsText: {
+    color: 'rgba(255,255,255,0.85)',
     fontSize: 10,
-    fontWeight: '700',
-    marginLeft: 2,
-  },
-  reelsGradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 40,
-  },
-  reelsMetrics: {
-    backgroundColor: 'transparent',
-    bottom: 8,
-    left: 8,
-  },
-  reelsMetricsText: {
-    fontSize: 11,
     fontWeight: '800',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
-  reelsTypeOverlay: {
+  viewsTextLarge: { fontSize: 11 },
+  processingOverlay: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    padding: 2,
-    borderRadius: 4,
+    top: 6,
+    left: 6,
   },
-  placeholderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#111',
+  processingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FF3040',
   },
-  placeholderText: {
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 8,
-    textTransform: 'uppercase',
-  }
 });

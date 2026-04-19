@@ -1,13 +1,17 @@
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import prisma from "./config/prisma.js";
-import { subscribe } from "./config/redisClient.js";
+import { subscribe, publish } from "./config/redisClient.js";
 import dotenv from "dotenv";
 
 dotenv.config();
 
+import { EventEmitter } from "events";
+
 let io;
 const userSocketMap = {};
+// 🌉 [FAIL-SAFE BRIDGE] Internal emitter for same-process communication (Dev Fallback)
+const localBridge = new EventEmitter();
 
 /**
  * PRODUCTION-GRADE SOCKET INITIALIZER
@@ -117,6 +121,14 @@ const setupSocketHandlers = () => {
     });
   });
 
+  // 🌉 [FAIL-SAFE-LISTENER] Listen for internal signals from the local bridge
+  localBridge.on("signal", (payload) => {
+    const { type, userId, data } = payload;
+    if (userSocketMap[userId]) {
+      io.to(userSocketMap[userId]).emit(type, data);
+    }
+  });
+
   // 🔄 REDIS SUBSCRIPTION (Cross-Instance / External Events)
   subscribe("admin:events", (payload) => {
     const { type, userId, data } = payload;
@@ -133,12 +145,24 @@ export const getIO = () => io;
 
 export const emitToUser = (userId, event, data) => {
   if (!io) return false;
+
+  // 1. Try local emit first (for speed — only works if user is on this specific instance)
   const socketId = userSocketMap[userId];
   if (socketId) {
     io.to(socketId).emit(event, data);
-    return true;
   }
-  return false;
+
+  // 2. 🌉 [BRIDGE] Trigger Internal Signal Hub (Fail-Safe for Dev/Solo Process)
+  localBridge.emit("signal", { type: event, userId, data });
+
+  // 3. 🚀 CROSS-PROCESS HUB: Publish to Redis (Scale-out Production)
+  publish("admin:events", { 
+    type: event, 
+    userId, 
+    data 
+  });
+
+  return true;
 };
 
 /**

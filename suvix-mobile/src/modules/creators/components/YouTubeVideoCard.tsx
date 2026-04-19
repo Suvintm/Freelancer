@@ -3,12 +3,12 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   TouchableOpacity,
   Dimensions,
   Linking,
   Platform,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import { formatDistanceToNow } from 'date-fns';
@@ -16,8 +16,23 @@ import { formatDistanceToNow } from 'date-fns';
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = (width - 40) / 2;
 
+interface YouTubeVideoCardProps {
+  video: {
+    id: string;
+    title: string;
+    thumbnail: string;
+    published_at: string;
+  };
+}
+
 export const YouTubeVideoCard: React.FC<YouTubeVideoCardProps> = ({ video }) => {
   const { theme } = useTheme();
+
+  // 🧠 [BRAIN DEBUG] Tracer for S3 Thumbnail Visibility
+  React.useEffect(() => {
+    console.log(`🖼️ [YT-CARD] Rendering Video: ${video.title.substring(0, 20)}...`);
+    console.log(`🔗 [S3-URL] Thumbnail: ${video.thumbnail}`);
+  }, [video.thumbnail]);
 
   const handleWatch = () => {
     const url = `https://www.youtube.com/watch?v=${video.id}`;
@@ -39,7 +54,9 @@ export const YouTubeVideoCard: React.FC<YouTubeVideoCardProps> = ({ video }) => 
         <Image 
           source={{ uri: video.thumbnail }} 
           style={styles.thumbnail} 
-          resizeMode="cover" 
+          contentFit="cover"
+          transition={300}
+          cachePolicy="memory-disk"
         />
         {/* Subtle Watch Icon Overlay - Minimalist */}
         <View style={styles.watchBadge}>

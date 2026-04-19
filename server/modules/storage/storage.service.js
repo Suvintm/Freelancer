@@ -36,7 +36,8 @@ export const {
   getSignedUrl,
   deleteObjects,
   deleteFolder,
-  getObject
+  getObject,
+  mirrorRemoteUrl
 } = provider;
 
 export default {
@@ -44,5 +45,6 @@ export default {
   getSignedUrl,
   deleteObjects,
   deleteFolder,
-  getObject
+  getObject,
+  mirrorRemoteUrl
 };

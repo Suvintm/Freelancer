@@ -26,6 +26,27 @@ router.get("/signed-url", authenticate, getUploadUrl);
 router.post("/confirm", authenticate, confirmUpload);
 
 /**
+ * @route   GET /api/media/:id/status
+ * @desc    Check current processing status for a media entity
+ * @access  Private (Owner Only)
+ */
+router.get("/:id/status", authenticate, async (req, res) => {
+  try {
+    const media = await prisma.media.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, status: true, userId: true, type: true }
+    });
+
+    if (!media) return res.status(404).json({ success: false, message: "Media not found" });
+    if (media.userId !== req.user.id) return res.status(403).json({ success: false, message: "Unauthorized" });
+
+    res.json({ success: true, status: media.status, type: media.type });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
  * @route   POST /api/media/recovery/reset
  * @desc    Emergency Reset for failed/stuck media jobs
  */
