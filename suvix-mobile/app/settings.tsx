@@ -108,40 +108,30 @@ export default function SettingsScreen() {
   const handleSwitch = async (targetUserId: string) => {
     if (targetUserId === vault.activeAccountId || isSwitching) return;
     
-    const targetAcc = vault.accounts[targetUserId];
-    setSwitchingToName(targetAcc?.username || 'account');
-    setShowSwitchOverlay(true);
     setIsSwitching(targetUserId);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     try {
-      // 🚀 ATOMIC SWITCH: This handles the whole vault swap + profile fetch + state lock
+      // 🚀 ATOMIC SWITCH: 
+      // This handles vault swap, profile fetch, and global state lock.
+      // The _layout.tsx will automatically show the switch overlay via useAuthStore.
+      // The _layout.tsx will also force a Stack re-mount once the switch completes (via key={user.id}).
       const result = await useAuthStore.getState().switchAccount(targetUserId);
       
-      if (result === 'success') {
-         // Smooth jump to profile
-         router.replace('/(tabs)/profile'); 
-         
-         setTimeout(() => {
-           setShowSwitchOverlay(false);
-           setIsSwitching(null);
-         }, 800);
-      } else if (result === 'needs_reauth') {
-         setShowSwitchOverlay(false);
-         setIsSwitching(null);
-         router.push({ 
-           pathname: '/login', 
-           params: { mode: 'reauth', email: targetAcc.email } 
-         });
-      } else {
-         setShowSwitchOverlay(false);
-         setIsSwitching(null);
-         Alert.alert('Switch Failed', 'We could not switch to this account. Please log in again.');
+      if (result === 'needs_reauth') {
+        const targetAcc = useAccountVault.getState().accounts[targetUserId];
+        router.push({ 
+          pathname: '/login', 
+          params: { mode: 'reauth', email: targetAcc?.email } 
+        });
       }
+
+      // Cleanup local guard — the component itself might unmount due to RootKeyedStack
+      setIsSwitching(null);
     } catch (err) {
-      setShowSwitchOverlay(false);
       setIsSwitching(null);
       console.error('Account Switch Error:', err);
+      Alert.alert('Switch Error', 'An unexpected error occurred during account switch.');
     }
   };
 

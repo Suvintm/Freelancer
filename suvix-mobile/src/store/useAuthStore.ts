@@ -450,7 +450,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: null, 
         token: null, 
         refreshToken: null,
-        isAuthenticated: true 
+        isAuthenticated: true,
+        // @ts-ignore - Close existing sockets if any before swap
+        dataLoaded: false 
       });
 
       // STEP 2: SWAP VAULT ACTIVE

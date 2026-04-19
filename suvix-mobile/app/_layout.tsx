@@ -293,20 +293,13 @@ function InitialRoot() {
 
   return (
     <>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="welcome" />
-        <Stack.Screen name="login" />
-        <Stack.Screen name="signup" />
-        <Stack.Screen name="role-selection" />
-        <Stack.Screen name="subcategory-selection" />
-        <Stack.Screen name="youtube-connect" />
-        <Stack.Screen name="create-post" />
-        <Stack.Screen name="notifications" />
-        <Stack.Screen name="settings" />
-        <Stack.Screen name="sessions" />
-        <Stack.Screen name="(tabs)" />
-      </Stack>
+      {/* 
+          🚩 ATOMIC ACCOUNT SWITCHING: 
+          By keying the Stack with user.id, we force a hard re-mount of 
+          the entire navigation tree whenever the identity changes. 
+          This is the "nuclear option" for 100% data integrity.
+      */}
+      <RootKeyedStack key={user?.id || 'guest'} />
 
       {/* 🔮 PREMIUM ACCOUNT SWITCH OVERLAY */}
       {switchingToAccount && (
@@ -316,6 +309,29 @@ function InitialRoot() {
         />
       )}
     </>
+  );
+}
+
+/** 
+ * 🔥 ROOT KEYED STACK
+ * Isolated component to ensure Stack re-mounts on key change.
+ */
+function RootKeyedStack() {
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="welcome" />
+      <Stack.Screen name="login" />
+      <Stack.Screen name="signup" />
+      <Stack.Screen name="role-selection" />
+      <Stack.Screen name="subcategory-selection" />
+      <Stack.Screen name="youtube-connect" />
+      <Stack.Screen name="create-post" />
+      <Stack.Screen name="notifications" />
+      <Stack.Screen name="settings" />
+      <Stack.Screen name="sessions" />
+      <Stack.Screen name="(tabs)" />
+    </Stack>
   );
 }
 
