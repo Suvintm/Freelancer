@@ -232,8 +232,9 @@ export default function YouTubeCreatorProfile() {
             <View style={styles.avatarContainer}>
               <TouchableOpacity 
                 style={styles.avatarInner} 
-                onPress={() => router.push('/story/create')}
+                onPress={handlePickMedia}
                 activeOpacity={0.9}
+                disabled={isUploadingAvatar}
               >
                 <Image
                   source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
@@ -242,24 +243,18 @@ export default function YouTubeCreatorProfile() {
                   cachePolicy="memory-disk"
                   transition={200}
                 />
+                
+                {/* 📸 CAMERA OVERLAY (Attached to profile circle) */}
+                <View style={[styles.avatarEditBadge, { borderColor: theme.primary }]}>
+                  <MaterialCommunityIcons name="camera" size={12} color="#FFFFFF" />
+                </View>
+
                 {isUploadingAvatar && (
                   <View style={[styles.avatarLoadingOverlay, { backgroundColor: 'rgba(0,0,0,0.4)' }]}>
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   </View>
                 )}
-                
-                {/* ➕ PROFESSIONAL STORY PLUS BADGE (SuviX Red) */}
-                <View style={[styles.storyPlusBadge, { borderColor: theme.primary }]}>
-                  <MaterialCommunityIcons name="plus" size={14} color="#FFFFFF" />
-                </View>
               </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.avatarEditBtn} onPress={handlePickMedia} disabled={isUploadingAvatar}>
-                <MaterialCommunityIcons name="camera-outline" size={16} color="white" />
-              </TouchableOpacity>
-              <View style={styles.verifiedBadge}>
-                <MaterialCommunityIcons name="check-decagram" size={20} color="#FF3040" />
-              </View>
             </View>
 
             <View style={styles.headerStats}>
@@ -316,14 +311,14 @@ export default function YouTubeCreatorProfile() {
           <View style={[styles.infoBlock, styles.padded, { marginTop: 4 }]}>
              <View style={styles.nameRow}>
                 <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
-                <MaterialCommunityIcons name="shield-check" size={16} color={theme.accent} style={{ marginLeft: 6 }} />
+                <MaterialCommunityIcons name="check-decagram" size={18} color="#FF3040" style={{ marginLeft: 6 }} />
                 
                 <TouchableOpacity 
-                  onPress={() => router.push('/settings')}
-                  style={styles.settingsIcon}
-                  activeOpacity={0.7}
+                   onPress={() => router.push('/settings')}
+                   style={styles.settingsIcon}
+                   activeOpacity={0.7}
                 >
-                  <Ionicons name="settings-outline" size={20} color={theme.textSecondary} />
+                  <MaterialCommunityIcons name="cog-outline" size={20} color={theme.textSecondary} />
                 </TouchableOpacity>
              </View>
             <Text style={[styles.niche, { color: '#FF0000' }]}>{subCategoryName.toUpperCase()}</Text>
@@ -699,7 +694,25 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', marginTop: -40, gap: 15 },
   avatarContainer: { position: 'relative' },
   avatar: { width: 90, height: 90, borderRadius: 45, borderWidth: 4 },
-  verifiedBadge: { position: 'absolute', bottom: 2, right: 2, backgroundColor: 'white', borderRadius: 10 },
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#FF3040',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 30,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
+  avatarLoadingOverlay: { ...StyleSheet.absoluteFillObject, borderRadius: 45, justifyContent: 'center', alignItems: 'center' },
   headerStats: { flex: 1, justifyContent: 'center' },
   miniStatsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14, paddingRight: 5, marginTop: -8 },
   miniStat: { alignItems: 'center' },
@@ -729,7 +742,7 @@ const styles = StyleSheet.create({
   infoBlock: {
  marginTop: 12 },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
-  name: { fontSize: 20, fontWeight: '800' },
+  name: { fontSize: 18, fontWeight: '900', letterSpacing: -0.5 },
   settingsIcon: {
     padding: 8,
     marginLeft: 4,

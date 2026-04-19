@@ -228,31 +228,26 @@ export default function FitnessInfluencerProfile() {
             <View style={styles.avatarContainer}>
               <TouchableOpacity 
                 style={styles.avatarInner} 
-                onPress={() => router.push('/story/create')}
+                onPress={handlePickMedia}
                 activeOpacity={0.9}
+                disabled={isUploadingAvatar}
               >
                 <Image
                   source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
                   style={[styles.avatar, { borderColor: theme.primary }]}
                 />
+                
+                {/* 📸 CAMERA OVERLAY (Attached to profile circle) */}
+                <View style={[styles.avatarEditBadge, { borderColor: theme.primary }]}>
+                  <MaterialCommunityIcons name="camera" size={12} color="#FFFFFF" />
+                </View>
+
                 {isUploadingAvatar && (
                   <View style={[styles.avatarLoadingOverlay, { backgroundColor: 'rgba(0,0,0,0.4)' }]}>
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   </View>
                 )}
-
-                {/* ➕ PROFESSIONAL STORY PLUS BADGE (SuviX Red) */}
-                <View style={[styles.storyPlusBadge, { borderColor: theme.primary }]}>
-                  <MaterialCommunityIcons name="plus" size={14} color="#FFFFFF" />
-                </View>
               </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.avatarEditBtn} onPress={handlePickMedia} disabled={isUploadingAvatar}>
-                <MaterialCommunityIcons name="camera-outline" size={16} color="white" />
-              </TouchableOpacity>
-              <View style={styles.verifiedBadge}>
-                <MaterialCommunityIcons name="check-decagram" size={20} color="#2ECC71" />
-              </View>
             </View>
 
             <View style={styles.headerStats}>
@@ -291,9 +286,9 @@ export default function FitnessInfluencerProfile() {
           </View>
 
           <View style={[styles.infoBlock, styles.padded]}>
-            <View style={styles.nameRow}>
-               <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
-               <MaterialCommunityIcons name="shield-check" size={16} color={theme.accent} style={{ marginLeft: 6 }} />
+             <View style={styles.nameRow}>
+                <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
+                <MaterialCommunityIcons name="check-decagram" size={18} color="#2ECC71" style={{ marginLeft: 6 }} />
                
                 <TouchableOpacity 
                   onPress={() => router.push('/settings')}
@@ -492,14 +487,6 @@ const styles = StyleSheet.create({
   bannerOverlay: { opacity: 0.5 },
   profileWrap: { marginTop: -20, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 20 },
   padded: { paddingHorizontal: 20 },
-  verifiedBadge: { 
-    position: 'absolute', 
-    top: 2, 
-    right: 2, 
-    backgroundColor: 'white', 
-    borderRadius: 10, 
-    zIndex: 25 
-  },
   headerStats: { flex: 1, justifyContent: 'center' },
   miniStatsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14, paddingRight: 5, marginTop: -8 },
   miniStat: { alignItems: 'center' },
@@ -509,7 +496,7 @@ const styles = StyleSheet.create({
   editBtnText: { fontSize: 12, fontWeight: '700' },
   infoBlock: { marginTop: 15 },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
-  name: { fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
+  name: { fontSize: 18, fontWeight: '900', letterSpacing: -0.5 },
   avatarWrapper: { position: 'relative' },
   avatarInner: {
     position: 'relative',
@@ -544,11 +531,11 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     zIndex: 20
   },
-  storyPlusBadge: {
+  avatarEditBadge: {
     position: 'absolute',
     bottom: -2,
     right: -2,
-    backgroundColor: '#FF3040',
+    backgroundColor: '#2ECC71',
     width: 26,
     height: 26,
     borderRadius: 13,

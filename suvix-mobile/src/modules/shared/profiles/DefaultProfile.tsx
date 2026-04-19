@@ -8,6 +8,9 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Alert,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useTheme } from '../../../context/ThemeContext';
 import { useRefreshManager } from '../../../hooks/useRefreshManager';
@@ -20,9 +23,10 @@ import { ProfileContentTabs } from '../../shared/profiles/ProfileContentTabs';
 import { useRouter } from 'expo-router';
 import { Image as ExpoImage } from 'expo-image';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
-import { ActivityIndicator } from 'react-native';
 import { useState } from 'react';
 import { ProfileSkeleton, ProfileSkeletonContent } from '../../shared/skeletons/ProfileSkeleton';
+import * as ImagePicker from 'expo-image-picker';
+import { api } from '../../../api/client';
 
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 
@@ -50,8 +54,61 @@ export default function DefaultProfile() {
   const username = user.username ? `@${user.username}` : '@suvix_member';
   const roleText = user.primaryRole?.category || user.role || 'Member';
   const bioText = `Building with SuviX as ${roleText}.`;
-
   const headerOffset = insets.top + 50;
+
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  const handlePickMedia = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'We need camera roll permissions to change your profile picture.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      handleUploadAvatar(result.assets[0].uri);
+    }
+  };
+
+  const handleUploadAvatar = async (uri: string) => {
+    setIsUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      const filename = uri.split('/').pop() || 'profile.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+      // @ts-ignore
+      formData.append('image', { 
+        uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''), 
+        name: filename, 
+        type 
+      });
+
+      const res = await api.post('/user/me/profile-picture', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (res.data.success) {
+        useAuthStore.getState().updateUser({ profilePicture: res.data.profilePicture });
+        Alert.alert("Success", "Profile picture updated!");
+      }
+    } catch (error: any) {
+      console.error('Upload Avatar Error:', error);
+      Alert.alert("Error", "Could not upload image. Please try again.");
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
 
   return (
@@ -86,8 +143,9 @@ export default function DefaultProfile() {
             {/* ...Avatar Code... */}
             <TouchableOpacity 
               style={styles.avatarContainer} 
-              onPress={() => router.push('/story/create')}
+              onPress={handlePickMedia}
               activeOpacity={0.9}
+              disabled={isUploadingAvatar}
             >
               <ExpoImage
                 source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
@@ -96,10 +154,16 @@ export default function DefaultProfile() {
                 transition={200}
               />
               
-              {/* ➕ PROFESSIONAL STORY PLUS BADGE (SuviX Red) */}
-              <View style={[styles.storyPlusBadge, { borderColor: theme.primary }]}>
-                <MaterialCommunityIcons name="plus" size={14} color="#FFFFFF" />
+              {/* 📸 CAMERA OVERLAY (Attached to profile circle) */}
+              <View style={[styles.avatarEditBadge, { borderColor: theme.primary }]}>
+                <MaterialCommunityIcons name="camera" size={12} color="#FFFFFF" />
               </View>
+
+              {isUploadingAvatar && (
+                <View style={styles.avatarLoadingOverlay}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                </View>
+              )}
             </TouchableOpacity>
 
             <View style={styles.headerStats}>
@@ -137,9 +201,10 @@ export default function DefaultProfile() {
           </View>
 
           <View style={styles.infoBlock}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
-               <TouchableOpacity 
+             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+               <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
+               <MaterialCommunityIcons name="check-decagram" size={16} color={theme.accent} style={{ marginLeft: 6 }} />
+                <TouchableOpacity 
                   onPress={() => router.push('/settings')}
                   style={{ padding: 8, marginLeft: 4 }}
                   activeOpacity={0.7}
@@ -201,15 +266,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f172a',
     marginTop: -37,
   },
-  storyPlusBadge: {
+  avatarEditBadge: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
+    bottom: -2,
+    right: -2,
     backgroundColor: '#FF3040',
     width: 24,
     height: 24,
     borderRadius: 12,
-    borderWidth: 3,
+    borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 30,
@@ -218,6 +283,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 3,
+  },
+  avatarLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 43,
+    overflow: 'hidden'
   },
   headerStats: {
     flex: 1,
