@@ -185,4 +185,95 @@ export const recordStoryView = async (req, res) => {
   }
 };
 
-export default { getUploadTicket, createStory, getStoryFeed, recordStoryView };
+/**
+ * @desc    Get active stories grouped by user (For Story Bar)
+ * @route   GET /api/social/stories/active
+ */
+export const getActiveStories = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const now = new Date();
+
+    // 1. Get IDs of users I follow
+    const following = await prisma.follow.findMany({
+      where: { followerId: userId },
+      select: { followingId: true }
+    });
+    const interestIds = [userId, ...following.map(f => f.followingId)];
+
+    // 2. Fetch all active stories from my network
+    const stories = await prisma.story.findMany({
+      where: {
+        userId: { in: interestIds },
+        expires_at: { gt: now },
+        is_archived: false
+      },
+      include: {
+        media: true,
+        user: {
+          select: {
+            id: true,
+            username: true,
+            profile: { select: { profile_picture: true } }
+          }
+        },
+        views: {
+            where: { userId },
+            take: 1
+        }
+      },
+      orderBy: { created_at: "asc" }
+    });
+
+    // 3. Group by User (The format the StoryBar expects)
+    const grouped = stories.reduce((acc, story) => {
+      const uid = story.userId;
+      if (!acc[uid]) {
+        acc[uid] = {
+          _id: uid,
+          username: uid === userId ? "Your Story" : story.user.username,
+          avatar: story.user.profile?.profile_picture || null,
+          isUserStory: uid === userId,
+          hasActiveStory: true,
+          isSeen: true, // Will be set to false if any slide is unseen
+          slides: []
+        };
+      }
+
+      const resolved = resolveMediaForApi(story.media);
+      const isSeen = story.views.length > 0;
+      
+      if (!isSeen) acc[uid].isSeen = false;
+
+      acc[uid].slides.push({
+        id: story.id,
+        image: resolved.urls.video || resolved.urls.full, // Full view
+        thumb: resolved.urls.thumb,
+        type: story.media.type,
+        durationMs: story.media.type === 'VIDEO' ? (story.media.duration * 1000) : 5000,
+        caption: story.caption,
+        created_at: story.created_at
+      });
+
+      return acc;
+    }, {});
+
+    // 4. Final format: User's own story always first
+    const result = Object.values(grouped).sort((a, b) => {
+        if (a._id === userId) return -1;
+        if (b._id === userId) return 1;
+        return 0;
+    });
+
+    res.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    logger.error(`❌ [STORY_CTRL] getActiveStories failure: ${error.stack}`);
+    res.status(500).json({ success: false, message: "Failed to fetch active stories" });
+  }
+};
+
+export default { getUploadTicket, createStory, getStoryFeed, recordStoryView, getActiveStories };

@@ -10,6 +10,7 @@ const router = express.Router();
  */
 
 // Feed & Discovery
+router.get("/active", protect, storyController.getActiveStories);
 router.get("/feed", protect, storyController.getStoryFeed);
 
 // Upload Lifecycle

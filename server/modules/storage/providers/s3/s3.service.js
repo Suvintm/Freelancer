@@ -26,7 +26,8 @@ export const uploadObject = async (body, key, options = {}) => {
   try {
     const { 
       contentType = "application/octet-stream", 
-      // 🚀 PRODUCTION STRATEGY: 1 year immutable cache by default
+      // 🚀 PRODUCTION STRATEGY: Default to 1 year immutable. 
+      // Stories should override this to 12 hours (43200s).
       cacheControl = "public, max-age=31536000, immutable" 
     } = options;
 

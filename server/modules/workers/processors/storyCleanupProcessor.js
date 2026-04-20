@@ -1,14 +1,12 @@
 import prisma from "../../../config/prisma.js";
 import storage from "../../storage/storage.service.js";
 import { STORAGE_FOLDERS } from "../../storage/providers/s3/s3.constants.js";
+import { resolveMediaForApi } from "../../../utils/mediaResolver.js";
+import { purgeUrlsFromCache } from "../../../utils/cloudflare.js";
+import notificationService from "../../notification/services/notificationService.js";
 import logger from "../../../utils/logger.js";
 
-/**
- * 🧹 STORY CLEANUP PROCESSOR
- * 
- * Automatically purges expired stories and their associated media assets.
- * Runs on a repeatable schedule (e.g., hourly).
- */
+/** ... ... ... */
 const storyCleanupProcessor = async (job) => {
   logger.info(`🧹 [CLEANUP] Starting Story Sweeper Job: ${job.id}`);
 
@@ -16,9 +14,7 @@ const storyCleanupProcessor = async (job) => {
     // 1. Find Expired Stories
     const expiredStories = await prisma.story.findMany({
       where: {
-        expires_at: {
-          lt: new Date()
-        }
+        expires_at: { lt: new Date() }
       },
       include: {
         media: true
@@ -30,37 +26,52 @@ const storyCleanupProcessor = async (job) => {
       return { purgedCount: 0 };
     }
 
-    logger.info(`🧹 [CLEANUP] Found ${expiredStories.length} expired stories. Initiating secure purge...`);
+    const cdnPurgeList = [];
 
     let purgedCount = 0;
-
     for (const story of expiredStories) {
       try {
-        const { mediaId, userId } = story;
+        const { id, mediaId, userId } = story;
         const { storageKey } = story.media;
 
-        // 2. Clear S3/R2 Assets Recursively
-        // We delete the entire folder prefix: uploads/stories/{userId}/{mediaId}/
+        // 1. Collect URLs for CDN purging before anything is deleted
+        const resolved = resolveMediaForApi(story.media);
+        if (resolved?.urls) {
+          Object.values(resolved.urls).filter(Boolean).forEach(url => cdnPurgeList.push(url));
+        }
+
+        // 2. Delete PostgreSQL Records FIRST (Instantly hides story from all users)
+        await prisma.media.delete({ where: { id: mediaId } });
+
+        // 3. Clear S3/R2 Assets in the background
         const folderPrefix = `${STORAGE_FOLDERS.STORIES}/${userId}/${mediaId}/`;
-        
-        logger.info(`   🗑️ [CLEANUP] Recursive purge for media: ${mediaId}`);
         await storage.deleteFolder(folderPrefix);
 
-        // Also ensure the raw upload is gone if it wasn't already deleted by the processor
         if (storageKey && !storageKey.includes(mediaId)) {
            await storage.deleteObjects(storageKey);
         }
 
-        // 3. Delete PostgreSQL Records
-        // Due to CASCADE settings, deleting Media will delete Story and StoryViews
-        await prisma.media.delete({
-          where: { id: mediaId }
+        // 🚀 4. NOTIFY USER: "Your story has expired"
+        await notificationService.notify({
+            userId,
+            type: "STORY_EXPIRED",
+            title: "Story Expired",
+            body: "Your story has reached its 12-hour limit and has been safely removed.",
+            entityId: id,
+            entityType: "STORY"
         });
 
         purgedCount++;
       } catch (err) {
         logger.error(`   ❌ [CLEANUP-FAIL] Failed to purge story ${story.id}: ${err.message}`);
       }
+    }
+
+    // 🚀 [HARDENING] Production-Grade Instant Purge
+    if (cdnPurgeList.length > 0) {
+      // Chunk the purge list (Cloudflare allows max 30 per request)
+      const uniquePurgeList = [...new Set(cdnPurgeList)];
+      await purgeUrlsFromCache(uniquePurgeList);
     }
 
     logger.info(`✨ [CLEANUP-SUCCESS] Successfully purged ${purgedCount} expired stories.`);

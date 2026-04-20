@@ -16,7 +16,8 @@ ffmpeg.setFfmpegPath(ffmpegStatic);
  * Handles Transcoding, Compression, and Thumbnail Extraction.
  */
 
-export const processVideo = async (rawBuffer, userId, mediaId, folder = STORAGE_FOLDERS.VIDEOS) => {
+export const processVideo = async (rawBuffer, userId, mediaId, folder = STORAGE_FOLDERS.VIDEOS, options = {}) => {
+  const { cacheControl } = options;
   const tempDir = path.join(os.tmpdir(), "suvix-media");
   if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
@@ -147,8 +148,14 @@ export const processVideo = async (rawBuffer, userId, mediaId, folder = STORAGE_
     
     // Upload standard files
     await Promise.all([
-      storage.uploadObject(fs.readFileSync(outputPath), videoKey, { contentType: "video/mp4" }),
-      storage.uploadObject(fs.readFileSync(thumbPath), thumbKey, { contentType: "image/webp" })
+      storage.uploadObject(fs.readFileSync(outputPath), videoKey, { 
+        contentType: "video/mp4",
+        cacheControl: cacheControl // 🚀 Story TTL (12h)
+      }),
+      storage.uploadObject(fs.readFileSync(thumbPath), thumbKey, { 
+        contentType: "image/webp",
+        cacheControl: cacheControl // 🚀 Story TTL (12h)
+      })
     ]);
 
     // Upload HLS segments
@@ -156,8 +163,19 @@ export const processVideo = async (rawBuffer, userId, mediaId, folder = STORAGE_
     logger.info(`📦 [S3-HLS] Uploading ${hlsFiles.length} HLS files...`);
     const hlsUploadPromises = hlsFiles.map(file => {
       const fileKey = `${folder}/${userId}/${mediaId}/hls/${file}`;
-      const contentType = file.endsWith(".m3u8") ? "application/x-mpegURL" : "video/MP2T";
-      return storage.uploadObject(fs.readFileSync(path.join(hlsDir, file)), fileKey, { contentType });
+      const isPlaylist = file.endsWith(".m3u8");
+      const contentType = isPlaylist ? "application/x-mpegURL" : "video/MP2T";
+      
+      // 🚀 SEGMENT OPTIMIZATION: .ts files are immutable and can be cached for 1 year.
+      // .m3u8 playlists should follow the Story TTL (12h).
+      const finalCacheControl = isPlaylist 
+        ? cacheControl 
+        : "public, max-age=31536000, immutable";
+
+      return storage.uploadObject(fs.readFileSync(path.join(hlsDir, file)), fileKey, { 
+        contentType,
+        cacheControl: finalCacheControl
+      });
     });
     
     await Promise.all(hlsUploadPromises);

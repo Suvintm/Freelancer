@@ -33,18 +33,14 @@ const generateBlurhash = async (buffer) => {
   }
 };
 
-export const processImage = async (rawBuffer, userId, mediaId, folder = STORAGE_FOLDERS.IMAGES) => {
+export const processImage = async (rawBuffer, userId, mediaId, folder = STORAGE_FOLDERS.IMAGES, options = {}) => {
   try {
+    const { cacheControl } = options;
     logger.info(`🖼️ [PROCESSOR] Processing Image: ${mediaId} in folder: ${folder}`);
-
-    // 1. Extract Metadata (Dimensions and Size)
+    
+    // ... metadata and blurhash lines ...
     const metadata = await sharp(rawBuffer).metadata();
     const { width, height, size, format } = metadata;
-    logger.info(`📸 [SHARP] Format: ${format.toUpperCase()} | Dimensions: ${width}x${height} | Size: ${(size / 1024).toFixed(2)}KB`);
-    if (format === 'heic') logger.info('💡 [SHARP] Converting HEIC to optimized webp format...');
-
-    // 2. Generate Blurhash (Premium Feature)
-    logger.info(`✨ [BLURHASH] Generating elite visual placeholder...`);
     const blurhash = await generateBlurhash(rawBuffer);
 
     const variants = {};
@@ -60,7 +56,10 @@ export const processImage = async (rawBuffer, userId, mediaId, folder = STORAGE_
         .toBuffer();
 
       const key = buildS3Key(name.toLowerCase(), folder, userId, mediaId);
-      await storage.uploadObject(resizedBuffer, key, { contentType: "image/webp" });
+      await storage.uploadObject(resizedBuffer, key, { 
+        contentType: "image/webp",
+        cacheControl: cacheControl 
+      });
       variants[name.toLowerCase()] = key;
     });
 

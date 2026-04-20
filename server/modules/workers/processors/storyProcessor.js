@@ -51,12 +51,17 @@ const storyProcessor = async (job) => {
 
     let results = {};
 
-    // 3. Process to 'stories' folder
-    emitToUser(userId, "story:progress", { mediaId, progress: 60 }); // 60% entering processing
+    // 3. Process to 'stories' folder with CDN-Optimized TTL (12 Hours)
+    const processingOptions = {
+        cacheControl: "public, max-age=43200, must-revalidate"
+    };
+
+    emitToUser(userId, "story:progress", { mediaId, progress: 60 }); 
+    
     if (type === "VIDEO") {
-      results = await processVideo(rawBuffer, userId, mediaId, STORAGE_FOLDERS.STORIES);
+      results = await processVideo(rawBuffer, userId, mediaId, STORAGE_FOLDERS.STORIES, processingOptions);
     } else {
-      results = await processImage(rawBuffer, userId, mediaId, STORAGE_FOLDERS.STORIES);
+      results = await processImage(rawBuffer, userId, mediaId, STORAGE_FOLDERS.STORIES, processingOptions);
     }
     emitToUser(userId, "story:progress", { mediaId, progress: 90 }); // 90% after processing
 
