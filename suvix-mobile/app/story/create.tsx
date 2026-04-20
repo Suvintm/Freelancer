@@ -670,12 +670,21 @@ export default function AddStoryScreen() {
     
     // 1. Capture the Canvas (Production Quality)
     let uri: string;
+    const videoObj = objects.find(o => o.type === 'VIDEO');
+    const isVideoStory = !!videoObj; 
+    const finalMimeType = isVideoStory ? 'video/mp4' : 'image/jpeg';
+
     try {
-      uri = await captureRef(canvasRef, {
-        format: 'jpg',
-        quality: 0.9,
-        result: 'tmpfile'
-      });
+      if (!isVideoStory) {
+        uri = await captureRef(canvasRef, {
+          format: 'jpg',
+          quality: 0.9,
+          result: 'tmpfile'
+        });
+      } else {
+        // For video stories, we upload the raw video asset
+        uri = videoObj.content;
+      }
     } catch (err) {
       console.error('❌ [CAPTURE] Failed:', err);
       Alert.alert('Capture Error', 'Could not process your story canvas.');
@@ -688,13 +697,13 @@ export default function AddStoryScreen() {
 
     // 2. Initialize the Global Progress Bar
     const { startUpload, updateProgress, setSuccess, setFailed, setProcessing } = useUploadStore.getState();
-    startUpload('IMAGE', 'STORY');
+    startUpload(isVideoStory ? 'VIDEO' : 'IMAGE', 'STORY');
 
     try {
       // 3. Request a Signed Upload URL with Retries
       const { api } = require('../../src/api/client');
       const ticketRes = await retryWithBackoff(() => api.get('/social/stories/upload-url', {
-        params: { mimeType: 'image/jpeg' }
+        params: { mimeType: finalMimeType }
       }));
 
       if (!ticketRes.data.success) throw new Error('Failed to get upload ticket');
@@ -704,7 +713,7 @@ export default function AddStoryScreen() {
       await retryWithBackoff(() => new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('PUT', uploadUrl);
-        xhr.setRequestHeader('Content-Type', 'image/jpeg');
+        xhr.setRequestHeader('Content-Type', finalMimeType);
         
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable) {
@@ -719,16 +728,26 @@ export default function AddStoryScreen() {
         };
 
         xhr.onerror = () => reject(new Error('S3 Network Error'));
-        xhr.send({ uri, type: 'image/jpeg', name: 'story.jpg' } as any);
+        xhr.send({ uri, type: finalMimeType, name: isVideoStory ? 'story.mp4' : 'story.jpg' } as any);
       }));
 
       // 5. Notify Backend & Trigger Background Processing with Retries
       updateProgress(98);
+      
+      // Prepare metadata (Stickers, Text, Drawings)
+      const metadata = {
+        objects: objects.filter(o => o.id !== videoObj?.id), // Remove primary video from meta as it is the background
+        drawPaths,
+        canvasBg
+      };
+
       const finalizeRes = await retryWithBackoff(() => api.post('/social/stories', {
         storageKey,
-        mimeType: 'image/jpeg',
+        mimeType: finalMimeType,
         width: canvasWidth,
         height: canvasHeight,
+        duration: isVideoStory ? 15 : 5, // Default 15s for videos
+        metadata
       }));
 
       if (!finalizeRes.data.success) throw new Error('Failed to finalize story');

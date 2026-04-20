@@ -1,5 +1,14 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
+# GLOBAL SECURITY LOCK - NEVER COMMIT THESE
+.env
+.env.*
+.env.local
+*.log
+npm-debug.*
+yarn-debug.*
+
+
 # dependencies
 node_modules/
 

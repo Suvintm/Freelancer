@@ -38,7 +38,7 @@ export const getUploadTicket = async (req, res) => {
  */
 export const createStory = async (req, res) => {
   try {
-    const { storageKey, mimeType, caption, width, height, duration } = req.body;
+    const { storageKey, mimeType, caption, width, height, duration, metadata } = req.body;
     const userId = req.user.id;
 
     if (!storageKey) {
@@ -67,6 +67,7 @@ export const createStory = async (req, res) => {
           userId,
           mediaId: media.id,
           caption,
+          metadata: metadata || {},
           expires_at: new Date(Date.now() + 2 * 60 * 1000), // ⚡ TEST MODE: 2 Minutes (Production: 12 Hours)
         },
         include: { media: true }
@@ -259,8 +260,9 @@ export const getActiveStories = async (req, res) => {
         image: resolved.urls.hls || resolved.urls.video || resolved.urls.full, 
         thumb: resolved.urls.thumb,
         type: story.media.type,
-        durationMs: story.media.type === 'VIDEO' ? (story.media.duration * 1000) : 5000,
+        durationMs: story.media.type === 'VIDEO' ? ((story.media.duration || 15) * 1000) : 5000,
         caption: story.caption,
+        metadata: story.metadata || {},
         created_at: story.created_at
       });
 

@@ -350,6 +350,7 @@ model Story {
   is_archived Boolean  @default(false) @map("is_archived")
   view_count  Int      @default(0) @map("view_count")
   visibility  Visibility @default(PUBLIC)
+  metadata    Json?      @default("{}")
   created_at  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)

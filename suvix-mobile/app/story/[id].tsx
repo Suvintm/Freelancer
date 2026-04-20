@@ -29,6 +29,10 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { storyApi } from '../../src/api/storyApi';
 import { useToastStore } from '../../src/store/useToastStore';
 import { useQueryClient } from '@tanstack/react-query';
+import { CanvasTextItem } from '../../src/modules/story/components/CanvasTextItem';
+import { CanvasStickerItem } from '../../src/modules/story/components/CanvasStickerItem';
+import { DrawingCanvas } from '../../src/modules/story/components/DrawingCanvas';
+import { StoryObject, DrawPath, CanvasBg } from '../../src/modules/story/types';
 
 const DEFAULT_SLIDE_DURATION_MS = 5000;
 const MIN_SLIDE_DURATION_MS = 2000;
@@ -400,7 +404,19 @@ function StoryThread({
     <View style={s.threadContainer}>
       
       {/* 📱 9:16 RESTRICTED CANVAS Engine (Matching Create Mode) */}
-      <View style={s.canvasBoundingBox}>
+      <View style={[
+        s.canvasBoundingBox, 
+        currentSlide.metadata?.canvasBg?.type === 'solid' && { backgroundColor: currentSlide.metadata.canvasBg.color }
+      ]}>
+        
+        {/* 🎨 [BG] Primary Render (Gradient) */}
+        {currentSlide.metadata?.canvasBg?.type === 'gradient' && (
+            <LinearGradient 
+              colors={currentSlide.metadata.canvasBg.gradientColors} 
+              style={StyleSheet.absoluteFill} 
+            />
+        )}
+
         {/* 🎬 Image Slide */}
         {!isVideo && (
            <Image source={{ uri: currentSlide.image }} style={StyleSheet.absoluteFill} resizeMode="cover" />
@@ -410,7 +426,7 @@ function StoryThread({
         {isVideo && (
           <VideoView
              player={player}
-             style={StyleSheet.absoluteFill}
+             style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent' }]}
              contentFit="cover"
              nativeControls={false}
           />
@@ -420,6 +436,44 @@ function StoryThread({
           colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.8)']}
           style={StyleSheet.absoluteFill}
         />
+
+        {/* 🎭 DYNAMIC OVERLAY ENGINE (Instagram Style) */}
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+
+           {/* 🖍️ [DRAWING] Persistent Paths */}
+           {currentSlide.metadata?.drawPaths?.length > 0 && (
+             <DrawingCanvas
+               width={CANVAS_WIDTH}
+               height={CANVAS_HEIGHT}
+               paths={currentSlide.metadata.drawPaths}
+               brushColor="#fff"
+               brushSize={5}
+               isEraser={false}
+               eraserBgColor="#000"
+               interactive={false}
+             />
+           )}
+
+           {/* 🏗️ [OBJECTS] Stickers, Text, Images */}
+           {currentSlide.metadata?.objects?.map((obj: StoryObject) => (
+             <View
+               key={obj.id}
+               style={{
+                 position: 'absolute',
+                 left: obj.x,
+                 top: obj.y,
+                 width: obj.type === 'TEXT' ? (obj.width || 200) : (obj.width || 120),
+                 transform: [
+                    { scale: obj.scale },
+                    { rotate: `${obj.rotation}rad` }
+                 ],
+               }}
+             >
+                {obj.type === 'TEXT' && <CanvasTextItem item={obj} />}
+                {obj.type === 'STICKER' && <CanvasStickerItem item={obj} />}
+             </View>
+           ))}
+        </View>
       </View>
 
       <View style={s.gestureLayer}>

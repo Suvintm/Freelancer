@@ -9,6 +9,11 @@ node_modules/
 # Ignore all .env files
 .env
 .env.*
+.env.local
+
+# Prisma
+/prisma/generated/
+/generated/
 
 # BUT allow example templates (these should be committed)
 !.env.example

@@ -1,42 +1,32 @@
 {
-  "name": "suvix-admin",
+  "name": "admin-frontend",
+  "version": "0.1.0",
   "private": true,
-  "version": "1.0.0",
-  "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/react-query": "^5.90.21",
-    "axios": "^1.7.9",
-    "cmdk": "^1.1.1",
-    "date-fns": "^4.1.0",
-    "env": "^0.0.2",
-    "framer-motion": "^11.18.1",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "react-easy-crop": "^5.5.6",
-    "react-hot-toast": "^2.6.0",
-    "react-icons": "^5.4.0",
-    "react-router-dom": "^7.1.1",
-    "react-toastify": "^11.0.3",
-    "recharts": "^2.15.0",
-    "socket.io-client": "^4.8.3",
-    "tailwindcss": "^4.2.2"
+    "axios": "^1.15.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.38.0",
+    "lucide-react": "^1.8.0",
+    "next": "16.2.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "tailwind-merge": "^3.5.0",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
-    "@eslint/js": "^9.25.0",
-    "@types/react": "^19.1.2",
-    "@types/react-dom": "^19.1.2",
-    "@vitejs/plugin-react": "^4.4.1",
-    "eslint": "^9.25.0",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "eslint-plugin-react-refresh": "^0.4.19",
-    "globals": "^16.0.0",
-    "vite": "^6.3.5"
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }

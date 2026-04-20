@@ -1,4 +1,5 @@
 import ffmpeg from "fluent-ffmpeg";
+import ffprobe from "ffprobe-static";
 import ffmpegStatic from "ffmpeg-static";
 import path from "path";
 import fs from "fs";
@@ -8,8 +9,9 @@ import { STORAGE_FOLDERS } from "../providers/s3/s3.constants.js";
 import storage from "../storage.service.js";
 import logger from "../../../utils/logger.js";
 
-// 🚀 Set the FFmpeg binary path (Production Ready)
+// 🚀 Set the FFmpeg binaries path (Production Ready)
 ffmpeg.setFfmpegPath(ffmpegStatic);
+ffmpeg.setFfprobePath(ffprobe.path);
 
 /**
  * 🎥 VIDEO PROCESSOR
@@ -138,7 +140,7 @@ export const processVideo = async (rawBuffer, userId, mediaId, folder = STORAGE_
     const metadata = await metadataPromise;
 
     // 5. Upload to S3
-    const videoKey = buildS3Key("optimized", folder, userId, mediaId);
+    const videoKey = buildS3Key("optimized", folder, userId, mediaId, null, "mp4");
     const thumbKey = buildS3Key("thumbnail", folder, userId, mediaId, null, "webp");
     // const hlsMasterKey = buildS3Key("master", `${folder}/${userId}/${mediaId}/hls`, null, null, null, "m3u8");
 
@@ -164,7 +166,7 @@ export const processVideo = async (rawBuffer, userId, mediaId, folder = STORAGE_
     const hlsUploadPromises = hlsFiles.map(file => {
       const fileKey = `${folder}/${userId}/${mediaId}/hls/${file}`;
       const isPlaylist = file.endsWith(".m3u8");
-      const contentType = isPlaylist ? "application/x-mpegURL" : "video/MP2T";
+      const contentType = (isPlaylist ? "application/x-mpegURL" : "video/MP2T").trim();
       
       // 🚀 SEGMENT OPTIMIZATION: .ts files are immutable and can be cached for 1 year.
       // .m3u8 playlists should follow the Story TTL (12h).

@@ -8,6 +8,7 @@ export interface StorySlide {
   type: 'IMAGE' | 'VIDEO';
   caption?: string;
   durationMs?: number;
+  metadata?: any;
 }
 
 export interface StoryItem {

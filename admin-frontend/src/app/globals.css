@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+:root {
+  /* Default Dark Mode (Dashboard) */
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #0a0a0a;
+  --card-foreground: #ffffff;
+  --primary: #0070f3;
+  --primary-foreground: #ffffff;
+  --secondary: #171717;
+  --secondary-foreground: #a3a3a3;
+  --accent: #171717;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #262626;
+  --input: #262626;
+  --ring: #0070f3;
+  --radius: 0.5rem;
+
+  /* Sovereign Light Mode Tokens (Scoped) */
+  --sov-bg: #ffffff;
+  --sov-hero-bg: #f9fafb;
+  --sov-text-main: #111827;
+  --sov-text-muted: #6b7280;
+  --sov-primary: #0047ab; /* Sovereign Deep Blue */
+  --sov-border: #e5e7eb;
+  --sov-input-bg: #f3f4f6;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground selection:bg-primary/30 antialiased;
+  }
+}
+
+@layer components {
+  /* Sovereign UI Components (Scoped) */
+  .sov-portal-env {
+    background-color: var(--sov-bg);
+    color: var(--sov-text-main);
+  }
+
+  .sov-card {
+    @apply bg-white border border-[#e5e7eb] shadow-[0_10px_40px_rgba(0,0,0,0.04)] rounded-2xl;
+  }
+
+  .sov-input-wrapper {
+    @apply relative flex items-center bg-[#f3f4f6] border border-transparent rounded-lg focus-within:border-blue-500 focus-within:bg-white transition-all duration-200;
+  }
+
+  .sov-input {
+    @apply w-full bg-transparent px-4 py-3.5 text-sm text-[#111827] placeholder:text-[#9ca3af] focus:outline-none;
+  }
+
+  .sov-btn {
+    @apply flex items-center justify-center w-full py-4 px-6 bg-[#0047ab] text-white font-semibold rounded-lg shadow-[0_4px_12px_rgba(0,71,171,0.2)] hover:bg-[#003886] active:scale-[0.98] transition-all duration-200;
+  }
+
+  .sov-btn-social {
+    @apply flex items-center justify-center gap-3 w-full py-3 px-4 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-[#374151] hover:bg-[#f9fafb] transition-all;
+  }
+
+  /* Legacy Professional Surfaces */
+  .pro-card {
+    @apply bg-card border border-border shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all;
+  }
+}
