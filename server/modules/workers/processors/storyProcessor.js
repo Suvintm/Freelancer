@@ -4,6 +4,7 @@ import { processImage } from "../../storage/processors/image.processor.js";
 import { processVideo } from "../../storage/processors/video.processor.js";
 import { emitToUser } from "../../../socket.js";
 import { STORAGE_FOLDERS } from "../../storage/providers/s3/s3.constants.js";
+import notificationService from "../../notification/services/notificationService.js";
 import logger from "../../../utils/logger.js";
 
 /**
@@ -51,9 +52,9 @@ const storyProcessor = async (job) => {
 
     let results = {};
 
-    // 3. Process to 'stories' folder with CDN-Optimized TTL (12 Hours)
+    // 3. Process to 'stories' folder with CDN-Optimized TTL (⚡ TEST MODE: 60 Seconds)
     const processingOptions = {
-        cacheControl: "public, max-age=43200, must-revalidate"
+        cacheControl: "public, max-age=60, must-revalidate"
     };
 
     emitToUser(userId, "story:progress", { mediaId, progress: 60 }); 
@@ -78,6 +79,16 @@ const storyProcessor = async (job) => {
     // 6. Notify user via Socket (Real-time progress)
     emitToUser(userId, "story:progress", { mediaId, progress: 100 });
     emitToUser(userId, "story:status", { mediaId, status: "READY" });
+
+    // 🚀 7. NOTIFY USER: "Your story is live!"
+    await notificationService.notify({
+        userId,
+        type: "STORY_READY",
+        title: "Story Live! 🎉",
+        body: "Your story has been processed and is now live! Tap to view.",
+        entityId: mediaId,
+        entityType: "STORY"
+    }).catch(e => logger.error(`[NOTIFICATION] Failed to send story success push: ${e.message}`));
 
     const durationMs = Date.now() - startTime;
     logger.info(`✨ [STORY-SUCCESS] Job finished in ${durationMs}ms for Media: ${mediaId}`);

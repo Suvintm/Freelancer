@@ -120,7 +120,7 @@ interface AuthState {
   setIsIntroFinished:      (val: boolean) => void;
 
   setAuth:      (user: any, token: string, refreshToken: string, meta?: { accessTokenExpiresAt?: number; refreshExpiresAt?: number }) => Promise<void>;
-  setTokens:    (token: string, refreshToken: string) => Promise<void>;
+  setTokens:    (token: string, refreshToken: string, user?: AuthUser) => Promise<void>;
   logout:       () => Promise<void>;
   checkAuth:    () => Promise<void>;
   fetchUser:    () => Promise<void>;
@@ -250,19 +250,40 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   // ── setTokens ─────────────────────────────────────────────────────────────
 
-  setTokens: async (token, refreshToken) => {
+  setTokens: async (token, refreshToken, user) => {
     try {
-      const { user } = get();
-      if (user?.id) {
+      const activeId = useAccountVault.getState().activeAccountId;
+      
+      // 1. Update Vault with NEW tokens (Always do this to keep background accounts alive)
+      // Use user.id if provided, otherwise fallback to current user or active account
+      const userIdToUpdate = user?.id || get().user?.id || activeId;
+      
+      if (userIdToUpdate) {
         const now = Date.now();
-        await useAccountVault.getState().updateTokens(user.id, {
+        await useAccountVault.getState().updateTokens(userIdToUpdate, {
           accessToken:          token,
           refreshToken,
           accessTokenExpiresAt: now + 15 * 60 * 1000,
           refreshExpiresAt:     now + 30 * 24 * 60 * 60 * 1000,
         });
       }
-      set({ token, refreshToken, isAuthenticated: true });
+
+      // 2. Update Global Store ONLY IF this token belongs to the ACTIVE account
+      // This prevents 'Ghost Refreshes' from hijacking the current UI identity.
+      const currentActiveId = useAccountVault.getState().activeAccountId;
+      const isTargetAccountActive = user ? user.id === currentActiveId : true;
+
+      if (isTargetAccountActive) {
+        set(state => ({ 
+          token, 
+          refreshToken, 
+          isAuthenticated: true,
+          // Sync user profile if provided (this fixes the "@gym123" header mismatch)
+          user: user ? { ...user, isOnboarded: !!user.is_onboarded || !!user.isOnboarded } : state.user
+        }));
+      } else {
+        console.log(`🛡️ [AUTH] Background refresh for Ghost Account ${user?.id}. Vault synced. UI preserved.`);
+      }
     } catch (error) {
       console.error('setTokens Error:', error);
     }

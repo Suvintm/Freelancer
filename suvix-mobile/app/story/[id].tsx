@@ -9,6 +9,7 @@ import {
   StatusBar,
   Pressable,
   Dimensions,
+  Alert,
 } from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -24,6 +25,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStories, StoryItem } from '../../src/hooks/useStories';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { storyApi } from '../../src/api/storyApi';
+import { useToastStore } from '../../src/store/useToastStore';
+import { useQueryClient } from '@tanstack/react-query';
 
 const DEFAULT_SLIDE_DURATION_MS = 5000;
 const MIN_SLIDE_DURATION_MS = 2000;
@@ -109,9 +114,14 @@ function StoryThread({
   onNextUser: () => void;
   onPrevUser: () => void;
 }) {
+  const [localSlides, setLocalSlides] = useState(story.slides);
+  const slides = localSlides;
   const [slideIndex, setSlideIndex] = useState(0);
-  const slides = story.slides;
+  const [isVideoReady, setIsVideoReady] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const currentSlide = slides[slideIndex];
+  const isVideo = currentSlide?.type === 'VIDEO';
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -122,6 +132,39 @@ function StoryThread({
   const canTapRef = useRef(false);
   const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unlockTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 📹 [VIDEO] Initialize Video Player for HLS
+  const player = useVideoPlayer(
+    isVideo && currentSlide ? { uri: currentSlide.image } : null,
+    (p) => {
+      p.loop = false;
+      p.muted = false;
+    }
+  );
+
+  // Sync player source when slide changes
+  useEffect(() => {
+    if (isVideo && player && currentSlide) {
+      setIsVideoReady(false);
+      player.replace({ uri: currentSlide.image });
+    }
+  }, [slideIndex, isVideo, player, currentSlide?.image]);
+
+  useEffect(() => {
+    if (!isVideo || !player || !isActive) return;
+
+    const sub = player.addListener('statusChange', (event) => {
+      const s = (event as any).status;
+      if (s === 'readyToPlay') {
+        setIsVideoReady(true);
+        if (isActiveRef.current && !isPausedRef.current) {
+          player.play();
+        }
+      }
+    });
+
+    return () => sub.remove();
+  }, [player, isVideo, isActive]);
 
   const clearAdvanceTimer = useCallback(() => {
     if (advanceTimerRef.current) {
@@ -152,6 +195,13 @@ function StoryThread({
 
   const startAnimation = useCallback((startingProgress = 0) => {
     if (!isActiveRef.current || isPagerInteracting) return;
+    
+    // 🧱 [HARDENING] Wait for video buffer before starting the progress bar
+    if (isVideo && !isVideoReady) {
+        stopProgress(false); // Stay at current/0
+        return;
+    }
+
     const slide = slides[slideIndexRef.current];
     const duration = Math.max(slide?.durationMs || DEFAULT_SLIDE_DURATION_MS, MIN_SLIDE_DURATION_MS);
     const remainingDuration = duration * (1 - startingProgress);
@@ -169,7 +219,7 @@ function StoryThread({
       if (!isMountedRef.current || !isActiveRef.current || isPausedRef.current) return;
       handleNext();
     }, remainingDuration);
-  }, [clearAdvanceTimer, handleNext, isPagerInteracting, progress, slides]);
+  }, [clearAdvanceTimer, handleNext, isPagerInteracting, progress, slides, isVideo, isVideoReady]);
 
   const lockTapBriefly = useCallback(() => {
     canTapRef.current = false;
@@ -213,6 +263,64 @@ function StoryThread({
     router.push('/story/create');
   }, [router]);
 
+  const queryClient = useQueryClient();
+  const showToast = useToastStore((s) => s.showToast);
+
+  const handleDelete = useCallback(async () => {
+    if (!currentSlide) return;
+
+    Alert.alert(
+      "Delete Story?",
+      "Once deleted, this story cannot be recovered.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive",
+          onPress: async () => {
+             try {
+               setIsDeleting(true);
+               stopProgress(false);
+               if (isVideo && player) player.pause();
+
+               const res = await storyApi.deleteStory(currentSlide.id);
+               
+               if (res.success) {
+                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                 showToast("Story deleted successfully", "success");
+                 
+                 // Atomic Local Refresh
+                 const updatedSlides = localSlides.filter(s => s.id !== currentSlide.id);
+                 
+                 if (updatedSlides.length === 0) {
+                    // No slides left for this user -> Close or Next User
+                    onNextUser();
+                 } else {
+                    // Remove slide and stay on current index (or last if we were at the end)
+                    setLocalSlides(updatedSlides);
+                    const newIndex = Math.min(slideIndex, updatedSlides.length - 1);
+                    setSlideIndex(newIndex);
+                    slideIndexRef.current = newIndex;
+                    
+                    // Restart animation for the new slide at this index
+                    setTimeout(() => startAnimation(0), 100);
+                 }
+
+                 // Force background sync
+                 queryClient.invalidateQueries({ queryKey: ['stories', 'active'] });
+               }
+             } catch (err) {
+               showToast("Failed to delete story", "error");
+               startAnimation(progress.value);
+             } finally {
+               setIsDeleting(false);
+             }
+          }
+        }
+      ]
+    );
+  }, [currentSlide, localSlides, onNextUser, stopProgress, isVideo, player, showToast, slideIndex, startAnimation, progress.value, queryClient]);
+
   useEffect(() => {
     isActiveRef.current = isActive;
 
@@ -242,10 +350,28 @@ function StoryThread({
     slideIndexRef.current = slideIndex;
     if (!isActiveRef.current || isPagerInteracting) return;
     
-    // Always start fresh from 0 when slide index changes
+    // Reset video state for fresh slide
+    if (isVideo && player) {
+       player.pause();
+       player.currentTime = 0;
+    }
+
     stopProgress(true);
     startAnimation(0);
-  }, [startAnimation, isPagerInteracting, slideIndex, stopProgress]);
+  }, [startAnimation, isPagerInteracting, slideIndex, stopProgress, isVideo, player]);
+
+  // 👁️ [SYNC] Record View when slide has been visible for 1.5s
+  useEffect(() => {
+    if (!isActive || !currentSlide) return;
+
+    const timer = setTimeout(() => {
+      if (isActiveRef.current && isMountedRef.current) {
+         storyApi.recordStoryView(currentSlide.id).catch(() => {});
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [isActive, slideIndex, currentSlide]);
 
   useEffect(() => {
     const nextSlide = slides[slideIndex + 1];
@@ -268,12 +394,27 @@ function StoryThread({
     transform: [{ scaleX: progress.value }],
   }));
 
+  if (!currentSlide) return null;
+
   return (
     <View style={s.threadContainer}>
       
       {/* 📱 9:16 RESTRICTED CANVAS Engine (Matching Create Mode) */}
       <View style={s.canvasBoundingBox}>
-        <Image source={{ uri: currentSlide.image }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        {/* 🎬 Image Slide */}
+        {!isVideo && (
+           <Image source={{ uri: currentSlide.image }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        )}
+
+        {/* 🍿 Video Slide (HLS Adaptive) */}
+        {isVideo && (
+          <VideoView
+             player={player}
+             style={StyleSheet.absoluteFill}
+             contentFit="cover"
+             nativeControls={false}
+          />
+        )}
 
         <LinearGradient
           colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.8)']}
@@ -349,9 +490,16 @@ function StoryThread({
               <Text style={s.timestamp}>2h ago</Text>
             </View>
           </View>
-          <TouchableOpacity onPress={onClose} style={s.closeBtn}>
-            <Ionicons name="close" size={24} color="#fff" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
+            {story.isUserStory && (
+              <TouchableOpacity onPress={handleDelete} disabled={isDeleting} style={s.moreBtn}>
+                 <Ionicons name="trash-outline" size={22} color="#ff4444" />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={onClose} style={s.closeBtn}>
+              <Ionicons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -432,6 +580,7 @@ const s = StyleSheet.create({
   username: { color: '#fff', fontSize: 13, fontWeight: '800' },
   timestamp: { color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '600' },
   closeBtn: { padding: 4 },
+  moreBtn: { padding: 4 },
 
   captionWrapper: {
     position: 'absolute',

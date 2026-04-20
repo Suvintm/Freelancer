@@ -2,6 +2,10 @@ import prisma from "../../../config/prisma.js";
 import logger from "../../../utils/logger.js";
 import { getStoryUploadUrl } from "../services/StoryStorageManager.js";
 import { addStoryJob } from "../../workers/queues.js";
+import { resolveMediaForApi } from "../../../utils/mediaResolver.js";
+import storage from "../../storage/storage.service.js";
+import { STORAGE_FOLDERS } from "../../storage/providers/s3/s3.constants.js";
+import notificationService from "../../notification/services/notificationService.js";
 
 /**
  * 🎬 STORY CONTROLLER
@@ -63,7 +67,7 @@ export const createStory = async (req, res) => {
           userId,
           mediaId: media.id,
           caption,
-          expires_at: new Date(Date.now() + 12 * 60 * 60 * 1000), // 12 Hours (Half-Day)
+          expires_at: new Date(Date.now() + 2 * 60 * 1000), // ⚡ TEST MODE: 2 Minutes (Production: 12 Hours)
         },
         include: { media: true }
       });
@@ -195,7 +199,7 @@ export const getActiveStories = async (req, res) => {
     const now = new Date();
 
     // 1. Get IDs of users I follow
-    const following = await prisma.follow.findMany({
+    const following = await prisma.userFollow.findMany({
       where: { followerId: userId },
       select: { followingId: true }
     });
@@ -228,26 +232,31 @@ export const getActiveStories = async (req, res) => {
     // 3. Group by User (The format the StoryBar expects)
     const grouped = stories.reduce((acc, story) => {
       const uid = story.userId;
+      const resolved = resolveMediaForApi(story.media);
+      const isSeen = story.views.length > 0;
+
       if (!acc[uid]) {
         acc[uid] = {
           _id: uid,
-          username: uid === userId ? "Your Story" : story.user.username,
-          avatar: story.user.profile?.profile_picture || null,
+          username: uid === userId ? "You" : story.user.username,
+          avatar: resolved.urls.thumb || story.user.profile?.profile_picture || null,
           isUserStory: uid === userId,
           hasActiveStory: true,
-          isSeen: true, // Will be set to false if any slide is unseen
+          isSeen: true,
           slides: []
         };
       }
 
-      const resolved = resolveMediaForApi(story.media);
-      const isSeen = story.views.length > 0;
+      // 🚀 HARDENING: Always use the latest story's thumbnail for the group avatar
+      if (resolved.urls.thumb) {
+        acc[uid].avatar = resolved.urls.thumb;
+      }
       
       if (!isSeen) acc[uid].isSeen = false;
 
       acc[uid].slides.push({
         id: story.id,
-        image: resolved.urls.video || resolved.urls.full, // Full view
+        image: resolved.urls.hls || resolved.urls.video || resolved.urls.full, 
         thumb: resolved.urls.thumb,
         type: story.media.type,
         durationMs: story.media.type === 'VIDEO' ? (story.media.duration * 1000) : 5000,
@@ -276,4 +285,74 @@ export const getActiveStories = async (req, res) => {
   }
 };
 
-export default { getUploadTicket, createStory, getStoryFeed, recordStoryView, getActiveStories };
+/**
+ * @desc    Permanently delete a story (DB + S3 + CDN Purge)
+ * @route   DELETE /api/social/stories/:storyId
+ */
+export const deleteStory = async (req, res) => {
+  try {
+    const { storyId } = req.params;
+    const userId = req.user.id;
+
+    // 1. Find the story and verify ownership
+    const story = await prisma.story.findUnique({
+      where: { id: storyId },
+      include: { media: true }
+    });
+
+    if (!story) {
+      return res.status(404).json({ success: false, message: "Story not found" });
+    }
+
+    if (story.userId !== userId) {
+      return res.status(403).json({ success: false, message: "Unauthorized to delete this story" });
+    }
+
+    const { mediaId } = story;
+    const { storageKey } = story.media;
+
+    // 2. Clear Database Record (Cascades to Story and Views)
+    // We delete the Media record because it's the root of the story assets
+    await prisma.media.delete({
+      where: { id: mediaId }
+    });
+
+    // 3. Clear S3/R2 Assets (Recursive Wipe)
+    // Note: We return success to UI instantly, but cleanup happens in background
+    const folderPrefix = `${STORAGE_FOLDERS.STORIES}/${userId}/${mediaId}/`;
+    
+    // Non-blocking cleanup
+    storage.deleteFolder(folderPrefix).catch(err => {
+      logger.error(`   ❌ [STORY_DELETE_S3] Failed to purge folder ${folderPrefix}: ${err.message}`);
+    });
+
+    if (storageKey && !storageKey.includes(mediaId)) {
+      storage.deleteObjects(storageKey).catch(() => {});
+    }
+
+    // 4. Send Real-time FCM Notification
+    await notificationService.notify({
+      userId,
+      type: "STORY_DELETED",
+      title: "Story Deleted",
+      body: "Your story has been permanently removed from your profile.",
+      entityId: storyId,
+      entityType: "STORY"
+    }).catch(err => {
+      logger.error(`   ⚠️ [STORY_DELETE_NOTIF] FCM failed: ${err.message}`);
+    });
+
+    logger.info(`✨ [STORY_DELETE] User ${userId} deleted story ${storyId}`);
+
+    res.json({
+      success: true,
+      message: "Story deleted successfully"
+    });
+
+  } catch (error) {
+    logger.error(`❌ [STORY_CTRL] deleteStory failure: ${error.stack}`);
+    res.status(500).json({ success: false, message: "Failed to delete story" });
+  }
+};
+
+export default { getUploadTicket, createStory, getStoryFeed, recordStoryView, getActiveStories, deleteStory };

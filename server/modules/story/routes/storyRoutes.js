@@ -19,5 +19,6 @@ router.post("/", protect, storyController.createStory);
 
 // Interactions
 router.post("/:storyId/view", protect, storyController.recordStoryView);
+router.delete("/:storyId", protect, storyController.deleteStory);
 
 export default router;

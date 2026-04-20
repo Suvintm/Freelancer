@@ -27,8 +27,9 @@ export const StoryBar = ({ isLoading: forcedLoading }: StoryBarProps) => {
   const isLoading = forcedLoading || internalLoading;
 
   const data = React.useMemo(() => {
-    const hasUserStory = (rawData || []).some(s => s.isUserStory);
-    if (hasUserStory || !user) return rawData || [];
+    const list = rawData || [];
+    const hasUserStory = list.some(s => s.isUserStory);
+    if (hasUserStory || !user) return list;
 
     // Prepend a 'Ghost' Story Circle for adding
     const ghostUserStory: StoryItem = {
@@ -39,10 +40,13 @@ export const StoryBar = ({ isLoading: forcedLoading }: StoryBarProps) => {
       hasActiveStory: false,
       slides: []
     };
-    return [ghostUserStory, ...(rawData || [])];
+    return [ghostUserStory, ...list];
   }, [rawData, user]);
 
+  const isEmpty = !isLoading && (rawData || []).length === 0;
+
   if (isLoading) {
+    /** ... skeleton remains same ... */
     return (
       <View style={[s.outer, { flexDirection: 'row', paddingLeft: 16 }]}>
         {[1, 2, 3, 4, 5].map((i) => (
@@ -79,15 +83,15 @@ export const StoryBar = ({ isLoading: forcedLoading }: StoryBarProps) => {
         )}
       />
 
-      {isFallbackData && (
+      {isEmpty && (
         <View style={[s.fallbackCard, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
           <View style={[s.iconBox, { backgroundColor: theme.primary }]}>
             <MaterialCommunityIcons name="cards-playing-outline" size={18} color={theme.text} />
           </View>
           <View style={s.fallbackTextWrapper}>
-            <Text style={[s.fallbackTitle, { color: theme.text }]}>Showcase Stories</Text>
+            <Text style={[s.fallbackTitle, { color: theme.text }]}>Explore Stories</Text>
             <Text style={[s.fallbackSubtitle, { color: theme.textSecondary }]}>
-              Follow friends and experts to start seeing their stories here.
+              Follow creators to see their vertical stories here.
             </Text>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={18} color={theme.textSecondary} />

@@ -129,10 +129,10 @@ if (connection) {
   workers.push(syncWorker, mediaWorker, storyWorker, cleanupWorker);
 
   // ─── ⏰ SCHEDULED JOBS ─────────────────────────────────────────────────────
-  // 🧹 [STORY SWEEPER] Run cleanup every hour
+  // 🧹 [STORY SWEEPER] Run cleanup every 2 minutes (⚡ TEST MODE)
   storyCleanupQueue.add("cleanup-stories", {}, {
-    repeat: { pattern: "0 * * * *" } // Top of every hour
-  }).then(() => logger.info("🧹 [SCHEDULED] Story Sweeper active (Hourly)."));
+    repeat: { pattern: "*/2 * * * *" } // Every 2 minutes
+  }).then(() => logger.info("🧹 [SCHEDULED] Story Sweeper active (Every 2 Minutes - Test Mode)."));
 
   logger.info("✅ [WORKERS] All Background Workers Active (YouTube Sync + Media Processing).");
   logger.info(`   📊 YT Sync:  drainDelay=60s | concurrency=2 | stall-check=10m`);

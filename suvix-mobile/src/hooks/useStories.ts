@@ -1,8 +1,11 @@
-import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { storyApi } from '../api/storyApi';
 
 export interface StorySlide {
   id: string;
-  image: string;
+  image: string; // Master HLS or Optimized Image
+  thumb: string;
+  type: 'IMAGE' | 'VIDEO';
   caption?: string;
   durationMs?: number;
 }
@@ -14,18 +17,25 @@ export interface StoryItem {
   isSeen?: boolean;
   isUserStory?: boolean;
   hasActiveStory?: boolean;
-  verifiedColor?: string; // Dynamic badge color for roles
+  verifiedColor?: string; 
   slides: StorySlide[]; 
 }
 
-import { SUVIX_INDUSTRY_STORIES } from '../data/suvixStories';
-
 export const useStories = () => {
-  const data = useMemo(() => SUVIX_INDUSTRY_STORIES, []);
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['stories', 'active'],
+    queryFn: async () => {
+        const result = await storyApi.getActiveStories();
+        return result.data as StoryItem[];
+    },
+    staleTime: 1000 * 60 * 2, // 2 minutes stale time (matches test mode)
+  });
   
   return {
-    data,
-    isLoading: false,
-    isFallbackData: true,
+    data: data || [],
+    isLoading,
+    isError,
+    refetch,
+    isFallbackData: false,
   };
 };

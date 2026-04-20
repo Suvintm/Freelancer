@@ -155,8 +155,11 @@ export const useAccountVault = create<AccountVaultState>((set, get) => ({
   removeAccount: async (userId) => {
     const { accounts, activeAccountId } = get();
 
-    // Delete tokens for this account
-    await SecureStore.deleteItemAsync(tokenKey(userId));
+    // 1. Nuclear Purge: Delete tokens for this account
+    // We do this first to ensure even if everything else fails, the token is dead.
+    const key = tokenKey(userId);
+    await SecureStore.deleteItemAsync(key).catch(() => {});
+    console.log(`💀 [VAULT] Identity Purged: ${userId} (Tokens wiped from SecureStore)`);
 
     const newAccounts = { ...accounts };
     delete newAccounts[userId];

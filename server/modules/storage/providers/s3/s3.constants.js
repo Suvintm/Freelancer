@@ -20,7 +20,7 @@ export const STORAGE_FOLDERS = {
   THUMBNAILS: "creators/thumbnails",
   PORTFOLIO: "creators/portfolio",
   DRAFTS: "temp/drafts",
-  STORIES: "uploads/stories",
+  STORIES: "uploads/processed/stories",
 };
 
 /**

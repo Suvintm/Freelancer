@@ -258,6 +258,9 @@ enum NotificationType {
   WELCOME
   MEDIA_READY
   MEDIA_FAILED
+  STORY_EXPIRED
+  STORY_READY
+  STORY_DELETED
 }
 
 enum NotificationPriority {

@@ -12,6 +12,7 @@ import { RefreshControl } from 'react-native';
 import { useRefreshManager } from '../../../hooks/useRefreshManager';
 import { PremiumNativeAd } from '../../../components/ads/PremiumNativeAd';
 import { useAdPool } from '../../../hooks/useAdPool';
+import { useStories } from '../../../hooks/useStories';
 
 interface UnifiedFeedProps {
   ListHeaderComponent?: React.ComponentType<any> | React.ReactElement | null;
@@ -22,6 +23,7 @@ interface UnifiedFeedProps {
 export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEndDrag }: UnifiedFeedProps) => {
   const { theme } = useTheme();
   const { feed, isLoading, refreshFeed } = useDiscoveryStore();
+  const { refetch: refetchStories } = useStories();
   const NATIVE_AD_UNIT_ID = process.env.EXPO_PUBLIC_ADMOB_NATIVE_UNIT_ID || 'ca-app-pub-3940256099942544/2247696110';
 
   // 🏊‍♂️ 1. AD POOL MANAGER (Preloads 5 ads)
@@ -30,6 +32,7 @@ export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEn
   const handleRefresh = useRefreshManager(() => {
     refreshAds();
     refreshFeed();
+    refetchStories();
   });
 
   React.useEffect(() => {

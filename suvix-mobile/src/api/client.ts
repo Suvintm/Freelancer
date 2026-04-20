@@ -132,12 +132,13 @@ api.interceptors.response.use(
         });
 
         if (res.data.success) {
-          const { token, refreshToken: newRefreshToken } = res.data;
+          // Update the store with BOTH tokens and the refreshed user identity
+          // This fix ensures that if Gym refreshes, but Suvin is active, the crossover is blocked.
+          // And if Suvin refreshes, the profile data stays current.
+          const refreshedUser = res.data.user;
+          await useAuthStore.getState().setTokens(token, newRefreshToken, refreshedUser);
           
-          // Update the store
-          await useAuthStore.getState().setTokens(token, newRefreshToken);
-          
-          console.log('✅ [API] Session refreshed successfully.');
+          console.log(`✅ [API] Session refreshed successfully for @${refreshedUser?.username || 'user'}.`);
           isRefreshing = false;
           onRerfreshed(token);
 

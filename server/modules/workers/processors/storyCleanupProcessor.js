@@ -11,10 +11,11 @@ const storyCleanupProcessor = async (job) => {
   logger.info(`🧹 [CLEANUP] Starting Story Sweeper Job: ${job.id}`);
 
   try {
-    // 1. Find Expired Stories
+    // 1. Find Expired Stories (Harden with UTC ISO string)
+    const now = new Date();
     const expiredStories = await prisma.story.findMany({
       where: {
-        expires_at: { lt: new Date() }
+        expires_at: { lt: now }
       },
       include: {
         media: true
@@ -22,9 +23,11 @@ const storyCleanupProcessor = async (job) => {
     });
 
     if (expiredStories.length === 0) {
-      logger.info("🧹 [CLEANUP] No expired stories found. Sweeper idle.");
+      logger.info(`🧹 [CLEANUP] No expired stories found. (Server Time: ${now.toISOString()}). Sweeper idle.`);
       return { purgedCount: 0 };
     }
+
+    logger.info(`🧹 [CLEANUP] Found ${expiredStories.length} expired stories. Current Server Time: ${now.toISOString()}`);
 
     const cdnPurgeList = [];
 
@@ -77,10 +80,11 @@ const storyCleanupProcessor = async (job) => {
     logger.info(`✨ [CLEANUP-SUCCESS] Successfully purged ${purgedCount} expired stories.`);
 
     // 4. [HARDENING] Purge Orphaned/Abandoned stories (Older than 24 hours)
-    // These are stories that stuck in PENDING or FAILED and never became active.
+    // These are media records that were created for stories but never became active.
     const orphanedMedia = await prisma.media.findMany({
       where: {
-        type: "STORY",
+        story: null, // No related story record
+        storageKey: { startsWith: "uploads/processed/stories/" },
         status: { in: ["PENDING", "FAILED"] },
         created_at: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) }
       }
