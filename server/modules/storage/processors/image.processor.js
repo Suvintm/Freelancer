@@ -33,9 +33,9 @@ const generateBlurhash = async (buffer) => {
   }
 };
 
-export const processImage = async (rawBuffer, userId, mediaId) => {
+export const processImage = async (rawBuffer, userId, mediaId, folder = STORAGE_FOLDERS.IMAGES) => {
   try {
-    logger.info(`🖼️ [PROCESSOR] Processing Image: ${mediaId}`);
+    logger.info(`🖼️ [PROCESSOR] Processing Image: ${mediaId} in folder: ${folder}`);
 
     // 1. Extract Metadata (Dimensions and Size)
     const metadata = await sharp(rawBuffer).metadata();
@@ -59,7 +59,7 @@ export const processImage = async (rawBuffer, userId, mediaId) => {
         .resize(width, null, { withoutEnlargement: true })
         .toBuffer();
 
-      const key = buildS3Key(name.toLowerCase(), STORAGE_FOLDERS.IMAGES, userId, mediaId);
+      const key = buildS3Key(name.toLowerCase(), folder, userId, mediaId);
       await storage.uploadObject(resizedBuffer, key, { contentType: "image/webp" });
       variants[name.toLowerCase()] = key;
     });

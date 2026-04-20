@@ -16,7 +16,7 @@ ffmpeg.setFfmpegPath(ffmpegStatic);
  * Handles Transcoding, Compression, and Thumbnail Extraction.
  */
 
-export const processVideo = async (rawBuffer, userId, mediaId) => {
+export const processVideo = async (rawBuffer, userId, mediaId, folder = STORAGE_FOLDERS.VIDEOS) => {
   const tempDir = path.join(os.tmpdir(), "suvix-media");
   if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
@@ -137,9 +137,9 @@ export const processVideo = async (rawBuffer, userId, mediaId) => {
     const metadata = await metadataPromise;
 
     // 5. Upload to S3
-    const videoKey = buildS3Key("optimized", STORAGE_FOLDERS.VIDEOS, userId, mediaId);
-    const thumbKey = buildS3Key("thumbnail", STORAGE_FOLDERS.VIDEOS, userId, mediaId, null, "webp");
-    // const hlsMasterKey = buildS3Key("master", `${STORAGE_FOLDERS.VIDEOS}/${userId}/${mediaId}/hls`, null, null, null, "m3u8");
+    const videoKey = buildS3Key("optimized", folder, userId, mediaId);
+    const thumbKey = buildS3Key("thumbnail", folder, userId, mediaId, null, "webp");
+    // const hlsMasterKey = buildS3Key("master", `${folder}/${userId}/${mediaId}/hls`, null, null, null, "m3u8");
 
     logger.info(`📦 [S3-UPLOAD] Storing final variants...`);
     logger.info(`   📤 [VIDEO] Key: ${videoKey}`);
@@ -155,7 +155,7 @@ export const processVideo = async (rawBuffer, userId, mediaId) => {
     const hlsFiles = fs.readdirSync(hlsDir);
     logger.info(`📦 [S3-HLS] Uploading ${hlsFiles.length} HLS files...`);
     const hlsUploadPromises = hlsFiles.map(file => {
-      const fileKey = `${STORAGE_FOLDERS.VIDEOS}/${userId}/${mediaId}/hls/${file}`;
+      const fileKey = `${folder}/${userId}/${mediaId}/hls/${file}`;
       const contentType = file.endsWith(".m3u8") ? "application/x-mpegURL" : "video/MP2T";
       return storage.uploadObject(fs.readFileSync(path.join(hlsDir, file)), fileKey, { contentType });
     });
@@ -167,7 +167,7 @@ export const processVideo = async (rawBuffer, userId, mediaId) => {
     return {
       variants: {
         video: videoKey,
-        hls: `${STORAGE_FOLDERS.VIDEOS}/${userId}/${mediaId}/hls/master.m3u8`,
+        hls: `${folder}/${userId}/${mediaId}/hls/master.m3u8`,
         thumb: thumbKey
       },
       ...metadata

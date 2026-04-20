@@ -48,25 +48,30 @@ export const resolveVideoUrls = (userId, mediaId) => {
  * Converts any S3 path or raw URL into a finalized SuviX Proxy URL (cdn.suvix.in).
  * Handles backward compatibility for full S3 URLs stored in DB.
  */
-export const smartResolveMediaUrl = (storageKey) => {
+export const smartResolveMediaUrl = (storageKey, provider = "S3") => {
   if (!storageKey) return null;
 
   // 1. If it's already a clean SuviX CDN URL, return it
   if (CDN_BASE_URL && storageKey.startsWith(CDN_BASE_URL)) return storageKey;
 
-  // 2. If it's a raw S3 URL belonging to our bucket, strip the bucket domain 
-  // to force it through the SuviX Proxy (BASE_URL).
-  if (S3_BASE_URL && storageKey.startsWith(S3_BASE_URL)) {
-    const relativeKey = storageKey.replace(`${S3_BASE_URL}/`, "");
-    return `${BASE_URL}/${relativeKey}`;
+  // 2. Determine the correct Base URL based on the Provider
+  // Stories use R2 (via CDN), while Posts use S3 (or CDN if configured)
+  const providerBase = provider === "R2" ? (CDN_BASE_URL || "") : S3_BASE_URL;
+  const activeBase = CDN_BASE_URL || providerBase;
+
+  // 3. If it's a raw S3/R2 URL belonging to our bucket, strip the bucket domain 
+  // to force it through the SuviX Proxy (activeBase).
+  if (providerBase && storageKey.startsWith(providerBase)) {
+    const relativeKey = storageKey.replace(`${providerBase}/`, "");
+    return `${activeBase}/${relativeKey}`;
   }
 
-  // 3. If it's an external URL (not ours), return it as-is
+  // 4. If it's an external URL (not ours), return it as-is
   if (storageKey.startsWith('http')) return storageKey;
 
-  // 4. Standard path: Prefix with BASE_URL
+  // 5. Standard path: Prefix with activeBase
   const cleanKey = storageKey.startsWith('/') ? storageKey.substring(1) : storageKey;
-  return `${BASE_URL}/${cleanKey}`;
+  return `${activeBase}/${cleanKey}`;
 };
 
 /**
@@ -77,7 +82,7 @@ export const resolveAvatarUrl = (userId, filename) => {
   // Use smart resolver to handle mirrored YouTube profiles
   return smartResolveMediaUrl(filename.startsWith('http') || filename.includes('/') 
     ? filename 
-    : `uploads/avatars/${userId}/${filename}`);
+    : `uploads/avatars/${userId}/${filename}`, "S3"); // Avatars currently in S3
 };
 
 /**
@@ -89,7 +94,7 @@ export const resolveAvatarUrl = (userId, filename) => {
  */
 export const resolveMediaForApi = (media) => {
   if (!media) return null;
-  const { id, userId, type, status, blurhash, storageKey, variants } = media;
+  const { id, userId, type, status, blurhash, storageKey, variants, storage_provider = "S3" } = media;
   
   // 🧱 LEGACY & HYBRID CHECK: If we have a key, we can probably show it.
   const hasContent = (variants && Object.keys(variants).length > 0) || !!storageKey;
@@ -101,17 +106,17 @@ export const resolveMediaForApi = (media) => {
   let urls = {};
 
   if (variants && Object.keys(variants).length > 0) {
-    // 🚀 MODERN PATH: Map saved S3 keys to absolute URLs
+    // 🚀 MODERN PATH: Map saved keys to absolute URLs using the correct provider
     urls = {
-      hls: variants.hls ? smartResolveMediaUrl(variants.hls) : null,
-      video: variants.video ? smartResolveMediaUrl(variants.video) : null,
-      thumb: smartResolveMediaUrl(variants.thumb || variants.thumbnail),
-      feed: smartResolveMediaUrl(variants.feed || variants.thumbnail),
-      full: smartResolveMediaUrl(variants.full || variants.thumbnail),
+      hls: variants.hls ? smartResolveMediaUrl(variants.hls, storage_provider) : null,
+      video: variants.video ? smartResolveMediaUrl(variants.video, storage_provider) : null,
+      thumb: smartResolveMediaUrl(variants.thumb || variants.thumbnail, storage_provider),
+      feed: smartResolveMediaUrl(variants.feed || variants.thumbnail, storage_provider),
+      full: smartResolveMediaUrl(variants.full || variants.thumbnail, storage_provider),
     };
   } else {
     // 🧱 LEGACY PATH: Use old storageKey logic
-    const path = smartResolveMediaUrl(storageKey);
+    const path = smartResolveMediaUrl(storageKey, storage_provider);
     
     if (type === "VIDEO") {
       urls = {

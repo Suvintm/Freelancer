@@ -4,6 +4,9 @@ import { sampledLogger } from "./sampledLogger.js";
 import { getRedisConnection } from "./connection.js";
 import youtubeSyncProcessor from "./processors/youtubeSyncProcessor.js";
 import mediaProcessor from "./processors/mediaProcessor.js";
+import storyProcessor from "./processors/storyProcessor.js";
+import storyCleanupProcessor from "./processors/storyCleanupProcessor.js";
+import { storyCleanupQueue } from "./queues.js";
 
 /**
  * 🏗️ BACKGROUND WORKER HUB
@@ -50,6 +53,23 @@ if (connection) {
     maxStalledCount: 2,
   });
 
+  // ─── 3. STORY PROCESSING WORKER ─────────────────────────────────────────────
+  const storyWorker = new Worker("story-processing", storyProcessor, {
+    connection,
+    concurrency: 2,           // Stories are lighter but urgent
+    drainDelay: 15000,        // 15s wait (faster response for stories)
+    stalledInterval: 60000,   // Check every minute
+    lockDuration: 60000,      // Stories should process within 60s
+    maxStalledCount: 2,
+  });
+
+  // ─── 4. STORY CLEANUP WORKER (MAINTENANCE) ──────────────────────────────────
+  const cleanupWorker = new Worker("story-cleanup", storyCleanupProcessor, {
+    connection,
+    concurrency: 1, // Maintenance tasks are low concurrency
+    drainDelay: 300000, // 5 minute check (very low cost)
+  });
+
   // ─── EVENT HANDLERS ─────────────────────────────────────────────────────────
   // SUCCESS: sampled at 5% — prevents log flooding
   syncWorker.on("completed", (job) =>
@@ -57,6 +77,9 @@ if (connection) {
   );
   mediaWorker.on("completed", (job) =>
     sampledLogger.success("[Workers] Media job done", { jobId: job.id })
+  );
+  storyWorker.on("completed", (job) =>
+    sampledLogger.success("[Workers] Story job done", { jobId: job.id })
   );
 
   // FAILURES: always log — never sample errors
@@ -68,6 +91,12 @@ if (connection) {
   );
   mediaWorker.on("failed", (job, err) =>
     sampledLogger.error("[Workers] Media job failed", err, {
+      jobId: job?.id,
+      attempt: job?.attemptsMade,
+    })
+  );
+  storyWorker.on("failed", (job, err) =>
+    sampledLogger.error("[Workers] Story job failed", err, {
       jobId: job?.id,
       attempt: job?.attemptsMade,
     })
@@ -93,7 +122,17 @@ if (connection) {
     }
   });
 
-  workers.push(syncWorker, mediaWorker);
+  cleanupWorker.on("failed", (job, err) => 
+    logger.error(`🧹 [CLEANUP] Worker failed job ${job?.id}:`, err)
+  );
+
+  workers.push(syncWorker, mediaWorker, storyWorker, cleanupWorker);
+
+  // ─── ⏰ SCHEDULED JOBS ─────────────────────────────────────────────────────
+  // 🧹 [STORY SWEEPER] Run cleanup every hour
+  storyCleanupQueue.add("cleanup-stories", {}, {
+    repeat: { pattern: "0 * * * *" } // Top of every hour
+  }).then(() => logger.info("🧹 [SCHEDULED] Story Sweeper active (Hourly)."));
 
   logger.info("✅ [WORKERS] All Background Workers Active (YouTube Sync + Media Processing).");
   logger.info(`   📊 YT Sync:  drainDelay=60s | concurrency=2 | stall-check=10m`);

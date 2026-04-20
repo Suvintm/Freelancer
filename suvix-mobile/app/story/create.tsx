@@ -616,6 +616,10 @@ export default function AddStoryScreen() {
       setIsSaving(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setSelectedObjectId(null);
+      // Auto-dismiss after 4 seconds
+      setTimeout(() => {
+        get().reset();
+      }, 4000);
       setTimeout(async () => {
         try {
           const uri    = await captureRef(canvasRef, { format: 'jpg', quality: 1, result: 'tmpfile' });
@@ -639,28 +643,105 @@ export default function AddStoryScreen() {
     }
   };
 
+  /**
+   * 🔄 RETRY UTILITY (Senior Audit Implementation)
+   * Handles network flickers automatically.
+   */
+  const retryWithBackoff = async (fn: () => Promise<any>, maxRetries = 3) => {
+    let delay = 1000;
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await fn();
+      } catch (err) {
+        if (i === maxRetries - 1) throw err;
+        console.warn(`⚠️ [RETRY] Attempt ${i + 1} failed. Retrying in ${delay}ms...`);
+        await new Promise(r => setTimeout(r, delay));
+        delay *= 2; // Exponential backoff
+      }
+    }
+  };
+
   const handleShare = async () => {
+    if (isUploading) return;
+    
     setIsUploading(true);
     setSelectedObjectId(null);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     
-    // Navigate home instantly
+    // 1. Capture the Canvas (Production Quality)
+    let uri: string;
+    try {
+      uri = await captureRef(canvasRef, {
+        format: 'jpg',
+        quality: 0.9,
+        result: 'tmpfile'
+      });
+    } catch (err) {
+      console.error('❌ [CAPTURE] Failed:', err);
+      Alert.alert('Capture Error', 'Could not process your story canvas.');
+      setIsUploading(false);
+      return;
+    }
+
+    // Navigate home instantly for elite UX
     router.back();
 
-    // Trigger the global Top Navbar upload progress bar, explicitly marked as 'STORY'
-    const { startUpload, updateProgress, setSuccess } = useUploadStore.getState();
-    startUpload('VIDEO', 'STORY');
-    
-    let progress = 0;
-    const intervalId = setInterval(() => {
-      progress += Math.floor(Math.random() * 15) + 5;
-      if (progress >= 100) {
-        clearInterval(intervalId as any);
-        setSuccess('Story added to Infinity Feed! 🔥');
-      } else {
-        updateProgress(progress);
-      }
-    }, 400);
+    // 2. Initialize the Global Progress Bar
+    const { startUpload, updateProgress, setSuccess, setFailed, setProcessing } = useUploadStore.getState();
+    startUpload('IMAGE', 'STORY');
+
+    try {
+      // 3. Request a Signed Upload URL with Retries
+      const { api } = require('../../src/api/client');
+      const ticketRes = await retryWithBackoff(() => api.get('/social/stories/upload-url', {
+        params: { mimeType: 'image/jpeg' }
+      }));
+
+      if (!ticketRes.data.success) throw new Error('Failed to get upload ticket');
+      const { uploadUrl, storageKey } = ticketRes.data.data;
+
+      // 4. Perform XHR Upload to S3 with Retries (Re-creates XHR on flakey network)
+      await retryWithBackoff(() => new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', uploadUrl);
+        xhr.setRequestHeader('Content-Type', 'image/jpeg');
+        
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const upProgress = Math.round((event.loaded / event.total) * 100);
+            updateProgress(Math.min(upProgress, 95));
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status === 200) resolve(true);
+          else reject(new Error(`S3 Upload failed: ${xhr.status}`));
+        };
+
+        xhr.onerror = () => reject(new Error('S3 Network Error'));
+        xhr.send({ uri, type: 'image/jpeg', name: 'story.jpg' } as any);
+      }));
+
+      // 5. Notify Backend & Trigger Background Processing with Retries
+      updateProgress(98);
+      const finalizeRes = await retryWithBackoff(() => api.post('/social/stories', {
+        storageKey,
+        mimeType: 'image/jpeg',
+        width: canvasWidth,
+        height: canvasHeight,
+      }));
+
+      if (!finalizeRes.data.success) throw new Error('Failed to finalize story');
+      
+      // Transition UI to "Processing" state — Sockets will take it from here
+      setProcessing();
+
+    } catch (err: any) {
+      console.error('❌ [STORY-UPLOAD] Pipeline failed:', err.message);
+      setFailed(err.message || 'Network error');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   // ── Global gestures (object drag/pinch/rotate from parent) ─────────────────

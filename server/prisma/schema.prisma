@@ -34,6 +34,8 @@ model User {
   youtube_videos         YouTubeVideo[]
   posts                  Post[]
   media                  Media[]
+  stories                Story[]
+  story_views            StoryView[]
 
   @@index([role])
   @@index([is_onboarded])
@@ -323,15 +325,50 @@ model Media {
   variants    Json?
   blurhash    String?
   hash        String?     @db.VarChar(64)
-  status      MediaStatus @default(PENDING)
-  created_at  DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  status           MediaStatus @default(PENDING)
+  storage_provider String      @default("S3") @map("storage_provider")
+  created_at       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
 
   post        Post?       @relation(fields: [postId], references: [id], onDelete: Cascade)
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  story       Story?
 
   @@index([postId])
   @@index([userId])
   @@map("media")
+}
+
+model Story {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  mediaId     String   @unique @map("media_id") @db.Uuid
+  caption     String?  @db.Text
+  expires_at  DateTime @map("expires_at") @db.Timestamptz(6)
+  is_archived Boolean  @default(false) @map("is_archived")
+  view_count  Int      @default(0) @map("view_count")
+  visibility  Visibility @default(PUBLIC)
+  created_at  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  views StoryView[]
+
+  @@index([userId, expires_at])
+  @@index([expires_at]) // 🚀 Fast Global Discovery (Senior Audit)
+  @@map("stories")
+}
+
+model StoryView {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storyId   String   @map("story_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  viewed_at DateTime @default(now()) @map("viewed_at") @db.Timestamptz(6)
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, userId])
+  @@map("story_views")
 }
 
 enum PostType {

@@ -53,6 +53,7 @@ export const useSocketStore = create<SocketStore>((set, get) => ({
 
     // 🔒 [SECURITY] Session Invalidation Guard
     // Responds to the "Identity Guard" server-side kick.
+    socket.off('session:invalidated');
     socket.on('session:invalidated', (data) => {
       console.warn('🚩 [SOCKET] Session invalidated by server:', data.reason);
       
@@ -64,11 +65,13 @@ export const useSocketStore = create<SocketStore>((set, get) => ({
     });
 
     // 📊 [MEDIA] Progress & Status Handlers (Centralized)
+    socket.off('media:progress');
     socket.on('media:progress', (data: { mediaId: string; progress: number }) => {
       const { useUploadStore } = require('./useUploadStore');
       useUploadStore.getState().updateProgress(data.progress);
     });
 
+    socket.off('media:status');
     socket.on('media:status', async (data: { mediaId: string; status: string; error?: string; type?: string }) => {
       const { useUploadStore } = require('./useUploadStore');
       const { useToastStore } = require('./useToastStore');
@@ -99,8 +102,8 @@ export const useSocketStore = create<SocketStore>((set, get) => ({
           trigger: null,
         });
       } else if (data.status === 'FAILED') {
-        useUploadStore.getState().setFailed(data.error);
-        useToastStore.getState().showToast('Processing Failed', 'error');
+        useUploadStore.getState().setFailed('Upload failed. You can re-upload the story.');
+        useToastStore.getState().showToast('Story Failed ❌', 'error');
         
         await Notifications.scheduleNotificationAsync({
           content: {
@@ -134,6 +137,38 @@ export const useSocketStore = create<SocketStore>((set, get) => ({
             }
           }
         }, 15000);
+      }
+    });
+
+    // 🎥 [STORY] Progress & Status Handlers
+    socket.off('story:progress');
+    socket.on('story:progress', (data: { mediaId: string; progress: number }) => {
+      const { useUploadStore } = require('./useUploadStore');
+      // Story processing is often faster, but we still update the UI
+      useUploadStore.getState().updateProgress(data.progress);
+    });
+
+    socket.off('story:status');
+    socket.on('story:status', async (data: { mediaId: string; status: string; error?: string }) => {
+      const { useUploadStore } = require('./useUploadStore');
+      const { useToastStore } = require('./useToastStore');
+      const { queryClient } = require('../../app/_layout');
+
+      console.log(`🏁 [SOCKET] Story Status: ${data.status} for ${data.mediaId}`);
+
+      if (data.status === 'READY') {
+        useUploadStore.getState().setSuccess('Story uploaded successfully! 🔥');
+        useToastStore.getState().showToast('Story Live! 📸', 'success');
+        
+        // Refresh stories
+        queryClient.invalidateQueries({ queryKey: ['storyFeed'] });
+        queryClient.invalidateQueries({ queryKey: ['activeStories'] });
+        
+      } else if (data.status === 'FAILED') {
+        useUploadStore.getState().setFailed('Upload failed. You can re-upload the story.');
+        useToastStore.getState().showToast('Story Failed ❌', 'error');
+      } else if (data.status === 'PROCESSING') {
+        useUploadStore.getState().setProcessing();
       }
     });
 

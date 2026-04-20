@@ -39,6 +39,7 @@ import paymentGatewayRoutes from "./modules/payments/routes/paymentGatewayRoutes
 import youtubeRoutes from "./modules/youtube-creator/routes/youtubeRoutes.js";
 import mediaRoutes from "./modules/storage/media.routes.js";
 import socialRoutes from "./modules/social/routes/postRoutes.js";
+import storyRoutes from "./modules/story/routes/storyRoutes.js";
 import profileRoutes from "./modules/profile/profile.routes.js";
 
 // PostgreSQL Support
@@ -153,6 +154,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/media", mediaRoutes);
 app.use("/api/social", socialRoutes);
+app.use("/api/social/stories", storyRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/youtube-creator", youtubeRoutes);
 

@@ -76,7 +76,7 @@ export const useUploadStore = create<UploadState>((set, get) => ({
     // Auto-dismiss after 5 seconds
     setTimeout(() => {
       get().reset();
-    }, 5000);
+    }, 4000);
   },
 
   setFailed: (error = 'Upload failed') => {
@@ -88,7 +88,7 @@ export const useUploadStore = create<UploadState>((set, get) => ({
     // Auto-dismiss after 5 seconds
     setTimeout(() => {
       get().reset();
-    }, 5000);
+    }, 4000);
   },
 
   reset: () => {

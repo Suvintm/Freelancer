@@ -142,5 +142,55 @@ export async function addMediaJob(mediaId, s3Key, userId, type = "IMAGE", priori
   return job;
 }
 
+/**
+ * Story Processing Queue
+ * Stories are high-priority, user-visible content.
+ */
+export const storyQueue = createQueue("story-processing", {
+  attempts: 1, // 🛑 Fail Fast for stories (Senior Audit recommendation)
+  backoff: { type: "exponential", delay: 2000 },
+  removeOnComplete: { age: 60, count: 500 },
+  removeOnFail: { age: 3600, count: 100 },
+});
+
+/**
+ * Story Cleanup Queue
+ * Handles deletion of expired stories.
+ */
+export const storyCleanupQueue = createQueue("story-cleanup", {
+  attempts: 3,
+  backoff: { type: "exponential", delay: 2000 },
+  removeOnComplete: { age: 60, count: 500 },
+  removeOnFail: { age: 3600, count: 100 },
+});
+
+/**
+ * Add a story processing job.
+ * Enqueues the background optimization for a newly uploaded story.
+ */
+export async function addStoryJob(mediaId, storageKey, userId, type = "IMAGE") {
+  if (!storyQueue) {
+    logger.warn("[Queue] storyQueue unavailable — Redis not connected.");
+    return null;
+  }
+
+  const job = await storyQueue.add(
+    "process-story",
+    {
+      mediaId,
+      key: storageKey,
+      userId,
+      type,
+      requestedAt: Date.now(),
+    },
+    {
+      jobId: `story_${mediaId}`,
+      priority: PRIORITY.HIGH,
+    }
+  );
+
+  return job;
+}
+
 // ─── EXPORTS ──────────────────────────────────────────────────────────────────
 export const connection = getRedisConnection();
