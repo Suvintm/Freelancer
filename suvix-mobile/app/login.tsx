@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Dimensions,
-  useColorScheme
+  useColorScheme,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -22,7 +22,6 @@ import { Colors } from '../src/constants/Colors';
 import SuvixInput from '../src/components/SuvixInput';
 import SuvixButton from '../src/components/SuvixButton';
 import { useAuthStore } from '../src/store/useAuthStore';
-import { useAccountVault } from '../src/hooks/useAccountVault';
 import { useGoogleAuth } from '../src/hooks/useGoogleAuth';
 import { isValidEmail } from '../src/utils/validation';
 import { api } from '../src/api/client';
@@ -36,38 +35,56 @@ export default function LoginScreen() {
   const theme = colorScheme === 'dark' ? Colors.dark : Colors.light;
   const isDark = colorScheme === 'dark';
 
-  // ── Add-Account Mode ──────────────────────────────────────────────────────
-  // When mode=add: login is for ADDING a second account, not replacing the current one
-  // When mode=reauth: a stored account's token expired, needs password re-entry
   const params = useLocalSearchParams<{ mode?: string; email?: string }>();
-  const isAddingAccount = useAuthStore(state => state.isAddingAccount); // Global state
-  const isAddMode = params.mode === 'add' || isAddingAccount;           // Respect both
+  const isAddingAccount = useAuthStore(state => state.isAddingAccount);
+  const isAddMode  = params.mode === 'add' || isAddingAccount;
   const isReauthMode = params.mode === 'reauth';
   const prefillEmail = params.email ?? '';
 
-  const [email, setEmail] = useState(prefillEmail);
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail]             = useState(prefillEmail);
+  const [password, setPassword]       = useState('');
+  const [showPassword, setShowPassword]         = useState(false);
+  const [loading, setLoading]         = useState(false);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
+
   const router = useRouter();
   const { signIn: googleSignIn, isLoading: isGoogleLoading } = useGoogleAuth();
   const { user, isAuthenticated, setAuth } = useAuthStore();
-  const vault = useAccountVault();
 
-  // 🏁 AUTO-REDIRECT: Detect when a Google/Social login succeeds in Add-Account mode
-  // Since isAuthenticated may already be true (multi-account), we watch for ID changes.
+  // ─────────────────────────────────────────────────────────────────────────────
+  // ✅ THE FIX: Track the user ID that was active when this screen MOUNTED.
+  //
+  // THE BUG that was here:
+  //   if (isAuthenticated && user && isAddingAccount) → redirect immediately
+  //
+  // This fired on mount because all 3 were already true (existing user is
+  // authenticated, isAddingAccount was just set to true). It would immediately
+  // call setIsAddingAccount(false) and redirect back home before the user could
+  // type anything.
+  //
+  // THE FIX:
+  //   Store the user ID at mount time. Only redirect when a DIFFERENT user
+  //   successfully logs in (user.id changes from the initial value).
+  //   This means we stay on the login page until new credentials are entered.
+  // ─────────────────────────────────────────────────────────────────────────────
+  const initialUserIdRef = useRef<string | undefined>(user?.id);
+
   React.useEffect(() => {
-    if (isAuthenticated && user && isAddingAccount) {
-       console.log('✨ [AUTH] New account detected! Cleaning up and redirecting...');
-       useAuthStore.getState().setIsAddingAccount(false);
-       
-       // Smooth handoff to dashboard
-       setTimeout(() => {
-         router.replace('/(tabs)');
-       }, 500);
+    // Only act if a DIFFERENT user has successfully authenticated.
+    // "Different" means the user.id changed from the one we captured at mount time.
+    const isNewAccountAdded =
+      isAuthenticated &&
+      user &&
+      user.id !== initialUserIdRef.current;
+
+    if (isNewAccountAdded) {
+      console.log(
+        `✨ [AUTH] New account authenticated (@${user?.username}). Cleaning up and redirecting...`,
+      );
+      useAuthStore.getState().setIsAddingAccount(false);
+      setTimeout(() => router.replace('/(tabs)'), 400);
     }
-  }, [user?.id, isAuthenticated, isAddingAccount, router]);
+  }, [user?.id, isAuthenticated, router]);
 
   const handleImpact = (style = Haptics.ImpactFeedbackStyle.Light) => {
     Haptics.impactAsync(style);
@@ -80,7 +97,6 @@ export default function LoginScreen() {
       Alert.alert('Missing Info', 'Email and password are required.');
       return;
     }
-
     if (!isValidEmail(email)) {
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
       Alert.alert('Invalid Email', 'Please enter a valid email address (e.g., name@example.com).');
@@ -92,55 +108,60 @@ export default function LoginScreen() {
 
     try {
       const response = await api.post('/auth/login', {
-        email: email.trim().toLowerCase(),
+        email:    email.trim().toLowerCase(),
         password,
       });
 
       if (response.data.success) {
         handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
-        const { user, token, refreshToken, accessTokenExpiresAt } = response.data;
+        const { user: newUser, token, refreshToken, accessTokenExpiresAt } = response.data;
 
-        setTimeout(async () => {
-          const { setIsAddingAccount, isAddingAccount } = useAuthStore.getState();
+        // setAuth will update user.id in the store, which the useEffect above will
+        // detect as a "new account" and trigger the redirect automatically.
+        await setAuth(newUser, token, refreshToken, { accessTokenExpiresAt });
 
-          // ── PROCESS AUTH ──
-          // setAuth internally handles adding/updating the account in the vault
-          await setAuth(user, token, refreshToken, { accessTokenExpiresAt });
-
-          // Reset Add Account mode if it was active
-          setIsAddingAccount(false);
+        // In reauth mode specifically (token expired, re-entering password),
+        // we navigate back to wherever the user came from.
+        if (isReauthMode) {
           setShowLoadingOverlay(false);
-
-          if (isAddingAccount || isReauthMode) {
-            console.log('✅ [AUTH] Account added/re-verified successfully.');
-            // Navigate back or to tabs
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace('/(tabs)');
-            }
+          setLoading(false);
+          console.log('✅ [AUTH] Re-auth successful.');
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/(tabs)');
           }
-        }, 1200);
+          return;
+        }
+
+        // For normal login (no add-account mode), the _layout.tsx guard handles
+        // navigation automatically once user is set in the store.
+       setShowLoadingOverlay(false);
+setLoading(false);
+// ✅ FIX: Navigate explicitly — don't rely on useEffect because
+// key={user?.id} in _layout.tsx remounts the Stack before the effect fires.
+useAuthStore.getState().setIsAddingAccount(false);
+router.replace('/(tabs)');
       } else {
         setShowLoadingOverlay(false);
+        setLoading(false);
       }
     } catch (error: any) {
       setShowLoadingOverlay(false);
+      setLoading(false);
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
 
       if (error.response?.status === 403 && error.response?.data?.isBanned) {
-        return;
+        return; // Ban redirect is handled by Axios interceptor
       }
 
-      Alert.alert('Login Failed', error.response?.data?.message || 'Check your credentials.');
-    } finally {
-      if (!showLoadingOverlay) {
-        setLoading(false);
-      }
+      Alert.alert(
+        'Login Failed',
+        error.response?.data?.message || 'Please check your credentials and try again.',
+      );
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
   const overlayMessage = isAddMode
     ? 'Adding account...'
     : isReauthMode
@@ -162,9 +183,8 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.primary }]}>
       <ProcessingOverlay isVisible={showLoadingOverlay} message={overlayMessage} />
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-      {/* Back button in Add-Account / Reauth mode */}
       {(isAddMode || isReauthMode) && (
         <TouchableOpacity
           style={styles.backButton}
@@ -179,17 +199,29 @@ export default function LoginScreen() {
       )}
 
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>
-          <ScrollView contentContainerStyle={styles.scrollContent} scrollEnabled={SCREEN_HEIGHT < 700} showsVerticalScrollIndicator={false}>
-
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.keyboardView}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            scrollEnabled={SCREEN_HEIGHT < 700}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.header}>
-              <Image source={require('../assets/whitebglogo.png')} style={[styles.logo, { tintColor: isDark ? undefined : theme.text }]} resizeMode="contain" />
+              <Image
+                source={require('../assets/whitebglogo.png')}
+                style={[styles.logo, { tintColor: isDark ? undefined : theme.text }]}
+                resizeMode="contain"
+              />
               <Text style={[styles.title, { color: theme.text }]}>{titleText}</Text>
               {subtitleText ? (
-                <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{subtitleText}</Text>
+                <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+                  {subtitleText}
+                </Text>
               ) : null}
             </View>
-            
+
             <View style={styles.form}>
               <View style={styles.inputGroup}>
                 <SuvixInput
@@ -202,6 +234,7 @@ export default function LoginScreen() {
                   autoCorrect={false}
                   spellCheck={false}
                   textContentType="none"
+                  autoCapitalize="none"
                   icon={<Feather name="mail" size={16} />}
                 />
                 <SuvixInput
@@ -213,47 +246,72 @@ export default function LoginScreen() {
                   secureTextEntry={!showPassword}
                   icon={<Feather name="lock" size={16} />}
                   rightIcon={
-                    <TouchableOpacity onPress={() => { handleImpact(); setShowPassword(!showPassword); }}>
-                      <Feather name={showPassword ? "eye-off" : "eye"} color={theme.textSecondary} size={16} />
+                    <TouchableOpacity
+                      onPress={() => { handleImpact(); setShowPassword(v => !v); }}
+                    >
+                      <Feather
+                        name={showPassword ? 'eye-off' : 'eye'}
+                        color={theme.textSecondary}
+                        size={16}
+                      />
                     </TouchableOpacity>
                   }
                 />
               </View>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.forgotPassword}
                 onPress={() => { handleImpact(); router.push('/forgot-password'); }}
               >
                 <Text style={[styles.forgotText, { color: theme.text }]}>Forgot Password?</Text>
               </TouchableOpacity>
 
-              <SuvixButton 
-                title={loading ? 'Signing in...' : 'Sign In'} 
+              <SuvixButton
+                title={loading ? 'Signing in...' : 'Sign In'}
                 onPress={handleLogin}
                 loading={loading}
                 variant="primary"
               />
 
               <View style={styles.dividerContainer}>
-                <View style={[styles.line, { backgroundColor: theme.border }]} /><Text style={[styles.dividerText, { color: theme.textSecondary }]}>OR</Text><View style={[styles.line, { backgroundColor: theme.border }]} />
+                <View style={[styles.line, { backgroundColor: theme.border }]} />
+                <Text style={[styles.dividerText, { color: theme.textSecondary }]}>OR</Text>
+                <View style={[styles.line, { backgroundColor: theme.border }]} />
               </View>
 
-              <TouchableOpacity 
-                style={[styles.googleButton, { borderColor: theme.border, backgroundColor: theme.secondary }, (isGoogleLoading || loading) && styles.btnDisabled]} 
+              <TouchableOpacity
+                style={[
+                  styles.googleButton,
+                  { borderColor: theme.border, backgroundColor: theme.secondary },
+                  (isGoogleLoading || loading) && styles.btnDisabled,
+                ]}
                 onPress={() => { handleImpact(); googleSignIn(); }}
                 disabled={isGoogleLoading || loading}
               >
-                <Image source={require('../assets/google-icon.png')} style={styles.googleIconAsset} resizeMode="contain" />
-                <Text style={[styles.googleButtonText, { color: theme.text }]}>Continue with Google</Text>
+                <Image
+                  source={require('../assets/google-icon.png')}
+                  style={styles.googleIconAsset}
+                  resizeMode="contain"
+                />
+                <Text style={[styles.googleButtonText, { color: theme.text }]}>
+                  Continue with Google
+                </Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles.footer}>
-              <Text style={[styles.footerText, { color: theme.textSecondary }]}>New to SuviX? </Text>
-              <TouchableOpacity onPress={() => { handleImpact(); router.replace('/role-selection'); }}>
-                <Text style={[styles.footerLink, { color: theme.text }]}>Join Now</Text>
-              </TouchableOpacity>
-            </View>
+            {/* Only show sign-up link in normal login mode */}
+            {!isAddMode && !isReauthMode && (
+              <View style={styles.footer}>
+                <Text style={[styles.footerText, { color: theme.textSecondary }]}>
+                  New to SuviX?{' '}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => { handleImpact(); router.replace('/role-selection'); }}
+                >
+                  <Text style={[styles.footerLink, { color: theme.text }]}>Join Now</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </ScrollView>
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
@@ -262,46 +320,29 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  backButton: { position: 'absolute', top: 52, left: 20, zIndex: 10, padding: 8 },
-  keyboardView: { flex: 1 },
-  scrollContent: { 
-    flexGrow: 1, 
-    paddingHorizontal: 32, 
-    justifyContent: 'center',
-    paddingVertical: 10
-  },
-  header: { alignItems: 'center', marginBottom: 24 },
-  logo: { width: 100, height: 40, marginBottom: 8 },
-  title: { fontSize: 24, fontWeight: '900', letterSpacing: -0.5 },
-  subtitle: { fontSize: 13, fontWeight: '500', marginTop: 4, textAlign: 'center' },
-  form: { width: '100%' },
-  inputGroup: { marginBottom: 4 },
-  forgotPassword: { 
-    alignSelf: 'flex-end', 
-    marginBottom: 24,
-    paddingVertical: 4
-  },
-  forgotText: { 
-    fontSize: 13, 
-    fontWeight: '700',
-    opacity: 0.8
-  },
-  btnDisabled: { opacity: 0.5 },
+  container:     { flex: 1 },
+  backButton:    { position: 'absolute', top: 52, left: 20, zIndex: 10, padding: 8 },
+  keyboardView:  { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingHorizontal: 32, justifyContent: 'center', paddingVertical: 10 },
+  header:        { alignItems: 'center', marginBottom: 24 },
+  logo:          { width: 100, height: 40, marginBottom: 8 },
+  title:         { fontSize: 24, fontWeight: '900', letterSpacing: -0.5 },
+  subtitle:      { fontSize: 13, fontWeight: '500', marginTop: 4, textAlign: 'center' },
+  form:          { width: '100%' },
+  inputGroup:    { marginBottom: 4 },
+  forgotPassword: { alignSelf: 'flex-end', marginBottom: 24, paddingVertical: 4 },
+  forgotText:    { fontSize: 13, fontWeight: '700', opacity: 0.8 },
+  btnDisabled:   { opacity: 0.5 },
   dividerContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
-  line: { flex: 1, height: 1.2 },
-  dividerText: { paddingHorizontal: 16, fontSize: 10, fontWeight: '700' },
-  googleButton: { 
-    flexDirection: 'row', 
-    height: 52, 
-    borderRadius: 100, 
-    borderWidth: 1.2, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
+  line:          { flex: 1, height: 1.2 },
+  dividerText:   { paddingHorizontal: 16, fontSize: 10, fontWeight: '700' },
+  googleButton:  {
+    flexDirection: 'row', height: 52, borderRadius: 100,
+    borderWidth: 1.2, justifyContent: 'center', alignItems: 'center',
   },
-  googleIconAsset: { width: 24, height: 24 },
-  googleButtonText: { fontSize: 15, fontWeight: '600', marginLeft: 12 },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 32 },
-  footerText: { fontSize: 14, fontWeight: '500' },
-  footerLink: { fontSize: 14, fontWeight: '800' },
+  googleIconAsset:   { width: 24, height: 24 },
+  googleButtonText:  { fontSize: 15, fontWeight: '600', marginLeft: 12 },
+  footer:        { flexDirection: 'row', justifyContent: 'center', marginTop: 32 },
+  footerText:    { fontSize: 14, fontWeight: '500' },
+  footerLink:    { fontSize: 14, fontWeight: '800' },
 });

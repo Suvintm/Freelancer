@@ -264,11 +264,12 @@ export default function SignupScreen() {
         
         // Give the user 1.5s to "feel" the success before the jump (overlay is already showing)
         setTimeout(async () => {
-          const { setIsAddingAccount } = useAuthStore.getState();
-          await setAuth(user, token, refreshToken);
-          setIsAddingAccount(false);
-          clearTempSignupData();
-        }, 1500);
+  await setAuth(user, token, refreshToken);
+  useAuthStore.getState().setIsAddingAccount(false);
+  clearTempSignupData();
+  // ✅ FIX: Navigate explicitly after setAuth
+  router.replace('/(tabs)');
+}, 1500);
       } else {
         setShowSuccessOverlay(false);
       }

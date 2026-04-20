@@ -1,14 +1,3 @@
-/**
- * AccountSwitcherSheet.tsx — Instagram-style account switcher bottom sheet
- *
- * Features:
- * - Shows all logged-in accounts with avatar, username, account type
- * - One-tap account switch with proactive token refresh
- * - "Add Account" button that logs in a new account without touching current session
- * - "Remove Account" on long press with confirmation
- * - "Log out all devices" (nuclear option)
- * - Premium dark/light glassmorphism design
- */
 import React, { useCallback, useRef } from 'react';
 import {
   View,
@@ -24,7 +13,7 @@ import BottomSheet, {
   BottomSheetView,
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -40,19 +29,18 @@ interface AccountSwitcherSheetProps {
 
 export const AccountSwitcherSheet = ({ sheetRef, isDark }: AccountSwitcherSheetProps) => {
   const router = useRouter();
-  const { user, logout, fetchUser } = useAuthStore();
-  const { getAllAccounts, activeAccountId, switchTo, removeAccount } = useAccountVault();
+  const { user, logout } = useAuthStore();
+  const { getAllAccounts, activeAccountId, removeAccount } = useAccountVault();
 
   const accounts = getAllAccounts();
   const isSwitching = useRef(false);
 
-  const bg = isDark ? '#0F0F0F' : '#FFFFFF';
+  const bg       = isDark ? '#0F0F0F' : '#FFFFFF';
   const handleBg = isDark ? '#3F3F46' : '#D4D4D8';
   const textColor = isDark ? '#F9FAFB' : '#111827';
-  const subColor = isDark ? '#6B7280' : '#9CA3AF';
-  const divider = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const subColor  = isDark ? '#6B7280' : '#9CA3AF';
+  const divider   = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
 
-  // ─── Backdrop (tap outside to dismiss) ──────────────────────────────────────
   const renderBackdrop = useCallback(
     (props: any) => (
       <BottomSheetBackdrop
@@ -68,7 +56,17 @@ export const AccountSwitcherSheet = ({ sheetRef, isDark }: AccountSwitcherSheetP
 
   const close = () => sheetRef.current?.close();
 
-  // ─── Switch Account ──────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────────
+  // ✅ FIX: handleSwitch now calls switchAccount ONLY.
+  //
+  // Previously this called vault.switchTo() first, then switchAccount() which
+  // called vault.switchTo() again. The double-call caused a race condition where
+  // the second switchTo() read a stale `accounts` reference and failed to update
+  // tokens properly, leaving the user on the same account.
+  //
+  // Now: switchAccount() is the single source of truth. It handles vault swap,
+  // token refresh, and profile fetch atomically.
+  // ─────────────────────────────────────────────────────────────────────────────
   const handleSwitch = async (userId: string) => {
     if (isSwitching.current || userId === activeAccountId) {
       close();
@@ -78,39 +76,35 @@ export const AccountSwitcherSheet = ({ sheetRef, isDark }: AccountSwitcherSheetP
     isSwitching.current = true;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    const result = await switchTo(userId);
+    // Close the sheet immediately for snappy UX
+    // The AccountSwitchOverlay (driven by switchingToAccount state) shows instead
+    close();
+
+    // Delegate EVERYTHING to switchAccount — it handles vault + tokens + profile
+    const result = await useAuthStore.getState().switchAccount(userId);
 
     if (result === 'success') {
-      // 🚀 ATOMIC SWITCH: This handles the whole vault swap + profile fetch + state lock
-      const switchResult = await useAuthStore.getState().switchAccount(userId);
-      
-      if (switchResult === 'success') {
-        close();
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        
-        // Landing the user on the profile page of their new identity as requested
-        router.replace('/(tabs)/profile');
-      } else {
-        Alert.alert('Switch Failed', 'Could not sync the new account profile. Please try again.');
-      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Land user on their new profile
+      router.replace('/(tabs)/profile');
     } else if (result === 'needs_reauth') {
-      close();
-      // Navigate to login in add-account mode, pre-filled for this account
       const account = getAllAccounts().find(a => a.userId === userId);
       setTimeout(() => {
         router.push({
           pathname: '/login',
-          params: { mode: 'reauth', userId, email: account?.email ?? '' }
+          params: { mode: 'reauth', userId, email: account?.email ?? '' },
         });
       }, 300);
     } else {
-      Alert.alert('Switch Failed', 'Could not switch to this account. Please try again.');
+      Alert.alert(
+        'Switch Failed',
+        'Could not switch to this account. Please check your connection and try again.'
+      );
     }
 
     isSwitching.current = false;
   };
 
-  // ─── Remove Account ──────────────────────────────────────────────────────────
   const handleRemove = (userId: string) => {
     const account = accounts.find(a => a.userId === userId);
     if (!account) return;
@@ -126,16 +120,11 @@ export const AccountSwitcherSheet = ({ sheetRef, isDark }: AccountSwitcherSheetP
           onPress: async () => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
             if (userId === activeAccountId) {
-              // Removing active account — let logout handle it
               await logout();
               close();
             } else {
-              // Removing an inactive account — just remove from vault
               try {
                 await removeAccount(userId);
-                // Call server to revoke this specific session
-                // (best effort — don't block if it fails)
-                const { api } = require('../../api/client');
               } catch { /* fail silently */ }
             }
           },
@@ -144,10 +133,8 @@ export const AccountSwitcherSheet = ({ sheetRef, isDark }: AccountSwitcherSheetP
     );
   };
 
-  // ─── Add Account ─────────────────────────────────────────────────────────────
   const handleAddAccount = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
     Alert.alert(
       'Add Account',
       'Would you like to log into an existing account or create a new one?',
@@ -157,9 +144,7 @@ export const AccountSwitcherSheet = ({ sheetRef, isDark }: AccountSwitcherSheetP
           onPress: () => {
             useAuthStore.getState().setIsAddingAccount(true);
             close();
-            setTimeout(() => {
-              router.push({ pathname: '/login', params: { mode: 'add' } });
-            }, 300);
+            setTimeout(() => router.push({ pathname: '/login', params: { mode: 'add' } }), 300);
           },
         },
         {
@@ -167,26 +152,19 @@ export const AccountSwitcherSheet = ({ sheetRef, isDark }: AccountSwitcherSheetP
           onPress: () => {
             useAuthStore.getState().setIsAddingAccount(true);
             close();
-            setTimeout(() => {
-              // Skip welcome slides and go straight to role selection
-              router.push('/role-selection');
-            }, 300);
+            setTimeout(() => router.push('/role-selection'), 300);
           },
         },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
+        { text: 'Cancel', style: 'cancel' },
       ],
       { cancelable: true }
     );
   };
 
-  // ─── Logout All ──────────────────────────────────────────────────────────────
   const handleLogoutAll = () => {
     Alert.alert(
       '🚨 Log Out Everywhere',
-      'This will immediately log you out of ALL devices and accounts. You will need to enter your password again on all devices.',
+      'This will immediately log you out of ALL devices and accounts.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -196,10 +174,8 @@ export const AccountSwitcherSheet = ({ sheetRef, isDark }: AccountSwitcherSheetP
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             close();
             try {
-              const { api } = require('../../api/client');
               await api.post('/auth/logout-all');
-            } catch { /* fail silently, logout handles local cleanup */ }
-            // Wipe everything locally
+            } catch { /* fail silently */ }
             const vault = useAccountVault.getState();
             await vault.clearAll();
             useAuthStore.setState({
@@ -226,7 +202,6 @@ export const AccountSwitcherSheet = ({ sheetRef, isDark }: AccountSwitcherSheetP
       style={styles.sheet}
     >
       <BottomSheetView style={styles.content}>
-        {/* ── Header ── */}
         <View style={styles.header}>
           <Text style={[styles.title, { color: textColor }]}>Manage Accounts</Text>
           <TouchableOpacity onPress={close} style={styles.closeBtn}>
@@ -238,7 +213,6 @@ export const AccountSwitcherSheet = ({ sheetRef, isDark }: AccountSwitcherSheetP
           Logged in as @{user?.username}
         </Text>
 
-        {/* ── Account List ── */}
         <ScrollView
           style={styles.list}
           showsVerticalScrollIndicator={false}
@@ -256,9 +230,11 @@ export const AccountSwitcherSheet = ({ sheetRef, isDark }: AccountSwitcherSheetP
             />
           ))}
 
-          {/* ── Add Account Button (Integrated in list) ── */}
           <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: isDark ? 'rgba(139,92,246,0.1)' : 'rgba(139,92,246,0.05)' }]}
+            style={[
+              styles.addBtn,
+              { backgroundColor: isDark ? 'rgba(139,92,246,0.1)' : 'rgba(139,92,246,0.05)' },
+            ]}
             onPress={handleAddAccount}
             activeOpacity={0.8}
           >
@@ -270,22 +246,21 @@ export const AccountSwitcherSheet = ({ sheetRef, isDark }: AccountSwitcherSheetP
           </TouchableOpacity>
         </ScrollView>
 
-        {/* ── Footer Actions ── */}
         <View style={[styles.footer, { borderTopColor: divider }]}>
-          <TouchableOpacity 
-            style={[styles.accountsCenterBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}
+          <TouchableOpacity
+            style={[
+              styles.accountsCenterBtn,
+              { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' },
+            ]}
             onPress={() => { close(); setTimeout(() => router.push('/settings'), 300); }}
           >
-            <Text style={[styles.accountsCenterText, { color: textColor }]}>Go to Accounts Center</Text>
+            <Text style={[styles.accountsCenterText, { color: textColor }]}>
+              Go to Accounts Center
+            </Text>
           </TouchableOpacity>
 
-          {/* ── Logout All (Secondary Footer) ── */}
           {accounts.length > 1 && (
-            <TouchableOpacity
-              style={styles.logoutAllBtn}
-              onPress={handleLogoutAll}
-              activeOpacity={0.8}
-            >
+            <TouchableOpacity style={styles.logoutAllBtn} onPress={handleLogoutAll}>
               <Text style={styles.logoutAllText}>Log out all devices</Text>
             </TouchableOpacity>
           )}
@@ -296,6 +271,9 @@ export const AccountSwitcherSheet = ({ sheetRef, isDark }: AccountSwitcherSheetP
     </BottomSheet>
   );
 };
+
+// Import needed for logout-all button
+import { api } from '../../api/client';
 
 const styles = StyleSheet.create({
   sheet: {
@@ -315,59 +293,32 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     paddingTop: 4,
   },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   title: { fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
   closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 32, height: 32, borderRadius: 16,
     backgroundColor: 'rgba(128,128,128,0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center', alignItems: 'center',
   },
   subtitle: { fontSize: 13, fontWeight: '600', marginBottom: 16, opacity: 0.6 },
   list: { maxHeight: SCREEN_HEIGHT * 0.45 },
-  footer: {
-    paddingTop: 16,
-    borderTopWidth: 1,
-    marginTop: 8,
-  },
+  footer: { paddingTop: 16, borderTopWidth: 1, marginTop: 8 },
   accountsCenterBtn: {
-    height: 52,
-    borderRadius: 26,
-    justifyContent: 'center',
-    alignItems: 'center',
+    height: 52, borderRadius: 26,
+    justifyContent: 'center', alignItems: 'center',
     marginBottom: 8,
   },
-  accountsCenterText: {
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-  },
+  accountsCenterText: { fontSize: 14, fontWeight: '800', letterSpacing: -0.2 },
   addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    marginBottom: 10,
-    gap: 12,
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 14, paddingHorizontal: 16,
+    borderRadius: 14, marginBottom: 10, gap: 12,
   },
   addIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 32, height: 32, borderRadius: 16,
     backgroundColor: 'rgba(139,92,246,0.18)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center', alignItems: 'center',
   },
   addBtnText: { flex: 1, fontSize: 15, fontWeight: '700' },
-  logoutAllBtn: {
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
+  logoutAllBtn: { paddingVertical: 12, alignItems: 'center' },
   logoutAllText: { fontSize: 13, fontWeight: '700', color: '#EF4444' },
 });

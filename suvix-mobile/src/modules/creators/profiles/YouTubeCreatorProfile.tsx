@@ -507,19 +507,31 @@ export default function YouTubeCreatorProfile() {
             extraTabs={['YT POSTS']}
             onRepairSuccess={() => fetchUser()}
             renderCustomTab={(tab) => {
-              const primaryChannel = youtubeProfiles.find(p => p.is_primary) || youtubeProfiles[0];
-              const channelAvatar = primaryChannel?.thumbnail_url;
+              if (tab !== 'YT POSTS') return null;
 
-              const videoItems = (user.youtubeVideos || []).map((video: any) => ({
-                id: video.video_id || video.id,
-                thumbnail: video.thumbnail,
-                type: 'YT VIDEOS' as const,
-                title: video.title,
-                channelAvatar: channelAvatar, // 🔴 Brand identity on card
-                published_at: video.published_at || video.publishedAt,
-                // 🛰️ NORMALIZE FOR GRID ENGINE
-                isProcessing: false
-              }));
+              // 🔗 MAP & SORT: Merge videos from all channels and find their branding
+              const videoItems = [...(user.youtubeVideos || [])]
+                .sort((a, b) => {
+                   const dateA = new Date(a.published_at || a.publishedAt || 0).getTime();
+                   const dateB = new Date(b.published_at || b.publishedAt || 0).getTime();
+                   return dateB - dateA; // 📅 Newest first
+                })
+                .map((video: any) => {
+                  // Find the specific channel avatar this video belongs to
+                  const channelId = video.channel_id || video.channelId;
+                  const originatingChannel = youtubeProfiles.find(p => p.channel_id === channelId || p.id === channelId);
+                  const specificAvatar = originatingChannel?.thumbnail_url || (youtubeProfiles.find(p => p.is_primary) || youtubeProfiles[0])?.thumbnail_url;
+
+                  return {
+                    id: video.video_id || video.id,
+                    thumbnail: video.thumbnail,
+                    type: 'YT VIDEOS' as const,
+                    title: video.title,
+                    channelAvatar: specificAvatar, // 🔴 Exact branding attribution
+                    published_at: video.published_at || video.publishedAt,
+                    isProcessing: false
+                  };
+                });
 
               const handleItemPress = (item: any) => {
                 const url = `https://www.youtube.com/watch?v=${item.id}`;
