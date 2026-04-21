@@ -13,9 +13,14 @@ const storyCleanupProcessor = async (job) => {
   try {
     // 1. Find Expired Stories (Harden with UTC ISO string)
     const now = new Date();
+    const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
+
     const expiredStories = await prisma.story.findMany({
       where: {
-        expires_at: { lt: now }
+        OR: [
+          { expires_at: { lt: now } },
+          { created_at: { lt: twoMinutesAgo } } // 🚀 TEST MODE: Force delete anything older than 2 mins
+        ]
       },
       include: {
         media: true
@@ -23,11 +28,11 @@ const storyCleanupProcessor = async (job) => {
     });
 
     if (expiredStories.length === 0) {
-      logger.info(`🧹 [CLEANUP] No expired stories found. (Server Time: ${now.toISOString()}). Sweeper idle.`);
+      logger.info(`🧹 [CLEANUP] No expired stories found. (Threshold: ${twoMinutesAgo.toISOString()}). Sweeper idle.`);
       return { purgedCount: 0 };
     }
 
-    logger.info(`🧹 [CLEANUP] Found ${expiredStories.length} expired stories. Current Server Time: ${now.toISOString()}`);
+    logger.info(`🧹 [CLEANUP] Found ${expiredStories.length} stories to purge. (Threshold: ${twoMinutesAgo.toISOString()})`);
 
     const cdnPurgeList = [];
 
@@ -59,7 +64,7 @@ const storyCleanupProcessor = async (job) => {
             userId,
             type: "STORY_EXPIRED",
             title: "Story Expired",
-            body: "Your story has reached its 12-hour limit and has been safely removed.",
+            body: "Your story has reached its 2-minute limit and has been safely removed.",
             entityId: id,
             entityType: "STORY"
         });
@@ -86,7 +91,7 @@ const storyCleanupProcessor = async (job) => {
         story: null, // No related story record
         storageKey: { startsWith: "uploads/processed/stories/" },
         status: { in: ["PENDING", "FAILED"] },
-        created_at: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+        created_at: { lt: new Date(Date.now() - 5 * 60 * 1000) } // Reduced to 5 minutes for testing (Production: 24h)
       }
     });
 

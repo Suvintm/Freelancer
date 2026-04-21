@@ -73,7 +73,7 @@ export const processVideo = async (rawBuffer, userId, mediaId, folder = STORAGE_
             "-profile:v baseline",
             "-level 3.0",
             "-start_number 0",
-            "-hls_time 4", // 4 second chunks
+            "-hls_time 3", // Reduced to 3s for faster "First Frame" latency
             "-hls_list_size 0",
             "-f hls",
             "-hls_segment_filename", path.join(hlsDir, "seg%d.ts")
@@ -166,13 +166,19 @@ export const processVideo = async (rawBuffer, userId, mediaId, folder = STORAGE_
     const hlsUploadPromises = hlsFiles.map(file => {
       const fileKey = `${folder}/${userId}/${mediaId}/hls/${file}`;
       const isPlaylist = file.endsWith(".m3u8");
-      const contentType = (isPlaylist ? "application/x-mpegURL" : "video/MP2T").trim();
+      // 🚀 MIME Standardization: application/vnd.apple.mpegurl is the industry standard for HLS playlists.
+      const contentType = (isPlaylist ? "application/vnd.apple.mpegurl" : "video/MP2T").trim();
       
       // 🚀 SEGMENT OPTIMIZATION: .ts files are immutable and can be cached for 1 year.
       // .m3u8 playlists should follow the Story TTL (12h).
+      // 🚀 CDN OPTIMIZATION:
+      // Playlists: max-age 12h (browser), s-maxage 24h (CDN Edge).
+      // Segments: max-age 1y (immutable).
       const finalCacheControl = isPlaylist 
-        ? cacheControl 
-        : "public, max-age=31536000, immutable";
+        ? cacheControl // 🚀 Stories use 2-min TTL; others use default
+        : (folder === STORAGE_FOLDERS.STORIES 
+            ? cacheControl // 🚀 Test Mode: Story segments also follow 2-min TTL
+            : "public, max-age=31536000, s-maxage=31536000, immutable");
 
       return storage.uploadObject(fs.readFileSync(path.join(hlsDir, file)), fileKey, { 
         contentType,

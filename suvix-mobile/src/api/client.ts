@@ -132,18 +132,19 @@ api.interceptors.response.use(
         });
 
         if (res.data.success) {
-          // Update the store with BOTH tokens and the refreshed user identity
-          // This fix ensures that if Gym refreshes, but Suvin is active, the crossover is blocked.
-          // And if Suvin refreshes, the profile data stays current.
+          const newToken = res.data.token;
+          const newRefreshToken = res.data.refreshToken;
           const refreshedUser = res.data.user;
-          await useAuthStore.getState().setTokens(token, newRefreshToken, refreshedUser);
+
+          // Update the store with BOTH tokens and the refreshed user identity
+          await useAuthStore.getState().setTokens(newToken, newRefreshToken, refreshedUser);
           
           console.log(`✅ [API] Session refreshed successfully for @${refreshedUser?.username || 'user'}.`);
           isRefreshing = false;
-          onRerfreshed(token);
+          onRerfreshed(newToken);
 
           // Retry the original request
-          originalRequest.headers.Authorization = `Bearer ${token}`;
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
           return api(originalRequest);
         }
       } catch (refreshError) {

@@ -71,7 +71,12 @@ export const smartResolveMediaUrl = (storageKey, provider = "S3") => {
 
   // 5. Standard path: Prefix with activeBase
   const cleanKey = storageKey.startsWith('/') ? storageKey.substring(1) : storageKey;
-  return `${activeBase}/${cleanKey}`;
+  const finalUrl = `${activeBase}/${cleanKey}`;
+  
+  const isCdn = !!CDN_BASE_URL;
+  console.log(`📡 [RESOLVER] ${isCdn ? '🚀 [CDN]' : '📦 [S3]'} ${cleanKey}`);
+
+  return finalUrl;
 };
 
 /**

@@ -37,6 +37,8 @@ import { useSharedValue, runOnJS, useAnimatedReaction } from 'react-native-reani
 import ViewShot, { captureRef }           from 'react-native-view-shot';
 import * as MediaLibrary                  from 'expo-media-library';
 import { useUploadStore }                 from '../../src/store/useUploadStore';
+import { api }                            from '../../src/api/client';
+import { storyApi }                       from '../../src/api/storyApi';
 
 import {
   StoryObject, CanvasBg, DrawPath,
@@ -613,29 +615,30 @@ export default function AddStoryScreen() {
         Alert.alert('Permission Error', 'SuviX needs gallery access to save stories.');
         return;
       }
+
       setIsSaving(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setSelectedObjectId(null);
-      // Auto-dismiss after 4 seconds
-      setTimeout(() => {
-        get().reset();
-      }, 4000);
+
+      // One frame delay so the deselection renders before capture
       setTimeout(async () => {
         try {
-          const uri    = await captureRef(canvasRef, { format: 'jpg', quality: 1, result: 'tmpfile' });
-          const asset  = await MediaLibrary.createAssetAsync(uri);
-          const album  = await MediaLibrary.getAlbumAsync('SuviX Stories');
+          const uri   = await captureRef(canvasRef, { format: 'jpg', quality: 1, result: 'tmpfile' });
+          const asset = await MediaLibrary.createAssetAsync(uri);
+          const album = await MediaLibrary.getAlbumAsync('SuviX Stories');
+
           if (album === null) {
             await MediaLibrary.createAlbumAsync('SuviX Stories', asset, false);
           } else {
             await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
           }
+
           setIsSaving(false);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          Alert.alert('Saved!', 'Story saved to SuviX Stories album.');
+          Alert.alert('Saved! 📸', 'Story saved to your SuviX Stories album.');
         } catch {
           setIsSaving(false);
-          Alert.alert('Error', 'Could not save story.');
+          Alert.alert('Error', 'Could not save story. Please try again.');
         }
       }, 160);
     } catch {
@@ -663,101 +666,125 @@ export default function AddStoryScreen() {
 
   const handleShare = async () => {
     if (isUploading) return;
-    
     setIsUploading(true);
     setSelectedObjectId(null);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    
-    // 1. Capture the Canvas (Production Quality)
-    let uri: string;
-    const videoObj = objects.find(o => o.type === 'VIDEO');
-    const isVideoStory = !!videoObj; 
+
+    // ── 1. Determine story type ─────────────────────────────────────────────
+    const videoObj      = objects.find(o => o.type === 'VIDEO');
+    const isVideoStory  = !!videoObj;
     const finalMimeType = isVideoStory ? 'video/mp4' : 'image/jpeg';
 
+    // ── 2. Capture / resolve media ──────────────────────────────────────────
+    let mediaUri: string;
     try {
-      if (!isVideoStory) {
-        uri = await captureRef(canvasRef, {
-          format: 'jpg',
-          quality: 0.9,
-          result: 'tmpfile'
-        });
+      if (isVideoStory) {
+        // Upload raw video; overlays are rendered as dynamic layers in viewer
+        mediaUri = videoObj!.content;
       } else {
-        // For video stories, we upload the raw video asset
-        uri = videoObj.content;
+        // Screenshot the canvas — ALL layers (bg + stickers + text) baked in
+        mediaUri = await captureRef(canvasRef, {
+          format:  'jpg',
+          quality: 0.92,
+          result:  'tmpfile',
+        });
       }
     } catch (err) {
-      console.error('❌ [CAPTURE] Failed:', err);
+      console.error('❌ [CAPTURE]', err);
       Alert.alert('Capture Error', 'Could not process your story canvas.');
       setIsUploading(false);
       return;
     }
 
-    // Navigate home instantly for elite UX
+    // Navigate home immediately — progress bar takes it from here
     router.back();
 
-    // 2. Initialize the Global Progress Bar
-    const { startUpload, updateProgress, setSuccess, setFailed, setProcessing } = useUploadStore.getState();
+    const { startUpload, updateProgress, setFailed, setProcessing } =
+      useUploadStore.getState();
     startUpload(isVideoStory ? 'VIDEO' : 'IMAGE', 'STORY');
 
     try {
-      // 3. Request a Signed Upload URL with Retries
-      const { api } = require('../../src/api/client');
-      const ticketRes = await retryWithBackoff(() => api.get('/social/stories/upload-url', {
-        params: { mimeType: finalMimeType }
-      }));
-
+      // ── 4. Get pre-signed upload URL ──────────────────────────────────────
+      updateProgress(5);
+      const ticketRes = await retryWithBackoff(() =>
+        api.get('/social/stories/upload-url', { params: { mimeType: finalMimeType } }),
+      );
       if (!ticketRes.data.success) throw new Error('Failed to get upload ticket');
       const { uploadUrl, storageKey } = ticketRes.data.data;
 
-      // 4. Perform XHR Upload to S3 with Retries (Re-creates XHR on flakey network)
-      await retryWithBackoff(() => new Promise((resolve, reject) => {
+      updateProgress(12);
+
+      // ── 5. Upload to S3/R2 directly (server never touches bytes) ─────────
+      // React Native XHR: send({ uri, type, name }) is the correct pattern
+      // for uploading a local file URI to a pre-signed PUT URL.
+      await retryWithBackoff(() => new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('PUT', uploadUrl);
         xhr.setRequestHeader('Content-Type', finalMimeType);
-        
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const upProgress = Math.round((event.loaded / event.total) * 100);
-            updateProgress(Math.min(upProgress, 95));
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            updateProgress(Math.round(12 + (e.loaded / e.total) * 78));
           }
         };
 
         xhr.onload = () => {
-          if (xhr.status === 200) resolve(true);
-          else reject(new Error(`S3 Upload failed: ${xhr.status}`));
+          // S3 returns 200 for regular PUT, some configs return 204
+          if (xhr.status >= 200 && xhr.status < 300) resolve();
+          else reject(new Error(`Upload failed: HTTP ${xhr.status}`));
         };
 
-        xhr.onerror = () => reject(new Error('S3 Network Error'));
-        xhr.send({ uri, type: finalMimeType, name: isVideoStory ? 'story.mp4' : 'story.jpg' } as any);
+        xhr.onerror   = () => reject(new Error('Network error during upload'));
+        xhr.ontimeout = () => reject(new Error('Upload timed out'));
+        xhr.timeout   = 120_000;
+
+        // React Native's XHR handles { uri } as a file reference
+        xhr.send({ uri: mediaUri, type: finalMimeType, name: isVideoStory ? 'story.mp4' : 'story.jpg' } as any);
       }));
 
-      // 5. Notify Backend & Trigger Background Processing with Retries
-      updateProgress(98);
-      
-      // Prepare metadata (Stickers, Text, Drawings)
-      const metadata = {
-        objects: objects.filter(o => o.id !== videoObj?.id), // Remove primary video from meta as it is the background
-        drawPaths,
-        canvasBg
+      updateProgress(92);
+
+      // ── 6. Build metadata ──────────────────────────────────────────────────
+      // CRITICAL:
+      // - canvasWidth + canvasHeight MUST be included so the viewer can scale
+      //   overlay coordinates from any creator device to any viewer device.
+      // - For IMAGE stories: clear objects + drawPaths (baked into screenshot).
+      //   The controller also does this as a safety net.
+      // - For VIDEO stories: include all overlay objects + drawPaths.
+      const canvasMetadata = {
+        canvasWidth:  canvasWidth,
+        canvasHeight: canvasHeight,
+        canvasBg:     canvasBg,
+        objects:      isVideoStory
+          ? objects.filter(o => o.id !== videoObj!.id) // Exclude the bg video itself
+          : [],                                          // IMAGE: baked in
+        drawPaths:    isVideoStory ? drawPaths : [],    // IMAGE: baked in
       };
 
-      const finalizeRes = await retryWithBackoff(() => api.post('/social/stories', {
-        storageKey,
-        mimeType: finalMimeType,
-        width: canvasWidth,
-        height: canvasHeight,
-        duration: isVideoStory ? 15 : 5, // Default 15s for videos
-        metadata
-      }));
+      // ── 7. Notify backend: create DB record + queue BullMQ job ────────────
+      await retryWithBackoff(() =>
+        api.post('/social/stories', {
+          storageKey,
+          mimeType:        finalMimeType,
+          width:           Math.round(canvasWidth),
+          height:          Math.round(canvasHeight),
+          duration:        isVideoStory ? storyDuration : 5,
+          displayDuration: storyDuration,   // How long the slide shows in viewer
+          caption:         null,
+          metadata:        canvasMetadata,
+        }),
+      );
 
-      if (!finalizeRes.data.success) throw new Error('Failed to finalize story');
-      
-      // Transition UI to "Processing" state — Sockets will take it from here
+      updateProgress(98);
+
+      // Processing happens in background. Socket 'story:status' = READY will
+      // trigger feed invalidation in useStories.ts.
       setProcessing();
 
+      console.log('✅ [STORY-UPLOAD] Pipeline complete. BullMQ processing in background.');
     } catch (err: any) {
       console.error('❌ [STORY-UPLOAD] Pipeline failed:', err.message);
-      setFailed(err.message || 'Network error');
+      setFailed(err.message || 'Upload failed. Please try again.');
     } finally {
       setIsUploading(false);
     }

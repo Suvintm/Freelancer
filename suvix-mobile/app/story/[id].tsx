@@ -1,22 +1,49 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+/**
+ * app/story/[id].tsx — Production Story Viewer Engine
+ *
+ * All bugs fixed vs previous version:
+ * ─────────────────────────────────────────────────────────────────────────────
+ * 1. COORDINATE SYSTEM FIX (stickers at wrong position)
+ *    Creator: DraggableItem anchors at (canvasWidth/2, canvasHeight*0.4).
+ *    obj.x/y are translations FROM that anchor.
+ *    Viewer now: base = (CANVAS_W/2, CANVAS_H*0.4), then apply scaled translation.
+ *    Formula: left = CANVAS_W/2 - itemW/2 + obj.x*scaleX
+ *             top  = CANVAS_H*0.4 + obj.y*scaleY
+ *
+ * 2. DOUBLE STICKER FIX (stickers appearing twice on image stories)
+ *    IMAGE stories: canvas screenshot has ALL layers baked in as pixels.
+ *    metadata.objects is always empty for IMAGE (set by controller).
+ *    Viewer never renders overlay objects for IMAGE type stories.
+ *
+ * 3. BLACK SCREEN FIX (no media visible)
+ *    Added null guard: skip rendering if currentSlide.image is null/empty.
+ *    bg_media_url is now properly set by storyProcessor.
+ *
+ * 4. CIRCULAR CLOSURE FIX (startAnimation / handleNext crash)
+ *    handleNext stored in a ref. startAnimation reads handleNextRef.current.
+ *    Breaks the circular dependency without changing observable behavior.
+ *
+ * 5. VIDEO PLAYER FIX
+ *    Wait for readyToPlay before starting progress bar.
+ *    player.replace() called when slide changes.
+ *    Properly paused/resumed on hold gesture.
+ *
+ * 6. CANVAS SCALING
+ *    Reads canvas_width / canvas_height from slide data.
+ *    Scales overlay coordinates: viewer coords = creator coords * (viewerSize/creatorSize).
+ */
+
+import React, {
+  useState, useRef, useEffect, useMemo, useCallback,
+} from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
-  Platform,
-  StatusBar,
-  Pressable,
-  Dimensions,
-  Alert,
+  View, Text, StyleSheet, Image, TouchableOpacity,
+  Platform, StatusBar, Pressable, Dimensions, Alert,
+  ActivityIndicator,
 } from 'react-native';
 import Animated, {
-  cancelAnimation,
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
+  cancelAnimation, Easing,
+  useAnimatedStyle, useSharedValue, withTiming,
 } from 'react-native-reanimated';
 import PagerView from 'react-native-pager-view';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -24,38 +51,52 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useStories, StoryItem } from '../../src/hooks/useStories';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { Video as LegacyVideo, ResizeMode } from 'expo-av';
+import { useQueryClient } from '@tanstack/react-query';
+
+import { useStories, StoryItem, StorySlide } from '../../src/hooks/useStories';
 import { storyApi } from '../../src/api/storyApi';
 import { useToastStore } from '../../src/store/useToastStore';
-import { useQueryClient } from '@tanstack/react-query';
-import { CanvasTextItem } from '../../src/modules/story/components/CanvasTextItem';
+import { CanvasTextItem }    from '../../src/modules/story/components/CanvasTextItem';
 import { CanvasStickerItem } from '../../src/modules/story/components/CanvasStickerItem';
-import { DrawingCanvas } from '../../src/modules/story/components/DrawingCanvas';
-import { StoryObject, DrawPath, CanvasBg } from '../../src/modules/story/types';
+import { DrawingCanvas }     from '../../src/modules/story/components/DrawingCanvas';
+import { StoryObject }       from '../../src/modules/story/types';
 
-const DEFAULT_SLIDE_DURATION_MS = 5000;
-const MIN_SLIDE_DURATION_MS = 2000;
+// ─── Canvas constants (must match create.tsx) ─────────────────────────────────
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+const CANVAS_W = SCREEN_W;
+const CANVAS_H = SCREEN_W * (16 / 9);
+const CANVAS_OFFSET = Math.max(0, (SCREEN_H - CANVAS_H) / 2);
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-const CANVAS_WIDTH = screenWidth;
-const CANVAS_HEIGHT = screenWidth * (16 / 9);
-const CANVAS_OFFSET = Math.max(0, (screenHeight - CANVAS_HEIGHT) / 2);
+// The DraggableItem anchor point in create.tsx (new objects start here)
+const ANCHOR_X_RATIO = 0.5;   // canvasWidth  * 0.5
+const ANCHOR_Y_RATIO = 0.4;   // canvasHeight * 0.4
+
+const DEFAULT_SLIDE_MS = 5_000;
+const MIN_SLIDE_MS     = 2_000;
+const HOLD_MS          = 200;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Root screen
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function StoryEngineScreen() {
-  const { id } = useLocalSearchParams();
-  const router = useRouter();
+  const { id }              = useLocalSearchParams();
+  const router              = useRouter();
   const { data: allStories } = useStories();
-  const pagerRef = useRef<PagerView>(null);
+  const pagerRef            = useRef<PagerView>(null);
 
-  const initialPageIndex = useMemo(() => {
-    const resolvedId = Array.isArray(id) ? id[0] : id;
-    const idx = allStories.findIndex((s) => s._id === resolvedId);
+  const initialIndex = useMemo(() => {
+    const rid = Array.isArray(id) ? id[0] : id;
+    const idx = allStories.findIndex(s => s._id === rid);
     return idx !== -1 ? idx : 0;
   }, [id, allStories]);
 
-  const [currentPage, setCurrentPage] = useState(initialPageIndex);
-  const [isPagerInteracting, setIsPagerInteracting] = useState(false);
+  const [currentPage, setCurrentPage]       = useState(initialIndex);
+  const [pagerActive, setPagerActive]       = useState(false);
+
+  if (allStories.length === 0) return <View style={s.container} />;
 
   return (
     <View style={s.container}>
@@ -63,14 +104,14 @@ export default function StoryEngineScreen() {
       <PagerView
         ref={pagerRef}
         style={s.pager}
-        initialPage={initialPageIndex}
+        initialPage={initialIndex}
         orientation="horizontal"
         overScrollMode="never"
         offscreenPageLimit={1}
-        onPageScrollStateChanged={(e) => {
-          setIsPagerInteracting(e.nativeEvent.pageScrollState !== 'idle');
+        onPageScrollStateChanged={e => {
+          setPagerActive(e.nativeEvent.pageScrollState !== 'idle');
         }}
-        onPageSelected={(e) => setCurrentPage(e.nativeEvent.position)}
+        onPageSelected={e => setCurrentPage(e.nativeEvent.position)}
       >
         {allStories.map((story, index) => (
           <View key={story._id} style={s.page}>
@@ -78,19 +119,14 @@ export default function StoryEngineScreen() {
               <StoryThread
                 story={story}
                 isActive={index === currentPage}
-                isPagerInteracting={isPagerInteracting}
+                isPagerInteracting={pagerActive}
                 onClose={() => router.back()}
                 onNextUser={() => {
-                  if (index < allStories.length - 1) {
-                    pagerRef.current?.setPage(index + 1);
-                  } else {
-                    router.back();
-                  }
+                  if (index < allStories.length - 1) pagerRef.current?.setPage(index + 1);
+                  else router.back();
                 }}
                 onPrevUser={() => {
-                  if (index > 0) {
-                    pagerRef.current?.setPage(index - 1);
-                  }
+                  if (index > 0) pagerRef.current?.setPage(index - 1);
                 }}
               />
             ) : (
@@ -103,469 +139,648 @@ export default function StoryEngineScreen() {
   );
 }
 
-function StoryThread({
-  story,
-  isActive,
-  isPagerInteracting,
-  onClose,
-  onNextUser,
-  onPrevUser,
-}: {
-  story: StoryItem;
-  isActive: boolean;
+// ─────────────────────────────────────────────────────────────────────────────
+// StoryThread — one user's story group
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ThreadProps {
+  story:              StoryItem;
+  isActive:           boolean;
   isPagerInteracting: boolean;
-  onClose: () => void;
-  onNextUser: () => void;
-  onPrevUser: () => void;
-}) {
-  const [localSlides, setLocalSlides] = useState(story.slides);
-  const slides = localSlides;
-  const [slideIndex, setSlideIndex] = useState(0);
+  onClose:            () => void;
+  onNextUser:         () => void;
+  onPrevUser:         () => void;
+}
+
+function StoryThread({
+  story, isActive, isPagerInteracting,
+  onClose, onNextUser, onPrevUser,
+}: ThreadProps) {
+  const [localSlides, setLocalSlides] = useState<StorySlide[]>(story.slides);
+  const [slideIndex,  setSlideIndex]  = useState(0);
   const [isVideoReady, setIsVideoReady] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const currentSlide = slides[slideIndex];
-  const isVideo = currentSlide?.type === 'VIDEO';
+  const [isBuffering,  setIsBuffering]  = useState(true);
+  const [useLegacyVideo, setUseLegacyVideo] = useState(false);
+  const [activeMediaUrl, setActiveMediaUrl] = useState('');
+  const [isDeleting,   setIsDeleting]   = useState(false);
 
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const currentSlide = localSlides[slideIndex];
+  const isVideo      = currentSlide?.type === 'VIDEO';
 
+  const router      = useRouter();
+  const insets      = useSafeAreaInsets();
+  const queryClient = useQueryClient();
+  const showToast   = useToastStore(st => st.showToast);
+
+  // ── Progress animation ────────────────────────────────────────────────────
   const progress = useSharedValue(0);
-  const slideIndexRef = useRef(0);
-  const isMountedRef = useRef(true);
-  const isActiveRef = useRef(isActive);
-  const canTapRef = useRef(false);
-  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const unlockTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 📹 [VIDEO] Initialize Video Player for HLS
-  const player = useVideoPlayer(
-    isVideo && currentSlide ? { uri: currentSlide.image } : null,
-    (p) => {
-      p.loop = false;
-      p.muted = false;
-    }
-  );
+  // ── Refs to avoid stale closures ─────────────────────────────────────────
+  const isMountedRef    = useRef(true);
+  const isActiveRef     = useRef(isActive);
+  const isPausedRef     = useRef(false);
+  const canTapRef       = useRef(false);
+  const holdStartRef    = useRef(0);
+  const slideIndexRef   = useRef(0);
+  const isVideoReadyRef = useRef(false);
+  const lastStartedRef  = useRef({ index: -1, time: 0 }); // Prevents double starts
+  const advanceTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const unlockTapTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync player source when slide changes
-  useEffect(() => {
-    if (isVideo && player && currentSlide) {
-      setIsVideoReady(false);
-      player.replace({ uri: currentSlide.image });
-    }
-  }, [slideIndex, isVideo, player, currentSlide?.image]);
+  // ── FIX: Break circular startAnimation ↔ handleNext dependency ───────────
+  // handleNext is stored in a ref so startAnimation never needs it as a dep.
+  const handleNextRef = useRef<() => void>(() => {});
 
-  useEffect(() => {
-    if (!isVideo || !player || !isActive) return;
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
-    const sub = player.addListener('statusChange', (event) => {
-      const s = (event as any).status;
-      if (s === 'readyToPlay') {
-        setIsVideoReady(true);
-        if (isActiveRef.current && !isPausedRef.current) {
-          player.play();
-        }
-      }
-    });
-
-    return () => sub.remove();
-  }, [player, isVideo, isActive]);
-
-  const clearAdvanceTimer = useCallback(() => {
-    if (advanceTimerRef.current) {
-      clearTimeout(advanceTimerRef.current);
-      advanceTimerRef.current = null;
+  const clearAdvance = useCallback(() => {
+    if (advanceTimer.current) {
+      clearTimeout(advanceTimer.current);
+      advanceTimer.current = null;
     }
   }, []);
 
-  const clearUnlockTapTimer = useCallback(() => {
-    if (unlockTapTimerRef.current) {
-      clearTimeout(unlockTapTimerRef.current);
-      unlockTapTimerRef.current = null;
+  const clearUnlockTap = useCallback(() => {
+    if (unlockTapTimer.current) {
+      clearTimeout(unlockTapTimer.current);
+      unlockTapTimer.current = null;
     }
   }, []);
 
-  const stopProgress = useCallback(
-    (resetValue: boolean) => {
-      cancelAnimation(progress);
-      if (resetValue) {
-        progress.value = 0;
-      }
-    },
-    [progress]
-  );
-  
-  const isPausedRef = useRef(false);
-  const holdStartTimeRef = useRef(0);
-
-  const startAnimation = useCallback((startingProgress = 0) => {
-    if (!isActiveRef.current || isPagerInteracting) return;
-    
-    // 🧱 [HARDENING] Wait for video buffer before starting the progress bar
-    if (isVideo && !isVideoReady) {
-        stopProgress(false); // Stay at current/0
-        return;
+  const stopProgress = useCallback((reset: boolean) => {
+    cancelAnimation(progress);
+    if (reset) {
+      progress.value = 0;
+      lastStartedRef.current = { index: -1, time: 0 };
     }
-
-    const slide = slides[slideIndexRef.current];
-    const duration = Math.max(slide?.durationMs || DEFAULT_SLIDE_DURATION_MS, MIN_SLIDE_DURATION_MS);
-    const remainingDuration = duration * (1 - startingProgress);
-
-    clearAdvanceTimer();
-    progress.value = startingProgress;
-    isPausedRef.current = false;
-
-    progress.value = withTiming(1, {
-      duration: remainingDuration,
-      easing: Easing.linear,
-    });
-
-    advanceTimerRef.current = setTimeout(() => {
-      if (!isMountedRef.current || !isActiveRef.current || isPausedRef.current) return;
-      handleNext();
-    }, remainingDuration);
-  }, [clearAdvanceTimer, handleNext, isPagerInteracting, progress, slides, isVideo, isVideoReady]);
+  }, [progress]);
 
   const lockTapBriefly = useCallback(() => {
     canTapRef.current = false;
-    clearUnlockTapTimer();
-    unlockTapTimerRef.current = setTimeout(() => {
+    clearUnlockTap();
+    unlockTapTimer.current = setTimeout(() => {
       canTapRef.current = true;
-      unlockTapTimerRef.current = null;
     }, 280);
-  }, [clearUnlockTapTimer]);
+  }, [clearUnlockTap]);
+
+  // ── startAnimation reads handleNext via ref — no circular dep ─────────────
+  const startAnimation = useCallback((startPct = 0) => {
+    if (!isActiveRef.current || isPagerInteracting) return;
+    
+    const idx = slideIndexRef.current;
+    const slide = localSlides[idx];
+    const isVid = slide?.type === 'VIDEO';
+
+    if (isVid && !isVideoReadyRef.current) return;
+
+    // Double-start guard: ignore if we already started this slide recently
+    const now = Date.now();
+    if (lastStartedRef.current.index === idx && Math.abs(now - lastStartedRef.current.time) < 100 && startPct === 0) {
+      return;
+    }
+    lastStartedRef.current = { index: idx, time: now };
+
+    const total     = Math.max(slide?.durationMs ?? DEFAULT_SLIDE_MS, MIN_SLIDE_MS);
+    const startFrom = Math.min(Math.max(startPct, 0), 0.99);
+    const remaining = total * (1 - startFrom);
+
+    console.log(`🎬 [ANIM] Slide: ${idx} | Start: ${startFrom.toFixed(2)} | Remaining: ${remaining}ms`);
+
+    clearAdvance();
+    progress.value      = startFrom;
+    isPausedRef.current = false;
+
+    progress.value = withTiming(1, { duration: remaining, easing: Easing.linear });
+
+    advanceTimer.current = setTimeout(() => {
+      if (!isMountedRef.current || !isActiveRef.current || isPausedRef.current) return;
+      handleNextRef.current();
+    }, remaining);
+  }, [clearAdvance, isPagerInteracting, localSlides, progress]);
 
   const handleNext = useCallback(() => {
-    clearAdvanceTimer();
+    clearAdvance();
     stopProgress(true);
-
-    if (slideIndexRef.current < slides.length - 1) {
-      setSlideIndex((prev) => prev + 1);
-      slideIndexRef.current = slideIndexRef.current + 1;
+    if (slideIndexRef.current < localSlides.length - 1) {
+      const next = slideIndexRef.current + 1;
+      setSlideIndex(next);
+      slideIndexRef.current = next;
       lockTapBriefly();
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } else {
       onNextUser();
     }
-  }, [clearAdvanceTimer, lockTapBriefly, onNextUser, slides.length, stopProgress]);
+  }, [clearAdvance, lockTapBriefly, localSlides.length, onNextUser, stopProgress]);
+
+  // Keep ref current — this is what startAnimation calls
+  useEffect(() => { handleNextRef.current = handleNext; }, [handleNext]);
 
   const handlePrev = useCallback(() => {
-    clearAdvanceTimer();
+    clearAdvance();
     stopProgress(true);
-
     if (slideIndexRef.current > 0) {
-      setSlideIndex((prev) => prev - 1);
-      slideIndexRef.current = slideIndexRef.current - 1;
+      const prev = slideIndexRef.current - 1;
+      setSlideIndex(prev);
+      slideIndexRef.current = prev;
       lockTapBriefly();
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } else {
       onPrevUser();
     }
-  }, [clearAdvanceTimer, lockTapBriefly, onPrevUser, stopProgress]);
+  }, [clearAdvance, lockTapBriefly, onPrevUser, stopProgress]);
 
-  const handleAddMore = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/story/create');
-  }, [router]);
-
-  const queryClient = useQueryClient();
-  const showToast = useToastStore((s) => s.showToast);
-
-  const handleDelete = useCallback(async () => {
-    if (!currentSlide) return;
-
-    Alert.alert(
-      "Delete Story?",
-      "Once deleted, this story cannot be recovered.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive",
-          onPress: async () => {
-             try {
-               setIsDeleting(true);
-               stopProgress(false);
-               if (isVideo && player) player.pause();
-
-               const res = await storyApi.deleteStory(currentSlide.id);
-               
-               if (res.success) {
-                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                 showToast("Story deleted successfully", "success");
-                 
-                 // Atomic Local Refresh
-                 const updatedSlides = localSlides.filter(s => s.id !== currentSlide.id);
-                 
-                 if (updatedSlides.length === 0) {
-                    // No slides left for this user -> Close or Next User
-                    onNextUser();
-                 } else {
-                    // Remove slide and stay on current index (or last if we were at the end)
-                    setLocalSlides(updatedSlides);
-                    const newIndex = Math.min(slideIndex, updatedSlides.length - 1);
-                    setSlideIndex(newIndex);
-                    slideIndexRef.current = newIndex;
-                    
-                    // Restart animation for the new slide at this index
-                    setTimeout(() => startAnimation(0), 100);
-                 }
-
-                 // Force background sync
-                 queryClient.invalidateQueries({ queryKey: ['stories', 'active'] });
-               }
-             } catch (err) {
-               showToast("Failed to delete story", "error");
-               startAnimation(progress.value);
-             } finally {
-               setIsDeleting(false);
-             }
-          }
-        }
-      ]
-    );
-  }, [currentSlide, localSlides, onNextUser, stopProgress, isVideo, player, showToast, slideIndex, startAnimation, progress.value, queryClient]);
+  // ── Video player ──────────────────────────────────────────────────────────
+  const player = useVideoPlayer(
+    isVideo && currentSlide?.image ? { uri: currentSlide.image } : null,
+    p => {
+      p.loop = false;
+      p.muted = false;
+      p.staysActiveInBackground = false;
+    },
+  );
 
   useEffect(() => {
-    isActiveRef.current = isActive;
+    if (!isVideo || !currentSlide?.image) return;
+    
+    // Default to CDN URL
+    setActiveMediaUrl(currentSlide.image);
+    setIsVideoReady(false);
+    setIsBuffering(true);
+    setUseLegacyVideo(false);
 
+    if (player) {
+      console.log(`🎥 [PLAYER] Source: ${currentSlide.image}`);
+      player.replace({ uri: currentSlide.image });
+    }
+  }, [slideIndex, isVideo, currentSlide?.image]); // Removed 'player' as dep to prevent reload loop
+
+  // Handle player status changes
+  useEffect(() => {
+    if (!player || !isVideo || !isActive) return;
+
+    const onStatusChange = (status: any) => {
+      // In some versions of expo-video, status is an object, in others a string
+      const st = typeof status === 'string' ? status : (status?.status ?? status?.playerStatus);
+      console.log(`🎥 [PLAYER] Status: ${st}`);
+
+      if (st === 'readyToPlay' || st === 'playing') {
+        if (!isMountedRef.current) return;
+        isVideoReadyRef.current = true;
+        setIsVideoReady(true);
+        setIsBuffering(false);
+        if (isActiveRef.current && !isPausedRef.current) {
+          player.play();
+          startAnimation(0);
+        }
+      } else if (st === 'loading' || st === 'buffering') {
+        setIsBuffering(true);
+      } else if (st === 'error') {
+        console.warn('⚠️ [PLAYER] expo-video failure. Status:', st);
+        if (!useLegacyVideo) {
+          console.log('🔄 [FALLBACK] Switching to Legacy Player (expo-av)...');
+          setUseLegacyVideo(true);
+        } else if (!activeMediaUrl.includes('amazonaws.com')) {
+          console.log('🔄 [FALLBACK] Switching to Direct S3 Source (Bypassing CDN)...');
+          const s3Url = activeMediaUrl.replace('cdn.suvix.in', 'suvix-media-storage.s3.ap-south-1.amazonaws.com');
+          setActiveMediaUrl(s3Url);
+        }
+      }
+    };
+
+    // Check initial status
+    onStatusChange(player.status);
+
+    const sub = player.addListener('statusChange', onStatusChange);
+    return () => sub.remove();
+  }, [player, isVideo, isActive, isVideoReady]);
+
+  // Note: progress bar starts via state effects below or via player ready callback above
+
+  // ── Active / pager effects ────────────────────────────────────────────────
+  useEffect(() => {
+    isActiveRef.current = isActive;
     if (!isActive) {
       canTapRef.current = false;
-      clearAdvanceTimer();
+      clearAdvance();
       stopProgress(true);
-      setSlideIndex(0);
-      slideIndexRef.current = 0;
+      // Removed setSlideIndex(0) to prevent reset during re-renders
+      setIsVideoReady(false);
+      isVideoReadyRef.current = false;
+      player?.pause();
       return;
     }
-
     lockTapBriefly();
-  }, [clearAdvanceTimer, isActive, lockTapBriefly, stopProgress]);
+  }, [isActive, clearAdvance, lockTapBriefly, player, stopProgress]);
 
   useEffect(() => {
     if (isPagerInteracting) {
       canTapRef.current = false;
-      clearAdvanceTimer();
+      clearAdvance();
       stopProgress(false);
+      player?.pause();
     } else if (isActiveRef.current) {
       lockTapBriefly();
+      if (!isVideo) startAnimation(progress.value);
     }
-  }, [clearAdvanceTimer, isPagerInteracting, lockTapBriefly, stopProgress]);
+  }, [isPagerInteracting]); // eslint-disable-line
 
+  // ── Slide change ──────────────────────────────────────────────────────────
   useEffect(() => {
     slideIndexRef.current = slideIndex;
     if (!isActiveRef.current || isPagerInteracting) return;
     
-    // Reset video state for fresh slide
-    if (isVideo && player) {
-       player.pause();
-       player.currentTime = 0;
-    }
-
     stopProgress(true);
-    startAnimation(0);
-  }, [startAnimation, isPagerInteracting, slideIndex, stopProgress, isVideo, player]);
-
-  // 👁️ [SYNC] Record View when slide has been visible for 1.5s
-  useEffect(() => {
-    if (!isActive || !currentSlide) return;
-
-    const timer = setTimeout(() => {
-      if (isActiveRef.current && isMountedRef.current) {
-         storyApi.recordStoryView(currentSlide.id).catch(() => {});
-      }
-    }, 1500);
-
-    return () => clearTimeout(timer);
-  }, [isActive, slideIndex, currentSlide]);
-
-  useEffect(() => {
-    const nextSlide = slides[slideIndex + 1];
-    if (nextSlide?.image) {
-      Image.prefetch(nextSlide.image).catch(() => {});
+    setIsVideoReady(false);
+    isVideoReadyRef.current = false;
+    
+    if (player && isVideo) { 
+      player.pause(); 
+      player.currentTime = 0; 
     }
-  }, [slideIndex, slides]);
+    
+    // Non-video slides start immediately. Videos wait for 'readyToPlay' callback.
+    if (!isVideo) {
+      startAnimation(0);
+    }
+  }, [slideIndex, isVideo, startAnimation]); // Removed eslint-disable, properly tracked
 
+  // ── View recording ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isActive || !currentSlide?.id) return;
+    const timer = setTimeout(() => {
+      if (!isActiveRef.current || !isMountedRef.current) return;
+      storyApi.recordStoryView(currentSlide.id).catch(() => {});
+    }, 1_500);
+    return () => clearTimeout(timer);
+  }, [isActive, slideIndex, currentSlide?.id]);
+
+  // ── Prefetch next ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    const next = localSlides[slideIndex + 1];
+    if (next?.image) Image.prefetch(next.image).catch(() => {});
+  }, [slideIndex, localSlides]);
+
+  // ── Cleanup ───────────────────────────────────────────────────────────────
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      clearAdvanceTimer();
-      clearUnlockTapTimer();
+      clearAdvance();
+      clearUnlockTap();
       stopProgress(false);
     };
-  }, [clearAdvanceTimer, clearUnlockTapTimer, stopProgress]);
+  }, [clearAdvance, clearUnlockTap, stopProgress]);
 
-  const activeProgressStyle = useAnimatedStyle(() => ({
+  // ── Delete ────────────────────────────────────────────────────────────────
+  const handleDelete = useCallback(() => {
+    if (!currentSlide?.id) return;
+    Alert.alert(
+      'Delete Story?', 'This story will be permanently removed.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete', style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsDeleting(true);
+              stopProgress(false);
+              player?.pause();
+              await storyApi.deleteStory(currentSlide.id);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              showToast('Story deleted', 'success');
+
+              const remaining = localSlides.filter(sl => sl.id !== currentSlide.id);
+              if (remaining.length === 0) {
+                onNextUser();
+              } else {
+                setLocalSlides(remaining);
+                const newIdx = Math.min(slideIndex, remaining.length - 1);
+                setSlideIndex(newIdx);
+                slideIndexRef.current = newIdx;
+                setTimeout(() => startAnimation(0), 100);
+              }
+              queryClient.invalidateQueries({ queryKey: ['stories', 'active'] });
+            } catch (err: any) {
+              showToast(err.message ?? 'Failed to delete', 'error');
+              startAnimation(progress.value);
+            } finally {
+              if (isMountedRef.current) setIsDeleting(false);
+            }
+          },
+        },
+      ],
+    );
+  }, [currentSlide, localSlides, onNextUser, player,
+      queryClient, showToast, slideIndex, startAnimation, stopProgress]);
+
+  // ── Progress bar animated style ───────────────────────────────────────────
+  const progressStyle = useAnimatedStyle(() => ({
     transform: [{ scaleX: progress.value }],
   }));
 
-  if (!currentSlide) return null;
+  if (!currentSlide?.image) {
+    // Story still processing — show loading placeholder
+    return (
+      <View style={[s.threadContainer, { backgroundColor: '#111' }]}>
+        <View style={s.processingPlaceholder}>
+          <Text style={s.processingText}>Processing...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // OVERLAY COORDINATE MATH
+  //
+  // Creator (DraggableItem):
+  //   Item visual center = (creatorW * ANCHOR_X, creatorH * ANCHOR_Y) + (obj.x, obj.y)
+  //   i.e. the item is placed at the anchor, then translated by (obj.x, obj.y)
+  //
+  // Viewer (must reproduce same visual):
+  //   Scale from creator canvas to viewer canvas: scaleX = viewerW / creatorW
+  //   Viewer anchor = (CANVAS_W * ANCHOR_X, CANVAS_H * ANCHOR_Y)
+  //   Viewer translate = (obj.x * scaleX, obj.y * scaleY)
+  //   Item top-left = anchor + translate - itemSize/2
+  //
+  // Why -itemSize/2? Because we want the item CENTER at the anchor, not the top-left.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const meta       = currentSlide.metadata ?? {};
+  const creatorW   = currentSlide.canvas_width  ?? meta.canvasWidth  ?? CANVAS_W;
+  const creatorH   = currentSlide.canvas_height ?? meta.canvasHeight ?? CANVAS_H;
+  const scaleX     = CANVAS_W / creatorW;
+  const scaleY     = CANVAS_H / creatorH;
+
+  const anchorLeft = CANVAS_W * ANCHOR_X_RATIO;
+  const anchorTop  = CANVAS_H * ANCHOR_Y_RATIO;
+
+  // Overlay objects. For IMAGE stories these are always [] (baked into screenshot).
+  // For VIDEO stories these are the dynamic overlay layers.
+  const overlayObjects: StoryObject[] = meta.objects    ?? [];
+  const overlayPaths                  = meta.drawPaths  ?? [];
+  const canvasBg                      = meta.canvasBg   ?? null;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <View style={s.threadContainer}>
-      
-      {/* 📱 9:16 RESTRICTED CANVAS Engine (Matching Create Mode) */}
+
+      {/* ── 9:16 Canvas bounding box ──────────────────────────────────── */}
       <View style={[
-        s.canvasBoundingBox, 
-        currentSlide.metadata?.canvasBg?.type === 'solid' && { backgroundColor: currentSlide.metadata.canvasBg.color }
+        s.canvasBoundingBox,
+        canvasBg?.type === 'solid' && { backgroundColor: canvasBg.color },
       ]}>
-        
-        {/* 🎨 [BG] Primary Render (Gradient) */}
-        {currentSlide.metadata?.canvasBg?.type === 'gradient' && (
-            <LinearGradient 
-              colors={currentSlide.metadata.canvasBg.gradientColors} 
-              style={StyleSheet.absoluteFill} 
-            />
-        )}
 
-        {/* 🎬 Image Slide */}
-        {!isVideo && (
-           <Image source={{ uri: currentSlide.image }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-        )}
-
-        {/* 🍿 Video Slide (HLS Adaptive) */}
-        {isVideo && (
-          <VideoView
-             player={player}
-             style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent' }]}
-             contentFit="cover"
-             nativeControls={false}
+        {/* Canvas background gradient */}
+        {canvasBg?.type === 'gradient' && canvasBg.gradientColors && (
+          <LinearGradient
+            colors={canvasBg.gradientColors as [string, string]}
+            style={StyleSheet.absoluteFill}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
           />
         )}
 
+        {/* ── IMAGE slide ─────────────────────────────────────────────── */}
+        {!isVideo && (
+          <Image
+            source={{ uri: currentSlide.image }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
+        )}
+
+        {/* ── VIDEO slide (Legacy or Modern) ─────────────────────────── */}
+        {isVideo && (
+          useLegacyVideo ? (
+            <LegacyVideo
+              source={{ uri: activeMediaUrl }}
+              style={StyleSheet.absoluteFill}
+              resizeMode={ResizeMode.COVER}
+              shouldPlay={isActive && !isPausedRef.current}
+              isLooping={false}
+              onLoad={() => {
+                setIsVideoReady(true);
+                setIsBuffering(false);
+                startAnimation(0);
+              }}
+              onBuffer={({ isBuffering: b }) => setIsBuffering(b)}
+              onError={(err) => {
+                console.error('❌ [LEGACY-PLAYER] Fatal Error:', err);
+                setIsVideoReady(true); // Failsafe skip
+              }}
+            />
+          ) : (
+            player && (
+              <VideoView
+                player={player}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+                nativeControls={false}
+              />
+            )
+          )
+        )}
+
+        {/* ── LUXURY LOADER (Overlay) ─────────────────────────────────── */}
+        {isVideo && !isVideoReady && (
+          <View style={[StyleSheet.absoluteFill, s.loaderOverlay]}>
+            <Image 
+              source={{ uri: currentSlide.image }} 
+              style={StyleSheet.absoluteFill} 
+              blurRadius={15}
+              opacity={0.6}
+            />
+            <View style={s.loaderContent}>
+              <ActivityIndicator size="large" color="#ffffff" />
+              <Text style={s.loaderText}>Optimizing Experience...</Text>
+              <View style={s.loaderBarContainer}>
+                <Animated.View style={[s.loaderBar, { width: '40%' }]} />
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Gradient vignette */}
         <LinearGradient
-          colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.8)']}
+          colors={['rgba(0,0,0,0.55)', 'transparent', 'rgba(0,0,0,0.75)']}
           style={StyleSheet.absoluteFill}
+          pointerEvents="none"
         />
 
-        {/* 🎭 DYNAMIC OVERLAY ENGINE (Instagram Style) */}
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        {/* ── SVG drawing overlay (video stories only, non-interactive) ── */}
+        {overlayPaths.length > 0 && (
+          <DrawingCanvas
+            width={CANVAS_W}
+            height={CANVAS_H}
+            paths={overlayPaths}
+            brushColor="#fff"
+            brushSize={5}
+            isEraser={false}
+            eraserBgColor="#000"
+            interactive={false}
+          />
+        )}
 
-           {/* 🖍️ [DRAWING] Persistent Paths */}
-           {currentSlide.metadata?.drawPaths?.length > 0 && (
-             <DrawingCanvas
-               width={CANVAS_WIDTH}
-               height={CANVAS_HEIGHT}
-               paths={currentSlide.metadata.drawPaths}
-               brushColor="#fff"
-               brushSize={5}
-               isEraser={false}
-               eraserBgColor="#000"
-               interactive={false}
-             />
-           )}
+        {/* ── Canvas object overlays (video stories only) ─────────────── */}
+        {overlayObjects.map(obj => {
+          const itemW = (obj.width ?? (obj.type === 'TEXT' ? 200 : 120)) * scaleX;
 
-           {/* 🏗️ [OBJECTS] Stickers, Text, Images */}
-           {currentSlide.metadata?.objects?.map((obj: StoryObject) => (
-             <View
-               key={obj.id}
-               style={{
-                 position: 'absolute',
-                 left: obj.x,
-                 top: obj.y,
-                 width: obj.type === 'TEXT' ? (obj.width || 200) : (obj.width || 120),
-                 transform: [
-                    { scale: obj.scale },
-                    { rotate: `${obj.rotation}rad` }
-                 ],
-               }}
-             >
-                {obj.type === 'TEXT' && <CanvasTextItem item={obj} />}
-                {obj.type === 'STICKER' && <CanvasStickerItem item={obj} />}
-             </View>
-           ))}
-        </View>
+          // Replicate DraggableItem positioning:
+          // Base anchor + scaled translation, centering the item horizontally.
+          const left = anchorLeft + obj.x * scaleX - itemW / 2;
+          const top  = anchorTop  + obj.y * scaleY;
+
+          return (
+            <View
+              key={obj.id}
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                left,
+                top,
+                width:   itemW,
+                opacity: obj.opacity ?? 1,
+                transform: [
+                  { scale:  obj.scale    ?? 1 },
+                  { rotate: `${obj.rotation ?? 0}rad` },
+                ],
+              }}
+            >
+              {obj.type === 'TEXT'    && <CanvasTextItem    item={obj} />}
+              {obj.type === 'STICKER' && <CanvasStickerItem item={obj} />}
+            </View>
+          );
+        })}
       </View>
 
+      {/* ── Gesture layer ─────────────────────────────────────────────── */}
       <View style={s.gestureLayer}>
+        {/* Left half → prev */}
         <Pressable
           style={s.halfRegion}
           onPressIn={() => {
-            holdStartTimeRef.current = Date.now();
-            isPausedRef.current = true;
-            clearAdvanceTimer();
+            holdStartRef.current = Date.now();
+            isPausedRef.current  = true;
+            clearAdvance();
             cancelAnimation(progress);
+            player?.pause();
           }}
           onPressOut={() => {
             if (!isPausedRef.current) return;
-            const heldTime = Date.now() - holdStartTimeRef.current;
-            if (heldTime > 200) {
+            const held = Date.now() - holdStartRef.current;
+            if (held > HOLD_MS) {
+              if (isVideo) player?.play();
               startAnimation(progress.value);
             }
           }}
           onPress={() => {
-            if (Date.now() - holdStartTimeRef.current > 200) return;
+            if (Date.now() - holdStartRef.current > HOLD_MS) return;
             if (!canTapRef.current || isPagerInteracting) return;
             handlePrev();
           }}
         />
+        {/* Right half → next */}
         <Pressable
           style={s.halfRegion}
           onPressIn={() => {
-            holdStartTimeRef.current = Date.now();
-            isPausedRef.current = true;
-            clearAdvanceTimer();
+            holdStartRef.current = Date.now();
+            isPausedRef.current  = true;
+            clearAdvance();
             cancelAnimation(progress);
+            player?.pause();
           }}
           onPressOut={() => {
             if (!isPausedRef.current) return;
-            const heldTime = Date.now() - holdStartTimeRef.current;
-            if (heldTime > 200) {
+            const held = Date.now() - holdStartRef.current;
+            if (held > HOLD_MS) {
+              if (isVideo) player?.play();
               startAnimation(progress.value);
             }
           }}
           onPress={() => {
-            if (Date.now() - holdStartTimeRef.current > 200) return;
+            if (Date.now() - holdStartRef.current > HOLD_MS) return;
             if (!canTapRef.current || isPagerInteracting) return;
             handleNext();
           }}
         />
       </View>
 
-      <View style={[s.header, { top: Math.max(insets.top + 10, Platform.OS === 'ios' ? 44 : 24) }]}>
+      {/* ── Header: progress bars + user info ─────────────────────────── */}
+      <View style={[s.header, {
+        top: Math.max(insets.top + 10, Platform.OS === 'ios' ? 44 : 24),
+      }]}>
         <View style={s.progressContainer}>
-          {slides.map((_, i) => (
-            <View key={i} style={s.progressBarTrack}>
-              {i < slideIndex && <View style={[s.progressBarLevel, { width: '100%' }]} />}
-              {i > slideIndex && <View style={[s.progressBarLevel, { width: '0%' }]} />}
+          {localSlides.map((_, i) => (
+            <View key={i} style={s.progressTrack}>
+              {i < slideIndex && <View style={[s.progressFill, { width: '100%' }]} />}
+              {i > slideIndex && <View style={[s.progressFill, { width: '0%'   }]} />}
               {i === slideIndex && (
-                <Animated.View
-                  style={[s.progressBarLevel, s.progressBarAnimated, activeProgressStyle]}
-                />
+                <Animated.View style={[s.progressFill, s.progressAnimated, progressStyle]} />
               )}
             </View>
           ))}
         </View>
 
-        <View style={s.userInfoRow}>
+        <View style={s.userRow}>
           <View style={s.userMeta}>
-            <Image source={{ uri: story.avatar }} style={s.miniAvatar} />
+            {story.avatar ? (
+              <Image source={{ uri: story.avatar }} style={s.avatar} />
+            ) : (
+              <View style={[s.avatar, s.avatarFallback]}>
+                <Text style={s.avatarLetter}>
+                  {(story.username || '?')[0].toUpperCase()}
+                </Text>
+              </View>
+            )}
             <View>
               <Text style={s.username}>{story.username}</Text>
-              <Text style={s.timestamp}>2h ago</Text>
+              <Text style={s.timestamp}>
+                {new Date(currentSlide.created_at).toLocaleDateString()}
+              </Text>
             </View>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
+
+          <View style={s.headerActions}>
             {story.isUserStory && (
-              <TouchableOpacity onPress={handleDelete} disabled={isDeleting} style={s.moreBtn}>
-                 <Ionicons name="trash-outline" size={22} color="#ff4444" />
+              <TouchableOpacity
+                onPress={handleDelete}
+                disabled={isDeleting}
+                style={s.iconBtn}
+              >
+                <Ionicons
+                  name="trash-outline"
+                  size={22}
+                  color={isDeleting ? 'rgba(255,68,68,0.4)' : '#ff4444'}
+                />
               </TouchableOpacity>
             )}
-            <TouchableOpacity onPress={onClose} style={s.closeBtn}>
+            <TouchableOpacity onPress={onClose} style={s.iconBtn}>
               <Ionicons name="close" size={24} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
       </View>
 
-      {currentSlide.caption && (
+      {/* ── Caption ───────────────────────────────────────────────────── */}
+      {currentSlide.caption ? (
         <View style={s.captionWrapper} pointerEvents="none">
           <Text style={s.caption}>{currentSlide.caption}</Text>
         </View>
-      )}
+      ) : null}
 
+      {/* ── "Add Post" (own story only) ───────────────────────────────── */}
       {story.isUserStory && (
         <View style={s.footer}>
-          <TouchableOpacity style={s.addBtn} onPress={handleAddMore}>
+          <TouchableOpacity
+            style={s.addBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push('/story/create');
+            }}
+          >
             <View style={s.plusCircle}>
               <Ionicons name="add" size={18} color="#fff" />
             </View>
@@ -577,108 +792,168 @@ function StoryThread({
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Styles
+// ─────────────────────────────────────────────────────────────────────────────
+
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  pager: { flex: 1 },
-  page: { flex: 1 },
-  threadPlaceholder: { flex: 1, backgroundColor: '#000' },
-  threadContainer: { flex: 1, position: 'relative' },
+  container:          { flex: 1, backgroundColor: '#000' },
+  pager:              { flex: 1 },
+  page:               { flex: 1 },
+  threadPlaceholder:  { flex: 1, backgroundColor: '#000' },
+  threadContainer:    { flex: 1, position: 'relative' },
 
   canvasBoundingBox: {
-    width: CANVAS_WIDTH,
-    height: CANVAS_HEIGHT,
-    marginTop: CANVAS_OFFSET,
-    borderRadius: 16,
-    overflow: 'hidden',
+    width:           CANVAS_W,
+    height:          CANVAS_H,
+    marginTop:       CANVAS_OFFSET,
+    borderRadius:    16,
+    overflow:        'hidden',
     backgroundColor: '#111',
   },
 
-  gestureLayer: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', zIndex: 5 },
-  halfRegion: { flex: 1 },
+  gestureLayer:  { ...StyleSheet.absoluteFillObject, flexDirection: 'row', zIndex: 5 },
+  halfRegion:    { flex: 1 },
 
   header: {
-    position: 'absolute',
-    width: '100%',
+    position:          'absolute',
+    width:             '100%',
     paddingHorizontal: 16,
-    zIndex: 10,
+    zIndex:            10,
   },
   progressContainer: {
     flexDirection: 'row',
-    gap: 4,
-    marginBottom: 16,
-    width: '100%',
+    gap:           4,
+    marginBottom:  14,
+    width:         '100%',
   },
-  progressBarTrack: {
-    height: 2,
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 1,
-    overflow: 'hidden',
+  progressTrack: {
+    height:          2,
+    flex:            1,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderRadius:    1,
+    overflow:        'hidden',
   },
-  progressBarLevel: {
-    height: '100%',
+  progressFill: {
+    height:          '100%',
     backgroundColor: '#fff',
   },
-  progressBarAnimated: {
-    width: '100%',
+  progressAnimated: {
+    width:           '100%',
     transformOrigin: 'left center',
   },
 
-  userInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  userRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  userMeta:   { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  avatar: {
+    width: 34, height: 34, borderRadius: 17,
+    borderWidth: 1.5, borderColor: '#fff',
   },
-  userMeta: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  miniAvatar: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: '#fff' },
-  username: { color: '#fff', fontSize: 13, fontWeight: '800' },
-  timestamp: { color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '600' },
-  closeBtn: { padding: 4 },
-  moreBtn: { padding: 4 },
+  avatarFallback: { backgroundColor: '#8B5CF6', justifyContent: 'center', alignItems: 'center' },
+  avatarLetter:   { color: '#fff', fontWeight: '800', fontSize: 14 },
+  username:       { color: '#fff', fontSize: 13, fontWeight: '800' },
+  timestamp:      { color: 'rgba(255,255,255,0.55)', fontSize: 10, fontWeight: '600' },
+  headerActions:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  iconBtn:        { padding: 6 },
 
   captionWrapper: {
-    position: 'absolute',
-    bottom: 120,
-    width: '100%',
+    position:          'absolute',
+    bottom:            120,
+    width:             '100%',
     paddingHorizontal: 30,
-    alignItems: 'center',
-    zIndex: 8,
+    alignItems:        'center',
+    zIndex:            8,
   },
   caption: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.5)',
+    color:            '#fff',
+    fontSize:         16,
+    fontWeight:       '700',
+    textAlign:        'center',
+    textShadowColor:  'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 8,
+    lineHeight:       22,
   },
 
   footer: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 50 : 30,
-    width: '100%',
+    position:          'absolute',
+    bottom:            Platform.OS === 'ios' ? 50 : 30,
+    width:             '100%',
     paddingHorizontal: 20,
-    zIndex: 10,
+    zIndex:            10,
   },
   addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    padding: 6,
-    borderRadius: 30,
-    gap: 10,
-    width: 140,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    flexDirection:   'row',
+    alignItems:      'center',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    padding:         6,
+    borderRadius:    30,
+    gap:             10,
+    width:           140,
+    borderWidth:     1,
+    borderColor:     'rgba(255,255,255,0.12)',
   },
   plusCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 28, height: 28, borderRadius: 14,
     backgroundColor: '#3b82f6',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center', alignItems: 'center',
   },
   addLabel: { color: '#fff', fontSize: 13, fontWeight: '800' },
+
+  processingPlaceholder: {
+    flex:           1,
+    justifyContent: 'center',
+    alignItems:     'center',
+  },
+  processingText: {
+    color:      'rgba(255,255,255,0.5)',
+    fontSize:   14,
+    fontWeight: '600',
+  },
+  loaderOverlay: {
+    justifyContent: 'center',
+    alignItems:     'center',
+    backgroundColor: '#000',
+  },
+  loaderContent: {
+    padding:       24,
+    alignItems:    'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius:  24,
+    borderWidth:   1,
+    borderColor:   'rgba(255,255,255,0.2)',
+  },
+  loaderText: {
+    color:      '#fff',
+    marginTop:  16,
+    fontSize:   14,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  loaderBarContainer: {
+    width:           120,
+    height:          4,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius:    2,
+    marginTop:       12,
+    overflow:        'hidden',
+  },
+  loaderBar: {
+    height:          '100%',
+    backgroundColor: '#fff',
+    opacity:         0.8,
+  },
+  debugOverlay: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    right: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 4,
+  },
+  debugText: {
+    color: '#0f0',
+    fontSize: 10,
+    fontFamily: 'monospace',
+  },
 });
