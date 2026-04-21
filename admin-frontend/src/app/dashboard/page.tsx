@@ -1,145 +1,131 @@
 'use client';
 
-import { 
-  Users, 
-  Activity, 
-  ShieldCheck, 
-  AlertTriangle,
-  ArrowUpRight,
-  ArrowDownRight,
-  Clock,
-  ExternalLink
-} from 'lucide-react';
 import { motion } from 'framer-motion';
+import { 
+  ArrowRight, LayoutDashboard, Settings, ShieldCheck, 
+  Sparkles, Zap, Shield, Globe
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/useAuthStore';
 
-export default function DashboardPage() {
+export default function HomePage() {
+  const router = useRouter();
   const { user } = useAuthStore();
 
-  const stats = [
-    { name: 'Active Admins', value: '4', change: '+1', status: 'up', icon: Users },
-    { name: 'Security Events', value: '12', change: '-24%', status: 'down', icon: ShieldCheck },
-    { name: 'System Uptime', value: '99.98%', change: 'Stable', status: 'neutral', icon: Activity },
-    { name: 'Blocked IPs', value: '1,248', change: '+82', status: 'up', icon: AlertTriangle },
+  const QUICK_ACTIONS = [
+    { title: 'Financial Overview', desc: 'Monitor real-time stats and cash flow analytics.', icon: LayoutDashboard, path: '/dashboard/overview', color: 'text-brand-forest', bg: 'bg-emerald-500/5' },
+    { title: 'Security Protocols', desc: 'Audit transaction logs and active user sessions.', icon: ShieldCheck, path: '/dashboard/tx', color: 'text-amber-500', bg: 'bg-amber-500/5' },
+    { title: 'Console Settings',  desc: 'Configure portal identity and system preferences.', icon: Settings, path: '/dashboard/settings', color: 'text-blue-500', bg: 'bg-blue-500/5' },
   ];
 
   return (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="min-h-[80vh] flex flex-col items-center justify-center py-12 px-4 relative overflow-hidden">
       
-      {/* Welcome Section */}
-      <section>
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-blue-500 mb-1">System Overview</h2>
-        <h1 className="text-4xl font-bold text-white tracking-tight">
-          Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">{user?.email?.split('@')[0]}</span>
-        </h1>
-        <p className="text-slate-400 mt-2 max-w-2xl">
-          Your administrative session is secure. Performance and security metrics are healthy across all nodes.
-        </p>
-      </section>
-
-      {/* Stats Grid */}
-      <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        {stats.map((stat, i) => (
-          <motion.div
-            key={stat.name}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className="premium-card p-6"
-          >
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 rounded-xl bg-slate-900/50 border border-slate-800">
-                <stat.icon className="w-5 h-5 text-blue-500" />
-              </div>
-              <div className="flex items-center gap-1">
-                {stat.status === 'up' ? (
-                  <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-                ) : stat.status === 'down' ? (
-                  <ArrowDownRight className="w-4 h-4 text-red-500" />
-                ) : (
-                  <Clock className="w-4 h-4 text-slate-500" />
-                )}
-                <span className={`text-xs font-bold ${
-                  stat.status === 'up' ? 'text-emerald-500' : 
-                  stat.status === 'down' ? 'text-red-500' : 'text-slate-500'
-                }`}>
-                  {stat.change}
-                </span>
-              </div>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white">{stat.value}</p>
-              <p className="text-sm text-slate-500 mt-1">{stat.name}</p>
-            </div>
-          </motion.div>
-        ))}
-      </section>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Recent Activity */}
-        <section className="lg:col-span-2 space-y-6">
-          <div className="flex items-center justify-between px-2">
-            <h3 className="text-xl font-bold text-white">Recent Audit Logs</h3>
-            <button className="text-sm font-medium text-blue-500 hover:text-blue-400 flex items-center gap-1 transition-colors">
-              View All <ExternalLink className="w-3 h-3" />
-            </button>
-          </div>
-          
-          <div className="premium-card overflow-hidden">
-            <div className="divide-y divide-slate-800/50">
-              {[
-                { event: 'Super Admin Login', user: 'admin@suvix.com', time: '2 mins ago', ip: '127.0.0.1' },
-                { event: 'MFA Activated', user: 'moderator@suvix.com', time: '45 mins ago', ip: '192.168.1.5' },
-                { event: 'IP Whitelist Updated', user: 'admin@suvix.com', time: '2 hours ago', ip: '127.0.0.1' },
-                { event: 'New Role Created', user: 'manager@suvix.com', time: '5 hours ago', ip: '103.45.12.9' },
-              ].map((log, i) => (
-                <div key={i} className="p-5 flex items-center justify-between hover:bg-slate-800/30 transition-colors group">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center font-bold text-blue-500">
-                      {log.event[0]}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">{log.event}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">{log.user}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs font-medium text-slate-400">{log.time}</p>
-                    <p className="text-[10px] uppercase tracking-wider text-slate-600 mt-1 font-bold">{log.ip}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Security Summary Card */}
-        <section className="space-y-6">
-          <h3 className="text-xl font-bold text-white px-2">Identity Guard</h3>
-          <div className="premium-card p-8 bg-gradient-to-br from-slate-900 to-blue-900/20 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 border-l border-b border-blue-500/20 rounded-bl-3xl bg-blue-600/10">
-              <ShieldCheck className="w-8 h-8 text-blue-500" />
-            </div>
-            
-            <h4 className="text-lg font-bold text-white mb-2">MFA Status</h4>
-            <div className="flex items-center gap-2 text-emerald-500 text-sm font-bold mb-6">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              FULLY PROTECTED
-            </div>
-            
-            <p className="text-sm text-slate-400 leading-relaxed mb-8">
-              Your account is currently secured with hardware-based 2FA and RS256 high-security signing. No suspicious activity detected.
-            </p>
-            
-            <button className="btn-primary w-full py-2.5 text-xs">
-              View Security Audit
-            </button>
-          </div>
-        </section>
-
+      {/* Background Decorative Elements */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full pointer-events-none -z-10 overflow-hidden">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-brand-forest opacity-[0.02] dark:opacity-[0.05] rounded-full blur-[120px]" />
+          <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-amber-500 opacity-[0.01] dark:opacity-[0.03] rounded-full blur-[100px]" />
       </div>
+
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="flex flex-col items-center text-center max-w-4xl"
+      >
+        {/* Large Logo - Central Focus */}
+        <div className="relative group mb-12">
+            <motion.div 
+                animate={{ 
+                    y: [0, -10, 0],
+                }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                className="relative z-10"
+            >
+                <img src="/logo.png" alt="SuviX Logo" className="max-h-48 w-auto object-contain dark:invert dark:brightness-200 drop-shadow-2xl" />
+            </motion.div>
+            {/* Logo Glow */}
+            <div className="absolute inset-0 bg-brand-forest/20 blur-[60px] rounded-full -z-10 group-hover:bg-brand-forest/30 transition-all duration-500 scale-110" />
+        </div>
+
+        {/* Welcome Text */}
+        <motion.div
+           initial={{ opacity: 0, y: 20 }}
+           animate={{ opacity: 1, y: 0 }}
+           transition={{ delay: 0.3 }}
+           className="space-y-4"
+        >
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-forest/5 dark:bg-brand-forest/10 border border-brand-forest/10 mb-6">
+                <Sparkles size={14} className="text-brand-forest" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-forest">Administrative Command Center</span>
+            </div>
+            
+            <h1 className="text-5xl md:text-6xl font-black text-ui-text-main tracking-tighter leading-[1.1]">
+                Welcome back, <span className="text-brand-forest"> {user?.email?.split('@')[0] || 'Administrator'}</span>
+            </h1>
+            <p className="text-lg md:text-xl text-ui-text-muted max-w-2xl mx-auto font-medium leading-relaxed mt-6">
+                The SuviX core systems are live and operational. Your secure administrative portal is now fully synchronized with real-time financial protocols.
+            </p>
+        </motion.div>
+
+        {/* Action Grid */}
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-20 w-full"
+        >
+          {QUICK_ACTIONS.map((action, index) => (
+            <button 
+              key={index}
+              onClick={() => router.push(action.path)}
+              className="bento-card group p-8 text-left hover:scale-[1.02] active:scale-[0.98] transition-all relative overflow-hidden"
+            >
+               <div className={`w-12 h-12 rounded-2xl ${action.bg} flex items-center justify-center mb-6 border border-ui-border`}>
+                  <action.icon size={22} className={action.color} />
+               </div>
+               <h3 className="text-lg font-bold text-ui-text-main mb-2 flex items-center gap-2">
+                  {action.title}
+                  <ArrowRight size={16} className="opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-brand-forest" />
+               </h3>
+               <p className="text-sm text-ui-text-dim font-medium leading-relaxed">{action.desc}</p>
+               
+               {/* Background Accent */}
+               <div className={`absolute -right-4 -bottom-4 w-24 h-24 rounded-full ${action.bg} opacity-0 group-hover:opacity-100 transition-opacity blur-2xl`} />
+            </button>
+          ))}
+        </motion.div>
+
+        {/* Footer Stats Banner */}
+        <motion.div 
+           initial={{ opacity: 0 }}
+           animate={{ opacity: 1 }}
+           transition={{ delay: 0.9 }}
+           className="mt-20 py-8 border-y border-ui-border w-full flex flex-wrap items-center justify-center gap-12 md:gap-24"
+        >
+            <div className="flex items-center gap-3">
+                <Zap size={18} className="text-brand-forest" />
+                <div className="text-left">
+                    <p className="text-[10px] font-bold text-ui-text-dim uppercase tracking-widest">System Latency</p>
+                    <p className="text-sm font-black text-ui-text-main">0.04ms</p>
+                </div>
+            </div>
+            <div className="flex items-center gap-3">
+                <Shield size={18} className="text-brand-forest" />
+                <div className="text-left">
+                    <p className="text-[10px] font-bold text-ui-text-dim uppercase tracking-widest">Security Level</p>
+                    <p className="text-sm font-black text-ui-text-main">Protocol 2A</p>
+                </div>
+            </div>
+            <div className="flex items-center gap-3">
+                <Globe size={18} className="text-brand-forest" />
+                <div className="text-left">
+                    <p className="text-[10px] font-bold text-ui-text-dim uppercase tracking-widest">Global Hubs</p>
+                    <p className="text-sm font-black text-ui-text-main">18 Active</p>
+                </div>
+            </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

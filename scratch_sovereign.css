@@ -1,0 +1,131 @@
+﻿@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* 
+  SuviX Sovereign Design System
+  --------------------------------------------------
+  This file replaces globals.css to bypass persistent 
+  Next.js Turbopack caching issues.
+*/
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+:root {
+  --background: #fafafa;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --primary: #1a56db;
+  --primary-foreground: #ffffff;
+  --primary-hover: #1648c5;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #3f3f46;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --success: #16a34a;
+  --warning: #d97706;
+  --border: #e4e4e7;
+  --input: #ffffff;
+  --ring: #1a56db;
+  --radius: 0.5rem;
+
+  /* Dashboard dark tokens */
+  --d-bg: #09090b;
+  --d-surface: #111113;
+  --d-surface-2: #18181b;
+  --d-border: #27272a;
+  --d-border-subtle: #1f1f23;
+  --d-text: #fafafa;
+  --d-text-muted: #71717a;
+  --d-text-subtle: #52525b;
+  --d-blue: #3b82f6;
+  --d-blue-bg: rgba(59, 130, 246, 0.08);
+  --d-blue-border: rgba(59, 130, 246, 0.2);
+  --d-green: #22c55e;
+  --d-green-bg: rgba(34, 197, 94, 0.08);
+  --d-red: #ef4444;
+  --d-red-bg: rgba(239, 68, 68, 0.08);
+  --d-amber: #f59e0b;
+  --d-amber-bg: rgba(245, 158, 11, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* â”€â”€ Auth components â”€â”€ */
+.auth-input {
+  width: 100%; height: 42px; padding: 0 12px; font-size: 14px;
+  background: var(--input); border: 1px solid var(--border); border-radius: 8px;
+  outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+}
+.auth-input:focus { border-color: var(--ring); box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.12); }
+
+.auth-btn {
+  width: 100%;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary-foreground);
+  background: var(--primary);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.auth-btn:hover:not(:disabled) { background: var(--primary-hover); }
+.auth-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* â”€â”€ Dashboard components â”€â”€ */
+.d-card { background: var(--d-surface); border: 1px solid var(--d-border); border-radius: 12px; }
+
+.d-btn-ghost {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  font-size: 13px;
+  color: var(--d-text-muted);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.d-btn-ghost:hover { background: var(--d-surface-2); color: var(--d-text); }
+
+.otp-box {
+  width: 48px; height: 56px; font-size: 22px; font-weight: 700;
+  text-align: center; background: #f9fafb; border: 1.5px solid #e5e7eb; border-radius: 10px;
+}
+.otp-box:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.12); }

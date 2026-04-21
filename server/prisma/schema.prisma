@@ -351,6 +351,18 @@ model Story {
   view_count  Int      @default(0) @map("view_count")
   visibility  Visibility @default(PUBLIC)
   metadata    Json?      @default("{}")
+
+  // ── NEW: Canvas dimensions (stored for correct position de-normalization) ──
+  canvas_width   Float?  @map("canvas_width")
+  canvas_height  Float?  @map("canvas_height")
+
+  // ── NEW: Background media (the full-screen bg image/video if any) ─────────
+  bg_media_type  String?  @map("bg_media_type")   // "IMAGE" | "VIDEO" | null
+  bg_media_url   String?  @map("bg_media_url")    // CDN URL served to client
+  bg_thumb_url   String?  @map("bg_thumb_url")    // 320px thumbnail CDN URL
+  bg_blurhash    String?  @map("bg_blurhash")     // for placeholder while loading
+  display_duration Int    @default(10) @map("display_duration") // seconds
+
   created_at  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -358,7 +370,7 @@ model Story {
   views StoryView[]
 
   @@index([userId, expires_at])
-  @@index([expires_at]) // 🚀 Fast Global Discovery (Senior Audit)
+  @@index([expires_at])
   @@map("stories")
 }
 

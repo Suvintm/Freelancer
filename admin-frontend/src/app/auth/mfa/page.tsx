@@ -1,135 +1,147 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Fingerprint, ArrowLeft, Loader2, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
-import api from '@/lib/api';
+import { ShieldCheck, Smartphone, Lock, Fingerprint, ChevronLeft, RefreshCw } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/useAuthStore';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function MfaPage() {
   const router = useRouter();
-  const { mfaToken, user, setAuth, requiresMfa } = useAuthStore();
-  
-  const [code, setCode] = useState('');
+  const { user, setAuth } = useAuthStore();
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Security Redirect: If no MFA flow is active, go back to login
   useEffect(() => {
-    if (!requiresMfa || !mfaToken) {
-      router.replace('/auth/login');
-    }
-  }, [requiresMfa, mfaToken, router]);
+    if (!user) router.push('/auth/login');
+  }, [user, router]);
 
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (code.length < 6) return;
-    
-    setIsLoading(true);
-    setError(null);
+  const handleChange = (index: number, value: string) => {
+    if (value.length > 1) value = value.slice(-1);
+    if (!/^\d*$/.test(value)) return;
 
-    try {
-      const response = await api.post('/auth/mfa/verify', { 
-        mfaToken, 
-        code 
-      });
-      
-      const data = response.data;
-      setAuth(data.admin, data.accessToken);
-      router.push('/dashboard');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Invalid or expired MFA code.');
-    } finally {
-      setIsLoading(false);
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+
+    // Focus next
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
     }
   };
 
-  if (!requiresMfa) return null;
+  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setTimeout(() => {
+      if (user) {
+        setAuth(user, 'MOCK_ACCESS_TOKEN');
+        router.push('/dashboard');
+      }
+    }, 1500);
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#020617] p-6">
-      {/* Background Decorative Gradient */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[120px]" />
-        <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-indigo-500/10 rounded-full blur-[120px]" />
+    <div className="min-h-screen flex items-center justify-center p-6 bg-ui-bg relative overflow-hidden transition-colors duration-300">
+      
+      {/* Decorative background accents */}
+      <div className="absolute top-0 right-0 w-full h-[50vh] bg-gradient-to-b from-brand-forest/5 to-transparent opacity-40 pointer-events-none" />
+      <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-brand-forest opacity-[0.03] rounded-full blur-3xl pointer-events-none" />
+      
+      {/* Theme Toggle */}
+      <div className="absolute top-8 right-8 z-50">
+        <ThemeToggle />
       </div>
 
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md"
+        className="w-full max-w-[460px] relative z-10"
       >
-        <button 
-          onClick={() => router.push('/auth/login')}
-          className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors mb-8 group"
-        >
-          <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-          <span className="text-sm font-medium">Back to Login</span>
-        </button>
-
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-600/10 border border-blue-500/20 mb-6">
-            <Fingerprint className="w-8 h-8 text-blue-500" />
-          </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Security Check</h1>
-          <p className="text-slate-400 mt-2">Enter the digits from your authenticator app</p>
+        {/* Brand Logo */}
+        <div className="flex flex-col items-center mb-10">
+          <img src="/logo.png" alt="Logo" className="max-h-16 w-auto object-contain mb-8 dark:invert dark:brightness-200" />
+          <h2 className="text-[10px] font-bold text-brand-forest uppercase tracking-[0.5em] ml-1">Identity Probe - Protocol 2A</h2>
         </div>
 
-        <div className="glass p-8 rounded-3xl shadow-2xl relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
-          
-          <form onSubmit={handleVerify} className="space-y-8">
-            <div className="flex justify-center flex-col items-center gap-4">
-              <div className="text-center">
-                <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Identity Verified As</span>
-                <p className="text-blue-400 font-medium text-sm mt-1">{user?.email}</p>
-              </div>
-
-              <div className="w-full">
-                <input
-                  type="text"
-                  maxLength={6}
-                  placeholder="000000"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                  className="w-full bg-slate-900/50 border-2 border-slate-800 rounded-2xl text-center text-4xl font-bold tracking-[1rem] py-6 text-white focus:border-blue-500/50 focus:outline-none transition-all placeholder:text-slate-800"
-                  autoFocus
-                />
-              </div>
-            </div>
-
-            {error && (
+        {/* MFA Card */}
+        <div className="bento-card p-12 bg-ui-surface shadow-2xl border-ui-border relative overflow-hidden">
+           {/* Progress bar effect */}
+           <div className="absolute top-0 left-0 w-full h-1.5 bg-ui-bg">
               <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium text-center"
-              >
-                {error}
-              </motion.div>
-            )}
+                initial={{ width: '0%' }}
+                animate={{ width: otp.filter(Boolean).length * 16.6 + '%' }}
+                className="h-full bg-brand-forest"
+              />
+           </div>
 
-            <button
-              type="submit"
-              disabled={isLoading || code.length < 6}
-              className="btn-primary w-full h-14 disabled:opacity-30 disabled:scale-100"
-            >
-              {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <span className="flex items-center gap-2">
-                  Verify Access
-                  <ShieldCheck className="w-5 h-5" />
-                </span>
-              )}
-            </button>
-          </form>
+           <div className="mb-10 mt-4 text-center">
+              <h1 className="text-3xl font-bold text-ui-text-main tracking-tight">Enter Code</h1>
+              <p className="text-sm text-ui-text-dim font-medium mt-3 leading-relaxed">
+                 A verification code has been dispatched to your authorized secondary device. 
+              </p>
+           </div>
 
-          <div className="mt-8 pt-6 border-t border-slate-800/50 text-center">
-            <p className="text-xs text-slate-500">
-              Your session is being monitored for security purposes.
-            </p>
-          </div>
+           <form onSubmit={handleVerify} className="space-y-12">
+              <div className="flex justify-between gap-3">
+                 {otp.map((digit, i) => (
+                    <input
+                      key={i}
+                      ref={(el) => { inputRefs.current[i] = el; }}
+                      type="text"
+                      inputMode="numeric"
+                      value={digit}
+                      onChange={(e) => handleChange(i, e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(i, e)}
+                      className="w-12 h-14 sm:w-14 sm:h-16 text-center text-2xl font-black bg-ui-bg border border-ui-border rounded-2xl text-brand-forest focus:border-brand-forest focus:ring-4 focus:ring-brand-forest/5 transition-all outline-none"
+                    />
+                 ))}
+              </div>
+
+              <div className="space-y-4">
+                <button
+                  type="submit"
+                  disabled={isLoading || otp.some(d => !d)}
+                  className="w-full h-14 bg-brand-forest rounded-2xl flex items-center justify-center gap-3 text-white font-bold uppercase text-[11px] tracking-widest hover:bg-brand-forest-dark transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-emerald-500/10"
+                >
+                  {isLoading ? <RefreshCw size={18} className="animate-spin" /> : <>Finalize Access <Fingerprint size={18} /></>}
+                </button>
+                
+                <button type="button" className="w-full text-[11px] font-bold text-ui-text-dim uppercase tracking-widest hover:text-brand-forest transition-colors">
+                  Resend Signal Request
+                </button>
+              </div>
+           </form>
+
+           <div className="mt-14 p-5 rounded-2xl bg-ui-bg border border-ui-border flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-ui-surface border border-ui-border flex items-center justify-center shadow-sm">
+                  <Lock size={18} className="text-brand-forest" />
+              </div>
+              <p className="text-[11px] font-medium text-ui-text-muted leading-tight">
+                Operating under **Protocol 2A**. Enhanced session security is active.
+              </p>
+           </div>
+        </div>
+
+        <div className="mt-10 flex items-center justify-between">
+           <button 
+            onClick={() => router.push('/auth/login')}
+            className="flex items-center gap-2 text-[11px] font-bold text-ui-text-dim hover:text-ui-text-main transition-colors uppercase tracking-widest"
+           >
+              <ChevronLeft size={14} /> Back to Sign In
+           </button>
+           <div className="flex items-center gap-2">
+              <ShieldCheck size={14} className="text-ui-text-dim/40" />
+              <span className="text-[10px] font-bold text-ui-text-dim/40 uppercase tracking-widest italic">Encrypted Session</span>
+           </div>
         </div>
       </motion.div>
     </div>

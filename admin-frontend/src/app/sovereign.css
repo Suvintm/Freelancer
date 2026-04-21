@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+/* 
+ * ORIPIO FINANCE DESIGN SYSTEM (Tailwind 4)
+ * Visual Separation & Professional Borders Polish.
+ */
+@source "./**/*.{ts,tsx}";
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  
+  /* Modern Animations */
+  --animate-fade-up: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  
+  /* Color Palette - Forest Identity */
+  --color-brand-forest: #00623D;
+  --color-brand-forest-dark: #004D30;
+  --color-brand-forest-light: #E6F0EC;
+  
+  /* Dynamic UI Colors linked to CSS Variables */
+  --color-ui-bg: var(--ui-bg);
+  --color-ui-surface: var(--ui-surface);
+  --color-ui-surface-hover: var(--ui-surface-hover);
+  --color-ui-border: var(--ui-border);
+  --color-ui-border-strong: var(--ui-border-strong);
+  --color-ui-text-main: var(--ui-text-main);
+  --color-ui-text-muted: var(--ui-text-muted);
+  --color-ui-text-dim: var(--ui-text-dim);
+  
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* Base resets & Variable definitions */
+@layer base {
+  :root {
+    --ui-bg: #F8F9FB;
+    --ui-surface: #FFFFFF;
+    --ui-surface-hover: #F9FAFB;
+    --ui-border: #E8EAED;           /* More defined border for Light Mode */
+    --ui-border-strong: #D1D5DB;
+    --ui-text-main: #18181B;
+    --ui-text-muted: #71717A;
+    --ui-text-dim: #A1A1AA;
+    --ui-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  }
+
+  .dark {
+    --ui-bg: #09090B;              /* Slate 950 */
+    --ui-surface: #121215;         /* Slightly lighter than BG to stand out */
+    --ui-surface-hover: #1A1A1F;
+    --ui-border: #2D2D33;          /* Visible but professional Zinc border */
+    --ui-border-strong: #3F3F46;
+    --ui-text-main: #FAFAFA;
+    --ui-text-muted: #A1A1AA;
+    --ui-text-dim: #52525B;
+    --ui-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--ui-bg);
+    color: var(--ui-text-main);
+  }
+}
+
+/* Modern Utilities - ENHANCED BORDERS & DEPTH */
+@utility bento-card {
+  background-color: var(--ui-surface);
+  border: 1.5px solid var(--ui-border); /* Slightly thicker for better definition */
+  border-radius: 2.25rem;
+  box-shadow: var(--ui-shadow);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .bento-card {
+  /* Subtle glassmorphism top highlight */
+  background: linear-gradient(to bottom right, var(--ui-surface), #0D0D10);
+  border-color: var(--ui-border);
+}
+
+@utility glass-border {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background-clip: padding-box;
+}
+
+@utility finance-input {
+  background-color: var(--ui-bg);
+  border: 1.5px solid var(--ui-border);
+  border-radius: 0.875rem;
+  padding: 0.75rem 1rem;
+  color: var(--ui-text-main);
+  transition: all 0.2s ease;
+}
+
+@utility finance-input-focus {
+  border-color: var(--color-brand-forest);
+  box-shadow: 0 0 0 4px rgba(0, 98, 61, 0.1);
+  outline: none;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--ui-border-strong); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ui-text-dim); }
