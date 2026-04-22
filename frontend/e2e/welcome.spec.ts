@@ -16,14 +16,11 @@ test.describe('Welcome Page E2E', () => {
   test('should navigate to the next slide when clicking Next', async ({ page }) => {
     await page.goto('/');
     
-    const initialTitle = await page.locator('h1').innerText();
-    
     // Click Next button
     await page.getByRole('button', { name: /next/i }).click();
     
-    // Verify title has changed
-    const newTitle = await page.locator('h1').innerText();
-    expect(newTitle).not.toBe(initialTitle);
-    await expect(page.locator('h1')).toContainText('Promote with Power');
+    // Verify title has changed using auto-retrying assertion
+    // We use a regex to handle the potential newlines in the title
+    await expect(page.locator('h1')).toHaveText(/Promote with Power/i);
   });
 });
