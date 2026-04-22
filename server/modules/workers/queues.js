@@ -70,9 +70,15 @@ export async function scheduleYouTubeSync(userId, channels, triggerReason = "man
     return null;
   }
 
-  // 15-minute time-bucket deduplication
+  // 15-minute time-bucket deduplication for scheduled jobs
+  // For manual/verification triggers, we use higher granularity to allow adding multiple accounts
   const windowBucket = Math.floor(Date.now() / DEBOUNCE_WINDOW_MS);
-  const jobId = `yt_sync_${userId}_${windowBucket}`;
+  let jobId = `yt_sync_${userId}_${windowBucket}`;
+
+  if (triggerReason !== "scheduled") {
+    const channelTag = channels.length === 1 ? (channels[0].channelId || channels[0].channel_id || "single") : "multi";
+    jobId = `yt_sync_${userId}_${triggerReason}_${channelTag}_${Date.now()}`;
+  }
 
   const job = await youtubeSyncQueue.add(
     "sync-youtube",

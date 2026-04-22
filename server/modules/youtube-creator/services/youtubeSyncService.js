@@ -172,15 +172,42 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
       }
     }
 
+    // 🛰️ [DATA-AGGREGATION] Fetch the FULL state of all channels for the user
+    // This prevents the UI from "losing" other accounts when one channel finishes syncing.
+    const allProfiles = await ytProfileModel.findMany({
+      where: { userId },
+      include: {
+        videos: {
+          orderBy: { published_at: 'desc' },
+          take: 25
+        }
+      }
+    });
+
+    const allVideos = allProfiles
+      .flatMap(p => (p.videos || []).map(v => {
+        const resolvedUrl = smartResolveMediaUrl(v.thumbnail);
+        return {
+          id: v.video_id,
+          title: v.title,
+          thumbnail: resolvedUrl,
+          published_at: v.published_at,
+          channel_id: p.channel_id,
+          youtubeProfileId: p.id,
+          // 🛰️ NORMALIZE FOR UNIFIED ENGINE
+          media: {
+            type: 'IMAGE',
+            status: 'READY',
+            urls: { thumb: resolvedUrl, feed: resolvedUrl, full: resolvedUrl }
+          }
+        };
+      }))
+      .sort((a, b) => new Date(b.published_at || 0).getTime() - new Date(a.published_at || 0).getTime());
+
     // ── TRIGGER NOTIFICATION (Production Quality) ───────────────────────────
-    // Notify the user that their profile is ready after the background sync.
     const { default: notificationService } = await import("../../notification/services/notificationService.js");
     
-    // We do this asynchronously so it doesn't delay the worker return
-    logger.info(`📡 [NOTIFY-SYNC] Sending sync signal for user ${userId} with ${videoRecords.length} videos.`);
-    if (videoRecords.length > 0) {
-      logger.info(`🔍 [SYNC-DEBUG] Sample Video URL: ${videoRecords[0].thumbnail}`);
-    }
+    logger.info(`📡 [NOTIFY-SYNC] Sending sync signal for user ${userId}. Total channels: ${allProfiles.length}, Total videos: ${allVideos.length}`);
 
     // Custom Notification Content based on Reason
     let notificationTitle = 'YouTube Profile Updated! 🎥';
@@ -188,7 +215,7 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
 
     if (triggerReason === "manual_verify") {
       notificationTitle = 'Account Linked! 🎥';
-      notificationBody = `Your channel ${youtubeProfile.channel_name} was successfully linked to your account. Your latest 25 videos are now live!`;
+      notificationBody = `Your channel ${youtubeProfile.channel_name} was successfully linked to your account. Your latest videos are now live!`;
     }
 
     notificationService.notify({
@@ -203,25 +230,7 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
       metadata: { 
         type: 'youtube_sync_complete', 
         sync_complete: true,
-        videos: videoRecords.map(v => {
-          const resolvedUrl = smartResolveMediaUrl(v.thumbnail);
-          return {
-            id: v.video_id,
-            title: v.title,
-            thumbnail: resolvedUrl,
-            published_at: v.published_at,
-            // 🛰️ NORMALIZE FOR UNIFIED ENGINE
-            media: {
-              type: 'IMAGE',
-              status: 'READY',
-              urls: {
-                thumb: resolvedUrl,
-                feed: resolvedUrl,
-                full: resolvedUrl
-              }
-            }
-          };
-        })
+        videos: allVideos.slice(0, 25) // Only send first 25 to notification to avoid payload limits
       }
     }).catch(err => logger.error(`[NOTIFY-SYNC] Failed to send sync notification: ${err.message}`));
 
@@ -230,8 +239,11 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
 
     // 🛰️ [SOCKET] Surgical Broadcast for real-time UI refresh
     emitToUser(userId, "user:profile_updated", { 
-      youtubeProfile: [youtubeProfile], // Mobile expects array of channels
-      youtubeVideos: videoRecords.map(v => ({ ...v, thumbnail: smartResolveMediaUrl(v.thumbnail) }))
+      youtubeProfile: allProfiles.map(p => ({
+        ...p,
+        thumbnail_url: smartResolveMediaUrl(p.thumbnail_url)
+      })),
+      youtubeVideos: allVideos
     });
 
     return youtubeProfile;
