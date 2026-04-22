@@ -43,15 +43,21 @@ const sp = StyleSheet.create({
 
 // ── Section Header ───────────────────────────────────────────────────────────
 
-interface SectionHeaderProps { title: string; badge?: string; theme: any; }
+interface SectionHeaderProps { title: string; badge?: string; theme: any; showScrollHint?: boolean; }
 
-const SectionHeader = ({ title, badge, theme }: SectionHeaderProps) => (
+const SectionHeader = ({ title, badge, theme, showScrollHint }: SectionHeaderProps) => (
   <View style={sh.row}>
     <View style={sh.accent} />
     <Text style={[sh.title, { color: theme.text }]}>{title}</Text>
     {badge && (
       <View style={sh.badgeWrap}>
         <Text style={sh.badgeTxt}>{badge}</Text>
+      </View>
+    )}
+    {showScrollHint && (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
+        <Text style={{ fontSize: 9, fontWeight: '900', color: '#FF3040', letterSpacing: 0.5 }}>SWIPE</Text>
+        <MaterialCommunityIcons name="chevron-double-right" size={14} color="#FF3040" />
       </View>
     )}
   </View>
@@ -241,13 +247,14 @@ export const ChannelDetailView = ({ channel, videos, onBack }: ChannelDetailView
               title="FEATURED CONTENT"
               badge={`LATEST ${featuredVideos.length}`}
               theme={theme}
+              showScrollHint={true}
             />
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingLeft: 16, paddingRight: 28 }}
               decelerationRate="fast"
-              snapToInterval={214}  /* card 200 + gap 14 */
+              snapToInterval={194}  /* card 180 + gap 14 */
               snapToAlignment="start"
             >
               {featuredVideos.map((v) => (

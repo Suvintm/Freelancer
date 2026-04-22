@@ -12,8 +12,8 @@ import { formatCount } from '../../../utils/formatters';
 const { width: SW } = Dimensions.get('window');
 
 // Sizes
-const STREAMING_W = 200;
-const STREAMING_H = 300;
+const STREAMING_W = 180;
+const STREAMING_H = 210;
 const GRID_W = (SW - 48) / 2;
 
 // Types
@@ -73,7 +73,7 @@ export const YouTubeVideoCard: React.FC<Props> = ({
         onPress={handleWatch}
         style={[stm.card, { 
           backgroundColor: theme.isDarkMode ? '#050505' : '#f9f9f9',
-          borderColor: theme.isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'
+          borderColor: theme.isDarkMode ? '#1e1e1e' : '#333333'
         }]}
       >
         <View style={stm.thumbWrap}>
@@ -114,10 +114,11 @@ export const YouTubeVideoCard: React.FC<Props> = ({
   // LIST (Master Archive Redesign 🔥)
   if (mode === 'list') {
     const isDark = theme?.isDarkMode;
-    const cardBg = isDark ? 'rgba(0,0,0,0.4)' : '#FFFFFF';
-    const borderCol = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)';
-    const textColor = isDark ? '#FFFFFF' : '#000000';
-    const subTextColor = isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)';
+    // Force Pitch Black Aesthetic for high-end archive feed consistency
+    const cardBg = '#000000'; 
+    const borderCol = '#1e1e1e';
+    const textColor = '#FFFFFF';
+    const subTextColor = 'rgba(255,255,255,0.6)';
 
     return (
       <TouchableOpacity
@@ -147,28 +148,38 @@ export const YouTubeVideoCard: React.FC<Props> = ({
           />
           
           <View style={lst.playBadge}>
-            <MaterialCommunityIcons name="play" size={12} color="white" />
+            {channelAvatar ? (
+              <Image 
+                source={{ uri: channelAvatar }} 
+                style={lst.avatarBadge}
+                contentFit="cover"
+              />
+            ) : (
+              <MaterialCommunityIcons name="youtube" size={14} color="white" />
+            )}
           </View>
         </View>
 
         <View style={lst.content}>
-          <Text
-            style={[lst.title, { color: textColor }]}
-            numberOfLines={2}
-          >
-            {video.title || 'Untitled Video'}
-          </Text>
-
-          <View style={lst.metaRow}>
-            <Text style={[lst.metaText, { color: subTextColor }]}>
-              {metaText}
+          <View style={{ flex: 1 }}>
+            <Text
+              style={[lst.title, { color: textColor }]}
+              numberOfLines={2}
+            >
+              {video.title || 'Untitled Video'}
             </Text>
+
+            <View style={lst.metaRow}>
+              <Text style={[lst.metaText, { color: subTextColor }]}>
+                {metaText}
+              </Text>
+            </View>
           </View>
 
           <View style={lst.actionRow}>
             <View style={lst.actionBtn}>
-              <Text style={lst.actionTxt}>WATCH ON YOUTUBE</Text>
-              <MaterialCommunityIcons name="youtube" size={14} color="white" />
+              <Text style={lst.actionTxt}>WATCH</Text>
+              <MaterialCommunityIcons name="play" size={14} color="white" />
             </View>
           </View>
         </View>
@@ -218,7 +229,7 @@ const stm = StyleSheet.create({
   playBtn: {
     position: 'absolute', top: 12, left: 12,
     width: 34, height: 34, borderRadius: 17,
-    backgroundColor: '#FF0000',
+    backgroundColor: '#27272a',
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)',
     elevation: 8,
@@ -231,7 +242,7 @@ const stm = StyleSheet.create({
   overlayMeta:  { color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '700', marginTop: 4 },
   watchPill: {
     marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: '#27272a',
     paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, alignSelf: 'flex-start',
   },
   watchPillTxt: { color: 'white', fontSize: 9, fontWeight: '900', letterSpacing: 0.6 },
@@ -259,10 +270,15 @@ const lst = StyleSheet.create({
   },
   playBadge: {
     position: 'absolute', top: 8, left: 8,
-    width: 24, height: 24, borderRadius: 12,
-    backgroundColor: 'rgba(255,0,0,0.9)',
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: '#27272a',
     justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 1.5, borderColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  avatarBadge: {
+    width: '100%',
+    height: '100%',
   },
   content: {
     flex: 1,
@@ -287,10 +303,11 @@ const lst = StyleSheet.create({
     opacity:    0.6,
   },
   actionRow: {
-    marginTop: 12,
+    marginTop: 'auto',
+    alignSelf: 'flex-end',
   },
   actionBtn: {
-    backgroundColor: '#FF0000',
+    backgroundColor: '#27272a',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,

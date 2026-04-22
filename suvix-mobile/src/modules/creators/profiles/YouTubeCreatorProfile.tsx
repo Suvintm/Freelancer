@@ -34,6 +34,7 @@ import { useRouter } from 'expo-router';
 import { ProfileSkeleton, ProfileSkeletonContent } from '../../shared/skeletons/ProfileSkeleton';
 import { useRefreshManager } from '../../../hooks/useRefreshManager';
 import { SmartText } from '../../shared/content/SmartText';
+import { YouTubeVideoCard } from '../components/YouTubeVideoCard';
 
 // 🏆 Achievement Assets
 const SILVER_BTN = require('../../../../assets/images/playbutton/silverbtn.png');
@@ -645,15 +646,66 @@ export default function YouTubeCreatorProfile() {
               };
 
               return (
-                <View style={styles.feedContainerEdge}>
+                <View style={{ flex: 1, paddingBottom: 20 }}>
                   {videoItems.length > 0 ? (
-                    <ContentGrid 
-                      data={videoItems}
-                      mode="grid"
-                      columns={2} // 📱 2-column premium layout
-                      gap={8}     // 📐 Match container gap for precise width
-                      onItemPress={handleItemPress}
-                    />
+                    <>
+                      {/* ── Featured Posts (Carousel) ────────────────────────── */}
+                      <View style={{ marginBottom: 20 }}>
+                        <View style={[styles.sectionHeaderLine, { marginBottom: 12, justifyContent: 'space-between' }]}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <View style={[styles.sectionIndicator, { backgroundColor: '#FF0000' }]} />
+                            <Text style={[styles.sectionTitleAlt, { color: theme.text }]}>FEATURED POSTS</Text>
+                            <View style={styles.badgeSmall}>
+                               <Text style={styles.badgeSmallTxt}>TOP 6</Text>
+                            </View>
+                          </View>
+                          
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingRight: 16 }}>
+                             <Text style={{ fontSize: 9, fontWeight: '900', color: '#FF3040', letterSpacing: 0.5 }}>SWIPE</Text>
+                             <MaterialCommunityIcons name="chevron-double-right" size={14} color="#FF3040" />
+                          </View>
+                        </View>
+                        
+                        <ScrollView 
+                          horizontal 
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={{ paddingHorizontal: 16 }}
+                          snapToInterval={194} // width (180) + margin (14)
+                          decelerationRate="fast"
+                        >
+                          {videoItems.slice(0, 6).map((item: any) => (
+                            <YouTubeVideoCard
+                              key={item.id}
+                              video={item}
+                              mode="streaming"
+                              channelAvatar={item.channelAvatar}
+                            />
+                          ))}
+                        </ScrollView>
+                      </View>
+
+                      {/* ── Archive (Vertical List) ───────────────────────────── */}
+                      <View style={{ paddingHorizontal: 16 }}>
+                        <View style={[styles.sectionHeaderLine, { marginBottom: 16 }]}>
+                          <View style={[styles.sectionIndicator, { backgroundColor: theme.accent }]} />
+                          <Text style={[styles.sectionTitleAlt, { color: theme.text }]}>ARCHIVE</Text>
+                          {videoItems.length > 6 && (
+                            <View style={[styles.badgeSmall, { backgroundColor: 'rgba(255,48,64,0.1)' }]}>
+                               <Text style={[styles.badgeSmallTxt, { color: '#FF3040' }]}>{videoItems.length - 6} MORE</Text>
+                            </View>
+                          )}
+                        </View>
+
+                        {videoItems.slice(6).map((item: any) => (
+                          <YouTubeVideoCard
+                            key={item.id}
+                            video={item}
+                            mode="list"
+                            channelAvatar={item.channelAvatar}
+                          />
+                        ))}
+                      </View>
+                    </>
                   ) : (
                     <View style={styles.emptyFeed}>
                       <MaterialCommunityIcons name="video-off-outline" size={48} color={theme.textSecondary} />
@@ -1219,5 +1271,32 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-  }
+  },
+  sectionHeaderLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 0,
+  },
+  sectionIndicator: {
+    width: 3,
+    height: 14,
+    borderRadius: 2,
+  },
+  sectionTitleAlt: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  badgeSmall: {
+    backgroundColor: 'rgba(255,0,0,0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  badgeSmallTxt: {
+    color: '#FF0000',
+    fontSize: 9,
+    fontWeight: '900',
+  },
 });
