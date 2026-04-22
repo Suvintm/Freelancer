@@ -36,10 +36,14 @@ const PROFILE_REGISTRY: Record<string, React.ComponentType> = {
   default:  DefaultProfile,
 };
 
+import { useUIStore } from '../../src/store/useUIStore';
+import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
+
 export default function ProfileIndex() {
   const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
   const { user, isLoadingUser, isAuthenticated } = useAuthStore();
+  const { isTabBarVisible } = useUIStore();
   const router = useRouter();
 
   // Determine which module to load based on user metadata
@@ -70,6 +74,11 @@ export default function ProfileIndex() {
 
   const showSkeleton = !user && (isLoadingUser || isAuthenticated);
 
+  const fabStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: withTiming(isTabBarVisible ? 1 : 0) }],
+    opacity: withTiming(isTabBarVisible ? 1 : 0),
+  }));
+
   if (showSkeleton) {
     return <ProfileSkeleton />;
   }
@@ -91,13 +100,15 @@ export default function ProfileIndex() {
       <ActiveProfileModule />
       
       {/* 🚀 FLOAT ACTION: Create Post */}
-      <TouchableOpacity 
-        style={[styles.fab, { backgroundColor: theme.accent }]} 
-        onPress={() => router.push('/create-post')}
-        activeOpacity={0.8}
-      >
-        <MaterialCommunityIcons name="plus" size={30} color="white" />
-      </TouchableOpacity>
+      <Animated.View style={[styles.fabWrapper, fabStyle]}>
+        <TouchableOpacity 
+          style={[styles.fab, { backgroundColor: theme.accent }]} 
+          onPress={() => router.push('/create-post')}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="plus" size={30} color="white" />
+        </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 }
@@ -230,10 +241,13 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     aspectRatio: 1,
   },
-  fab: {
+  fabWrapper: {
     position: 'absolute',
     bottom: 100,
     right: 25,
+    zIndex: 999,
+  },
+  fab: {
     width: 60,
     height: 60,
     borderRadius: 30,

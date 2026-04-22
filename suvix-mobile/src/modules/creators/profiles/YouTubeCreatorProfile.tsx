@@ -35,6 +35,7 @@ import { ProfileSkeleton, ProfileSkeletonContent } from '../../shared/skeletons/
 import { useRefreshManager } from '../../../hooks/useRefreshManager';
 import { SmartText } from '../../shared/content/SmartText';
 import { YouTubeVideoCard } from '../components/YouTubeVideoCard';
+import { useScrollToHideTabBar } from '../../../hooks/useScrollToHideTabBar';
 
 // 🏆 Achievement Assets
 const SILVER_BTN = require('../../../../assets/images/playbutton/silverbtn.png');
@@ -51,6 +52,7 @@ export default function YouTubeCreatorProfile() {
   const { user, updateUser, fetchUser, setYoutubeVideos, setIsRefreshing, isLoadingUser, isRefreshing } = useAuthStore();
   const { socket } = useSocketStore();
   const router = useRouter();
+  const { onScroll } = useScrollToHideTabBar();
 
   // 🛡️ [STATE] Track profile image load failures for linked channels
   const [avatarErrors, setAvatarErrors] = React.useState<Record<string, boolean>>({});
@@ -254,6 +256,8 @@ export default function YouTubeCreatorProfile() {
       <ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={[styles.content, { paddingTop: headerOffset, flexGrow: 1 }]}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl 
             refreshing={isRefreshing} 

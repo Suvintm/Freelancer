@@ -4,12 +4,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { Colors } from '../../constants/Colors';
 
+import { useScrollToHideTabBar } from '../../hooks/useScrollToHideTabBar';
+
 interface ScreenContainerProps {
   children: React.ReactNode;
   headerHeight?: number;
   tabBarHeight?: number;
   isScrollable?: boolean;
   paddingHorizontal?: number;
+  onScroll?: (event: any) => void;
 }
 
 /**
@@ -22,10 +25,12 @@ export const ScreenContainer = ({
   headerHeight = 50, 
   tabBarHeight = 60,
   isScrollable = true,
-  paddingHorizontal = 0
+  paddingHorizontal = 0,
+  onScroll: customOnScroll
 }: ScreenContainerProps) => {
   const insets = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
+  const { onScroll: hideTabBarOnScroll } = useScrollToHideTabBar();
   
   const palette = isDarkMode ? Colors.dark : Colors.light;
   
@@ -39,6 +44,11 @@ export const ScreenContainer = ({
     <View style={[styles.root, { backgroundColor: palette.primary }]}>
       <RootView 
         style={styles.flex}
+        onScroll={isScrollable ? (e: any) => {
+          hideTabBarOnScroll(e);
+          if (customOnScroll) customOnScroll(e);
+        } : undefined}
+        scrollEventThrottle={16}
         contentContainerStyle={[
           isScrollable && {
             paddingTop: topBuffer,

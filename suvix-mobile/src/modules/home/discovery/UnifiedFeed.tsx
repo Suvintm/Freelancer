@@ -14,14 +14,18 @@ import { PremiumNativeAd } from '../../../components/ads/PremiumNativeAd';
 import { useAdPool } from '../../../hooks/useAdPool';
 import { useStories } from '../../../hooks/useStories';
 
+import { useScrollToHideTabBar } from '../../../hooks/useScrollToHideTabBar';
+
 interface UnifiedFeedProps {
   ListHeaderComponent?: React.ComponentType<any> | React.ReactElement | null;
   onScrollBeginDrag?: () => void;
   onScrollEndDrag?: () => void;
+  onScroll?: (event: any) => void;
 }
 
-export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEndDrag }: UnifiedFeedProps) => {
+export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEndDrag, onScroll: customOnScroll }: UnifiedFeedProps) => {
   const { theme } = useTheme();
+  const { onScroll: hideTabBarOnScroll } = useScrollToHideTabBar();
   const { feed, isLoading, refreshFeed } = useDiscoveryStore();
   const { refetch: refetchStories } = useStories();
   const NATIVE_AD_UNIT_ID = process.env.EXPO_PUBLIC_ADMOB_NATIVE_UNIT_ID || 'ca-app-pub-3940256099942544/2247696110';
@@ -120,6 +124,11 @@ export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEn
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        onScroll={(e) => {
+          hideTabBarOnScroll(e);
+          if (customOnScroll) customOnScroll(e);
+        }}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={isLoading}

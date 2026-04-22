@@ -29,13 +29,37 @@ interface AnimatedTabBarProps {
  */
 import * as Haptics from 'expo-haptics';
 
+import Animated, { 
+  useAnimatedStyle, 
+  withTiming, 
+  interpolate 
+} from 'react-native-reanimated';
+import { useUIStore } from '../store/useUIStore';
+
 export const AnimatedTabBar = ({ activeIndex, tabs, onTabPress, hidden }: AnimatedTabBarProps) => {
   const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
+  const { isTabBarVisible } = useUIStore();
   
   if (hidden) return null;
   
   const TAB_BAR_HEIGHT = 60 + insets.bottom;
+
+  // ── Animation ─────────────────────────────────────────────────────────────
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { 
+          translateY: withTiming(isTabBarVisible ? 0 : TAB_BAR_HEIGHT + 20, {
+            duration: 300,
+          }) 
+        }
+      ],
+      opacity: withTiming(isTabBarVisible ? 1 : 0, {
+        duration: 250,
+      }),
+    };
+  });
 
   const VISIBLE_TABS = (tabs || []).filter(t => !['client', 'editor'].includes(t.name));
 
@@ -85,13 +109,14 @@ export const AnimatedTabBar = ({ activeIndex, tabs, onTabPress, hidden }: Animat
   };
 
   return (
-    <View style={[
+    <Animated.View style={[
       styles.container, 
       { 
         backgroundColor: theme.tabBar,
         height: TAB_BAR_HEIGHT,
         paddingBottom: insets.bottom 
-      }
+      },
+      animatedStyle
     ]}>
       <View style={styles.row}>
         {VISIBLE_TABS.map((tab, index) => {
@@ -141,7 +166,7 @@ export const AnimatedTabBar = ({ activeIndex, tabs, onTabPress, hidden }: Animat
           );
         })}
       </View>
-    </View>
+    </Animated.View>
   );
 };
 
