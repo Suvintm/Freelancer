@@ -606,7 +606,9 @@ export default function YouTubeCreatorProfile() {
         })}
 
 
-          {/* 📱 CENTRALIZED MEDIA ENGINE */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* 📱 CENTRALIZED MEDIA ENGINE                                        */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
           <ProfileContentTabs 
             userId={user.id}
             theme={theme}
@@ -615,101 +617,308 @@ export default function YouTubeCreatorProfile() {
             renderCustomTab={(tab) => {
               if (tab !== 'YT POSTS') return null;
 
-              // 🔗 MAP & SORT: Merge videos from all channels and find their branding
+              // ── Constants ────────────────────────────────────────────────────
+              // 16:9 featured card: 72% screen width
+              const CARD_W = Math.round(width * 0.72);
+              const CARD_THUMB_H = Math.round(CARD_W * 9 / 16);
+              // Archive thumbnail: fixed width, fills card height via absoluteFillObject
+              const ARCH_THUMB_W = 164;
+
+              // ── Helpers ──────────────────────────────────────────────────────
+              const isRecent = (d?: string): boolean =>
+                !!d && Date.now() - new Date(d).getTime() < 30 * 24 * 60 * 60 * 1000;
+
+              const timeAgo = (d?: string): string => {
+                if (!d) return '';
+                const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
+                if (days === 0) return 'Today';
+                if (days === 1) return 'Yesterday';
+                if (days < 7)  return `${days}d ago`;
+                if (days < 30) return `${Math.floor(days / 7)}w ago`;
+                if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+                return `${Math.floor(days / 365)}y ago`;
+              };
+
+              // ── Data ─────────────────────────────────────────────────────────
               const videoItems = [...(user.youtubeVideos || [])]
                 .sort((a, b) => {
-                   const dateA = new Date(a.published_at || a.publishedAt || 0).getTime();
-                   const dateB = new Date(b.published_at || b.publishedAt || 0).getTime();
-                   return dateB - dateA; // 📅 Newest first
+                  const dA = new Date(a.published_at || a.publishedAt || 0).getTime();
+                  const dB = new Date(b.published_at || b.publishedAt || 0).getTime();
+                  return dB - dA;
                 })
                 .map((video: any) => {
-                  // Find the specific channel avatar this video belongs to
                   const channelId = video.channel_id || video.channelId;
-                  const originatingChannel = youtubeProfiles.find(p => p.channel_id === channelId || p.id === channelId);
-                  const specificAvatar = originatingChannel?.thumbnail_url || (youtubeProfiles.find(p => p.is_primary) || youtubeProfiles[0])?.thumbnail_url;
+                  const originatingChannel = youtubeProfiles.find(
+                    p => p.channel_id === channelId || p.id === channelId
+                  );
+                  const specificAvatar =
+                    originatingChannel?.thumbnail_url ||
+                    (youtubeProfiles.find(p => p.is_primary) || youtubeProfiles[0])?.thumbnail_url;
+
+                  const thumb = video.thumbnail || video.thumbnailUrl || video.thumbnail_url || video.media?.urls?.thumb || video.media?.urls?.feed;
 
                   return {
                     id: video.video_id || video.id,
-                    thumbnail: video.thumbnail,
-                    type: 'YT VIDEOS' as const,
+                    thumbnail: thumb,
                     title: video.title,
-                    channelAvatar: specificAvatar, // 🔴 Exact branding attribution
+                    channelName: originatingChannel?.channel_name,
+                    channelAvatar: specificAvatar,
                     published_at: video.published_at || video.publishedAt,
-                    isProcessing: false
                   };
                 });
 
-              const handleItemPress = (item: any) => {
-                const url = `https://www.youtube.com/watch?v=${item.id}`;
-                console.log(`🎬 [YT-OPEN] Launching: ${url}`);
-                Linking.openURL(url);
-              };
+              const featuredVideos = videoItems.slice(0, 6);
+              const archiveVideos  = videoItems.slice(6);
+
+              // ── Empty State ──────────────────────────────────────────────────
+              if (videoItems.length === 0) {
+                return (
+                  <View style={styles.emptyFeed}>
+                    <MaterialCommunityIcons name="video-off-outline" size={48} color={theme.textSecondary} />
+                    <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No videos found.</Text>
+                  </View>
+                );
+              }
 
               return (
-                <View style={{ flex: 1, paddingBottom: 20 }}>
-                  {videoItems.length > 0 ? (
-                    <>
-                      {/* ── Featured Posts (Carousel) ────────────────────────── */}
-                      <View style={{ marginBottom: 20 }}>
-                        <View style={[styles.sectionHeaderLine, { marginBottom: 12, justifyContent: 'space-between' }]}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                            <View style={[styles.sectionIndicator, { backgroundColor: '#FF0000' }]} />
-                            <Text style={[styles.sectionTitleAlt, { color: theme.text }]}>FEATURED POSTS</Text>
-                            <View style={styles.badgeSmall}>
-                               <Text style={styles.badgeSmallTxt}>TOP 6</Text>
-                            </View>
-                          </View>
-                          
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingRight: 16 }}>
-                             <Text style={{ fontSize: 9, fontWeight: '900', color: '#FF3040', letterSpacing: 0.5 }}>SWIPE</Text>
-                             <MaterialCommunityIcons name="chevron-double-right" size={14} color="#FF3040" />
-                          </View>
+                <View style={{ flex: 1, paddingBottom: 28 }}>
+
+
+
+                  {/* ── FEATURED Section ──────────────────────────────────────── */}
+                  <View style={{ marginTop: 22 }}>
+                    {/* Section header */}
+                    <View style={ytStyles.sectionHeader}>
+                      <View style={ytStyles.sectionHeaderLeft}>
+                        <View style={[ytStyles.sectionIndicator, { backgroundColor: '#FF0000' }]} />
+                        <Text style={[ytStyles.sectionLabel, { color: theme.text }]}>FEATURED</Text>
+                        <View style={[ytStyles.countBadge, { backgroundColor: 'rgba(255,0,0,0.13)' }]}>
+                          <Text style={[ytStyles.countBadgeText, { color: '#FF0000' }]}>TOP {featuredVideos.length}</Text>
                         </View>
-                        
-                        <ScrollView 
-                          horizontal 
-                          showsHorizontalScrollIndicator={false}
-                          contentContainerStyle={{ paddingHorizontal: 16 }}
-                          snapToInterval={194} // width (180) + margin (14)
-                          decelerationRate="fast"
+                      </View>
+                      <View style={ytStyles.swipeHint}>
+                        <Text style={ytStyles.swipeHintText}>SWIPE</Text>
+                        <MaterialCommunityIcons name="chevron-double-right" size={13} color="#FF3040" />
+                      </View>
+                    </View>
+
+                    {/* Featured carousel */}
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 6 }}
+                      snapToInterval={CARD_W + 14}
+                      decelerationRate="fast"
+                      scrollEventThrottle={16}
+                    >
+                      {featuredVideos.map((item, idx) => (
+                        <TouchableOpacity
+                          key={item.id}
+                          activeOpacity={0.88}
+                          onPress={() => Linking.openURL(`https://www.youtube.com/watch?v=${item.id}`)}
+                          style={[ytStyles.featuredCard, {
+                            width: CARD_W,
+                            backgroundColor: theme.secondary,
+                            borderColor: theme.border,
+                          }]}
                         >
-                          {videoItems.slice(0, 6).map((item: any) => (
-                            <YouTubeVideoCard
-                              key={item.id}
-                              video={item}
-                              mode="streaming"
-                              channelAvatar={item.channelAvatar}
+                          {/* ── Thumbnail (true 16:9) ── */}
+                          <View style={{ width: CARD_W, height: CARD_THUMB_H, overflow: 'hidden' }}>
+                            <Image
+                              source={item.thumbnail ? { uri: item.thumbnail } : DEFAULT_AVATAR}
+                              style={{ width: '100%', height: '100%' }}
+                              contentFit="cover"
+                              cachePolicy="memory-disk"
+                              transition={250}
+                              onError={(e) => console.warn(`❌ [YT-FEATURED] Image fail for ${item.id}:`, item.thumbnail, e.error)}
                             />
-                          ))}
-                        </ScrollView>
-                      </View>
 
-                      {/* ── Archive (Vertical List) ───────────────────────────── */}
-                      <View style={{ paddingHorizontal: 16 }}>
-                        <View style={[styles.sectionHeaderLine, { marginBottom: 16 }]}>
-                          <View style={[styles.sectionIndicator, { backgroundColor: theme.accent }]} />
-                          <Text style={[styles.sectionTitleAlt, { color: theme.text }]}>ARCHIVE</Text>
-                          {videoItems.length > 6 && (
-                            <View style={[styles.badgeSmall, { backgroundColor: 'rgba(255,48,64,0.1)' }]}>
-                               <Text style={[styles.badgeSmallTxt, { color: '#FF3040' }]}>{videoItems.length - 6} MORE</Text>
+                            {/* Bottom gradient so title reads well */}
+                            <LinearGradient
+                              colors={['transparent', 'rgba(0,0,0,0.72)']}
+                              start={{ x: 0, y: 0.38 }}
+                              end={{ x: 0, y: 1 }}
+                              style={StyleSheet.absoluteFillObject}
+                            />
+
+                            <View style={ytStyles.playBtnWrap}>
+                              <View style={ytStyles.playBtn}>
+                                <MaterialCommunityIcons name="play" size={16} color="#FFFFFF" style={{ marginLeft: 1 }} />
+                              </View>
                             </View>
-                          )}
-                        </View>
 
-                        {videoItems.slice(6).map((item: any) => (
-                          <YouTubeVideoCard
-                            key={item.id}
-                            video={item}
-                            mode="list"
-                            channelAvatar={item.channelAvatar}
-                          />
-                        ))}
+                            {/* ── NEW badge top-left ── */}
+                            {isRecent(item.published_at) && (
+                              <View style={ytStyles.newBadge}>
+                                <Text style={ytStyles.newBadgeText}>NEW</Text>
+                              </View>
+                            )}
+
+                            {/* ── Index number top-right ── */}
+                            <View style={[ytStyles.indexBadge, { backgroundColor: 'rgba(0,0,0,0.55)' }]}>
+                              <Text style={ytStyles.indexBadgeText}>#{idx + 1}</Text>
+                            </View>
+
+                            {/* ── Channel avatar + time — bottom row ── */}
+                              <View style={[ytStyles.timePill, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+                                <MaterialCommunityIcons name="clock-outline" size={9} color="rgba(255,255,255,0.85)" />
+                                <Text style={ytStyles.timePillText}>{timeAgo(item.published_at)}</Text>
+                              </View>
+                          </View>
+
+                          {/* ── Info bar below thumbnail ── */}
+                          <View style={[ytStyles.featuredInfoBar, { backgroundColor: theme.secondary }]}>
+                            <Text
+                              style={[ytStyles.featuredTitle, { color: theme.text }]}
+                              numberOfLines={2}
+                            >
+                              {item.title || 'Untitled Video'}
+                            </Text>
+                            <View style={ytStyles.featuredMetaRow}>
+                              {item.channelName ? (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                                  {item.channelAvatar ? (
+                                    <Image 
+                                      source={{ uri: item.channelAvatar }} 
+                                      style={{ width: 14, height: 14, borderRadius: 7 }} 
+                                      contentFit="cover"
+                                    />
+                                  ) : (
+                                    <MaterialCommunityIcons name="youtube" size={11} color="#FF0000" />
+                                  )}
+                                  <Text
+                                    style={[ytStyles.featuredChannelName, { color: theme.textSecondary }]}
+                                    numberOfLines={1}
+                                  >
+                                    {item.channelName}
+                                  </Text>
+                                </View>
+                              ) : <View style={{ flex: 1 }} />}
+
+                              {/* Watch pill */}
+                              <View style={ytStyles.watchPill}>
+                                <MaterialCommunityIcons name="play-circle" size={11} color="#FF3040" />
+                                <Text style={ytStyles.watchPillText}>WATCH</Text>
+                              </View>
+                            </View>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+
+                  {/* ── ARCHIVE Section ───────────────────────────────────────── */}
+                  {archiveVideos.length > 0 && (
+                    <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
+                      {/* Section header */}
+                      <View style={[ytStyles.sectionHeader, { marginBottom: 14 }]}>
+                        <View style={ytStyles.sectionHeaderLeft}>
+                          <View style={[ytStyles.sectionIndicator, { backgroundColor: theme.accent }]} />
+                          <Text style={[ytStyles.sectionLabel, { color: theme.text }]}>ALL VIDEOS</Text>
+                          <View style={[ytStyles.countBadge, {
+                            backgroundColor: theme.isDarkMode
+                              ? 'rgba(255,255,255,0.08)'
+                              : 'rgba(0,0,0,0.06)',
+                          }]}>
+                            <Text style={[ytStyles.countBadgeText, { color: theme.textSecondary }]}>
+                              {archiveVideos.length} MORE
+                            </Text>
+                          </View>
+                        </View>
                       </View>
-                    </>
-                  ) : (
-                    <View style={styles.emptyFeed}>
-                      <MaterialCommunityIcons name="video-off-outline" size={48} color={theme.textSecondary} />
-                      <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No posts found.</Text>
+
+                      {/* Archive list */}
+                      {archiveVideos.map((item) => (
+                        <TouchableOpacity
+                          key={item.id}
+                          activeOpacity={0.82}
+                          onPress={() => Linking.openURL(`https://www.youtube.com/watch?v=${item.id}`)}
+                          style={[ytStyles.archiveCard, {
+                            backgroundColor: theme.secondary,
+                            borderColor: theme.border,
+                          }]}
+                        >
+                          {/* ── Thumbnail: fills full card height ── */}
+                          <View style={{ width: ARCH_THUMB_W, overflow: 'hidden', borderTopLeftRadius: 14, borderBottomLeftRadius: 14 }}>
+                            <Image
+                              source={item.thumbnail ? { uri: item.thumbnail } : DEFAULT_AVATAR}
+                              style={StyleSheet.absoluteFillObject}
+                              contentFit="cover"
+                              cachePolicy="memory-disk"
+                              transition={200}
+                              onError={(e) => console.warn(`❌ [YT-ARCHIVE] Image fail for ${item.id}:`, item.thumbnail, e.error)}
+                            />
+                            {/* Gradient right edge fade */}
+                            <LinearGradient
+                              colors={['transparent', 'rgba(0,0,0,0.45)']}
+                              start={{ x: 0.4, y: 0 }}
+                              end={{ x: 1, y: 0 }}
+                              style={StyleSheet.absoluteFillObject}
+                            />
+                            {/* Bottom gradient */}
+                            <LinearGradient
+                              colors={['transparent', 'rgba(0,0,0,0.55)']}
+                              start={{ x: 0, y: 0.5 }}
+                              end={{ x: 0, y: 1 }}
+                              style={StyleSheet.absoluteFillObject}
+                            />
+                            <View style={ytStyles.archivePlayWrap}>
+                              <View style={ytStyles.archivePlayBtn}>
+                                <MaterialCommunityIcons name="play" size={12} color="#FFF" style={{ marginLeft: 1 }} />
+                              </View>
+                            </View>
+                            {/* NEW pill */}
+                            {isRecent(item.published_at) && (
+                              <View style={ytStyles.archiveNewBadge}>
+                                <Text style={ytStyles.archiveNewBadgeText}>NEW</Text>
+                              </View>
+                            )}
+                          </View>
+
+                          {/* ── Text info ── */}
+                          <View style={ytStyles.archiveInfo}>
+                            <Text
+                              style={[ytStyles.archiveTitle, { color: theme.text }]}
+                              numberOfLines={2}
+                            >
+                              {item.title || 'Untitled Video'}
+                            </Text>
+
+                            {item.channelName && (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 5 }}>
+                                {item.channelAvatar ? (
+                                  <Image 
+                                    source={{ uri: item.channelAvatar }} 
+                                    style={{ width: 14, height: 14, borderRadius: 7 }} 
+                                    contentFit="cover"
+                                  />
+                                ) : (
+                                  <MaterialCommunityIcons name="youtube" size={11} color="#FF0000" />
+                                )}
+                                <Text
+                                  style={[ytStyles.archiveChannelName, { color: theme.textSecondary }]}
+                                  numberOfLines={1}
+                                >
+                                  {item.channelName}
+                                </Text>
+                              </View>
+                            )}
+
+                            <View style={ytStyles.archiveBottomRow}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                <MaterialCommunityIcons name="clock-time-four-outline" size={10} color={theme.textSecondary} />
+                                <Text style={[ytStyles.archiveTimeText, { color: theme.textSecondary }]}>
+                                  {timeAgo(item.published_at)}
+                                </Text>
+                              </View>
+                              <View style={[ytStyles.archiveWatchBtn, { backgroundColor: 'rgba(255,48,64,0.13)' }]}>
+                                <MaterialCommunityIcons name="play-circle-outline" size={11} color="#FF3040" />
+                                <Text style={ytStyles.archiveWatchBtnText}>WATCH</Text>
+                              </View>
+                            </View>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
                     </View>
                   )}
                 </View>
@@ -804,6 +1013,294 @@ const BioEditModal = React.memo(({ visible, onClose, onSave, initialBio, theme }
   );
 });
 
+// --------------------------------------------------------------------------
+// 🎬 YT POSTS SECTION STYLES  (isolated, no conflicts with main styles)
+// --------------------------------------------------------------------------
+const ytStyles = StyleSheet.create({
+  // Studio header
+  studioHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: 16,
+    marginTop: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  studioLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  studioIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,0,0,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  studioTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  studioSubtitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  studioViewsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  studioViewsText: {
+    color: '#FF0000',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+
+  // Section headers
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  sectionIndicator: {
+    width: 3,
+    height: 16,
+    borderRadius: 2,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  countBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  countBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+  },
+  swipeHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  swipeHintText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#FF3040',
+    letterSpacing: 0.5,
+  },
+
+  // Featured card
+  featuredCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginRight: 14,
+    borderWidth: 1,
+    // Shadow: red tint for dark mode atmosphere
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  playBtnWrap: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    zIndex: 10,
+  },
+  playBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(63, 63, 70, 0.85)', // Zinc-700
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  newBadge: {
+    position: 'absolute',
+    top: 10,
+    left: 44, // Shifted to right of play button
+    backgroundColor: '#FF3040',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  newBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  indexBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  indexBadgeText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  timePill: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  timePillText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  featuredInfoBar: {
+    padding: 12,
+    paddingTop: 10,
+  },
+  featuredTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 18,
+  },
+  featuredMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 7,
+    gap: 8,
+  },
+  featuredChannelName: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  watchPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,48,64,0.12)',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  watchPillText: {
+    color: '#FF3040',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+  },
+
+  // Archive card
+  archiveCard: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    minHeight: 92,
+  },
+  archivePlayWrap: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    zIndex: 10,
+  },
+  archivePlayBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(63, 63, 70, 0.85)', // Zinc-700
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  archiveNewBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 38, // Shifted to right of play button
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  archiveNewBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  archiveInfo: {
+    flex: 1,
+    padding: 11,
+    justifyContent: 'space-between',
+  },
+  archiveTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 18,
+  },
+  archiveChannelName: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  archiveBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  archiveTimeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  archiveWatchBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  archiveWatchBtnText: {
+    color: '#FF3040',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+  },
+});
+
+// --------------------------------------------------------------------------
+// 📐 MAIN STYLES (unchanged from original)
+// --------------------------------------------------------------------------
 const modalStyles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
   content: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, borderTopWidth: 1 },
@@ -1115,131 +1612,6 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'flex-end'
-  },
-  modalContent: {
-    padding: 24,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    minHeight: '50%'
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '900'
-  },
-  inputContainer: {
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    minHeight: 120
-  },
-  bioInput: {
-    fontSize: 16,
-    lineHeight: 22,
-    height: 120, // Match minHeight of container
-    textAlignVertical: 'top',
-    padding: 0, // Reset to prevent drifting
-    margin: 0,
-  },
-  charCount: {
-    alignSelf: 'flex-end',
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 8
-  },
-  saveBtn: {
-    marginTop: 24,
-    height: 56,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10
-  },
-  saveBtnText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '800'
-  },
-  toolbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 12,
-    marginTop: 12,
-    borderTopWidth: 1,
-    gap: 12
-  },
-  toolBtn: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    minWidth: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  toolBtnText: {
-    fontSize: 18,
-    fontWeight: '900'
-  },
-  bioEditTrigger: {
-    padding: 8,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-    marginTop: 4
-  },
-  mirrorContainer: {
-    position: 'relative',
-    minHeight: 120
-  },
-  bioInputMirror: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    fontSize: 16,
-    lineHeight: 22,
-    padding: 0, // Must match bioInput
-    margin: 0,
-    textAlignVertical: 'top'
-  },
-  feedContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 10,
-  },
-  feedContainerEdge: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingTop: 10,
-    gap: 8,
-  },
-  emptyFeed: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginTop: 12,
-  },
-  modalOverlay: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1298,5 +1670,30 @@ const styles = StyleSheet.create({
     color: '#FF0000',
     fontSize: 9,
     fontWeight: '900',
+  },
+  feedContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+  feedContainerEdge: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingTop: 10,
+    gap: 8,
+  },
+  emptyFeed: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 12,
   },
 });

@@ -186,7 +186,8 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
 
     const allVideos = allProfiles
       .flatMap(p => (p.videos || []).map(v => {
-        const resolvedUrl = smartResolveMediaUrl(v.thumbnail);
+        const rawThumb = v.thumbnail || v.thumbnail_url || v.thumbnailUrl;
+        const resolvedUrl = smartResolveMediaUrl(rawThumb);
         return {
           id: v.video_id,
           title: v.title,

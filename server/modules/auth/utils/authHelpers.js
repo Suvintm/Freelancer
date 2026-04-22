@@ -159,7 +159,9 @@ export const formatAuthResponse = (user) => {
   const youtubeVideos = (user.youtubeProfiles || [])
     .flatMap((p) =>
       (p.videos || []).map((v) => {
-        const resolvedUrl = smartResolveMediaUrl(v.thumbnail);
+        const rawThumb = v.thumbnail || v.thumbnail_url || v.thumbnailUrl;
+        const resolvedUrl = smartResolveMediaUrl(rawThumb);
+        
         return {
           ...v,
           thumbnail: resolvedUrl,
