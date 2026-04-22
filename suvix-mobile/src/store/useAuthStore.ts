@@ -173,7 +173,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setTempSignupData: (data) =>
     set(state => ({ tempSignupData: { ...(state.tempSignupData || {}), ...data } })),
 
-  clearTempSignupData: () => set({ tempSignupData: null }),
+  clearTempSignupData: () => set({ 
+    tempSignupData: null,
+    youtubeDiscovery: { channels: [], selectedChannelIds: [], categorizations: {} }
+  }),
 
   // ── YouTube discovery ──────────────────────────────────────────────────────
 
@@ -343,6 +346,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated:    false,
         isAddingAccount:    false,
         dataLoaded:         false,
+        tempSignupData:     null,
+        youtubeDiscovery: { channels: [], selectedChannelIds: [], categorizations: {} }
       });
     } catch (error) {
       console.error('Logout Error:', error);
