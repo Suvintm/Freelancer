@@ -143,6 +143,8 @@ export const registerFullUser = async (userData) => {
                 ch.categorySlug ||
                 ch.category_slug ||
                 null,
+              language: ch.language || null,
+              country: ch.country || null,
               isPrimary: ch.isPrimary === true || index === 0,
               is_verified: ch.isVerified !== false,
               uploads_playlist_id: ch.uploadsPlaylistId || null,
@@ -290,6 +292,9 @@ export const registerFullUser = async (userData) => {
                         subscriber_count: channel.subscriber_count || 0,
                         video_count: channel.video_count || 0,
                         uploads_playlist_id: channel.uploads_playlist_id || null,
+                        subCategoryId: channel.roleSubCategoryId,
+                        language: channel.language,
+                        country: channel.country,
                         is_primary: channel.isPrimary || index === 0
                     }
                 });

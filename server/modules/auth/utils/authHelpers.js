@@ -46,6 +46,7 @@ export const USER_INCLUDE = {
   },
   youtubeProfiles: {
     include: {
+      subCategory: true,
       videos: {
         orderBy: { published_at: "desc" },
         take: 25,
@@ -150,6 +151,8 @@ export const formatAuthResponse = (user) => {
   // YouTube data — flatten across all linked profiles
   const youtubeProfiles = (user.youtubeProfiles || []).map((p) => ({
     ...p,
+    country: p.country || user.profile?.location_country || "INDIA",
+    subCategoryName: p.subCategory?.name || null,
     thumbnail_url: smartResolveMediaUrl(p.thumbnail_url),
   }));
 

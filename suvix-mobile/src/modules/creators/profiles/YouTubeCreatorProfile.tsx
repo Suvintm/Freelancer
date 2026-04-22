@@ -109,20 +109,34 @@ export default function YouTubeCreatorProfile() {
   // Aggregate Stats for Header
   const totalSubscribers = youtubeProfiles.reduce((acc, p) => acc + (p.subscriber_count || 0), 0);
   const totalVideos = youtubeProfiles.reduce((acc, p) => acc + (p.video_count || 0), 0);
+  const totalViews = youtubeProfiles.reduce((acc, p) => acc + Number(p.view_count || 0), 0);
   
   const displayName = user.name || primaryChannel.channel_name;
-  const subCategoryName = user.primaryRole?.subCategory || 'YouTube Creator';
+  
+  // 🏷️ Aggregate Unique Specific Roles (Subcategories) from all channels
+  const allRoles = Array.from(new Set(
+    youtubeProfiles
+      .map(p => p.subCategoryName || p.subCategory?.name)
+      .filter(Boolean)
+  ));
+
+  const languages = Array.from(new Set(
+    youtubeProfiles
+      .map(p => p.language)
+      .filter(Boolean)
+  ));
+
+  const allLocations = Array.from(new Set(
+    youtubeProfiles
+      .map(p => p.country)
+      .filter(Boolean)
+  ));
 
   // Calculate header height (Navbar 50 + Safe Area Inset Top)
   const headerOffset = insets.top + 50;
 
-  const handleViewChannel = async (channelId: string) => {
-    try {
-      const url = `https://www.youtube.com/channel/${channelId}`;
-      await Linking.openURL(url);
-    } catch (error) {
-      Alert.alert("Error", "Could not open YouTube link. Please check your internet connection or try again later.");
-    }
+  const handleViewChannel = (channelId: string) => {
+    router.push(`/creators/channel/${channelId}`);
   };
 
   
@@ -387,7 +401,32 @@ export default function YouTubeCreatorProfile() {
                 <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
                 <MaterialCommunityIcons name="check-decagram" size={18} color="#FF3040" style={{ marginLeft: 6 }} />
              </View>
-            <Text style={[styles.niche, { color: '#FF0000' }]}>{subCategoryName.toUpperCase()}</Text>
+             <View style={styles.nicheRow}>
+               {allRoles.length > 0 ? (
+                 allRoles.map((role, i) => (
+                   <View key={`${role}-${i}`} style={[styles.nicheChip, { backgroundColor: theme.secondary, borderColor: 'rgba(255,48,64,0.3)', borderWidth: 1 }]}>
+                     <Text style={[styles.nicheChipText, { color: '#FF3040' }]}>{role.toString().toUpperCase()}</Text>
+                   </View>
+                 ))
+               ) : (
+                 <TouchableOpacity 
+                   onPress={() => router.push('/creators/manual-link')}
+                   style={[styles.nicheChip, { backgroundColor: theme.secondary, borderStyle: 'dashed', borderWidth: 1, borderColor: theme.border }]}
+                 >
+                   <Text style={[styles.nicheChipText, { color: theme.textSecondary }]}>SELECT CHANNEL ROLE</Text>
+                 </TouchableOpacity>
+               )}
+             </View>
+             
+             {/* 📍 Channel Experience Line */}
+             <View style={styles.experienceRow}>
+               <Feather name="globe" size={10} color={theme.textSecondary} />
+               <Text style={[styles.experienceText, { color: theme.textSecondary, marginLeft: 4 }]}>
+                 {allLocations.length > 0 ? allLocations.join(' • ').toUpperCase() : (primaryChannel.country?.toUpperCase() || 'GLOBAL')}
+                 {languages.length > 0 ? ` • ${languages.join(', ').toUpperCase()}` : ''}
+                 
+               </Text>
+             </View>
             {isSavingBio ? (
               <View style={styles.bioLoadingWrap}>
                 <ActivityIndicator size="small" color={theme.accent} />
@@ -479,7 +518,12 @@ export default function YouTubeCreatorProfile() {
             const profileUri = channel.thumbnail_url;
 
             return (
-              <View key={channelKey} style={[styles.channelCard, { backgroundColor: theme.secondary, borderColor: theme.border, marginTop: index === 0 ? 0 : 10 }]}>
+              <TouchableOpacity 
+                key={channelKey} 
+                onPress={() => handleViewChannel(channel.id)}
+                activeOpacity={0.9}
+                style={[styles.channelCard, { backgroundColor: theme.secondary, borderColor: theme.border, marginTop: index === 0 ? 0 : 10 }]}
+              >
                 <Image 
                   source={profileUri && !hasError ? { uri: profileUri } : DEFAULT_AVATAR} 
                   style={styles.channelThumb}
@@ -518,11 +562,23 @@ export default function YouTubeCreatorProfile() {
                     </Text>
                   </View>
                   <View style={[styles.channelStat, { marginLeft: 12 }]}>
-                    <MaterialCommunityIcons name="movie-play" size={14} color={theme.accent} />
+                    <MaterialCommunityIcons name="eye-outline" size={14} color={theme.accent} />
                     <Text style={[styles.channelStatText, { color: theme.textSecondary }]}>
-                      {formatCount(channel.video_count)}
+                      {formatCount(channel.view_count)}
                     </Text>
                   </View>
+                </View>
+
+                {/* 🏷️ Channel Specific Niche */}
+                <View style={styles.channelNicheRow}>
+                  {channel.subCategoryName ? (
+                    <Text style={[styles.channelNicheText, { color: theme.accent }]}>{channel.subCategoryName.toUpperCase()}</Text>
+                  ) : (
+                    <View style={styles.nicheWarning}>
+                      <Feather name="alert-circle" size={10} color="#FFB000" />
+                      <Text style={[styles.channelNicheText, { color: '#FFB000', marginLeft: 4 }]}>NICHE NOT SET</Text>
+                    </View>
+                  )}
                 </View>
               </View>
               <View style={styles.cardActions}>
@@ -539,12 +595,12 @@ export default function YouTubeCreatorProfile() {
                     )}
                   </TouchableOpacity>
                 </View>
-                <TouchableOpacity style={styles.viewBtn} onPress={() => handleViewChannel(channel.channel_id)}>
-                  <Text style={[styles.viewBtnText, { color: theme.accent }]}>View</Text>
-                  <MaterialCommunityIcons name="open-in-new" size={12} color={theme.accent} />
-                </TouchableOpacity>
+                <View style={styles.viewBtn}>
+                  <Text style={[styles.viewBtnText, { color: theme.accent }]}>Analytics</Text>
+                  <MaterialCommunityIcons name="chevron-right" size={12} color={theme.accent} />
+                </View>
               </View>
-            </View>
+            </TouchableOpacity>
           );
         })}
 
@@ -836,12 +892,28 @@ const styles = StyleSheet.create({
   infoBlock: {
  marginTop: 12 },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
-  name: { fontSize: 18, fontWeight: '900', letterSpacing: -0.5 },
+  name: { fontSize: 24, fontWeight: '900', letterSpacing: -0.5 },
+  nicheRow: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    gap: 8, 
+    marginTop: 4,
+    marginBottom: 4
+  },
+  nicheChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  nicheChipText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
   settingsIcon: {
     padding: 8,
     marginLeft: 4,
   },
-  niche: { fontSize: 11, fontWeight: '900', marginTop: 2, letterSpacing: 1 },
   bioLoadingWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -888,6 +960,24 @@ const styles = StyleSheet.create({
   channelInfo: { flex: 1, marginLeft: 12 },
   channelName: { fontSize: 13, fontWeight: '800' },
   channelStatsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  channelNicheRow: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  channelNicheText: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  nicheWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,176,0,0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
   channelStat: { flexDirection: 'row', alignItems: 'center' },
   channelStatText: { fontSize: 10, fontWeight: '700', marginLeft: 4 },
   cardActions: { 
@@ -1117,5 +1207,17 @@ const styles = StyleSheet.create({
     height: 320,
     borderRadius: 160,
     borderWidth: 6,
+  },
+  experienceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  experienceText: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   }
 });

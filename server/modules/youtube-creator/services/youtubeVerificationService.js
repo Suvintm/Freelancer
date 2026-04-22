@@ -167,6 +167,7 @@ export const verifyChannel = async (userId, channelInput, reqData) => {
       uploads_playlist_id: channelData.uploadsPlaylistId,
       subCategoryId: state.subCategoryId,
       language: state.language,
+      country: channelData.country,
       is_primary: false, // Explicitly false for manual additions
     },
   });
