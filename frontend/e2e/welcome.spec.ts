@@ -19,8 +19,7 @@ test.describe('Welcome Page E2E', () => {
     // Click Next button
     await page.getByRole('button', { name: /next/i }).click();
     
-    // Verify title has changed using auto-retrying assertion
-    // We use a regex to handle the potential newlines in the title
-    await expect(page.locator('h1')).toHaveText(/Promote with Power/i);
+    // Verify title has changed using auto-retrying, whitespace-agnostic assertion
+    await expect(page.locator('h1')).toContainText('Promote with Power');
   });
 });
