@@ -23,7 +23,8 @@ export default async function youtubeSyncProcessor(job) {
     return;
   }
 
-  const { userId, channels, triggerReason } = job.data;
+  const { userId, channelIds, triggerReason } = job.data;
+  const channelsToSync = channelIds || []; // Fallback for safety
 
   // ── STEP 0: Check Quota Availability ──────────────────────────────────────
   const quota = await quotaManager.getStatus();
@@ -38,25 +39,39 @@ export default async function youtubeSyncProcessor(job) {
   sampledLogger.success("YT Sync started", {
     jobId: job.id,
     userId,
-    channelCount: channels.length,
+    channelCount: channelsToSync.length,
     triggerReason,
   });
 
+  const { default: youtubeApiService } = await import("../../youtube-creator/services/youtubeApiService.js");
   let processedCount = 0;
 
-  for (const channel of channels) {
+  for (const channelId of channelsToSync) {
     try {
-      await persistYouTubeContent(userId, channel, triggerReason);
+      // 1. Fetch Fresh Public Metadata (1 Unit)
+      const channelMetadata = await youtubeApiService.getChannelPublicData({
+        identifier: channelId,
+        type: 'id'
+      });
+
+      // 2. Fetch Latest 25 Videos from Uploads Playlist (1 Unit)
+      if (channelMetadata.uploadsPlaylistId) {
+        channelMetadata.videos = await youtubeApiService.getPlaylistVideos(channelMetadata.uploadsPlaylistId, 25);
+      }
+
+      // 3. Persist and Mirror to S3
+      await persistYouTubeContent(userId, channelMetadata, triggerReason);
+      
       processedCount++;
-      await job.updateProgress(Math.round((processedCount / channels.length) * 100));
+      await job.updateProgress(Math.round((processedCount / channelsToSync.length) * 100));
     } catch (error) {
       sampledLogger.error(
         "YT Sync channel failed",
         error,
-        { jobId: job.id, userId, channelId: channel.channelId ?? "unknown" }
+        { jobId: job.id, userId, channelId: channelId || "unknown" }
       );
       // Throw so BullMQ triggers retry for the whole job
-      throw new Error(`Channel sync failed: ${error.message}`);
+      throw new Error(`Channel sync failed for ${channelId}: ${error.message}`);
     }
   }
 
@@ -64,6 +79,6 @@ export default async function youtubeSyncProcessor(job) {
     jobId: job.id,
     userId,
     processed: processedCount,
-    total: channels.length,
+    total: channelsToSync.length,
   });
 }

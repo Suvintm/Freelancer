@@ -70,19 +70,23 @@ export async function scheduleYouTubeSync(userId, channels, triggerReason = "man
     return null;
   }
 
+  // 🛰️ [PAYLOAD-SLIMMING] Only store IDs in the queue to avoid "Payload Too Large" errors (Max 1KB)
+  // The worker will fetch the full metadata from the DB.
+  const channelIds = (channels || []).map(ch => (typeof ch === 'string' ? ch : (ch.channelId || ch.channel_id || ch.id))).filter(Boolean);
+
   // 15-minute time-bucket deduplication for scheduled jobs
   // For manual/verification triggers, we use higher granularity to allow adding multiple accounts
   const windowBucket = Math.floor(Date.now() / DEBOUNCE_WINDOW_MS);
   let jobId = `yt_sync_${userId}_${windowBucket}`;
 
   if (triggerReason !== "scheduled") {
-    const channelTag = channels.length === 1 ? (channels[0].channelId || channels[0].channel_id || "single") : "multi";
+    const channelTag = channelIds.length === 1 ? channelIds[0] : "multi";
     jobId = `yt_sync_${userId}_${triggerReason}_${channelTag}_${Date.now()}`;
   }
 
   const job = await youtubeSyncQueue.add(
     "sync-youtube",
-    { userId, channels, triggerReason, requestedAt: Date.now() },
+    { userId, channelIds, triggerReason, requestedAt: Date.now() },
     {
       jobId,  // Duplicate jobs within the same 15-min window are silently ignored
       priority: triggerReason === "manual" ? PRIORITY.MEDIUM : PRIORITY.LOW,

@@ -56,11 +56,12 @@ export function validateYouTubePayload(data) {
   if (!data.userId || typeof data.userId !== "string") {
     throw new Error("Invalid job: missing or invalid userId");
   }
-  if (!data.channels || !Array.isArray(data.channels)) {
-    throw new Error("Invalid job: channels must be an array");
+  const channelData = data.channelIds || data.channels;
+  if (!channelData || !Array.isArray(channelData)) {
+    throw new Error("Invalid job: channel data must be an array (channels or channelIds)");
   }
-  if (data.channels.length === 0) {
-    throw new Error("Invalid job: channels array is empty");
+  if (channelData.length === 0) {
+    throw new Error("Invalid job: channel data array is empty");
   }
   checkPayloadSize(data);
 }

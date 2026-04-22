@@ -153,6 +153,7 @@ export const getChannelPublicData = async ({ identifier, type }) => {
     const channel = items[0];
     return {
       channelId: channel.id,
+      channelName: channel.snippet.title, // Normalized property names
       title: channel.snippet.title,
       description: channel.snippet.description,
       customUrl: channel.snippet.customUrl,
@@ -173,7 +174,41 @@ export const getChannelPublicData = async ({ identifier, type }) => {
   }
 };
 
+/**
+ * Fetch latest videos from a public playlist using API KEY (1 Unit Cost)
+ */
+export const getPlaylistVideos = async (playlistId, maxResults = 25) => {
+  const API_KEY = process.env.YOUTUBE_API_KEY;
+  if (!API_KEY) throw new ApiError(500, "YouTube API Key is missing.");
+
+  try {
+    await quotaManager.consume(1);
+    const response = await axios.get("https://www.googleapis.com/youtube/v3/playlistItems", {
+      params: {
+        part: "snippet",
+        playlistId,
+        maxResults,
+        key: API_KEY,
+      },
+    });
+
+    return (response.data.items || []).map((v) => ({
+      id: v.snippet.resourceId.videoId,
+      title: v.snippet.title,
+      thumbnail:
+        v.snippet.thumbnails?.high?.url ||
+        v.snippet.thumbnails?.medium?.url ||
+        v.snippet.thumbnails?.default?.url,
+      publishedAt: v.snippet.publishedAt,
+    }));
+  } catch (error) {
+    logger.error(`❌ [YT-API] Playlist fetch failed: ${error.message}`);
+    return []; // Return empty instead of failing the whole flow
+  }
+};
+
 export default {
   discoverChannels,
   getChannelPublicData,
+  getPlaylistVideos,
 };

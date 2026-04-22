@@ -3,7 +3,7 @@ import { hashPassword } from "../utils/password.js";
 import { ApiError } from "../../../middleware/errorHandler.js";
 import youtubeApiService from "../../youtube-creator/services/youtubeApiService.js";
 import youtubeSyncService from "../../youtube-creator/services/youtubeSyncService.js";
-import { youtubeSyncQueue } from "../../workers/queues.js";
+import { youtubeSyncQueue, scheduleYouTubeSync } from "../../workers/queues.js";
 import storageService from "../../../utils/storageService.js";
 import logger from "../../../utils/logger.js";
 import mongoose from "mongoose";
@@ -269,30 +269,32 @@ export const registerFullUser = async (userData) => {
         await tx.userRoleMapping.createMany({ data: mappings, skipDuplicates: true });
       }
 
-      // Step D: SEED YOUTUBE SKELETON (Immediate Identity)
-      // This ensures the first response to the mobile app already identifies the user as a Creator.
+      // Step D: SEED YOUTUBE SKELETONS (Immediate Identity)
+      // This ensures the first response to the mobile app already identifies the user as a Creator
+      // for all their selected channels, even while videos are still syncing in the background.
       if (isYoutubeCategory && normalizedChannels.length > 0) {
-        const mainChannel = normalizedChannels[0];
-        
-        // Use the pre-mirrored avatar if available, otherwise fallback to direct URL
-        const finalThumbnail = preMirroredYoutubeAvatar || mainChannel.thumbnail_url;
-
         // SAFE MODEL RESOLVER: Handle varying Prisma naming (youTubeProfile vs youtubeProfile)
         const ytModel = tx.youtubeProfile || tx.youTubeProfile || tx.youtubeProfiles;
 
         if (ytModel) {
-            await ytModel.create({
-                data: {
-                    userId: newUser.id,
-                    channel_id: mainChannel.channel_id,
-                    channel_name: mainChannel.channel_name,
-                    thumbnail_url: finalThumbnail,
-                    subscriber_count: mainChannel.subscriber_count || 0,
-                    video_count: mainChannel.video_count || 0,
-                    uploads_playlist_id: mainChannel.uploads_playlist_id || null,
-                }
-            });
-            logger.info(`✨ [REG-SERVICE] Atomic YouTube Identity seeded for user ${newUser.id}`);
+            for (const [index, channel] of normalizedChannels.entries()) {
+                // Use the pre-mirrored avatar for the primary channel if available
+                const thumb = (index === 0 && preMirroredYoutubeAvatar) ? preMirroredYoutubeAvatar : channel.thumbnail_url;
+                
+                await ytModel.create({
+                    data: {
+                        userId: newUser.id,
+                        channel_id: channel.channel_id,
+                        channel_name: channel.channel_name,
+                        thumbnail_url: thumb,
+                        subscriber_count: channel.subscriber_count || 0,
+                        video_count: channel.video_count || 0,
+                        uploads_playlist_id: channel.uploads_playlist_id || null,
+                        is_primary: channel.isPrimary || index === 0
+                    }
+                });
+            }
+            logger.info(`✨ [REG-SERVICE] Atomic YouTube Identity seeded for user ${newUser.id} (${normalizedChannels.length} channels)`);
         } else {
             logger.error(`❌ [REG-SERVICE] YouTubeProfile model NOT found in transaction client.`);
         }
@@ -346,22 +348,11 @@ export const registerFullUser = async (userData) => {
       metadata: { type: 'onboarding_welcome', onboarding_complete: true }
     }).catch(err => logger.error(`[NOTIFY-WELCOME] Failed to send welcome notification: ${err.message}`));
 
-    // 6. 🚀 DIRECT SYNC: We no longer dispatcher to background BullMQ workers in production
-    // This prevents hitting Redis request limits and ensures instant data availability.
+    // 6. 🚀 UNIFIED SYNC: Dispatch to background BullMQ workers for production stability
+    // This offloads the heavy mirroring logic (S3 uploads) to workers, keeping registration fast.
     if (user._deferredYoutubeChannels) {
-        logger.info(`✨ [REG-SERVICE] Starting direct sync for ${user.id} (${user._deferredYoutubeChannels.length} channels)`);
-        
-        // Use a detached safe async execution to avoid blocking the registration response
-        (async () => {
-            for (const channel of user._deferredYoutubeChannels) {
-                try {
-                    await youtubeSyncService.persistYouTubeContent(user.id, channel);
-                    logger.info(`✅ [REG-SERVICE] Successfully synced channel ${channel.channel_id} for user ${user.id}`);
-                } catch (syncError) {
-                    logger.error(`❌ [REG-SERVICE] Direct sync failed for channel ${channel.channel_id}: ${syncError.message}`);
-                }
-            }
-        })();
+        logger.info(`✨ [REG-SERVICE] Scheduling background sync for ${user.id} (${user._deferredYoutubeChannels.length} channels)`);
+        await scheduleYouTubeSync(user.id, user._deferredYoutubeChannels, "onboarding");
     }
     
     return hydratedUser;
