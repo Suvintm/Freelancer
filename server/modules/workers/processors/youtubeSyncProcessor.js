@@ -1,6 +1,7 @@
 import { validateYouTubePayload } from "../jobValidator.js";
 import { sampledLogger } from "../sampledLogger.js";
 import { persistYouTubeContent } from "../../youtube-creator/services/youtubeSyncService.js";
+import { getIO } from "../../../socket.js";
 import quotaManager from "../../youtube-creator/services/youtubeQuotaManager.js";
 
 /**
@@ -63,7 +64,22 @@ export default async function youtubeSyncProcessor(job) {
       await persistYouTubeContent(userId, channelMetadata, triggerReason);
       
       processedCount++;
-      await job.updateProgress(Math.round((processedCount / channelsToSync.length) * 100));
+      const progress = Math.round((processedCount / channelsToSync.length) * 100);
+      await job.updateProgress(progress);
+
+      // 📡 Emit real-time progress via Socket.io
+      const io = getIO();
+      if (io) {
+        io.to(userId).emit("notification:new", {
+          type: "SYNC_PROGRESS",
+          metadata: {
+            userId,
+            progress,
+            channelId,
+            message: `Syncing ${channelMetadata.title}...`
+          }
+        });
+      }
     } catch (error) {
       sampledLogger.error(
         "YT Sync channel failed",

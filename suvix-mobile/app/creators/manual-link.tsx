@@ -45,10 +45,12 @@ export default function ManualLinkScreen() {
   // Form State
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [selectedCategoryName, setSelectedCategoryName] = useState('Select Category');
-  const [selectedLanguage, setSelectedLanguage] = useState('English');
+  const [selectedLanguage, setSelectedLanguage] = useState('');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [isSyncComplete, setIsSyncComplete] = useState(false);
+  const [syncProgress, setSyncProgress] = useState(0);
+  const [syncMessage, setSyncMessage] = useState('Initializing sync...');
   
   const { socket } = useSocketStore();
 
@@ -64,10 +66,6 @@ export default function ManualLinkScreen() {
         const res = await api.get('/youtube-creator/meta/subcategories');
         if (res.data.success) {
           setSubCategories(res.data.data);
-          if (res.data.data.length > 0) {
-            setSelectedCategoryId(res.data.data[0].id);
-            setSelectedCategoryName(res.data.data[0].name);
-          }
         }
       } catch (err) {
         console.error("Failed to fetch subcategories:", err);
@@ -92,9 +90,15 @@ export default function ManualLinkScreen() {
     if (!socket || currentStep !== 'PREVIEW') return;
 
     const handleNotification = (data: any) => {
+      if (data.type === 'SYNC_PROGRESS') {
+        setSyncProgress(data.metadata?.progress || 0);
+        setSyncMessage(data.metadata?.message || 'Syncing content...');
+      }
+      
       if (data.type === 'SYNC_COMPLETE' || data.metadata?.type === 'youtube_sync_complete') {
         console.log('🎉 [YT-VERIFY] Received Sync Complete signal via socket!');
         setIsSyncComplete(true);
+        setSyncProgress(100);
       }
     };
 
@@ -257,7 +261,9 @@ export default function ManualLinkScreen() {
             style={[styles.dropdown, { backgroundColor: theme.secondary, borderColor: theme.border }]}
             onPress={() => setShowLanguageDropdown(!showLanguageDropdown)}
           >
-            <Text style={{ color: theme.text }}>{selectedLanguage}</Text>
+            <Text style={{ color: selectedLanguage ? theme.text : theme.textSecondary }}>
+              {selectedLanguage || 'Select Language'}
+            </Text>
             <Feather name={showLanguageDropdown ? "chevron-up" : "chevron-down"} size={16} color={theme.textSecondary} />
           </TouchableOpacity>
           {showLanguageDropdown && (
@@ -282,9 +288,15 @@ export default function ManualLinkScreen() {
       </View>
 
       <TouchableOpacity 
-        style={[styles.primaryButton, { backgroundColor: theme.accent }]}
+        style={[
+          styles.primaryButton, 
+          { 
+            backgroundColor: (selectedCategoryId && selectedLanguage && channelUrl) ? theme.accent : theme.secondary,
+            opacity: (selectedCategoryId && selectedLanguage && channelUrl) ? 1 : 0.5
+          }
+        ]}
         onPress={handleInitiate}
-        disabled={isLoading}
+        disabled={isLoading || !selectedCategoryId || !selectedLanguage || !channelUrl}
       >
         {isLoading ? (
           <ActivityIndicator color="#000" />
@@ -417,13 +429,51 @@ export default function ManualLinkScreen() {
           <MaterialCommunityIcons name="check-decagram" size={24} color="#FF0000" />
         </View>
       </View>
-
+      
+      {!isSyncComplete && (
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBarBg}>
+            <Animated.View 
+              style={[
+                styles.progressBarFill, 
+                { 
+                  backgroundColor: theme.accent,
+                  width: `${syncProgress}%` 
+                }
+              ]} 
+            />
+          </View>
+          <View style={styles.progressLabelRow}>
+            <Text style={[styles.progressMessage, { color: theme.textSecondary }]}>{syncMessage}</Text>
+            <Text style={[styles.progressPercentage, { color: theme.accent }]}>{syncProgress}%</Text>
+          </View>
+        </View>
+      )}
+      
       <TouchableOpacity 
-        style={[styles.primaryButton, { backgroundColor: theme.accent }]}
+        style={[
+          styles.primaryButton, 
+          { 
+            backgroundColor: isSyncComplete ? theme.accent : theme.secondary,
+            opacity: isSyncComplete ? 1 : 0.6,
+            borderColor: theme.border,
+            borderWidth: isSyncComplete ? 0 : 1
+          }
+        ]}
         onPress={handleFinalConfirm}
+        disabled={!isSyncComplete}
       >
-        <Text style={styles.primaryButtonText}>Go to Profile</Text>
-        <Feather name="arrow-right" size={18} color="#000" />
+        {isSyncComplete ? (
+          <>
+            <Text style={styles.primaryButtonText}>Go to Profile</Text>
+            <Feather name="arrow-right" size={18} color="#000" />
+          </>
+        ) : (
+          <>
+             <ActivityIndicator size="small" color={theme.textSecondary} style={{ marginRight: 10 }} />
+             <Text style={[styles.primaryButtonText, { color: theme.textSecondary }]}>Finishing Sync...</Text>
+          </>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -435,8 +485,15 @@ export default function ManualLinkScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity 
-          style={[styles.backBtn, { backgroundColor: theme.secondary }]} 
+          style={[
+            styles.backBtn, 
+            { 
+              backgroundColor: theme.secondary,
+              opacity: (currentStep === 'PREVIEW' && !isSyncComplete) ? 0.3 : 1 
+            }
+          ]} 
           onPress={() => router.back()}
+          disabled={currentStep === 'PREVIEW' && !isSyncComplete}
         >
           <Feather name="arrow-left" size={24} color={theme.text} />
         </TouchableOpacity>
@@ -768,5 +825,33 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
+  },
+  progressContainer: {
+    marginBottom: 32,
+    paddingHorizontal: 4,
+  },
+  progressBarBg: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  progressLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  progressMessage: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  progressPercentage: {
+    fontSize: 13,
+    fontWeight: '800',
   }
 });
