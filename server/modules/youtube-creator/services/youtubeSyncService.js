@@ -3,6 +3,8 @@ import storageService from "../../../utils/storageService.js";
 import logger from "../../../utils/logger.js";
 import { ApiError } from "../../../middleware/errorHandler.js";
 import { smartResolveMediaUrl } from "../../../utils/mediaResolver.js";
+import { emitToUser } from "../../../socket.js";
+import { deleteCache, CacheKey } from "../../../utils/cache.js";
 
 /**
  * PRODUCTION-GRADE YOUTUBE SYNC SERVICE
@@ -13,9 +15,10 @@ import { smartResolveMediaUrl } from "../../../utils/mediaResolver.js";
  * Persist YouTube Channel and Videos into the database
  * @param {string} userId - ID of the professional user
  * @param {Object} channelData - Data from YouTube API
+ * @param {string} triggerReason - Why this sync is happening
  * @param {Object} tx - Optional Prisma transaction client
  */
-export const persistYouTubeContent = async (userId, channelData, tx = prisma) => {
+export const persistYouTubeContent = async (userId, channelData, triggerReason = "manual", tx = prisma) => {
   // Initialization
   const videoRecords = []; // 💉 Defined at top-level to prevent ReferenceErrors in callbacks
 
@@ -26,6 +29,13 @@ export const persistYouTubeContent = async (userId, channelData, tx = prisma) =>
     const thumbnailUrl = channelData.thumbnailUrl || channelData.thumbnail_url || channelData.thumbnail;
     const subscriberCount = Number(channelData.subscriberCount || channelData.subscriber_count || 0);
     const videoCount = Number(channelData.videoCount || channelData.video_count || 0);
+    const viewCount = channelData.viewCount || channelData.view_count || "0";
+    const description = channelData.description || null;
+    const customUrl = channelData.customUrl || channelData.custom_url || null;
+    const publishedAt = channelData.publishedAt || channelData.published_at || null;
+    const country = channelData.country || null;
+    const keywords = channelData.keywords || null;
+    const bannerUrl = channelData.bannerUrl || channelData.banner_url || null;
     const uploadsPlaylistId = channelData.uploadsPlaylistId || channelData.uploads_playlist_id;
     const videos = channelData.videos || [];
 
@@ -36,11 +46,22 @@ export const persistYouTubeContent = async (userId, channelData, tx = prisma) =>
 
     logger.info(`🔄 [YT-SYNC] Persisting content for channel: ${channelName} (${channelId})`);
 
-    // 1. Mirror Channel Avatar (Skip if already mirrored outside transaction)
+    // 1. Mirror Channel Avatar
     let mirroredAvatar = channelData.mirroredAvatarUrl || channelData.mirrored_avatar_url;
     if (!mirroredAvatar && thumbnailUrl) {
-      logger.info(`💾 [YT-SYNC] Mirroring avatar inside transaction (Warning: This is slower)`);
-      mirroredAvatar = await storageService.uploadFromUrl(thumbnailUrl, "uploads/avatars/youtube");
+      logger.info(`💾 [YT-SYNC] Optimizing Avatar for ${channelId}`);
+      mirroredAvatar = await storageService.optimizeAndMirrorUrl(thumbnailUrl, "uploads/avatars/youtube", { format: 'webp' });
+    }
+
+    // 2. Mirror Channel Banner (Processed & Optimized)
+    let mirroredBanner = channelData.mirroredBannerUrl || channelData.mirrored_banner_url;
+    if (!mirroredBanner && bannerUrl) {
+      logger.info(`💾 [YT-SYNC] Processing & Optimizing banner for ${channelId}`);
+      try {
+        mirroredBanner = await storageService.optimizeAndMirrorUrl(bannerUrl, "uploads/avatars/youtube/banners", { format: 'jpeg', quality: 90 });
+      } catch (bErr) {
+        logger.warn(`⚠️ [YT-SYNC] Banner processing failed: ${bErr.message}`);
+      }
     }
 
     // Safe Model Resolvers
@@ -72,6 +93,13 @@ export const persistYouTubeContent = async (userId, channelData, tx = prisma) =>
             thumbnail_url: mirroredAvatar || thumbnailUrl,
             subscriber_count: subscriberCount,
             video_count: videoCount,
+            view_count: BigInt(viewCount),
+            description: description,
+            custom_url: customUrl,
+            banner_url: mirroredBanner || bannerUrl,
+            published_at: publishedAt ? new Date(publishedAt) : null,
+            country: country,
+            keywords: keywords,
             uploads_playlist_id: uploadsPlaylistId,
             last_synced_at: new Date(),
             userId: userId,
@@ -86,6 +114,13 @@ export const persistYouTubeContent = async (userId, channelData, tx = prisma) =>
             thumbnail_url: mirroredAvatar || thumbnailUrl,
             subscriber_count: subscriberCount,
             video_count: videoCount,
+            view_count: BigInt(viewCount),
+            description: description,
+            custom_url: customUrl,
+            banner_url: mirroredBanner || bannerUrl,
+            published_at: publishedAt ? new Date(publishedAt) : null,
+            country: country,
+            keywords: keywords,
             uploads_playlist_id: uploadsPlaylistId,
             last_synced_at: new Date(),
          }
@@ -98,8 +133,8 @@ export const persistYouTubeContent = async (userId, channelData, tx = prisma) =>
       
       try {
         // Use sequential processing for thumbnails to be nice to Cloudinary/Network
-        // but limit to first 20 for profile performance
-        const videosToSync = videos.slice(0, 20);
+        // but limit to first 25 for profile performance
+        const videosToSync = videos.slice(0, 25);
 
         for (const v of videosToSync) {
           try {
@@ -147,11 +182,20 @@ export const persistYouTubeContent = async (userId, channelData, tx = prisma) =>
       logger.info(`🔍 [SYNC-DEBUG] Sample Video URL: ${videoRecords[0].thumbnail}`);
     }
 
+    // Custom Notification Content based on Reason
+    let notificationTitle = 'YouTube Profile Updated! 🎥';
+    let notificationBody = `Your latest content from ${youtubeProfile.channel_name} is now live on SuviX.`;
+
+    if (triggerReason === "manual_verify") {
+      notificationTitle = 'Account Linked! 🎥';
+      notificationBody = `Your channel ${youtubeProfile.channel_name} was successfully linked to your account. Your latest 25 videos are now live!`;
+    }
+
     notificationService.notify({
       userId,
       type: 'SYNC_COMPLETE',
-      title: 'YouTube Profile Updated! 🎥',
-      body: `Your latest content from ${youtubeProfile.channel_name} is now live on SuviX.`,
+      title: notificationTitle,
+      body: notificationBody,
       imageUrl: smartResolveMediaUrl(youtubeProfile.thumbnail_url),
       priority: 'HIGH',
       entityId: youtubeProfile.id,
@@ -180,6 +224,15 @@ export const persistYouTubeContent = async (userId, channelData, tx = prisma) =>
         })
       }
     }).catch(err => logger.error(`[NOTIFY-SYNC] Failed to send sync notification: ${err.message}`));
+
+    // 🧹 [CACHE] Invalidate user profile to ensure "Ghost Channels" or "Missing Videos" are resolved
+    await deleteCache(CacheKey.userProfile(userId));
+
+    // 🛰️ [SOCKET] Surgical Broadcast for real-time UI refresh
+    emitToUser(userId, "user:profile_updated", { 
+      youtubeProfile: [youtubeProfile], // Mobile expects array of channels
+      youtubeVideos: videoRecords.map(v => ({ ...v, thumbnail: smartResolveMediaUrl(v.thumbnail) }))
+    });
 
     return youtubeProfile;
 

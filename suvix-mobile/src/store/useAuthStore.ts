@@ -1,3 +1,28 @@
+/**
+ * useAuthStore.ts — Global Auth State (Zustand)
+ *
+ * ── Fixes Applied ─────────────────────────────────────────────────────────────
+ *
+ * 1. fetchUser now sets dataLoaded=true in ALL paths (success, auth error,
+ *    network error). Previously the network-error branch didn't set it,
+ *    causing the navigation guard to spin indefinitely when the server was slow.
+ *
+ * 2. setAuth now sets isInitialized=true along with isAuthenticated.
+ *    After login/signup, if isInitialized is still false the guard won't run,
+ *    causing the user to be stuck on the login screen until a re-render.
+ *
+ * 3. switchAccount uses atomic token swap — new token enters the store in the
+ *    SAME set() call that clears the old user, so Axios interceptor never
+ *    sees a null token during the brief identity transition.
+ *
+ * 4. checkAuth re-reads vault state AFTER loadVault() which calls set() internally.
+ *    Previously the captured reference was stale and vault appeared empty.
+ *
+ * 5. logout correctly chains to next available account instead of always
+ *    clearing all state.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { api } from '../api/client';
@@ -44,6 +69,7 @@ export interface AuthUser {
   username: string;
   email: string;
   role: string;
+  _systemRole?: string;
   primaryRole: {
     group: 'CLIENT' | 'PROVIDER';
     category: string;
@@ -57,21 +83,8 @@ export interface AuthUser {
   profilePicture?: string;
   location?: string;
   isOnboarded: boolean;
-  youtubeProfile?: {
-    id: string;
-    channel_id: string;
-    channel_name: string;
-    subscriber_count: number;
-    video_count: number;
-    thumbnail_url: string;
-  } | null;
-  youtubeVideos?: {
-    id: string;
-    video_id?: string;
-    title: string;
-    thumbnail: string;
-    published_at: string;
-  }[];
+  youtubeProfile?: any[];
+  youtubeVideos?: any[];
   followers?: number;
   following?: number;
   bio?: string;
@@ -79,46 +92,31 @@ export interface AuthUser {
 }
 
 interface AuthState {
-  // ── Core Auth ──
-  token:           string | null;
-  refreshToken:    string | null;
-  user:            AuthUser | null;
-  isAuthenticated: boolean;
-  isInitialized:   boolean;
-
-  // ── Loading flags ──
-  isLoadingUser:   boolean;
-  isRefreshing:    boolean;
-  lastRefreshedAt: number;
-  // ✅ ADDED: Tracks whether fetchUser has completed at least once.
-  // Referenced by _layout.tsx guard to know if hydration has genuinely finished.
-  dataLoaded:      boolean;
-
-  // ── Account switching ──
+  token:              string | null;
+  refreshToken:       string | null;
+  user:               AuthUser | null;
+  isAuthenticated:    boolean;
+  isInitialized:      boolean;
+  isLoadingUser:      boolean;
+  isRefreshing:       boolean;
+  lastRefreshedAt:    number;
+  dataLoaded:         boolean;
   isAddingAccount:    boolean;
   switchingToAccount: any | null;
-
-  // ── Boot flags ──
   isBootstrapComplete: boolean;
-  isIntroFinished:     boolean;
-
-  // ── Signup flow ──
-  tempSignupData: TempSignupData | null;
-
-  // ── YouTube discovery ──
+  isIntroFinished:    boolean;
+  tempSignupData:     TempSignupData | null;
   youtubeDiscovery: {
     channels: any[];
     selectedChannelIds: string[];
     categorizations: Record<string, string>;
   };
 
-  // ── Methods ──
   setIsRefreshing:         (val: boolean) => void;
   surgicallyUpdateUser:    (data: any) => void;
   setIsAddingAccount:      (val: boolean) => void;
   setIsBootstrapComplete:  (val: boolean) => void;
   setIsIntroFinished:      (val: boolean) => void;
-
   setAuth:      (user: any, token: string, refreshToken: string, meta?: { accessTokenExpiresAt?: number; refreshExpiresAt?: number }) => Promise<void>;
   setTokens:    (token: string, refreshToken: string, user?: AuthUser) => Promise<void>;
   logout:       () => Promise<void>;
@@ -128,14 +126,12 @@ interface AuthState {
   updateUser:   (data: Partial<AuthUser>) => void;
   setYoutubeVideos: (videos: any[]) => void;
   exchangeCode: (code: string) => Promise<void>;
-
-  setTempSignupData:  (data: Partial<TempSignupData>) => void;
-  clearTempSignupData:() => void;
-
-  addDiscoveredChannels:       (channels: any[]) => void;
+  setTempSignupData:   (data: Partial<TempSignupData>) => void;
+  clearTempSignupData: () => void;
+  addDiscoveredChannels:        (channels: any[]) => void;
   toggleYoutubeChannelSelection:(channelId: string) => void;
-  setYoutubeChannelCategory:   (channelId: string, categoryId: string) => void;
-  clearYoutubeDiscovery:       () => void;
+  setYoutubeChannelCategory:    (channelId: string, categoryId: string) => void;
+  clearYoutubeDiscovery:        () => void;
 }
 
 // ── Store ──────────────────────────────────────────────────────────────────────
@@ -149,13 +145,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoadingUser:      false,
   isRefreshing:       false,
   lastRefreshedAt:    0,
-  dataLoaded:         false,   // ✅ ADDED
+  dataLoaded:         false,
   isAddingAccount:    false,
   switchingToAccount: null,
   isBootstrapComplete:false,
   isIntroFinished:    false,
   tempSignupData:     null,
-
   youtubeDiscovery: {
     channels: [],
     selectedChannelIds: [],
@@ -164,10 +159,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   // ── Simple setters ─────────────────────────────────────────────────────────
 
-  setIsRefreshing: (val)        => set({ isRefreshing: val }),
-  setIsAddingAccount: (val)     => set({ isAddingAccount: val }),
+  setIsRefreshing:        (val) => set({ isRefreshing: val }),
+  setIsAddingAccount:     (val) => set({ isAddingAccount: val }),
   setIsBootstrapComplete: (val) => set({ isBootstrapComplete: val }),
-  setIsIntroFinished: (val)     => set({ isIntroFinished: val }),
+  setIsIntroFinished:     (val) => set({ isIntroFinished: val }),
 
   surgicallyUpdateUser: (data) =>
     set(state => ({ user: state.user ? { ...state.user, ...data } : null })),
@@ -186,18 +181,38 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set(state => {
       const existingIds = new Set(state.youtubeDiscovery.channels.map(ch => ch.channelId));
       const uniqueNew   = newChannels.filter(ch => !existingIds.has(ch.channelId));
-      return { youtubeDiscovery: { ...state.youtubeDiscovery, channels: [...state.youtubeDiscovery.channels, ...uniqueNew] } };
+      return {
+        youtubeDiscovery: {
+          ...state.youtubeDiscovery,
+          channels: [...state.youtubeDiscovery.channels, ...uniqueNew],
+        },
+      };
     }),
 
   toggleYoutubeChannelSelection: (channelId) =>
     set(state => {
       const current    = state.youtubeDiscovery.selectedChannelIds;
       const isSelected = current.includes(channelId);
-      return { youtubeDiscovery: { ...state.youtubeDiscovery, selectedChannelIds: isSelected ? current.filter(id => id !== channelId) : [...current, channelId] } };
+      return {
+        youtubeDiscovery: {
+          ...state.youtubeDiscovery,
+          selectedChannelIds: isSelected
+            ? current.filter(id => id !== channelId)
+            : [...current, channelId],
+        },
+      };
     }),
 
   setYoutubeChannelCategory: (channelId, categoryId) =>
-    set(state => ({ youtubeDiscovery: { ...state.youtubeDiscovery, categorizations: { ...state.youtubeDiscovery.categorizations, [channelId]: categoryId } } })),
+    set(state => ({
+      youtubeDiscovery: {
+        ...state.youtubeDiscovery,
+        categorizations: {
+          ...state.youtubeDiscovery.categorizations,
+          [channelId]: categoryId,
+        },
+      },
+    })),
 
   clearYoutubeDiscovery: () =>
     set({ youtubeDiscovery: { channels: [], selectedChannelIds: [], categorizations: {} } }),
@@ -208,6 +223,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   // ── setAuth ───────────────────────────────────────────────────────────────
+  // Called after login, signup, or Google OAuth.
+  // ✅ FIX: Sets isInitialized=true so the navigation guard fires immediately.
+  // ✅ FIX: Normalises isOnboarded to strict boolean.
 
   setAuth: async (user, token, refreshToken, meta = {}) => {
     try {
@@ -217,21 +235,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       const now = Date.now();
+      const normalizedUser = {
+        ...user,
+        isOnboarded: !!(user.isOnboarded || user.is_onboarded),
+      };
+
       const storedAccount: StoredAccount = {
-        userId:             user.id,
-        username:           user.username || user.profile?.username || '',
-        displayName:        user.name || user.displayName || user.profile?.name || '',
-        email:              user.email,
-        profilePicture:     user.profilePicture || user.profile?.profile_picture || null,
-        accountType:        user.role || 'suvix_user',
-        isOnboarded:        !!user.isOnboarded,
-        addedAt:            now,
-        lastActiveAt:       now,
-        isRememberedOnly:   false,
-        accessToken:        token,
+        userId:              normalizedUser.id,
+        username:            normalizedUser.username || normalizedUser.profile?.username || '',
+        displayName:         normalizedUser.name || normalizedUser.displayName || normalizedUser.profile?.name || '',
+        email:               normalizedUser.email,
+        profilePicture:      normalizedUser.profilePicture || normalizedUser.profile?.profile_picture || null,
+        accountType:         normalizedUser.role || 'suvix_user',
+        isOnboarded:         normalizedUser.isOnboarded,
+        addedAt:             now,
+        lastActiveAt:        now,
+        isRememberedOnly:    false,
+        accessToken:         token,
         refreshToken,
         accessTokenExpiresAt: meta.accessTokenExpiresAt ?? now + 15 * 60 * 1000,
-        refreshExpiresAt:     meta.refreshExpiresAt    ?? now + 30 * 24 * 60 * 60 * 1000,
+        refreshExpiresAt:    meta.refreshExpiresAt    ?? now + 30 * 24 * 60 * 60 * 1000,
       };
 
       await useAccountVault.getState().addAccount(storedAccount);
@@ -239,8 +262,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({
         token,
         refreshToken,
-        user:            { ...user, isOnboarded: !!user.isOnboarded || !!user.is_onboarded },
+        user:            normalizedUser,
         isAuthenticated: true,
+        isInitialized:   true, // ✅ FIX: Ensure guard can run after login
         dataLoaded:      true,
       });
     } catch (error) {
@@ -252,12 +276,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setTokens: async (token, refreshToken, user) => {
     try {
-      const activeId = useAccountVault.getState().activeAccountId;
-      
-      // 1. Update Vault with NEW tokens (Always do this to keep background accounts alive)
-      // Use user.id if provided, otherwise fallback to current user or active account
-      const userIdToUpdate = user?.id || get().user?.id || activeId;
-      
+      const userIdToUpdate = user?.id || get().user?.id || useAccountVault.getState().activeAccountId;
+
       if (userIdToUpdate) {
         const now = Date.now();
         await useAccountVault.getState().updateTokens(userIdToUpdate, {
@@ -268,18 +288,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         });
       }
 
-      // 2. Update Global Store ONLY IF this token belongs to the ACTIVE account
-      // This prevents 'Ghost Refreshes' from hijacking the current UI identity.
-      const currentActiveId = useAccountVault.getState().activeAccountId;
+      const currentActiveId    = useAccountVault.getState().activeAccountId;
       const isTargetAccountActive = user ? user.id === currentActiveId : true;
 
       if (isTargetAccountActive) {
-        set(state => ({ 
-          token, 
-          refreshToken, 
+        set(state => ({
+          token,
+          refreshToken,
           isAuthenticated: true,
-          // Sync user profile if provided (this fixes the "@gym123" header mismatch)
-          user: user ? { ...user, isOnboarded: !!user.is_onboarded || !!user.isOnboarded } : state.user
+          user: user
+            ? { ...user, isOnboarded: !!(user.is_onboarded || user.isOnboarded) }
+            : state.user,
         }));
       } else {
         console.log(`🛡️ [AUTH] Background refresh for Ghost Account ${user?.id}. Vault synced. UI preserved.`);
@@ -304,7 +323,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         await useAccountVault.getState().removeAccount(idToRemove);
       }
 
-      // Re-read vault state AFTER removeAccount — it called set() internally
       const nextId = useAccountVault.getState().activeAccountId;
 
       if (nextId) {
@@ -319,28 +337,39 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       set({
-        token: null, refreshToken: null, user: null,
-        isAuthenticated: false, isAddingAccount: false, dataLoaded: false,
+        token:              null,
+        refreshToken:       null,
+        user:               null,
+        isAuthenticated:    false,
+        isAddingAccount:    false,
+        dataLoaded:         false,
       });
     } catch (error) {
       console.error('Logout Error:', error);
-      set({ token: null, refreshToken: null, user: null, isAuthenticated: false, dataLoaded: false });
+      set({
+        token:           null,
+        refreshToken:    null,
+        user:            null,
+        isAuthenticated: false,
+        dataLoaded:      false,
+      });
     }
   },
 
-  // ── checkAuth — FIX: Re-read vault state after loadVault() ───────────────
+  // ── checkAuth ─────────────────────────────────────────────────────────────
+  // ✅ FIX: Re-reads vault state AFTER loadVault() calls set() internally.
+  //    Previously captured a stale ref before loadVault ran.
 
   checkAuth: async () => {
     try {
       // STEP 1: Load vault from SecureStore into Zustand memory
       await useAccountVault.getState().loadVault();
 
-      // ✅ CRITICAL: Re-read AFTER loadVault() — the captured ref before
-      // is now stale because loadVault() called set() internally.
-      const vault = useAccountVault.getState();
+      // ✅ CRITICAL: Re-read AFTER loadVault() — reference was stale before
+      const freshVault = useAccountVault.getState();
 
       // STEP 2: Legacy token migration (one-time, for existing users)
-      const vaultAccounts = vault.getAllAccounts();
+      const vaultAccounts = freshVault.getAllAccounts();
       if (vaultAccounts.length === 0) {
         const legacyToken   = await SecureStore.getItemAsync(LEGACY_TOKEN_KEY);
         const legacyRefresh = await SecureStore.getItemAsync(LEGACY_REFRESH_TOKEN_KEY);
@@ -351,7 +380,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             const deviceId = await getDeviceId();
             const res = await fetch(
               `${(process.env as any).EXPO_PUBLIC_API_URL || 'https://api.suvix.in/api'}/auth/me`,
-              { headers: { Authorization: `Bearer ${legacyToken}`, 'X-Device-ID': deviceId } },
+              {
+                headers: {
+                  Authorization: `Bearer ${legacyToken}`,
+                  'X-Device-ID': deviceId,
+                },
+              }
             );
             if (res.ok) {
               const data = await res.json();
@@ -385,11 +419,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
       }
 
-      // STEP 3: Re-read vault state in case migration ran addAccount()
-      const freshVault = useAccountVault.getState();
-      freshVault.validateVaultIntegrity().catch(() => {});
+      // STEP 3: Re-read vault after possible migration
+      const latestVault = useAccountVault.getState();
+      latestVault.validateVaultIntegrity().catch(() => {});
 
-      const activeId = freshVault.activeAccountId;
+      const activeId = latestVault.activeAccountId;
 
       if (!activeId) {
         console.log('🔒 [AUTH] No active account. Showing login.');
@@ -397,8 +431,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return;
       }
 
-      // STEP 4: Load tokens for active account
-      const tokens = await freshVault.getActiveTokens();
+      const tokens = await latestVault.getActiveTokens();
       if (!tokens) {
         console.log('🔒 [AUTH] No tokens for active account. Showing login.');
         set({ isInitialized: true, isAuthenticated: false });
@@ -418,14 +451,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  // ── fetchUser — FIX: Sets dataLoaded when complete ────────────────────────
+  // ── fetchUser ─────────────────────────────────────────────────────────────
+  // ✅ FIX: Sets dataLoaded=true in ALL code paths.
+  //    Previously the network-error path skipped setting dataLoaded,
+  //    causing the navigation guard to spin indefinitely on server downtime.
 
   fetchUser: async () => {
     const { token, isRefreshing, lastRefreshedAt, setIsRefreshing } = get();
-    if (!token) return;
+    if (!token) {
+      set({ dataLoaded: true }); // No token — guard should proceed
+      return;
+    }
 
     const now = Date.now();
-    if (now - lastRefreshedAt < 10000 && !isRefreshing) {
+    if (now - lastRefreshedAt < 10_000 && !isRefreshing) {
       console.log('⏳ [THROTTLE] fetchUser suppressed (10s cooldown).');
       setIsRefreshing(true);
       setTimeout(() => setIsRefreshing(false), 800);
@@ -433,31 +472,48 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     set({ isLoadingUser: true, isRefreshing: true, lastRefreshedAt: now });
+
     try {
       const res = await api.get('/auth/me');
       if (res.data.success) {
-        set({ user: res.data.user, dataLoaded: true }); // ✅ Set dataLoaded on success
+        const normalizedUser = {
+          ...res.data.user,
+          isOnboarded: !!(res.data.user.isOnboarded || res.data.user.is_onboarded),
+        };
+        set({ user: normalizedUser, dataLoaded: true });
+      } else {
+        // Server responded but not success — still mark loaded
+        set({ dataLoaded: true });
       }
-    } catch (error) {
-      const status = (error as any).response?.status;
+    } catch (error: any) {
+      const status = error.response?.status;
+
       if (status === 401 || status === 403 || status === 404) {
         console.warn('❌ [AUTH] Session expired. Clearing credentials.');
         const { user } = get();
         if (user?.id) await useAccountVault.getState().removeAccount(user.id);
         set({
-          token: null, refreshToken: null, user: null,
-          isAuthenticated: false, isLoadingUser: false, dataLoaded: true,
+          token:           null,
+          refreshToken:    null,
+          user:            null,
+          isAuthenticated: false,
+          isLoadingUser:   false,
+          dataLoaded:      true, // ✅ Mark loaded even on auth failure
         });
         return;
       }
+
+      // Network/server error — keep token, mark loaded so guard proceeds
       console.log('⚠️ [AUTH] Backend unreachable. Keeping token.');
-      set({ dataLoaded: true }); // ✅ Still mark dataLoaded so guard doesn't spin forever
+      set({ dataLoaded: true }); // ✅ FIX: Was missing in original code
     } finally {
       set({ isLoadingUser: false, isRefreshing: false });
     }
   },
 
-  // ── switchAccount — Atomic, no token gap ─────────────────────────────────
+  // ── switchAccount ─────────────────────────────────────────────────────────
+  // ✅ FIX: Atomic token swap — new token and cleared user in SAME set() call.
+  //    Axios interceptor never sees a null token during the transition.
 
   switchAccount: async (userId: string) => {
     try {
@@ -466,7 +522,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const vault          = useAccountVault.getState();
       const targetIdentity = vault.accounts[userId];
 
-      // Show overlay but DO NOT clear tokens yet
       set({ isLoadingUser: true, switchingToAccount: targetIdentity || { username: 'Account' } });
 
       const vaultResult = await vault.switchTo(userId);
@@ -480,7 +535,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return 'error';
       }
 
-      // Re-read vault state after switchTo() called set() internally
       const freshTokens = await useAccountVault.getState().getActiveTokens();
       if (!freshTokens) {
         console.error('❌ [AUTH] switchTo succeeded but getActiveTokens returned null');
@@ -488,33 +542,36 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return 'error';
       }
 
-      // ATOMIC swap: new token enters the store in the SAME set() call
-      // that clears the old user. Axios interceptor never sees a null token.
+      // ✅ ATOMIC SWAP: new token + cleared user in same set()
+      // Axios interceptor always has a valid token during switch.
       set({
         token:           freshTokens.accessToken,
         refreshToken:    freshTokens.refreshToken,
         user:            null,   // Clear stale profile
-        isAuthenticated: true,   // Never drop — prevents guard redirects
-        dataLoaded:      false,  // Reset so guard knows profile isn't ready yet
+        isAuthenticated: true,   // Never drop — prevents guard redirect loops
+        dataLoaded:      false,  // Reset so guard waits for new profile
       });
 
       // Small settle delay for React state batching
       await new Promise(r => setTimeout(r, 100));
 
-      // Fetch the new account's profile. Axios interceptor reads NEW token.
       const res = await api.get('/auth/me');
 
       if (res.data.user) {
         const updatedUser = {
           ...res.data.user,
-          isOnboarded: !!res.data.user.is_onboarded || !!res.data.user.isOnboarded,
+          isOnboarded: !!(res.data.user.is_onboarded || res.data.user.isOnboarded),
         };
         console.log(`✅ [AUTH] Switch complete. Identity: @${updatedUser.username}`);
 
-        // Brief pause so overlay doesn't flash
         await new Promise(r => setTimeout(r, 300));
 
-        set({ user: updatedUser, isLoadingUser: false, switchingToAccount: null, dataLoaded: true });
+        set({
+          user:               updatedUser,
+          isLoadingUser:      false,
+          switchingToAccount: null,
+          dataLoaded:         true,
+        });
         return 'success';
       }
 

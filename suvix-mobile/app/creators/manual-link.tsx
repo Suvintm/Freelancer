@@ -22,6 +22,8 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { api } from '../../src/api/client';
+import { useSocketStore } from '../../src/store/useSocketStore';
+import { useAuthStore } from '../../src/store/useAuthStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -46,6 +48,9 @@ export default function ManualLinkScreen() {
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+  const [isSyncComplete, setIsSyncComplete] = useState(false);
+  
+  const { socket } = useSocketStore();
 
   const LANGUAGES = ['English', 'Hindi', 'Tamil', 'Telugu', 'Kannada', 'Malayalam', 'Bengali', 'Marathi', 'Gujarati', 'Punjabi', 'Spanish', 'French', 'Other'];
 
@@ -81,6 +86,23 @@ export default function ManualLinkScreen() {
     }
     return () => clearInterval(interval);
   }, [currentStep, timer]);
+  
+  // 🛰️ Real-time Sync Listener
+  useEffect(() => {
+    if (!socket || currentStep !== 'PREVIEW') return;
+
+    const handleNotification = (data: any) => {
+      if (data.type === 'SYNC_COMPLETE' || data.metadata?.type === 'youtube_sync_complete') {
+        console.log('🎉 [YT-VERIFY] Received Sync Complete signal via socket!');
+        setIsSyncComplete(true);
+      }
+    };
+
+    socket.on('notification:new', handleNotification);
+    return () => {
+      socket.off('notification:new', handleNotification);
+    };
+  }, [socket, currentStep]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -352,9 +374,15 @@ export default function ManualLinkScreen() {
 
   const renderPreview = () => (
     <View style={styles.stepContent}>
-      <Text style={[styles.title, { color: theme.text }]}>Confirm Channel</Text>
-      <Text style={[styles.description, { color: theme.textSecondary }]}>
-        We found your channel! Does this look correct?
+      <View style={styles.successHeader}>
+        <View style={styles.celebrationCircle}>
+           <MaterialCommunityIcons name="party-popper" size={32} color={theme.accent} />
+        </View>
+        <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>Verification Successful!</Text>
+      </View>
+      
+      <Text style={[styles.description, { color: theme.textSecondary, textAlign: 'center', marginTop: 10 }]}>
+        Your channel <Text style={{ fontWeight: '800', color: theme.text }}>{channelData?.channel_name || 'YouTube'}</Text> has been successfully linked to your SuviX profile.
       </Text>
 
       <View style={[styles.previewCard, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
@@ -378,7 +406,12 @@ export default function ManualLinkScreen() {
               </Text>
             </View>
           </View>
-          <Text style={[styles.previewNiche, { color: theme.accent }]}>{selectedCategoryName}</Text>
+          <View style={styles.statusRow}>
+             <View style={[styles.dot, { backgroundColor: isSyncComplete ? '#22C55E' : '#FFB000' }]} />
+             <Text style={[styles.previewNiche, { color: isSyncComplete ? '#22C55E' : '#FFB000', marginLeft: 6 }]}>
+               {isSyncComplete ? 'READY & SYNCED' : 'SYNCING VIDEOS...'}
+             </Text>
+          </View>
         </View>
         <View style={styles.verifiedBadge}>
           <MaterialCommunityIcons name="check-decagram" size={24} color="#FF0000" />
@@ -389,14 +422,8 @@ export default function ManualLinkScreen() {
         style={[styles.primaryButton, { backgroundColor: theme.accent }]}
         onPress={handleFinalConfirm}
       >
-        <Text style={styles.primaryButtonText}>Link this Channel</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={styles.secondaryActionBtn}
-        onPress={() => handleNextStep('IDENTIFY')}
-      >
-        <Text style={[styles.secondaryActionBtnText, { color: theme.textSecondary }]}>Wrong channel? Start over</Text>
+        <Text style={styles.primaryButtonText}>Go to Profile</Text>
+        <Feather name="arrow-right" size={18} color="#000" />
       </TouchableOpacity>
     </View>
   );
@@ -717,5 +744,29 @@ const styles = StyleSheet.create({
   },
   verifiedBadge: {
     marginLeft: 12,
+  },
+  successHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 10,
+  },
+  celebrationCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255, 48, 64, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   }
 });

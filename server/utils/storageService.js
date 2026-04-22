@@ -1,6 +1,8 @@
 import storage from "../modules/storage/storage.service.js";
 import logger from "./logger.js";
 import crypto from "crypto";
+import axios from "axios";
+import sharp from "sharp";
 
 /**
  * PRODUCTION-GRADE UNIVERSAL STORAGE SERVICE
@@ -32,6 +34,52 @@ export const uploadFromUrl = async (url, folder = "general") => {
     logger.error(`❌ [STORAGE] Mirroring failed: ${error.message}`);
     // Rollback to default avatar to prevent UI breakage
     return DEFAULT_AVATAR;
+  }
+};
+
+/**
+ * Download, Process (Optimize), and Mirror an image from a URL
+ * 
+ * @param {string} url - Source image URL
+ * @param {string} folder - Destination folder
+ * @param {Object} options - { width, height, quality }
+ */
+export const optimizeAndMirrorUrl = async (url, folder = "general", options = {}) => {
+  try {
+    if (!url) return DEFAULT_AVATAR;
+    const { quality = 85, format = "webp" } = options;
+
+    logger.info(`🛰️ [STORAGE] Optimizing & Mirroring: ${url}`);
+    
+    // 1. Download
+    const response = await axios.get(url, { responseType: "arraybuffer" });
+    const inputBuffer = Buffer.from(response.data);
+
+    // 2. Process with Sharp
+    let pipeline = sharp(inputBuffer);
+    
+    if (format === "webp") {
+      pipeline = pipeline.webp({ quality, lossless: false, smartSubsample: true });
+    } else {
+      pipeline = pipeline.jpeg({ quality, mozjpeg: true });
+    }
+
+    const processedBuffer = await pipeline.toBuffer();
+    const contentType = `image/${format}`;
+
+    // 3. Upload Optimized Version
+    const timestamp = Date.now();
+    const hash = crypto.createHash("md5").update(url).digest("hex");
+    const filename = `${hash}_opt.${format}`;
+    const key = `${folder}/${filename}`;
+
+    await storage.uploadObject(processedBuffer, key, { contentType });
+    
+    logger.info(`✅ [STORAGE] Optimization Complete: ${key} (${processedBuffer.length} bytes)`);
+    return key;
+  } catch (error) {
+    logger.error(`❌ [STORAGE] Optimization failed: ${error.message}`);
+    return uploadFromUrl(url, folder); // Fallback to raw mirror if sharp fails
   }
 };
 
@@ -78,13 +126,17 @@ export const uploadBuffer = async (fileBuffer, folder = "general", options = {})
  * @param {string} key - The S3 Key
  * @returns {Promise<boolean>} - Success status
  */
-export const deleteFile = async (key) => {
+export const deleteFile = async (keys) => {
   try {
-    if (!key) return false;
+    if (!keys) return false;
     
-    logger.info(`🗑️ [STORAGE] Deleting asset from S3: ${key}`);
+    // 🛡️ Robust normalization: Handle single string or array of strings
+    const keyArray = Array.isArray(keys) ? keys : [keys];
+    if (keyArray.length === 0) return true;
+
+    logger.info(`🗑️ [STORAGE] Deleting ${keyArray.length} asset(s) from S3...`);
     
-    await storage.deleteObjects([key]);
+    await storage.deleteObjects(keyArray);
     
     return true;
   } catch (error) {
@@ -116,6 +168,7 @@ export const generateUniqueId = (prefix, folder) => {
 
 export default {
   uploadFromUrl,
+  optimizeAndMirrorUrl,
   uploadBuffer,
   deleteFile,
   getSignedAccessUrl,

@@ -86,6 +86,7 @@ export default function YouTubeCreatorProfile() {
   const [isAvatarModalVisible, setIsAvatarModalVisible] = React.useState(false);
   const [isSavingBio, setIsSavingBio] = React.useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
+  const [isDeletingChannel, setIsDeletingChannel] = React.useState<string | null>(null);
 
   const onRefresh = React.useCallback(async () => {
     setIsRefreshing(true);
@@ -193,6 +194,42 @@ export default function YouTubeCreatorProfile() {
     } finally {
       setIsUploadingAvatar(false);
     }
+  };
+
+  const handleDeleteChannel = async (profileId: string, channelName: string) => {
+    Alert.alert(
+      "Remove Channel",
+      `Are you sure you want to remove "${channelName}"? This will permanently delete all cached video data for this channel.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive",
+          onPress: async () => {
+            setIsDeletingChannel(profileId);
+            try {
+              const res = await api.delete(`/youtube-creator/channel/${profileId}`);
+              if (res.data.success) {
+                // Refresh the whole user profile to update channels and videos
+                await fetchUser();
+                Alert.alert("Deleted", "The channel has been successfully removed.");
+              }
+            } catch (error: any) {
+              console.error('Delete Channel Error:', error);
+              // 🛡️ If 404, it means it's already deleted in DB but UI was stale (Ghosting)
+              // We refresh anyway to clear the UI.
+              if (error.response?.status === 404) {
+                await fetchUser();
+              } else {
+                Alert.alert("Error", "Could not delete channel. Please try again.");
+              }
+            } finally {
+              setIsDeletingChannel(null);
+            }
+          }
+        }
+      ]
+    );
   };
 
 
@@ -489,7 +526,19 @@ export default function YouTubeCreatorProfile() {
                 </View>
               </View>
               <View style={styles.cardActions}>
-                <MaterialCommunityIcons name="check-circle" size={16} color="#FF0000" style={{ marginBottom: 8 }} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 10 }}>
+                  <MaterialCommunityIcons name="check-circle" size={16} color="#FF0000" />
+                  <TouchableOpacity 
+                    onPress={() => handleDeleteChannel(channel.id, channel.channel_name)}
+                    disabled={isDeletingChannel === channel.id}
+                  >
+                    {isDeletingChannel === channel.id ? (
+                      <ActivityIndicator size="small" color={theme.textSecondary} />
+                    ) : (
+                      <MaterialCommunityIcons name="delete-outline" size={18} color={theme.textSecondary} />
+                    )}
+                  </TouchableOpacity>
+                </View>
                 <TouchableOpacity style={styles.viewBtn} onPress={() => handleViewChannel(channel.channel_id)}>
                   <Text style={[styles.viewBtnText, { color: theme.accent }]}>View</Text>
                   <MaterialCommunityIcons name="open-in-new" size={12} color={theme.accent} />

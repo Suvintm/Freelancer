@@ -169,6 +169,31 @@ export const useSocketStore = create<SocketStore>((set, get) => ({
         useToastStore.getState().showToast('Story Failed ❌', 'error');
       } else if (data.status === 'PROCESSING') {
         useUploadStore.getState().setProcessing();
+        useUploadStore.getState().setMediaId(data.mediaId);
+
+        // 🛡️ [STATE-RESOLVER] Backup mechanism for lost story signals
+        // If we don't hear 'READY' or 'FAILED' within 15s, manually poll the status once.
+        setTimeout(async () => {
+          const currentStatus = useUploadStore.getState().status;
+          const activeId = useUploadStore.getState().activeMediaId;
+          
+          if (currentStatus === 'processing' && activeId === data.mediaId) {
+            console.log('📡 [STORY-RESOLVER] Pulse check for story:', data.mediaId);
+            try {
+              const res = await api.get(`/media/${data.mediaId}/status`);
+              if (res.data.success && res.data.status === 'READY') {
+                console.log('✅ [STORY-RESOLVER] Story discovered as READY. Syncing UI.');
+                useUploadStore.getState().setSuccess('Story Live! 🔥');
+                useToastStore.getState().showToast('Story Live! 📸', 'success');
+                const { queryClient } = require('../../app/_layout');
+                queryClient.invalidateQueries({ queryKey: ['storyFeed'] });
+                queryClient.invalidateQueries({ queryKey: ['activeStories'] });
+              }
+            } catch (err) {
+              console.error('❌ [STORY-RESOLVER] Manual pulse failed:', err);
+            }
+          }
+        }, 15000);
       }
     });
 

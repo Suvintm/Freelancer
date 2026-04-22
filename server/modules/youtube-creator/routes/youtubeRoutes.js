@@ -21,4 +21,7 @@ router.post("/manual-verify/regenerate", authenticateUser, youtubeController.reg
 // Check manual verification status (Scan Description)
 router.post("/manual-verify/check", authenticateUser, youtubeController.checkManualVerification);
 
+// Delete linked channel
+router.delete("/channel/:profileId", authenticateUser, youtubeController.deleteChannel);
+
 export default router;

@@ -1,6 +1,7 @@
 import axios from "axios";
 import { ApiError } from "../../../middleware/errorHandler.js";
 import logger from "../../../utils/logger.js";
+import quotaManager from "./youtubeQuotaManager.js";
 
 /**
  * PRODUCTION-GRADE YOUTUBE API SERVICE
@@ -16,7 +17,9 @@ export const discoverChannels = async (accessToken) => {
   try {
     logger.info("🎬 [YT-API] Fetching channels for user...");
     
-    // 1. Fetch Basic Channel Info
+    // 1. Check & Consume Quota (channels.list = 1 unit)
+    await quotaManager.consume(1);
+
     const channelResponse = await axios.get(
       "https://www.googleapis.com/youtube/v3/channels",
       {
@@ -45,13 +48,16 @@ export const discoverChannels = async (accessToken) => {
 
         if (uploadsPlaylistId) {
           try {
+            // Check & Consume Quota (playlistItems.list = 1 unit)
+            await quotaManager.consume(1);
+
             const videoResponse = await axios.get(
               "https://www.googleapis.com/youtube/v3/playlistItems",
               {
                 params: {
                   part: "snippet",
                   playlistId: uploadsPlaylistId,
-                  maxResults: 15,
+                  maxResults: 25,
                 },
                 headers: {
                   Authorization: `Bearer ${accessToken}`,
@@ -83,6 +89,13 @@ export const discoverChannels = async (accessToken) => {
             null,
           subscriberCount: Number(item.statistics?.subscriberCount || 0),
           videoCount: Number(item.statistics?.videoCount || 0),
+          viewCount: String(item.statistics?.viewCount || "0"), // Stored as string to avoid precision issues in JSON
+          description: item.snippet?.description || null,
+          customUrl: item.snippet?.customUrl || null,
+          publishedAt: item.snippet?.publishedAt || null,
+          country: item.snippet?.country || null,
+          bannerUrl: item.brandingSettings?.image?.bannerExternalUrl || null,
+          keywords: item.brandingSettings?.channel?.keywords || null,
           uploadsPlaylistId: uploadsPlaylistId || null,
           videos,
         };
@@ -114,6 +127,9 @@ export const getChannelPublicData = async ({ identifier, type }) => {
   try {
     logger.info(`📡 [YT-API] Public fetch: ${type}=${identifier}`);
     
+    // Check & Consume Quota (channels.list = 1 unit)
+    await quotaManager.consume(1);
+
     const queryParams = {
       part: "snippet,statistics,brandingSettings,contentDetails",
       key: API_KEY,
@@ -143,6 +159,11 @@ export const getChannelPublicData = async ({ identifier, type }) => {
       thumbnailUrl: channel.snippet.thumbnails?.high?.url || channel.snippet.thumbnails?.default?.url,
       subscriberCount: parseInt(channel.statistics?.subscriberCount || "0"),
       videoCount: parseInt(channel.statistics?.videoCount || "0"),
+      viewCount: String(channel.statistics?.viewCount || "0"),
+      publishedAt: channel.snippet.publishedAt,
+      country: channel.snippet.country || null,
+      bannerUrl: channel.brandingSettings?.image?.bannerExternalUrl || null,
+      keywords: channel.brandingSettings?.channel?.keywords || null,
       uploadsPlaylistId: channel.contentDetails?.relatedPlaylists?.uploads || null,
     };
   } catch (error) {

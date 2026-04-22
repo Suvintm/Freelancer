@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+let failsafeTimer: NodeJS.Timeout | null = null;
+
 export type UploadStatus = 'idle' | 'uploading' | 'processing' | 'success' | 'failed';
 
 interface UploadState {
@@ -60,6 +62,17 @@ export const useUploadStore = create<UploadState>((set, get) => ({
   },
 
   setProcessing: () => {
+    // 🛡️ [FAILSAFE] Prevent stuck animation if server crashes
+    if (failsafeTimer) clearTimeout(failsafeTimer);
+    
+    failsafeTimer = setTimeout(() => {
+      const { status, setFailed } = get();
+      if (status === 'processing') {
+        console.warn('🕒 [FAILSAFE] Upload processing timed out. Forcing failed state.');
+        setFailed('Connection lost during processing. Please check your feed.');
+      }
+    }, 90000); // 90 second window for heavy transcodes
+
     set({ 
       status: 'processing', 
       message: 'Background Processing Started' 
@@ -67,6 +80,11 @@ export const useUploadStore = create<UploadState>((set, get) => ({
   },
 
   setSuccess: (message = 'Post Successful! ✅') => {
+    if (failsafeTimer) {
+      clearTimeout(failsafeTimer);
+      failsafeTimer = null;
+    }
+
     set({ 
       status: 'success', 
       progress: 100, 
@@ -80,6 +98,11 @@ export const useUploadStore = create<UploadState>((set, get) => ({
   },
 
   setFailed: (error = 'Upload failed') => {
+    if (failsafeTimer) {
+      clearTimeout(failsafeTimer);
+      failsafeTimer = null;
+    }
+
     set({ 
       status: 'failed', 
       message: `Error: ${error} ❌` 
@@ -92,6 +115,11 @@ export const useUploadStore = create<UploadState>((set, get) => ({
   },
 
   reset: () => {
+    if (failsafeTimer) {
+      clearTimeout(failsafeTimer);
+      failsafeTimer = null;
+    }
+
     set({
       progress: 0,
       status: 'idle',

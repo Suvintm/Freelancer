@@ -5,6 +5,7 @@ import { redis } from "../../../config/redisClient.js";
 import { ApiError } from "../../../middleware/errorHandler.js";
 import youtubeApiService from "./youtubeApiService.js";
 import { deleteCache, CacheKey } from "../../../utils/cache.js";
+import { scheduleYouTubeSync } from "../../workers/queues.js";
 
 /**
  * PRODUCTION-GRADE YOUTUBE VERIFICATION SERVICE
@@ -45,14 +46,20 @@ export const initiateVerification = async (userId, channelInput, metadata = {}) 
   const type = isHandle ? "handle" : "id";
 
   logger.info(`🎬 [VERIFY-SVC] Requesting verification for ${type}: ${identifier} (User: ${userId})`);
+  
+  // 🛡️ [LIMIT] Check if user already reached the 5-account maximum
+  const accountCount = await prisma.youTubeProfile.count({ where: { userId } });
+  if (accountCount >= 5) {
+    throw new ApiError(403, "You have reached the maximum limit of 5 linked YouTube accounts. Please delete an existing channel to link a new one.");
+  }
 
-  // 2. Global Rate Limit (Max 3 Generations per 24 hours per user)
+  // 2. Global Rate Limit (Max 3 Generations per 24 hours per user for testing)
   const rateLimitKey = `ratelimit:verify_gen:${userId}`;
   const genCount = await redis.incr(rateLimitKey);
   if (genCount === 1) await redis.expire(rateLimitKey, 86400); // 24 hours
 
   if (genCount > 3) {
-    throw new ApiError(429, "You have reached the daily limit for channel verification requests. Please try again tomorrow.");
+    throw new ApiError(429, "You have reached the daily limit (3) for channel verification requests. Please try again tomorrow.");
   }
 
   // 3. Generate Random Plaintext Token (SVX- + 10 Hex characters)
@@ -163,6 +170,9 @@ export const verifyChannel = async (userId, channelInput, reqData) => {
       is_primary: false, // Explicitly false for manual additions
     },
   });
+
+  // 🚀 Trigger 20-video fetch in background
+  await scheduleYouTubeSync(userId, [newProfile], "manual_verify");
 
   // 7. Cleanup Redis & Invalidate Profile Cache
   await redis.del(verifyKey);

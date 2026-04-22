@@ -148,6 +148,13 @@ model YouTubeProfile {
   video_cache_count   Int              @default(0) @map("video_cache_count")
   subCategoryId       String?          @map("sub_category_id") @db.Uuid
   language            String?          @db.VarChar(50)
+  custom_url          String?          @db.VarChar(255)
+  description         String?          @db.Text
+  published_at        DateTime?        @db.Timestamptz(6)
+  view_count          BigInt?          @default(0)
+  banner_url          String?          
+  country             String?          @db.VarChar(10)
+  keywords            String?          @db.Text
   
   subCategory         RoleSubCategory? @relation(fields: [subCategoryId], references: [id])
   user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -214,6 +221,19 @@ model Notification {
   @@index([userId, is_read])
   @@index([entityId, entityType])
   @@map("notifications")
+}
+
+model YouTubeQuotaState {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key_name          String   @default("primary") @unique
+  daily_limit       Int      @default(10000)
+  used_units        Int      @default(0)
+  remaining_units   Int      @default(10000)
+  last_reset_at     DateTime @default(now())
+  next_reset_at     DateTime
+  updated_at        DateTime @updatedAt
+
+  @@map("youtube_quota_state")
 }
 
 model PushToken {
@@ -409,4 +429,123 @@ enum Visibility {
   PUBLIC
   PRIVATE
   FOLLOWERS
+}
+
+// ADMIN MODELS (Restored)
+
+// ==========================================
+
+model AdminRole {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String   @db.VarChar(100)
+  value           String   @unique @db.VarChar(50)
+  description     String?  @default("")
+  color           String?  @default("#1d4ed8") @db.VarChar(20)
+  permissions     Json     @default("{}")
+  is_active       Boolean? @default(true) @map("is_active")
+  is_system       Boolean? @default(false) @map("is_system")
+  member_count    Int?     @default(0) @map("member_count")
+  created_at      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  members         AdminMember[]
+
+  @@map("admin_roles")
+}
+
+model AdminMember {
+  id                      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                   String   @unique @db.VarChar(255)
+  password_hash           String    @map("password_hash")
+  password                String?   @db.VarChar(255) // Migration field or alias
+  name                    String   @db.VarChar(100)
+  role_id                 String?  @map("role_id") @db.Uuid
+  role_value              String?  @default("admin") @map("role_value") @db.VarChar(50)
+  profile_image           String?  @map("profile_image")
+  permissions             Json?    @default("{}")
+  is_active               Boolean? @default(true) @map("is_active")
+  last_login              DateTime? @map("last_login") @db.Timestamptz(6)
+  last_login_ip           String?  @map("last_login_ip") @db.Inet
+  login_attempts          Int?     @default(0) @map("login_attempts") @db.SmallInt
+  locked_until            DateTime? @map("locked_until") @db.Timestamptz(6)
+  current_session_token   String?  @map("current_session_token")
+  password_reset_token    String?  @map("password_reset_token")
+  password_reset_expires  DateTime? @map("password_reset_expires") @db.Timestamptz(6)
+  password_changed_at     DateTime? @map("password_changed_at") @db.Timestamptz(6)
+  notification_prefs      Json?    @default("{\"email\":{\"newOrders\":true,\"disputes\":true,\"kycSubmissions\":true,\"payoutRequests\":true,\"systemAlerts\":true},\"push\":{\"newMessages\":true,\"orderUpdates\":true}}") @map("notification_prefs")
+  created_at              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at              DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  
+  mfa_secret              String?  @map("mfa_secret") @db.VarChar(255)
+  mfa_enabled             Boolean  @default(false) @map("mfa_enabled")
+  backup_codes            Json?    @map("backup_codes")
+
+  role                    AdminRole? @relation(fields: [role_id], references: [id])
+  activity_logs           AdminActivityLog[]
+
+  @@map("admin_members")
+}
+
+model AdminActivityLog {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adminId         String?  @map("admin_id") @db.Uuid
+  adminEmail      String?  @map("admin_email") @db.VarChar(255)
+  action          String   @db.VarChar(100)
+  resourceType    String?  @map("resource_type") @db.VarChar(50)
+  resourceId      String?  @map("resource_id") @db.VarChar(255)
+  oldValue        Json?    @map("old_value")
+  newValue        Json?    @map("new_value")
+  ipAddress       String?  @map("ip_address") @db.Inet
+  userAgent       String?  @map("user_agent")
+  status          String   @default("SUCCESS") @db.VarChar(20)
+  failureReason   String?  @map("failure_reason")
+  durationMs      Int?     @map("duration_ms")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  admin           AdminMember? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([adminId])
+  @@index([action])
+  @@index([createdAt(sort: Desc)])
+  @@map("admin_audit_logs")
+}
+
+model SuperAdmin {
+  id                      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                   String   @unique @db.VarChar(255)
+  password_hash           String   @map("password_hash")
+  name                    String   @db.VarChar(100)
+  role                    String?  @default("superadmin") @db.VarChar(30)
+  profile_image           String?  @map("profile_image")
+  is_active               Boolean? @default(true) @map("is_active")
+  last_login              DateTime? @map("last_login") @db.Timestamptz(6)
+  last_login_ip           String?  @map("last_login_ip") @db.Inet
+  login_attempts          Int?     @default(0) @map("login_attempts") @db.SmallInt
+  locked_until            DateTime? @map("locked_until") @db.Timestamptz(6)
+  current_session_token   String?  @map("current_session_token")
+  created_at              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  mfa_secret              String?  @map("mfa_secret") @db.VarChar(255)
+  mfa_enabled             Boolean  @default(false) @map("mfa_enabled")
+  backup_codes            Json?    @map("backup_codes")
+
+  @@map("super_admins")
+}
+
+model AdminSession {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adminId              String   @map("admin_id") @db.Uuid
+  refreshTokenHash     String   @map("refresh_token_hash") @db.VarChar(255)
+  deviceInfo           Json     @default("{}") @map("device_info")
+  ipAddress            String   @map("ip_address") @db.Inet
+  country              String?  @db.VarChar(3)
+  city                 String?  @db.VarChar(100)
+  isMfaVerified        Boolean  @default(false) @map("is_mfa_verified")
+  lastActivityAt       DateTime @default(now()) @map("last_activity_at") @db.Timestamptz(6)
+  expiresAt            DateTime @map("expires_at") @db.Timestamptz(6)
+  revokedAt            DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokeReason         String?  @map("revoke_reason") @db.VarChar(100)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([adminId])
+  @@index([refreshTokenHash])
+  @@map("admin_sessions")
 }

@@ -4,6 +4,9 @@ import storageService from "../../../utils/storageService.js";
 import { redis, redisAvailable } from "../../../config/redisClient.js";
 import { emitToUser } from "../../../socket.js";
 import logger from "../../../utils/logger.js";
+import { deleteCache, CacheKey } from "../../../utils/cache.js";
+import { smartResolveMediaUrl } from "../../../utils/mediaResolver.js";
+import { formatAuthResponse, USER_INCLUDE } from "../../auth/utils/authHelpers.js";
 
 // @desc    Get current authenticated user basic info
 // @route   GET /api/user/me
@@ -14,48 +17,14 @@ export const getMyBasicInfo = asyncHandler(async (req, res) => {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: {
-      profile: {
-        select: {
-          username: true,
-          name: true,
-          profile_picture: true,
-          phone: true,
-          location_country: true,
-          bio: true,
-        },
-      },
-      youtubeProfiles: {
-        include: {
-          videos: {
-            orderBy: { published_at: 'desc' },
-            take: 20
-          }
-        }
-      }
-    },
+    include: USER_INCLUDE,
   });
 
   if (!user) throw new ApiError(404, "User not found");
 
   return res.status(200).json({
     success: true,
-    user: {
-      id: user.id,
-      email: user.email,
-      role: req.user.role,
-      systemRole: req.user.systemRole || user.role,
-      isOnboarded: user.is_onboarded,
-      isVerified: user.is_verified,
-      name: user.profile?.name || "",
-      username: user.profile?.username || "",
-      profilePicture: user.profile?.profile_picture || "",
-      phone: user.profile?.phone || "",
-      country: user.profile?.location_country || "",
-      bio: user.profile?.bio || "",
-      youtubeProfile: user.youtubeProfiles,
-      youtubeVideos: user.youtubeProfiles?.videos || [],
-    },
+    user: formatAuthResponse(user)
   });
 });
 
@@ -116,19 +85,13 @@ export const updateMyBasicInfo = asyncHandler(async (req, res) => {
   };
 
   // 🧹 [CACHE] Invalidate user cache and broadcast surgical update
-  if (redisAvailable) {
-    const cacheKey = `user_cache:${userId}`;
-    await redis.del(cacheKey).catch(e => logger.warn(`[CACHE] Eviction failed: ${e.message}`));
-    
-    // 🛰️ [SOCKET] Surgical Broadcast
-    emitToUser(userId, "user:profile_updated", { 
-      bio: updated.bio, 
-      name: updated.name,
-      displayName: updated.name,
-      username: updated.username,
-      location: updated.location_country
-    });
-  }
+  await deleteCache(CacheKey.userProfile(userId));
+  
+  // 🛰️ [SOCKET] Surgical Broadcast for real-time profile persistence
+  emitToUser(userId, "user:profile_updated", { 
+    bio: updated.bio, 
+    location: updated.location_country 
+  });
 
   return res.status(200).json({
     success: true,
@@ -163,12 +126,10 @@ export const updateProfilePicture = asyncHandler(async (req, res) => {
   });
 
   // 🧹 [CACHE] Invalidate cache
-  if (redisAvailable) {
-    await redis.del(`user_cache:${userId}`).catch(() => {});
-    
-    // 🛰️ [SOCKET] Surgical Sync
-    emitToUser(userId, "user:profile_updated", { profilePicture: profile.profile_picture });
-  }
+  await deleteCache(CacheKey.userProfile(userId));
+  
+  // 🛰️ [SOCKET] Surgical Sync
+  emitToUser(userId, "user:profile_updated", { profilePicture: profile.profile_picture });
 
   return res.status(200).json({
     success: true,
@@ -181,7 +142,6 @@ export const updateProfilePicture = asyncHandler(async (req, res) => {
  * @desc    Social Onboarding: Complete Minimal Profile
  * @route   PUT /api/user/profile/minimal
  * @access  Private (Authenticated but not fully onboarded)
- * Handles the 'Social Data Gap' for Google/OAuth users.
  */
 export const updateMinimalProfile = asyncHandler(async (req, res) => {
   const userId = req.user?.id;
@@ -193,7 +153,7 @@ export const updateMinimalProfile = asyncHandler(async (req, res) => {
 
   const normalizedUsername = username.toLowerCase().trim();
 
-  // 1. Check if username is already taken by someone else
+  // 1. Check if username is already taken
   const existing = await prisma.userProfile.findFirst({
     where: { 
       username: normalizedUsername,
@@ -202,12 +162,11 @@ export const updateMinimalProfile = asyncHandler(async (req, res) => {
   });
 
   if (existing) {
-    throw new ApiError(409, "This username is already claimed. Choose another one!");
+    throw new ApiError(409, "This username is already claimed.");
   }
 
   // 2. Update Profile & User status atomically
   const updated = await prisma.$transaction(async (tx) => {
-    // Update Profile
     const profile = await tx.userProfile.update({
       where: { userId },
       data: {
@@ -217,7 +176,6 @@ export const updateMinimalProfile = asyncHandler(async (req, res) => {
       }
     });
 
-    // Mark user as onboarded
     await tx.user.update({
       where: { id: userId },
       data: { is_onboarded: true }
@@ -226,6 +184,9 @@ export const updateMinimalProfile = asyncHandler(async (req, res) => {
     return profile;
   });
 
+  // 🧹 [CACHE] Invalidate user profile cache
+  await deleteCache(CacheKey.userProfile(userId));
+
   return res.status(200).json({
     success: true,
     message: "Profile updated successfully.",
@@ -233,3 +194,10 @@ export const updateMinimalProfile = asyncHandler(async (req, res) => {
     phone: updated.phone
   });
 });
+
+export default {
+  getMyBasicInfo,
+  updateMyBasicInfo,
+  updateProfilePicture,
+  updateMinimalProfile
+};

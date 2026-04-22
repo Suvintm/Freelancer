@@ -87,6 +87,31 @@ export async function scheduleYouTubeSync(userId, channels, triggerReason = "man
   return job;
 }
 
+/**
+ * Schedule a daily maintenance job for the YouTube Quota Manager.
+ * Resets the quota at exactly Midnight Pacific Time (00:00:00).
+ */
+export async function scheduleQuotaMaintenance() {
+  if (!youtubeSyncQueue) return;
+
+  // Add a repeatable job
+  await youtubeSyncQueue.add(
+    "quota-maintenance",
+    { type: "DAILY_RESET" },
+    {
+      repeat: {
+        pattern: "0 0 * * *", // Every day at Midnight
+        tz: "America/Los_Angeles"
+      },
+      priority: PRIORITY.HIGH, // Quota reset is important
+      removeOnComplete: true,
+      removeOnFail: true,
+    }
+  );
+
+  logger.info("⏱️ [Queue] Daily YouTube Quota Reset scheduled (Midnight Pacific Time).");
+}
+
 // ─── HELPER: MEDIA JOB ENQUEUER ───────────────────────────────────────────────
 
 const RATE_LIMIT_WINDOW_SECONDS = 60;

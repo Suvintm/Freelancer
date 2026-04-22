@@ -45,6 +45,8 @@ import profileRoutes from "./modules/profile/profile.routes.js";
 // PostgreSQL Support
 import { connectPostgres } from "./config/prisma.js";
 import prisma from "./config/prisma.js";
+import youtubeQuotaManager from "./modules/youtube-creator/services/youtubeQuotaManager.js";
+import { scheduleQuotaMaintenance } from "./modules/workers/queues.js";
 
 // Firebase Admin initialization
 import { initFirebaseAdmin } from "./utils/firebaseAdmin.js";
@@ -230,6 +232,15 @@ const startServer = async () => {
   const dbConnected = await connectDB();
   if (!dbConnected) process.exit(1);
   await connectPostgres();
+  
+  // 🔑 Initialize YouTube Quota Foundation
+  try {
+    await youtubeQuotaManager.initializeQuota();
+    await scheduleQuotaMaintenance();
+  } catch (err) {
+    logger.error(`❌ [QUOTA] Failed to initialize: ${err.message}`);
+  }
+
   initSocket(server);
   server.listen(PORT, "0.0.0.0", () => logger.info(`✅ Server running on port ${PORT} (reachable at http://0.0.0.0:${PORT})`));
 };
