@@ -10,7 +10,7 @@ import redisClient from "../config/redisClient.js";
 
 // Collaborative Filtering keys (Duplicate from reelController for worker context)
 const REEL_CO_VIEWERS_PREFIX = "reels:co_viewers:";
-const REEL_CO_VIEWERS_TTL = 60 * 60 * 24 * 30; // 30 days
+const REEL_CO_VIEWERS_TTL = 60 * 60 * 24 * 7; // 7 days (Production optimized for cost)
 
 // Helper to get Redis connection for BullMQ
 const getRedisConnection = () => {
@@ -69,15 +69,17 @@ export const analyticsWorker = connection ? new Worker("analytics", async (job) 
             if (reel) {
                 trackTrendingInteraction(country, reel.language, reel.hashtags, 1).catch(() => {});
                 
-                // 3. Collaborative filtering: track co-viewers (O(1))
+                // 🚀 BATCHED (PIPELINED) Redis operations for cost efficiency
+                const pipeline = redisClient.pipeline();
                 const coViewKey = `${REEL_CO_VIEWERS_PREFIX}${reelId}`;
-                redisClient.sAdd(coViewKey, userId).catch(() => {});
-                redisClient.expire(coViewKey, REEL_CO_VIEWERS_TTL).catch(() => {});
-
-                // 4. User interest-set: What has this user watched? (O(1))
                 const historyKey = `user:history:${userId}`;
-                redisClient.sAdd(historyKey, reelId).catch(() => {});
-                redisClient.expire(historyKey, REEL_CO_VIEWERS_TTL).catch(() => {});
+
+                pipeline.sadd(coViewKey, userId);
+                pipeline.expire(coViewKey, REEL_CO_VIEWERS_TTL);
+                pipeline.sadd(historyKey, reelId);
+                pipeline.expire(historyKey, REEL_CO_VIEWERS_TTL);
+
+                pipeline.exec().catch(err => logger.error(`[Worker-Redis] Pipeline failed: ${err.message}`));
             }
         }
         
