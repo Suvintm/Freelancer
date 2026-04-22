@@ -22,3 +22,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables - NEVER COMMIT THESE!
+# Ignore all .env files
+.env
+.env.*
+
+# BUT allow example templates (these should be committed)
+!.env.example
+!.env.example.*
+
+.vercel
+.env*.local

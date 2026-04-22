@@ -1,31 +1,24 @@
-# Dockerfile for SuviX React/Vite Frontend
-# Multi-stage build (Builder + Nginx)
-
-# Stage 1: Build
-FROM node:20-alpine AS builder
+# Stage 1: Build stage
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
+# Install dependencies
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
+# Copy source and build
 COPY . .
 RUN npm run build
 
-# Stage 2: Serve with Nginx for 60FPS performance
+# Stage 2: Production stage
 FROM nginx:stable-alpine
 
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Copy built files from build stage
+COPY --from=build /app/dist /usr/share/nginx/html
 
-# Custom Nginx config to handle React Router client-side routing
-RUN echo 'server { \
-    listen 80; \
-    location / { \
-        root /usr/share/nginx/html; \
-        index index.html index.htm; \
-        try_files $uri $uri/ /index.html; \
-    } \
-}' > /etc/nginx/conf.d/default.conf
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
