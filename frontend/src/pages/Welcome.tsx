@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, Play } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import logo from '../assets/whitebglogo.png';
 
@@ -35,11 +35,7 @@ const ONBOARDING_DATA = [
 
 export default function Welcome() {
   const [activeSlide, setActiveSlide] = useState(0);
-  const [isLastSlide, setIsLastSlide] = useState(false);
-
-  useEffect(() => {
-    setIsLastSlide(activeSlide === ONBOARDING_DATA.length - 1);
-  }, [activeSlide]);
+  const isLastSlide = activeSlide === ONBOARDING_DATA.length - 1;
 
   const handleNext = () => {
     if (activeSlide < ONBOARDING_DATA.length - 1) {
@@ -66,13 +62,13 @@ export default function Welcome() {
       </div>
 
       {/* Header / Logo */}
-      <header className="absolute top-0 left-0 right-0 z-20 p-10 md:p-16">
+      <header className="absolute top-0 left-0 right-0 z-20 p-6 md:p-16">
         <motion.img 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           src={logo} 
           alt="SuviX" 
-          className="h-14 md:h-20 lg:h-24 w-auto brightness-0 invert" 
+          className="h-12 md:h-20 lg:h-24 w-auto brightness-0 invert" 
         />
       </header>
 
@@ -81,11 +77,11 @@ export default function Welcome() {
         {/* Gradient Overlay for Readability */}
         <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/80 to-transparent" />
 
-        <div className="relative mx-auto w-full max-w-7xl px-8 pb-16 md:px-16 md:pb-24">
+        <div className="relative mx-auto w-full max-w-7xl px-8 pb-12 md:px-16 md:pb-24">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
               {/* Progress Indicator */}
-              <div className="mb-8 flex gap-2">
+              <div className="mb-6 flex gap-2 md:mb-8">
                 {ONBOARDING_DATA.map((_, i) => (
                   <motion.div
                     key={i}
@@ -106,10 +102,10 @@ export default function Welcome() {
                   exit={{ opacity: 0, x: 20 }}
                   transition={{ duration: 0.5 }}
                 >
-                  <h1 className="mb-6 whitespace-pre-line text-5xl font-black tracking-tighter md:text-7xl lg:text-8xl font-display">
+                  <h1 className="mb-4 whitespace-pre-line text-4xl font-black leading-tight tracking-tighter md:mb-6 md:text-7xl lg:text-8xl font-display">
                     {ONBOARDING_DATA[activeSlide].title}
                   </h1>
-                  <p className="mb-12 max-w-lg text-lg leading-relaxed text-zinc-400 md:text-xl font-sans">
+                  <p className="mb-8 max-w-lg text-base leading-relaxed text-zinc-400 md:mb-12 md:text-xl font-sans">
                     {ONBOARDING_DATA[activeSlide].description}
                   </p>
                 </motion.div>
