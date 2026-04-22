@@ -21,6 +21,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { StoryItem } from '../../hooks/useStories';
 import { useTheme } from '../../context/ThemeContext';
 import { useRouter } from 'expo-router';
+const DEFAULT_AVATAR = require('../../../assets/defualtprofile.png');
 
 /**
  * PREMIUM STORY CIRCLE with 'Dashed Wave' Elevation
@@ -144,13 +145,19 @@ export const StoryCircle = React.memo(({ story }: { story: StoryItem }) => {
                     style={s.gradientBorder}
                 >
                     <View style={[s.innerCircle, { backgroundColor: theme.primary }]}>
-                        <Image source={{ uri: story.avatar }} style={s.avatar} />
+                        <Image 
+                          source={story.avatar ? { uri: story.avatar } : DEFAULT_AVATAR} 
+                          style={s.avatar} 
+                        />
                     </View>
                 </LinearGradient>
             ) : (
                 <View style={[s.plainBorder, isSeen && s.seenBorder]}>
                     <View style={[s.innerCircle, { backgroundColor: theme.primary }]}>
-                        <Image source={{ uri: story.avatar }} style={s.avatar} />
+                        <Image 
+                          source={story.avatar ? { uri: story.avatar } : DEFAULT_AVATAR} 
+                          style={s.avatar} 
+                        />
                     </View>
                 </View>
             )}

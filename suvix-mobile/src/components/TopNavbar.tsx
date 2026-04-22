@@ -22,6 +22,7 @@ import Animated, {
 import BottomSheet from '@gorhom/bottom-sheet';
 import { useAccountVault } from '../hooks/useAccountVault';
 import { AccountSwitcherSheet } from './shared/AccountSwitcherSheet';
+const DEFAULT_AVATAR = require('../../assets/defualtprofile.png');
 
 /** Modern rounded hamburger menu icon */
 const RoundedMenuIcon = ({ color }: { color: string }) => (
@@ -177,15 +178,10 @@ export const TopNavbar = ({ onMenuPress, onProfilePress }: TopNavbarProps) => {
             onPress={handleProfilePress}
             activeOpacity={0.8}
           >
-            {user?.profilePicture ? (
-              <Image source={{ uri: user.profilePicture }} style={styles.avatarImg} />
-            ) : (
-              <View style={[styles.avatarPlaceholder, { backgroundColor: isDarkMode ? '#27272a' : '#e4e4e7' }]}>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: isDarkMode ? '#FFF' : '#374151' }}>
-                  {(user?.name || user?.username || 'S')[0].toUpperCase()}
-                </Text>
-              </View>
-            )}
+            <Image 
+              source={user?.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR} 
+              style={styles.avatarImg} 
+            />
             {/* Badge: number of additional accounts OR a plus icon if single-account */}
             {extraAccountCount > 0 ? (
               <View style={styles.accountCountBadge}>

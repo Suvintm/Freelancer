@@ -35,7 +35,7 @@ export const StoryBar = ({ isLoading: forcedLoading }: StoryBarProps) => {
     const ghostUserStory: StoryItem = {
       _id: 'user_story_ghost',
       username: 'Your Story',
-      avatar: user.profilePicture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150',
+      avatar: user.profilePicture || null,
       isUserStory: true,
       hasActiveStory: false,
       slides: []

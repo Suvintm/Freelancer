@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { AccountIdentity } from '../../hooks/useAccountVault';
+const DEFAULT_AVATAR = require('../../../assets/defualtprofile.png');
 
 interface AccountCardProps {
   account: AccountIdentity;
@@ -63,15 +64,10 @@ export const AccountCard = ({ account, isActive, isDark, onPress, onLongPress, o
             styles.avatarRing,
             { borderColor: isActive ? '#8B5CF6' : 'transparent' }
           ]}>
-            {account.profilePicture ? (
-              <Image source={{ uri: account.profilePicture }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatarPlaceholder, { backgroundColor: isDark ? '#2D2D2D' : '#E5E7EB' }]}>
-                <Text style={[styles.avatarInitial, { color: isDark ? '#FFF' : '#374151' }]}>
-                  {(account.displayName || account.username || '?')[0].toUpperCase()}
-                </Text>
-              </View>
-            )}
+            <Image 
+              source={account.profilePicture ? { uri: account.profilePicture } : DEFAULT_AVATAR} 
+              style={styles.avatar} 
+            />
           </View>
           {isActive && (
             <View style={[styles.activeRingIndicator, { backgroundColor: 'white', borderRadius: 12, padding: 1 }]}>

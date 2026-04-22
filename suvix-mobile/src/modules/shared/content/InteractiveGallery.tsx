@@ -26,6 +26,7 @@ import { useProfileReels } from '../../../hooks/useProfileReels';
 import { VerifiedBadge } from '../../../components/VerifiedBadge';
 import { InteractiveMediaItem } from './InteractiveMediaItem';
 import { GALLERY_MOCKS } from '../../../constants/galleryMocks';
+const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -220,7 +221,7 @@ const GalleryPage = React.memo(({ item, isActive, layoutHeight, insets }: Galler
         {/* Author row */}
         <View style={styles.authorRow}>
           <Image
-            source={{ uri: author.profilePicture ?? 'https://via.placeholder.com/100' }}
+            source={author.profilePicture ? { uri: author.profilePicture } : DEFAULT_AVATAR}
             style={styles.avatar}
             contentFit="cover"
             cachePolicy="memory-disk"

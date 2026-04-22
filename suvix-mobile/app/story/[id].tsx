@@ -62,6 +62,7 @@ import { CanvasTextItem }    from '../../src/modules/story/components/CanvasText
 import { CanvasStickerItem } from '../../src/modules/story/components/CanvasStickerItem';
 import { DrawingCanvas }     from '../../src/modules/story/components/DrawingCanvas';
 import { StoryObject }       from '../../src/modules/story/types';
+const DEFAULT_AVATAR = require('../../assets/defualtprofile.png');
 
 // ─── Canvas constants (must match create.tsx) ─────────────────────────────────
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -726,15 +727,10 @@ function StoryThread({
 
         <View style={s.userRow}>
           <View style={s.userMeta}>
-            {story.avatar ? (
-              <Image source={{ uri: story.avatar }} style={s.avatar} />
-            ) : (
-              <View style={[s.avatar, s.avatarFallback]}>
-                <Text style={s.avatarLetter}>
-                  {(story.username || '?')[0].toUpperCase()}
-                </Text>
-              </View>
-            )}
+            <Image 
+              source={story.avatar ? { uri: story.avatar } : DEFAULT_AVATAR} 
+              style={s.avatar} 
+            />
             <View>
               <Text style={s.username}>{story.username}</Text>
               <Text style={s.timestamp}>
