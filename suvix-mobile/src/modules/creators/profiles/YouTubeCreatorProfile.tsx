@@ -442,7 +442,7 @@ export default function YouTubeCreatorProfile() {
                   />
                 </View>
                 <TouchableOpacity 
-                   onPress={() => setBioModalVisible(true)}
+                   onPress={() => setIsBioModalVisible(true)}
                   style={styles.bioEditTrigger}
                 >
                   <MaterialCommunityIcons name="pencil-outline" size={16} color={theme.accent} />
@@ -450,7 +450,7 @@ export default function YouTubeCreatorProfile() {
               </View>
             ) : (
               <TouchableOpacity 
-                onPress={() => setBioModalVisible(true)} 
+                onPress={() => setIsBioModalVisible(true)} 
                 style={[styles.addBioBtn, { borderColor: theme.border, backgroundColor: theme.secondary }]}
               >
                 <MaterialCommunityIcons name="pencil-plus-outline" size={18} color={theme.accent} />
@@ -724,7 +724,7 @@ export default function YouTubeCreatorProfile() {
       {/* Bio Update Modal (Optimized) */}
       <BioEditModal 
         visible={isBioModalVisible} 
-        onClose={() => setBioModalVisible(false)}
+        onClose={() => setIsBioModalVisible(false)}
         onSave={handleUpdateBio}
         initialBio={user.bio || ''}
         theme={theme}

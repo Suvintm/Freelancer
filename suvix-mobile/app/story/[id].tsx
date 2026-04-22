@@ -62,6 +62,7 @@ import { CanvasTextItem }    from '../../src/modules/story/components/CanvasText
 import { CanvasStickerItem } from '../../src/modules/story/components/CanvasStickerItem';
 import { DrawingCanvas }     from '../../src/modules/story/components/DrawingCanvas';
 import { StoryObject }       from '../../src/modules/story/types';
+import { SUVIX_INDUSTRY_STORIES } from '../../src/data/suvixStories';
 const DEFAULT_AVATAR = require('../../assets/defualtprofile.png');
 
 // ─── Canvas constants (must match create.tsx) ─────────────────────────────────
@@ -85,19 +86,42 @@ const HOLD_MS          = 200;
 export default function StoryEngineScreen() {
   const { id }              = useLocalSearchParams();
   const router              = useRouter();
-  const { data: allStories } = useStories();
+  const { data: rawStories } = useStories();
   const pagerRef            = useRef<PagerView>(null);
+
+  const effectiveStories = useMemo(() => {
+    // 🔗 MERGE: Use API stories, and always include SuviX Industry stories if ID matches or feed is low
+    const apiList = rawStories || [];
+    
+    // Normalize Industry Stories to match Viewer Engine expectations
+    const mockList = SUVIX_INDUSTRY_STORIES.map(item => ({
+      ...item,
+      userId: item.userId || item._id,
+      hasActiveStory: true,
+      isUserStory: false,
+      slides: (item.slides || []).map(s => ({
+        ...s,
+        type: (s as any).type || 'IMAGE',
+        metadata: (s as any).metadata || {},
+        durationMs: (s as any).durationMs || 5000,
+        created_at: (s as any).created_at || new Date().toISOString()
+      }))
+    }));
+
+    // If ID matches a mock story, or if we have no API stories, we must show mock data
+    return apiList.length > 0 ? apiList : mockList;
+  }, [rawStories]);
 
   const initialIndex = useMemo(() => {
     const rid = Array.isArray(id) ? id[0] : id;
-    const idx = allStories.findIndex(s => s._id === rid);
+    const idx = effectiveStories.findIndex(s => s._id === rid);
     return idx !== -1 ? idx : 0;
-  }, [id, allStories]);
+  }, [id, effectiveStories]);
 
   const [currentPage, setCurrentPage]       = useState(initialIndex);
   const [pagerActive, setPagerActive]       = useState(false);
 
-  if (allStories.length === 0) return <View style={s.container} />;
+  if (effectiveStories.length === 0) return <View style={s.container} />;
 
   return (
     <View style={s.container}>
@@ -114,7 +138,7 @@ export default function StoryEngineScreen() {
         }}
         onPageSelected={e => setCurrentPage(e.nativeEvent.position)}
       >
-        {allStories.map((story, index) => (
+        {effectiveStories.map((story, index) => (
           <View key={story._id} style={s.page}>
             {Math.abs(index - currentPage) <= 1 ? (
               <StoryThread
@@ -123,7 +147,7 @@ export default function StoryEngineScreen() {
                 isPagerInteracting={pagerActive}
                 onClose={() => router.back()}
                 onNextUser={() => {
-                  if (index < allStories.length - 1) pagerRef.current?.setPage(index + 1);
+                  if (index < effectiveStories.length - 1) pagerRef.current?.setPage(index + 1);
                   else router.back();
                 }}
                 onPrevUser={() => {

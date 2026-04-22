@@ -11,6 +11,7 @@ import { Skeleton } from '../shared/Skeleton';
 import { StoryCircle } from './StoryCircle';
 import { useStories, StoryItem } from '../../hooks/useStories';
 import { useAuthStore } from '../../store/useAuthStore';
+import { SUVIX_INDUSTRY_STORIES } from '../../data/suvixStories';
 
 /**
  * STORY BAR
@@ -27,23 +28,54 @@ export const StoryBar = ({ isLoading: forcedLoading }: StoryBarProps) => {
   const isLoading = forcedLoading || internalLoading;
 
   const data = React.useMemo(() => {
-    const list = rawData || [];
-    const hasUserStory = list.some(s => s.isUserStory);
-    if (hasUserStory || !user) return list;
+    // 🔍 ANALYZE: Check if we have stories from OTHER people (not the current user)
+    const othersStories = (rawData || []).filter(s => !s.isUserStory);
+    const hasCommunityContent = othersStories.length > 0;
 
-    // Prepend a 'Ghost' Story Circle for adding
-    const ghostUserStory: StoryItem = {
+    // 🔗 SOURCE: If no community content, show Industry Mock data. Otherwise, show real rawData.
+    const baseList = hasCommunityContent ? rawData : SUVIX_INDUSTRY_STORIES;
+
+    const list = baseList.map(item => ({
+      ...item,
+      userId: item.userId || item._id, // Ensure internal ID consistency
+      hasActiveStory: item.hasActiveStory ?? true,
+      isUserStory: item.isUserStory || false,
+      isSeen: item.isSeen ?? false,
+      slides: (item.slides || []).map(s => ({
+        ...s,
+        type: (s as any).type || 'IMAGE',
+        metadata: (s as any).metadata || {},
+        durationMs: (s as any).durationMs || 5000,
+        created_at: (s as any).created_at || new Date().toISOString()
+      }))
+    }));
+
+    // 👻 USER CIRCLE: Find the user's real active story if it exists
+    const userActiveStory = (rawData || []).find(s => s.isUserStory);
+    const hasUserInMergedList = list.some(s => s.isUserStory);
+
+    // If the user's story is already in the list (because we used rawData), just return the list
+    if (hasUserInMergedList || !user) return list;
+
+    // Otherwise, we need to prepend either the REAL active story or the GHOST 'Add' story
+    const userCircle: StoryItem = userActiveStory ? {
+      ...userActiveStory,
+      isUserStory: true
+    } : {
       _id: 'user_story_ghost',
+      userId: user.id,
       username: 'Your Story',
       avatar: user.profilePicture || null,
       isUserStory: true,
       hasActiveStory: false,
+      isSeen: false,
       slides: []
     };
-    return [ghostUserStory, ...list];
-  }, [rawData, user]);
 
-  const isEmpty = !isLoading && (rawData || []).length === 0;
+    const finalData = [userCircle, ...list.filter(s => s._id !== userCircle._id)];
+    console.log('[StoryBar] Unified Data Count:', finalData.length);
+    return finalData;
+  }, [rawData, user]);
 
   if (isLoading) {
     /** ... skeleton remains same ... */
@@ -83,20 +115,6 @@ export const StoryBar = ({ isLoading: forcedLoading }: StoryBarProps) => {
         )}
       />
 
-      {isEmpty && (
-        <View style={[s.fallbackCard, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-          <View style={[s.iconBox, { backgroundColor: theme.primary }]}>
-            <MaterialCommunityIcons name="cards-playing-outline" size={18} color={theme.text} />
-          </View>
-          <View style={s.fallbackTextWrapper}>
-            <Text style={[s.fallbackTitle, { color: theme.text }]}>Explore Stories</Text>
-            <Text style={[s.fallbackSubtitle, { color: theme.textSecondary }]}>
-              Follow creators to see their vertical stories here.
-            </Text>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={18} color={theme.textSecondary} />
-        </View>
-      )}
     </View>
   );
 };
@@ -114,41 +132,5 @@ const s = StyleSheet.create({
     height: 104,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  fallbackCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 10,
-    padding: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  iconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fallbackTextWrapper: {
-    flex: 1,
-    marginLeft: 12,
-    marginRight: 8,
-  },
-  fallbackTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    marginBottom: 2,
-  },
-  fallbackSubtitle: {
-    fontSize: 11,
-    fontWeight: '600',
-    lineHeight: 16,
   },
 });
