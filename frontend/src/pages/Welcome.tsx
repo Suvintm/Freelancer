@@ -65,6 +65,8 @@ export default function Welcome() {
           />
         </AnimatePresence>
         <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+        {/* Gradient Overlay for Readability - Now pinned to Background */}
+        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
       </div>
 
       {/* Header / Logo */}
@@ -78,10 +80,7 @@ export default function Welcome() {
         />
       </header>
 
-      {/* Main Content Section */}
       <div className="relative z-10 h-full w-full overflow-hidden">
-        {/* Gradient Overlay for Readability */}
-        <div className="absolute inset-x-0 bottom-0 z-10 h-2/3 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
 
         <motion.div 
           drag="x"
