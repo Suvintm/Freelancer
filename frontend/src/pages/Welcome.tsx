@@ -43,6 +43,12 @@ export default function Welcome() {
     }
   };
 
+  const handleBack = () => {
+    if (activeSlide > 0) {
+      setActiveSlide(prev => prev - 1);
+    }
+  };
+
   return (
     <div className="relative h-screen w-full overflow-hidden bg-black text-white">
       {/* Background Images Layer */}
@@ -73,81 +79,95 @@ export default function Welcome() {
       </header>
 
       {/* Main Content Section */}
-      <div className="relative z-10 flex h-full flex-col justify-end">
+      <div className="relative z-10 h-full w-full overflow-hidden">
         {/* Gradient Overlay for Readability */}
-        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/80 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 z-10 h-2/3 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
 
-        <div className="relative mx-auto w-full max-w-7xl px-8 pb-20 md:px-16 md:pb-24">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between">
-            <div className="max-w-2xl">
-              {/* Progress Indicator */}
-              <div className="mb-6 flex gap-2 md:mb-8">
-                {ONBOARDING_DATA.map((_, i) => (
-                  <motion.div
-                    key={i}
-                    animate={{ 
-                      width: activeSlide === i ? 40 : 8,
-                      backgroundColor: activeSlide === i ? "#FFFFFF" : "rgba(255,255,255,0.2)"
-                    }}
-                    className="h-2 rounded-full"
-                  />
-                ))}
-              </div>
-
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeSlide}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <h1 className="mb-4 whitespace-pre-line text-4xl font-black leading-tight tracking-tighter md:mb-6 md:text-7xl lg:text-8xl font-display">
-                    {ONBOARDING_DATA[activeSlide].title}
-                  </h1>
-                  <p className="mb-8 max-w-lg text-base leading-relaxed text-zinc-400 md:mb-12 md:text-xl font-sans">
-                    {ONBOARDING_DATA[activeSlide].description}
-                  </p>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            <div className="flex flex-col gap-3 md:min-w-[280px] md:gap-4">
-              {!isLastSlide ? (
-                <>
-                  <Button 
-                    size="lg" 
-                    onClick={handleNext}
-                    className="group flex items-center justify-between md:size-xl"
-                  >
-                    Next
-                    <div className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-black text-white transition-transform group-hover:translate-x-1 md:h-10 md:w-10">
-                      <ChevronRight size={20} className="md:size-6" strokeWidth={3} />
+        <motion.div 
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.1}
+          onDragEnd={(_, info) => {
+            const swipe = info.offset.x;
+            const velocity = info.velocity.x;
+            if (swipe < -100 || velocity < -500) handleNext();
+            else if (swipe > 100 || velocity > 500) handleBack();
+          }}
+          animate={{ x: `-${activeSlide * 100}%` }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          className="flex h-full cursor-grab active:cursor-grabbing"
+        >
+          {ONBOARDING_DATA.map((slide, i) => (
+            <div key={i} className="relative h-full w-full flex-shrink-0 flex flex-col justify-end">
+              <div className="mx-auto w-full max-w-7xl px-8 pb-32 md:px-16 md:pb-48">
+                <div className="flex flex-col md:flex-row md:items-end md:justify-between">
+                  <div className="max-w-2xl">
+                    {/* Progress Indicator */}
+                    <div className="mb-6 flex gap-2 md:mb-8">
+                      {ONBOARDING_DATA.map((_, dotIndex) => (
+                        <motion.div
+                          key={dotIndex}
+                          animate={{ 
+                            width: activeSlide === dotIndex ? 40 : 8,
+                            backgroundColor: activeSlide === dotIndex ? "#FFFFFF" : "rgba(255,255,255,0.2)"
+                          }}
+                          className="h-2 rounded-full"
+                        />
+                      ))}
                     </div>
-                  </Button>
-                  <Button variant="ghost" className="text-sm text-zinc-500 hover:text-white md:text-base">
-                    I have an account
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="flex flex-col gap-3 md:gap-4"
-                  >
-                    <Button size="lg" className="w-full md:size-xl">
-                      New User? Get Started
-                    </Button>
-                    <Button size="lg" variant="outline" className="w-full md:size-xl">
-                      Already have an account? Login
-                    </Button>
-                  </motion.div>
-                </>
-              )}
+
+                    <h1 className="mb-4 whitespace-pre-line text-4xl font-black leading-tight tracking-tighter md:mb-6 md:text-7xl lg:text-8xl font-display">
+                      {slide.title}
+                    </h1>
+                    <p className="mb-8 max-w-lg text-base leading-relaxed text-zinc-400 md:mb-12 md:text-xl font-sans">
+                      {slide.description}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-3 md:min-w-[280px] md:gap-4">
+                    {i < ONBOARDING_DATA.length - 1 ? (
+                      <>
+                        <Button 
+                          size="lg" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleNext();
+                          }}
+                          className="group flex items-center justify-between md:size-xl"
+                        >
+                          Next
+                          <div className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-black text-white transition-transform group-hover:translate-x-1 md:h-10 md:w-10">
+                            <ChevronRight size={20} className="md:size-6" strokeWidth={3} />
+                          </div>
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-sm text-zinc-500 hover:text-white md:text-base"
+                        >
+                          I have an account
+                        </Button>
+                      </>
+                    ) : (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="flex flex-col gap-3 md:gap-4"
+                      >
+                        <Button size="lg" className="w-full md:size-xl" onClick={(e) => e.stopPropagation()}>
+                          New User? Get Started
+                        </Button>
+                        <Button size="lg" variant="outline" className="w-full md:size-xl" onClick={(e) => e.stopPropagation()}>
+                          Already have an account? Login
+                        </Button>
+                      </motion.div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          ))}
+        </motion.div>
       </div>
 
       {/* Visual Ticks (Industrial Aesthetic) */}
