@@ -1,10 +1,17 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { AuthBackground } from '../components/auth/AuthBackground';
 import logo from '../assets/whitebglogo.png';
 
 export default function Login() {
+  const navigate = useNavigate();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    navigate('/home');
+  };
+
   return (
     <div className="flex h-screen w-full bg-black font-sans overflow-hidden relative">
       {/* Desktop Left Panel */}
@@ -67,7 +74,7 @@ export default function Login() {
               </div>
             </div>
 
-            <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+            <form className="space-y-4" onSubmit={handleSubmit}>
               <Input 
                 label="Email Address" 
                 type="email" 

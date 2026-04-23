@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
@@ -11,6 +11,13 @@ const LANGUAGES = [
 ];
 
 export default function Signup() {
+  const navigate = useNavigate();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    navigate('/home');
+  };
+
   return (
     <div className="flex h-screen w-full bg-black font-sans overflow-hidden relative">
       {/* Desktop Left Panel */}
@@ -73,7 +80,7 @@ export default function Signup() {
               </div>
             </div>
 
-            <form className="space-y-3 lg:space-y-4" onSubmit={(e) => e.preventDefault()}>
+            <form className="space-y-3 lg:space-y-4" onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Input 
                   label="Full Name" 
