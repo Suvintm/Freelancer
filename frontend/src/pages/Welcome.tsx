@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import logo from '../assets/whitebglogo.png';
 
@@ -139,13 +140,15 @@ export default function Welcome() {
                             <ChevronRight size={20} className="md:size-6" strokeWidth={3} />
                           </div>
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-sm text-zinc-500 hover:text-white md:text-base"
-                        >
-                          I have an account
-                        </Button>
+                        <Link to="/login" className="w-full">
+                          <Button 
+                            variant="ghost" 
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full text-sm text-zinc-500 hover:text-white md:text-base"
+                          >
+                            I have an account
+                          </Button>
+                        </Link>
                       </>
                     ) : (
                       <motion.div
@@ -153,12 +156,16 @@ export default function Welcome() {
                         animate={{ opacity: 1, scale: 1 }}
                         className="flex flex-col gap-3 md:gap-4"
                       >
-                        <Button size="lg" className="w-full md:size-xl" onClick={(e) => e.stopPropagation()}>
-                          New User? Get Started
-                        </Button>
-                        <Button size="lg" variant="outline" className="w-full md:size-xl" onClick={(e) => e.stopPropagation()}>
-                          Already have an account? Login
-                        </Button>
+                        <Link to="/signup">
+                          <Button size="lg" className="w-full md:size-xl" onClick={(e) => e.stopPropagation()}>
+                            New User? Get Started
+                          </Button>
+                        </Link>
+                        <Link to="/login">
+                          <Button size="lg" variant="outline" className="w-full md:size-xl" onClick={(e) => e.stopPropagation()}>
+                            Already have an account? Login
+                          </Button>
+                        </Link>
                       </motion.div>
                     )}
                   </div>
