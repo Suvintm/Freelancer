@@ -77,7 +77,7 @@ export default function Welcome() {
         {/* Gradient Overlay for Readability */}
         <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/80 to-transparent" />
 
-        <div className="relative mx-auto w-full max-w-7xl px-8 pb-12 md:px-16 md:pb-24">
+        <div className="relative mx-auto w-full max-w-7xl px-8 pb-20 md:px-16 md:pb-24">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
               {/* Progress Indicator */}
@@ -112,20 +112,20 @@ export default function Welcome() {
               </AnimatePresence>
             </div>
 
-            <div className="flex flex-col gap-4 min-w-[280px]">
+            <div className="flex flex-col gap-3 md:min-w-[280px] md:gap-4">
               {!isLastSlide ? (
                 <>
                   <Button 
-                    size="xl" 
+                    size="lg" 
                     onClick={handleNext}
-                    className="group flex items-center justify-between"
+                    className="group flex items-center justify-between md:size-xl"
                   >
                     Next
-                    <div className="ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-black text-white transition-transform group-hover:translate-x-1">
-                      <ChevronRight size={24} strokeWidth={3} />
+                    <div className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-black text-white transition-transform group-hover:translate-x-1 md:h-10 md:w-10">
+                      <ChevronRight size={20} className="md:size-6" strokeWidth={3} />
                     </div>
                   </Button>
-                  <Button variant="ghost" className="text-zinc-500 hover:text-white">
+                  <Button variant="ghost" className="text-sm text-zinc-500 hover:text-white md:text-base">
                     I have an account
                   </Button>
                 </>
@@ -134,12 +134,12 @@ export default function Welcome() {
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="flex flex-col gap-4"
+                    className="flex flex-col gap-3 md:gap-4"
                   >
-                    <Button size="xl" className="w-full">
+                    <Button size="lg" className="w-full md:size-xl">
                       New User? Get Started
                     </Button>
-                    <Button size="xl" variant="outline" className="w-full">
+                    <Button size="lg" variant="outline" className="w-full md:size-xl">
                       Already have an account? Login
                     </Button>
                   </motion.div>
