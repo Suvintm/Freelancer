@@ -23,7 +23,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
           */}
           <div className="w-full h-full bg-container lg:rounded-[48px] border-b lg:border border-border-main shadow-xl dark:shadow-2xl flex flex-col overflow-hidden relative">
             <main className="flex-1 overflow-y-auto scrollbar-hide bg-page/30">
-              <div className="max-w-screen-2xl mx-auto p-4 lg:p-12 pb-32">
+              <div className="max-w-screen-2xl mx-auto px-4 pt-1 lg:p-12 pb-32">
                 {children}
               </div>
             </main>

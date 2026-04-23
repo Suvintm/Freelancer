@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { PanInfo } from 'framer-motion';
 
 const BANNERS = [
   {
@@ -22,85 +23,87 @@ const BANNERS = [
   },
 ];
 
+const AUTO_SCROLL_MS = 4500;
+const DRAG_THRESHOLD = 50;
+
 export const UnifiedBanner = () => {
   const [index, setIndex] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
 
+  // Auto-scroll logic (Right to Left)
   useEffect(() => {
+    if (isDragging) return;
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % BANNERS.length);
-    }, 5000);
+    }, AUTO_SCROLL_MS);
     return () => clearInterval(timer);
-  }, []);
+  }, [isDragging]);
+
+  const onDragEnd = (_: unknown, info: PanInfo) => {
+    setIsDragging(false);
+    const offset = info.offset.x;
+    const velocity = info.velocity.x;
+
+    if (offset < -DRAG_THRESHOLD || velocity < -500) {
+      setIndex((prev) => (prev + 1) % BANNERS.length);
+    } else if (offset > DRAG_THRESHOLD || velocity > 500) {
+      setIndex((prev) => (prev - 1 + BANNERS.length) % BANNERS.length);
+    }
+  };
 
   return (
-    <div className="relative w-full aspect-[21/9] lg:aspect-[16/6] rounded-[24px] lg:rounded-[48px] overflow-hidden group">
-      <AnimatePresence mode="wait">
+    <div className="relative w-full aspect-[16/9] rounded-[28px] overflow-hidden group touch-pan-y select-none">
+      <AnimatePresence mode="popLayout" initial={false}>
         <motion.div
-          key={BANNERS[index].id}
-          initial={{ opacity: 0, scale: 1.05 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="absolute inset-0"
+          key={index}
+          custom={index}
+          initial={{ x: '100%', opacity: 0.5 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: '-100%', opacity: 0.5 }}
+          transition={{ 
+            type: "spring", 
+            stiffness: 300, 
+            damping: 30,
+            opacity: { duration: 0.2 }
+          }}
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.2}
+          onDragStart={() => setIsDragging(true)}
+          onDragEnd={onDragEnd}
+          className="absolute inset-0 cursor-grab active:cursor-grabbing"
         >
           <img 
             src={BANNERS[index].image} 
             alt={BANNERS[index].title} 
-            className="w-full h-full object-cover" 
+            className="w-full h-full object-cover pointer-events-none" 
           />
           
           {/* Gradient Overlay (App Style) */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
 
           {/* Content */}
-          <div className="absolute bottom-6 lg:bottom-12 left-6 lg:left-12 right-6 lg:right-12 space-y-2 lg:space-y-4">
-            <motion.h2 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-lg lg:text-4xl font-black text-white tracking-tighter"
-            >
+          <div className="absolute bottom-8 left-8 right-8 space-y-2 pointer-events-none">
+            <h2 className="text-xl lg:text-3xl font-black text-white tracking-tighter leading-tight uppercase">
               {BANNERS[index].title}
-            </motion.h2>
-            <motion.p 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="text-[10px] lg:text-base text-white/70 font-bold max-w-xl"
-            >
+            </h2>
+            <p className="text-[11px] lg:text-sm text-white/70 font-bold max-w-md line-clamp-2">
               {BANNERS[index].description}
-            </motion.p>
+            </p>
           </div>
         </motion.div>
       </AnimatePresence>
 
-      {/* Pagination Dots */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+      {/* Pagination Dots (App Style) */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 pointer-events-none">
         {BANNERS.map((_, i) => (
-          <button
+          <div
             key={i}
-            onClick={() => setIndex(i)}
-            className={`w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full transition-all duration-300 ${
-              i === index ? 'bg-white w-4 lg:w-6' : 'bg-white/30'
+            className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+              i === index ? 'bg-white w-4' : 'bg-white/30'
             }`}
           />
         ))}
-      </div>
-
-      {/* Glass Navigation arrows (Desktop only) */}
-      <div className="hidden lg:flex absolute inset-y-0 left-0 right-0 items-center justify-between px-6 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-        <button 
-          onClick={(e) => { e.stopPropagation(); setIndex(prev => (prev - 1 + BANNERS.length) % BANNERS.length); }}
-          className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white pointer-events-auto hover:bg-white/20 transition-all"
-        >
-          ←
-        </button>
-        <button 
-          onClick={(e) => { e.stopPropagation(); setIndex(prev => (prev + 1) % BANNERS.length); }}
-          className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white pointer-events-auto hover:bg-white/20 transition-all"
-        >
-          →
-        </button>
       </div>
     </div>
   );

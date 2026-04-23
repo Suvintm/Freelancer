@@ -1,8 +1,8 @@
 import { Search, Bell, Plus, Sun, Moon } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useTheme } from '../../hooks/useTheme';
-import whiteLogo from '../../assets/whitebglogo.png';
-import blackLogo from '../../assets/blackbglogo.png';
+import darkLogo from '../../assets/darklogo.png';
+import lightLogo from '../../assets/lightlogo.png';
 import auth1 from '../../assets/auth/auth_1.png';
 
 export const GlobalHeader = () => {
@@ -24,7 +24,7 @@ export const GlobalHeader = () => {
         {/* Center: Absolute Logo (Adaptive) */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
           <img 
-            src={isDarkMode ? whiteLogo : blackLogo} 
+            src={isDarkMode ? darkLogo : lightLogo} 
             alt="SuviX" 
             className="h-6 w-auto transition-all duration-500" 
           />
@@ -50,7 +50,7 @@ export const GlobalHeader = () => {
         {/* 1. Left Section: Logo (Adaptive) */}
         <div className="w-72 flex items-center">
           <img 
-            src={isDarkMode ? whiteLogo : blackLogo} 
+            src={isDarkMode ? darkLogo : lightLogo} 
             alt="SuviX" 
             className="h-8 w-auto transition-all duration-500" 
           />

@@ -1,28 +1,54 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Plus, CheckCircle2 } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Plus } from 'lucide-react';
 import auth1 from '../assets/auth/auth_1.png';
-import auth2 from '../assets/auth/auth_2.png';
 import { FeatureGallery } from '../components/home/FeatureGallery';
 import { UnifiedBanner } from '../components/home/UnifiedBanner';
 import { useTheme } from '../hooks/useTheme';
 
+const SUVIX_INDUSTRY_STORIES = [
+  {
+    _id: '1_yt_creator',
+    username: 'SuviX',
+    avatar: 'https://images.unsplash.com/photo-1516280440502-a2ce893ce71d?auto=format&fit=crop&q=80&w=200',
+    isSeen: false,
+    verifiedColor: '#EF4444', // Red for YT Creator
+    hasActive: true,
+  },
+  {
+    _id: '2_fitness_influencer',
+    username: 'SuviX',
+    avatar: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&q=80&w=200',
+    isSeen: false,
+    verifiedColor: '#22C55E', // Green for Fitness
+    hasActive: true,
+  },
+  {
+    _id: '4_editor',
+    username: 'SuviX',
+    avatar: 'https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&q=80&w=200',
+    isSeen: true,
+    verifiedColor: '#3B82F6', // Blue for Editor
+    hasActive: true,
+  },
+  {
+    _id: '5_client',
+    username: 'SuviX',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+    isSeen: true,
+    verifiedColor: '#A855F7', // Purple for Client
+    hasActive: true,
+  }
+];
+
 const STORIES = [
-  { id: 1, name: 'Your Story', img: auth1, isUser: true, hasActive: false },
-  { id: 2, name: 'sonya.xp', img: auth2, isLive: true, isVerified: true },
-  { id: 3, name: 'adam_dev', img: auth1, hasActive: true },
-  { id: 4, name: 'andrew.studio', img: auth2, hasActive: true, isVerified: true },
-  { id: 5, name: 'nicole_art', img: auth1, hasActive: true },
-  { id: 6, name: 'ashley_vlogs', img: auth2, hasActive: true },
-  { id: 7, name: 'mike_peaks', img: auth1, hasActive: true },
-  { id: 8, name: 'damian_lens', img: auth2, hasActive: true },
+  { _id: 'me', username: 'Your Story', avatar: auth1, isUser: true, hasActive: false },
+  ...SUVIX_INDUSTRY_STORIES,
 ];
 
 const POSTS = [
-  { id: 1, user: 'Sonya Leena', location: 'Dubai, UAE', img: auth2, likes: '360', comment: 'You can never dull my sparkle ✨', commentsCount: 12 },
-  { id: 2, user: 'Adam Addisin', location: 'Oklahoma, US', img: auth1, likes: '1,240', comment: 'In photography, there is a reality so subtle that it becomes more real than reality.', commentsCount: 45 },
-  { id: 3, user: 'Andrew Dewitt', location: 'Overland Park, KS', img: auth2, likes: '890', comment: 'The unexpected moment is always sweeter!', commentsCount: 8 },
-  { id: 4, user: 'Nicole Segall', location: 'New Delhi, India', img: auth1, likes: '450', comment: 'City lights and late nights.', commentsCount: 15 },
+  { id: 1, user: 'Sonya Leena', location: 'Dubai, UAE', img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=800', likes: '360', comment: 'You can never dull my sparkle ✨', commentsCount: 12 },
+  { id: 2, user: 'Adam Addisin', location: 'Oklahoma, US', img: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=800', likes: '1,240', comment: 'In photography, there is a reality so subtle that it becomes more real than reality.', commentsCount: 45 },
 ];
 
 export default function Home() {
@@ -48,76 +74,52 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 lg:space-y-10">
-      {/* 1. Unified Banner (Top Section) */}
-      <section className="-mt-4 lg:mt-0 -mx-4 lg:mx-0">
-        <UnifiedBanner />
-      </section>
+    <div className="max-w-6xl mx-auto space-y-4 lg:space-y-10 pb-20">
+      {/* ─── DESKTOP SPLIT VIEW (Banner & Stories Swapped for Mobile Parity) ─── */}
+      <div className="flex flex-col lg:flex-row-reverse gap-6 lg:items-center">
+        
+        {/* 1. Banner Section (Top on Mobile, Right on Desktop) */}
+        <section className="lg:w-[40%] px-6 lg:px-0">
+          <UnifiedBanner />
+        </section>
 
-      {/* 2. Premium Story Bar (App Style with Black/White Circles) */}
-      <section className="-mx-4 lg:mx-0">
-        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide px-6 lg:px-0">
-          {STORIES.map((story) => (
-            <div key={story.id} className="flex flex-col items-center gap-3 flex-shrink-0 cursor-pointer group relative">
-              <div className="relative w-[72px] h-[72px] lg:w-[84px] lg:h-[84px] flex items-center justify-center">
-                
-                {/* Dashed Wave Animation (App Style SVG) */}
-                <svg className="absolute inset-0 w-full h-full -rotate-90 opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-110 group-hover:scale-100">
-                  <circle 
-                    cx="50%" cy="50%" r="48%" 
-                    className={`fill-none stroke-current stroke-1 ${isDarkMode ? 'text-white' : 'text-black'}`}
-                    strokeDasharray="4 8"
-                    strokeLinecap="round"
-                  />
-                </svg>
-
-                {/* Main Gradient Border (Black/White Theme) */}
-                <div className={`absolute inset-0 rounded-full p-[2.5px] transition-transform duration-500 group-active:scale-90 ${
-                  story.isLive || story.hasActive || story.isUser
-                    ? (isDarkMode ? 'bg-gradient-to-tr from-white to-zinc-500' : 'bg-gradient-to-tr from-black to-zinc-400')
-                    : 'bg-border-main opacity-40'
-                }`}>
-                  <div className="w-full h-full rounded-full bg-container p-[2px]">
-                    <img 
-                      src={story.img} 
-                      alt={story.name} 
-                      className="w-full h-full rounded-full object-cover bg-border-secondary" 
-                    />
+        {/* 2. Stories Section (Bottom on Mobile, Left on Desktop) */}
+        <section className="flex-1 lg:flex-[1.5] -mx-4 lg:mx-0">
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide px-6 lg:px-0">
+            {STORIES.map((story) => (
+              <div key={story._id} className="flex flex-col items-center gap-2 flex-shrink-0 cursor-pointer group relative">
+                <div className="relative w-[64px] h-[64px] lg:w-[80px] lg:h-[80px] flex items-center justify-center">
+                  <svg className="absolute inset-0 w-full h-full -rotate-90 opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-110 group-hover:scale-100">
+                    <circle cx="50%" cy="50%" r="48%" className={`fill-none stroke-current stroke-1 ${isDarkMode ? 'text-white' : 'text-black'}`} strokeDasharray="4 8" strokeLinecap="round" />
+                  </svg>
+                  <div className={`absolute inset-0 rounded-full p-[2px] transition-transform duration-500 group-active:scale-90 ${story.hasActive || story.isUser ? (isDarkMode ? 'bg-gradient-to-tr from-white to-zinc-500' : 'bg-gradient-to-tr from-black to-zinc-400') : 'bg-border-main opacity-40'}`}>
+                    <div className="w-full h-full rounded-full bg-container p-[2px]">
+                      <img src={story.avatar} alt={story.username} className="w-full h-full rounded-full object-cover bg-border-secondary shadow-inner" />
+                    </div>
                   </div>
+                  {story.isUser && !story.hasActive && (
+                    <div className="absolute bottom-0 right-0 bg-blue-500 rounded-full border-2 border-container p-0.5 shadow-lg">
+                      <Plus size={10} className="text-white" strokeWidth={4} />
+                    </div>
+                  )}
                 </div>
-
-                {/* App-Style Badges */}
-                {story.isUser && !story.hasActive && (
-                  <div className="absolute bottom-1 right-1 bg-blue-500 rounded-full border-2 border-container p-0.5 shadow-lg">
-                    <Plus size={12} className="text-white" strokeWidth={4} />
-                  </div>
-                )}
-                {story.isLive && (
-                  <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-rose-500 text-[8px] font-black px-2 py-0.5 rounded-md text-white uppercase tracking-tighter ring-2 ring-container shadow-lg shadow-rose-500/20">
-                    Live
-                  </div>
-                )}
+                <div className="flex items-center gap-1 max-w-[64px] lg:max-w-[80px]">
+                  <span className={`text-[9px] lg:text-[10px] font-bold truncate ${story.hasActive ? 'text-text-main' : 'text-text-muted'}`}>{story.username}</span>
+                  {story.verifiedColor && <VerifiedDecagram size={12} color={story.verifiedColor} className="flex-shrink-0" />}
+                </div>
               </div>
+            ))}
+          </div>
+        </section>
+      </div>
 
-              {/* Username with Verification */}
-              <div className="flex items-center gap-1 max-w-[72px] lg:max-w-[84px]">
-                <span className={`text-[10px] lg:text-[11px] font-bold truncate ${story.hasActive || story.isLive ? 'text-text-main' : 'text-text-muted'}`}>
-                  {story.name}
-                </span>
-                {story.isVerified && <CheckCircle2 size={10} className="text-blue-500 fill-blue-500/10 flex-shrink-0" />}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 3. Feature Gallery (Discover SuviX) */}
-      <section className="-mx-4 lg:mx-0">
+      {/* 3. Feature Gallery */}
+      <section className="-mx-4 lg:mx-0 -mt-2 lg:mt-0">
         <FeatureGallery paused={isScrolling} />
       </section>
 
       {/* 4. Unified Feed */}
-      <section className="-mx-4 lg:mx-0">
+      <section className="-mx-4 lg:mx-0 -mt-2 lg:mt-0">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
           {POSTS.map((post) => (
             <motion.article 
@@ -127,61 +129,40 @@ export default function Home() {
               viewport={{ once: true }}
               className="bg-container lg:border lg:border-border-main lg:rounded-[40px] overflow-hidden group lg:shadow-xl dark:lg:shadow-none border-b border-border-main lg:border-b-0 pb-8 lg:pb-0"
             >
-              {/* Post Header */}
-              <div className="p-5 flex items-center justify-between">
+              <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full border-2 border-border-main p-0.5">
+                  <div className="w-9 h-9 rounded-full border-2 border-border-main p-0.5">
                     <img src={post.img} alt={post.user} className="w-full h-full rounded-full object-cover" />
                   </div>
                   <div>
-                    <h4 className="text-[14px] font-black text-text-main leading-none mb-1">{post.user}</h4>
-                    <p className="text-[11px] text-text-muted font-bold">{post.location}</p>
+                    <h4 className="text-[13px] font-black text-text-main leading-none mb-1">{post.user}</h4>
+                    <p className="text-[10px] text-text-muted font-bold">{post.location}</p>
                   </div>
                 </div>
-                <button className="text-text-muted hover:text-text-main transition-colors p-2">
-                  <MoreHorizontal size={20} />
-                </button>
+                <button className="text-text-muted hover:text-text-main transition-colors p-2"><MoreHorizontal size={18} /></button>
               </div>
 
-              {/* Post Image (Native 4:5 Aspect Ratio) */}
               <div className="aspect-[4/5] lg:aspect-square relative overflow-hidden bg-border-secondary">
-                <img 
-                  src={post.img} 
-                  alt="Post content" 
-                  className="w-full h-full object-cover" 
-                />
+                <img src={post.img} alt="Post content" className="w-full h-full object-cover" />
               </div>
 
-              {/* Post Actions */}
-              <div className="p-5 lg:p-6 space-y-4">
+              <div className="p-4 lg:p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-6">
-                    <button className="text-text-main hover:text-rose-500 transition-colors transform active:scale-90">
-                      <Heart size={26} />
-                    </button>
-                    <button className="text-text-main hover:text-text-main transition-colors transform active:scale-90">
-                      <MessageCircle size={26} />
-                    </button>
-                    <button className="text-text-main hover:text-text-main transition-colors transform active:scale-90">
-                      <Share2 size={26} />
-                    </button>
+                    <button className="text-text-main hover:text-rose-500 transition-colors transform active:scale-90"><Heart size={24} /></button>
+                    <button className="text-text-main hover:text-text-main transition-colors transform active:scale-90"><MessageCircle size={24} /></button>
+                    <button className="text-text-main hover:text-text-main transition-colors transform active:scale-90"><Share2 size={24} /></button>
                   </div>
-                  <button className="text-text-main hover:text-text-main transition-colors transform active:scale-90">
-                    <Bookmark size={26} />
-                  </button>
+                  <button className="text-text-main hover:text-text-main transition-colors transform active:scale-90"><Bookmark size={24} /></button>
                 </div>
 
                 <div className="space-y-1.5">
-                  <p className="text-[14px] text-text-main font-black">
-                    {post.likes} likes
-                  </p>
-                  <p className="text-[14px] text-text-main leading-relaxed">
-                    <span className="font-black mr-2 uppercase tracking-tight text-[12px]">{post.user.split(' ')[0]}</span>
+                  <p className="text-[13px] text-text-main font-black">{post.likes} likes</p>
+                  <p className="text-[13px] text-text-main leading-relaxed">
+                    <span className="font-black mr-2 uppercase tracking-tight text-[11px]">{post.user.split(' ')[0]}</span>
                     <span className="text-text-muted dark:text-zinc-400 font-medium">{post.comment}</span>
                   </p>
-                  <button className="text-[13px] text-text-muted font-bold mt-2 opacity-60 hover:opacity-100 transition-opacity">
-                    View all {post.commentsCount} comments
-                  </button>
+                  <button className="text-[12px] text-text-muted font-bold mt-2 opacity-60 hover:opacity-100 transition-opacity">View all {post.commentsCount} comments</button>
                 </div>
               </div>
             </motion.article>
@@ -189,5 +170,13 @@ export default function Home() {
         </div>
       </section>
     </div>
+  );
+}
+
+function VerifiedDecagram({ size, color, className }: { size: number, color: string, className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color} className={className}>
+      <path d="M23,12L20.56,9.22L20.9,5.54L17.29,4.72L15.4,1.54L12,3L8.6,1.54L6.71,4.72L3.1,5.53L3.44,9.21L1,12L3.44,14.78L3.1,18.47L6.71,19.29L8.6,22.47L12,21L15.4,22.46L17.29,19.28L20.9,18.46L20.56,14.79L23,12M10,17L6,13L7.41,11.59L10,14.17L16.59,7.58L18,9L10,17Z" />
+    </svg>
   );
 }
