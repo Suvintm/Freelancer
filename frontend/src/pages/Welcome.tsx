@@ -35,7 +35,6 @@ const ONBOARDING_DATA = [
 
 export default function Welcome() {
   const [activeSlide, setActiveSlide] = useState(0);
-  const isLastSlide = activeSlide === ONBOARDING_DATA.length - 1;
 
   const handleNext = () => {
     if (activeSlide < ONBOARDING_DATA.length - 1) {
