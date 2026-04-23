@@ -6,7 +6,17 @@ import { FeatureGallery } from '../components/home/FeatureGallery';
 import { UnifiedBanner } from '../components/home/UnifiedBanner';
 import { useTheme } from '../hooks/useTheme';
 
-const SUVIX_INDUSTRY_STORIES = [
+interface Story {
+  _id: string;
+  username: string;
+  avatar: string;
+  hasActive: boolean;
+  isUser?: boolean;
+  verifiedColor?: string;
+  isSeen?: boolean;
+}
+
+const SUVIX_INDUSTRY_STORIES: Story[] = [
   {
     _id: '1_yt_creator',
     username: 'SuviX',
@@ -41,7 +51,7 @@ const SUVIX_INDUSTRY_STORIES = [
   }
 ];
 
-const STORIES = [
+const STORIES: Story[] = [
   { _id: 'me', username: 'Your Story', avatar: auth1, isUser: true, hasActive: false },
   ...SUVIX_INDUSTRY_STORIES,
 ];
