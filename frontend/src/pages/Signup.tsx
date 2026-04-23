@@ -14,7 +14,7 @@ export default function Signup() {
   return (
     <div className="flex h-screen w-full bg-black font-sans overflow-hidden relative">
       {/* Desktop Left Panel */}
-      <div className="hidden lg:flex w-1/2 p-8 bg-zinc-950 overflow-hidden relative border-r border-zinc-900">
+      <div className="hidden lg:flex lg:w-[40%] p-8 bg-zinc-950 overflow-hidden relative border-r border-zinc-900">
         <AuthBackground />
         <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black to-transparent z-10" />
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent z-10" />
@@ -28,7 +28,7 @@ export default function Signup() {
       </div>
 
       {/* Right Panel / Mobile Content Layer */}
-      <div className="flex-1 flex flex-col h-full overflow-y-auto lg:overflow-hidden bg-transparent lg:bg-black z-20">
+      <div className="flex-1 lg:flex-none lg:w-[60%] flex flex-col h-full overflow-y-auto lg:overflow-hidden bg-transparent lg:bg-black z-20">
         <div className="flex justify-between items-center p-8 lg:px-24 lg:py-10 mb-4 lg:mb-6 sticky top-0 z-30 lg:relative lg:bg-transparent">
           {/* Mobile Header Overlay */}
           <div className="lg:hidden absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black via-black/70 to-transparent -z-10" />

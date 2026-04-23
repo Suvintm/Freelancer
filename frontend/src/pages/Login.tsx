@@ -8,7 +8,7 @@ export default function Login() {
   return (
     <div className="flex h-screen w-full bg-black font-sans overflow-hidden relative">
       {/* Desktop Left Panel */}
-      <div className="hidden lg:flex w-1/2 p-8 bg-zinc-950 overflow-hidden relative border-r border-zinc-900">
+      <div className="hidden lg:flex lg:w-[40%] p-8 bg-zinc-950 overflow-hidden relative border-r border-zinc-900">
         <AuthBackground />
         <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black to-transparent z-10" />
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent z-10" />
@@ -22,7 +22,7 @@ export default function Login() {
       </div>
 
       {/* Right Panel / Mobile Content Layer */}
-      <div className="flex-1 flex flex-col h-full overflow-y-auto lg:overflow-hidden bg-transparent lg:bg-black z-20">
+      <div className="flex-1 lg:flex-none lg:w-[60%] flex flex-col h-full overflow-y-auto lg:overflow-hidden bg-transparent lg:bg-black z-20">
         <div className="flex justify-between items-center p-8 lg:px-24 lg:py-10 mb-4 lg:mb-8 sticky top-0 z-30 lg:relative lg:bg-transparent">
           {/* Mobile Header Overlay */}
           <div className="lg:hidden absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black via-black/70 to-transparent -z-10" />
@@ -30,7 +30,7 @@ export default function Login() {
           <img src={logo} alt="SuviX" className="h-12 lg:h-16 w-auto brightness-0 invert relative z-10" />
           <div className="flex items-center gap-2 text-xs lg:text-sm text-zinc-400 relative z-10">
             <span className="hidden sm:inline">New to SuviX?</span>
-            <Link to="/signup">
+            <Link to="/role-selection">
               <Button variant="ghost" className="text-white font-bold hover:bg-white/10 px-4 py-2 rounded-xl text-xs lg:text-sm border border-white/10">
                 Join Now
               </Button>

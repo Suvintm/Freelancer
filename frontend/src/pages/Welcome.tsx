@@ -156,9 +156,9 @@ export default function Welcome() {
                         animate={{ opacity: 1, scale: 1 }}
                         className="flex flex-col gap-3 md:gap-4"
                       >
-                        <Link to="/signup">
+                        <Link to="/role-selection">
                           <Button size="lg" className="w-full md:size-xl" onClick={(e) => e.stopPropagation()}>
-                            New User? Get Started
+                            Join Now
                           </Button>
                         </Link>
                         <Link to="/login">
