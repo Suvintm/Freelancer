@@ -63,7 +63,7 @@ export const FeatureGallery = ({ paused }: { paused?: boolean }) => {
               {/* Content Alignment */}
               <div className="relative h-full px-4 lg:px-6 flex items-center gap-3 lg:gap-4 z-10">
                 <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-[10px] lg:rounded-[12px] bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white">
-                  <feature.icon size={16} lg:size={18} strokeWidth={2.5} />
+                  <feature.icon className="w-4 h-4 lg:w-[18px] lg:h-[18px]" strokeWidth={2.5} />
                 </div>
                 
                 <div className="flex-1 min-w-0">
