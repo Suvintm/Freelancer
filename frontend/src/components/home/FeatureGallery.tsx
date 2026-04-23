@@ -80,8 +80,9 @@ export const FeatureGallery = ({ paused }: { paused?: boolean }) => {
         </motion.div>
 
         {/* Edge Fades */}
-        <div className="absolute inset-y-0 left-0 w-16 lg:w-32 bg-gradient-to-r from-page to-transparent pointer-events-none z-20" />
-        <div className="absolute inset-y-0 right-0 w-16 lg:w-32 bg-gradient-to-l from-page to-transparent pointer-events-none z-20" />
+        {/* Edge Fades - Reduced for cleaner look */}
+        <div className="absolute inset-y-0 left-0 w-8 lg:w-16 bg-gradient-to-r from-page to-transparent pointer-events-none z-20" />
+        <div className="absolute inset-y-0 right-0 w-8 lg:w-16 bg-gradient-to-l from-page to-transparent pointer-events-none z-20" />
       </div>
     </div>
   );

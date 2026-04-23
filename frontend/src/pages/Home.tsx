@@ -5,6 +5,8 @@ import auth1 from '../assets/auth/auth_1.png';
 import { FeatureGallery } from '../components/home/FeatureGallery';
 import { UnifiedBanner } from '../components/home/UnifiedBanner';
 import { useTheme } from '../hooks/useTheme';
+import darkLogo from '../assets/darklogo.png';
+import lightLogo from '../assets/lightlogo.png';
 
 interface Story {
   _id: string;
@@ -89,16 +91,23 @@ export default function Home() {
       <div className="flex flex-col lg:flex-row-reverse gap-6 lg:items-center">
         
         {/* 1. Banner Section (Top on Mobile, Right on Desktop) */}
-        <section className="lg:w-[40%] px-6 lg:px-0">
+        <section className="lg:w-1/2 px-6 lg:px-0">
           <UnifiedBanner />
         </section>
 
         {/* 2. Stories Section (Bottom on Mobile, Left on Desktop) */}
-        <section className="flex-1 lg:flex-[1.5] -mx-4 lg:mx-0">
+        <section className="lg:w-1/2 -mx-4 lg:mx-0">
+          <div className="hidden lg:block mb-8 px-1">
+            <img 
+              src={isDarkMode ? darkLogo : lightLogo} 
+              alt="SuviX" 
+              className="h-8 w-auto opacity-90 hover:opacity-100 transition-opacity" 
+            />
+          </div>
           <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide px-6 lg:px-0">
             {STORIES.map((story) => (
               <div key={story._id} className="flex flex-col items-center gap-2 flex-shrink-0 cursor-pointer group relative">
-                <div className="relative w-[64px] h-[64px] lg:w-[80px] lg:h-[80px] flex items-center justify-center">
+                <div className="relative w-[60px] h-[60px] lg:w-[68px] lg:h-[68px] flex items-center justify-center">
                   <svg className="absolute inset-0 w-full h-full -rotate-90 opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-110 group-hover:scale-100">
                     <circle cx="50%" cy="50%" r="48%" className={`fill-none stroke-current stroke-1 ${isDarkMode ? 'text-white' : 'text-black'}`} strokeDasharray="4 8" strokeLinecap="round" />
                   </svg>
@@ -109,13 +118,13 @@ export default function Home() {
                   </div>
                   {story.isUser && !story.hasActive && (
                     <div className="absolute bottom-0 right-0 bg-blue-500 rounded-full border-2 border-container p-0.5 shadow-lg">
-                      <Plus size={10} className="text-white" strokeWidth={4} />
+                      <Plus size={8} className="text-white" strokeWidth={4} />
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-1 max-w-[64px] lg:max-w-[80px]">
-                  <span className={`text-[9px] lg:text-[10px] font-bold truncate ${story.hasActive ? 'text-text-main' : 'text-text-muted'}`}>{story.username}</span>
-                  {story.verifiedColor && <VerifiedDecagram size={12} color={story.verifiedColor} className="flex-shrink-0" />}
+                <div className="flex items-center gap-1 max-w-[60px] lg:max-w-[68px]">
+                  <span className={`text-[9px] font-bold truncate ${story.hasActive ? 'text-text-main' : 'text-text-muted'}`}>{story.username}</span>
+                  {story.verifiedColor && <VerifiedDecagram size={10} color={story.verifiedColor} className="flex-shrink-0" />}
                 </div>
               </div>
             ))}

@@ -123,7 +123,7 @@ export default function Welcome() {
                     </p>
                   </div>
 
-                  <div className="flex flex-col gap-3 md:min-w-[280px] md:gap-4">
+                  <div className="flex flex-col gap-3 md:min-w-[320px] md:gap-4">
                     {i < ONBOARDING_DATA.length - 1 ? (
                       <>
                         <Button 
@@ -132,10 +132,10 @@ export default function Welcome() {
                             e.stopPropagation();
                             handleNext();
                           }}
-                          className="group flex items-center justify-between md:size-xl"
+                          className="group flex items-center justify-between h-12 md:h-14 rounded-full px-8 bg-white text-black hover:bg-zinc-100 transition-all shadow-2xl shadow-white/5"
                         >
-                          Next
-                          <div className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-black text-white transition-transform group-hover:translate-x-1 md:h-10 md:w-10">
+                          <span className="text-sm md:text-lg font-black uppercase tracking-tight">Next</span>
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-white transition-transform group-hover:translate-x-1 md:h-10 md:w-10">
                             <ChevronRight size={20} className="md:size-6" strokeWidth={3} />
                           </div>
                         </Button>
@@ -143,7 +143,7 @@ export default function Welcome() {
                           <Button 
                             variant="ghost" 
                             onClick={(e) => e.stopPropagation()}
-                            className="w-full text-sm text-zinc-500 hover:text-white md:text-base"
+                            className="w-full text-sm text-zinc-500 hover:text-white md:text-base font-bold"
                           >
                             I have an account
                           </Button>
@@ -156,12 +156,21 @@ export default function Welcome() {
                         className="flex flex-col gap-3 md:gap-4"
                       >
                         <Link to="/role-selection">
-                          <Button size="lg" className="w-full md:size-xl" onClick={(e) => e.stopPropagation()}>
+                          <Button 
+                            size="lg" 
+                            className="w-full h-12 md:h-14 rounded-full bg-white text-black font-black uppercase tracking-tight hover:bg-zinc-100 shadow-2xl shadow-white/5" 
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             Join Now
                           </Button>
                         </Link>
                         <Link to="/login">
-                          <Button size="lg" variant="outline" className="w-full md:size-xl" onClick={(e) => e.stopPropagation()}>
+                          <Button 
+                            size="lg" 
+                            variant="outline" 
+                            className="w-full h-12 md:h-14 rounded-full border-white/20 text-white font-black uppercase tracking-tight hover:bg-white/10" 
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             Already have an account? Login
                           </Button>
                         </Link>

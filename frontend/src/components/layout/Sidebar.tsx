@@ -1,86 +1,221 @@
-import { Plus } from 'lucide-react';
-import auth1 from '../../assets/auth/auth_1.png';
-import { ProfileDispatcher } from '../profile/ProfileDispatcher';
+import { ReactLenis }       from 'lenis/react';
+import { Plus, ExternalLink, PlayCircle, Eye, Video, TrendingUp } from 'lucide-react';
+import { useNavigate }      from 'react-router-dom';
+import auth1                from '../../assets/auth/auth_1.png';
 
-const HIGHLIGHTS = [
-  { id: 1, label: 'New', img: auth1, isNew: true },
-  { id: 2, label: 'Garden', img: auth1 },
-  { id: 3, label: 'Cameras', img: auth1 },
-  { id: 4, label: 'Wildlife', img: auth1 },
-];
-
-// Mock data for the current user session
-const CURRENT_USER = {
-  role: 'yt_creator' as const,
-  data: {
-    name: 'Abhinav Khare',
-    subscribers: '1.2M',
-    videos: 472,
-    avatar: auth1,
-    username: '@abhi_navkhare'
-  }
+// ── Mock: replace with real data from your auth/user store ─────────────────
+const CHANNEL = {
+  name:           'Abhinav Khare',
+  handle:         '@abhi_navkhare',
+  avatar:         auth1,
+  channelName:    'Abhinav Khare Studio',
+  channelAvatar:  auth1,
+  subscribers:    '1.24M',
+  views:          '48.2M',
+  videos:         472,
+  category:       'TECH & LIFESTYLE',
+  role:           'YouTube Creator',
+  bio:            'Professional Creator · UI Designer · Lifestyle Blogger · Building in public 🚀',
+  followers:      '12.4K',
+  following:      228,
 };
 
-export const Sidebar = () => {
+const HIGHLIGHTS = [
+  { id: 1, label: 'New',      img: null,  isNew: true  },
+  { id: 2, label: 'Garden',   img: auth1, isNew: false },
+  { id: 3, label: 'Cameras',  img: auth1, isNew: false },
+  { id: 4, label: 'Wildlife', img: auth1, isNew: false },
+];
+
+// ── Sub-components ──────────────────────────────────────────────────────────
+
+function StatBubble({ value, label }: { value: string; label: string }) {
   return (
-    <aside className="w-72 h-full flex flex-col overflow-y-auto scrollbar-hide bg-sidebar z-10 border-r border-border-main">
-      {/* 1. Dynamic Role-Based Profile Preview */}
-      <div className="px-6 py-8 border-b border-border-main/50">
-        <h4 className="text-text-muted text-[10px] uppercase font-black tracking-[0.2em] mb-6 px-2">Account Overview</h4>
-        <ProfileDispatcher 
-          role={CURRENT_USER.role}
-          viewType="home"
-          data={CURRENT_USER.data}
-          onViewFull={() => console.log('Navigating to full profile...')}
-        />
-      </div>
+    <div className="flex flex-col items-center">
+      <span className="text-[15px] font-bold font-display text-text-main tracking-tight">{value}</span>
+      <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mt-0.5">{label}</span>
+    </div>
+  );
+}
 
-      <div className="px-8 py-6">
-        {/* 2. Traditional Stats (Visible below the dispatcher for extra context) */}
-        <div className="flex w-full justify-between items-center px-2 py-5 mb-8">
-          <div className="text-center">
-            <p className="text-text-main text-base font-black">472</p>
-            <p className="text-text-muted text-[9px] uppercase font-black tracking-widest mt-1">Posts</p>
-          </div>
-          <div className="text-center">
-            <p className="text-text-main text-base font-black">12.4K</p>
-            <p className="text-text-muted text-[9px] uppercase font-black tracking-widest mt-1">Followers</p>
-          </div>
-          <div className="text-center">
-            <p className="text-text-main text-base font-black">228</p>
-            <p className="text-text-muted text-[9px] uppercase font-black tracking-widest mt-1">Following</p>
-          </div>
-        </div>
+// ── Main Sidebar ─────────────────────────────────────────────────────────────
 
-        {/* 3. Bio Section */}
-        <div className="text-left w-full mb-10 px-2">
-          <h4 className="text-text-main text-sm font-black mb-1.5">{CURRENT_USER.data.name}</h4>
-          <p className="text-text-muted text-[11px] font-bold leading-relaxed opacity-80">
-            Professional Creator | UI Designer | Lifestyle Blogger
+export const Sidebar = () => {
+  const navigate = useNavigate();
+
+  return (
+    <ReactLenis className="w-full h-full flex flex-col overflow-y-auto scrollbar-hide">
+      <div className="flex flex-col flex-1 px-4 py-5 gap-5">
+
+        {/* ── 1. User Identity Card ─────────────────────────────────── */}
+        <div className="rounded-2xl border border-border-main bg-container p-4 space-y-3">
+
+          {/* Avatar + name + role */}
+          <div className="flex items-center gap-3">
+            <div className="relative shrink-0">
+              <img
+                src={CHANNEL.avatar}
+                alt={CHANNEL.name}
+                className="w-11 h-11 rounded-full object-cover border-2 border-border-main"
+              />
+              {/* Verified badge */}
+              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-rose-500 rounded-full flex items-center justify-center border-2 border-container">
+                <svg width="7" height="6" viewBox="0 0 7 6" fill="none">
+                  <path d="M1 3l1.5 1.5L6 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[14px] font-semibold text-text-main font-display leading-tight truncate">
+                {CHANNEL.name}
+              </p>
+              <p className="text-[12px] text-text-muted leading-tight mt-0.5 truncate">
+                {CHANNEL.handle}
+              </p>
+            </div>
+          </div>
+
+          {/* Bio */}
+          <p className="text-[12px] text-text-muted leading-relaxed line-clamp-2">
+            {CHANNEL.bio}
           </p>
+
+          {/* Social stats */}
+          <div className="flex items-center justify-around py-2 border-y border-border-secondary">
+            <StatBubble value={String(CHANNEL.videos)} label="Posts" />
+            <div className="w-px h-6 bg-border-main" />
+            <StatBubble value={CHANNEL.followers} label="Followers" />
+            <div className="w-px h-6 bg-border-main" />
+            <StatBubble value={String(CHANNEL.following)} label="Following" />
+          </div>
+
+          {/* View full profile */}
+          <button
+            onClick={() => navigate('/profile')}
+            className="
+              w-full h-8 rounded-lg border border-border-main
+              text-[12px] font-semibold text-text-main
+              hover:bg-border-secondary transition-colors
+            "
+          >
+            View full profile
+          </button>
         </div>
 
-        {/* 4. Story Highlights */}
-        <div className="mb-10">
-          <h4 className="text-text-muted text-[10px] uppercase font-black tracking-[0.2em] mb-6">Story Highlights</h4>
-          <div className="grid grid-cols-2 gap-4">
-            {HIGHLIGHTS.map((item) => (
-              <div key={item.id} className="flex flex-col items-center gap-3 p-4 rounded-[24px] bg-border-secondary border border-border-main cursor-pointer group hover:bg-zinc-200 dark:hover:bg-zinc-900 transition-all">
-                <div className="w-14 h-14 rounded-full p-0.5 border border-border-main group-hover:border-text-muted transition-colors bg-container flex items-center justify-center overflow-hidden shadow-inner">
-                  {item.isNew ? (
-                    <Plus size={24} className="text-text-muted group-hover:text-text-main transition-colors" />
-                  ) : (
-                    <img src={item.img} alt={item.label} className="w-full h-full object-cover rounded-full grayscale-[0.5] group-hover:grayscale-0 transition-all duration-500" />
-                  )}
+        {/* ── 2. YouTube Channel Overview ──────────────────────────── */}
+        <div className="rounded-2xl border border-border-main bg-container overflow-hidden">
+
+          {/* Channel header strip */}
+          <div className="h-14 bg-gradient-to-r from-red-600/90 to-red-700 relative flex items-end px-3 pb-2.5">
+            <div className="absolute inset-0 opacity-10"
+              style={{
+                backgroundImage: 'repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)',
+                backgroundSize: '8px 8px',
+              }}
+            />
+            <div className="flex items-center gap-2 relative z-10">
+              <svg width="16" height="11" viewBox="0 0 24 17" fill="white">
+                <path d="M23.5 2.9c-.3-1-1.1-1.8-2.1-2.1C19.5 0 12 0 12 0S4.5 0 2.6.8C1.6 1.1.8 2 .5 2.9 0 4.8 0 8.5 0 8.5s0 3.7.5 5.6c.3 1 1.1 1.8 2.1 2.1C4.5 17 12 17 12 17s7.5 0 9.4-.8c1-.3 1.8-1.1 2.1-2.1.5-1.9.5-5.6.5-5.6s0-3.7-.5-5.6z"/>
+                <path d="M9.5 12.1V4.9l6.3 3.6-6.3 3.6z" fill="red"/>
+              </svg>
+              <span className="text-white text-[11px] font-bold tracking-wide">YouTube</span>
+            </div>
+          </div>
+
+          <div className="p-3 space-y-3">
+            {/* Channel identity */}
+            <div className="flex items-center gap-2.5">
+              <img
+                src={CHANNEL.channelAvatar}
+                alt={CHANNEL.channelName}
+                className="w-9 h-9 rounded-lg object-cover border border-border-main"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold text-text-main leading-tight truncate font-display">
+                  {CHANNEL.channelName}
+                </p>
+                <span className="inline-block text-[10px] font-bold text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded mt-0.5">
+                  {CHANNEL.category}
+                </span>
+              </div>
+              <button
+                onClick={() => navigate('/profile')}
+                className="shrink-0 text-text-muted hover:text-text-main transition-colors"
+                aria-label="Open channel"
+              >
+                <ExternalLink size={14} />
+              </button>
+            </div>
+
+            {/* Channel stats */}
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { icon: <Eye size={13} />,        value: CHANNEL.views,               label: 'Views'       },
+                { icon: <PlayCircle size={13} />,  value: CHANNEL.subscribers,         label: 'Subscribers' },
+                { icon: <Video size={13} />,        value: String(CHANNEL.videos),      label: 'Videos'      },
+              ].map(({ icon, value, label }) => (
+                <div
+                  key={label}
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl bg-border-secondary"
+                >
+                  <span className="text-text-muted">{icon}</span>
+                  <span className="text-[13px] font-bold text-text-main font-display leading-none">{value}</span>
+                  <span className="text-[10px] text-text-muted leading-none">{label}</span>
                 </div>
-                <span className="text-[10px] font-black text-text-muted group-hover:text-text-main transition-colors tracking-tight">{item.label}</span>
+              ))}
+            </div>
+
+            {/* Analytics quick-link */}
+            <button
+              className="
+                w-full flex items-center justify-center gap-1.5 h-8 rounded-lg
+                bg-rose-500/10 hover:bg-rose-500/15 text-rose-500
+                text-[12px] font-semibold transition-colors
+              "
+              onClick={() => navigate('/profile')}
+            >
+              <TrendingUp size={13} />
+              View channel details
+            </button>
+          </div>
+        </div>
+
+        {/* ── 3. Story highlights ───────────────────────────────────── */}
+        <div>
+          <h4 className="text-[11px] font-semibold text-text-muted uppercase tracking-[0.1em] px-1 mb-3">
+            Archive Collections
+          </h4>
+          <div className="grid grid-cols-2 gap-2.5">
+            {HIGHLIGHTS.map((item) => (
+              <div
+                key={item.id}
+                className="
+                  flex flex-col items-center gap-1.5 p-3
+                  rounded-xl bg-container border border-border-main
+                  cursor-pointer hover:bg-border-secondary transition-colors group
+                "
+              >
+                <div className="w-9 h-9 rounded-full overflow-hidden border border-border-main group-hover:border-text-muted transition-colors bg-border-secondary flex items-center justify-center">
+                  {item.isNew ? (
+                    <Plus size={16} className="text-text-muted" />
+                  ) : item.img ? (
+                    <img src={item.img} alt={item.label} className="w-full h-full object-cover" />
+                  ) : null}
+                </div>
+                <span className="text-[11px] font-semibold text-text-muted group-hover:text-text-main transition-colors">
+                  {item.label}
+                </span>
               </div>
             ))}
           </div>
         </div>
-      </div>
 
-      <div className="h-20" />
-    </aside>
+        {/* Spacer */}
+        <div className="flex-1" />
+        <p className="text-center text-[11px] text-text-muted pb-4">
+          © 2024 SuviX Inc.
+        </p>
+      </div>
+    </ReactLenis>
   );
 };
