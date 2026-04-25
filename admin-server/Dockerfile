@@ -1,12 +1,12 @@
 # Build stage
-FROM node:20-slim AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies including devDependencies for build
+# Install dependencies
 RUN npm ci
 
 # Copy source
@@ -15,8 +15,11 @@ COPY . .
 # Generate Prisma Client
 RUN npx prisma generate
 
+# Build the NestJS application
+RUN npm run build
+
 # Final stage
-FROM node:20-slim
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -24,26 +27,17 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=10000
 
-# Copy node_modules and generated prisma client from builder
+# Copy node_modules from builder (or reinstall production only)
 COPY --from=builder /app/node_modules ./node_modules
+# Copy built files
+COPY --from=builder /app/dist ./dist
 # Copy prisma schema for runtime support
 COPY --from=builder /app/prisma ./prisma
-# Copy only necessary files
+# Copy package.json
 COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/server.js ./
-COPY --from=builder /app/socket.js ./
-COPY --from=builder /app/models ./models
-COPY --from=builder /app/routes ./routes
-COPY --from=builder /app/middleware ./middleware
-COPY --from=builder /app/controllers ./controllers
-COPY --from=builder /app/utils ./utils
-COPY --from=builder /app/config ./config
-COPY --from=builder /app/kafka ./kafka
-COPY --from=builder /app/services ./services
 
-# Clean up devDependencies (except those needed by Prisma internally)
-RUN npm prune --production
-
+# Expose port
 EXPOSE 10000
 
-CMD ["npm", "start"]
+# Start the application
+CMD ["node", "dist/main.js"]

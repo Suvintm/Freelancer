@@ -20,6 +20,10 @@ BigInt.prototype.toJSON = function () {
 // Utils
 import logger from "./utils/logger.js";
 import { initSocket } from "./socket.js";
+import { initSentry } from "./utils/sentry.js";
+
+// Initialize Sentry before anything else
+initSentry();
 
 // Middleware
 import { publicApiLimiter, redis } from "./middleware/rateLimiter.js";
@@ -201,6 +205,9 @@ app.get("/api/maintenance-status", (req, res) => {
 app.get("/", (req, res) => res.json({ success: true, message: "SuviX Backend is running!" }));
 
 // ============ ERROR HANDLING ============
+import * as Sentry from "@sentry/node";
+Sentry.setupExpressErrorHandler(app);
+
 app.use(notFoundHandler);
 app.use(errorHandler);
 
