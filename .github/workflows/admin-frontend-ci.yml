@@ -1,0 +1,57 @@
+name: "Admin Frontend: Production Pipeline"
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'admin-frontend/**'
+      - '.github/workflows/admin-frontend-ci.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'admin-frontend/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci-quality-gate:
+    name: Build & Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: admin-frontend/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: admin-frontend
+        run: npm ci
+
+      - name: Lint
+        working-directory: admin-frontend
+        run: npm run lint
+
+      - name: Production Build (Next.js)
+        working-directory: admin-frontend
+        run: npm run build
+
+  deploy:
+    name: Production Deployment
+    needs: ci-quality-gate
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Vercel
+        run: npx vercel deploy --token=${{ secrets.VERCEL_TOKEN }} --prod
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_ADMIN_PROJECT_ID }}

@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Smartphone, Lock, Fingerprint, ChevronLeft, RefreshCw } from 'lucide-react';
+import { ShieldCheck, Lock, Fingerprint, ChevronLeft, RefreshCw } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/useAuthStore';
 import { ThemeToggle } from '@/components/theme-toggle';
 
@@ -68,7 +69,7 @@ export default function MfaPage() {
       >
         {/* Brand Logo */}
         <div className="flex flex-col items-center mb-10">
-          <img src="/logo.png" alt="Logo" className="max-h-16 w-auto object-contain mb-8 dark:invert dark:brightness-200" />
+          <Image src="/logo.png" alt="Logo" width={160} height={64} className="max-h-16 w-auto object-contain mb-8 dark:invert dark:brightness-200" />
           <h2 className="text-[10px] font-bold text-brand-forest uppercase tracking-[0.5em] ml-1">Identity Probe - Protocol 2A</h2>
         </div>
 

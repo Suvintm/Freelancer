@@ -1,4 +1,3 @@
-import React from 'react';
 import { YTCreatorMain } from '../components/profile/main/YTCreatorMain';
 
 export default function Profile() {

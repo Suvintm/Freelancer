@@ -2,6 +2,11 @@ import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { ValidationPipe } from '@nestjs/common';
+import { initSentry } from './common/utils/sentry.js';
+import * as Sentry from "@sentry/node";
+
+// Initialize Sentry
+initSentry();
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import hpp from 'hpp';
