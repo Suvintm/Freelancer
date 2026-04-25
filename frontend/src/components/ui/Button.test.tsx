@@ -11,13 +11,13 @@ describe('Button Component', () => {
   it('applies primary variant classes by default', () => {
     render(<Button>Primary</Button>);
     const button = screen.getByText('Primary');
-    expect(button).toHaveClass('bg-white');
-    expect(button).toHaveClass('text-black');
+    expect(button).toHaveClass('bg-text-main');
+    expect(button).toHaveClass('text-container');
   });
 
   it('applies outline variant classes when specified', () => {
     render(<Button variant="outline">Outline</Button>);
     const button = screen.getByText('Outline');
-    expect(button).toHaveClass('border-white/20');
+    expect(button).toHaveClass('border-border-main');
   });
 });
