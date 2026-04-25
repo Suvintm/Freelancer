@@ -89,7 +89,9 @@ jobs:
         uses: grafana/setup-k6-action@v1
 
       - name: Run k6 Load Test
-        run: k6 run load-test.js --env BASE_URL=https://suvix-api-staging.onrender.com
+        run: |
+          ls -la
+          k6 run ./load-test.js --env BASE_URL=https://suvix-api-staging.onrender.com
 
 
   deploy:
