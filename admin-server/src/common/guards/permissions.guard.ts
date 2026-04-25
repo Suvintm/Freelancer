@@ -21,10 +21,11 @@ export class PermissionsGuard implements CanActivate {
       return true;
     }
 
+    let requiredPermissions: Permission[] = [];
     try {
        // Defensive check for potential Reflector version clashes
       if (this.reflector && typeof this.reflector.get === 'function') {
-        const requiredPermissions = this.reflector.get<Permission[]>(PERMISSIONS_KEY, context.getHandler()) ||
+        requiredPermissions = this.reflector.get<Permission[]>(PERMISSIONS_KEY, context.getHandler()) ||
                           this.reflector.get<Permission[]>(PERMISSIONS_KEY, context.getClass());
 
         if (!requiredPermissions || requiredPermissions.length === 0) {
