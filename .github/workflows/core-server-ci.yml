@@ -85,11 +85,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+
       - name: Run k6 Load Test
-        uses: grafana/k6-action@v0.3.1
-        with:
-          filename: load-test.js
-          flags: --env BASE_URL=https://suvix-api-staging.onrender.com
+        run: k6 run load-test.js --env BASE_URL=https://suvix-api-staging.onrender.com
 
 
   deploy:

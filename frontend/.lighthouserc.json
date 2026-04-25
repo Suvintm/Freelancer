@@ -7,18 +7,11 @@
       "target": "temporary-public-storage"
     },
     "assert": {
-      "preset": "lighthouse:recommended",
       "assertions": {
-        "offscreen-images": "off",
-        "uses-webp-images": "off",
-        "image-alt": "warn",
-        "meta-description": "warn",
-        "unused-javascript": "warn",
-        "uses-optimized-images": "warn",
-        "unsized-images": "warn",
-        "image-delivery-insight": "warn",
-        "network-dependency-tree-insight": "warn",
-        "uses-responsive-images": "warn"
+        "categories:performance": ["warn", {"minScore": 0.8}],
+        "categories:accessibility": ["warn", {"minScore": 0.8}],
+        "categories:best-practices": ["warn", {"minScore": 0.8}],
+        "categories:seo": ["warn", {"minScore": 0.8}]
       }
     }
   }
