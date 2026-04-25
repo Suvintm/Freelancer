@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Youtube, Camera, Settings, Plus, CheckCircle2, BarChart3, Briefcase, Users2, Edit3, Lock, PlaySquare, LayoutGrid } from 'lucide-react';
+import { Youtube, Camera, Settings, Plus, BarChart3, Briefcase, Users2, Edit3, Lock, PlaySquare, LayoutGrid } from 'lucide-react';
 import SILVER_BTN from '../../../assets/playbuttons/silverbtn.png';
 import GOLD_BTN from '../../../assets/playbuttons/goldenbtn.png';
 import DIAMOND_BTN from '../../../assets/playbuttons/diamondbtn.png';

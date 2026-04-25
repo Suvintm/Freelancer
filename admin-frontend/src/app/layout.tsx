@@ -9,8 +9,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'SuviX Admin | Secure Administrative Access',
+  title: 'SuviX',
   description: 'Identity gateway for SuviX Administrative Console.',
+  icons: {
+    icon: '/favicon.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
