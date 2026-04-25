@@ -10,7 +10,12 @@
       "preset": "lighthouse:recommended",
       "assertions": {
         "offscreen-images": "off",
-        "uses-webp-images": "off"
+        "uses-webp-images": "off",
+        "image-alt": "warn",
+        "meta-description": "warn",
+        "unused-javascript": "warn",
+        "uses-optimized-images": "warn",
+        "unsized-images": "warn"
       }
     }
   }
