@@ -1,9 +1,8 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { 
   Plus, ChevronRight, MoreHorizontal, Search, Filter, 
-  ArrowUpRight, Wallet, Landmark, BarChart3, TrendingUp, RefreshCw, ChevronDown
+  Wallet, Landmark, BarChart3, TrendingUp, RefreshCw, ChevronDown
 } from 'lucide-react';
 
 const WALLETS = [

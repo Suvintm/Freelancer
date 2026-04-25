@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/useAuthStore';
+import Image from 'next/image';
 
 export default function HomePage() {
   const router = useRouter();
@@ -42,7 +43,7 @@ export default function HomePage() {
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                 className="relative z-10"
             >
-                <img src="/logo.png" alt="SuviX Logo" className="max-h-48 w-auto object-contain dark:invert dark:brightness-200 drop-shadow-2xl" />
+                <Image src="/logo.png" alt="SuviX Logo" width={400} height={192} className="max-h-48 w-auto object-contain dark:invert dark:brightness-200 drop-shadow-2xl" priority />
             </motion.div>
             {/* Logo Glow */}
             <div className="absolute inset-0 bg-brand-forest/20 blur-[60px] rounded-full -z-10 group-hover:bg-brand-forest/30 transition-all duration-500 scale-110" />

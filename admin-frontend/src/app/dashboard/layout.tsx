@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Users, Activity, ShieldCheck, ShieldAlert,
-  Settings, LogOut, Bell, Search, Menu, ChevronRight, X, Mail, HelpCircle, 
+  Settings, LogOut, Bell, Search, Menu, ChevronRight, Mail, HelpCircle, 
   Share2, ChevronDown
 } from 'lucide-react';
 import AuthGuard from '@/components/auth-guard';
@@ -103,7 +104,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         >
           {/* Brand Logo */}
           <div className="h-24 flex items-center px-8 shrink-0">
-            <img src="/logo.png" alt="Logo" className="max-h-12 w-auto object-contain dark:invert dark:brightness-200" />
+            <Image src="/logo.png" alt="Logo" width={120} height={48} className="max-h-12 w-auto object-contain dark:invert dark:brightness-200" />
           </div>
 
           <nav className="flex-1 py-4 px-5 overflow-y-auto sidebar-scroll space-y-8">
@@ -196,7 +197,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div className="flex items-center gap-3 border-l border-ui-border pl-6">
                     <button className="flex items-center gap-3 hover:bg-ui-surface p-1.5 rounded-2xl transition-all group overflow-hidden border border-transparent hover:border-ui-border">
                         <div className="w-9 h-9 rounded-full bg-ui-bg overflow-hidden border border-ui-border">
-                             <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email}`} alt="Avatar" />
+                             <Image src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email}`} alt="Avatar" width={36} height={36} unoptimized />
                         </div>
                         <ChevronDown size={14} className="text-ui-text-dim group-hover:text-ui-text-main transition-colors mr-1" />
                     </button>
