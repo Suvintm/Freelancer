@@ -3,12 +3,13 @@ import { StyleSheet, ScrollView, View, Text, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
 import { ScreenContainer } from '../../src/components/shared/ScreenContainer';
+import { useAuthStore } from '../../src/store/useAuthStore';
 import { ExploreSearchV2 } from '../../src/modules/explore/ExploreSearchV2';
 import { ServiceGrid } from '../../src/modules/explore/ServiceGrid';
 import { CreatorCarousel } from '../../src/modules/explore/CreatorCarousel';
 import { MarketplaceSection } from '../../src/modules/explore/MarketplaceSection';
 import { ExploreTabs, ExploreTabType } from '../../src/modules/explore/ExploreTabs';
-import { EditorsView } from '../../src/modules/explore/EditorsView';
+import { EditorDiscovery } from '../../src/modules/explore/redesign/EditorDiscovery';
 import { RentalView } from '../../src/modules/explore/RentalView';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -19,6 +20,8 @@ import { VideoDoubleRow } from '../../src/modules/explore/redesign/VideoDoubleRo
 import { CreatorMasterCard } from '../../src/modules/explore/redesign/CreatorMasterCard';
 import { ReelCinematicStrip } from '../../src/modules/explore/redesign/ReelCinematicStrip';
 import { RentalPodGrid } from '../../src/modules/explore/redesign/RentalPodGrid';
+import { YouTubeTabPortal } from '../../src/modules/explore/redesign/YouTubeTabPortal';
+import { YOUTUBE_ARCHIVE, YouTubeVideo } from '../../src/modules/explore/redesign/youtubeMockData';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
@@ -47,16 +50,23 @@ const MOCK_TALENT = [
 const TAB_THEMES: Record<ExploreTabType, { bg: string, active: string }> = {
   'All': { bg: '#0A0A0A', active: '#818cf8' },
   'Editors': { bg: '#0A0A0A', active: '#a855f7' },
+  'YT Videos': { bg: '#0A0A0A', active: '#ef4444' },
   'Rental': { bg: '#0A0A0A', active: '#10b981' },
   'Promoters': { bg: '#0A0A0A', active: '#3b82f6' },
   'Singers': { bg: '#0A0A0A', active: '#f43f5e' },
-  'YT Videos': { bg: '#0A0A0A', active: '#ef4444' },
 };
 
 export default function ExploreScreen() {
   const { isDarkMode, theme } = useTheme();
+  const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<ExploreTabType>('All');
+
+  // 🔍 [SEARCH INTELLIGENCE] Shared State for All Portals
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [searchResults, setSearchResults] = useState<YouTubeVideo[]>([]);
 
   const currentTheme = TAB_THEMES[activeTab];
   // Always use dark background for the header
@@ -96,10 +106,46 @@ export default function ExploreScreen() {
   const getSearchPlaceholder = () => {
     switch (activeTab) {
       case 'Editors': return 'Search for VFX Pros, Animators...';
+      case 'YT Videos': return 'Search YouTube videos...';
       case 'Rental': return 'Search for Cameras, Drones, Lighting...';
       case 'Promoters': return 'Search for Brands, Agencies...';
       case 'Singers': return 'Search for Vocalists, Composers...';
       default: return 'Discover creators, editors, gear...';
+    }
+  };
+
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+    if (text.length > 0) {
+      setIsSearching(true);
+      if (activeTab === 'YT Videos') {
+        const matches = YOUTUBE_ARCHIVE.filter(v => 
+          v.title.toLowerCase().includes(text.toLowerCase()) || 
+          v.category.toLowerCase().includes(text.toLowerCase())
+        );
+        const suggs = Array.from(new Set(matches.map(m => {
+          if (m.title.toLowerCase().startsWith(text.toLowerCase())) return m.title;
+          return m.category;
+        }))).slice(0, 5);
+        setSuggestions(suggs);
+      }
+    } else {
+      setIsSearching(false);
+      setSuggestions([]);
+      setSearchResults([]);
+    }
+  };
+
+  const onExecuteSearch = (query: string) => {
+    setSearchQuery(query);
+    setSuggestions([]);
+    if (activeTab === 'YT Videos') {
+      const results = YOUTUBE_ARCHIVE.filter(v => 
+        v.title.toLowerCase().includes(query.toLowerCase()) || 
+        v.category.toLowerCase().includes(query.toLowerCase()) ||
+        v.description.toLowerCase().includes(query.toLowerCase())
+      );
+      setSearchResults(results);
     }
   };
   
@@ -108,6 +154,16 @@ export default function ExploreScreen() {
       case 'All':
         return (
           <View style={styles.redesignContainer}>
+            {/* 👤 Personalized Greeting Headline */}
+            <View style={styles.personalizedHeader}>
+              <Text style={[styles.recommendationText, { color: theme.textSecondary }]}>
+                Today's Recommendation for
+              </Text>
+              <Text style={[styles.userNameText, { color: isDarkMode ? 'white' : 'black' }]}>
+                {user?.firstName ? (user.firstName.charAt(0).toUpperCase() + user.firstName.slice(1)) : (user?.displayName ? (user.displayName.charAt(0).toUpperCase() + user.displayName.slice(1)) : 'You')}
+              </Text>
+            </View>
+
             {/* 🎞️ 1. Cinematic Reel Strip (High Energy Entry) */}
             <ReelCinematicStrip />
 
@@ -128,7 +184,17 @@ export default function ExploreScreen() {
             </View>
           </View>
         );
-      case 'Editors': return <EditorsView />;
+      case 'Editors': return <EditorDiscovery />;
+      case 'YT Videos': 
+        return (
+          <YouTubeTabPortal 
+            searchQuery={searchQuery}
+            isSearching={isSearching}
+            suggestions={suggestions}
+            searchResults={searchResults}
+            onSuggestionPress={onExecuteSearch}
+          />
+        );
       case 'Rental': return <RentalView />;
       default:
         return (
@@ -194,6 +260,9 @@ export default function ExploreScreen() {
               <ExploreSearchV2 
                 placeholder={getSearchPlaceholder()} 
                 activeColor={currentTheme.active}
+                value={searchQuery}
+                onChangeText={handleSearchChange}
+                onSubmitEditing={() => onExecuteSearch(searchQuery)}
               />
             )}
           </View>
@@ -284,6 +353,24 @@ const styles = StyleSheet.create({
     marginTop: 2,
     letterSpacing: -0.1,
     opacity: 0.7,
+  },
+  personalizedHeader: {
+    paddingHorizontal: 22,
+    marginBottom: 20,
+    marginTop: 10,
+  },
+  recommendationText: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    opacity: 0.8,
+  },
+  userNameText: {
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    marginTop: -2,
   },
 });
 

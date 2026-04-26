@@ -8,9 +8,18 @@ import * as Haptics from 'expo-haptics';
 interface ExploreSearchV2Props {
   placeholder?: string;
   activeColor: string;
+  value?: string;
+  onChangeText?: (text: string) => void;
+  onSubmitEditing?: () => void;
 }
 
-export const ExploreSearchV2 = ({ placeholder = "Search...", activeColor }: ExploreSearchV2Props) => {
+export const ExploreSearchV2 = ({ 
+  placeholder = "Search...", 
+  activeColor,
+  value,
+  onChangeText,
+  onSubmitEditing
+}: ExploreSearchV2Props) => {
   const { isDarkMode, theme } = useTheme();
 
   const handleSearch = () => {
@@ -36,6 +45,9 @@ export const ExploreSearchV2 = ({ placeholder = "Search...", activeColor }: Expl
             placeholder={placeholder}
             placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
             style={[styles.input, { color: theme.text }]}
+            value={value}
+            onChangeText={onChangeText}
+            onSubmitEditing={onSubmitEditing}
           />
           
           {/* 🎯 FLOATING ACTION PILL */}

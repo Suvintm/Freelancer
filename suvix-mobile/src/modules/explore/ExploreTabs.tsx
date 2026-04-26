@@ -20,7 +20,7 @@ interface ExploreTabsProps {
   isDarkHeader?: boolean;
 }
 
-const TABS: ExploreTabType[] = ['All', 'Editors', 'Promoters', 'Rental', 'Singers', 'YT Videos'];
+const TABS: ExploreTabType[] = ['All', 'Editors', 'YT Videos', 'Rental', 'Promoters', 'Singers'];
 
 export const ExploreTabs = ({ activeTab, onTabChange, activeColor, isDarkHeader }: ExploreTabsProps) => {
   const { isDarkMode, theme } = useTheme();
