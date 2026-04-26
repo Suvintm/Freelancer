@@ -11,9 +11,10 @@ import {
   Platform,
   LayoutAnimation,
   Image,
+  Dimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../src/constants/Colors';
 import { useCategoryStore } from '../src/store/useCategoryStore';
 import { useAuthStore } from '../src/store/useAuthStore';
@@ -21,9 +22,12 @@ import * as Haptics from 'expo-haptics';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Constants from 'expo-constants';
 import { SuccessOverlay } from '../src/components/shared/SuccessOverlay';
 import { LottieOverlay } from '../src/components/shared/LottieOverlay';
+
+const { width } = Dimensions.get('window');
 
 type YouTubeChannel = {
   channelId: string;
@@ -81,14 +85,12 @@ export default function YoutubeConnectScreen() {
     addDiscoveredChannels, 
     toggleYoutubeChannelSelection, 
     setYoutubeChannelCategory,
-    clearYoutubeDiscovery 
   } = useAuthStore();
 
   const channels = youtubeDiscovery.channels;
   const selectedChannels = youtubeDiscovery.selectedChannelIds;
   const channelToSubCategory = youtubeDiscovery.categorizations;
 
-  // 🛡️ [RESILIENCE] Detect Client IDs from Expo Constants (Reliable for Production APK)
   const extra = Constants.expoConfig?.extra || {};
   const androidClientId = extra.googleAndroidClientId || '';
   const iosClientId = extra.googleIosClientId || '';
@@ -112,13 +114,11 @@ export default function YoutubeConnectScreen() {
     fetchCategories().catch(() => {});
   }, [fetchCategories]);
 
-  // 🛡️ [RESILIENCE] Auto-detect connection if channels already exist in global store
   useEffect(() => {
     if (channels.length > 0) {
       setConnected(true);
     }
   }, [channels.length]);
-
 
   const fetchChannels = async (accessToken: string) => {
     setConnecting(true);
@@ -140,8 +140,6 @@ export default function YoutubeConnectScreen() {
         isClaimed: item.isClaimed || false,
       }));
       
-      console.log('📱 [YT-DEBUG] Received from Server:', JSON.stringify(fetchedChannels, null, 2));
-
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       addDiscoveredChannels(fetchedChannels);
       setShowSuccess(true);
@@ -164,7 +162,7 @@ export default function YoutubeConnectScreen() {
   const toggleChannel = (channelId: string) => {
     const channel = channels.find(ch => ch.channelId === channelId);
     if (channel?.isClaimed) {
-        Alert.alert("Already Claimed", "This YouTube channel is already linked to another SuviX account. If you believe this is an error, please contact SuviX Support.");
+        Alert.alert("Already Claimed", "This YouTube channel is already linked to another SuviX account.");
         return;
     }
     handleImpact();
@@ -194,13 +192,13 @@ export default function YoutubeConnectScreen() {
 
   const handleContinue = () => {
     if (!categoryId) {
-      Alert.alert('Setup Error', 'Missing category context. Please select role again.');
+      Alert.alert('Setup Error', 'Missing category context.');
       router.replace('/role-selection');
       return;
     }
 
     if (selectedChannels.length === 0 || !allSelectedChannelsTagged) {
-      Alert.alert('Action Required', 'Please select at least one channel and strictly assign a niche to proceed.');
+      Alert.alert('Action Required', 'Please select at least one channel and assign a niche.');
       return;
     }
 
@@ -220,7 +218,6 @@ export default function YoutubeConnectScreen() {
           subCategorySlug: selectedSubCategory?.slug,
           isPrimary: index === 0,
           isVerified: true,
-          uploadsPlaylistId: channel.uploadsPlaylistId || null,
           videos: channel.videos || [],
         };
       })
@@ -246,11 +243,6 @@ export default function YoutubeConnectScreen() {
   };
 
   const handleConnectYouTube = async () => {
-    if (Platform.OS === 'android' && !androidClientId) {
-      Alert.alert('Configuration Error', 'Android Google Client ID is missing in app environment.');
-      return;
-    }
-
     handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
     try {
       await GoogleSignin.hasPlayServices();
@@ -263,7 +255,7 @@ export default function YoutubeConnectScreen() {
       if (tokens.accessToken) {
         fetchChannels(tokens.accessToken);
       } else {
-        Alert.alert('Authentication Error', 'Google did not return a valid access token. Please try again.');
+        Alert.alert('Authentication Error', 'Google did not return a valid access token.');
       }
     } catch (error: any) {
       if (error.code !== statusCodes.SIGN_IN_CANCELLED && error.code !== statusCodes.IN_PROGRESS) {
@@ -299,251 +291,235 @@ export default function YoutubeConnectScreen() {
         message="Your YouTube channels are now successfully linked to your SuviX profile." 
       />
 
-      {/* Modern Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 16, paddingBottom: 16, backgroundColor: theme.primary, borderBottomWidth: 1, borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: theme.secondary }]}>
-          <Feather name="arrow-left" size={20} color={theme.text} />
-        </TouchableOpacity>
-        <Ionicons name="logo-youtube" size={24} color={ytRed} style={{ marginLeft: 16, marginRight: 6 }} />
-        <Text style={[styles.title, { color: theme.text }]}>YouTube Connect</Text>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      {/* 🏙️ PREMIUM BLUR HEADER */}
+      <BlurView intensity={isDark ? 80 : 100} tint={isDark ? 'dark' : 'light'} style={[styles.blurHeader, { paddingTop: insets.top }]}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: theme.secondary }]}>
+            <Feather name="arrow-left" size={20} color={theme.text} />
+          </TouchableOpacity>
+          <View style={styles.headerTitleWrap}>
+            <Ionicons name="logo-youtube" size={22} color={ytRed} />
+            <Text style={[styles.title, { color: theme.text }]}>YouTube Sync</Text>
+          </View>
+          <View style={{ width: 40 }} />
+        </View>
         
-        {/* Banner Explaining Value Proposition - Now Safe Green */}
+        {/* PROGRESS STEPPER */}
+        <View style={styles.stepperContainer}>
+          <View style={[styles.stepBar, { backgroundColor: theme.border }]}>
+            <AnimatedLinearGradient 
+              colors={[ytRed, '#FF5252']} 
+              style={[styles.stepProgress, { width: connected ? '100%' : '50%' }]} 
+              start={{ x: 0, y: 0 }} 
+              end={{ x: 1, y: 0 }}
+            />
+          </View>
+        </View>
+      </BlurView>
+
+      <ScrollView 
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 100 }]} 
+        showsVerticalScrollIndicator={false}
+      >
+        
+        {/* 🎭 PREMIUM HERO CARD */}
         {!connected && !connecting && (
-          <LinearGradient
-            colors={isDark ? ['#00331A', '#001A0D'] : ['#E6F9F0', '#CCF3DF']}
-            style={[styles.heroBanner, { borderColor: isDark ? '#004D26' : '#99E6C0' }]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={[styles.heroIconWrap, { backgroundColor: isDark ? 'rgba(0,200,83,0.15)' : 'rgba(0,200,83,0.1)' }]}>
-              <Ionicons name="shield-checkmark" size={28} color={safeGreen} />
-            </View>
-            <Text style={[styles.heroTitle, { color: theme.text }]}>Safe & Secure Connection</Text>
-            <Text style={[styles.heroDesc, { color: theme.textSecondary }]}>
-              By safely verifying your identity, you unlock official creator badges. Authentic metrics attract premium brands, high-paying sponsorships, and exclusive collaboration opportunities on SuviX.
-            </Text>
-          </LinearGradient>
+          <View style={styles.heroWrapper}>
+            <LinearGradient
+              colors={isDark ? ['#1a1a1a', '#000000'] : ['#FFFFFF', '#F0F4F8']}
+              style={[styles.heroCard, { borderColor: theme.border }]}
+            >
+              <View style={[styles.heroIconCircle, { backgroundColor: isDark ? 'rgba(255,0,0,0.1)' : 'rgba(255,0,0,0.05)' }]}>
+                <MaterialCommunityIcons name="youtube-subscription" size={32} color={ytRed} />
+              </View>
+              <Text style={[styles.heroTitle, { color: theme.text }]}>Unlock Your Creator Identity</Text>
+              <Text style={[styles.heroSubtitle, { color: theme.textSecondary }]}>
+                Sync your channel to display verified metrics, gain access to exclusive brand deals, and boost your profile credibility.
+              </Text>
+              
+              <View style={styles.featureList}>
+                <View style={styles.featureItem}>
+                  <Ionicons name="checkmark-circle" size={16} color={safeGreen} />
+                  <Text style={[styles.featureText, { color: theme.textSecondary }]}>Verified Subscriber Counts</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Ionicons name="checkmark-circle" size={16} color={safeGreen} />
+                  <Text style={[styles.featureText, { color: theme.textSecondary }]}>Content Engagement Insights</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Ionicons name="checkmark-circle" size={16} color={safeGreen} />
+                  <Text style={[styles.featureText, { color: theme.textSecondary }]}>Priority in Search Results</Text>
+                </View>
+              </View>
+            </LinearGradient>
+          </View>
         )}
 
-        {/* STEP 1: Connect Account */}
-        <View style={styles.stepBlock}>
-          <Text style={[styles.stepLabel, { color: theme.textSecondary }]}>STEP 1 : IDENTITY SYNC</Text>
-          <Text style={[styles.stepTitle, { color: theme.text }]}>YouTube Integration</Text>
-          <Text style={[styles.stepDesc, { color: theme.textSecondary }]}>
-            Securely verify your ownership to sync metrics and unlock official creator badges. 💡 <Text style={{fontWeight: '700', color: theme.text}}>Pro Tip: Link multiple channels from different accounts by tapping "Add Another" below.</Text>
-          </Text>
-
-          {/* 🛡️ PREMIUM IDENTITY GUIDE */}
-          <View style={[styles.guideCard, { backgroundColor: isDark ? '#161A22' : '#F0F4F8', borderColor: isDark ? '#2D3748' : '#D1DCE5' }]}>
-            <View style={styles.guideHeader}>
-                <Ionicons name="shield-checkmark" size={16} color={isDark ? '#4A90E2' : '#007AFF'} />
-                <Text style={[styles.guideTitle, { color: theme.text }]}>Identity Discovery Settings</Text>
+        {/* 🎬 MAIN ACTION SECTION */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>PHASE 1</Text>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Secure Identity Sync</Text>
             </View>
-            <Text style={[styles.guideText, { color: theme.textSecondary }]}>
-                To ensure a successful sync, please keep in mind:
-            </Text>
-            <View style={styles.guideStep}>
-                <View style={[styles.guideDot, { backgroundColor: isDark ? '#4A90E2' : '#007AFF' }]} />
-                <Text style={[styles.guideStepText, { color: theme.text }]}>
-                    <Text style={{fontWeight: '700'}}>Primary Setup:</Text> Google shares your currently active identity first.
-                </Text>
-            </View>
-            <View style={styles.guideStep}>
-                <View style={[styles.guideDot, { backgroundColor: safeGreen }]} />
-                <Text style={[styles.guideStepText, { color: theme.text }]}>
-                    <Text style={{fontWeight: '700'}}>Sub-Channels:</Text> If a second channel is missing, add it later from your <Text style={{fontWeight: '700'}}>Profile</Text>.
-                </Text>
-            </View>
-            <View style={[styles.proTipBox, { backgroundColor: isDark ? '#1c1c1c' : '#ffffff', borderLeftWidth: 3, borderLeftColor: safeGreen }]}>
-                <Text style={[styles.proTipText, { color: theme.textSecondary }]}>
-                   💡 <Text style={{fontWeight: '800', color: theme.text}}>Pro Tip:</Text> Switch identities in your YouTube App first to quickly link a specific brand channel here.
-                </Text>
-            </View>
+            {connected && (
+              <View style={[styles.statusBadge, { backgroundColor: 'rgba(0,200,83,0.1)' }]}>
+                <View style={[styles.statusDot, { backgroundColor: safeGreen }]} />
+                <Text style={[styles.statusText, { color: safeGreen }]}>CONNECTED</Text>
+              </View>
+            )}
           </View>
 
-          <TouchableOpacity 
-            style={[styles.ytButton, { backgroundColor: connected ? theme.secondary : ytRed, opacity: connecting ? 0.7 : 1 }]} 
-            onPress={handleConnectYouTube} 
-            disabled={connecting}
-            activeOpacity={0.8}
-          >
-            <Ionicons name={connected ? "person-add" : "logo-youtube"} size={20} color={connected ? theme.text : "#fff"} style={{ marginRight: 10 }} />
-            <Text style={[styles.ytButtonText, { color: connected ? theme.text : "#fff" }]}>
-              {connected ? 'Link Another Identity' : 'Securely Add YouTube Account'}
-            </Text>
-          </TouchableOpacity>
+          {!connected ? (
+            <TouchableOpacity 
+              style={[styles.mainActionBtn, { backgroundColor: ytRed }]} 
+              onPress={handleConnectYouTube} 
+              activeOpacity={0.9}
+            >
+              <LinearGradient
+                colors={['rgba(255,255,255,0.2)', 'transparent']}
+                style={StyleSheet.absoluteFill}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              />
+              <Ionicons name="logo-google" size={20} color="#fff" style={{ marginRight: 12 }} />
+              <Text style={styles.mainActionText}>Authenticate with Google</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity 
+              style={[styles.secondaryActionBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]} 
+              onPress={handleConnectYouTube} 
+              activeOpacity={0.7}
+            >
+              <Ionicons name="add-circle-outline" size={20} color={theme.text} style={{ marginRight: 8 }} />
+              <Text style={[styles.secondaryActionText, { color: theme.text }]}>Switch or Add Account</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* STEP 2: Configure Channels */}
+        {/* 📋 CHANNELS LIST */}
         {connected && !connecting && (
-          <View style={styles.stepBlock}>
-            <View style={styles.divider} />
-            <Text style={[styles.stepLabel, { color: theme.textSecondary }]}>STEP 2 : CONFIGURE IDENTITY</Text>
-            <Text style={[styles.stepTitle, { color: theme.text }]}>Selection & Verification</Text>
-            
-            {/* Critical Instructional Warning */}
-            <View style={[styles.infoCard, { backgroundColor: isDark ? '#1F1A00' : '#FFF9E5', borderColor: isDark ? '#332900' : '#FFE899' }]}>
-              <Feather name="info" size={16} color={isDark ? '#FFDA44' : '#CC9900'} style={{ marginTop: 2 }} />
-              <View style={styles.infoCardContent}>
-                <Text style={[styles.infoCardTitle, { color: isDark ? '#FFF' : '#332600' }]}>Important: Choose Wisely!</Text>
-                <Text style={[styles.infoCardDesc, { color: isDark ? '#CCC' : '#664C00' }]}>
-                  Please choose the most accurate niche category for your channel from the available list. SuviX’s recommendation algorithm strictly relies on this to map your profile to highly relevant industry brands.
-                </Text>
+          <View style={styles.channelsSection}>
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>PHASE 2</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Selection & Niche</Text>
               </View>
             </View>
 
             {channels.length === 0 ? (
-              <View style={[styles.emptyCard, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-                <Feather name="alert-circle" size={24} color={theme.textSecondary} style={{ marginBottom: 8 }} />
-                <Text style={[styles.emptyText, { color: theme.text }]}>No Channels Found</Text>
-                <Text style={[styles.emptySubText, { color: theme.textSecondary }]}>
-                  This Google account doesn't have any attached public YouTube channels. Try a different account.
+              <View style={[styles.emptyState, { backgroundColor: theme.secondary }]}>
+                <MaterialCommunityIcons name="video-off-outline" size={48} color={theme.textSecondary} />
+                <Text style={[styles.emptyStateTitle, { color: theme.text }]}>No Channels Discovered</Text>
+                <Text style={[styles.emptyStateDesc, { color: theme.textSecondary }]}>
+                  We couldn't find any public channels on this Google account. Please try another one.
                 </Text>
               </View>
             ) : (
-              <View style={styles.listWrap}>
+              <View style={styles.channelsList}>
                 {channels.map((channel) => {
                   const isSelected = selectedChannels.includes(channel.channelId);
                   const activeSubCategoryId = channelToSubCategory[channel.channelId];
                   const activeSubCategoryName = subCategories.find(s => s.id === activeSubCategoryId)?.name;
                   const isPickerOpen = pickerExpandedFor === channel.channelId;
-                  
+
                   return (
                     <View 
                       key={channel.channelId} 
                       style={[
                         styles.channelCard, 
-                        { backgroundColor: isDark ? '#151515' : '#fff', borderColor: isSelected ? ytRed : theme.border },
-                        isSelected && { shadowColor: ytRed, shadowOpacity: 0.15, shadowRadius: 12, elevation: 4 }
+                        { 
+                          backgroundColor: isDark ? '#111' : '#fff', 
+                          borderColor: isSelected ? ytRed : theme.border 
+                        }
                       ]}
                     >
                       <TouchableOpacity 
-                        style={styles.channelRow} 
-                        onPress={() => toggleChannel(channel.channelId)} 
+                        style={styles.cardHeader} 
+                        onPress={() => toggleChannel(channel.channelId)}
                         activeOpacity={0.7}
                       >
-                        <Image source={{ uri: channel.thumbnailUrl || 'https://via.placeholder.com/64' }} style={styles.avatar} />
-                        <View style={styles.channelDetails}>
-                          <Text style={[styles.channelName, { color: theme.text }]}>{channel.channelName}</Text>
-                          <Text style={[styles.channelStats, { color: isDark ? '#aaa' : '#666' }]}>
-                            <Feather name="users" size={12} /> {(channel.subscriberCount || 0).toLocaleString()} • {channel.videoCount} videos
+                        <Image source={{ uri: channel.thumbnailUrl || 'https://via.placeholder.com/100' }} style={styles.channelAvatar} />
+                        <View style={styles.channelMeta}>
+                          <Text style={[styles.channelName, { color: theme.text }]} numberOfLines={1}>
+                            {channel.channelName}
                           </Text>
-                          {channel.isClaimed && (
-                            <View style={[styles.claimedBadge, { backgroundColor: isDark ? '#332900' : '#FFF9E5', borderColor: isDark ? '#FFDA44' : '#FFE899' }]}>
-                              <Feather name="lock" size={10} color={isDark ? '#FFDA44' : '#CC9900'} />
-                              <Text style={[styles.claimedBadgeText, { color: isDark ? '#FFDA44' : '#CC9900' }]}>THIS ACCOUNT IS ALREADY IN USE BY ANOTHER USER</Text>
+                          <View style={styles.statsRow}>
+                            <View style={styles.statItem}>
+                              <Feather name="users" size={12} color={theme.textSecondary} />
+                              <Text style={[styles.statValue, { color: theme.textSecondary }]}>
+                                {(channel.subscriberCount || 0).toLocaleString()}
+                              </Text>
                             </View>
-                          )}
+                            <View style={styles.statDivider} />
+                            <View style={styles.statItem}>
+                              <Feather name="video" size={12} color={theme.textSecondary} />
+                              <Text style={[styles.statValue, { color: theme.textSecondary }]}>
+                                {channel.videoCount}
+                              </Text>
+                            </View>
+                          </View>
                         </View>
                         <View style={[
-                          styles.checkbox, 
-                          { borderColor: channel.isClaimed ? theme.border : (isSelected ? ytRed : theme.border) }, 
-                          isSelected && { backgroundColor: ytRed },
-                          channel.isClaimed && { opacity: 0.3 }
+                          styles.selectionCircle, 
+                          { borderColor: isSelected ? ytRed : theme.border, backgroundColor: isSelected ? ytRed : 'transparent' }
                         ]}>
-                          {isSelected && <Feather name="check" size={16} color="#fff" />}
+                          {isSelected && <Ionicons name="checkmark" size={16} color="#fff" />}
                         </View>
                       </TouchableOpacity>
 
-                      {/* Add Category UI is now visible by default for all channels */}
-                      <View style={styles.categoryActionContainer}>
+                      {/* NICHE SELECTOR */}
+                      <View style={[styles.nicheContainer, { borderTopColor: theme.border }]}>
                         <TouchableOpacity 
                           style={[
-                            styles.addCategoryBtn, 
-                            activeSubCategoryId 
-                              ? { backgroundColor: isDark ? 'rgba(0, 200, 83, 0.15)' : '#E6F9F0', borderColor: safeGreen } 
-                              : { backgroundColor: theme.primary, borderColor: theme.border },
-                            channel.isClaimed && { opacity: 0.5 }
+                            styles.nicheTrigger, 
+                            { backgroundColor: isDark ? '#1a1a1a' : '#F7F9FC' },
+                            activeSubCategoryId && { borderColor: safeGreen, borderWidth: 1 }
                           ]}
-                          activeOpacity={0.7}
                           onPress={() => {
                             if (channel.isClaimed) return;
-                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
                             setPickerExpandedFor(isPickerOpen ? null : channel.channelId);
                           }}
                         >
-                          <Feather 
-                            name={activeSubCategoryId ? "check-circle" : "plus-circle"} 
-                            size={16} 
-                            color={activeSubCategoryId ? safeGreen : theme.text} 
-                          />
-                          <Text style={[
-                            styles.addCategoryBtnText, 
-                            { color: activeSubCategoryId ? safeGreen : theme.text }
-                          ]}>
-                            {activeSubCategoryId ? `Added: ${activeSubCategoryName}` : 'Add Category'}
-                          </Text>
-                          <Feather 
+                          <View style={styles.nicheInfo}>
+                            <Text style={[styles.nicheLabel, { color: theme.textSecondary }]}>PRIMARY NICHE</Text>
+                            <Text style={[styles.nicheValue, { color: activeSubCategoryId ? safeGreen : theme.text }]}>
+                              {activeSubCategoryName || 'Select your content niche...'}
+                            </Text>
+                          </View>
+                          <Ionicons 
                             name={isPickerOpen ? "chevron-up" : "chevron-down"} 
-                            size={16} 
+                            size={18} 
                             color={theme.textSecondary} 
-                            style={{ marginLeft: 'auto' }} 
                           />
                         </TouchableOpacity>
 
                         {isPickerOpen && (
-                          <View style={styles.nicheDropdown}>
-                            <Text style={[styles.nichePrompt, { color: theme.textSecondary }]}>Choose the most suitable niche:</Text>
-                            <View style={styles.nicheGrid}>
+                          <View style={styles.nichePicker}>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.nicheScroll}>
                               {subCategories.map((sub) => {
                                 const isActive = activeSubCategoryId === sub.id;
                                 return (
                                   <TouchableOpacity
                                     key={sub.id}
-                                    activeOpacity={0.8}
                                     onPress={() => assignSubCategory(channel.channelId, sub.id)}
                                     style={[
                                       styles.nichePill,
-                                      { backgroundColor: theme.primary, borderColor: theme.border },
-                                      isActive && { backgroundColor: safeGreen, borderColor: safeGreen },
+                                      { backgroundColor: theme.secondary, borderColor: theme.border },
+                                      isActive && { backgroundColor: ytRed, borderColor: ytRed }
                                     ]}
                                   >
-                                    <Text style={[styles.nicheText, { color: isActive ? '#fff' : theme.textSecondary }]}>
+                                    <Text style={[styles.nichePillText, { color: isActive ? '#fff' : theme.textSecondary }]}>
                                       {sub.name}
                                     </Text>
                                   </TouchableOpacity>
                                 );
                               })}
-                            </View>
+                            </ScrollView>
                           </View>
                         )}
                       </View>
-
-                      {/* 🎬 PREVIEW VIDEOS (LATEST 15) */}
-                      {channel.videos && channel.videos.length > 0 && (
-                        <View style={[styles.videoPreviewContainer, { borderTopColor: theme.border }]}>
-                          <View style={styles.previewHeader}>
-                            <Feather name="play-circle" size={14} color={ytRed} />
-                            <Text style={[styles.previewTitle, { color: theme.textSecondary }]}>
-                              Latest {channel.videos.length} Videos Preview
-                            </Text>
-                            {!activeSubCategoryId && (
-                              <View style={styles.actionPromptBadge}>
-                                <Text style={styles.actionPromptText}>Action Needed: Select Category Below</Text>
-                              </View>
-                            )}
-                          </View>
-                          <ScrollView 
-                            horizontal 
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.videoPreviewScroll}
-                          >
-                            {channel.videos.map((video) => (
-                              <View key={video.id} style={styles.videoCard}>
-                                <Image source={{ uri: video.thumbnail }} style={styles.videoThumb} />
-                                <View style={styles.videoInfo}>
-                                  <Text style={[styles.videoTitle, { color: theme.text }]} numberOfLines={2}>
-                                    {video.title}
-                                  </Text>
-                                </View>
-                              </View>
-                            ))}
-                          </ScrollView>
-                        </View>
-                      )}
                     </View>
                   );
                 })}
@@ -553,417 +529,363 @@ export default function YoutubeConnectScreen() {
         )}
       </ScrollView>
 
-      {/* Floating Action Footer */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom || 24, backgroundColor: theme.primary, borderTopWidth: 1, borderTopColor: theme.border }]}>
-        <View style={styles.footerInner}>
-          <Text style={[styles.footerStatus, { color: theme.textSecondary }]}>
-            {selectedChannels.length} channel(s) ready
+      {/* 🚀 PREMIUM ACTION FOOTER */}
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
+        <LinearGradient
+          colors={isDark ? ['transparent', 'rgba(0,0,0,0.9)'] : ['transparent', 'rgba(255,255,255,0.9)']}
+          style={styles.footerGradient}
+        />
+        <TouchableOpacity 
+          style={[
+            styles.primaryContinueBtn, 
+            (!connected || !allSelectedChannelsTagged) && { backgroundColor: theme.border, shadowOpacity: 0 }
+          ]}
+          onPress={handleContinue}
+          disabled={!connected || !allSelectedChannelsTagged}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.continueText, { color: (!connected || !allSelectedChannelsTagged) ? theme.textSecondary : '#000' }]}>
+            Finalize Connection
           </Text>
-          <TouchableOpacity 
-            style={[styles.continueBtn, (!connected || channels.length === 0 || !allSelectedChannelsTagged) && { opacity: 0.4 }]}
-            onPress={handleContinue}
-            disabled={!connected || channels.length === 0 || !allSelectedChannelsTagged}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.continueBtnText}>Proceed</Text>
-            <Feather name="arrow-right" size={18} color="#000" style={{ marginLeft: 6 }} />
-          </TouchableOpacity>
-        </View>
+          <Feather name="arrow-right" size={20} color={(!connected || !allSelectedChannelsTagged) ? theme.textSecondary : '#000'} />
+        </TouchableOpacity>
+        <Text style={[styles.footerNote, { color: theme.textSecondary }]}>
+          Selected: {selectedChannels.length} Identity
+        </Text>
       </View>
     </View>
   );
 }
 
+// Wrapper for LinearGradient to use as Animated Component if needed
+const AnimatedLinearGradient = LinearGradient;
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
+  blurHeader: {
+    position: 'absolute',
+    top: 0,
+    width: '100%',
+    zIndex: 100,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(150,150,150,0.1)',
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    zIndex: 10,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    height: 64,
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 220, // Increased for footer accessibility
-  },
-  heroBanner: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    borderWidth: 1,
-  },
-  heroIconWrap: {
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
   },
-  heroTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: 6,
-    letterSpacing: -0.5,
-  },
-  heroDesc: {
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: '500',
-  },
-  stepBlock: {
-    marginBottom: 8,
-  },
-  divider: {
-    height: 30,
-    width: 2,
-    backgroundColor: '#ccc',
-    marginLeft: 14,
-    marginBottom: 20,
-    opacity: 0.3,
-  },
-  stepLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-    marginBottom: 6,
-  },
-  stepTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    marginBottom: 6,
-  },
-  stepDesc: {
-    fontSize: 13,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  ytButton: {
+  headerTitleWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FF0000',
-    height: 50,
-    borderRadius: 12,
-    marginTop: 6,
-    shadowColor: '#FF0000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    gap: 8,
   },
-  ytButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
+  title: {
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: -0.5,
   },
-  infoCard: {
-    flexDirection: 'row',
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 16,
+  stepperContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 12,
   },
-  infoCardContent: {
-    flex: 1,
-    marginLeft: 10,
-  },
-  infoCardTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  infoCardDesc: {
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '500',
-  },
-  listWrap: {
-    gap: 12,
-    paddingTop: 4,
-  },
-  channelCard: {
-    borderWidth: 1.5,
-    borderRadius: 16,
-    padding: 14,
+  stepBar: {
+    height: 3,
+    borderRadius: 1.5,
+    width: '100%',
     overflow: 'hidden',
   },
-  channelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  stepProgress: {
+    height: '100%',
   },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
+  content: {
+    paddingHorizontal: 20,
+    paddingBottom: 150,
   },
-  channelDetails: {
-    flex: 1,
-    marginLeft: 12,
+  heroWrapper: {
+    marginBottom: 32,
   },
-  channelName: {
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 4,
-    letterSpacing: -0.3,
-  },
-  channelStats: {
-    fontSize: 12,
-    fontWeight: '500',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 10,
-  },
-  categoryActionContainer: {
-    marginTop: 14,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(150, 150, 150, 0.15)',
-  },
-  addCategoryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  addCategoryBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginLeft: 8,
-  },
-  nicheDropdown: {
-    marginTop: 12,
-    paddingBottom: 4,
-  },
-  nichePrompt: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 10,
-  },
-  nicheGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  nichePill: {
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 100,
-  },
-  nicheText: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  stateWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-  },
-  stateText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  emptyCard: {
-    borderWidth: 1,
-    borderRadius: 16,
+  heroCard: {
+    borderRadius: 24,
     padding: 24,
+    borderWidth: 1,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 5,
+  },
+  heroIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    borderStyle: 'dashed',
+    marginBottom: 20,
   },
-  emptyText: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginTop: 8,
-  },
-  emptySubText: {
-    fontSize: 12,
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: '900',
     textAlign: 'center',
-    lineHeight: 18,
-    marginTop: 6,
+    marginBottom: 10,
+    letterSpacing: -0.5,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
     paddingHorizontal: 10,
   },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingTop: 14,
+  featureList: {
+    width: '100%',
+    gap: 12,
   },
-  footerInner: {
+  featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-  },
-  footerStatus: {
-    fontSize: 13,
-    fontWeight: '700',
-    flex: 1,
-  },
-  continueBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 1.5,
-    borderColor: '#000',
-  },
-  continueBtnText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#000',
-  },
-  // Video Preview styles
-  videoPreviewContainer: {
-    paddingTop: 12,
-    marginTop: 8,
-    borderTopWidth: 1,
-  },
-  previewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 6,
-  },
-  previewTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  videoPreviewScroll: {
-    paddingRight: 20,
     gap: 10,
   },
-  videoCard: {
-    width: 140,
+  featureText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
-  videoThumb: {
-    width: 140,
-    height: 78,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+  section: {
+    marginBottom: 32,
   },
-  videoInfo: {
-    marginTop: 4,
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginBottom: 16,
   },
-  videoTitle: {
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
+  sectionSubtitle: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+    marginBottom: 4,
   },
-  actionPromptBadge: {
-    backgroundColor: '#FF0000',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginLeft: 'auto',
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: -0.5,
   },
-  actionPromptText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  // Guide Styles
-  guideCard: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 20,
-    marginTop: 4,
-  },
-  guideHeader: {
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 100,
+    gap: 6,
   },
-  guideTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  guideText: {
-    fontSize: 12,
-    lineHeight: 18,
-    marginBottom: 10,
-  },
-  guideStep: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-    paddingLeft: 4,
-  },
-  guideDot: {
+  statusDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
   },
-  guideStepText: {
-    fontSize: 12,
-  },
-  guideHint: {
-    fontSize: 11,
-    fontWeight: '700',
-    marginTop: 10,
-    fontStyle: 'italic',
-  },
-  proTipBox: {
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 12,
-  },
-  proTipText: {
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: '600',
-  },
-  claimedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    marginTop: 10,
-    gap: 6,
-    borderWidth: 1.5,
-  },
-  claimedBadgeText: {
+  statusText: {
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.5,
   },
+  mainActionBtn: {
+    height: 56,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#FF0000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+    overflow: 'hidden',
+  },
+  mainActionText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  secondaryActionBtn: {
+    height: 50,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryActionText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  channelsSection: {
+    marginTop: 8,
+  },
+  emptyState: {
+    padding: 40,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateDesc: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  channelsList: {
+    gap: 16,
+  },
+  channelCard: {
+    borderRadius: 24,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  channelAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  channelMeta: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  channelName: {
+    fontSize: 18,
+    fontWeight: '900',
+    marginBottom: 4,
+    letterSpacing: -0.5,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statValue: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  statDivider: {
+    width: 1,
+    height: 10,
+    backgroundColor: 'rgba(150,150,150,0.3)',
+  },
+  selectionCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nicheContainer: {
+    borderTopWidth: 1,
+    padding: 16,
+  },
+  nicheTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 16,
+  },
+  nicheInfo: {
+    flex: 1,
+  },
+  nicheLabel: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  nicheValue: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  nichePicker: {
+    marginTop: 12,
+  },
+  nicheScroll: {
+    gap: 8,
+    paddingRight: 20,
+  },
+  nichePill: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  nichePillText: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  footerGradient: {
+    ...StyleSheet.absoluteFillObject,
+    height: 120,
+    top: -40,
+  },
+  primaryContinueBtn: {
+    width: '100%',
+    height: 60,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
+    elevation: 8,
+  },
+  continueText: {
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  footerNote: {
+    marginTop: 12,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  }
 });
