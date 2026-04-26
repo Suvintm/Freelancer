@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { useAuthStore } from './useAuthStore';
 
-export type FeedItemType = 'POST' | 'REEL' | 'SUGGESTION_EDITORS' | 'SUGGESTION_RENTALS';
+export type FeedItemType = 'POST' | 'REEL' | 'SUGGESTION_EDITORS' | 'SUGGESTION_RENTALS' | 'YOUTUBE_DISCOVERY';
 
 export interface FeedItem {
   id: string;
@@ -75,6 +75,7 @@ export const useDiscoveryStore = create<DiscoveryState>((set) => ({
     setIsRefreshing(true);
     
     const newFeed: FeedItem[] = [
+      { id: 'y1', type: 'YOUTUBE_DISCOVERY', data: {} },
       { id: 'p1', type: 'POST', data: MOCK_POSTS[0] },
       { id: 'r1_reel', type: 'REEL', data: MOCK_REELS[0] },
       { id: 's1', type: 'SUGGESTION_EDITORS', data: MOCK_EDITORS },

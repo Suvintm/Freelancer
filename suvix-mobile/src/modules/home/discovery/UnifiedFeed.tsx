@@ -13,6 +13,7 @@ import { useRefreshManager } from '../../../hooks/useRefreshManager';
 import { PremiumNativeAd } from '../../../components/ads/PremiumNativeAd';
 import { useAdPool } from '../../../hooks/useAdPool';
 import { useStories } from '../../../hooks/useStories';
+import { YouTubeDiscovery } from '../../../components/home/YouTubeDiscovery';
 
 import { useScrollToHideTabBar } from '../../../hooks/useScrollToHideTabBar';
 
@@ -104,6 +105,8 @@ export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEn
         return <SuggestionCarousel type="EDITORS" data={item.data} />;
       case 'SUGGESTION_RENTALS':
         return <SuggestionCarousel type="RENTALS" data={item.data} />;
+      case 'YOUTUBE_DISCOVERY':
+        return <YouTubeDiscovery />;
       case 'AD':
         return <PremiumNativeAd preloadedAd={item.adData} />;
       default:
