@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient, useIsFetching } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
@@ -17,7 +18,11 @@ import Animated, {
   withTiming, 
   Easing,
   cancelAnimation,
-  withSequence
+  withSequence,
+  interpolateColor,
+  interpolate,
+  Extrapolate,
+  SharedValue
 } from 'react-native-reanimated';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { useAccountVault } from '../hooks/useAccountVault';
@@ -38,9 +43,10 @@ import { useUploadStore } from '../store/useUploadStore';
 interface TopNavbarProps {
   onMenuPress: () => void;
   onProfilePress: () => void;
+  scrollY?: SharedValue<number>;
 }
 
-export const TopNavbar = ({ onMenuPress, onProfilePress }: TopNavbarProps) => {
+export const TopNavbar = ({ onMenuPress, onProfilePress, scrollY }: TopNavbarProps) => {
   const { user } = useAuthStore();
   const { isDarkMode, toggleTheme } = useTheme();
   const { isVisible, progress: uploadProgress, message, status, uploadType } = useUploadStore();
@@ -118,6 +124,59 @@ export const TopNavbar = ({ onMenuPress, onProfilePress }: TopNavbarProps) => {
     overflow: 'hidden',
   }));
 
+  // 🌈 [ANIMATION] Slow Cinematic Pulse (3-Layer Crossfade)
+  const pulseAnim = useSharedValue(0);
+  React.useEffect(() => {
+    pulseAnim.value = withRepeat(
+      withTiming(3, { duration: 18000, easing: Easing.linear }),
+      -1,
+      false
+    );
+  }, []);
+
+  const purpleStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(pulseAnim.value, [0, 0.5, 1, 1.5], [0, 1, 1, 0], Extrapolate.CLAMP);
+    return { opacity };
+  });
+
+  const blueStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(pulseAnim.value, [1, 1.5, 2, 2.5], [0, 1, 1, 0], Extrapolate.CLAMP);
+    return { opacity };
+  });
+
+  const redStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(pulseAnim.value, [2, 2.5, 3, 3.5], [0, 1, 1, 0], Extrapolate.CLAMP);
+    // Wrap around logic for Red to Purple transition
+    if (pulseAnim.value < 1) {
+      const wrapOpacity = interpolate(pulseAnim.value, [0, 0.5], [1, 0], Extrapolate.CLAMP);
+      return { opacity: wrapOpacity };
+    }
+    return { opacity };
+  });
+
+  // 🌑 [ANIMATION] Scroll-Adaptive Opacity (Fade to Solid on Scroll)
+  const scrollGlowStyle = useAnimatedStyle(() => {
+    if (!scrollY) return { opacity: 1 };
+    const opacity = interpolate(
+      scrollY.value,
+      [0, 50],
+      [1, 0],
+      Extrapolate.CLAMP
+    );
+    return { opacity };
+  });
+
+  const solidScrollStyle = useAnimatedStyle(() => {
+    if (!scrollY) return { opacity: 0 };
+    const opacity = interpolate(
+      scrollY.value,
+      [0, 50],
+      [0, 1],
+      Extrapolate.CLAMP
+    );
+    return { opacity };
+  });
+
 
   const palette = isDarkMode ? Colors.dark : Colors.light;
 
@@ -130,10 +189,45 @@ export const TopNavbar = ({ onMenuPress, onProfilePress }: TopNavbarProps) => {
       styles.container, 
       containerStyle,
       { 
-        backgroundColor: palette.tabBar,
         paddingTop: insets.top,
       }
     ]}>
+      {/* 🌑 Layer 1: Waterfall Dark Background (Fades in on Scroll) */}
+      <Animated.View style={[StyleSheet.absoluteFill, solidScrollStyle]}>
+        <LinearGradient
+          colors={[isDarkMode ? '#0A0A0A' : '#FFFFFF', 'transparent']}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
+
+      {/* 🧊 Layer 2: Global Waterfall Gradient & Blur */}
+      <View style={StyleSheet.absoluteFill}>
+        <BlurView intensity={25} tint={isDarkMode ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+        <LinearGradient
+          colors={
+            isDarkMode 
+              ? ['#0A0A0A', 'rgba(10,10,10,0.95)', 'rgba(10,10,10,0.4)', 'transparent']
+              : ['#FFFFFF', 'rgba(255,255,255,0.95)', 'rgba(255,255,255,0.4)', 'transparent']
+          }
+          style={StyleSheet.absoluteFill}
+        />
+      </View>
+
+      {/* 🌈 Layer 3: Slow Cinematic Pulse (Fades out on Scroll) */}
+      <Animated.View style={[StyleSheet.absoluteFill, scrollGlowStyle]}>
+        {/* Layer 1: Purple */}
+        <Animated.View style={[StyleSheet.absoluteFill, purpleStyle]}>
+          <LinearGradient colors={['rgba(139, 92, 246, 0.4)', 'transparent']} style={styles.topOverlay} />
+        </Animated.View>
+        {/* Layer 2: Blue */}
+        <Animated.View style={[StyleSheet.absoluteFill, blueStyle]}>
+          <LinearGradient colors={['rgba(59, 130, 246, 0.4)', 'transparent']} style={styles.topOverlay} />
+        </Animated.View>
+        {/* Layer 3: Red */}
+        <Animated.View style={[StyleSheet.absoluteFill, redStyle]}>
+          <LinearGradient colors={['rgba(239, 68, 68, 0.4)', 'transparent']} style={styles.topOverlay} />
+        </Animated.View>
+      </Animated.View>
       <View style={styles.topRow}>
         {/* LEFT: Modern Rounded Menu Icon */}
         <TouchableOpacity 
@@ -229,14 +323,18 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     zIndex: 50,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    overflow: 'hidden',
   },
   topRow: {
     height: 50,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    zIndex: 10,
+  },
+  topOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    height: 120,
   },
   progressSection: {
     paddingBottom: 8,
@@ -283,7 +381,6 @@ const styles = StyleSheet.create({
     height: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: -1,
   },
   logoDark: {
     width: 105,

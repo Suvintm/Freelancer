@@ -14,6 +14,7 @@ import { PremiumNativeAd } from '../../../components/ads/PremiumNativeAd';
 import { useAdPool } from '../../../hooks/useAdPool';
 import { useStories } from '../../../hooks/useStories';
 import { YouTubeDiscovery } from '../../../components/home/YouTubeDiscovery';
+import { SharedValue } from 'react-native-reanimated';
 
 import { useScrollToHideTabBar } from '../../../hooks/useScrollToHideTabBar';
 
@@ -22,9 +23,10 @@ interface UnifiedFeedProps {
   onScrollBeginDrag?: () => void;
   onScrollEndDrag?: () => void;
   onScroll?: (event: any) => void;
+  scrollY?: SharedValue<number>;
 }
 
-export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEndDrag, onScroll: customOnScroll }: UnifiedFeedProps) => {
+export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEndDrag, onScroll: customOnScroll, scrollY }: UnifiedFeedProps) => {
   const { theme } = useTheme();
   const { onScroll: hideTabBarOnScroll } = useScrollToHideTabBar();
   const { feed, isLoading, refreshFeed } = useDiscoveryStore();
@@ -143,6 +145,9 @@ export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEn
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         onScroll={(e) => {
+          if (scrollY) {
+            scrollY.value = e.nativeEvent.contentOffset.y;
+          }
           hideTabBarOnScroll(e);
           if (customOnScroll) customOnScroll(e);
         }}
