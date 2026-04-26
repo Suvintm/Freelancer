@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { Colors } from '../../constants/Colors';
@@ -11,6 +11,7 @@ interface ScreenContainerProps {
   headerHeight?: number;
   tabBarHeight?: number;
   isScrollable?: boolean;
+  hasHeader?: boolean;
   paddingHorizontal?: number;
   onScroll?: (event: any) => void;
 }
@@ -25,6 +26,7 @@ export const ScreenContainer = ({
   headerHeight = 50, 
   tabBarHeight = 60,
   isScrollable = true,
+  hasHeader = true,
   paddingHorizontal = 0,
   onScroll: customOnScroll
 }: ScreenContainerProps) => {
@@ -35,13 +37,14 @@ export const ScreenContainer = ({
   const palette = isDarkMode ? Colors.dark : Colors.light;
   
   // 1. Calculate the exact safe-buffers
-  const topBuffer = Math.max(insets.top, 20) + headerHeight;
+  const topBuffer = hasHeader ? (Math.max(insets.top, 20) + headerHeight) : 0;
   const bottomBuffer = Math.max(insets.bottom, 10) + tabBarHeight;
 
   const RootView = isScrollable ? ScrollView : View;
 
   return (
     <View style={[styles.root, { backgroundColor: palette.primary }]}>
+      <StatusBar translucent backgroundColor="transparent" barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <RootView 
         style={styles.flex}
         onScroll={isScrollable ? (e: any) => {
