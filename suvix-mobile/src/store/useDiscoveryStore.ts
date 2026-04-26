@@ -43,12 +43,14 @@ const MOCK_REELS = [
   {
     author: { name: 'Jordan Film', avatar: MOCK_AVATARS[2] },
     thumbnail: 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=600&h=1000',
+    videoUrl: 'https://vjs.zencdn.net/v/oceans.mp4', 
     title: 'Color Grading Secrets',
     views: '1.2M'
   },
   {
     author: { name: 'Creative Flow', avatar: MOCK_AVATARS[3] },
     thumbnail: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?q=80&w=600&h=1000',
+    videoUrl: 'https://vjs.zencdn.net/v/funny.mp4',
     title: 'POV: Your New Camera Picked You',
     views: '450K'
   }

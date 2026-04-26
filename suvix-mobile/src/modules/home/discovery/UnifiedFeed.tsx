@@ -80,7 +80,20 @@ export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEn
     return dataWithAds;
   }, [feed, isLoading, ads]);
 
+  const [viewableItems, setViewableItems] = React.useState<string[]>([]);
+
+  const onViewableItemsChanged = React.useRef(({ viewableItems }: any) => {
+    const ids = viewableItems.map((item: any) => item.item.id);
+    setViewableItems(ids);
+  }).current;
+
+  const viewabilityConfig = React.useRef({
+    itemVisiblePercentThreshold: 50, // Play if 50% visible
+  }).current;
+
   const renderItem = ({ item }: { item: any }) => {
+    const isVisible = viewableItems.includes(item.id);
+    
     if (item.type === 'SKELETON') {
       return (
         <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
@@ -98,9 +111,9 @@ export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEn
 
     switch (item.type) {
       case 'POST':
-        return <PostItem data={item.data} />;
+        return <PostItem data={item.data} isVisible={isVisible} />;
       case 'REEL':
-        return <ReelItem data={item.data} />;
+        return <ReelItem data={item.data} isVisible={isVisible} />;
       case 'SUGGESTION_EDITORS':
         return <SuggestionCarousel type="EDITORS" data={item.data} />;
       case 'SUGGESTION_RENTALS':
@@ -127,6 +140,8 @@ export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEn
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
         onScroll={(e) => {
           hideTabBarOnScroll(e);
           if (customOnScroll) customOnScroll(e);
