@@ -3,7 +3,7 @@ import maintenanceAnimation from '../assets/lottie/maintenance.json';
 import { useTheme } from '../hooks/useTheme';
 
 // Handle ESM/CJS interop for lottie-react
-const Lottie = (LottieComponent as any)?.default || LottieComponent;
+const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 
 export default function Maintenance() {
   const { isDarkMode } = useTheme();

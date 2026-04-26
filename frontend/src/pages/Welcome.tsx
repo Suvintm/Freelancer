@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, Play } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import logo from '../assets/whitebglogo.png';
@@ -45,9 +45,7 @@ export default function Welcome() {
     setActiveSlide(prev => (prev + 1) % ONBOARDING_DATA.length);
   };
 
-  const handleBack = () => {
-    setActiveSlide(prev => (prev - 1 + ONBOARDING_DATA.length) % ONBOARDING_DATA.length);
-  };
+
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-black text-white font-sans">

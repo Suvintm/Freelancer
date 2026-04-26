@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutGrid, Users, Play, Camera, TrendingUp, Mic, CheckCircle2, UserPlus, ArrowRight } from 'lucide-react';
+import { LayoutGrid, Users, Play, Camera, CheckCircle2, UserPlus } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 
 // Sub-components for the "All" Tab

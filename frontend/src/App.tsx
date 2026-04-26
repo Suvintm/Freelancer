@@ -36,7 +36,7 @@ function App() {
         if (response.status === 503) {
           navigate('/maintenance', { replace: true });
         }
-      } catch (error) {
+      } catch {
         console.warn('🚧 [MAINTENANCE] Nexus is unreachable. Redirecting to maintenance portal.');
         navigate('/maintenance', { replace: true });
       } finally {
