@@ -172,13 +172,6 @@ api.interceptors.response.use(
     }
 
 
-    // 🚩 [SECURITY] Absolute Ban Redirect
-    // If we get a 403 with isBanned flag, we MUST redirect to the banned page instantly.
-    if (response?.status === 403 && (response.data as any)?.isBanned) {
-        console.warn('🚫 [SECURITY] User is banned. Redirecting to restricted screen.');
-        router.replace('/banned');
-    }
-
     return Promise.reject(error);
   }
 );

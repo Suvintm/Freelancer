@@ -1,4 +1,5 @@
 import React from 'react';
+import Animated, { SharedValue } from 'react-native-reanimated';
 import { useAuthStore } from '../../../store/useAuthStore';
 import {
   View,
@@ -46,7 +47,7 @@ const PROGRAMS = [
 ];
 
 
-export default function FitnessInfluencerProfile() {
+export default function FitnessInfluencerProfile({ scrollY }: { scrollY?: SharedValue<number> }) {
   const { theme } = useTheme();
   const { user, updateUser, fetchUser, setIsRefreshing, isLoadingUser, isRefreshing } = useAuthStore();
   
@@ -195,9 +196,15 @@ export default function FitnessInfluencerProfile() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.primary }]}>
-      <ScrollView 
+      <Animated.ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={[styles.content, { paddingTop: headerOffset, flexGrow: 1 }]}
+        onScroll={(e) => {
+          if (scrollY) {
+            scrollY.value = e.nativeEvent.contentOffset.y;
+          }
+        }}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl 
             refreshing={isRefreshing} 
@@ -432,7 +439,7 @@ export default function FitnessInfluencerProfile() {
         </View>
           </>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Bio Update Modal */}
       <Modal
