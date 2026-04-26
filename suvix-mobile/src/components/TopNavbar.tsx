@@ -286,12 +286,12 @@ const styles = StyleSheet.create({
     zIndex: -1,
   },
   logoDark: {
-    width: 130,
-    height: 38,
+    width: 105,
+    height: 30,
   },
   logoLight: {
-    width: 130,
-    height: 38,
+    width: 105,
+    height: 30,
   },
   rightSection: {
     flexDirection: 'row',
