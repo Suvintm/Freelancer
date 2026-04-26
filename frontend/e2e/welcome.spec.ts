@@ -27,8 +27,8 @@ test.describe('Welcome Page E2E', () => {
   test('should navigate to the next slide when clicking Next', async ({ page }) => {
     await page.goto('/');
     
-    // Click Next button (target the first visible one)
-    await page.getByRole('button', { name: /next/i }).first().click();
+    // Click Continue button (target the first visible one)
+    await page.getByRole('button', { name: /continue/i }).first().click();
     
     // Verify next slide title is visible
     await expect(page.getByRole('heading', { name: 'Promote with Power' })).toBeVisible();
