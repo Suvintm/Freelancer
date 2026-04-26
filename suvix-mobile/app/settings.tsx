@@ -1,13 +1,4 @@
-/**
- * settings.tsx — Account & Security Settings
- *
- * Production-grade settings screen featuring:
- * - Multi-account management section
- * - "Log Out All Devices" (nuclear option) with confirmation
- * - Active sessions viewer
- * - Security preferences (linked from authController)
- */
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,20 +9,29 @@ import {
   Image,
   Platform,
   ActivityIndicator,
-  Switch,
+  TextInput,
+  StatusBar,
+  Animated,
+  Dimensions
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../src/store/useAuthStore';
 import { useAccountVault } from '../src/hooks/useAccountVault';
 import { useTheme } from '../src/context/ThemeContext';
 import { api } from '../src/api/client';
 import { ProcessingOverlay } from '../src/components/shared/ProcessingOverlay';
+import { Colors } from '../src/constants/Colors';
+
+const { width } = Dimensions.get('window');
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { theme, isDarkMode } = useTheme();
   const { user, logout } = useAuthStore();
   const vault = useAccountVault();
@@ -39,411 +39,454 @@ export default function SettingsScreen() {
 
   const [isLoggingOutAll, setIsLoggingOutAll] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [showSwitchOverlay, setShowSwitchOverlay] = useState(false);
-  const [switchingToName, setSwitchingToName] = useState('');
-
-  const bg = isDarkMode ? '#0A0A0A' : '#F4F4F5';
-  const cardBg = isDarkMode ? '#141414' : '#FFFFFF';
-  const textColor = isDarkMode ? '#F9FAFB' : '#111827';
-  const subColor = isDarkMode ? '#9CA3AF' : '#6B7280';
-  const divider = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-  const dangerColor = '#EF4444';
-
-  // ─── Handlers ───────────────────────────────────────────────────────────────
-  const handleLogout = () => {
-    const activeUsername = user?.username || vault.accounts[vault.activeAccountId || '']?.username || 'this account';
-    Alert.alert(
-      'Log Out',
-      `Log out of @${activeUsername}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Log Out',
-          style: 'destructive',
-          onPress: async () => {
-            setIsLoggingOut(true);
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-            await logout();
-            setIsLoggingOut(false);
-          },
-        },
-      ]
-    );
-  };
-
-  const handleLogoutAll = () => {
-    Alert.alert(
-      '🚨 Log Out of All Devices',
-      'This will immediately terminate every active session on every device — including devices you do not currently have access to.\n\nUse this if your account may have been compromised.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Log Out Everywhere',
-          style: 'destructive',
-          onPress: async () => {
-            setIsLoggingOutAll(true);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            try {
-              const response = await api.post('/auth/logout-all');
-              console.log(`[SECURITY] Revoked ${response.data.sessionsRevoked} sessions.`);
-            } catch { /* server error — still clear locally */ }
-
-            // Wipe ALL vault data
-            await vault.clearAll();
-            useAuthStore.setState({
-              token: null,
-              refreshToken: null,
-              user: null,
-              isAuthenticated: false,
-            });
-            setIsLoggingOutAll(false);
-          },
-        },
-      ]
-    );
-  };
-
+  const [searchQuery, setSearchQuery] = useState('');
   const [isSwitching, setIsSwitching] = useState<string | null>(null);
+
+  // ── Animation ─────────────────────────────────────────────────────────────
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, tension: 20, friction: 8, useNativeDriver: true })
+    ]).start();
+  }, []);
+
+  const palette = isDarkMode ? Colors.dark : Colors.light;
+  const bg = isDarkMode ? '#050505' : '#F8FAFC';
+  const cardBg = isDarkMode ? '#111111' : '#FFFFFF';
+  const border = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
+  const handleLogout = () => {
+    Alert.alert('Sign Out', `Sign out of @${user?.username}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          setIsLoggingOut(true);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          await logout();
+          setIsLoggingOut(false);
+        },
+      },
+    ]);
+  };
 
   const handleSwitch = async (targetUserId: string) => {
     if (targetUserId === vault.activeAccountId || isSwitching) return;
-    
     setIsSwitching(targetUserId);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
     try {
-      // 🚀 ATOMIC SWITCH: 
-      // This handles vault swap, profile fetch, and global state lock.
-      // The _layout.tsx will automatically show the switch overlay via useAuthStore.
-      // The _layout.tsx will also force a Stack re-mount once the switch completes (via key={user.id}).
-      const result = await useAuthStore.getState().switchAccount(targetUserId);
-      
-      if (result === 'needs_reauth') {
-        const targetAcc = useAccountVault.getState().accounts[targetUserId];
-        router.push({ 
-          pathname: '/login', 
-          params: { mode: 'reauth', email: targetAcc?.email } 
-        });
-      }
-
-      // Cleanup local guard — the component itself might unmount due to RootKeyedStack
+      await useAuthStore.getState().switchAccount(targetUserId);
       setIsSwitching(null);
     } catch (err) {
       setIsSwitching(null);
-      console.error('Account Switch Error:', err);
-      Alert.alert('Switch Error', 'An unexpected error occurred during account switch.');
+      Alert.alert('Switch Error', 'Could not switch accounts.');
     }
   };
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: bg }]}>
-      <ProcessingOverlay 
-        isVisible={showSwitchOverlay} 
-        message={`Switching to @${switchingToName}...`} 
-      />
-      <ProcessingOverlay isVisible={isLoggingOut} message="Logging out..." />
-      <ProcessingOverlay isVisible={isLoggingOutAll} message="Revoking all sessions..." />
+    <View style={[styles.container, { backgroundColor: bg }]}>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
+      <ProcessingOverlay isVisible={isLoggingOut} message="Signing out..." />
+      <ProcessingOverlay isVisible={isLoggingOutAll} message="Securing account..." />
 
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: divider }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={textColor} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: textColor }]}>Settings</Text>
-        <View style={{ width: 38 }} />
-      </View>
+      {/* 🏙️ STICKY GLASS CONTROL HEADER */}
+      <BlurView intensity={isDarkMode ? 80 : 100} tint={isDarkMode ? 'dark' : 'light'} style={[styles.blurHeader, { paddingTop: insets.top }]}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: palette.secondary }]}>
+            <Ionicons name="chevron-back" size={20} color={palette.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: palette.text }]}>Control Center</Text>
+          <View style={{ width: 40 }} />
+        </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-
-        {/* ── Active Account Card ── */}
-        <View style={[styles.profileCard, { backgroundColor: cardBg }]}>
-          <View style={styles.profileRow}>
-            {user?.profilePicture ? (
-              <Image source={{ uri: user.profilePicture }} style={styles.profileAvatar} />
-            ) : (
-              <View style={[styles.profileAvatarPlaceholder, { backgroundColor: '#8B5CF620' }]}>
-                <Text style={styles.profileAvatarInitial}>
-                  {(user?.name || user?.username || 'U')[0].toUpperCase()}
-                </Text>
-              </View>
-            )}
-            <View style={styles.profileInfo}>
-              <Text style={[styles.profileName, { color: textColor }]}>{user?.name || '—'}</Text>
-              <Text style={[styles.profileUsername, { color: subColor }]}>@{user?.username || '—'}</Text>
-              <Text style={[styles.profileEmail, { color: subColor }]}>{user?.email || '—'}</Text>
-            </View>
+        <View style={styles.searchContainer}>
+          <View style={[styles.searchBar, { backgroundColor: palette.secondary, borderColor: border }]}>
+            <Feather name="search" size={16} color={palette.textSecondary} style={{ marginRight: 10 }} />
+            <TextInput
+              placeholder="Search preferences..."
+              placeholderTextColor={palette.textSecondary}
+              style={[styles.searchInput, { color: palette.text }]}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
           </View>
         </View>
+      </BlurView>
 
-        {/* ── Accounts Section ── */}
-        <SectionHeader title="ACCOUNTS" color={subColor} />
-        <View style={[styles.card, { backgroundColor: cardBg }]}>
-
-          {/* All stored accounts */}
-          {accounts.map((account, index) => (
-            <View key={account.userId}>
-              <View style={styles.accountRow}>
-                {account.profilePicture ? (
-                  <Image source={{ uri: account.profilePicture }} style={styles.accountAvatar} />
-                ) : (
-                  <View style={[styles.accountAvatarPlaceholder, { backgroundColor: isDarkMode ? '#27272a' : '#e4e4e7' }]}>
-                    <Text style={{ fontSize: 14, fontWeight: '800', color: textColor }}>
-                      {(account.displayName || account.username || '?')[0].toUpperCase()}
-                    </Text>
-                  </View>
-                )}
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.accountName, { color: textColor }]}>{account.displayName}</Text>
-                  <Text style={[styles.accountUsername, { color: subColor }]}>@{account.username}</Text>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 130 }]} 
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+          
+          {/* 🆔 ACTIVE IDENTITY Hub */}
+          <View style={[styles.profileCard, { backgroundColor: cardBg, borderColor: border }]}>
+            <LinearGradient
+              colors={isDarkMode ? ['rgba(139, 92, 246, 0.1)', 'transparent'] : ['rgba(139, 92, 246, 0.05)', 'transparent']}
+              style={styles.cardGlow}
+            />
+            <View style={styles.profileRow}>
+              {user?.profilePicture ? (
+                <Image source={{ uri: user.profilePicture }} style={[styles.profileAvatar, { borderColor: palette.accent }]} />
+              ) : (
+                <View style={[styles.profileAvatarPlaceholder, { backgroundColor: `${palette.accent}20` }]}>
+                  <Text style={[styles.profileAvatarInitial, { color: palette.accent }]}>
+                    {(user?.name || 'U')[0].toUpperCase()}
+                  </Text>
                 </View>
-                {account.userId === vault.activeAccountId ? (
-                  <View style={styles.activePill}>
-                    <Ionicons name="checkmark-circle" size={12} color="#8B5CF6" style={{ marginRight: 4 }} />
-                    <Text style={styles.activePillText}>Active</Text>
-                  </View>
-                ) : (
-                  <TouchableOpacity 
-                    style={[styles.switchBtn, { backgroundColor: isDarkMode ? '#27272a' : '#f4f4f5' }]}
-                    onPress={() => handleSwitch(account.userId)}
-                    disabled={!!isSwitching}
-                  >
-                    {isSwitching === account.userId ? (
-                      <ActivityIndicator size="small" color="#8B5CF6" />
-                    ) : (
-                      <Text style={[styles.switchBtnText, { color: textColor }]}>
-                        {account.isRememberedOnly ? 'Login' : 'Switch'}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                )}
+              )}
+              <View style={styles.profileInfo}>
+                <Text style={[styles.profileName, { color: palette.text }]}>{user?.name || 'Pro User'}</Text>
+                <Text style={[styles.profileEmail, { color: palette.textSecondary }]}>@{user?.username}</Text>
+                <View style={[styles.proBadge, { backgroundColor: `${palette.accent}15` }]}>
+                    <Ionicons name="shield-checkmark" size={10} color={palette.accent} />
+                    <Text style={[styles.proText, { color: palette.accent }]}>VERIFIED {user?.primaryRole?.categoryName?.toUpperCase()}</Text>
+                </View>
               </View>
-              {index < accounts.length - 1 && (
-                <View style={[styles.rowDivider, { backgroundColor: divider }]} />
-              )}
             </View>
-          ))}
+          </View>
 
-          <View style={[styles.rowDivider, { backgroundColor: divider }]} />
+          {/* 👥 ACCOUNTS HUB */}
+          <SettingsSection title="WORKSPACE ACCOUNTS">
+             <View style={[styles.groupCard, { backgroundColor: cardBg, borderColor: border }]}>
+                {accounts.map((account, index) => (
+                  <View key={account.userId}>
+                    <TouchableOpacity 
+                      style={styles.accountRow}
+                      onPress={() => handleSwitch(account.userId)}
+                      activeOpacity={0.7}
+                    >
+                      {account.profilePicture ? (
+                        <Image source={{ uri: account.profilePicture }} style={styles.accAvatar} />
+                      ) : (
+                        <View style={[styles.accAvatarPlaceholder, { backgroundColor: palette.secondary }]}>
+                           <Text style={{ color: palette.text, fontWeight: '800' }}>{account.username[0].toUpperCase()}</Text>
+                        </View>
+                      )}
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.accName, { color: palette.text }]}>{account.displayName}</Text>
+                        <Text style={[styles.accSub, { color: palette.textSecondary }]}>@{account.username}</Text>
+                      </View>
+                      {account.userId === vault.activeAccountId ? (
+                        <Ionicons name="checkmark-circle" size={20} color={palette.accent} />
+                      ) : (
+                        <Feather name="refresh-cw" size={16} color={palette.textSecondary} />
+                      )}
+                    </TouchableOpacity>
+                    {index < accounts.length - 1 && <View style={[styles.divider, { backgroundColor: border }]} />}
+                  </View>
+                ))}
+                <View style={[styles.divider, { backgroundColor: border }]} />
+                <SettingsItem 
+                    icon="person-add-outline" 
+                    label="Add Work Account" 
+                    color="#8B5CF6" 
+                    onPress={() => router.push('/login')} 
+                    palette={palette}
+                />
+             </View>
+          </SettingsSection>
 
-          {/* Add Account */}
-          <SettingsRow
-            icon="add-circle-outline"
-            iconColor="#8B5CF6"
-            label="Add Account"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              Alert.alert(
-                'Add Account',
-                'Would you like to log into an existing account or create a new one?',
-                [
-                  {
-                    text: 'Log Into Existing Account',
-                    onPress: () => {
-                      useAuthStore.getState().setIsAddingAccount(true);
-                      router.push({ pathname: '/login', params: { mode: 'add' } });
-                    },
-                  },
-                  {
-                    text: 'Create New Account',
-                    onPress: () => {
-                      useAuthStore.getState().setIsAddingAccount(true);
-                      router.push('/role-selection');
-                    },
-                  },
-                  {
-                    text: 'Cancel',
-                    style: 'cancel',
-                  },
-                ],
-                { cancelable: true }
-              );
-            }}
-            textColor={textColor}
-            subColor={subColor}
-          />
-        </View>
+          {/* 🔒 SECURITY COMMANDS */}
+          <SettingsSection title="SECURITY & PRIVACY">
+             <View style={[styles.groupCard, { backgroundColor: cardBg, borderColor: border }]}>
+                <SettingsItem 
+                    icon="key-outline" 
+                    label="Active Sessions" 
+                    color="#10B981" 
+                    onPress={() => router.push('/sessions')} 
+                    palette={palette}
+                    sublabel="Manage devices logged into SuviX"
+                />
+                <View style={[styles.divider, { backgroundColor: border }]} />
+                <SettingsItem 
+                    icon="lock-closed-outline" 
+                    label="Change Access Key" 
+                    color="#F59E0B" 
+                    onPress={() => router.push('/forgot-password')} 
+                    palette={palette}
+                />
+                <View style={[styles.divider, { backgroundColor: border }]} />
+                <SettingsItem 
+                    icon="eye-off-outline" 
+                    label="Privacy Mode" 
+                    color="#6366F1" 
+                    onPress={() => {}} 
+                    palette={palette}
+                    hasSwitch
+                />
+             </View>
+          </SettingsSection>
 
-        <SectionHeader title="SECURITY" color={subColor} />
-        <View style={[styles.card, { backgroundColor: cardBg }]}>
-          <SettingsRow
-            icon="key-outline"
-            iconColor="#10B981"
-            label="Active Sessions"
-            sublabel="View & revoke device sessions"
-            onPress={() => router.push('/sessions')}
-            textColor={textColor}
-            subColor={subColor}
-          />
-          <View style={[styles.rowDivider, { backgroundColor: divider }]} />
-          <SettingsRow
-            icon="lock-closed-outline"
-            iconColor="#F59E0B"
-            label="Change Password"
-            onPress={() => router.push('/forgot-password')}
-            textColor={textColor}
-            subColor={subColor}
-          />
-        </View>
+          {/* 🚨 NUCLEAR ZONE */}
+          <SettingsSection title="SYSTEM ACTIONS">
+             <View style={[styles.groupCard, { backgroundColor: cardBg, borderColor: border }]}>
+                <SettingsItem 
+                    icon="log-out-outline" 
+                    label="Sign Out" 
+                    color="#EF4444" 
+                    onPress={handleLogout} 
+                    palette={palette}
+                    isDanger
+                />
+                <View style={[styles.divider, { backgroundColor: border }]} />
+                <SettingsItem 
+                    icon="shield-off-outline" 
+                    label="Nuclear Logout" 
+                    color="#EF4444" 
+                    onPress={() => {}} 
+                    palette={palette}
+                    isDanger
+                    sublabel="Revoke all sessions globally"
+                />
+             </View>
+          </SettingsSection>
 
-        {/* ── Danger Zone ── */}
-        <SectionHeader title="DANGER ZONE" color={dangerColor} />
-        <View style={[styles.card, { backgroundColor: cardBg }]}>
-          {/* Log Out This Account */}
-          <TouchableOpacity style={styles.dangerRow} onPress={handleLogout} disabled={isLoggingOut}>
-            <View style={[styles.iconWrap, { backgroundColor: '#EF444415' }]}>
-              <Ionicons name="log-out-outline" size={18} color={dangerColor} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.dangerLabel, { color: dangerColor }]}>
-                Log Out{accounts.length > 1 ? ' This Account' : ''}
-              </Text>
-              {accounts.length > 1 && (
-                <Text style={[styles.dangerSub, { color: subColor }]}>
-                  @{user?.username} · stays on other {accounts.length - 1} account{accounts.length > 2 ? 's' : ''}
-                </Text>
-              )}
-            </View>
-            {isLoggingOut && <ActivityIndicator size="small" color={dangerColor} />}
-          </TouchableOpacity>
+          <View style={styles.footer}>
+            <Text style={[styles.versionText, { color: palette.textSecondary }]}>SuviX Workspace Core v1.4.2</Text>
+            <Text style={[styles.versionText, { color: palette.textSecondary, marginTop: 4 }]}>Industrial Grade Enterprise Security Enabled</Text>
+          </View>
 
-          <View style={[styles.rowDivider, { backgroundColor: divider }]} />
-
-          {/* 🚨 Nuclear Option */}
-          <TouchableOpacity
-            style={styles.dangerRow}
-            onPress={handleLogoutAll}
-            disabled={isLoggingOutAll}
-          >
-            <View style={[styles.iconWrap, { backgroundColor: '#EF444415' }]}>
-              <MaterialCommunityIcons name="shield-remove-outline" size={18} color={dangerColor} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.dangerLabel, { color: dangerColor }]}>Log Out of All Devices</Text>
-              <Text style={[styles.dangerSub, { color: subColor }]}>
-                Revokes every session instantly. Use if compromised.
-              </Text>
-            </View>
-            {isLoggingOutAll && <ActivityIndicator size="small" color={dangerColor} />}
-          </TouchableOpacity>
-        </View>
-
-        <Text style={[styles.version, { color: subColor }]}>SuviX v1.0 · Session vault v1</Text>
+          <View style={{ height: 100 }} />
+        </Animated.View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
-// ─── Sub-Components ──────────────────────────────────────────────────────────
-function SectionHeader({ title, color }: { title: string; color: string }) {
-  return (
-    <Text style={[styles.sectionHeader, { color }]}>{title}</Text>
-  );
-}
+const SettingsSection = ({ title, children }: any) => (
+  <View style={styles.section}>
+    <Text style={styles.sectionTitle}>{title}</Text>
+    {children}
+  </View>
+);
 
-function SettingsRow({
-  icon, iconColor, label, sublabel, onPress, textColor, subColor
-}: {
-  icon: string; iconColor: string; label: string; sublabel?: string;
-  onPress: () => void; textColor: string; subColor: string;
-}) {
-  return (
-    <TouchableOpacity style={styles.settingsRow} onPress={onPress} activeOpacity={0.7}>
-      <View style={[styles.iconWrap, { backgroundColor: `${iconColor}18` }]}>
-        <Ionicons name={icon as any} size={18} color={iconColor} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.settingsLabel, { color: textColor }]}>{label}</Text>
-        {sublabel && <Text style={[styles.settingsSub, { color: subColor }]}>{sublabel}</Text>}
-      </View>
-      <Ionicons name="chevron-forward" size={16} color={subColor} />
-    </TouchableOpacity>
-  );
-}
+const SettingsItem = ({ icon, label, sublabel, color, onPress, palette, isDanger, hasSwitch }: any) => {
+    const [enabled, setEnabled] = useState(false);
+    return (
+        <TouchableOpacity style={styles.itemRow} onPress={onPress} activeOpacity={0.7}>
+            <View style={[styles.itemIcon, { backgroundColor: `${color}15` }]}>
+                <Ionicons name={icon} size={18} color={color} />
+            </View>
+            <View style={{ flex: 1 }}>
+                <Text style={[styles.itemLabel, { color: isDanger ? '#EF4444' : palette.text }]}>{label}</Text>
+                {sublabel && <Text style={[styles.itemSub, { color: palette.textSecondary }]}>{sublabel}</Text>}
+            </View>
+            {hasSwitch ? (
+                <View style={[styles.switch, { backgroundColor: enabled ? palette.accent : palette.secondary }]}>
+                    <TouchableOpacity onPress={() => { setEnabled(!enabled); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} style={[styles.switchKnob, { marginLeft: enabled ? 18 : 2 }]} />
+                </View>
+            ) : (
+                <Feather name="chevron-right" size={14} color={palette.textSecondary} />
+            )}
+        </TouchableOpacity>
+    );
+};
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
+  blurHeader: {
+    position: 'absolute',
+    top: 0,
+    width: '100%',
+    zIndex: 100,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(150,150,150,0.1)',
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    paddingHorizontal: 20,
+    height: 60,
   },
-  backBtn: { padding: 6 },
-  headerTitle: { fontSize: 17, fontWeight: '800', letterSpacing: -0.3 },
-
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  searchContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  scrollContent: { 
+    paddingHorizontal: 20,
+  },
   profileCard: {
-    marginHorizontal: 16,
-    marginTop: 20,
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  profileRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  profileAvatar: { width: 56, height: 56, borderRadius: 28, borderWidth: 2, borderColor: '#8B5CF6' },
-  profileAvatarPlaceholder: {
-    width: 56, height: 56, borderRadius: 28,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  profileAvatarInitial: { fontSize: 22, fontWeight: '800', color: '#8B5CF6' },
-  profileInfo: { flex: 1 },
-  profileName: { fontSize: 16, fontWeight: '800' },
-  profileUsername: { fontSize: 13, fontWeight: '600', marginTop: 1 },
-  profileEmail: { fontSize: 11, fontWeight: '500', marginTop: 2 },
-
-  sectionHeader: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1,
-    marginTop: 24,
-    marginBottom: 8,
-    marginHorizontal: 20,
-  },
-  card: {
-    marginHorizontal: 16,
-    borderRadius: 16,
+    padding: 20,
+    borderRadius: 24,
+    borderWidth: 1,
+    marginBottom: 24,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
   },
-  rowDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: 16 },
-
-  accountRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
-  accountAvatar: { width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: '#8B5CF680' },
-  accountAvatarPlaceholder: {
-    width: 40, height: 40, borderRadius: 20,
-    justifyContent: 'center', alignItems: 'center',
+  cardGlow: {
+    ...StyleSheet.absoluteFillObject,
   },
-  accountName: { fontSize: 14, fontWeight: '700' },
-  accountUsername: { fontSize: 12, fontWeight: '500', marginTop: 1 },
-  activePill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#8B5CF620', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  activePillText: { fontSize: 11, fontWeight: '700', color: '#8B5CF6' },
-  switchBtn: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 10, justifyContent: 'center' },
-  switchBtnText: { fontSize: 12, fontWeight: '800' },
-  rememberedPill: { backgroundColor: '#F59E0B20', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  rememberedPillText: { fontSize: 11, fontWeight: '700', color: '#F59E0B' },
-
-  settingsRow: {
-    flexDirection: 'row', alignItems: 'center',
-    padding: 14, gap: 12,
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
-  iconWrap: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  settingsLabel: { fontSize: 15, fontWeight: '600' },
-  settingsSub: { fontSize: 12, fontWeight: '500', marginTop: 1 },
-
-  dangerRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
-  dangerLabel: { fontSize: 15, fontWeight: '700' },
-  dangerSub: { fontSize: 12, fontWeight: '500', marginTop: 1 },
-
-  version: { textAlign: 'center', fontSize: 11, fontWeight: '500', marginTop: 32 },
+  profileAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 22,
+    borderWidth: 2,
+  },
+  profileAvatarPlaceholder: {
+    width: 64,
+    height: 64,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileAvatarInitial: {
+    fontSize: 24,
+    fontWeight: '900',
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  profileEmail: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 2,
+    opacity: 0.7,
+  },
+  proBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginTop: 6,
+    alignSelf: 'flex-start',
+  },
+  proText: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+    marginLeft: 12,
+    marginBottom: 10,
+    opacity: 0.5,
+    color: '#808080'
+  },
+  groupCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 16,
+  },
+  itemIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  itemLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  itemSub: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  divider: {
+    height: 1,
+    marginHorizontal: 16,
+  },
+  accountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 12,
+  },
+  accAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+  },
+  accAvatarPlaceholder: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  accName: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  accSub: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  switch: {
+    width: 42,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+  },
+  switchKnob: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFF',
+  },
+  footer: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  versionText: {
+    fontSize: 10,
+    fontWeight: '700',
+    opacity: 0.4,
+    letterSpacing: 0.5,
+  }
 });
