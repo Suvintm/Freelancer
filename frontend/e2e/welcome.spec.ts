@@ -1,6 +1,18 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Welcome Page E2E', () => {
+  test.beforeEach(async ({ page }) => {
+    // 🛰️ MOCK NEXUS HEALTH CHECK
+    // Prevent redirect to /maintenance by mocking the auth check
+    await page.route('**/api/auth/me', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, user: null }),
+      });
+    });
+  });
+
   test('should load the welcome page and display the logo', async ({ page }) => {
     await page.goto('/');
     
