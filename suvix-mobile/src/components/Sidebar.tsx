@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -7,180 +7,230 @@ import {
   Dimensions, 
   TouchableWithoutFeedback,
   Platform,
-  Image
+  Image,
+  ScrollView
 } from 'react-native';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
   withTiming, 
   withSpring,
+  withDelay,
+  Easing
 } from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../constants/Colors';
-import { useRouter } from 'expo-router';
+import { useRouter, useSegments } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 
-const { width } = Dimensions.get('window');
-const SIDEBAR_WIDTH = width * 0.75;
+const { width, height } = Dimensions.get('window');
+const SIDEBAR_WIDTH = width * 0.82;
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-/**
- * PRODUCTION-GRADE ANIMATED SIDEBAR
- * - Uses Reanimated for 60fps sliding & opacity transitions.
- * - Profile header with role badge.
- * - Navigation links inspired by premium dashboards.
- * - Fixed Logout button at bottom.
- */
 export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const { user, logout } = useAuthStore();
   const { isDarkMode, theme } = useTheme();
   const router = useRouter();
+  const segments = useSegments();
   
   const translateX = useSharedValue(-SIDEBAR_WIDTH);
-  const opacity = useSharedValue(0);
+  const backdropOpacity = useSharedValue(0);
+  const itemOpacity = useSharedValue(0);
+  const itemTranslateX = useSharedValue(-20);
 
   useEffect(() => {
     if (isOpen) {
-      translateX.value = withSpring(0, { damping: 20, stiffness: 90 });
-      opacity.value = withTiming(1, { duration: 300 });
+      translateX.value = withSpring(0, { damping: 20, stiffness: 100 });
+      backdropOpacity.value = withTiming(1, { duration: 400 });
+      itemOpacity.value = withDelay(200, withTiming(1, { duration: 500 }));
+      itemTranslateX.value = withDelay(200, withSpring(0));
     } else {
       translateX.value = withTiming(-SIDEBAR_WIDTH, { duration: 300 });
-      opacity.value = withTiming(0, { duration: 300 });
+      backdropOpacity.value = withTiming(0, { duration: 300 });
+      itemOpacity.value = withTiming(0, { duration: 200 });
+      itemTranslateX.value = withTiming(-20, { duration: 200 });
     }
-  }, [isOpen, translateX, opacity, SIDEBAR_WIDTH]);
+  }, [isOpen]);
 
   const animatedSidebarStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
   }));
 
   const animatedBackdropStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    pointerEvents: isOpen ? 'auto' : 'none',
+    opacity: backdropOpacity.value,
   }));
 
   const handleNavigate = (path: string) => {
     onClose();
-    // Allow animation to finish before navigation if needed
     setTimeout(() => {
       router.push(path as any);
-    }, 100);
+    }, 200);
   };
 
   const palette = isDarkMode ? Colors.dark : Colors.light;
 
+  const NAV_SECTIONS = [
+    {
+      label: 'GENERAL',
+      items: [
+        { icon: 'grid-outline', label: 'Dashboard', path: '/(tabs)' },
+        { icon: 'compass-outline', label: 'Discovery', path: '/(tabs)/explore' },
+        { icon: 'film-outline', label: 'Reels Feed', path: '/(tabs)/reels' },
+      ]
+    },
+    {
+      label: 'MANAGEMENT',
+      items: [
+        { icon: 'briefcase-outline', label: 'My Projects', path: '/(tabs)/jobs' },
+        { icon: 'chatbubbles-outline', label: 'Messages', path: '/(tabs)/chats' },
+        { icon: 'wallet-outline', label: 'Payments', path: '/settings' },
+      ]
+    },
+    {
+      label: 'SYSTEM',
+      items: [
+        { icon: 'settings-outline', label: 'Settings', path: '/settings' },
+        { icon: 'shield-checkmark-outline', label: 'Security', path: '/settings' },
+        { icon: 'help-circle-outline', label: 'Help & Support', path: '/settings' },
+      ]
+    }
+  ];
+
   return (
-    <>
-      {/* Backdrop */}
-      <Animated.View style={[styles.backdrop, animatedBackdropStyle]}>
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View style={styles.flex1} />
-        </TouchableWithoutFeedback>
-      </Animated.View>
+    <View style={[StyleSheet.absoluteFill, { zIndex: 1000 }]} pointerEvents={isOpen ? 'auto' : 'none'}>
+      {/* 🌑 ADAPTIVE BACKDROP */}
+      <TouchableWithoutFeedback onPress={onClose}>
+        <Animated.View style={[styles.backdrop, animatedBackdropStyle]} />
+      </TouchableWithoutFeedback>
 
-      {/* Sidebar Content */}
-      <Animated.View style={[
-        styles.sidebar, 
-        { backgroundColor: palette.secondary, borderColor: palette.border },
-        animatedSidebarStyle
-      ]}>
+      {/* 💎 ELITE PANE */}
+      <Animated.View style={[styles.sidebar, animatedSidebarStyle, { borderRightWidth: 1, borderRightColor: palette.border }]}>
+        <BlurView 
+          intensity={isDarkMode ? 80 : 100} 
+          tint={isDarkMode ? 'dark' : 'light'} 
+          style={StyleSheet.absoluteFill} 
+        />
         
-        {/* Header / Profile */}
-        <View style={[styles.header, { borderBottomColor: palette.border }]}>
-          <View style={styles.profileRow}>
-             <Image 
-                source={{ uri: user?.profilePicture || 'https://cdn-icons-png.flaticon.com/512/149/149071.png' }} 
-                style={[styles.avatar, { borderColor: Colors.accent }]} 
-              />
-             <View style={styles.profileInfo}>
-                <Text style={[styles.userName, { color: palette.text }]}>{user?.name || 'User'}</Text>
-                <View style={[styles.roleBadge, { backgroundColor: isDarkMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)' }]}>
-                  <Text style={styles.roleText}>{user?.role?.toUpperCase() || 'CLIENT'}</Text>
-                </View>
-             </View>
+        <View style={[styles.flex1, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
+          {/* 👤 PRO PERSONA HEADER */}
+          <View style={styles.header}>
+            <LinearGradient
+              colors={isDarkMode ? ['rgba(139, 92, 246, 0.15)', 'transparent'] : ['rgba(139, 92, 246, 0.05)', 'transparent']}
+              style={styles.headerGlow}
+            />
+            <View style={styles.profileMain}>
+               <View style={styles.avatarWrapper}>
+                  <Image 
+                    source={{ uri: user?.profilePicture || 'https://cdn-icons-png.flaticon.com/512/149/149071.png' }} 
+                    style={[styles.avatar, { borderColor: palette.accent }]} 
+                  />
+                  <View style={[styles.statusIndicator, { backgroundColor: '#22c55e' }]} />
+               </View>
+               <View style={styles.profileText}>
+                  <Text style={[styles.userName, { color: palette.text }]} numberOfLines={1}>
+                    {user?.name || 'User Persona'}
+                  </Text>
+                  <View style={styles.roleRow}>
+                    <Ionicons name="sparkles" size={12} color={palette.accent} />
+                    <Text style={[styles.roleText, { color: palette.accent }]}>
+                      {user?.primaryRole?.categoryName?.toUpperCase() || 'ELITE MEMBER'}
+                    </Text>
+                  </View>
+               </View>
+            </View>
           </View>
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-            <Ionicons name="close" size={24} color={palette.textSecondary} />
-          </TouchableOpacity>
-        </View>
 
-        {/* Navigation Items */}
-        <View style={styles.navContainer}>
-          <SidebarItem 
-            icon="grid-outline" 
-            label="Dashboard" 
-            onPress={() => handleNavigate('/(tabs)')} 
-            color={palette.text}
-          />
-          <SidebarItem 
-            icon="person-outline" 
-            label="My Profile" 
-            onPress={() => handleNavigate('/(tabs)/profile')} 
-            color={palette.text}
-          />
-          <SidebarItem 
-            icon="briefcase-outline" 
-            label="My Projects" 
-            onPress={() => handleNavigate('/(tabs)/jobs')} 
-            color={palette.text}
-          />
-          <SidebarItem 
-            icon="chatbubbles-outline" 
-            label="Messages" 
-            onPress={() => handleNavigate('/(tabs)/chats')} 
-            color={palette.text}
-          />
-          <SidebarItem 
-            icon="settings-outline" 
-            label="Settings" 
-            onPress={() => handleNavigate('/settings')} 
-            color={palette.text}
-          />
-          <SidebarItem 
-            icon="swap-horizontal-outline" 
-            label="Switch Account" 
-            onPress={() => handleNavigate('/settings')} 
-            color={palette.text}
-          />
-        </View>
+          <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+            {NAV_SECTIONS.map((section, sIdx) => (
+              <View key={section.label} style={styles.section}>
+                <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>{section.label}</Text>
+                {section.items.map((item, iIdx) => (
+                  <SidebarItem 
+                    key={item.label}
+                    icon={item.icon} 
+                    label={item.label} 
+                    onPress={() => handleNavigate(item.path)} 
+                    color={palette.text}
+                    index={sIdx * 3 + iIdx}
+                    isOpen={isOpen}
+                    active={segments.includes(item.label.toLowerCase())}
+                  />
+                ))}
+              </View>
+            ))}
+          </ScrollView>
 
-        {/* Footer with Logout */}
-        <View style={[styles.footer, { borderTopColor: palette.border }]}>
-          <TouchableOpacity 
-            onPress={logout} 
-            style={[styles.logoutBtn, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}
-          >
-            <Feather name="log-out" size={18} color={Colors.error} />
-            <Text style={styles.logoutText}>Logout Session</Text>
-          </TouchableOpacity>
-          <Text style={[styles.versionText, { color: palette.textSecondary }]}>v1.0.0 Production Build</Text>
+          {/* 🔘 SYSTEM ACTIONS FOOTER */}
+          <View style={[styles.footer, { borderTopColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+            <TouchableOpacity 
+              onPress={logout} 
+              style={[styles.logoutBtn, { backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2' }]}
+            >
+              <Feather name="log-out" size={18} color="#EF4444" />
+              <Text style={styles.logoutText}>End Session</Text>
+            </TouchableOpacity>
+            <View style={styles.versionRow}>
+              <Text style={[styles.versionText, { color: palette.textSecondary }]}>SuviX Workspace v1.2</Text>
+              <View style={styles.dot} />
+              <Text style={[styles.versionText, { color: palette.textSecondary }]}>Enterprise</Text>
+            </View>
+          </View>
         </View>
-
       </Animated.View>
-    </>
+    </View>
   );
 };
 
-const SidebarItem = ({ icon, label, onPress, color }: any) => (
-  <TouchableOpacity style={styles.navItem} onPress={onPress} activeOpacity={0.6}>
-    <View style={styles.navIconWrapper}>
-      <Ionicons name={icon} size={22} color={color} />
-    </View>
-    <Text style={[styles.navLabel, { color }]}>{label}</Text>
-    <Feather name="chevron-right" size={14} color="rgba(128, 128, 128, 0.4)" />
-  </TouchableOpacity>
-);
+const SidebarItem = ({ icon, label, onPress, color, index, isOpen, active }: any) => {
+  const opacity = useSharedValue(0);
+  const translateX = useSharedValue(-15);
+
+  useEffect(() => {
+    if (isOpen) {
+      opacity.value = withDelay(150 + index * 40, withTiming(1, { duration: 400 }));
+      translateX.value = withDelay(150 + index * 40, withSpring(0, { damping: 15 }));
+    } else {
+      opacity.value = withTiming(0, { duration: 200 });
+      translateX.value = withTiming(-15, { duration: 200 });
+    }
+  }, [isOpen]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <TouchableOpacity 
+        style={[styles.navItem, active && styles.activeNavItem]} 
+        onPress={onPress} 
+        activeOpacity={0.7}
+      >
+        <View style={styles.navIconWrapper}>
+          <Ionicons name={icon} size={20} color={active ? Colors.accent : color} />
+        </View>
+        <Text style={[styles.navLabel, { color: active ? Colors.accent : color, fontWeight: active ? '800' : '600' }]}>
+          {label}
+        </Text>
+        {active && <View style={styles.activeIndicator} />}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
 
 const styles = StyleSheet.create({
   flex1: { flex: 1 },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    zIndex: 100,
+    backgroundColor: 'rgba(0,0,0,0.7)',
   },
   sidebar: {
     position: 'absolute',
@@ -189,60 +239,88 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: SIDEBAR_WIDTH,
     zIndex: 101,
-    borderRightWidth: 1,
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    overflow: 'hidden',
   },
   header: {
     padding: 24,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    borderBottomWidth: 1,
-    marginBottom: 10,
+    paddingTop: 32,
+    position: 'relative',
   },
-  profileRow: {
-    gap: 12,
+  headerGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 150,
+  },
+  profileMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  avatarWrapper: {
+    position: 'relative',
   },
   avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 22,
     borderWidth: 2,
   },
-  profileInfo: {
-    marginTop: 12,
+  statusIndicator: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: '#000',
+  },
+  profileText: {
+    flex: 1,
   },
   userName: {
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: 4,
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: -0.5,
   },
-  roleBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
+  roleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
   },
   roleText: {
     fontSize: 10,
-    fontWeight: '700',
-    color: Colors.accent,
-    letterSpacing: 0.5,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
-  closeBtn: {
-    padding: 4,
-  },
-  navContainer: {
+  scroll: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: 16,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+    marginLeft: 12,
+    marginBottom: 12,
+    opacity: 0.5,
   },
   navItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 12,
-    borderRadius: 14,
-    marginBottom: 4,
+    borderRadius: 16,
+    marginBottom: 2,
+  },
+  activeNavItem: {
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
   },
   navIconWrapper: {
     width: 32,
@@ -251,8 +329,13 @@ const styles = StyleSheet.create({
   navLabel: {
     flex: 1,
     fontSize: 15,
-    fontWeight: '600',
     marginLeft: 12,
+  },
+  activeIndicator: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.accent,
   },
   footer: {
     padding: 24,
@@ -264,17 +347,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: 16,
+    borderRadius: 18,
     gap: 10,
   },
   logoutText: {
-    color: Colors.error,
+    color: '#EF4444',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
+  },
+  versionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  dot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: 'rgba(150,150,150,0.3)',
   },
   versionText: {
-    textAlign: 'center',
     fontSize: 11,
-    opacity: 0.5,
+    fontWeight: '600',
+    opacity: 0.4,
   }
 });

@@ -289,6 +289,18 @@ function InitialRoot() {
 
       // ── Hydration complete but user is null (server error or bad token) ────
       if (!user) {
+        if (isAuthenticated) {
+          if (!inPublicGroup && !inOnboarding) {
+            console.log('⚠️ [GUARD] Server unreachable. Fallback to /welcome.');
+            isNavigating.current = true;
+            router.replace('/welcome');
+            setTimeout(() => { isNavigating.current = false; }, 1000);
+          } else {
+            console.log('⚠️ [GUARD] Server unreachable. Staying on public page.');
+          }
+          return; 
+        }
+        
         console.log('⚠️ [GUARD] dataLoaded=true but user=null. Retrying fetchUser...');
         fetchUser();
         return;

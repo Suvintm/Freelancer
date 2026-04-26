@@ -18,6 +18,7 @@ import { FeatureGallery } from '../../src/components/home/FeatureGallery';
 import { UnifiedFeed } from '../../src/modules/home/discovery/UnifiedFeed';
 import { useDiscoveryStore } from '../../src/store/useDiscoveryStore';
 import { DashboardSkeleton } from '../../src/modules/home/skeletons/DashboardSkeleton';
+import { SharedValue } from 'react-native-reanimated';
 
 /**
  * PRODUCTION-GRADE DYNAMIC DASHBOARD (Home Tab)
@@ -33,7 +34,7 @@ const MODULE_REGISTRY: Record<string, React.ComponentType> = {
   clients:   ClientDashboard,
 };
 
-export default function DashboardIndex() {
+export default function DashboardIndex({ scrollY }: { scrollY?: SharedValue<number> }) {
   const { theme } = useTheme();
   const { user, isLoadingUser, isAuthenticated } = useAuthStore();
   const [isReady, setIsReady] = React.useState(false);
@@ -102,6 +103,7 @@ export default function DashboardIndex() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.primary }}>
       <UnifiedFeed 
+        scrollY={scrollY}
         ListHeaderComponent={
           <View>
             {/* Banner Section (Always persistent) */}

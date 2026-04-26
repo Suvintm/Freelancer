@@ -192,7 +192,7 @@ export default function ClientProfile() {
                   onRequestClose={() => setIsAvatarModalVisible(false)}
                 >
                   <TouchableOpacity 
-                    style={styles.modalOverlay} 
+                    style={styles.avatarModalOverlay} 
                     activeOpacity={1} 
                     onPress={() => setIsAvatarModalVisible(false)}
                   >
@@ -347,7 +347,7 @@ export default function ClientProfile() {
 
       {/* Bio Modal */}
       <Modal visible={isBioModalVisible} transparent animationType="fade">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.bioModalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.primary, borderColor: theme.border }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Bio</Text>
@@ -456,14 +456,14 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   gridItem: { width: (width - 50) / 2, height: 100, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   gridLabel: { marginTop: 8, fontSize: 13, fontWeight: '700' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  bioModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
   modalContent: { padding: 24, borderTopLeftRadius: 32, borderTopRightRadius: 32, borderWidth: 1, minHeight: '40%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 18, fontWeight: '900' },
   bioInput: { fontSize: 16, borderRadius: 12, borderWidth: 1, padding: 16, minHeight: 100, textAlignVertical: 'top' },
   saveBtn: { marginTop: 20, height: 50, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   saveBtnText: { color: 'white', fontSize: 15, fontWeight: '800' },
-  modalOverlay: {
+  avatarModalOverlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',

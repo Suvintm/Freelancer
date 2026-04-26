@@ -12,6 +12,7 @@ import BottomSheet from '@gorhom/bottom-sheet';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { CategoryId } from '../../src/types/category';
 import { RefreshLimitBadge } from '../../src/components/shared/RefreshLimitBadge';
+import { useSharedValue } from 'react-native-reanimated';
 
 // Screens
 import HomeScreen from './index';
@@ -36,6 +37,9 @@ export default function TabsLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const insets = useSafeAreaInsets();
   const segments = useSegments() as string[];
+
+  // 🛰️ Universal Scroll Channel for Navbar Sync
+  const globalScrollY = useSharedValue(0);
 
   // ── Account Switcher ───────────────────────────────────────────────────────
   const switcherSheetRef = useRef<BottomSheet>(null);
@@ -102,14 +106,14 @@ export default function TabsLayout() {
   // Helper to render the correct screen component
   const renderScreen = (name: string, index: number) => {
     switch (name) {
-      case 'index':   return <HomeScreen />;
+      case 'index':   return <HomeScreen scrollY={globalScrollY} />;
       case 'explore': return <ExploreScreen />;
       case 'nearby':  return <NearbyScreen />;
       case 'reels':   return <ReelsScreen />;
       case 'jobs':    return <JobsScreen />;
       case 'chats':   return <ChatsScreen />;
       case 'profile': return <ProfileScreen />;
-      default:        return <HomeScreen />;
+      default:        return <HomeScreen scrollY={globalScrollY} />;
     }
   };
 
@@ -131,13 +135,14 @@ export default function TabsLayout() {
       <View 
         style={[
           styles.navbarOverlay,
-          { display: isReelsActive ? 'none' : 'flex' }
+          { display: (isReelsActive || filteredTabs[activeIndex]?.name === 'explore') ? 'none' : 'flex' }
         ]}
         pointerEvents="box-none"
       >
         <TopNavbar 
           onMenuPress={() => setIsSidebarOpen(true)} 
           onProfilePress={openSwitcher}
+          scrollY={globalScrollY}
         />
       </View>
 

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { useAuthStore } from './useAuthStore';
 
-export type FeedItemType = 'POST' | 'REEL' | 'SUGGESTION_EDITORS' | 'SUGGESTION_RENTALS';
+export type FeedItemType = 'POST' | 'REEL' | 'SUGGESTION_EDITORS' | 'SUGGESTION_RENTALS' | 'YOUTUBE_DISCOVERY';
 
 export interface FeedItem {
   id: string;
@@ -41,16 +41,36 @@ const MOCK_POSTS = [
 
 const MOCK_REELS = [
   {
-    author: { name: 'Jordan Film', avatar: MOCK_AVATARS[2] },
-    thumbnail: 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=600&h=1000',
-    title: 'Color Grading Secrets',
+    id: 'r1',
+    author: { name: 'Cinematic Joy', avatar: MOCK_AVATARS[0] },
+    thumbnail: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?q=80&w=600',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', // Landscape (16:9)
+    title: 'Landscape Mode (16:9)',
     views: '1.2M'
   },
   {
-    author: { name: 'Creative Flow', avatar: MOCK_AVATARS[3] },
-    thumbnail: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?q=80&w=600&h=1000',
-    title: 'POV: Your New Camera Picked You',
+    id: 'r2',
+    author: { name: 'Luca Cuts', avatar: MOCK_AVATARS[1] },
+    thumbnail: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=600',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4', // Balanced
+    title: 'Square Focus (1:1)',
     views: '450K'
+  },
+  {
+    id: 'r3',
+    author: { name: 'Vertical Pro', avatar: MOCK_AVATARS[2] },
+    thumbnail: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&q=80&w=600&h=1000',
+    videoUrl: 'https://vjs.zencdn.net/v/oceans.mp4', // Tall test
+    title: 'Portrait View (4:5)',
+    views: '850K'
+  },
+  {
+    id: 'r4',
+    author: { name: 'Elite Vertical', avatar: MOCK_AVATARS[3] },
+    thumbnail: 'https://images.unsplash.com/photo-1540331547168-8b63109225b7?q=80&w=600&h=1000',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', // Max Vertical
+    title: 'Max Vertical (9:16)',
+    views: '2.1M'
   }
 ];
 
@@ -75,12 +95,15 @@ export const useDiscoveryStore = create<DiscoveryState>((set) => ({
     setIsRefreshing(true);
     
     const newFeed: FeedItem[] = [
+      { id: 'y1', type: 'YOUTUBE_DISCOVERY', data: {} },
       { id: 'p1', type: 'POST', data: MOCK_POSTS[0] },
       { id: 'r1_reel', type: 'REEL', data: MOCK_REELS[0] },
       { id: 's1', type: 'SUGGESTION_EDITORS', data: MOCK_EDITORS },
-      { id: 'p2', type: 'POST', data: MOCK_POSTS[1] },
-      { id: 's2', type: 'SUGGESTION_RENTALS', data: MOCK_RENTALS },
       { id: 'r2_reel', type: 'REEL', data: MOCK_REELS[1] },
+      { id: 'p2', type: 'POST', data: MOCK_POSTS[1] },
+      { id: 'r3_reel', type: 'REEL', data: MOCK_REELS[2] },
+      { id: 's2', type: 'SUGGESTION_RENTALS', data: MOCK_RENTALS },
+      { id: 'r4_reel', type: 'REEL', data: MOCK_REELS[3] },
     ];
 
     // Artificial delay for skeletal animation impact

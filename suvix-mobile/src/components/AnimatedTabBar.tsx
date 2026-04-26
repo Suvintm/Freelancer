@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store/useAuthStore';
 
 const { width } = Dimensions.get('window');
-// OLD FIXED HEIGHT REMOVED
 
 interface Tab {
   name: string;
@@ -21,11 +20,6 @@ interface AnimatedTabBarProps {
 
 /**
  * PRODUCTION-GRADE ANIMATED TAB BAR
- * - Synced in real-time with PagerView via scrollX Animated.Value
- * - No bubble background — clean, flat, modern design
- * - Active tab: filled icon + label (bold, black/white)
- * - Inactive tab: outline icon + label (visible gray)
- * - No top border, no green color
  */
 import * as Haptics from 'expo-haptics';
 
@@ -40,8 +34,6 @@ export const AnimatedTabBar = ({ activeIndex, tabs, onTabPress, hidden }: Animat
   const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
   const { isTabBarVisible } = useUIStore();
-  
-  if (hidden) return null;
   
   const TAB_BAR_HEIGHT = 60 + insets.bottom;
 
@@ -60,6 +52,8 @@ export const AnimatedTabBar = ({ activeIndex, tabs, onTabPress, hidden }: Animat
       }),
     };
   });
+
+  if (hidden) return null;
 
   const VISIBLE_TABS = (tabs || []).filter(t => !['client', 'editor'].includes(t.name));
 
@@ -175,7 +169,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     width: '100%',
-    // Removed fixed TAB_BAR_HEIGHT to use dynamic height from props/theme
     borderTopWidth: 0,
     elevation: 24,
     shadowColor: '#000',
@@ -186,7 +179,6 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    // Use dynamic padding-bottom instead of OS-specific guessing
   },
   tabItem: {
     flex: 1,

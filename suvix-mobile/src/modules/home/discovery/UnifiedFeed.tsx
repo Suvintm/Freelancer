@@ -13,6 +13,8 @@ import { useRefreshManager } from '../../../hooks/useRefreshManager';
 import { PremiumNativeAd } from '../../../components/ads/PremiumNativeAd';
 import { useAdPool } from '../../../hooks/useAdPool';
 import { useStories } from '../../../hooks/useStories';
+import { YouTubeDiscovery } from '../../../components/home/YouTubeDiscovery';
+import { SharedValue } from 'react-native-reanimated';
 
 import { useScrollToHideTabBar } from '../../../hooks/useScrollToHideTabBar';
 
@@ -21,9 +23,10 @@ interface UnifiedFeedProps {
   onScrollBeginDrag?: () => void;
   onScrollEndDrag?: () => void;
   onScroll?: (event: any) => void;
+  scrollY?: SharedValue<number>;
 }
 
-export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEndDrag, onScroll: customOnScroll }: UnifiedFeedProps) => {
+export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEndDrag, onScroll: customOnScroll, scrollY }: UnifiedFeedProps) => {
   const { theme } = useTheme();
   const { onScroll: hideTabBarOnScroll } = useScrollToHideTabBar();
   const { feed, isLoading, refreshFeed } = useDiscoveryStore();
@@ -79,7 +82,20 @@ export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEn
     return dataWithAds;
   }, [feed, isLoading, ads]);
 
+  const [viewableItems, setViewableItems] = React.useState<string[]>([]);
+
+  const onViewableItemsChanged = React.useRef(({ viewableItems }: any) => {
+    const ids = viewableItems.map((item: any) => item.item.id);
+    setViewableItems(ids);
+  }).current;
+
+  const viewabilityConfig = React.useRef({
+    itemVisiblePercentThreshold: 50, // Play if 50% visible
+  }).current;
+
   const renderItem = ({ item }: { item: any }) => {
+    const isVisible = viewableItems.includes(item.id);
+    
     if (item.type === 'SKELETON') {
       return (
         <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
@@ -97,13 +113,15 @@ export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEn
 
     switch (item.type) {
       case 'POST':
-        return <PostItem data={item.data} />;
+        return <PostItem data={item.data} isVisible={isVisible} />;
       case 'REEL':
-        return <ReelItem data={item.data} />;
+        return <ReelItem data={item.data} isVisible={isVisible} />;
       case 'SUGGESTION_EDITORS':
         return <SuggestionCarousel type="EDITORS" data={item.data} />;
       case 'SUGGESTION_RENTALS':
         return <SuggestionCarousel type="RENTALS" data={item.data} />;
+      case 'YOUTUBE_DISCOVERY':
+        return <YouTubeDiscovery />;
       case 'AD':
         return <PremiumNativeAd preloadedAd={item.adData} />;
       default:
@@ -124,7 +142,12 @@ export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEn
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
         onScroll={(e) => {
+          if (scrollY) {
+            scrollY.value = e.nativeEvent.contentOffset.y;
+          }
           hideTabBarOnScroll(e);
           if (customOnScroll) customOnScroll(e);
         }}

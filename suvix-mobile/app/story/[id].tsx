@@ -90,7 +90,7 @@ export default function StoryEngineScreen() {
   const pagerRef            = useRef<PagerView>(null);
 
   const effectiveStories = useMemo(() => {
-    // 🔗 MERGE: Use API stories, and always include SuviX Industry stories if ID matches or feed is low
+    // 🔗 MERGE: Use API stories, and always include SuviX Industry stories
     const apiList = rawStories || [];
     
     // Normalize Industry Stories to match Viewer Engine expectations
@@ -108,8 +108,18 @@ export default function StoryEngineScreen() {
       }))
     }));
 
-    // If ID matches a mock story, or if we have no API stories, we must show mock data
-    return apiList.length > 0 ? apiList : mockList;
+    // If we have API stories, we merge them with mock stories.
+    // We prioritize API stories (user stories first) then mock stories.
+    const merged = [...apiList];
+    
+    // Add mock stories that aren't already represented (by ID)
+    mockList.forEach(m => {
+      if (!merged.some(s => s._id === m._id)) {
+        merged.push(m);
+      }
+    });
+
+    return merged.length > 0 ? merged : mockList;
   }, [rawStories]);
 
   const initialIndex = useMemo(() => {
