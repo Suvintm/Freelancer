@@ -8,15 +8,12 @@ import {
   StatusBar,
   Alert,
   useColorScheme,
-  ActivityIndicator,
-  Image,
   Platform,
   LayoutAnimation,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { Colors } from '../src/constants/Colors';
-import SuvixButton from '../src/components/SuvixButton';
 import { useCategoryStore } from '../src/store/useCategoryStore';
 import { useAuthStore } from '../src/store/useAuthStore';
 import * as Haptics from 'expo-haptics';

@@ -63,7 +63,7 @@ export const SuccessOverlay: React.FC<SuccessOverlayProps> = ({
         useNativeDriver: true,
       }).start();
     }
-  }, [isVisible]);
+  }, [isVisible, fadeAnim, rotateAnim, scaleAnim]);
 
   if (!isVisible) return null;
 

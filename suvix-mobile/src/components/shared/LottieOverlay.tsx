@@ -73,7 +73,7 @@ export const LottieOverlay: React.FC<LottieOverlayProps> = ({
         useNativeDriver: true,
       }).start();
     }
-  }, [isVisible]);
+  }, [isVisible, dotAnims, fadeAnim]);
 
   if (!isVisible) return null;
 

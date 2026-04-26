@@ -38,6 +38,9 @@ export default function DefaultProfile() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isAvatarModalVisible, setIsAvatarModalVisible] = useState(false);
+
   const onRefresh = React.useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -58,8 +61,6 @@ export default function DefaultProfile() {
   const bioText = `Building with SuviX as ${roleText}.`;
   const headerOffset = insets.top + 50;
 
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [isAvatarModalVisible, setIsAvatarModalVisible] = useState(false);
 
   const handlePickMedia = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
