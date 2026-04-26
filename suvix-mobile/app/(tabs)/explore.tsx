@@ -56,7 +56,7 @@ const TAB_THEMES: Record<ExploreTabType, { bg: string, active: string }> = {
   'Singers': { bg: '#0A0A0A', active: '#f43f5e' },
 };
 
-export default function ExploreScreen() {
+export default function ExploreScreen({ scrollY: globalScrollY }: { scrollY?: SharedValue<number> }) {
   const { isDarkMode, theme } = useTheme();
   const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
@@ -74,33 +74,12 @@ export default function ExploreScreen() {
   const isHeaderDark = true; 
 
   // 🛰️ [REANIMATED] Scroll-Driven Header Animation
-  const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
+      if (globalScrollY) {
+        globalScrollY.value = event.contentOffset.y;
+      }
     },
-  });
-
-  const solidHeaderStyle = useAnimatedStyle(() => {
-    // Fade out solid background as we scroll down (0 to 100px)
-    const opacity = interpolate(
-      scrollY.value,
-      [0, 60],
-      [1, 0],
-      Extrapolate.CLAMP
-    );
-    return { opacity };
-  });
-
-  const translucentHeaderStyle = useAnimatedStyle(() => {
-    // Fade in translucent background as we scroll down
-    const opacity = interpolate(
-      scrollY.value,
-      [0, 60],
-      [0, 1],
-      Extrapolate.CLAMP
-    );
-    return { opacity: 1 }; // Always show at full opacity now
   });
 
   const getSearchPlaceholder = () => {
@@ -211,7 +190,6 @@ export default function ExploreScreen() {
     <ScreenContainer isScrollable={false} hasHeader={false}>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={[styles.main, { backgroundColor: theme.background }]}>
-        {/* 📜 SCROLLABLE CONTENT BODY (Starts at top to bleed behind header) */}
         <Animated.ScrollView 
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}

@@ -39,7 +39,7 @@ const PROFILE_REGISTRY: Record<string, React.ComponentType> = {
 import { useUIStore } from '../../src/store/useUIStore';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 
-export default function ProfileIndex() {
+export default function ProfileIndex({ scrollY }: { scrollY?: SharedValue<number> }) {
   const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
   const { user, isLoadingUser, isAuthenticated } = useAuthStore();
@@ -97,7 +97,7 @@ export default function ProfileIndex() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.primary }}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <ActiveProfileModule />
+      <ActiveProfileModule scrollY={scrollY} />
       
       {/* 🚀 FLOAT ACTION: Create Post */}
       <Animated.View style={[styles.fabWrapper, fabStyle]}>

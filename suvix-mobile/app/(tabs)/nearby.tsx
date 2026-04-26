@@ -3,17 +3,31 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../../src/context/ThemeContext';
 import { ScreenContainer } from '../../src/components/shared/ScreenContainer';
 
-export default function NearbyPlaceholder() {
+import Animated, { SharedValue } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+export default function NearbyPlaceholder({ scrollY }: { scrollY?: SharedValue<number> }) {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   
   return (
     <ScreenContainer isScrollable={false}>
-      <View style={styles.container}>
-        <Text style={[styles.text, { color: theme.text }]}>NEARBY</Text>
-        <Text style={[styles.subtext, { color: theme.textSecondary }]}>
-          Finding editors and creators near you in real-time.
-        </Text>
-      </View>
+      <Animated.ScrollView 
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 80 }]}
+        onScroll={(e) => {
+          if (scrollY) {
+            scrollY.value = e.nativeEvent.contentOffset.y;
+          }
+        }}
+        scrollEventThrottle={16}
+      >
+        <View style={styles.container}>
+          <Text style={[styles.text, { color: theme.text }]}>NEARBY</Text>
+          <Text style={[styles.subtext, { color: theme.textSecondary }]}>
+            Finding editors and creators near you in real-time.
+          </Text>
+        </View>
+      </Animated.ScrollView>
     </ScreenContainer>
   );
 }
@@ -23,6 +37,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 400,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   text: {
     fontSize: 20,

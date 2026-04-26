@@ -36,6 +36,7 @@ import { useRefreshManager } from '../../../hooks/useRefreshManager';
 import { SmartText } from '../../shared/content/SmartText';
 import { YouTubeVideoCard } from '../components/YouTubeVideoCard';
 import { useScrollToHideTabBar } from '../../../hooks/useScrollToHideTabBar';
+import Animated, { SharedValue } from 'react-native-reanimated';
 
 // 🏆 Achievement Assets
 const SILVER_BTN = require('../../../../assets/images/playbutton/silverbtn.png');
@@ -47,7 +48,7 @@ const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 
 const { width } = Dimensions.get('window');
 
-export default function YouTubeCreatorProfile() {
+export default function YouTubeCreatorProfile({ scrollY }: { scrollY?: SharedValue<number> }) {
   const { theme } = useTheme();
   const { user, updateUser, fetchUser, setYoutubeVideos, setIsRefreshing, isLoadingUser, isRefreshing } = useAuthStore();
   const { socket } = useSocketStore();
@@ -253,10 +254,15 @@ export default function YouTubeCreatorProfile() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.primary }]}>
-      <ScrollView 
+      <Animated.ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={[styles.content, { paddingTop: headerOffset, flexGrow: 1 }]}
-        onScroll={onScroll}
+        onScroll={(e) => {
+          if (scrollY) {
+            scrollY.value = e.nativeEvent.contentOffset.y;
+          }
+          onScroll(e);
+        }}
         scrollEventThrottle={16}
         refreshControl={
           <RefreshControl 
@@ -932,7 +938,7 @@ export default function YouTubeCreatorProfile() {
         </View>
           </>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Bio Update Modal (Optimized) */}
       <BioEditModal 

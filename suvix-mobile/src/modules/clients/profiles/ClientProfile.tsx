@@ -1,4 +1,5 @@
 import React from 'react';
+import Animated, { SharedValue } from 'react-native-reanimated';
 import {
   View,
   Text,
@@ -36,7 +37,7 @@ const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
  * PERFECTED PREMIUM CLIENT PROFILE
  * Indistinguishable from the YouTube Creator layout.
  */
-export default function ClientProfile() {
+export default function ClientProfile({ scrollY }: { scrollY?: SharedValue<number> }) {
   const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
   const { user, updateUser, fetchUser, setIsRefreshing, isLoadingUser, isRefreshing } = useAuthStore();
@@ -139,9 +140,15 @@ export default function ClientProfile() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.primary }]}>
-      <ScrollView 
+      <Animated.ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={[styles.content, { paddingTop: headerOffset, flexGrow: 1 }]}
+        onScroll={(e) => {
+          if (scrollY) {
+            scrollY.value = e.nativeEvent.contentOffset.y;
+          }
+        }}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl 
             refreshing={isRefreshing} 
@@ -343,7 +350,7 @@ export default function ClientProfile() {
         <View style={{ height: 100 }} />
           </>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Bio Modal */}
       <Modal visible={isBioModalVisible} transparent animationType="fade">

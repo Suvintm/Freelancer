@@ -107,12 +107,12 @@ export default function TabsLayout() {
   const renderScreen = (name: string, index: number) => {
     switch (name) {
       case 'index':   return <HomeScreen scrollY={globalScrollY} />;
-      case 'explore': return <ExploreScreen />;
-      case 'nearby':  return <NearbyScreen />;
+      case 'explore': return <ExploreScreen scrollY={globalScrollY} />;
+      case 'nearby':  return <NearbyScreen scrollY={globalScrollY} />;
       case 'reels':   return <ReelsScreen />;
-      case 'jobs':    return <JobsScreen />;
-      case 'chats':   return <ChatsScreen />;
-      case 'profile': return <ProfileScreen />;
+      case 'jobs':    return <JobsScreen scrollY={globalScrollY} />;
+      case 'chats':   return <ChatsScreen scrollY={globalScrollY} />;
+      case 'profile': return <ProfileScreen scrollY={globalScrollY} />;
       default:        return <HomeScreen scrollY={globalScrollY} />;
     }
   };

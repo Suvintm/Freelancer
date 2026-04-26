@@ -1,4 +1,5 @@
 import React from 'react';
+import Animated, { SharedValue } from 'react-native-reanimated';
 import { useAuthStore } from '../../../store/useAuthStore';
 import {
   View,
@@ -32,7 +33,7 @@ import { api } from '../../../api/client';
 
 const DEFAULT_AVATAR = require('../../../../assets/defualtprofile.png');
 
-export default function DefaultProfile() {
+export default function DefaultProfile({ scrollY }: { scrollY?: SharedValue<number> }) {
   const { theme } = useTheme();
   const { user, isRefreshing, setIsRefreshing, isLoadingUser, fetchUser } = useAuthStore();
   const insets = useSafeAreaInsets();
@@ -117,9 +118,15 @@ export default function DefaultProfile() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.primary }]}>
-      <ScrollView 
+      <Animated.ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={[styles.content, { paddingTop: headerOffset }]}
+        onScroll={(e) => {
+          if (scrollY) {
+            scrollY.value = e.nativeEvent.contentOffset.y;
+          }
+        }}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl 
             refreshing={isRefreshing} 
@@ -257,7 +264,7 @@ export default function DefaultProfile() {
         />
           </>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 }
