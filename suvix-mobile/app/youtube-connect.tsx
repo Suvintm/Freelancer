@@ -10,6 +10,7 @@ import {
   useColorScheme,
   Platform,
   LayoutAnimation,
+  Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
