@@ -431,15 +431,34 @@ export default function YoutubeConnectScreen() {
                         { 
                           backgroundColor: isDark ? '#111' : '#fff', 
                           borderColor: isSelected ? ytRed : theme.border 
-                        }
+                        },
+                        channel.isClaimed && { opacity: 0.6, borderColor: theme.border }
                       ]}
                     >
+                      {channel.isClaimed && (
+                        <View style={[styles.lockedOverlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)' }]}>
+                          <LinearGradient
+                            colors={isDark ? ['#332900', '#1F1A00'] : ['#FFF9E5', '#FFF0B3']}
+                            style={styles.lockedBanner}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                          >
+                            <Feather name="shield" size={12} color={isDark ? '#FFDA44' : '#CC9900'} />
+                            <Text style={[styles.lockedBannerText, { color: isDark ? '#FFDA44' : '#CC9900' }]}>
+                              LINKED TO ANOTHER SUVIX IDENTITY
+                            </Text>
+                          </LinearGradient>
+                        </View>
+                      )}
+
                       <TouchableOpacity 
                         style={styles.cardHeader} 
                         onPress={() => toggleChannel(channel.channelId)}
-                        activeOpacity={0.7}
+                        activeOpacity={channel.isClaimed ? 1 : 0.7}
                       >
-                        <Image source={{ uri: channel.thumbnailUrl || 'https://via.placeholder.com/100' }} style={styles.channelAvatar} />
+                        <View style={channel.isClaimed && styles.grayscaleAvatar}>
+                          <Image source={{ uri: channel.thumbnailUrl || 'https://via.placeholder.com/100' }} style={styles.channelAvatar} />
+                        </View>
                         <View style={styles.channelMeta}>
                           <Text style={[styles.channelName, { color: theme.text }]} numberOfLines={1}>
                             {channel.channelName}
@@ -462,9 +481,13 @@ export default function YoutubeConnectScreen() {
                         </View>
                         <View style={[
                           styles.selectionCircle, 
-                          { borderColor: isSelected ? ytRed : theme.border, backgroundColor: isSelected ? ytRed : 'transparent' }
+                          { borderColor: channel.isClaimed ? theme.border : (isSelected ? ytRed : theme.border), backgroundColor: isSelected ? ytRed : 'transparent' }
                         ]}>
-                          {isSelected && <Ionicons name="checkmark" size={16} color="#fff" />}
+                          {channel.isClaimed ? (
+                            <Feather name="lock" size={14} color={theme.textSecondary} />
+                          ) : (
+                            isSelected && <Ionicons name="checkmark" size={16} color="#fff" />
+                          )}
                         </View>
                       </TouchableOpacity>
 
@@ -760,6 +783,29 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,
+    position: 'relative',
+  },
+  lockedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 5,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  lockedBanner: {
+    width: '100%',
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  lockedBannerText: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  grayscaleAvatar: {
+    opacity: 0.5,
   },
   cardHeader: {
     flexDirection: 'row',
