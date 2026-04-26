@@ -24,6 +24,8 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Constants from 'expo-constants';
+import { SuccessOverlay } from '../src/components/shared/SuccessOverlay';
+import { LottieOverlay } from '../src/components/shared/LottieOverlay';
 
 type YouTubeChannel = {
   channelId: string;
@@ -71,6 +73,8 @@ export default function YoutubeConnectScreen() {
 
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [isLinking, setIsLinking] = useState(false);
   const [pickerExpandedFor, setPickerExpandedFor] = useState<string | null>(null);
 
   // 🛡️ [PERSISTENCE] Connect to Global Discovery Store
@@ -142,7 +146,11 @@ export default function YoutubeConnectScreen() {
 
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       addDiscoveredChannels(fetchedChannels);
-      setConnected(true);
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        setConnected(true);
+      }, 2000);
       setPickerExpandedFor(null);
     } catch (error: any) {
       Alert.alert('YouTube Connect Failed', error.message || 'Could not fetch your channels from Google.');
@@ -231,7 +239,12 @@ export default function YoutubeConnectScreen() {
       youtubeChannels: selectedChannelData,
     });
 
-    router.push('/signup');
+    handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
+    setIsLinking(true);
+    setTimeout(() => {
+      setIsLinking(false);
+      router.push('/signup');
+    }, 1800);
   };
 
   const handleConnectYouTube = async () => {
@@ -267,6 +280,26 @@ export default function YoutubeConnectScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.primary }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
+      
+      <LottieOverlay 
+        isVisible={connecting} 
+        theme="youtube" 
+        message="Discovering your YouTube Identities..." 
+      />
+
+      <SuccessOverlay 
+        isVisible={showSuccess} 
+        type="youtube" 
+        title="Identities Found"
+        message="Your identities have been successfully discovered and synced." 
+      />
+
+      <SuccessOverlay 
+        isVisible={isLinking} 
+        type="success" 
+        title="YouTube Linked!"
+        message="Your YouTube channels are now successfully linked to your SuviX profile." 
+      />
 
       {/* Modern Header */}
       <View style={[styles.header, { paddingTop: insets.top + 16, paddingBottom: 16, backgroundColor: theme.primary, borderBottomWidth: 1, borderBottomColor: theme.border }]}>
@@ -345,15 +378,6 @@ export default function YoutubeConnectScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-
-        {connecting && (
-          <View style={styles.stateWrap}>
-            <ActivityIndicator size="large" color={ytRed} />
-            <Text style={[styles.stateText, { color: theme.textSecondary, marginTop: 12 }]}>
-              Authenticating with Google servers...
-            </Text>
-          </View>
-        )}
 
         {/* STEP 2: Configure Channels */}
         {connected && !connecting && (

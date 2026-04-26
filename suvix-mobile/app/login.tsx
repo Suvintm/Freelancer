@@ -27,6 +27,8 @@ import { isValidEmail } from '../src/utils/validation';
 import { api } from '../src/api/client';
 import * as Haptics from 'expo-haptics';
 import { ProcessingOverlay } from '../src/components/shared/ProcessingOverlay';
+import { LottieOverlay } from '../src/components/shared/LottieOverlay';
+import { AnimatedBackground } from '../src/components/auth/AnimatedBackground';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -46,32 +48,15 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword]         = useState(false);
   const [loading, setLoading]         = useState(false);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const router = useRouter();
   const { signIn: googleSignIn, isLoading: isGoogleLoading } = useGoogleAuth();
   const { user, isAuthenticated, setAuth } = useAuthStore();
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // ✅ THE FIX: Track the user ID that was active when this screen MOUNTED.
-  //
-  // THE BUG that was here:
-  //   if (isAuthenticated && user && isAddingAccount) → redirect immediately
-  //
-  // This fired on mount because all 3 were already true (existing user is
-  // authenticated, isAddingAccount was just set to true). It would immediately
-  // call setIsAddingAccount(false) and redirect back home before the user could
-  // type anything.
-  //
-  // THE FIX:
-  //   Store the user ID at mount time. Only redirect when a DIFFERENT user
-  //   successfully logs in (user.id changes from the initial value).
-  //   This means we stay on the login page until new credentials are entered.
-  // ─────────────────────────────────────────────────────────────────────────────
   const initialUserIdRef = useRef<string | undefined>(user?.id);
 
   React.useEffect(() => {
-    // Only act if a DIFFERENT user has successfully authenticated.
-    // "Different" means the user.id changed from the one we captured at mount time.
     const isNewAccountAdded =
       isAuthenticated &&
       user &&
@@ -81,8 +66,11 @@ export default function LoginScreen() {
       console.log(
         `✨ [AUTH] New account authenticated (@${user?.username}). Cleaning up and redirecting...`,
       );
+      setIsTransitioning(true);
       useAuthStore.getState().setIsAddingAccount(false);
-      setTimeout(() => router.replace('/(tabs)'), 400);
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 600);
     }
   }, [user?.id, isAuthenticated, router]);
 
@@ -115,13 +103,8 @@ export default function LoginScreen() {
       if (response.data.success) {
         handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
         const { user: newUser, token, refreshToken, accessTokenExpiresAt } = response.data;
-
-        // setAuth will update user.id in the store, which the useEffect above will
-        // detect as a "new account" and trigger the redirect automatically.
         await setAuth(newUser, token, refreshToken, { accessTokenExpiresAt });
 
-        // In reauth mode specifically (token expired, re-entering password),
-        // we navigate back to wherever the user came from.
         if (isReauthMode) {
           setShowLoadingOverlay(false);
           setLoading(false);
@@ -134,14 +117,10 @@ export default function LoginScreen() {
           return;
         }
 
-        // For normal login (no add-account mode), the _layout.tsx guard handles
-        // navigation automatically once user is set in the store.
-       setShowLoadingOverlay(false);
-setLoading(false);
-// ✅ FIX: Navigate explicitly — don't rely on useEffect because
-// key={user?.id} in _layout.tsx remounts the Stack before the effect fires.
-useAuthStore.getState().setIsAddingAccount(false);
-router.replace('/(tabs)');
+        setShowLoadingOverlay(false);
+        setLoading(false);
+        useAuthStore.getState().setIsAddingAccount(false);
+        router.replace('/(tabs)');
       } else {
         setShowLoadingOverlay(false);
         setLoading(false);
@@ -152,7 +131,7 @@ router.replace('/(tabs)');
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
 
       if (error.response?.status === 403 && error.response?.data?.isBanned) {
-        return; // Ban redirect is handled by Axios interceptor
+        return; 
       }
 
       Alert.alert(
@@ -181,141 +160,144 @@ router.replace('/(tabs)');
     : '';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.primary }]}>
-      <ProcessingOverlay isVisible={showLoadingOverlay} message={overlayMessage} />
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+    <View style={styles.container}>
+      {!isGoogleLoading && !showLoadingOverlay && <AnimatedBackground />}
+      <SafeAreaView style={{ flex: 1 }}>
+        <ProcessingOverlay isVisible={showLoadingOverlay} message={overlayMessage} />
+        <LottieOverlay isVisible={isGoogleLoading || isTransitioning} message="Connecting Google..." />
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-      {(isAddMode || isReauthMode) && (
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => {
-            handleImpact();
-            useAuthStore.getState().setIsAddingAccount(false);
-            router.canGoBack() ? router.back() : router.replace('/(tabs)');
-          }}
-        >
-          <Ionicons name="arrow-back" size={22} color={theme.text} />
-        </TouchableOpacity>
-      )}
-
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.keyboardView}
-        >
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            scrollEnabled={SCREEN_HEIGHT < 700}
-            showsVerticalScrollIndicator={false}
+        {(isAddMode || isReauthMode) && (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => {
+              handleImpact();
+              useAuthStore.getState().setIsAddingAccount(false);
+              router.canGoBack() ? router.back() : router.replace('/(tabs)');
+            }}
           >
-            <View style={styles.header}>
-              <Image
-                source={require('../assets/whitebglogo.png')}
-                style={[styles.logo, { tintColor: isDark ? undefined : theme.text }]}
-                resizeMode="contain"
-              />
-              <Text style={[styles.title, { color: theme.text }]}>{titleText}</Text>
-              {subtitleText ? (
-                <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                  {subtitleText}
-                </Text>
-              ) : null}
-            </View>
+            <Ionicons name="arrow-back" size={22} color={theme.text} />
+          </TouchableOpacity>
+        )}
 
-            <View style={styles.form}>
-              <View style={styles.inputGroup}>
-                <SuvixInput
-                  small
-                  label="Email Address"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCorrect={false}
-                  spellCheck={false}
-                  textContentType="none"
-                  autoCapitalize="none"
-                  icon={<Feather name="mail" size={16} />}
-                />
-                <SuvixInput
-                  small
-                  label="Password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  icon={<Feather name="lock" size={16} />}
-                  rightIcon={
-                    <TouchableOpacity
-                      onPress={() => { handleImpact(); setShowPassword(v => !v); }}
-                    >
-                      <Feather
-                        name={showPassword ? 'eye-off' : 'eye'}
-                        color={theme.textSecondary}
-                        size={16}
-                      />
-                    </TouchableOpacity>
-                  }
-                />
-              </View>
-
-              <TouchableOpacity
-                style={styles.forgotPassword}
-                onPress={() => { handleImpact(); router.push('/forgot-password'); }}
-              >
-                <Text style={[styles.forgotText, { color: theme.text }]}>Forgot Password?</Text>
-              </TouchableOpacity>
-
-              <SuvixButton
-                title={loading ? 'Signing in...' : 'Sign In'}
-                onPress={handleLogin}
-                loading={loading}
-                variant="primary"
-              />
-
-              <View style={styles.dividerContainer}>
-                <View style={[styles.line, { backgroundColor: theme.border }]} />
-                <Text style={[styles.dividerText, { color: theme.textSecondary }]}>OR</Text>
-                <View style={[styles.line, { backgroundColor: theme.border }]} />
-              </View>
-
-              <TouchableOpacity
-                style={[
-                  styles.googleButton,
-                  { borderColor: theme.border, backgroundColor: theme.secondary },
-                  (isGoogleLoading || loading) && styles.btnDisabled,
-                ]}
-                onPress={() => { handleImpact(); googleSignIn(); }}
-                disabled={isGoogleLoading || loading}
-              >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.keyboardView}
+          >
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              scrollEnabled={SCREEN_HEIGHT < 700}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.header}>
                 <Image
-                  source={require('../assets/google-icon.png')}
-                  style={styles.googleIconAsset}
+                  source={require('../assets/whitebglogo.png')}
+                  style={[styles.logo, { tintColor: isDark ? undefined : theme.text }]}
                   resizeMode="contain"
                 />
-                <Text style={[styles.googleButtonText, { color: theme.text }]}>
-                  Continue with Google
-                </Text>
-              </TouchableOpacity>
-            </View>
+                <Text style={[styles.title, { color: theme.text }]}>{titleText}</Text>
+                {subtitleText ? (
+                  <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+                    {subtitleText}
+                  </Text>
+                ) : null}
+              </View>
 
-            {/* Only show sign-up link in normal login mode */}
-            {!isAddMode && !isReauthMode && (
-              <View style={styles.footer}>
-                <Text style={[styles.footerText, { color: theme.textSecondary }]}>
-                  New to SuviX?{' '}
-                </Text>
+              <View style={styles.form}>
+                <View style={styles.inputGroup}>
+                  <SuvixInput
+                    small
+                    label="Email Address"
+                    placeholder="name@example.com"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCorrect={false}
+                    spellCheck={false}
+                    textContentType="none"
+                    autoCapitalize="none"
+                    icon={<Feather name="mail" size={16} />}
+                  />
+                  <SuvixInput
+                    small
+                    label="Password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    icon={<Feather name="lock" size={16} />}
+                    rightIcon={
+                      <TouchableOpacity
+                        onPress={() => { handleImpact(); setShowPassword(v => !v); }}
+                      >
+                        <Feather
+                          name={showPassword ? 'eye-off' : 'eye'}
+                          color={theme.textSecondary}
+                          size={16}
+                        />
+                      </TouchableOpacity>
+                    }
+                  />
+                </View>
+
                 <TouchableOpacity
-                  onPress={() => { handleImpact(); router.replace('/role-selection'); }}
+                  style={styles.forgotPassword}
+                  onPress={() => { handleImpact(); router.push('/forgot-password'); }}
                 >
-                  <Text style={[styles.footerLink, { color: theme.text }]}>Join Now</Text>
+                  <Text style={[styles.forgotText, { color: theme.text }]}>Forgot Password?</Text>
+                </TouchableOpacity>
+
+                <SuvixButton
+                  title={loading ? 'Signing in...' : 'Sign In'}
+                  onPress={handleLogin}
+                  loading={loading}
+                  variant="primary"
+                />
+
+                <View style={styles.dividerContainer}>
+                  <View style={[styles.line, { backgroundColor: theme.border }]} />
+                  <Text style={[styles.dividerText, { color: theme.textSecondary }]}>OR</Text>
+                  <View style={[styles.line, { backgroundColor: theme.border }]} />
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.googleButton,
+                    { borderColor: theme.border, backgroundColor: theme.secondary },
+                    (isGoogleLoading || loading) && styles.btnDisabled,
+                  ]}
+                  onPress={() => { handleImpact(); googleSignIn(); }}
+                  disabled={isGoogleLoading || loading}
+                >
+                  <Image
+                    source={require('../assets/google-icon.png')}
+                    style={styles.googleIconAsset}
+                    resizeMode="contain"
+                  />
+                  <Text style={[styles.googleButtonText, { color: theme.text }]}>
+                    Continue with Google
+                  </Text>
                 </TouchableOpacity>
               </View>
-            )}
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
-    </SafeAreaView>
+
+              {!isAddMode && !isReauthMode && (
+                <View style={styles.footer}>
+                  <Text style={[styles.footerText, { color: theme.textSecondary }]}>
+                    New to SuviX?{' '}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => { handleImpact(); router.replace('/role-selection'); }}
+                  >
+                    <Text style={[styles.footerLink, { color: theme.text }]}>Join Now</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+      </SafeAreaView>
+    </View>
   );
 }
 

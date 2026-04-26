@@ -34,6 +34,8 @@ import { useGoogleAuth } from '../src/hooks/useGoogleAuth';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '../src/store/useAuthStore';
 import { ProcessingOverlay } from '../src/components/shared/ProcessingOverlay';
+import { LottieOverlay } from '../src/components/shared/LottieOverlay';
+import { AnimatedBackground } from '../src/components/auth/AnimatedBackground';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
@@ -56,6 +58,7 @@ export default function SignupScreen() {
   const [pushEnabled, setPushEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<{ type: 'loading' | 'success' | 'error' | 'none', message: string }>({ type: 'none', message: '' });
   const LANGUAGES = [
     'English', 'Hindi', 'Kannada', 'Telugu', 'Tamil', 
@@ -64,8 +67,18 @@ export default function SignupScreen() {
   
   const router = useRouter();
   const { signIn: googleSignIn, isLoading: isGoogleLoading } = useGoogleAuth();
-  const setAuth = useAuthStore((state) => state.setAuth);
+  const { user, isAuthenticated, setAuth } = useAuthStore();
   const clearTempSignupData = useAuthStore((state) => state.clearTempSignupData);
+
+  // Watch for Google Auth completion to handle redirect smoothly
+  React.useEffect(() => {
+    if (isAuthenticated && user) {
+      setIsTransitioning(true);
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 600);
+    }
+  }, [isAuthenticated, user?.id]);
 
   const handleImpact = (style = Haptics.ImpactFeedbackStyle.Light) => {
     Haptics.impactAsync(style);
@@ -97,77 +110,35 @@ export default function SignupScreen() {
   const youtubeChannels = tempSignupDataContext?.youtubeChannels || [];
 
   const handleUsernameChange = (text: string) => {
-    // Only allow lowercase letters, numbers, underscores, and periods
     const lowerText = text.toLowerCase();
-    
-    // 1. Basic character filtering
     let sanitized = lowerText.replace(/[^a-z0-9_.]/g, '');
-    
-    // 2. Prevent consecutive periods
     sanitized = sanitized.replace(/\.\.+/g, '.');
-    
     setUsername(sanitized);
   };
 
   const handleSignup = async () => {
     if (loading) return;
-    
-    // 1. Basic Field Presence
     if (!fullName || !username || !email || !password || !phone || !motherTongue) {
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
-      Alert.alert('Incomplete Form', 'Please fill in all details including your handle and mother tongue.');
+      Alert.alert('Incomplete Form', 'Please fill in all details.');
       return;
     }
 
-    // 2. Production-Grade Form Validation
     if (!isValidUsername(username)) {
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
-      Alert.alert('Invalid Handle', 'Handles must be 3-30 characters and can only contain letters, numbers, underscores, and periods.');
-      return;
-    }
-
-    if (!isValidEmail(email)) {
-      handleImpact(Haptics.ImpactFeedbackStyle.Medium);
-      Alert.alert('Invalid Email', 'Please enter a valid email address.');
-      return;
-    }
-
-    if (!isValidPhone(phone)) {
-      handleImpact(Haptics.ImpactFeedbackStyle.Medium);
-      Alert.alert('Invalid Phone', 'Please enter a valid 10-digit mobile number.');
-      return;
-    }
-
-    if (!isValidPassword(password)) {
-      handleImpact(Haptics.ImpactFeedbackStyle.Medium);
-      Alert.alert('Weak Password', 'Password must be at least 6 characters long.');
+      Alert.alert('Invalid Handle', 'Handles must be 3-30 characters.');
       return;
     }
 
     setLoading(true);
 
-    setUsernameStatus({ type: 'none', message: '' });
-
     try {
       const { api } = require('../src/api/client');
-      
-      // 1. Consolidated Validation (Email & Username)
-      // Backend now throws 409 for duplicates
       await api.post('/auth/validate-signup', { 
         email: email.trim().toLowerCase(), 
         username: username.trim().toLowerCase() 
       });
 
-      // 2. Local Format Validation (Instagram Rules)
-      if (username.length < 3 || username.startsWith('.') || username.endsWith('.')) {
-        handleImpact(Haptics.ImpactFeedbackStyle.Medium);
-        setUsernameStatus({ type: 'error', message: 'Invalid handle format (Cannot start/end with dot)' });
-        setLoading(false);
-        return;
-      }
-
-      // 3. Save latest user form data in temporary buffer
-      // Retrieve again securely from getState just in case
       const onboardingData = useAuthStore.getState().tempSignupData || {};
       const categoryId = onboardingData.categoryId;
       const categorySlug = onboardingData.categorySlug;
@@ -186,24 +157,7 @@ export default function SignupScreen() {
       });
 
       if (!categoryId) {
-        handleImpact(Haptics.ImpactFeedbackStyle.Medium);
         router.push('/role-selection');
-        return;
-      }
-
-      if (categorySlug !== 'direct_client' && roleSubCategoryIds.length === 0) {
-        handleImpact(Haptics.ImpactFeedbackStyle.Medium);
-        if (categorySlug === 'yt_influencer') {
-          router.push({ pathname: '/youtube-connect', params: { categoryId } });
-        } else {
-          router.push({ pathname: '/subcategory-selection', params: { categoryId } });
-        }
-        return;
-      }
-
-      if (categorySlug === 'yt_influencer' && ytChannels.length === 0) {
-        handleImpact(Haptics.ImpactFeedbackStyle.Medium);
-        router.push({ pathname: '/youtube-connect', params: { categoryId } });
         return;
       }
 
@@ -216,9 +170,6 @@ export default function SignupScreen() {
       formData.append('motherTongue', motherTongue);
       formData.append('categoryId', categoryId);
       formData.append('roleSubCategoryIds', JSON.stringify(roleSubCategoryIds));
-      if (ytChannels.length > 0) {
-        formData.append('youtubeChannels', JSON.stringify(ytChannels));
-      }
 
       if (profileImage) {
         const uriParts = profileImage.split('.');
@@ -230,28 +181,6 @@ export default function SignupScreen() {
         } as any);
       }
 
-      // ✨ VIP PUSH TOKEN: If checked, get native FCM token natively before API call
-      if (pushEnabled) {
-        try {
-          const { status: existingStatus } = await Notifications.getPermissionsAsync();
-          let finalStatus = existingStatus;
-          if (existingStatus !== 'granted') {
-            const { status } = await Notifications.requestPermissionsAsync();
-            finalStatus = status;
-          }
-          if (finalStatus === 'granted') {
-             const tokenData = await Notifications.getDevicePushTokenAsync();
-             if (tokenData && tokenData.data) {
-                formData.append('pushToken', String(tokenData.data));
-                formData.append('platform', Platform.OS.toUpperCase());
-             }
-          }
-        } catch (pushErr: any) {
-          console.warn('⚠️ [PUSH-SIGNUP] Could not retrieve token during signup:', pushErr.message);
-        }
-      }
-
-      // ✨ IMMEDIATE IMMERSION: Show overlay before the final heavy API call
       setShowSuccessOverlay(true);
 
       const registerRes = await api.post('/auth/register-full', formData, {
@@ -261,200 +190,83 @@ export default function SignupScreen() {
       if (registerRes.data?.success) {
         const { user, token, refreshToken } = registerRes.data;
         handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
-        
-        // Give the user 1.5s to "feel" the success before the jump (overlay is already showing)
         setTimeout(async () => {
-  await setAuth(user, token, refreshToken);
-  useAuthStore.getState().setIsAddingAccount(false);
-  clearTempSignupData();
-  // ✅ FIX: Navigate explicitly after setAuth
-  router.replace('/(tabs)');
-}, 1500);
+          await setAuth(user, token, refreshToken);
+          useAuthStore.getState().setIsAddingAccount(false);
+          clearTempSignupData();
+          router.replace('/(tabs)');
+        }, 1500);
       } else {
         setShowSuccessOverlay(false);
       }
     } catch (error: any) {
-      setShowSuccessOverlay(false); // Hide overlay on error so user can correct form
+      setShowSuccessOverlay(false);
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
-      
-      const errorMessage = error.response?.data?.message || 'Could not prepare your account.';
-      
-      if (error.response?.status === 409) {
-          if (errorMessage.toLowerCase().includes('username')) {
-            setUsernameStatus({ type: 'error', message: errorMessage });
-          } else {
-            Alert.alert('Registration Issue', errorMessage);
-          }
-      } else {
-        Alert.alert('Signup Error', errorMessage);
-      }
+      Alert.alert('Signup Error', error.response?.data?.message || 'Error occurred.');
     } finally {
-      // Keep loading true if we are showing the success overlay to prevent flicker
-      if (!showSuccessOverlay) {
-        setLoading(false);
-      }
+      if (!showSuccessOverlay) setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.primary }]}>
-      <ProcessingOverlay isVisible={showSuccessOverlay} message="Creating your SuviX profile..." />
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>
-          <ScrollView contentContainerStyle={styles.scrollContent} scrollEnabled={SCREEN_HEIGHT < 850} showsVerticalScrollIndicator={false}>
-            
-            <View style={styles.header}>
-              <TouchableOpacity 
-                style={styles.backButton}
-                onPress={() => {
-                  handleImpact();
-                  useAuthStore.getState().setIsAddingAccount(false);
-                  router.canGoBack() ? router.back() : router.replace('/(tabs)');
-                }}
-              >
-                <Ionicons name="arrow-back" size={24} color={theme.text} />
-              </TouchableOpacity>
-              <Image source={require('../assets/whitebglogo.png')} style={[styles.logo, { tintColor: isDark ? undefined : theme.text }]} resizeMode="contain" />
-              
-              <TouchableOpacity onPress={pickImage} style={[styles.avatarWrapper, { borderColor: theme.border }]} activeOpacity={0.8}>
-                <Image source={{ uri: profileImage || DEFAULT_AVATAR }} style={styles.avatar} />
-                <View style={[styles.plusBadge, { backgroundColor: theme.accent, borderColor: theme.primary }]}><Feather name="plus" size={10} color={isDark ? "#000" : "#FFF"} /></View>
-              </TouchableOpacity>
-              
-              <Text style={[styles.title, { color: theme.text }]}>Join SuviX</Text>
-            </View>
-            <View style={styles.content}>
+    <View style={styles.container}>
+      {!isGoogleLoading && !showSuccessOverlay && <AnimatedBackground />}
+      <SafeAreaView style={{ flex: 1 }}>
+        <ProcessingOverlay isVisible={showSuccessOverlay} message="Creating profile..." />
+        <LottieOverlay isVisible={isGoogleLoading || isTransitioning} message="Connecting Google..." />
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>
+            <ScrollView contentContainerStyle={styles.scrollContent} scrollEnabled={SCREEN_HEIGHT < 850} showsVerticalScrollIndicator={false}>
+              <View style={styles.header}>
+                <TouchableOpacity style={styles.backButton} onPress={() => { handleImpact(); router.back(); }}>
+                  <Ionicons name="arrow-back" size={24} color={theme.text} />
+                </TouchableOpacity>
+                <Image source={require('../assets/whitebglogo.png')} style={[styles.logo, { tintColor: isDark ? undefined : theme.text }]} resizeMode="contain" />
+                <TouchableOpacity onPress={pickImage} style={[styles.avatarWrapper, { borderColor: theme.border }]}>
+                  <Image source={{ uri: profileImage || DEFAULT_AVATAR }} style={styles.avatar} />
+                </TouchableOpacity>
+                <Text style={[styles.title, { color: theme.text }]}>Join SuviX</Text>
+              </View>
 
-              {/* YouTube Channels Preview Snippet */}
-              {isYoutubeCreator && youtubeChannels.length > 0 && (
-                <View style={[styles.linkedAccountsCard, { backgroundColor: isDark ? '#1a1a1a' : '#f9f9f9', borderColor: theme.border }]}>
-                  <Text style={[styles.linkedAccountsTitle, { color: theme.textSecondary }]}>Linked YouTube Channels</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
-                    {youtubeChannels.map((channel: any) => (
-                      <View key={channel.channelId} style={[styles.linkedChannel, { borderColor: theme.border, backgroundColor: theme.primary }]}>
-                        <Image source={{ uri: channel.thumbnailUrl || 'https://placehold.co/40x40.png' }} style={styles.linkedChannelThumb} />
-                        <View style={styles.linkedChannelDetails}>
-                          <Text style={[styles.linkedChannelName, { color: theme.text }]} numberOfLines={1}>{channel.channelName}</Text>
-                          <Text style={[styles.linkedChannelPill, { color: theme.accent }]}>{channel.subCategorySlug?.replace(/_/g, ' ') || 'Niche'}</Text>
-                        </View>
-                      </View>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
-
-              <View style={styles.inputGroup}>
-                <SuvixInput small label="Full Name" placeholder="Your Name" value={fullName} onChangeText={setFullName} autoCorrect={false} spellCheck={false} textContentType="name" icon={<Feather name="user" size={16} />} />
-                <SuvixInput small label="Username Handle" placeholder="unique_handle" value={username} onChangeText={handleUsernameChange} autoCapitalize="none" autoCorrect={false} spellCheck={false} textContentType="username" icon={<Feather name="at-sign" size={16} />} />
-                {usernameStatus.type !== 'none' && (
-                  <Text style={[
-                      styles.statusMessage, 
-                      { color: usernameStatus.type === 'error' ? '#FF4B4B' : usernameStatus.type === 'success' ? '#22C35E' : theme.textSecondary }
-                  ]}>
-                    {usernameStatus.message}
-                  </Text>
-                )}
-                <SuvixInput small label="Email Address" placeholder="email@example.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} spellCheck={false} textContentType="none" icon={<Feather name="mail" size={16} />} />
-                
-                <View style={styles.flexRow}>
-                  <View style={{ flex: 1.6, marginRight: 10 }}>
-                    <SuvixInput small label="Phone Number" placeholder="+91..." value={phone} onChangeText={setPhone} keyboardType="phone-pad" autoCorrect={false} spellCheck={false} textContentType="none" icon={<Feather name="phone" size={16} />} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.langLabel, { color: theme.textSecondary }]}>Primary Mother Tongue</Text>
-                    <TouchableOpacity 
-                      activeOpacity={0.7}
-                      onPress={() => { handleImpact(); setShowLanguageModal(true); }}
-                      style={[styles.langSelector, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
-                    >
-                      <Text numberOfLines={1} style={[styles.langValue, { color: theme.text }]}>{motherTongue}</Text>
-                      <Feather name="chevron-down" size={14} color={theme.textSecondary} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <SuvixInput small label="Secure Password" placeholder="••••••••" value={password} onChangeText={setPassword} secureTextEntry={!showPassword} icon={<Feather name="lock" size={16} />} 
-                  rightIcon={<TouchableOpacity onPress={() => setShowPassword(!showPassword)}><Feather name={showPassword ? "eye-off" : "eye"} color={theme.textSecondary} size={16} /></TouchableOpacity>} 
-                />
-
-                <View style={[styles.vipSwitchContainer, { borderColor: theme.border, backgroundColor: theme.primary }]}>
-                  <View style={styles.vipSwitchTextContent}>
-                    <Text style={[styles.vipSwitchTitle, { color: theme.text }]}>
-                      🔔 VIP Notifications <Text style={{ color: theme.accent, fontSize: 10, fontWeight: '800' }}>RECOMMENDED</Text>
-                    </Text>
-                    <Text style={[styles.vipSwitchDesc, { color: theme.textSecondary }]}>
-                      Get instantly alerted when clients message or book you.
-                    </Text>
-                  </View>
-                  <Switch 
-                    value={pushEnabled} 
-                    onValueChange={(val) => { handleImpact(); setPushEnabled(val); }} 
-                    trackColor={{ false: theme.border, true: theme.accent }}
+              <View style={styles.content}>
+                <View style={styles.inputGroup}>
+                  <SuvixInput small label="Full Name" placeholder="Your Name" value={fullName} onChangeText={setFullName} icon={<Feather name="user" size={16} />} />
+                  <SuvixInput small label="Username" placeholder="unique_handle" value={username} onChangeText={handleUsernameChange} icon={<Feather name="at-sign" size={16} />} />
+                  <SuvixInput small label="Email" placeholder="email@example.com" value={email} onChangeText={setEmail} icon={<Feather name="mail" size={16} />} />
+                  <SuvixInput small label="Phone" placeholder="+91..." value={phone} onChangeText={setPhone} icon={<Feather name="phone" size={16} />} />
+                  <SuvixInput small label="Password" placeholder="••••••••" value={password} onChangeText={setPassword} secureTextEntry={!showPassword} icon={<Feather name="lock" size={16} />} 
+                    rightIcon={<TouchableOpacity onPress={() => setShowPassword(!showPassword)}><Feather name={showPassword ? "eye-off" : "eye"} color={theme.textSecondary} size={16} /></TouchableOpacity>} 
                   />
                 </View>
-              </View>
 
-              <SuvixButton 
-                title={loading ? 'Please wait...' : 'Create Account'} 
-                onPress={handleSignup}
-                loading={loading}
-                variant="primary"
-                style={{ marginTop: 4 }}
-              />
+                <SuvixButton title={loading ? 'Please wait...' : 'Create Account'} onPress={handleSignup} loading={loading} variant="primary" />
 
-              <View style={styles.footer}>
-                <Text style={[styles.footerText, { color: theme.textSecondary }]}>Already have an account? </Text>
-                <TouchableOpacity onPress={() => { handleImpact(); router.replace('/login'); }}>
-                  <Text style={[styles.footerLink, { color: theme.text }]}>Login Here</Text>
+                <View style={styles.footer}>
+                  <Text style={[styles.footerText, { color: theme.textSecondary }]}>Already have an account? </Text>
+                  <TouchableOpacity onPress={() => router.replace('/login')}>
+                    <Text style={[styles.footerLink, { color: theme.text }]}>Login Here</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.dividerContainer}>
+                  <View style={[styles.line, { backgroundColor: theme.border }]} /><Text style={[styles.dividerText, { color: theme.textSecondary }]}>OR</Text><View style={[styles.line, { backgroundColor: theme.border }]} />
+                </View>
+
+                <TouchableOpacity 
+                  style={[styles.googleButton, { borderColor: theme.border, backgroundColor: theme.secondary }, (isGoogleLoading || loading) && styles.btnDisabled]} 
+                  onPress={() => { handleImpact(); googleSignIn(); }}
+                  disabled={isGoogleLoading || loading}
+                >
+                  <Image source={require('../assets/google-icon.png')} style={styles.googleIconAsset} resizeMode="contain" />
+                  <Text style={[styles.googleButtonText, { color: theme.text }]}>Continue with Google</Text>
                 </TouchableOpacity>
               </View>
-
-              <View style={styles.dividerContainer}>
-                <View style={[styles.line, { backgroundColor: theme.border }]} /><Text style={[styles.dividerText, { color: theme.textSecondary }]}>OR</Text><View style={[styles.line, { backgroundColor: theme.border }]} />
-              </View>
-
-              <TouchableOpacity 
-                style={[styles.googleButton, { borderColor: theme.border, backgroundColor: theme.secondary }, (isGoogleLoading || loading) && styles.btnDisabled]} 
-                onPress={() => { handleImpact(); googleSignIn(); }}
-                disabled={isGoogleLoading || loading}
-              >
-                <Image source={require('../assets/google-icon.png')} style={styles.googleIconAsset} resizeMode="contain" />
-                <Text style={[styles.googleButtonText, { color: theme.text }]}>Continue with Google</Text>
-              </TouchableOpacity>
-
-            </View>
-
-            {/* Language Selection Modal */}
-            <Modal visible={showLanguageModal} transparent animationType="slide">
-              <View style={styles.modalOverlay}>
-                <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowLanguageModal(false)} />
-                <View style={[styles.modalContent, { backgroundColor: theme.primary, borderTopColor: theme.border }]}>
-                  <View style={styles.modalHeader}>
-                    <View style={[styles.modalKnob, { backgroundColor: theme.border }]} />
-                    <Text style={[styles.modalTitle, { color: theme.text }]}>Select Mother Tongue</Text>
-                  </View>
-                  <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
-                    {LANGUAGES.map(lang => (
-                      <TouchableOpacity 
-                        key={lang}
-                        style={[styles.langItem, motherTongue === lang && { backgroundColor: theme.accent + '15' }]}
-                        onPress={() => { handleImpact(); setMotherTongue(lang); setShowLanguageModal(false); }}
-                      >
-                        <Text style={[styles.langItemText, { color: theme.text }, motherTongue === lang && { color: theme.accent, fontWeight: '800' }]}>{lang}</Text>
-                        {motherTongue === lang && <Feather name="check" size={18} color={theme.accent} />}
-                      </TouchableOpacity>
-                    ))}
-                    <View style={{ height: 40 }} />
-                  </ScrollView>
-                </View>
-              </View>
-            </Modal>
-
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
-    </SafeAreaView>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -463,21 +275,13 @@ const styles = StyleSheet.create({
   keyboardView: { flex: 1 },
   scrollContent: { flexGrow: 1, paddingHorizontal: 32, justifyContent: 'center', paddingVertical: 10 },
   header: { alignItems: 'center', marginBottom: 12, position: 'relative' },
-  backButton: {
-    position: 'absolute',
-    left: -10,
-    top: 0,
-    zIndex: 100,
-    padding: 10
-  },
+  backButton: { position: 'absolute', left: -10, top: 0, zIndex: 100, padding: 10 },
   logo: { width: 80, height: 32, marginBottom: 4 },
-  avatarWrapper: { width: 60, height: 60, borderRadius: 30, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center', marginBottom: 8, position: 'relative' },
+  avatarWrapper: { width: 60, height: 60, borderRadius: 30, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
   avatar: { width: 54, height: 54, borderRadius: 27 },
-  plusBadge: { position: 'absolute', bottom: -2, right: -2, width: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center', borderWidth: 2 },
-  title: { fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
+  title: { fontSize: 22, fontWeight: '900' },
   content: { width: '100%' },
   inputGroup: { marginBottom: 8 },
-  flexRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 },
   btnDisabled: { opacity: 0.5 },
   dividerContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 12 },
   line: { flex: 1, height: 1.2 },
@@ -488,39 +292,4 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 24, marginBottom: 20 },
   footerText: { fontSize: 13, fontWeight: '500' },
   footerLink: { fontSize: 13, fontWeight: '800' },
-  statusMessage: { fontSize: 11, fontWeight: '700', marginTop: -6, marginBottom: 10, marginLeft: 6 },
-  // Language Selector
-  langSelector: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'space-between',
-    paddingHorizontal: 10, 
-    height: 48,
-    borderRadius: 12, 
-    borderWidth: 1.5, 
-    marginBottom: 10 
-  },
-  langLabel: { fontSize: 12, fontWeight: '600', marginBottom: 4, marginLeft: 4 },
-  langValue: { fontSize: 13, fontWeight: '600', flex: 1 },
-  // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { borderTopLeftRadius: 30, borderTopRightRadius: 30, borderWidth: 1, height: 400, paddingHorizontal: 24 },
-  modalHeader: { alignItems: 'center', paddingVertical: 12 },
-  modalKnob: { width: 40, height: 4, borderRadius: 2, marginBottom: 16 },
-  modalTitle: { fontSize: 18, fontWeight: '900', marginBottom: 12 },
-  modalList: { flex: 1 },
-  langItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, paddingHorizontal: 16, borderRadius: 12, marginBottom: 4 },
-  langItemText: { fontSize: 16, fontWeight: '600' },
-  linkedAccountsCard: { borderWidth: 1, borderRadius: 16, padding: 16, marginBottom: 20 },
-  linkedAccountsTitle: { fontSize: 13, fontWeight: '700', marginBottom: 4 },
-  linkedChannel: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 12, padding: 10, marginRight: 12, minWidth: 160 },
-  linkedChannelThumb: { width: 36, height: 36, borderRadius: 18, marginRight: 10 },
-  linkedChannelDetails: { flex: 1 },
-  linkedChannelName: { fontSize: 13, fontWeight: '800', marginBottom: 2 },
-  linkedChannelPill: { fontSize: 10, fontWeight: '700', textTransform: 'capitalize' },
-  // VIP Switch
-  vipSwitchContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderRadius: 12, borderWidth: 1, marginTop: 4, marginBottom: 8 },
-  vipSwitchTextContent: { flex: 1, paddingRight: 10 },
-  vipSwitchTitle: { fontSize: 13, fontWeight: '800', marginBottom: 2 },
-  vipSwitchDesc: { fontSize: 11, fontWeight: '600' }
 });
