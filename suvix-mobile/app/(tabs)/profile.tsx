@@ -191,13 +191,15 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   name: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
   username: {
-    marginTop: 2,
-    fontSize: 11,
-    fontWeight: '600',
+    marginTop: 1,
+    fontSize: 12,
+    fontWeight: '400',
+    opacity: 0.7,
   },
   bio: {
     marginTop: 5,
@@ -279,5 +281,17 @@ const styles = StyleSheet.create({
     height: 100, // Height to cover status bar and top safe area
     zIndex: 100,
     pointerEvents: 'none',
+  },
+  headerUsernameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  headerUsernameText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.5,
   },
 });

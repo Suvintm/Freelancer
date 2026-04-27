@@ -408,15 +408,15 @@ export default function YouTubeCreatorProfile({ scrollY }: { scrollY?: SharedVal
           </View>
 
           <View style={[styles.infoBlock, styles.padded, { marginTop: 4 }]}>
-             <View style={styles.nameRow}>
+             <View style={[styles.nameRow, { paddingLeft: 12 }]}>
                 <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
-                <MaterialCommunityIcons name="check-decagram" size={18} color="#FF3040" style={{ marginLeft: 6 }} />
+                <MaterialCommunityIcons name="check-decagram" size={16} color="#FF3040" style={{ marginLeft: 6 }} />
              </View>
              <View style={styles.nicheRow}>
                {allRoles.length > 0 ? (
                  allRoles.map((role, i) => (
-                   <View key={`${role}-${i}`} style={[styles.nicheChip, { backgroundColor: theme.secondary, borderColor: 'rgba(255,48,64,0.3)', borderWidth: 1 }]}>
-                     <Text style={[styles.nicheChipText, { color: '#FF3040' }]}>{role.toString().toUpperCase()}</Text>
+                   <View key={`${role}-${i}`} style={[styles.nicheChip, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
+                     <Text style={[styles.nicheChipText, { color: theme.textSecondary }]}>{role.toString().toUpperCase()}</Text>
                    </View>
                  ))
                ) : (
@@ -1451,7 +1451,7 @@ const styles = StyleSheet.create({
   infoBlock: {
  marginTop: 12 },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
-  name: { fontSize: 24, fontWeight: '900', letterSpacing: -0.5 },
+  name: { fontSize: 17, fontWeight: '700', letterSpacing: -0.4 },
   nicheRow: { 
     flexDirection: 'row', 
     flexWrap: 'wrap', 

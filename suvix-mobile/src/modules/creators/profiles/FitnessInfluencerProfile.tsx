@@ -329,10 +329,10 @@ export default function FitnessInfluencerProfile({ scrollY }: { scrollY?: Shared
           </View>
 
           <View style={[styles.infoBlock, styles.padded]}>
-             <View style={styles.nameRow}>
-                <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
-                <MaterialCommunityIcons name="check-decagram" size={18} color="#2ECC71" style={{ marginLeft: 6 }} />
-            </View>
+              <View style={[styles.nameRow, { paddingLeft: 16 }]}>
+                 <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
+                 <MaterialCommunityIcons name="check-decagram" size={16} color="#2ECC71" style={{ marginLeft: 6 }} />
+             </View>
             <Text style={[styles.niche, { color: '#2ECC71' }]}>{subCategoryName.toUpperCase()}</Text>
             {user.bio ? (
               <View style={styles.bioWrapper}>
@@ -530,8 +530,16 @@ const styles = StyleSheet.create({
   editBtn: { height: 36, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center', flexDirection: 'row' },
   editBtnText: { fontSize: 12, fontWeight: '700' },
   infoBlock: { marginTop: 15 },
-  nameRow: { flexDirection: 'row', alignItems: 'center' },
-  name: { fontSize: 18, fontWeight: '900', letterSpacing: -0.5 },
+   nameRow: { 
+     flexDirection: 'row', 
+     alignItems: 'center',
+     paddingHorizontal: 0,
+   },
+   name: { 
+     fontSize: 17, 
+     fontWeight: '700', 
+     letterSpacing: -0.4 
+   },
   avatarContainer: { position: 'relative' },
   avatarInner: {
     position: 'relative',
@@ -569,7 +577,19 @@ const styles = StyleSheet.create({
     padding: 8,
     marginLeft: 4,
   },
-  niche: { fontSize: 11, fontWeight: '900', marginTop: 2, letterSpacing: 1 },
+   niche: { 
+     fontSize: 9, 
+     fontWeight: '800', 
+     marginTop: 6, 
+     letterSpacing: 1,
+     backgroundColor: 'rgba(46, 204, 113, 0.1)',
+     paddingHorizontal: 10,
+     paddingVertical: 4,
+     borderRadius: 10,
+     borderWidth: 1,
+     borderColor: 'rgba(46, 204, 113, 0.3)',
+     alignSelf: 'flex-start'
+   },
   bio: { fontSize: 13, marginTop: 8, lineHeight: 18, flex: 1 },
   bioWrapper: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   bioEditTrigger: {
