@@ -137,7 +137,7 @@ export default function YouTubeCreatorProfile({ scrollY }: { scrollY?: SharedVal
   ));
 
   // Calculate header height (Navbar 50 + Safe Area Inset Top)
-  const headerOffset = insets.top + 50;
+  const headerOffset = insets.top;
 
   const handleViewChannel = (channelId: string) => {
     router.push(`/creators/channel/${channelId}`);
