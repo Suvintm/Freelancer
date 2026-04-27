@@ -168,7 +168,11 @@ model YouTubeVideo {
   channel_id       String         @db.VarChar(255)
   video_id         String         @unique @db.VarChar(100)
   title            String         @db.VarChar(500)
+  description      String?        @db.Text
+  tags             String?        @db.Text
   thumbnail        String?
+  duration_secs    Int?
+  view_count       BigInt?        @default(0)
   published_at     DateTime?      @map("published_at") @db.Timestamptz(6)
   created_at       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at       DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
@@ -181,6 +185,20 @@ model YouTubeVideo {
   @@index([channel_id])
   @@index([youtubeProfileId, published_at])
   @@map("youtube_videos")
+}
+
+model YouTubeSearchDictionary {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  term             String   @unique @db.VarChar(500)
+  type             String   @default("VIDEO_TITLE") // VIDEO_TITLE, CHANNEL_NAME, KEYWORD
+  popularity_score Int      @default(0)
+  is_trending      Boolean  @default(false)
+  last_used_at     DateTime @default(now()) @map("last_used_at")
+  created_at       DateTime @default(now()) @map("created_at")
+
+  @@index([term])
+  @@index([popularity_score])
+  @@map("youtube_search_dictionary")
 }
 
 model YouTubeSyncLog {

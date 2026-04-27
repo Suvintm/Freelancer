@@ -242,3 +242,62 @@ export const deleteChannel = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Fetch all available YouTube videos for the Explore page
+ * Includes associated profile data for rich UI rendering.
+ */
+export const getExploreVideos = async (req, res, next) => {
+  try {
+    const videos = await prisma.youTubeVideo.findMany({
+      include: {
+        youtubeProfile: {
+          select: {
+            channel_name: true,
+            thumbnail_url: true,
+            subscriber_count: true,
+            view_count: true,
+            language: true,
+          }
+        }
+      },
+      orderBy: {
+        published_at: 'desc',
+      },
+      take: 50, // Limit to 50 for performance, can add pagination later
+    });
+
+    // 🛰️ NORMALIZE DATA: Resolve URLs and format for frontend
+    const normalizedVideos = videos.map(v => {
+      const videoThumb = smartResolveMediaUrl(v.thumbnail);
+      const channelThumb = smartResolveMediaUrl(v.youtubeProfile?.thumbnail_url);
+      
+      return {
+        id: v.id,
+        videoId: v.video_id,
+        title: v.title,
+        thumbnail: videoThumb,
+        publishedAt: v.published_at,
+        channel: {
+          name: v.youtubeProfile?.channel_name || "Unknown Channel",
+          thumbnail: channelThumb,
+          subscribers: v.youtubeProfile?.subscriber_count || 0,
+        },
+        // 🛰️ UNIFIED MEDIA OBJECT (Matches mobile app's expected structure)
+        media: {
+          type: 'IMAGE',
+          status: 'READY',
+          urls: { thumb: videoThumb, feed: videoThumb, full: videoThumb }
+        }
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: normalizedVideos,
+    });
+  } catch (error) {
+    logger.error(`❌ [YT-EXPLORE] Failed to fetch explore videos: ${error.message}`);
+    next(error);
+  }
+};

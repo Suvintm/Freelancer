@@ -68,11 +68,14 @@ export const discoverChannels = async (accessToken) => {
             videos = (videoResponse.data.items || []).map((v) => ({
               id: v.snippet.resourceId.videoId,
               title: v.snippet.title,
+              description: v.snippet.description || null,
               thumbnail:
+                v.snippet.thumbnails?.maxres?.url ||
                 v.snippet.thumbnails?.high?.url ||
                 v.snippet.thumbnails?.medium?.url ||
                 v.snippet.thumbnails?.default?.url,
               publishedAt: v.snippet.publishedAt,
+              channelTitle: v.snippet.channelTitle || null,
             }));
           } catch (videoError) {
             logger.error(`⚠️ [YT-API] Failed to fetch videos for ${item.id}: ${videoError.message}`);
@@ -195,11 +198,14 @@ export const getPlaylistVideos = async (playlistId, maxResults = 25) => {
     return (response.data.items || []).map((v) => ({
       id: v.snippet.resourceId.videoId,
       title: v.snippet.title,
+      description: v.snippet.description || null,
       thumbnail:
+        v.snippet.thumbnails?.maxres?.url ||
         v.snippet.thumbnails?.high?.url ||
         v.snippet.thumbnails?.medium?.url ||
         v.snippet.thumbnails?.default?.url,
       publishedAt: v.snippet.publishedAt,
+      channelTitle: v.snippet.channelTitle || null,
     }));
   } catch (error) {
     logger.error(`❌ [YT-API] Playlist fetch failed: ${error.message}`);

@@ -263,6 +263,19 @@ const redisProxy = {
     if (!redisAvailable || !client) return Promise.resolve(0);
     return client.hdel(key, ...fields);
   },
+  // ── Redis List helpers (used by Batch Analytics) ────────────────────────
+  rpush: (key, ...values) => {
+    if (!redisAvailable || !client) return Promise.resolve(0);
+    return client.rpush(key, ...values);
+  },
+  lrange: (key, start, stop) => {
+    if (!redisAvailable || !client) return Promise.resolve([]);
+    return client.lrange(key, start, stop);
+  },
+  ltrim: (key, start, stop) => {
+    if (!redisAvailable || !client) return Promise.resolve("OK");
+    return client.ltrim(key, start, stop);
+  },
   // ── Pipeline (Atomic Multi-Command) ─────────────────────────────────────
   // Returns a real pipeline if Redis is available, otherwise a safe no-op chain.
   pipeline: () => {
