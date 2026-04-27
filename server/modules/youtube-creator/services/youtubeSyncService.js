@@ -64,16 +64,16 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
       }
     }
 
-    // Safe Model Resolvers
-    const ytProfileModel = tx.youtubeProfile || tx.youTubeProfile;
-    const ytVideoModel = tx.youtubeVideo || tx.youTubeVideo;
+    // Safe Model Resolvers (Use standard Prisma camelCase)
+    const ytProfileModel = tx.youTubeProfile;
+    const ytVideoModel = tx.youTubeVideo;
 
-    if (!ytProfileModel) {
-       throw new Error("Critical: YouTubeProfile model not found on Prisma client.");
+    if (!ytProfileModel || !ytVideoModel) {
+       logger.error(`❌ [YT-SYNC] Models not found on client. tx keys: ${Object.keys(tx).join(', ')}`);
+       throw new Error("Critical: YouTube models not found on Prisma client.");
     }
 
     // 2. Safety Check: Verify ownership if channel already exists
-    // 🛡️ PRODUCTION RESILIENCE: Use findFirst to avoid strict PrismaClient validation while maintaining performance
     const existing = await ytProfileModel.findFirst({
        where: { channel_id: channelId },
        select: { id: true, userId: true }
@@ -83,79 +83,70 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
        throw new ApiError(409, `YouTube channel ${channelId} is already owned by another user.`);
     }
 
-    // 3. Resilient Upsert Pattern (Manual findFirst -> update/create)
+    // 3. Resilient Upsert Pattern
     let youtubeProfile;
+    const profileData = {
+      channel_name: channelName,
+      thumbnail_url: mirroredAvatar || thumbnailUrl,
+      subscriber_count: subscriberCount,
+      video_count: videoCount,
+      view_count: BigInt(viewCount || "0"),
+      description: description,
+      custom_url: customUrl,
+      banner_url: mirroredBanner || bannerUrl,
+      published_at: publishedAt ? new Date(publishedAt) : null,
+      country: country,
+      keywords: keywords,
+      uploads_playlist_id: uploadsPlaylistId,
+      last_synced_at: new Date(),
+      userId: userId,
+    };
+
     if (existing) {
        youtubeProfile = await ytProfileModel.update({
-         where: { id: existing.id }, // Always use Primary Key for updates
-         data: {
-            channel_name: channelName,
-            thumbnail_url: mirroredAvatar || thumbnailUrl,
-            subscriber_count: subscriberCount,
-            video_count: videoCount,
-            view_count: BigInt(viewCount),
-            description: description,
-            custom_url: customUrl,
-            banner_url: mirroredBanner || bannerUrl,
-            published_at: publishedAt ? new Date(publishedAt) : null,
-            country: country,
-            keywords: keywords,
-            uploads_playlist_id: uploadsPlaylistId,
-            last_synced_at: new Date(),
-            userId: userId,
-         }
+         where: { id: existing.id },
+         data: profileData
        });
     } else {
        youtubeProfile = await ytProfileModel.create({
-         data: {
-            userId: userId,
-            channel_id: channelId,
-            channel_name: channelName,
-            thumbnail_url: mirroredAvatar || thumbnailUrl,
-            subscriber_count: subscriberCount,
-            video_count: videoCount,
-            view_count: BigInt(viewCount),
-            description: description,
-            custom_url: customUrl,
-            banner_url: mirroredBanner || bannerUrl,
-            published_at: publishedAt ? new Date(publishedAt) : null,
-            country: country,
-            keywords: keywords,
-            uploads_playlist_id: uploadsPlaylistId,
-            last_synced_at: new Date(),
-         }
+         data: { ...profileData, channel_id: channelId }
        });
     }
 
     // 3. Mirror and Persist Videos (Atomic Sync)
     if (videos && videos.length > 0) {
-      logger.info(`📽️ [YT-SYNC] Attempting to mirror up to ${videos.length} videos...`);
+      logger.info(`📽️ [YT-SYNC] Attempting to mirror up to ${videos.length} videos for ${youtubeProfile.id}`);
       
       try {
-        // Use sequential processing for thumbnails to be nice to Cloudinary/Network
-        // but limit to first 25 for profile performance
         const videosToSync = videos.slice(0, 25);
 
         for (const v of videosToSync) {
           try {
             let mirroredThumb = v.thumbnail;
+            try {
               mirroredThumb = await storageService.uploadFromUrl(v.thumbnail, "uploads/processed/images/youtube");
+            } catch (thumbErr) {
+              logger.warn(`⚠️ [YT-SYNC] Thumbnail mirroring failed for ${v.id}, using original: ${thumbErr.message}`);
+            }
 
             videoRecords.push({
               video_id: v.id,
               title: v.title,
+              description: v.description || null,
               thumbnail: mirroredThumb || v.thumbnail,
-              published_at: new Date(v.publishedAt),
+              published_at: v.publishedAt ? new Date(v.publishedAt) : new Date(),
               youtubeProfileId: youtubeProfile.id,
               channel_id: channelId,
+              view_count: v.viewCount ? BigInt(v.viewCount) : 0n,
+              user_id: userId, // Link directly to user as well for faster querying
             });
           } catch (vErr) {
-            logger.warn(`⚠️ [YT-SYNC] Skipping video ${v.id} due to thumbnail failure: ${vErr.message}`);
+            logger.warn(`⚠️ [YT-SYNC] Skipping video ${v.id} record creation: ${vErr.message}`);
           }
         }
 
-        // Clean old videos and insert new ones (Production Fresh-Flush Sync)
-        if (ytVideoModel && videoRecords.length > 0) {
+        // Clean old videos and insert new ones
+        if (videoRecords.length > 0) {
           await ytVideoModel.deleteMany({
             where: { youtubeProfileId: youtubeProfile.id },
           });
@@ -165,6 +156,36 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
             skipDuplicates: true,
           });
           logger.info(`✅ [YT-SYNC] Successfully persisted ${videoRecords.length} videos.`);
+
+          // 🧠 [SEARCH-OPTIMIZATION] Index titles into the Search Dictionary (Probabilistic Engine)
+          try {
+            const dictionaryTerms = [
+              { term: youtubeProfile.channel_name, type: 'CHANNEL_NAME', popularity_score: Number(youtubeProfile.subscriber_count || 0) },
+              ...videoRecords.map(vr => ({
+                term: vr.title,
+                type: 'VIDEO_TITLE',
+                popularity_score: Number(vr.view_count || 0)
+              }))
+            ];
+
+            for (const dt of dictionaryTerms) {
+              await tx.youTubeSearchDictionary.upsert({
+                where: { term: dt.term },
+                update: { 
+                  popularity_score: { increment: dt.popularity_score > 0 ? 1 : 0 }, // Simple popularity bump
+                  last_used_at: new Date()
+                },
+                create: { 
+                  term: dt.term,
+                  type: dt.type,
+                  popularity_score: dt.popularity_score
+                }
+              });
+            }
+            logger.info(`🧠 [YT-SYNC] Indexed ${dictionaryTerms.length} terms into Search Dictionary.`);
+          } catch (dictErr) {
+            logger.warn(`⚠️ [YT-SYNC] Dictionary indexing skipped: ${dictErr.message}`);
+          }
         }
       } catch (vidSyncErr) {
         logger.error(`❌ [YT-SYNC] Video persistence layer failed: ${vidSyncErr.message}`);

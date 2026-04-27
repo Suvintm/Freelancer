@@ -155,6 +155,8 @@ model YouTubeProfile {
   banner_url          String?          
   country             String?          @db.VarChar(10)
   keywords            String?          @db.Text
+  search_vector       Unsupported("tsvector")?
+  authority_score     Float            @default(0.0)
   
   subCategory         RoleSubCategory? @relation(fields: [subCategoryId], references: [id])
   user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -170,13 +172,19 @@ model YouTubeVideo {
   channel_id       String         @db.VarChar(255)
   video_id         String         @unique @db.VarChar(100)
   title            String         @db.VarChar(500)
+  description      String?        @db.Text
+  tags             String?        @db.Text
   thumbnail        String?
+  duration_secs    Int?
+  view_count       BigInt?        @default(0)
   published_at     DateTime?      @map("published_at") @db.Timestamptz(6)
   created_at       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at       DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
   is_latest        Boolean        @default(true)
   position         Int?           @default(0)
   youtubeProfileId String         @map("youtube_profile_id") @db.Uuid
+  search_vector    Unsupported("tsvector")?
+  rank_score       Float          @default(0.0)
   user             User?          @relation(fields: [user_id], references: [id], onDelete: Cascade)
   youtubeProfile   YouTubeProfile @relation(fields: [youtubeProfileId], references: [id], onDelete: Cascade)
 
@@ -184,6 +192,24 @@ model YouTubeVideo {
   @@index([youtubeProfileId, published_at])
   @@map("youtube_videos")
 }
+
+model YouTubeSearchDictionary {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  term             String   @unique @db.VarChar(500)
+  type             String   @default("VIDEO_TITLE") // VIDEO_TITLE, CHANNEL_NAME, KEYWORD
+  popularity_score Int      @default(0)
+  click_score      Float    @default(0.0)
+  is_trending      Boolean  @default(false)
+  last_used_at     DateTime @default(now()) @map("last_used_at") @db.Timestamptz(6)
+  created_at       DateTime @default(now()) @map("created_at")
+
+  @@index([term])
+  @@index([popularity_score])
+  @@map("youtube_search_dictionary")
+}
+
+// End of YouTube Schema
+
 
 model YouTubeSyncLog {
   id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid

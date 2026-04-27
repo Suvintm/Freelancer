@@ -60,7 +60,7 @@ export default function DefaultProfile({ scrollY }: { scrollY?: SharedValue<numb
   const username = user.username ? `@${user.username}` : '@suvix_member';
   const roleText = user.primaryRole?.category || user.role || 'Member';
   const bioText = `Building with SuviX as ${roleText}.`;
-  const headerOffset = insets.top + 50;
+  const headerOffset = insets.top;
 
 
   const handlePickMedia = async () => {

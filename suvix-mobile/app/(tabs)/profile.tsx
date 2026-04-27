@@ -13,8 +13,9 @@ import {
 import { useTheme } from '../../src/context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { ScreenContainer } from '../../src/components/shared/ScreenContainer';
 
 // Modules
 import YouTubeCreatorProfile from '../../src/modules/creators/profiles/YouTubeCreatorProfile';
@@ -95,21 +96,32 @@ export default function ProfileIndex({ scrollY }: { scrollY?: SharedValue<number
   const ActiveProfileModule = PROFILE_REGISTRY[activeModule] || DefaultProfile;
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.primary }}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <ActiveProfileModule scrollY={scrollY} />
-      
-      {/* 🚀 FLOAT ACTION: Create Post */}
-      <Animated.View style={[styles.fabWrapper, fabStyle]}>
-        <TouchableOpacity 
-          style={[styles.fab, { backgroundColor: theme.accent }]} 
-          onPress={() => router.push('/create-post')}
-          activeOpacity={0.8}
-        >
-          <MaterialCommunityIcons name="plus" size={30} color="white" />
-        </TouchableOpacity>
-      </Animated.View>
-    </View>
+    <ScreenContainer isScrollable={false} hasHeader={false}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={{ flex: 1, backgroundColor: theme.primary }}>
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+        <ActiveProfileModule scrollY={scrollY} />
+        
+        {/* 🚀 FLOAT ACTION: Create Post */}
+        <Animated.View style={[styles.fabWrapper, fabStyle]}>
+          <TouchableOpacity 
+            style={[styles.fab, { backgroundColor: theme.accent }]} 
+            onPress={() => router.push('/create-post')}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="plus" size={30} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* 🌑 TOP STATUSBAR GRADIENT FADE (Immersive) */}
+        <View style={styles.topOverlayWrapper}>
+          <LinearGradient
+            colors={['#000000', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.3)', 'transparent']}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+      </View>
+    </ScreenContainer>
   );
 }
 
@@ -258,5 +270,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 8,
+  },
+  topOverlayWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100, // Height to cover status bar and top safe area
+    zIndex: 100,
+    pointerEvents: 'none',
   },
 });

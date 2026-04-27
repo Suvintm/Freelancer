@@ -135,7 +135,7 @@ export default function TabsLayout() {
       <View 
         style={[
           styles.navbarOverlay,
-          { display: (isReelsActive || filteredTabs[activeIndex]?.name === 'explore') ? 'none' : 'flex' }
+          { display: (isReelsActive || filteredTabs[activeIndex]?.name === 'explore' || filteredTabs[activeIndex]?.name === 'profile') ? 'none' : 'flex' }
         ]}
         pointerEvents="box-none"
       >

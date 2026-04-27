@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, ScrollView, View, Text, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
@@ -22,6 +22,7 @@ import { ReelCinematicStrip } from '../../src/modules/explore/redesign/ReelCinem
 import { RentalPodGrid } from '../../src/modules/explore/redesign/RentalPodGrid';
 import { YouTubeTabPortal } from '../../src/modules/explore/redesign/YouTubeTabPortal';
 import { YOUTUBE_ARCHIVE, YouTubeVideo } from '../../src/modules/explore/redesign/youtubeMockData';
+import { api } from '../../src/api/client';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
@@ -61,12 +62,35 @@ export default function ExploreScreen({ scrollY: globalScrollY }: { scrollY?: Sh
   const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<ExploreTabType>('All');
+  const [ytVideos, setYtVideos] = useState<YouTubeVideo[]>([]);
+  const [isLoadingYt, setIsLoadingYt] = useState(false);
 
   // 🔍 [SEARCH INTELLIGENCE] Shared State for All Portals
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<YouTubeVideo[]>([]);
+
+  // 📡 [DATA FETCHING] YouTube Explore Content
+  useEffect(() => {
+    if (activeTab === 'YT Videos' && ytVideos.length === 0) {
+      fetchYouTubeVideos();
+    }
+  }, [activeTab]);
+
+  const fetchYouTubeVideos = async () => {
+    try {
+      setIsLoadingYt(true);
+      const response = await api.get('/youtube-creator/explore');
+      if (response.data?.success) {
+        setYtVideos(response.data.data);
+      }
+    } catch (error) {
+      console.error('❌ [EXPLORE] Failed to fetch YT videos:', error);
+    } finally {
+      setIsLoadingYt(false);
+    }
+  };
 
   const currentTheme = TAB_THEMES[activeTab];
   // Always use dark background for the header
@@ -167,11 +191,14 @@ export default function ExploreScreen({ scrollY: globalScrollY }: { scrollY?: Sh
       case 'YT Videos': 
         return (
           <YouTubeTabPortal 
+            videos={ytVideos}
+            isLoading={isLoadingYt}
             searchQuery={searchQuery}
             isSearching={isSearching}
             suggestions={suggestions}
             searchResults={searchResults}
             onSuggestionPress={onExecuteSearch}
+            onRefresh={fetchYouTubeVideos}
           />
         );
       case 'Rental': return <RentalView />;
@@ -225,15 +252,17 @@ export default function ExploreScreen({ scrollY: globalScrollY }: { scrollY?: Sh
               isDarkHeader={true}
             />
 
-            {activeTab === 'All' ? (
-              <View style={styles.heroHeader}>
-                <Text style={[styles.heroTitle, { color: 'white' }]}>
-                  Explore SuviX
-                </Text>
-                <Text style={[styles.heroSubtitle, { color: 'rgba(255,255,255,0.7)' }]}>
-                  Empowering your creative vision
-                </Text>
-              </View>
+            {activeTab === 'All' || activeTab === 'YT Videos' ? (
+              activeTab === 'All' ? (
+                <View style={styles.heroHeader}>
+                  <Text style={[styles.heroTitle, { color: 'white' }]}>
+                    Explore SuviX
+                  </Text>
+                  <Text style={[styles.heroSubtitle, { color: 'rgba(255,255,255,0.7)' }]}>
+                    Empowering your creative vision
+                  </Text>
+                </View>
+              ) : null
             ) : (
               <ExploreSearchV2 
                 placeholder={getSearchPlaceholder()} 

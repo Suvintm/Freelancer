@@ -139,6 +139,17 @@ export default function SignupScreen() {
 
     try {
       const { api } = require('../src/api/client');
+      
+      // 🛰️ GET PUSH TOKEN (Elite Quality)
+      let pushToken = null;
+      try {
+        const Notifications = require('expo-notifications');
+        const tokenData = await Notifications.getDevicePushTokenAsync();
+        pushToken = tokenData.data;
+      } catch (err) {
+        console.warn('⚠️ [PUSH] Could not capture token during signup:', err);
+      }
+
       await api.post('/auth/validate-signup', { 
         email: email.trim().toLowerCase(), 
         username: username.trim().toLowerCase() 
@@ -173,6 +184,14 @@ export default function SignupScreen() {
       formData.append('motherTongue', motherTongue);
       formData.append('categoryId', categoryId);
       formData.append('roleSubCategoryIds', JSON.stringify(roleSubCategoryIds));
+      
+      // 🛰️ ADD PUSH & PLATFORM
+      if (pushToken) formData.append('pushToken', pushToken);
+      formData.append('platform', Platform.OS.toUpperCase());
+
+      if (onboardingData.youtubeChannels) {
+        formData.append('youtubeChannels', JSON.stringify(onboardingData.youtubeChannels));
+      }
 
       if (profileImage) {
         const uriParts = profileImage.split('.');
@@ -327,6 +346,28 @@ export default function SignupScreen() {
                         } 
                       />
                     </View>
+                    
+                    {/* 🎥 YOUTUBE IDENTITY PREVIEW (New) */}
+                    {useAuthStore.getState().tempSignupData?.youtubeChannels && (
+                      <View style={styles.ytIdentitySection}>
+                        <Text style={[styles.ytIdentityLabel, { color: theme.textSecondary }]}>LINKED IDENTITY</Text>
+                        {useAuthStore.getState().tempSignupData?.youtubeChannels?.map((ch) => (
+                          <View key={ch.channelId} style={[styles.ytIdentityCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)', borderColor: theme.border }]}>
+                            <Image source={{ uri: ch.thumbnailUrl || '' }} style={styles.ytIdentityAvatar} />
+                            <View style={styles.ytIdentityMeta}>
+                              <Text style={[styles.ytIdentityName, { color: theme.text }]} numberOfLines={1}>{ch.channelName}</Text>
+                              <View style={styles.ytIdentityStats}>
+                                <Ionicons name="logo-youtube" size={10} color="#FF0000" />
+                                <Text style={[styles.ytIdentityStatsText, { color: theme.textSecondary }]}>
+                                  {(ch.subscriberCount || 0).toLocaleString()} • {ch.subCategorySlug}
+                                </Text>
+                              </View>
+                            </View>
+                            <Ionicons name="checkmark-circle" size={18} color="#00C853" />
+                          </View>
+                        ))}
+                      </View>
+                    )}
 
                     <SuvixButton 
                       title={loading ? 'Building...' : 'Create Account'} 
@@ -453,4 +494,46 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 16 },
   footerText: { fontSize: 13, fontWeight: '600' },
   footerLink: { fontSize: 13, fontWeight: '900' },
+  // 🎥 NEW YOUTUBE IDENTITY STYLES
+  ytIdentitySection: {
+    marginBottom: 20,
+    marginTop: 4,
+  },
+  ytIdentityLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  ytIdentityCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  ytIdentityAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  ytIdentityMeta: {
+    flex: 1,
+  },
+  ytIdentityName: {
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  ytIdentityStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  ytIdentityStatsText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
 });

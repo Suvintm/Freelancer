@@ -82,7 +82,7 @@ export default function FitnessInfluencerProfile({ scrollY }: { scrollY?: Shared
 
   const displayName = user.name || user.username || 'Fitness Pro';
   const subCategoryName = user.primaryRole?.subCategory || 'Fitness Specialist';
-  const headerOffset = insets.top + 50;
+  const headerOffset = insets.top;
 
   const handlePickMedia = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();

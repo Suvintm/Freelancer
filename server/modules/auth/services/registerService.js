@@ -226,7 +226,7 @@ export const registerFullUser = async (userData) => {
           userId: newUser.id,
           username: normalizedUsername,
           name: fullName,
-          profile_picture: profilePictureUrl,
+          profile_picture: profilePictureUrl || preMirroredYoutubeAvatar,
           mother_tongue: motherTongue,
           location_country: country,
           phone: phone,

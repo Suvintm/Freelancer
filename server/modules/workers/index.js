@@ -6,7 +6,9 @@ import youtubeSyncProcessor from "./processors/youtubeSyncProcessor.js";
 import mediaProcessor from "./processors/mediaProcessor.js";
 import storyProcessor from "./processors/storyProcessor.js";
 import storyCleanupProcessor from "./processors/storyCleanupProcessor.js";
-import { storyCleanupQueue } from "./queues.js";
+import searchFeedbackProcessor from "./processors/searchFeedbackProcessor.js";
+import searchAnalyticsProcessor from "./processors/searchAnalyticsProcessor.js";
+import { storyCleanupQueue, searchFeedbackQueue, searchAnalyticsQueue } from "./queues.js";
 
 /**
  * 🏗️ BACKGROUND WORKER HUB
@@ -66,8 +68,25 @@ if (connection) {
   // ─── 4. STORY CLEANUP WORKER (MAINTENANCE) ──────────────────────────────────
   const cleanupWorker = new Worker("story-cleanup", storyCleanupProcessor, {
     connection,
-    concurrency: 1, // Maintenance tasks are low concurrency
-    drainDelay: 300000, // 5 minute check (very low cost)
+    concurrency: 1,
+    drainDelay: 300000,
+  });
+
+  // ─── 5. SEARCH FEEDBACK WORKER (WEEKLY RANKING RECALIBRATION) ───────────────
+  const searchFeedbackWorker = new Worker("search-feedback", searchFeedbackProcessor, {
+    connection,
+    concurrency: 1,      // Heavy DB job — run one at a time
+    drainDelay: 600000,  // ✅ 10 min idle check (job runs once a week, very low cost)
+    lockDuration: 300000, // Allow up to 5 min to complete
+    maxStalledCount: 1,
+  });
+
+  // ─── 6. SEARCH ANALYTICS WORKER (BATCH LOGGING) ─────────────────────────────
+  const searchAnalyticsWorker = new Worker("search-analytics", searchAnalyticsProcessor, {
+    connection,
+    concurrency: 1,      // Must be 1 to prevent race conditions during batch writes
+    drainDelay: 30000,   // Check every 30s
+    lockDuration: 60000, // Batches shouldn't take more than 60s
   });
 
   // ─── EVENT HANDLERS ─────────────────────────────────────────────────────────
@@ -126,17 +145,31 @@ if (connection) {
     logger.error(`🧹 [CLEANUP] Worker failed job ${job?.id}:`, err)
   );
 
-  workers.push(syncWorker, mediaWorker, storyWorker, cleanupWorker);
+  workers.push(syncWorker, mediaWorker, storyWorker, cleanupWorker, searchFeedbackWorker, searchAnalyticsWorker);
 
   // ─── ⏰ SCHEDULED JOBS ─────────────────────────────────────────────────────
   // 🧹 [STORY SWEEPER] Run cleanup every 2 minutes (⚡ TEST MODE)
   storyCleanupQueue.add("cleanup-stories", {}, {
-    repeat: { pattern: "*/2 * * * *" } // Every 2 minutes
+    repeat: { pattern: "*/2 * * * *" }
   }).then(() => logger.info("🧹 [SCHEDULED] Story Sweeper active (Every 2 Minutes - Test Mode)."));
 
+  // 🔍 [SEARCH FEEDBACK] Run every Sunday at 02:00 — zero-cost since it's weekly
+  searchFeedbackQueue.add("search-ranking-recalibration", {}, {
+    jobId: "search-feedback-weekly", // deduplicated — only one scheduled at a time
+    repeat: { pattern: "0 2 * * 0" }, // Every Sunday at 02:00
+  }).then(() => logger.info("🔍 [SCHEDULED] Search Feedback Loop active (Every Sunday 02:00)."));
+
+  // 📊 [SEARCH ANALYTICS] Flush Redis buffer to MongoDB every 2 minutes
+  searchAnalyticsQueue.add("flush-search-buffer", {}, {
+    jobId: "search-analytics-flush",
+    repeat: { pattern: "*/2 * * * *" } // Every 2 minutes
+  }).then(() => logger.info("📊 [SCHEDULED] Search Analytics Flusher active (Every 2 Minutes)."));
+
   logger.info("✅ [WORKERS] All Background Workers Active (YouTube Sync + Media Processing).");
-  logger.info(`   📊 YT Sync:  drainDelay=60s | concurrency=2 | stall-check=10m`);
-  logger.info(`   📊 Media:    drainDelay=30s | concurrency=3 | stall-check=5m`);
+  logger.info(`   📊 YT Sync:       drainDelay=60s  | concurrency=2 | stall-check=10m`);
+  logger.info(`   📊 Media:          drainDelay=30s  | concurrency=3 | stall-check=5m`);
+  logger.info(`   📊 SearchFeedback: drainDelay=600s | concurrency=1 | runs=weekly`);
+  logger.info(`   📊 SearchAnalytics: drainDelay=30s  | concurrency=1 | runs=every 2m`);
 
 } else {
   logger.warn("⚠️ [WORKERS] Redis connection missing. Background Workers will NOT start.");
