@@ -32,6 +32,7 @@ import { ProfileContentTabs } from '../../shared/profiles/ProfileContentTabs';
 import { ContentGrid } from '../../shared/content/ContentGrid';
 import { useRouter } from 'expo-router';
 import { ProfileSkeleton, ProfileSkeletonContent } from '../../shared/skeletons/ProfileSkeleton';
+import { CommunityCreationModal } from '../../../components/modals/CommunityCreationModal';
 import { useRefreshManager } from '../../../hooks/useRefreshManager';
 import { SmartText } from '../../shared/content/SmartText';
 import { YouTubeVideoCard } from '../components/YouTubeVideoCard';
@@ -1054,113 +1055,6 @@ const BioEditModal = React.memo(({ visible, onClose, onSave, initialBio, theme }
   );
 });
 
-const CommunityCreationModal = React.memo(({ visible, onClose, channels, theme, user, updateUser, formatCount, DEFAULT_AVATAR }: any) => {
-  const [selectedChannelId, setSelectedChannelId] = React.useState<string | null>(null);
-  const [isCreating, setIsCreating] = React.useState(false);
-
-  const handleCreate = async () => {
-    if (!selectedChannelId) {
-      Alert.alert("Selection Required", "Please select a channel to create a community.");
-      return;
-    }
-    
-    setIsCreating(true);
-    try {
-      // Mocking API call for now
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const selectedChannel = channels?.find((c: any) => (c.id === selectedChannelId || c.channel_id === selectedChannelId));
-      
-      // Update local state if needed (though we'd usually refetch)
-      const newCommunity = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: `${selectedChannel?.channel_name || 'Channel'} Community`,
-        channelId: selectedChannelId,
-        memberCount: 1,
-        createdAt: new Date().toISOString()
-      };
-      
-      const currentCommunities = user.communities || [];
-      updateUser({ communities: [...currentCommunities, newCommunity] });
-      
-      Alert.alert("Success", `Community "${newCommunity.name}" created!`);
-      onClose();
-    } catch (error) {
-      Alert.alert("Error", "Could not create community. Please try again.");
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  return (
-    <Modal visible={visible} transparent animationType="slide">
-      <View style={modalStyles.overlay}>
-        <View style={[modalStyles.content, { backgroundColor: theme.primary, borderColor: theme.border }]}>
-          <View style={modalStyles.header}>
-            <View>
-              <Text style={[modalStyles.title, { color: theme.text }]}>Create Community</Text>
-              <Text style={[styles.miniToolText, { color: theme.textSecondary, marginTop: 4 }]}>Select a channel to build your community</Text>
-            </View>
-            <TouchableOpacity onPress={onClose}>
-              <MaterialCommunityIcons name="close" size={24} color={theme.textSecondary} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={{ maxHeight: 300, marginBottom: 20 }}>
-            {channels && channels.length > 0 ? (
-              channels.map((ch: any) => (
-                <TouchableOpacity 
-                  key={ch.id || ch.channel_id}
-                  onPress={() => setSelectedChannelId(ch.id || ch.channel_id)}
-                  style={[
-                    styles.channelModalItem, 
-                    { 
-                      backgroundColor: theme.secondary, 
-                      borderColor: selectedChannelId === (ch.id || ch.channel_id) ? theme.accent : theme.border,
-                      borderWidth: selectedChannelId === (ch.id || ch.channel_id) ? 2 : 1
-                    }
-                  ]}
-                >
-                  <Image 
-                    source={ch.thumbnail_url ? { uri: ch.thumbnail_url } : DEFAULT_AVATAR} 
-                    style={styles.channelModalThumb} 
-                  />
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={[styles.channelModalName, { color: theme.text }]} numberOfLines={1}>{ch.channel_name}</Text>
-                    <Text style={[styles.channelModalSubs, { color: theme.textSecondary }]}>{formatCount(ch.subscriber_count || 0)} Subscribers</Text>
-                  </View>
-                  {selectedChannelId === (ch.id || ch.channel_id) && (
-                    <MaterialCommunityIcons name="check-circle" size={24} color={theme.accent} />
-                  )}
-                </TouchableOpacity>
-              ))
-            ) : (
-              <View style={styles.emptyChannels}>
-                <MaterialCommunityIcons name="youtube-subscription" size={48} color={theme.textSecondary} />
-                <Text style={[styles.emptyChannelsText, { color: theme.textSecondary }]}>No connected channels found.</Text>
-              </View>
-            )}
-          </View>
-
-          <TouchableOpacity 
-            style={[
-              modalStyles.saveBtn, 
-              { backgroundColor: selectedChannelId ? theme.accent : theme.secondary, opacity: selectedChannelId ? 1 : 0.6 }
-            ]}
-            onPress={handleCreate}
-            disabled={!selectedChannelId || isCreating}
-          >
-            {isCreating ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Text style={modalStyles.saveBtnText}>Initialize Community</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-});
 
 // --------------------------------------------------------------------------
 // 🎬 YT POSTS SECTION STYLES  (isolated, no conflicts with main styles)
