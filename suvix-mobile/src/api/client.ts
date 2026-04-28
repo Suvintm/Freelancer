@@ -45,7 +45,7 @@ api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   const { useAuthStore } = require('../store/useAuthStore');
   const token = (useAuthStore.getState() as any).token;
 
-  if (token) {
+  if (token && !config.headers.Authorization) {
     config.headers.Authorization = `Bearer ${token}`;
   }
 

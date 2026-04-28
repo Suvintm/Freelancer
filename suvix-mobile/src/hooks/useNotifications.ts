@@ -115,7 +115,7 @@ async function registerTokenForAccount(pushToken: string, userId: string): Promi
 export function useNotifications() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuthStore();
-  const { activeAccountId, getAllAccounts, switchTo, getActiveTokens } = useAccountVault();
+  const { activeAccountId, getAllAccounts } = useAccountVault();
 
   const pushTokenRef = useRef<string | null>(null);
   const registeredForRef = useRef<string | null>(null); // Which userId we last registered token for
@@ -167,13 +167,8 @@ export function useNotifications() {
         targetProfilePicture: targetAccount.profilePicture,
         onSwitch: async () => {
           _setBanner?.(null);
-          const result = await switchTo(notifAccountId);
+          const result = await useAuthStore.getState().switchAccount(notifAccountId);
           if (result === 'success') {
-            const tokens = await getActiveTokens();
-            if (tokens) {
-              useAuthStore.getState().setTokens(tokens.accessToken, tokens.refreshToken);
-              setTimeout(() => useAuthStore.getState().fetchUser(), 100);
-            }
             // Navigate to the relevant screen
             if (data?.screen) router.push(`/${data.screen}`);
           } else if (result === 'needs_reauth') {
@@ -196,14 +191,7 @@ export function useNotifications() {
 
       if (notifAccountId && notifAccountId !== activeAccountId) {
         // Need to switch before navigating
-        const result = await switchTo(notifAccountId);
-        if (result === 'success') {
-          const tokens = await getActiveTokens();
-          if (tokens) {
-            useAuthStore.getState().setTokens(tokens.accessToken, tokens.refreshToken);
-            setTimeout(() => useAuthStore.getState().fetchUser(), 100);
-          }
-        }
+        await useAuthStore.getState().switchAccount(notifAccountId);
       }
 
       // Deep-link routing
@@ -218,5 +206,4 @@ export function useNotifications() {
     };
   }, [isAuthenticated, activeAccountId]);
 }
-
 

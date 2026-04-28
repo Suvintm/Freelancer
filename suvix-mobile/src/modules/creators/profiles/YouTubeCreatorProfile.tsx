@@ -91,6 +91,7 @@ export default function YouTubeCreatorProfile({ scrollY }: { scrollY?: SharedVal
   const [isSavingBio, setIsSavingBio] = React.useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
   const [isDeletingChannel, setIsDeletingChannel] = React.useState<string | null>(null);
+  const [isCommunityModalVisible, setIsCommunityModalVisible] = React.useState(false);
 
   const onRefresh = React.useCallback(async () => {
     setIsRefreshing(true);
@@ -399,9 +400,12 @@ export default function YouTubeCreatorProfile({ scrollY }: { scrollY?: SharedVal
                   <MaterialCommunityIcons name="briefcase-outline" size={14} color={theme.accent} />
                   <Text style={[styles.miniToolText, { color: theme.text }]}>Deals</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.miniToolItem, { backgroundColor: theme.secondary }]}>
+                <TouchableOpacity 
+                  onPress={() => setIsCommunityModalVisible(true)}
+                  style={[styles.miniToolItem, { backgroundColor: theme.secondary }]}
+                >
                   <MaterialCommunityIcons name="account-group-outline" size={14} color="#22C55E" />
-                  <Text style={[styles.miniToolText, { color: theme.text }]}>Collab</Text>
+                  <Text style={[styles.miniToolText, { color: theme.text }]}>Community</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -948,6 +952,17 @@ export default function YouTubeCreatorProfile({ scrollY }: { scrollY?: SharedVal
         initialBio={user.bio || ''}
         theme={theme}
       />
+
+      <CommunityCreationModal 
+        visible={isCommunityModalVisible}
+        onClose={() => setIsCommunityModalVisible(false)}
+        channels={user.youtubeProfile}
+        theme={theme}
+        user={user}
+        updateUser={updateUser}
+        formatCount={formatCount}
+        DEFAULT_AVATAR={DEFAULT_AVATAR}
+      />
     </View>
   );
 }
@@ -1019,6 +1034,114 @@ const BioEditModal = React.memo(({ visible, onClose, onSave, initialBio, theme }
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+    </Modal>
+  );
+});
+
+const CommunityCreationModal = React.memo(({ visible, onClose, channels, theme, user, updateUser, formatCount, DEFAULT_AVATAR }: any) => {
+  const [selectedChannelId, setSelectedChannelId] = React.useState<string | null>(null);
+  const [isCreating, setIsCreating] = React.useState(false);
+
+  const handleCreate = async () => {
+    if (!selectedChannelId) {
+      Alert.alert("Selection Required", "Please select a channel to create a community.");
+      return;
+    }
+    
+    setIsCreating(true);
+    try {
+      // Mocking API call for now
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const selectedChannel = channels?.find((c: any) => (c.id === selectedChannelId || c.channel_id === selectedChannelId));
+      
+      // Update local state if needed (though we'd usually refetch)
+      const newCommunity = {
+        id: Math.random().toString(36).substr(2, 9),
+        name: `${selectedChannel?.channel_name || 'Channel'} Community`,
+        channelId: selectedChannelId,
+        memberCount: 1,
+        createdAt: new Date().toISOString()
+      };
+      
+      const currentCommunities = user.communities || [];
+      updateUser({ communities: [...currentCommunities, newCommunity] });
+      
+      Alert.alert("Success", `Community "${newCommunity.name}" created!`);
+      onClose();
+    } catch (error) {
+      Alert.alert("Error", "Could not create community. Please try again.");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide">
+      <View style={modalStyles.overlay}>
+        <View style={[modalStyles.content, { backgroundColor: theme.primary, borderColor: theme.border }]}>
+          <View style={modalStyles.header}>
+            <View>
+              <Text style={[modalStyles.title, { color: theme.text }]}>Create Community</Text>
+              <Text style={[styles.miniToolText, { color: theme.textSecondary, marginTop: 4 }]}>Select a channel to build your community</Text>
+            </View>
+            <TouchableOpacity onPress={onClose}>
+              <MaterialCommunityIcons name="close" size={24} color={theme.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ maxHeight: 300, marginBottom: 20 }}>
+            {channels && channels.length > 0 ? (
+              channels.map((ch: any) => (
+                <TouchableOpacity 
+                  key={ch.id || ch.channel_id}
+                  onPress={() => setSelectedChannelId(ch.id || ch.channel_id)}
+                  style={[
+                    styles.channelModalItem, 
+                    { 
+                      backgroundColor: theme.secondary, 
+                      borderColor: selectedChannelId === (ch.id || ch.channel_id) ? theme.accent : theme.border,
+                      borderWidth: selectedChannelId === (ch.id || ch.channel_id) ? 2 : 1
+                    }
+                  ]}
+                >
+                  <Image 
+                    source={ch.thumbnail_url ? { uri: ch.thumbnail_url } : DEFAULT_AVATAR} 
+                    style={styles.channelModalThumb} 
+                  />
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={[styles.channelModalName, { color: theme.text }]} numberOfLines={1}>{ch.channel_name}</Text>
+                    <Text style={[styles.channelModalSubs, { color: theme.textSecondary }]}>{formatCount(ch.subscriber_count || 0)} Subscribers</Text>
+                  </View>
+                  {selectedChannelId === (ch.id || ch.channel_id) && (
+                    <MaterialCommunityIcons name="check-circle" size={24} color={theme.accent} />
+                  )}
+                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.emptyChannels}>
+                <MaterialCommunityIcons name="youtube-subscription" size={48} color={theme.textSecondary} />
+                <Text style={[styles.emptyChannelsText, { color: theme.textSecondary }]}>No connected channels found.</Text>
+              </View>
+            )}
+          </View>
+
+          <TouchableOpacity 
+            style={[
+              modalStyles.saveBtn, 
+              { backgroundColor: selectedChannelId ? theme.accent : theme.secondary, opacity: selectedChannelId ? 1 : 0.6 }
+            ]}
+            onPress={handleCreate}
+            disabled={!selectedChannelId || isCreating}
+          >
+            {isCreating ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Text style={modalStyles.saveBtnText}>Initialize Community</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
     </Modal>
   );
 });
@@ -1421,7 +1544,41 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 3,
   },
-  avatarLoadingOverlay: { ...StyleSheet.absoluteFillObject, borderRadius: 45, justifyContent: 'center', alignItems: 'center' },
+  avatarLoadingOverlay: { ...StyleSheet.absoluteFillObject, borderRadius: 36, justifyContent: 'center', alignItems: 'center' },
+
+  // 🏛️ Community Modal Styles
+  channelModalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 16,
+    marginBottom: 10,
+    borderWidth: 1,
+  },
+  channelModalThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  channelModalName: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  channelModalSubs: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  emptyChannels: {
+    alignItems: 'center',
+    padding: 30,
+    gap: 12,
+  },
+  emptyChannelsText: {
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
   headerStats: { flex: 1, justifyContent: 'center' },
   miniStatsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14, paddingRight: 5, marginTop: -8 },
   miniStat: { alignItems: 'center' },

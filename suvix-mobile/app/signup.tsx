@@ -77,17 +77,17 @@ export default function SignupScreen() {
 
   const router = useRouter();
   const { signIn: googleSignIn, isLoading: isGoogleLoading } = useGoogleAuth();
-  const { user, isAuthenticated, setAuth } = useAuthStore();
+  const { user, isAuthenticated, setAuth, isAddingAccount } = useAuthStore();
   const clearTempSignupData = useAuthStore((state) => state.clearTempSignupData);
 
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (isAuthenticated && user && !isAddingAccount) {
       setIsTransitioning(true);
       setTimeout(() => {
         router.replace('/(tabs)');
       }, 600);
     }
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user?.id, isAddingAccount]);
 
   const handleImpact = (style = Haptics.ImpactFeedbackStyle.Light) => {
     Haptics.impactAsync(style);
