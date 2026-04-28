@@ -25,7 +25,7 @@ import { Modal } from 'react-native';
 import { ProfileContentTabs } from '../../shared/profiles/ProfileContentTabs';
 import { useRouter } from 'expo-router';
 import { Image as ExpoImage } from 'expo-image';
-import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons, Feather } from '@expo/vector-icons';
 import { useState } from 'react';
 import { ProfileSkeleton, ProfileSkeletonContent } from '../../shared/skeletons/ProfileSkeleton';
 import * as ImagePicker from 'expo-image-picker';

@@ -481,6 +481,22 @@ export default function YouTubeCreatorProfile({ scrollY }: { scrollY?: SharedVal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.milestoneScroll}
             >
+              {/* ➕ CREATE POST QUICK ACTION */}
+                <TouchableOpacity 
+                onPress={() => router.push('/create-post')}
+                style={styles.milestoneCard}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={theme.isDarkMode ? ['#3F3F46', '#18181B'] : ['#18181B', '#000000']}
+                  style={styles.addPostBadge}
+                >
+                  <MaterialCommunityIcons name="plus" size={24} color="#FFFFFF" />
+                </LinearGradient>
+                <Text style={[styles.milestoneLabel, { color: theme.text }]}>Add Post</Text>
+                <Text style={[styles.milestoneStatus, { color: theme.accent }]}>SHARE NOW</Text>
+              </TouchableOpacity>
+
               {[
                 { label: 'Silver', count: 100, img: SILVER_BTN },
                 { label: 'Gold', count: 1000, img: GOLD_BTN },
@@ -1479,6 +1495,20 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     borderWidth: 1,
+  },
+  addPostBadge: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   milestoneImg: {
     width: 52,

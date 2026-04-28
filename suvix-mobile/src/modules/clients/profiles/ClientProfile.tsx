@@ -737,7 +737,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 25,
   },
   bioLoadingWrap: { padding: 10, alignItems: 'center' },
-  avatarInner: { position: 'relative' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
   modalContentCentered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   closeModalBtn: { position: 'absolute', top: 60, right: 30, zIndex: 100 },
