@@ -247,7 +247,7 @@ export default function DefaultProfile({ scrollY }: { scrollY?: SharedValue<numb
           </View>
 
           <View style={styles.infoBlock}>
-             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+             <View style={[styles.nameRow, { paddingLeft: 16 }]}>
                <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
                <MaterialCommunityIcons name="check-decagram" size={16} color={theme.accent} style={{ marginLeft: 6 }} />
              </View>
@@ -370,9 +370,15 @@ const styles = StyleSheet.create({
   infoBlock: {
     marginTop: 12,
   },
-  name: {
-    fontSize: 16,
-    fontWeight: '800',
+  nameRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center',
+    paddingHorizontal: 0,
+  },
+  name: { 
+    fontSize: 15, 
+    fontWeight: '700', 
+    letterSpacing: -0.3 
   },
   username: {
     marginTop: 2,
