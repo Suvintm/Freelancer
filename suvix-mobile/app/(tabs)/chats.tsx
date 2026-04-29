@@ -193,7 +193,7 @@ const PinnedBubble = ({
         {/* Ring gradient for unread */}
         {item.unread > 0 ? (
           <LinearGradient
-            colors={['#F59E0B', '#EF4444', '#8B5CF6']}
+            colors={['#000000', '#FFFFFF']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.pinnedRing}
@@ -412,7 +412,7 @@ export default function ChatsScreen({
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isCommunityModalVisible, setIsCommunityModalVisible] = useState(false);
 
-  const searchAnim = useRef(new RNAnimated.Value(0)).current;
+  const searchAnim = useSharedValue(0); // 0 = normal, 1 = expanded
   const DEFAULT_AVATAR = require('../../assets/defualtprofile.png');
 
   const formatCount = (count: number) => {
@@ -424,25 +424,30 @@ export default function ChatsScreen({
   // Expand/collapse search bar
   const onSearchFocus = () => {
     setIsSearchFocused(true);
-    RNAnimated.spring(searchAnim, {
-      toValue: 1,
-      useNativeDriver: false,
-      tension: 70,
-      friction: 10,
-    }).start();
+    searchAnim.value = withSpring(1, { damping: 15 });
   };
 
   const onSearchBlur = () => {
     if (!searchQuery) {
       setIsSearchFocused(false);
-      RNAnimated.spring(searchAnim, {
-        toValue: 0,
-        useNativeDriver: false,
-        tension: 70,
-        friction: 10,
-      }).start();
+      searchAnim.value = withSpring(0, { damping: 15 });
     }
   };
+
+  const animatedCommunityStyle = useAnimatedStyle(() => ({
+    flex: interpolate(searchAnim.value, [0, 1], [1.8, 0.4]),
+    marginRight: interpolate(searchAnim.value, [0, 1], [10, 8]),
+  }));
+
+  const animatedSearchStyle = useAnimatedStyle(() => ({
+    flex: interpolate(searchAnim.value, [0, 1], [1, 2.0]),
+  }));
+
+  const animatedTextStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(searchAnim.value, [0, 0.3], [1, 0]),
+    transform: [{ scale: interpolate(searchAnim.value, [0, 0.3], [1, 0.8]) }],
+    width: interpolate(searchAnim.value, [0, 0.4], [150, 0]),
+  }));
 
   const filteredChats = React.useMemo(() => {
     let chats = ALL_CHATS;
@@ -471,191 +476,6 @@ export default function ChatsScreen({
       <View style={[styles.root, { backgroundColor: bgColor }]}>
 
         {/* ══════════════════════════════════════════════════════════════════
-            HEADER
-        ═══════════════════════════════════════════════════════════════════ */}
-        <Animated.View entering={FadeInDown.delay(0).springify()} style={styles.header}>
-
-          {/* Title Row */}
-          <View style={styles.headerTitleRow}>
-            <View>
-              <Text style={[styles.headerTitle, { color: theme.text }]}>
-                Messages
-              </Text>
-              {totalUnread > 0 && (
-                <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
-                  {totalUnread} unread conversation{totalUnread !== 1 ? 's' : ''}
-                </Text>
-              )}
-            </View>
-
-            <View style={styles.headerActions}>
-              {/* Request / Archive icon */}
-              <TouchableOpacity
-                style={[styles.headerIconBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
-              >
-                <Feather name="archive" size={18} color={theme.textSecondary} />
-              </TouchableOpacity>
-
-              {/* New DM icon */}
-              <TouchableOpacity
-                style={[styles.headerIconBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
-                onPress={() => {/* navigate to new chat */}}
-              >
-                <Feather name="edit" size={18} color={theme.textSecondary} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* ── CREATE COMMUNITY BUTTON ── */}
-          <TouchableOpacity
-            style={styles.createCommunityBtn}
-            activeOpacity={0.85}
-            onPress={() => setIsCommunityModalVisible(true)}
-          >
-            <LinearGradient
-              colors={isDark ? ['#1F2937', '#111827'] : ['#111827', '#374151']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.createCommunityGrad}
-            >
-              <View style={styles.createCommunityIcon}>
-                <LinearGradient
-                  colors={['#8B5CF6', '#6366F1']}
-                  style={styles.createCommunityIconGrad}
-                >
-                  <MaterialCommunityIcons name="account-group-outline" size={16} color="#FFF" />
-                </LinearGradient>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.createCommunityTitle}>Create a Community</Text>
-                <Text style={styles.createCommunitySubtitle}>
-                  Connect with your audience
-                </Text>
-              </View>
-              <View style={[styles.createCommunityArrow, { backgroundColor: 'rgba(255,255,255,0.06)' }]}>
-                <Feather name="arrow-right" size={14} color="rgba(255,255,255,0.6)" />
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* ── SEARCH BAR ── */}
-          <View
-            style={[
-              styles.searchBar,
-              {
-                backgroundColor: theme.secondary,
-                borderColor: isSearchFocused
-                  ? theme.accent + '80'
-                  : theme.border,
-              },
-            ]}
-          >
-            <Feather
-              name="search"
-              size={16}
-              color={isSearchFocused ? theme.accent : theme.textSecondary}
-            />
-            <TextInput
-              style={[styles.searchInput, { color: theme.text }]}
-              placeholder="Search messages..."
-              placeholderTextColor={theme.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              onFocus={onSearchFocus}
-              onBlur={onSearchBlur}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <View style={[styles.searchClear, { backgroundColor: theme.border }]}>
-                  <Feather name="x" size={10} color={theme.textSecondary} />
-                </View>
-              </TouchableOpacity>
-            )}
-          </View>
-        </Animated.View>
-
-        {/* ══════════════════════════════════════════════════════════════════
-            TABS
-        ═══════════════════════════════════════════════════════════════════ */}
-        <Animated.View entering={FadeInDown.delay(60).springify()} style={styles.tabsContainer}>
-          {TABS.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <TouchableOpacity
-                key={tab.id}
-                onPress={() => setActiveTab(tab.id)}
-                style={[
-                  styles.tab,
-                  isActive
-                    ? { backgroundColor: theme.text }
-                    : { backgroundColor: theme.secondary, borderColor: theme.border },
-                ]}
-                activeOpacity={0.8}
-              >
-                <MaterialCommunityIcons
-                  name={tab.icon as any}
-                  size={13}
-                  color={isActive ? theme.background : theme.textSecondary}
-                  style={{ marginRight: 5 }}
-                />
-                <Text
-                  style={[
-                    styles.tabText,
-                    {
-                      color: isActive ? theme.background : theme.textSecondary,
-                    },
-                  ]}
-                >
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </Animated.View>
-
-        {/* ══════════════════════════════════════════════════════════════════
-            PINNED / ACTIVE NOW (only in "All" tab, no search)
-        ═══════════════════════════════════════════════════════════════════ */}
-        {activeTab === 'All' && !searchQuery && (
-          <Animated.View entering={FadeInDown.delay(90).springify()}>
-            <View style={styles.sectionHeader}>
-              <View style={[styles.sectionDot, { backgroundColor: '#22C55E' }]} />
-              <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
-                Active Now
-              </Text>
-            </View>
-            <FlatList
-              horizontal
-              data={PINNED_CHATS}
-              keyExtractor={(it) => it.id}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.pinnedList}
-              renderItem={({ item, index }) => (
-                <PinnedBubble item={item} theme={theme} index={index} />
-              )}
-            />
-          </Animated.View>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════
-            SECTION HEADER FOR CHAT LIST
-        ═══════════════════════════════════════════════════════════════════ */}
-        {!searchQuery && (
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
-              {activeTab === 'All'
-                ? 'Recent'
-                : activeTab === 'Direct'
-                ? 'Direct Messages'
-                : 'Communities'}
-            </Text>
-            <Text style={[styles.sectionCount, { color: theme.textSecondary, opacity: 0.5 }]}>
-              {filteredChats.length}
-            </Text>
-          </View>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════
             CHAT LIST
         ═══════════════════════════════════════════════════════════════════ */}
         <FlatList
@@ -670,17 +490,109 @@ export default function ChatsScreen({
             if (globalScrollY) globalScrollY.value = e.nativeEvent.contentOffset.y;
           }}
           scrollEventThrottle={16}
+          ListHeaderComponent={
+            <View>
+              {/* ── HEADER ── */}
+              <Animated.View entering={FadeInDown.delay(0).springify()} style={[styles.header, { flexDirection: 'row', alignItems: 'center' }]}>
+                {/* ── CREATE COMMUNITY BUTTON ── */}
+                <Animated.View style={animatedCommunityStyle}>
+                  <TouchableOpacity
+                    style={styles.createCommunityBtn}
+                    activeOpacity={0.85}
+                    onPress={() => setIsCommunityModalVisible(true)}
+                  >
+                    <LinearGradient
+                      colors={isDark ? ['#1F2937', '#111827'] : ['#111827', '#374151']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[styles.createCommunityGrad, { paddingHorizontal: 12 }]}
+                    >
+                      <View style={[styles.createCommunityIcon, { backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }]}>
+                        <Feather name="plus" size={16} color="#FFF" />
+                      </View>
+                      <Animated.View style={[animatedTextStyle, { overflow: 'hidden' }]}>
+                        <Text style={[styles.createCommunityTitle, { fontSize: 13 }]} numberOfLines={1}>Create Community</Text>
+                      </Animated.View>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </Animated.View>
+
+                {/* ── SEARCH BAR ── */}
+                <Animated.View style={[animatedSearchStyle, styles.searchBar, { backgroundColor: theme.secondary, borderColor: isSearchFocused ? theme.accent + '80' : theme.border, borderRadius: 22 }]}>
+                  <Feather name="search" size={16} color={isSearchFocused ? theme.accent : theme.textSecondary} />
+                  <TextInput
+                    style={[styles.searchInput, { color: theme.text }]}
+                    placeholder="Search..."
+                    placeholderTextColor={theme.textSecondary}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    onFocus={onSearchFocus}
+                    onBlur={onSearchBlur}
+                  />
+                  {searchQuery.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearchQuery('')}>
+                      <View style={[styles.searchClear, { backgroundColor: theme.border }]}>
+                        <Feather name="x" size={10} color={theme.textSecondary} />
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                </Animated.View>
+              </Animated.View>
+
+              {/* ── TABS ── */}
+              <Animated.View entering={FadeInDown.delay(60).springify()} style={styles.tabsContainer}>
+                {TABS.map((tab) => {
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <TouchableOpacity
+                      key={tab.id}
+                      onPress={() => setActiveTab(tab.id)}
+                      style={[styles.tab, isActive ? { backgroundColor: theme.text } : { backgroundColor: theme.secondary, borderColor: theme.border }]}
+                      activeOpacity={0.8}
+                    >
+                      <MaterialCommunityIcons name={tab.icon as any} size={13} color={isActive ? theme.background : theme.textSecondary} style={{ marginRight: 5 }} />
+                      <Text style={[styles.tabText, { color: isActive ? theme.background : theme.textSecondary }]}>{tab.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </Animated.View>
+
+              {/* ── ACTIVE NOW ── */}
+              {activeTab === 'All' && !searchQuery && (
+                <Animated.View entering={FadeInDown.delay(90).springify()}>
+                  <View style={styles.sectionHeader}>
+                    <View style={[styles.sectionDot, { backgroundColor: '#22C55E' }]} />
+                    <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Active Now</Text>
+                  </View>
+                  <FlatList
+                    horizontal
+                    data={PINNED_CHATS}
+                    keyExtractor={(it) => it.id}
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.pinnedList}
+                    renderItem={({ item, index }) => <PinnedBubble item={item} theme={theme} index={index} />}
+                  />
+                </Animated.View>
+              )}
+
+              {/* ── SECTION HEADER ── */}
+              {!searchQuery && (
+                <View style={styles.sectionHeader}>
+                  <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+                    {activeTab === 'All' ? 'Recent' : activeTab === 'Direct' ? 'Direct Messages' : 'Communities'}
+                  </Text>
+                  <Text style={[styles.sectionCount, { color: theme.textSecondary, opacity: 0.5 }]}>{filteredChats.length}</Text>
+                </View>
+              )}
+            </View>
+          }
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
               <View style={[styles.emptyIconWrap, { backgroundColor: theme.secondary }]}>
                 <Feather name="message-circle" size={32} color={theme.textSecondary} />
               </View>
-              <Text style={[styles.emptyTitle, { color: theme.text }]}>
-                No conversations found
-              </Text>
-              <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
-                {searchQuery ? 'Try a different search term' : 'Start a new conversation'}
-              </Text>
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>No conversations found</Text>
+              <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>{searchQuery ? 'Try a different search term' : 'Start a new conversation'}</Text>
             </View>
           }
           renderItem={({ item, index }) => (
@@ -693,25 +605,6 @@ export default function ChatsScreen({
           )}
           ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
         />
-
-        {/* ══════════════════════════════════════════════════════════════════
-            FLOATING NEW MESSAGE BUTTON
-        ═══════════════════════════════════════════════════════════════════ */}
-        <Animated.View
-          entering={FadeInUp.delay(300).springify()}
-          style={[styles.fab, { bottom: 96 + insets.bottom }]}
-        >
-          <TouchableOpacity activeOpacity={0.85} onPress={() => {/* new message */}}>
-            <LinearGradient
-              colors={['#8B5CF6', '#6366F1']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.fabGradient}
-            >
-              <Feather name="edit-2" size={20} color="#FFFFFF" />
-            </LinearGradient>
-          </TouchableOpacity>
-        </Animated.View>
 
         {/* ══════════════════════════════════════════════════════════════════
             COMMUNITY CREATION MODAL
@@ -741,10 +634,9 @@ const styles = StyleSheet.create({
 
   // ── HEADER ────────────────────────────────────────────────────────────────
   header: {
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 50 : 16,
+    paddingHorizontal: 10,
+    paddingTop: 8,
     paddingBottom: 4,
-    gap: 12,
   },
   headerTitleRow: {
     flexDirection: 'row',
@@ -846,7 +738,7 @@ const styles = StyleSheet.create({
   // ── TABS ──────────────────────────────────────────────────────────────────
   tabsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     gap: 8,
     marginTop: 12,
     marginBottom: 4,
@@ -870,7 +762,7 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     paddingVertical: 10,
     gap: 8,
   },
@@ -893,7 +785,7 @@ const styles = StyleSheet.create({
 
   // ── PINNED BUBBLES ────────────────────────────────────────────────────────
   pinnedList: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     paddingBottom: 6,
     gap: 16,
   },
@@ -985,7 +877,7 @@ const styles = StyleSheet.create({
 
   // ── CHAT LIST ─────────────────────────────────────────────────────────────
   listContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     paddingTop: 4,
   },
   chatCard: {
