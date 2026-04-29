@@ -89,6 +89,7 @@ export interface AuthUser {
   following?: number;
   bio?: string;
   isBanned?: boolean;
+  communities?: any[];
 }
 
 interface AuthState {
@@ -329,14 +330,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const nextId = useAccountVault.getState().activeAccountId;
 
       if (nextId) {
-        const result = await useAccountVault.getState().switchTo(nextId);
-        if (result === 'success') {
-          const tokens = await useAccountVault.getState().getActiveTokens();
-          if (tokens) {
-            set({ token: tokens.accessToken, refreshToken: tokens.refreshToken });
-            return;
-          }
-        }
+        set({
+          token:              null,
+          refreshToken:       null,
+          user:               null,
+          isAuthenticated:    true,
+          isLoadingUser:      true,
+          isAddingAccount:    false,
+          dataLoaded:         false,
+        });
+
+        const result = await get().switchAccount(nextId);
+        if (result === 'success') return;
       }
 
       set({
@@ -479,7 +484,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoadingUser: true, isRefreshing: true, lastRefreshedAt: now });
 
     try {
-      const res = await api.get('/auth/me');
+      const res = await api.get(`/auth/me?t=${Date.now()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (res.data.success) {
         const normalizedUser = {
           ...res.data.user,
@@ -555,18 +562,35 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user:            null,   // Clear stale profile
         isAuthenticated: true,   // Never drop — prevents guard redirect loops
         dataLoaded:      false,  // Reset so guard waits for new profile
+        lastRefreshedAt:  0,
       });
 
       // Small settle delay for React state batching
       await new Promise(r => setTimeout(r, 100));
 
-      const res = await api.get('/auth/me');
+      const res = await api.get(`/auth/me?t=${Date.now()}`, {
+        headers: { Authorization: `Bearer ${freshTokens.accessToken}` },
+      });
 
       if (res.data.user) {
         const updatedUser = {
           ...res.data.user,
           isOnboarded: !!(res.data.user.is_onboarded || res.data.user.isOnboarded),
         };
+        if (updatedUser.id !== userId) {
+          console.error(`[AUTH] Switch identity mismatch. Expected ${userId}, got ${updatedUser.id}`);
+          set({
+            token:              null,
+            refreshToken:       null,
+            user:               null,
+            isAuthenticated:    false,
+            isLoadingUser:      false,
+            switchingToAccount: null,
+            dataLoaded:         true,
+          });
+          return 'error';
+        }
+
         console.log(`✅ [AUTH] Switch complete. Identity: @${updatedUser.username}`);
 
         await new Promise(r => setTimeout(r, 300));
@@ -584,7 +608,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return 'error';
     } catch (error) {
       console.error('❌ [AUTH] Atomic switch failed:', error);
-      set({ isLoadingUser: false, switchingToAccount: null });
+      set({ isLoadingUser: false, switchingToAccount: null, dataLoaded: true });
       return 'error';
     }
   },

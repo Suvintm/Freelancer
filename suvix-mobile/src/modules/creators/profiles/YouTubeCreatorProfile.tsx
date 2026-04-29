@@ -32,6 +32,7 @@ import { ProfileContentTabs } from '../../shared/profiles/ProfileContentTabs';
 import { ContentGrid } from '../../shared/content/ContentGrid';
 import { useRouter } from 'expo-router';
 import { ProfileSkeleton, ProfileSkeletonContent } from '../../shared/skeletons/ProfileSkeleton';
+import { CommunityCreationModal } from '../../../components/modals/CommunityCreationModal';
 import { useRefreshManager } from '../../../hooks/useRefreshManager';
 import { SmartText } from '../../shared/content/SmartText';
 import { YouTubeVideoCard } from '../components/YouTubeVideoCard';
@@ -91,6 +92,7 @@ export default function YouTubeCreatorProfile({ scrollY }: { scrollY?: SharedVal
   const [isSavingBio, setIsSavingBio] = React.useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
   const [isDeletingChannel, setIsDeletingChannel] = React.useState<string | null>(null);
+  const [isCommunityModalVisible, setIsCommunityModalVisible] = React.useState(false);
 
   const onRefresh = React.useCallback(async () => {
     setIsRefreshing(true);
@@ -399,9 +401,12 @@ export default function YouTubeCreatorProfile({ scrollY }: { scrollY?: SharedVal
                   <MaterialCommunityIcons name="briefcase-outline" size={14} color={theme.accent} />
                   <Text style={[styles.miniToolText, { color: theme.text }]}>Deals</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.miniToolItem, { backgroundColor: theme.secondary }]}>
+                <TouchableOpacity 
+                  onPress={() => setIsCommunityModalVisible(true)}
+                  style={[styles.miniToolItem, { backgroundColor: theme.secondary }]}
+                >
                   <MaterialCommunityIcons name="account-group-outline" size={14} color="#22C55E" />
-                  <Text style={[styles.miniToolText, { color: theme.text }]}>Collab</Text>
+                  <Text style={[styles.miniToolText, { color: theme.text }]}>Community</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -477,6 +482,22 @@ export default function YouTubeCreatorProfile({ scrollY }: { scrollY?: SharedVal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.milestoneScroll}
             >
+              {/* ➕ CREATE POST QUICK ACTION */}
+                <TouchableOpacity 
+                onPress={() => router.push('/create-post')}
+                style={styles.milestoneCard}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={theme.isDarkMode ? ['#3F3F46', '#18181B'] : ['#18181B', '#000000']}
+                  style={styles.addPostBadge}
+                >
+                  <MaterialCommunityIcons name="plus" size={24} color="#FFFFFF" />
+                </LinearGradient>
+                <Text style={[styles.milestoneLabel, { color: theme.text }]}>Add Post</Text>
+                <Text style={[styles.milestoneStatus, { color: theme.accent }]}>SHARE NOW</Text>
+              </TouchableOpacity>
+
               {[
                 { label: 'Silver', count: 100, img: SILVER_BTN },
                 { label: 'Gold', count: 1000, img: GOLD_BTN },
@@ -948,6 +969,17 @@ export default function YouTubeCreatorProfile({ scrollY }: { scrollY?: SharedVal
         initialBio={user.bio || ''}
         theme={theme}
       />
+
+      <CommunityCreationModal 
+        visible={isCommunityModalVisible}
+        onClose={() => setIsCommunityModalVisible(false)}
+        channels={user.youtubeProfile}
+        theme={theme}
+        user={user}
+        updateUser={updateUser}
+        formatCount={formatCount}
+        DEFAULT_AVATAR={DEFAULT_AVATAR}
+      />
     </View>
   );
 }
@@ -1022,6 +1054,7 @@ const BioEditModal = React.memo(({ visible, onClose, onSave, initialBio, theme }
     </Modal>
   );
 });
+
 
 // --------------------------------------------------------------------------
 // 🎬 YT POSTS SECTION STYLES  (isolated, no conflicts with main styles)
@@ -1357,6 +1390,20 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
   },
+  addPostBadge: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   milestoneImg: {
     width: 52,
     height: 52,
@@ -1421,7 +1468,41 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 3,
   },
-  avatarLoadingOverlay: { ...StyleSheet.absoluteFillObject, borderRadius: 45, justifyContent: 'center', alignItems: 'center' },
+  avatarLoadingOverlay: { ...StyleSheet.absoluteFillObject, borderRadius: 36, justifyContent: 'center', alignItems: 'center' },
+
+  // 🏛️ Community Modal Styles
+  channelModalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 16,
+    marginBottom: 10,
+    borderWidth: 1,
+  },
+  channelModalThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  channelModalName: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  channelModalSubs: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  emptyChannels: {
+    alignItems: 'center',
+    padding: 30,
+    gap: 12,
+  },
+  emptyChannelsText: {
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
   headerStats: { flex: 1, justifyContent: 'center' },
   miniStatsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14, paddingRight: 5, marginTop: -8 },
   miniStat: { alignItems: 'center' },

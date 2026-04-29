@@ -13,6 +13,7 @@ import { useAuthStore } from '../../src/store/useAuthStore';
 import { CategoryId } from '../../src/types/category';
 import { RefreshLimitBadge } from '../../src/components/shared/RefreshLimitBadge';
 import { useSharedValue } from 'react-native-reanimated';
+import { useQueryClient } from '@tanstack/react-query';
 
 // Screens
 import HomeScreen from './index';
@@ -31,15 +32,31 @@ import ProfileScreen from './profile';
 export default function TabsLayout() {
   const { theme, isDarkMode } = useTheme();
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
   const pagerRef = useRef<PagerView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const activeIndexRef = useRef(0);
+  const previousUserIdRef = useRef<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const insets = useSafeAreaInsets();
   const segments = useSegments() as string[];
 
   // 🛰️ Universal Scroll Channel for Navbar Sync
   const globalScrollY = useSharedValue(0);
+
+  useEffect(() => {
+    const currentUserId = user?.id ?? null;
+    if (!currentUserId || previousUserIdRef.current === currentUserId) {
+      previousUserIdRef.current = currentUserId;
+      return;
+    }
+
+    queryClient.clear();
+    setActiveIndex(0);
+    activeIndexRef.current = 0;
+    pagerRef.current?.setPageWithoutAnimation(0);
+    previousUserIdRef.current = currentUserId;
+  }, [queryClient, user?.id]);
 
   // ── Account Switcher ───────────────────────────────────────────────────────
   const switcherSheetRef = useRef<BottomSheet>(null);
@@ -147,6 +164,7 @@ export default function TabsLayout() {
       </View>
 
       <PagerView
+        key={user?.id || 'guest'}
         ref={pagerRef}
         style={styles.pager}
         initialPage={0}

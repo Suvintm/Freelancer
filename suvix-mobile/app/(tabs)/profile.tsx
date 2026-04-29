@@ -75,10 +75,6 @@ export default function ProfileIndex({ scrollY }: { scrollY?: SharedValue<number
 
   const showSkeleton = !user && (isLoadingUser || isAuthenticated);
 
-  const fabStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: withTiming(isTabBarVisible ? 1 : 0) }],
-    opacity: withTiming(isTabBarVisible ? 1 : 0),
-  }));
 
   if (showSkeleton) {
     return <ProfileSkeleton />;
@@ -102,16 +98,6 @@ export default function ProfileIndex({ scrollY }: { scrollY?: SharedValue<number
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
         <ActiveProfileModule scrollY={scrollY} />
         
-        {/* 🚀 FLOAT ACTION: Create Post */}
-        <Animated.View style={[styles.fabWrapper, fabStyle]}>
-          <TouchableOpacity 
-            style={[styles.fab, { backgroundColor: theme.accent }]} 
-            onPress={() => router.push('/create-post')}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="plus" size={30} color="white" />
-          </TouchableOpacity>
-        </Animated.View>
 
         {/* 🌑 TOP STATUSBAR GRADIENT FADE (Immersive) */}
         <View style={styles.topOverlayWrapper}>
@@ -254,24 +240,6 @@ const styles = StyleSheet.create({
     width: '33.15%',
     borderRadius: 0,
     aspectRatio: 1,
-  },
-  fabWrapper: {
-    position: 'absolute',
-    bottom: 100,
-    right: 25,
-    zIndex: 999,
-  },
-  fab: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
   },
   topOverlayWrapper: {
     position: 'absolute',

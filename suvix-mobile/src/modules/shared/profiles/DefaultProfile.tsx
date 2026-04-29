@@ -25,7 +25,7 @@ import { Modal } from 'react-native';
 import { ProfileContentTabs } from '../../shared/profiles/ProfileContentTabs';
 import { useRouter } from 'expo-router';
 import { Image as ExpoImage } from 'expo-image';
-import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons, Feather } from '@expo/vector-icons';
 import { useState } from 'react';
 import { ProfileSkeleton, ProfileSkeletonContent } from '../../shared/skeletons/ProfileSkeleton';
 import * as ImagePicker from 'expo-image-picker';
@@ -60,8 +60,8 @@ export default function DefaultProfile({ scrollY }: { scrollY?: SharedValue<numb
   const username = user.username ? `@${user.username}` : '@suvix_member';
   const roleText = user.primaryRole?.category || user.role || 'Member';
   const bioText = `Building with SuviX as ${roleText}.`;
-  const headerOffset = insets.top;
-
+  // 📐 SURGICAL LAYOUT: Banner flows all the way to the top under status bar
+  const headerOffset = 0;
 
   const handlePickMedia = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -118,6 +118,12 @@ export default function DefaultProfile({ scrollY }: { scrollY?: SharedValue<numb
 
   return (
     <View style={[styles.container, { backgroundColor: theme.primary }]}>
+      {/* 🕶️ STATUS BAR OVERLAY FOR LEGIBILITY */}
+      <LinearGradient
+        colors={['rgba(0,0,0,0.6)', 'transparent']}
+        style={{ position: 'absolute', top: 0, width: '100%', height: insets.top + 20, zIndex: 100 }}
+        pointerEvents="none"
+      />
       <Animated.ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={[styles.content, { paddingTop: headerOffset }]}
@@ -142,117 +148,156 @@ export default function DefaultProfile({ scrollY }: { scrollY?: SharedValue<numb
           <ProfileSkeletonContent />
         ) : (
           <>
+        {/* 🟦 BLUE Dynamic Banner */}
         <LinearGradient
-          colors={['#101828', '#1d2939', '#344054']}
+          colors={['#0044FF', '#0022AA', '#000000']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.banner}
-        />
+        >
+          <View style={styles.bannerOverlay}>
+            <MaterialCommunityIcons name="account" size={40} color="rgba(255,255,255,0.2)" />
+          </View>
+        </LinearGradient>
 
-        <View style={[styles.profileWrap, { backgroundColor: theme.primary, borderBottomColor: theme.border }]}>
-          <View style={styles.profileRow}>
-            {/* ...Avatar Code... */}
-            <TouchableOpacity 
-              style={styles.avatarContainer} 
-              onPress={() => setIsAvatarModalVisible(true)}
-              activeOpacity={0.9}
-              disabled={isUploadingAvatar}
-            >
-              <ExpoImage
-                source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
-                style={[styles.avatar, { borderColor: theme.primary }]}
-                contentFit="cover"
-                transition={200}
-              />
-              
-              {/* 🚀 PREMIUM AVATAR PREVIEW MODAL */}
-              <Modal
-                visible={isAvatarModalVisible}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setIsAvatarModalVisible(false)}
-              >
-                <TouchableOpacity 
-                  style={styles.modalOverlay} 
-                  activeOpacity={1} 
-                  onPress={() => setIsAvatarModalVisible(false)}
-                >
-                  <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill}>
-                    <View style={styles.modalContentCentered}>
-                       <TouchableOpacity 
-                          style={styles.closeModalBtn} 
-                          onPress={() => setIsAvatarModalVisible(false)}
-                        >
-                          <Ionicons name="close-circle" size={36} color="white" />
-                       </TouchableOpacity>
-
-                       <ExpoImage
-                          source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
-                          style={[styles.enlargedAvatar, { borderColor: theme.primary }]}
-                        />
-                    </View>
-                  </BlurView>
-                </TouchableOpacity>
-              </Modal>
-
-              {/* 📸 CAMERA OVERLAY (Tappable for Edit) */}
+        <View style={[styles.profileWrap, { backgroundColor: theme.primary }]}>
+          <View style={[styles.headerRow, styles.padded]}>
+            <View style={styles.avatarContainer}>
               <TouchableOpacity 
-                style={[styles.avatarEditBadge, { borderColor: theme.primary }]}
-                onPress={handlePickMedia}
-                activeOpacity={0.8}
+                style={styles.avatarInner} 
+                onPress={() => setIsAvatarModalVisible(true)}
+                activeOpacity={0.9}
+                disabled={isUploadingAvatar}
               >
-                <MaterialCommunityIcons name="camera" size={12} color="#FFFFFF" />
-              </TouchableOpacity>
+                <ExpoImage
+                  source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
+                  style={[styles.avatar, { borderColor: theme.primary }]}
+                  contentFit="cover"
+                  transition={200}
+                />
+                
+                {/* 🚀 PREMIUM AVATAR PREVIEW MODAL */}
+                <Modal
+                  visible={isAvatarModalVisible}
+                  transparent
+                  animationType="fade"
+                  onRequestClose={() => setIsAvatarModalVisible(false)}
+                >
+                  <TouchableOpacity 
+                    style={styles.modalOverlay} 
+                    activeOpacity={1} 
+                    onPress={() => setIsAvatarModalVisible(false)}
+                  >
+                    <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill}>
+                      <View style={styles.modalContentCentered}>
+                         <TouchableOpacity 
+                            style={styles.closeModalBtn} 
+                            onPress={() => setIsAvatarModalVisible(false)}
+                          >
+                            <Ionicons name="close-circle" size={36} color="white" />
+                         </TouchableOpacity>
 
-              {isUploadingAvatar && (
-                <View style={styles.avatarLoadingOverlay}>
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                </View>
-              )}
-            </TouchableOpacity>
+                         <ExpoImage
+                            source={user.profilePicture ? { uri: user.profilePicture } : DEFAULT_AVATAR}
+                            style={[styles.enlargedAvatar, { borderColor: theme.primary }]}
+                          />
+                      </View>
+                    </BlurView>
+                  </TouchableOpacity>
+                </Modal>
+
+                {/* 📸 CAMERA OVERLAY (Tappable for Edit) */}
+                <TouchableOpacity 
+                  style={[styles.avatarEditBadge, { borderColor: theme.primary }]}
+                  onPress={handlePickMedia}
+                  activeOpacity={0.8}
+                >
+                  <MaterialCommunityIcons name="camera" size={12} color="#FFFFFF" />
+                </TouchableOpacity>
+
+                {isUploadingAvatar && (
+                  <View style={[styles.avatarLoadingOverlay, { backgroundColor: 'rgba(0,0,0,0.4)' }]}>
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.headerStats}>
               <View style={styles.miniStatsRow}>
                 <View style={styles.miniStat}>
                   <Text style={[styles.miniStatValue, { color: '#FFFFFF' }]}>{formatCount(user.followers)}</Text>
-                  <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Followers</Text>
+                  <Text style={[styles.miniStatLabel, { color: '#FFFFFF' }]}>Followers</Text>
                 </View>
                 <View style={styles.miniStat}>
                   <Text style={[styles.miniStatValue, { color: '#FFFFFF' }]}>{formatCount(user.following)}</Text>
-                  <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Following</Text>
+                  <Text style={[styles.miniStatLabel, { color: '#FFFFFF' }]}>Following</Text>
                 </View>
                 <View style={styles.miniStat}>
                   <Text style={[styles.miniStatValue, { color: '#FFFFFF' }]}>PRO</Text>
-                  <Text style={[styles.miniStatLabel, { color: theme.textSecondary }]}>Member</Text>
+                  <Text style={[styles.miniStatLabel, { color: '#FFFFFF' }]}>Member</Text>
                 </View>
               </View>
 
-              <View style={styles.actionRow}>
-                <TouchableOpacity
-                  activeOpacity={0.9}
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity 
                   onPress={() => router.push('/settings')}
-                  style={[styles.actionBtn, { backgroundColor: theme.secondary, borderColor: theme.border }]}
+                  style={[styles.editBtn, { flex: 1, backgroundColor: theme.secondary, borderColor: theme.border }]}
                 >
-                  <Text style={[styles.actionText, { color: theme.text }]}>Settings</Text>
+                  <Text style={[styles.editBtnText, { color: theme.text }]}>Settings</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  activeOpacity={0.9}
+
+                <TouchableOpacity 
                   onPress={() => router.push('/story/create')}
-                  style={[styles.actionBtn, { backgroundColor: '#FF3040', borderColor: '#FF3040' }]}
+                  style={[styles.editBtn, { flex: 1, backgroundColor: '#0044FF', borderColor: '#0044FF' }]}
                 >
-                  <Text style={[styles.actionText, { color: '#FFFFFF' }]}>Add Story</Text>
+                  <MaterialCommunityIcons name="plus" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
+                  <Text style={[styles.editBtnText, { color: '#FFFFFF' }]}>Add Story</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.miniToolboxRow}>
+                <TouchableOpacity style={[styles.miniToolItem, { backgroundColor: theme.secondary }]}>
+                  <MaterialCommunityIcons name="chart-bell-curve-cumulative" size={14} color="#0044FF" />
+                  <Text style={[styles.miniToolText, { color: theme.text }]}>Insights</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.miniToolItem, { backgroundColor: theme.secondary }]}>
+                  <MaterialCommunityIcons name="wallet-outline" size={14} color={theme.accent} />
+                  <Text style={[styles.miniToolText, { color: theme.text }]}>Wallet</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.miniToolItem, { backgroundColor: theme.secondary }]}>
+                  <MaterialCommunityIcons name="shield-check-outline" size={14} color="#22C55E" />
+                  <Text style={[styles.miniToolText, { color: theme.text }]}>Verified</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
 
-          <View style={styles.infoBlock}>
-             <View style={[styles.nameRow, { paddingLeft: 16 }]}>
-               <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
-               <MaterialCommunityIcons name="check-decagram" size={16} color={theme.accent} style={{ marginLeft: 6 }} />
+          <View style={[styles.infoBlock, styles.padded, { marginTop: 4 }]}>
+             <View style={[styles.nameRow, { paddingLeft: 12 }]}>
+                <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
+                <MaterialCommunityIcons name="check-decagram" size={16} color="#0044FF" style={{ marginLeft: 6 }} />
              </View>
-            <Text style={[styles.username, { color: theme.textSecondary }]}>{username}</Text>
-            <Text style={[styles.bio, { color: theme.textSecondary }]}>{bioText}</Text>
+             
+             <View style={styles.nicheRow}>
+               <View style={[styles.nicheChip, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
+                 <Text style={[styles.nicheChipText, { color: theme.textSecondary }]}>{roleText.toUpperCase()}</Text>
+               </View>
+             </View>
+             
+             {/* 📍 Global Experience Line */}
+             <View style={styles.experienceRow}>
+               <Feather name="globe" size={10} color={theme.textSecondary} />
+               <Text style={[styles.experienceText, { color: theme.textSecondary, marginLeft: 4 }]}>
+                 {user.username ? `@${user.username.toUpperCase()}` : 'GLOBAL MEMBER'}
+               </Text>
+             </View>
+
+             <View style={styles.bioWrapper}>
+               <View style={{ flex: 1 }}>
+                 <Text style={[styles.bio, { color: theme.textSecondary }]}>{bioText}</Text>
+               </View>
+             </View>
           </View>
         </View>
 
@@ -277,43 +322,23 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 20,
   },
-  banner: {
-    height: 78,
-    width: '100%',
-  },
-  profileWrap: {
-    marginTop: -28,
-    paddingHorizontal: 25,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-  },
-  profileRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-  },
-  avatarContainer: {
-    position: 'relative',
-    zIndex: 10,
-    elevation: 10,
-  },
-  avatar: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
-    borderWidth: 3,
-    backgroundColor: '#0f172a',
-    marginTop: -37,
-  },
+  banner: { height: 100, width: '100%', justifyContent: 'center', alignItems: 'center' },
+  bannerOverlay: { opacity: 0.5 },
+  profileWrap: { marginTop: -20, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 20 },
+  padded: { paddingHorizontal: 25 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginTop: -40, gap: 15 },
+  avatarContainer: { position: 'relative' },
+  avatarInner: { position: 'relative' },
+  avatar: { width: 90, height: 90, borderRadius: 45, borderWidth: 4 },
   avatarEditBadge: {
     position: 'absolute',
     bottom: -2,
     right: -2,
-    backgroundColor: '#FF3040',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
+    backgroundColor: '#0044FF',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 3,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 30,
@@ -328,88 +353,47 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 43,
+    borderRadius: 45,
     overflow: 'hidden'
   },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContentCentered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeModalBtn: {
-    position: 'absolute',
-    top: 60,
-    right: 30,
-    zIndex: 100,
-  },
-  enlargedAvatar: {
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    borderWidth: 6,
-  },
-  headerStats: {
-    flex: 1,
-    paddingTop: 10,
-  },
-  miniStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  miniStat: {
-    alignItems: 'center',
-  },
-  miniStatValue: { fontSize: 18, fontWeight: '900', letterSpacing: -0.5 },
-  miniStatLabel: { fontSize: 10, fontWeight: '700', marginTop: 3, textTransform: 'uppercase', opacity: 0.6, letterSpacing: 0.8 },
-  infoBlock: {
-    marginTop: 12,
-  },
-  nameRow: { 
-    flexDirection: 'row', 
-    alignItems: 'center',
-    paddingHorizontal: 0,
-  },
-  name: { 
-    fontSize: 15, 
-    fontWeight: '700', 
-    letterSpacing: -0.3 
-  },
-  username: {
-    marginTop: 2,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  bio: {
-    marginTop: 5,
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: '500',
-  },
-  actionRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionBtn: {
-    flex: 1,
-    borderWidth: 1,
+  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  modalContentCentered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  closeModalBtn: { position: 'absolute', top: 60, right: 30, zIndex: 100 },
+  enlargedAvatar: { width: 320, height: 320, borderRadius: 160, borderWidth: 6 },
+  headerStats: { flex: 1, paddingTop: 10 },
+  miniStatsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, paddingHorizontal: 5 },
+  miniStat: { alignItems: 'center' },
+  miniStatValue: { fontSize: 16, fontWeight: '900', letterSpacing: -0.5 },
+  miniStatLabel: { fontSize: 9, fontWeight: '800', marginTop: 2, textTransform: 'uppercase', opacity: 0.8, letterSpacing: 0.5 },
+  editBtn: {
+    paddingVertical: 7,
     borderRadius: 8,
-    paddingVertical: 6,
     alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
-  actionText: {
-    fontSize: 11,
-    fontWeight: '700',
+  editBtnText: { fontSize: 11, fontWeight: '800' },
+  miniToolboxRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
+  miniToolItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 5,
+    borderRadius: 6,
+    gap: 4,
   },
-  emptyText: {
-    marginTop: 10,
-    fontSize: 13,
-    fontWeight: '600',
-    opacity: 0.8,
-  },
+  miniToolText: { fontSize: 9, fontWeight: '700' },
+  infoBlock: { marginTop: 12 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 0 },
+  name: { fontSize: 17, fontWeight: '800', letterSpacing: -0.5 },
+  nicheRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6, paddingLeft: 12 },
+  nicheChip: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1 },
+  nicheChipText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
+  experienceRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingLeft: 12 },
+  experienceText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
+  bioWrapper: { marginTop: 12, flexDirection: 'row', alignItems: 'flex-start', paddingLeft: 12 },
+  bio: { fontSize: 13, lineHeight: 18, fontWeight: '500' },
+
 });

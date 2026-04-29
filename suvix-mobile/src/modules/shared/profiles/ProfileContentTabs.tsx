@@ -41,7 +41,7 @@ export const ProfileContentTabs: React.FC<ProfileContentTabsProps> = ({
   onStaleMediaDetected,
 }) => {
   const router = useRouter();
-  const allTabs: TabId[] = [...extraTabs, 'POSTS', 'REELS'];
+  const allTabs: TabId[] = [...extraTabs, 'POSTS', 'REELS', 'COMMUNITIES'];
   const [activeTab, setActiveTab] = useState<TabId>(allTabs[0]);
 
   const { data: postData, isLoading: loadingPosts, refetch: refetchPosts } = useProfilePosts(userId);
@@ -102,6 +102,10 @@ export const ProfileContentTabs: React.FC<ProfileContentTabsProps> = ({
             };
           });
       return source;
+    }
+
+    if (activeTab === 'COMMUNITIES') {
+      return []; // Communities are handled separately in rendering
     }
 
     return [];
@@ -169,7 +173,14 @@ export const ProfileContentTabs: React.FC<ProfileContentTabsProps> = ({
                   color={isActive ? accent : theme.textSecondary ?? '#555'}
                 />
               )}
-              {tab !== 'POSTS' && tab !== 'REELS' && (
+              {tab === 'COMMUNITIES' && (
+                <MaterialCommunityIcons
+                  name="account-group-outline"
+                  size={20}
+                  color={isActive ? accent : theme.textSecondary ?? '#555'}
+                />
+              )}
+              {tab !== 'POSTS' && tab !== 'REELS' && tab !== 'COMMUNITIES' && (
                 <Text
                   style={[
                     styles.tabLabel,
@@ -186,7 +197,35 @@ export const ProfileContentTabs: React.FC<ProfileContentTabsProps> = ({
 
       {/* ── Content ── */}
       <View style={styles.content}>
-        {isCustom ? (
+        {activeTab === 'COMMUNITIES' ? (
+          <View style={styles.communitiesContainer}>
+            {/* Mocked Communities Display */}
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons
+                name="account-group-outline"
+                size={44}
+                color={theme.textSecondary ?? '#333'}
+              />
+              <Text style={[styles.emptyTitle, { color: theme.text ?? '#fff' }]}>
+                No communities yet
+              </Text>
+              <Text style={[styles.emptySubtitle, { color: theme.textSecondary ?? '#555' }]}>
+                Create a community to engage with your channel audience.
+              </Text>
+              <TouchableOpacity 
+                style={[styles.createBtn, { backgroundColor: theme.accent ?? '#FF3040' }]}
+                onPress={() => {
+                  // This is a bit tricky since the state is in the parent.
+                  // For now, we'll just show the message. 
+                  // In a real app, we might use an event emitter or store.
+                  Alert.alert("Create Community", "Use the 'Community' button in the profile header to create your first community.");
+                }}
+              >
+                <Text style={styles.createBtnText}>Create Your First Community</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : isCustom ? (
           renderCustomTab?.(activeTab)
         ) : (
           <>
@@ -260,4 +299,19 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   repairText: { fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  communitiesContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  createBtn: {
+    marginTop: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  createBtnText: {
+    color: 'white',
+    fontWeight: '800',
+    fontSize: 14,
+  },
 });

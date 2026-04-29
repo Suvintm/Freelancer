@@ -80,8 +80,19 @@ export default function SettingsScreen() {
     setIsSwitching(targetUserId);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      await useAuthStore.getState().switchAccount(targetUserId);
+      const result = await useAuthStore.getState().switchAccount(targetUserId);
       setIsSwitching(null);
+      if (result === 'success') {
+        router.replace('/(tabs)/profile');
+      } else if (result === 'needs_reauth') {
+        const account = accounts.find(a => a.userId === targetUserId);
+        router.push({
+          pathname: '/login',
+          params: { mode: 'reauth', userId: targetUserId, email: account?.email ?? '' },
+        });
+      } else {
+        Alert.alert('Switch Error', 'Could not switch accounts.');
+      }
     } catch (err) {
       setIsSwitching(null);
       Alert.alert('Switch Error', 'Could not switch accounts.');
