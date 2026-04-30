@@ -206,7 +206,10 @@ export const useAccountVault = create<AccountVaultState>((set, get) => ({
 
     // Case 1: Access token still valid → just switch
     if (tokens.accessTokenExpiresAt > now + 30_000) { // 30s buffer
-      await _setActiveAccount(userId, accounts);
+      // ✅ FIX (Bug 2): Re-read fresh accounts from get() instead of using the
+      // stale `accounts` ref captured at function start. Concurrent vault writes
+      // (addAccount, loadVault) may have mutated the in-memory state since then.
+      await _setActiveAccount(userId, get().accounts);
       set({ activeAccountId: userId });
       return 'success';
     }
@@ -222,10 +225,14 @@ export const useAccountVault = create<AccountVaultState>((set, get) => ({
             accessToken: res.data.token,
             refreshToken: res.data.refreshToken,
             accessTokenExpiresAt: res.data.accessTokenExpiresAt ?? now + 15 * 60 * 1000,
-            refreshExpiresAt: tokens.refreshExpiresAt, // Server rotation gives new one
+            // ✅ FIX (Bug 4): Server now returns refreshExpiresAt (fresh 30-day window).
+            // Keeping the old date would cause this account to appear expired prematurely
+            // on future switchTo calls, forcing unnecessary re-authentication.
+            refreshExpiresAt: res.data.refreshExpiresAt ?? (now + 30 * 24 * 60 * 60 * 1000),
           };
           await get().updateTokens(userId, newTokens);
-          await _setActiveAccount(userId, accounts);
+          // ✅ FIX (Bug 2): Use get().accounts for fresh state (see Case 1 comment).
+          await _setActiveAccount(userId, get().accounts);
           set({ activeAccountId: userId });
           return 'success';
         }
