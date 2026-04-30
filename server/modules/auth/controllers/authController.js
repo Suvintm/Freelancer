@@ -67,7 +67,11 @@ const cookieOptions = {
 // ─── Refresh Token Rotation ────────────────────────────────────────────────
 
 export const refresh = asyncHandler(async (req, res) => {
-  const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
+  // ✅ FIX (Bug 1 - ROOT CAUSE): Body takes priority over cookie.
+  // Mobile multi-account: body always carries the EXACT account token the client
+  // wants to refresh. The cookie may hold a different (old) account's token.
+  // Cookie fallback keeps web browser sessions working.
+  const refreshToken = req.body.refreshToken || req.cookies.refreshToken;
   if (!refreshToken) throw new ApiError(401, "Refresh token required");
 
   const decoded = verifyRefreshToken(refreshToken);
@@ -161,6 +165,9 @@ export const refresh = asyncHandler(async (req, res) => {
     token: newAccessToken,
     refreshToken: newRefreshToken,
     accessTokenExpiresAt: Date.now() + ACCESS_TOKEN_TTL_MS,
+    // ✅ FIX (Bug 4): Return the new refresh token expiry so the mobile vault
+    // can store the correct 30-day window instead of keeping the old stale date.
+    refreshExpiresAt: Date.now() + (REFRESH_TOKEN_TTL_SECONDS * 1000),
     user: formatAuthResponse(user),
   });
 });
@@ -477,7 +484,9 @@ export const registerFull = asyncHandler(async (req, res) => {
 // ─── Logout ────────────────────────────────────────────────────────────────
 
 export const logout = asyncHandler(async (req, res) => {
-  const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
+  // ✅ FIX (Bug 1): Body-first, same rationale as refresh — mobile sends
+  // the exact account token it wants to invalidate in the body.
+  const refreshToken = req.body.refreshToken || req.cookies.refreshToken;
 
   if (refreshToken) {
     const hashedToken = hashToken(refreshToken);

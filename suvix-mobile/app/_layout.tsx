@@ -267,6 +267,16 @@ function InitialRoot() {
         return;
       }
 
+      // ── switchingToAccount: BLOCK all redirects during account switch ───────
+      // ✅ FIX (Bug 3): During switchAccount, user is temporarily null while the
+      // new profile is fetched. If the guard fires in this window (server slow,
+      // >450ms), it sees auth=true + user=null and redirects to /welcome.
+      // Block the guard entirely while a switch is in progress.
+      if (switchingToAccount) {
+        console.log('🔒 [GUARD] Account switch in progress — skipping guard');
+        return;
+      }
+
       // ── Unauthenticated ────────────────────────────────────────────────────
       if (!isAuthenticated) {
         if (!inPublicGroup && !inOnboarding) {
