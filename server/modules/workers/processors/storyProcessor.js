@@ -79,7 +79,8 @@ const storyProcessor = async (job) => {
     // Production cache-control: match story expiry (12h).
     // HLS .ts segments get immutable headers (set inside video.processor.js).
     const processingOptions = {
-      cacheControl: "public, max-age=120, s-maxage=120, must-revalidate", // Testing: 2 min (matched to story expiry)
+      // 🚀 Production Strategy: 12h Browser Cache, 24h CDN Edge Cache, 1h Stale revalidation
+      cacheControl: "public, max-age=43200, s-maxage=86400, stale-while-revalidate=3600",
     };
 
     let results = {};

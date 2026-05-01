@@ -197,6 +197,7 @@ function StoryThread({
   const [isBuffering,  setIsBuffering]  = useState(true);
   const [useLegacyVideo, setUseLegacyVideo] = useState(false);
   const [activeMediaUrl, setActiveMediaUrl] = useState('');
+  const [retryCount,     setRetryCount]     = useState(0);
   const [isDeleting,   setIsDeleting]   = useState(false);
 
   const currentSlide = localSlides[slideIndex];
@@ -342,6 +343,7 @@ function StoryThread({
     setIsVideoReady(false);
     setIsBuffering(true);
     setUseLegacyVideo(false);
+    setRetryCount(0);
 
     if (player) {
       console.log(`🎥 [PLAYER] Source: ${currentSlide.image}`);
@@ -370,12 +372,26 @@ function StoryThread({
       } else if (st === 'loading' || st === 'buffering') {
         setIsBuffering(true);
       } else if (st === 'error') {
-        console.warn('⚠️ [PLAYER] expo-video failure. Status:', st);
+        console.warn('⚠️ [PLAYER] Status Error. Code:', status?.error?.code, 'Msg:', status?.error?.message);
+        
+        // 🚀 RETRY STRATEGY: Try CDN URL 2 times before falling back
+        if (retryCount < 2) {
+          const nextRetry = retryCount + 1;
+          console.log(`🔄 [RETRY] Attempt ${nextRetry}/2 on CDN...`);
+          setRetryCount(nextRetry);
+          setTimeout(() => {
+            if (isMountedRef.current && player) {
+              player.replace({ uri: activeMediaUrl });
+            }
+          }, 1500 * nextRetry); // Exponential backoff
+          return;
+        }
+
         if (!useLegacyVideo) {
           console.log('🔄 [FALLBACK] Switching to Legacy Player (expo-av)...');
           setUseLegacyVideo(true);
         } else if (!activeMediaUrl.includes('amazonaws.com')) {
-          console.log('🔄 [FALLBACK] Switching to Direct S3 Source (Bypassing CDN)...');
+          console.log('⚠️ [FATAL] CDN Persistent Failure. Falling back to S3...');
           const s3Url = activeMediaUrl.replace('cdn.suvix.in', 'suvix-media-storage.s3.ap-south-1.amazonaws.com');
           setActiveMediaUrl(s3Url);
         }
