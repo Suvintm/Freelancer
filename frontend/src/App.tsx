@@ -34,7 +34,8 @@ function App() {
 
         try {
           const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
-          const response = await fetch(`${apiUrl}/auth/me`, { signal: AbortSignal.timeout(3000) });
+          const baseUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
+          const response = await fetch(`${baseUrl}/api/health`, { signal: AbortSignal.timeout(3000) });
           
           if (response.status === 503) {
             navigate('/maintenance', { replace: true });

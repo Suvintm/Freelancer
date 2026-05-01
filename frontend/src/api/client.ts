@@ -42,7 +42,7 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const { config, response } = error;
-    const originalRequest = config as any;
+    const originalRequest = config as InternalAxiosRequestConfig & { _retry?: boolean };
 
     if (response?.status === 401 && !originalRequest._retry) {
       // 🛡️ SKIP REFRESH for auth endpoints

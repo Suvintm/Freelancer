@@ -63,8 +63,8 @@ export default function Signup() {
         categoryId,
       });
       navigate('/home');
-    } catch (err: any) {
-      setError(err);
+    } catch (err: unknown) {
+      setError(err as string);
     }
   };
 

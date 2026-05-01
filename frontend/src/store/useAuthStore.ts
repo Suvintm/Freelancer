@@ -15,6 +15,15 @@ export interface AuthUser {
     category: string;
     subCategory: string;
   };
+  youtubeProfile?: Array<{
+    id: string;
+    channel_id: string;
+    channel_name: string;
+    thumbnail_url: string;
+    subscriber_count: number;
+    video_count: number;
+    subCategoryName?: string;
+  }>;
 }
 
 interface AuthState {
@@ -28,7 +37,7 @@ interface AuthState {
   setAuth: (user: AuthUser, token: string, refreshToken: string) => void;
   setTokens: (token: string, refreshToken: string, user?: AuthUser) => void;
   login: (email: string, password: string) => Promise<void>;
-  signup: (data: any) => Promise<void>;
+  signup: (data: Record<string, unknown>) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   fetchUser: () => Promise<void>;
@@ -74,9 +83,10 @@ export const useAuthStore = create<AuthState>()(
           } else {
             throw new Error(res.data.message || 'Login failed');
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Login error:', error);
-          throw error.response?.data?.message || error.message || 'Login failed';
+          const err = error as { response?: { data?: { message?: string } }; message?: string };
+          throw err.response?.data?.message || err.message || 'Login failed';
         } finally {
           set({ isLoading: false });
         }
@@ -92,9 +102,10 @@ export const useAuthStore = create<AuthState>()(
           } else {
             throw new Error(res.data.message || 'Signup failed');
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Signup error:', error);
-          throw error.response?.data?.message || error.message || 'Signup failed';
+          const err = error as { response?: { data?: { message?: string } }; message?: string };
+          throw err.response?.data?.message || err.message || 'Signup failed';
         } finally {
           set({ isLoading: false });
         }

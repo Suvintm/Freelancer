@@ -24,8 +24,8 @@ export default function Login() {
     try {
       await login(email, password);
       navigate('/home');
-    } catch (err: any) {
-      setError(err);
+    } catch (err: unknown) {
+      setError(err as string);
     }
   };
 
