@@ -195,7 +195,7 @@ function StoryThread({
   const [slideIndex,  setSlideIndex]  = useState(0);
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [isBuffering,  setIsBuffering]  = useState(true);
-  const [useLegacyVideo, setUseLegacyVideo] = useState(false);
+  const [useLegacyVideo, setUseLegacyVideo] = useState(Platform.OS === 'android'); // 🚀 Force Legacy on Android to avoid Media3 crash
   const [activeMediaUrl, setActiveMediaUrl] = useState('');
   const [retryCount,     setRetryCount]     = useState(0);
   const [isDeleting,   setIsDeleting]   = useState(false);
@@ -345,7 +345,7 @@ function StoryThread({
     mediaUrlRef.current = currentSlide.image;
     setIsVideoReady(false);
     setIsBuffering(true);
-    setUseLegacyVideo(false);
+    setUseLegacyVideo(Platform.OS === 'android'); // 🚀 Ensure Android stays on legacy during slide changes
     setRetryCount(0);
     retryRef.current = 0;
 
@@ -628,7 +628,13 @@ function StoryThread({
               onBuffer={({ isBuffering: b }) => setIsBuffering(b)}
               onError={(err) => {
                 console.error('❌ [LEGACY-PLAYER] Fatal Error:', err);
-                setIsVideoReady(true); // Failsafe skip
+                if (!activeMediaUrl.includes('amazonaws.com')) {
+                  console.log('⚠️ [FALLBACK] CDN Failure detected in Legacy Player. Bypassing to S3...');
+                  const s3Url = activeMediaUrl.replace('cdn.suvix.in', 'suvix-media-storage.s3.ap-south-1.amazonaws.com');
+                  setActiveMediaUrl(s3Url);
+                } else {
+                  setIsVideoReady(true); // Failsafe skip
+                }
               }}
             />
           ) : (
