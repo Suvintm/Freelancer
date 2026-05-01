@@ -175,10 +175,8 @@ export const processVideo = async (rawBuffer, userId, mediaId, folder = STORAGE_
       // Playlists: max-age 12h (browser), s-maxage 24h (CDN Edge).
       // Segments: max-age 1y (immutable).
       const finalCacheControl = isPlaylist 
-        ? cacheControl // 🚀 Stories use 2-min TTL; others use default
-        : (folder === STORAGE_FOLDERS.STORIES 
-            ? cacheControl // 🚀 Test Mode: Story segments also follow 2-min TTL
-            : "public, max-age=31536000, s-maxage=31536000, immutable");
+        ? cacheControl // 🚀 Stories: 12h, Posts: 1y
+        : "public, max-age=31536000, s-maxage=31536000, immutable"; // 🚀 Segments: always immutable
 
       return storage.uploadObject(fs.readFileSync(path.join(hlsDir, file)), fileKey, { 
         contentType,

@@ -27,7 +27,7 @@ import { STORAGE_FOLDERS } from "../../storage/providers/s3/s3.constants.js";
 import notificationService from "../../notification/services/notificationService.js";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const STORY_EXPIRY_MINUTES = 2; // Testing: 2 minutes (Production: 12 hours)
+const STORY_EXPIRY_MINUTES = 720; // 12 hours (Production Ready)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/social/stories/upload-url
