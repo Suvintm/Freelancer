@@ -9,45 +9,50 @@ import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import PlaceholderPage from './pages/PlaceholderPage';
 import Maintenance from './pages/Maintenance';
+import OAuthSuccess from './pages/OAuthSuccess';
 import { AppLayout } from './components/layout/AppLayout';
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuthStore } from './store/useAuthStore';
+import { AuthGuard, PublicRoute } from './components/auth/AuthGuard';
 
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { checkAuth, isInitialized } = useAuthStore();
   const [isCheckingServer, setIsCheckingServer] = useState(true);
 
   useEffect(() => {
-    // 🛰️ SERVER HEALTH CHECK
-    // Pings the backend to ensure the Nexus is online.
-    const checkServer = async () => {
-      // Don't check if we are already on the maintenance page to avoid loops
-      if (location.pathname === '/maintenance') {
-        setIsCheckingServer(false);
-        return;
-      }
-
-      try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
-        const response = await fetch(`${apiUrl}/auth/me`, { signal: AbortSignal.timeout(3000) });
-        
-        // 503 Service Unavailable is our standard maintenance signal
-        if (response.status === 503) {
-          navigate('/maintenance', { replace: true });
+    // 🛰️ INITIAL AUTH CHECK
+    checkAuth().finally(() => {
+      // 🛰️ SERVER HEALTH CHECK (Only after auth is initialized)
+      const checkServer = async () => {
+        if (location.pathname === '/maintenance') {
+          setIsCheckingServer(false);
+          return;
         }
-      } catch {
-        console.warn('🚧 [MAINTENANCE] Nexus is unreachable. Redirecting to maintenance portal.');
-        navigate('/maintenance', { replace: true });
-      } finally {
-        setIsCheckingServer(false);
-      }
-    };
 
-    checkServer();
-  }, [location.pathname, navigate]);
+        try {
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
+          const baseUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
+          const response = await fetch(`${baseUrl}/api/health`, { signal: AbortSignal.timeout(3000) });
+          
+          if (response.status === 503) {
+            navigate('/maintenance', { replace: true });
+          }
+        } catch {
+          console.warn('🚧 [MAINTENANCE] Nexus is unreachable. Redirecting to maintenance portal.');
+          navigate('/maintenance', { replace: true });
+        } finally {
+          setIsCheckingServer(false);
+        }
+      };
 
-  if (isCheckingServer && location.pathname !== '/maintenance') {
+      checkServer();
+    });
+  }, [checkAuth, navigate, location.pathname]);
+
+  if ((!isInitialized || isCheckingServer) && location.pathname !== '/maintenance') {
     return (
       <div className="h-screen w-full bg-[#0A0A0A] flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-orange-500/20 border-t-orange-500 rounded-full animate-spin" />
@@ -60,77 +65,96 @@ function App() {
       <Routes>
         <Route path="/" element={<Welcome />} />
         <Route path="/maintenance" element={<Maintenance />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/role-selection" element={<RoleSelection />} />
         
-        {/* Authenticated Routes wrapped in AppLayout */}
+        {/* Public Routes (Redirect to /home if authenticated) */}
+        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+        <Route path="/role-selection" element={<PublicRoute><RoleSelection /></PublicRoute>} />
+        <Route path="/oauth-success" element={<OAuthSuccess />} />
+        
+        {/* Authenticated Routes wrapped in AppLayout and AuthGuard */}
         <Route 
           path="/home" 
           element={
-            <AppLayout>
-              <Home />
-            </AppLayout>
+            <AuthGuard>
+              <AppLayout>
+                <Home />
+              </AppLayout>
+            </AuthGuard>
           } 
         />
         <Route 
           path="/explore" 
           element={
-            <AppLayout>
-              <Explore />
-            </AppLayout>
+            <AuthGuard>
+              <AppLayout>
+                <Explore />
+              </AppLayout>
+            </AuthGuard>
           } 
         />
         <Route 
           path="/nearby" 
           element={
-            <AppLayout>
-              <PlaceholderPage title="Nearby" />
-            </AppLayout>
+            <AuthGuard>
+              <AppLayout>
+                <PlaceholderPage title="Nearby" />
+              </AppLayout>
+            </AuthGuard>
           } 
         />
         <Route 
           path="/reels" 
           element={
-            <AppLayout>
-              <PlaceholderPage title="Reels" />
-            </AppLayout>
+            <AuthGuard>
+              <AppLayout>
+                <PlaceholderPage title="Reels" />
+              </AppLayout>
+            </AuthGuard>
           } 
         />
         <Route 
           path="/jobs" 
           element={
-            <AppLayout>
-              <PlaceholderPage title="Jobs" />
-            </AppLayout>
+            <AuthGuard>
+              <AppLayout>
+                <PlaceholderPage title="Jobs" />
+              </AppLayout>
+            </AuthGuard>
           } 
         />
         <Route 
           path="/chats" 
           element={
-            <AppLayout>
-              <PlaceholderPage title="Chats" />
-            </AppLayout>
+            <AuthGuard>
+              <AppLayout>
+                <PlaceholderPage title="Chats" />
+              </AppLayout>
+            </AuthGuard>
           } 
         />
         <Route 
           path="/profile" 
           element={
-            <AppLayout>
-              <Profile />
-            </AppLayout>
+            <AuthGuard>
+              <AppLayout>
+                <Profile />
+              </AppLayout>
+            </AuthGuard>
           } 
         />
         <Route 
           path="/settings" 
           element={
-            <AppLayout>
-              <Settings />
-            </AppLayout>
+            <AuthGuard>
+              <AppLayout>
+                <Settings />
+              </AppLayout>
+            </AuthGuard>
           } 
         />
 
-        {/* Catch-all redirect to welcome or home depending on auth (placeholder) */}
+        {/* Catch-all redirect */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </main>

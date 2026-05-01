@@ -1,15 +1,32 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { AuthBackground } from '../components/auth/AuthBackground';
+import { useAuthStore } from '../store/useAuthStore';
 import logo from '../assets/whitebglogo.png';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login, isLoading } = useAuthStore();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleGoogleLogin = () => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
+    window.location.href = `${apiUrl}/auth/google`;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/home');
+    setError(null);
+    try {
+      await login(email, password);
+      navigate('/home');
+    } catch (err: unknown) {
+      setError(err as string);
+    }
   };
 
   return (
@@ -59,6 +76,7 @@ export default function Login() {
             {/* Google Auth at the Top */}
             <Button 
               variant="outline" 
+              onClick={handleGoogleLogin}
               className="w-full h-11 lg:h-12 border-zinc-800 text-white bg-zinc-900/50 hover:bg-zinc-900 rounded-xl flex items-center justify-center gap-3 font-bold text-sm"
             >
               <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4" />
@@ -74,12 +92,21 @@ export default function Login() {
               </div>
             </div>
 
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-3 rounded-xl text-xs font-bold text-center">
+                {error}
+              </div>
+            )}
+
             <form className="space-y-4" onSubmit={handleSubmit}>
               <Input 
                 label="Email Address" 
                 type="email" 
                 placeholder="name@example.com" 
                 className="h-12 bg-zinc-900/50 backdrop-blur-sm border-zinc-800"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
               />
               <div className="space-y-1">
                 <Input 
@@ -87,6 +114,9 @@ export default function Login() {
                   type="password" 
                   placeholder="••••••••" 
                   className="h-12 bg-zinc-900/50 backdrop-blur-sm border-zinc-800"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
                 />
                 <div className="text-right">
                   <Link to="#" className="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors">
@@ -95,8 +125,12 @@ export default function Login() {
                 </div>
               </div>
 
-              <Button size="md" className="w-full h-12 bg-white text-black hover:bg-zinc-200 rounded-xl font-bold">
-                Sign In
+              <Button 
+                size="md" 
+                className="w-full h-12 bg-white text-black hover:bg-zinc-200 rounded-xl font-bold"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Signing In...' : 'Sign In'}
               </Button>
             </form>
           </div>

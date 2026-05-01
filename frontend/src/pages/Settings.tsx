@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   User, 
   Settings as SettingsIcon, 
@@ -13,10 +14,22 @@ import {
   Laptop
 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
+import { useAuthStore } from '../store/useAuthStore';
 
 export default function Settings() {
   const [activeCategory, setActiveCategory] = useState('profile');
   const { isDarkMode, toggleTheme } = useTheme();
+  const { logout } = useAuthStore();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   const CATEGORIES = [
     { id: 'profile',      label: 'Edit Profile',    icon: User,          description: 'Username, bio, and social links' },
@@ -65,7 +78,10 @@ export default function Settings() {
 
         {/* FIXED FOOTER */}
         <div className="shrink-0 pt-4 px-2 mt-auto border-t border-border-main/30">
-          <button className="w-full flex items-center gap-4 p-4 rounded-2xl text-red-500 hover:bg-red-500/10 transition-all font-medium text-[13px] uppercase tracking-wider group">
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center gap-4 p-4 rounded-2xl text-red-500 hover:bg-red-500/10 transition-all font-medium text-[13px] uppercase tracking-wider group"
+          >
             <LogOut size={20} className="group-hover:-translate-x-1 transition-transform" />
             <span>Logout</span>
           </button>

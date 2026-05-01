@@ -1,8 +1,10 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { AuthBackground } from '../components/auth/AuthBackground';
+import { useAuthStore } from '../store/useAuthStore';
 import logo from '../assets/whitebglogo.png';
 
 const LANGUAGES = [
@@ -12,10 +14,58 @@ const LANGUAGES = [
 
 export default function Signup() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { signup, isLoading } = useAuthStore();
+  const categoryId = location.state?.categoryId;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [formData, setFormData] = useState({
+    fullName: '',
+    username: '',
+    email: '',
+    phone: '',
+    motherTongue: 'English',
+    password: '',
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const { checkUsername } = useAuthStore();
+
+  const handleUsernameBlur = async () => {
+    if (formData.username.length < 3) return;
+    setUsernameStatus('checking');
+    const available = await checkUsername(formData.username);
+    setUsernameStatus(available ? 'available' : 'taken');
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'username') setUsernameStatus('idle');
+  };
+
+  const handleGoogleLogin = () => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
+    window.location.href = `${apiUrl}/auth/google`;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/home');
+    setError(null);
+
+    if (!categoryId) {
+      setError('Please select a role first.');
+      return;
+    }
+
+    try {
+      await signup({
+        ...formData,
+        categoryId,
+      });
+      navigate('/home');
+    } catch (err: unknown) {
+      setError(err as string);
+    }
   };
 
   return (
@@ -65,6 +115,7 @@ export default function Signup() {
             {/* Google Auth at the Top */}
             <Button 
               variant="outline" 
+              onClick={handleGoogleLogin}
               className="w-full h-11 lg:h-12 border-zinc-800 text-white bg-zinc-900/50 hover:bg-zinc-900 rounded-xl flex items-center justify-center gap-3 font-bold text-sm"
             >
               <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4" />
@@ -80,36 +131,74 @@ export default function Signup() {
               </div>
             </div>
 
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-3 rounded-xl text-xs font-bold text-center">
+                {error}
+              </div>
+            )}
+
             <form className="space-y-3 lg:space-y-4" onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Input 
+                  name="fullName"
                   label="Full Name" 
                   placeholder="Your Name" 
                   className="h-11 bg-zinc-900/50 backdrop-blur-sm border-zinc-800 text-xs lg:text-sm"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  required
                 />
-                <Input 
-                  label="Username Handle" 
-                  placeholder="unique_handle" 
-                  className="h-11 bg-zinc-900/50 backdrop-blur-sm border-zinc-800 text-xs lg:text-sm"
-                />
+                <div className="relative">
+                  <Input 
+                    name="username"
+                    label="Username Handle" 
+                    placeholder="unique_handle" 
+                    className={`h-11 bg-zinc-900/50 backdrop-blur-sm border-zinc-800 text-xs lg:text-sm ${
+                      usernameStatus === 'available' ? 'border-green-500/50' : 
+                      usernameStatus === 'taken' ? 'border-red-500/50' : ''
+                    }`}
+                    value={formData.username}
+                    onChange={handleChange}
+                    onBlur={handleUsernameBlur}
+                    required
+                  />
+                  {usernameStatus !== 'idle' && (
+                    <div className="absolute right-3 top-[34px] text-[10px] font-bold">
+                      {usernameStatus === 'checking' && <span className="text-zinc-500">Checking...</span>}
+                      {usernameStatus === 'available' && <span className="text-green-500">Available</span>}
+                      {usernameStatus === 'taken' && <span className="text-red-500">Taken</span>}
+                    </div>
+                  )}
+                </div>
               </div>
               
               <Input 
+                name="email"
                 label="Email Address" 
                 type="email" 
                 placeholder="email@example.com" 
                 className="h-11 bg-zinc-900/50 backdrop-blur-sm border-zinc-800 text-xs lg:text-sm"
+                value={formData.email}
+                onChange={handleChange}
+                required
               />
               
               <div className="grid grid-cols-2 gap-3">
                 <Input 
+                  name="phone"
                   label="Phone Number" 
                   placeholder="+91..." 
                   className="h-11 bg-zinc-900/50 backdrop-blur-sm border-zinc-800 text-xs lg:text-sm"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  required
                 />
                 <Select 
+                  name="motherTongue"
                   label="Mother Tongue" 
                   className="h-11 bg-zinc-900/50 backdrop-blur-sm border-zinc-800 text-xs lg:text-sm"
+                  value={formData.motherTongue}
+                  onChange={handleChange}
                 >
                   {LANGUAGES.map(lang => (
                     <option key={lang} value={lang}>{lang}</option>
@@ -118,14 +207,22 @@ export default function Signup() {
               </div>
 
               <Input 
+                name="password"
                 label="Secure Password" 
                 type="password" 
                 placeholder="••••••••" 
                 className="h-11 bg-zinc-900/50 backdrop-blur-sm border-zinc-800 text-xs lg:text-sm"
+                value={formData.password}
+                onChange={handleChange}
+                required
               />
 
-              <Button size="md" className="w-full h-12 bg-white text-black hover:bg-zinc-200 rounded-xl font-bold mt-2">
-                Create Account
+              <Button 
+                size="md" 
+                className="w-full h-12 bg-white text-black hover:bg-zinc-200 rounded-xl font-bold mt-2"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Creating Account...' : 'Create Account'}
               </Button>
             </form>
           </div>
