@@ -1,24 +1,10 @@
 import { ReactLenis }       from 'lenis/react';
 import { Plus, ExternalLink, PlayCircle, Eye, Video, TrendingUp } from 'lucide-react';
 import { useNavigate }      from 'react-router-dom';
+import { useAuthStore }     from '../../store/useAuthStore';
 import auth1                from '../../assets/auth/auth_1.png';
 
-// ── Mock: replace with real data from your auth/user store ─────────────────
-const CHANNEL = {
-  name:           'Abhinav Khare',
-  handle:         '@abhi_navkhare',
-  avatar:         auth1,
-  channelName:    'Abhinav Khare Studio',
-  channelAvatar:  auth1,
-  subscribers:    '1.24M',
-  views:          '48.2M',
-  videos:         472,
-  category:       'TECH & LIFESTYLE',
-  role:           'YouTube Creator',
-  bio:            'Professional Creator · UI Designer · Lifestyle Blogger · Building in public 🚀',
-  followers:      '12.4K',
-  following:      228,
-};
+
 
 const HIGHLIGHTS = [
   { id: 1, label: 'New',      img: null,  isNew: true  },
@@ -42,6 +28,23 @@ function StatBubble({ value, label }: { value: string; label: string }) {
 
 export const Sidebar = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+
+  const CHANNEL = {
+    name:           user?.name || 'User',
+    handle:         `@${user?.username || 'user'}`,
+    avatar:         user?.profilePicture || auth1,
+    channelName:    user?.name || 'User Channel',
+    channelAvatar:  user?.profilePicture || auth1,
+    subscribers:    '0',
+    views:          '0',
+    videos:         0,
+    category:       user?.role || 'Member',
+    role:           user?.role || 'Member',
+    bio:            'Professional Creator · UI Designer · Lifestyle Blogger · Building in public 🚀',
+    followers:      '0',
+    following:      0,
+  };
 
   return (
     <ReactLenis className="w-full h-full flex flex-col overflow-y-auto scrollbar-hide">

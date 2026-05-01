@@ -1,11 +1,19 @@
 import { Search, Bell, Plus, Sun, Moon, Menu } from 'lucide-react';
 import { useTheme }  from '../../hooks/useTheme';
+import { useAuthStore } from '../../store/useAuthStore';
 import darkLogo  from '../../assets/darklogo.png';
 import lightLogo from '../../assets/lightlogo.png';
 import auth1     from '../../assets/auth/auth_1.png';
 
 export const GlobalHeader = () => {
   const { isDarkMode, toggleTheme } = useTheme();
+  const { user } = useAuthStore();
+
+  const userData = {
+    name: user?.name || 'User',
+    username: user?.username || 'user',
+    avatar: user?.profilePicture || auth1,
+  };
 
   return (
     <header className="h-14 w-full shrink-0 bg-nav border-b border-border-main flex items-center px-4 lg:px-6 z-50 relative">
@@ -45,7 +53,7 @@ export const GlobalHeader = () => {
           </button>
 
           <div className="w-7 h-7 rounded-full border border-border-main overflow-hidden ml-1 cursor-pointer">
-            <img src={auth1} alt="Profile" className="w-full h-full object-cover" />
+            <img src={userData.avatar} alt="Profile" className="w-full h-full object-cover" />
           </div>
         </div>
       </div>
@@ -113,7 +121,7 @@ export const GlobalHeader = () => {
 
           {/* Wallet / Earnings Summary */}
           <div className="flex flex-col items-end px-2 group cursor-pointer">
-            <p className="text-[11px] font-black text-text-main leading-tight tracking-tight group-hover:text-blue-500 transition-colors">$4,250.00</p>
+            <p className="text-[11px] font-black text-text-main leading-tight tracking-tight group-hover:text-blue-500 transition-colors">$0.00</p>
             <p className="text-[9px] font-bold text-text-muted uppercase tracking-wider opacity-60">Balance</p>
           </div>
 
@@ -132,11 +140,11 @@ export const GlobalHeader = () => {
         {/* 3. Right identity — aligns with right sidebar */}
         <div className="flex items-center justify-end gap-3 pr-4">
           <div className="text-right hidden xl:block">
-            <p className="text-[12px] font-semibold text-text-main leading-tight">Abhinav Khare</p>
-            <p className="text-[11px] text-text-muted leading-tight">@abhi_navkhare</p>
+            <p className="text-[12px] font-semibold text-text-main leading-tight">{userData.name}</p>
+            <p className="text-[11px] text-text-muted leading-tight">@{userData.username}</p>
           </div>
           <div className="w-8 h-8 rounded-full border border-border-main overflow-hidden cursor-pointer hover:ring-2 hover:ring-border-main transition-all">
-            <img src={auth1} alt="Profile" className="w-full h-full object-cover" />
+            <img src={userData.avatar} alt="Profile" className="w-full h-full object-cover" />
           </div>
         </div>
       </div>
