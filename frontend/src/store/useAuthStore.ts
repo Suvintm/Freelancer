@@ -25,6 +25,9 @@ export interface AuthUser {
     view_count?: string | number;
     subCategoryName?: string;
   }>;
+  bio?: string;
+  followers?: number;
+  following?: number;
 }
 
 interface AuthState {
