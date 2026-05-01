@@ -222,6 +222,8 @@ function StoryThread({
   const lastStartedRef  = useRef({ index: -1, time: 0 }); // Prevents double starts
   const advanceTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unlockTapTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryRef        = useRef(0);
+  const mediaUrlRef     = useRef('');
 
   // ── FIX: Break circular startAnimation ↔ handleNext dependency ───────────
   // handleNext is stored in a ref so startAnimation never needs it as a dep.
@@ -340,10 +342,12 @@ function StoryThread({
     
     // Default to CDN URL
     setActiveMediaUrl(currentSlide.image);
+    mediaUrlRef.current = currentSlide.image;
     setIsVideoReady(false);
     setIsBuffering(true);
     setUseLegacyVideo(false);
     setRetryCount(0);
+    retryRef.current = 0;
 
     if (player) {
       console.log(`🎥 [PLAYER] Source: ${currentSlide.image}`);
@@ -372,28 +376,32 @@ function StoryThread({
       } else if (st === 'loading' || st === 'buffering') {
         setIsBuffering(true);
       } else if (st === 'error') {
-        console.warn('⚠️ [PLAYER] Status Error. Code:', status?.error?.code, 'Msg:', status?.error?.message);
+        const error = status?.error;
+        console.warn('⚠️ [PLAYER] Status Error. Code:', error?.code, 'Msg:', error?.message);
         
         // 🚀 RETRY STRATEGY: Try CDN URL 2 times before falling back
-        if (retryCount < 2) {
-          const nextRetry = retryCount + 1;
-          console.log(`🔄 [RETRY] Attempt ${nextRetry}/2 on CDN...`);
+        if (retryRef.current < 2) {
+          retryRef.current += 1;
+          const nextRetry = retryRef.current;
+          console.log(`🔄 [RETRY] Attempt ${nextRetry}/2 on CDN... Source: ${mediaUrlRef.current}`);
+          
           setRetryCount(nextRetry);
           setTimeout(() => {
-            if (isMountedRef.current && player) {
-              player.replace({ uri: activeMediaUrl });
+            if (isMountedRef.current && player && mediaUrlRef.current) {
+              player.replace({ uri: mediaUrlRef.current });
             }
-          }, 1500 * nextRetry); // Exponential backoff
+          }, 2000 * nextRetry); // Exponential backoff
           return;
         }
 
         if (!useLegacyVideo) {
           console.log('🔄 [FALLBACK] Switching to Legacy Player (expo-av)...');
           setUseLegacyVideo(true);
-        } else if (!activeMediaUrl.includes('amazonaws.com')) {
+        } else if (mediaUrlRef.current && !mediaUrlRef.current.includes('amazonaws.com')) {
           console.log('⚠️ [FATAL] CDN Persistent Failure. Falling back to S3...');
-          const s3Url = activeMediaUrl.replace('cdn.suvix.in', 'suvix-media-storage.s3.ap-south-1.amazonaws.com');
+          const s3Url = mediaUrlRef.current.replace('cdn.suvix.in', 'suvix-media-storage.s3.ap-south-1.amazonaws.com');
           setActiveMediaUrl(s3Url);
+          mediaUrlRef.current = s3Url;
         }
       }
     };

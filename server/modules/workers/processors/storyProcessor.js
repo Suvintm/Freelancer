@@ -121,15 +121,15 @@ const storyProcessor = async (job) => {
     if (story) {
       const variants = results.variants ?? {};
 
-      // Primary playback URL: Optimized MP4 (best compatibility), then HLS
-      const primaryKey = type === "VIDEO"
-        ? (variants.video || variants.hls || null)
+      // Primary playback URL: HLS (Adaptive) then Optimized MP4 (Fallback)
+      const primaryUrlKey = type === "VIDEO"
+        ? (variants.hls || variants.video || null)
         : (variants.full  || variants.feed  || null);
 
       await prisma.story.update({
         where: { id: story.id },
         data: {
-          bg_media_url: toCdnUrl(primaryKey),
+          bg_media_url: toCdnUrl(primaryUrlKey),
           bg_thumb_url: toCdnUrl(variants.thumb || variants.thumbnail || null),
           bg_blurhash:  results.blurhash ?? null,
         },
