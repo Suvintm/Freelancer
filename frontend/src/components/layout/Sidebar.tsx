@@ -89,7 +89,7 @@ export const Sidebar = () => {
           <div className="flex items-center justify-around py-2 border-y border-border-secondary">
             <StatBubble value={String(CHANNEL.videos)} label="Posts" />
             <div className="w-px h-6 bg-border-main" />
-            <StatBubble value={CHANNEL.followers} label="Followers" />
+            <StatBubble value={String(CHANNEL.followers)} label="Followers" />
             <div className="w-px h-6 bg-border-main" />
             <StatBubble value={String(CHANNEL.following)} label="Following" />
           </div>
