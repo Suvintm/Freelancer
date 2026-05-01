@@ -139,7 +139,7 @@ export const createStory = async (req, res) => {
     await addStoryJob(story.mediaId, storageKey, userId, mediaType);
 
     logger.info(`✅ [STORY_CTRL] Story ${story.id} created by ${userId}. Type: ${mediaType}`);
-    res.status(201).json({ success: true, data: { id: story.id, status: "PROCESSING" } });
+    res.status(201).json({ success: true, data: { id: story.id, mediaId: story.mediaId, status: "PROCESSING" } });
   } catch (error) {
     logger.error(`❌ [STORY_CTRL] createStory failure: ${error.message}`);
     res.status(500).json({ success: false, message: "Failed to publish story" });

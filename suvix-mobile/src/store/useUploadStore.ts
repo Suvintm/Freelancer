@@ -62,6 +62,9 @@ export const useUploadStore = create<UploadState>((set, get) => ({
   },
 
   setProcessing: () => {
+    // 🛡️ [RACE-CONDITION] If socket already finished it, don't revert to processing
+    if (get().status === 'success') return;
+
     // 🛡️ [FAILSAFE] Prevent stuck animation if server crashes
     if (failsafeTimer) clearTimeout(failsafeTimer);
     
