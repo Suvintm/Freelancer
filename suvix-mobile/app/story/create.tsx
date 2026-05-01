@@ -63,6 +63,7 @@ import { CanvasTextItem }      from '../../src/modules/story/components/CanvasTe
 import { CanvasStickerItem, EMOJI_STICKERS } from '../../src/modules/story/components/CanvasStickerItem';
 import { CanvasImageItem }     from '../../src/modules/story/components/CanvasImageItem';
 import { CanvasVideoItem }     from '../../src/modules/story/components/CanvasVideoItem';
+import { CanvasShapeItem }     from '../../src/modules/story/components/CanvasShapeItem';
 import { DrawingCanvas }       from '../../src/modules/story/components/DrawingCanvas';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -162,72 +163,8 @@ const ALL_SHAPES: { id: ShapeId; label: string; symbol: string }[] = [
   { id: 'line',     label: 'Line',    symbol: '—' },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CANVAS SHAPE ITEM
-// ─────────────────────────────────────────────────────────────────────────────
+// 🚀 CanvasShapeItem moved to its own file in src/modules/story/components/CanvasShapeItem.tsx
 
-const CanvasShapeItem = memo(({ item }: { item: ExtendedStoryObject }) => {
-  const shapeId    = item.content as ShapeId;
-  const fill       = item.shapeFill       ?? '#FFFFFF';
-  const stroke     = item.shapeStroke     ?? 'transparent';
-  const strokeW    = item.shapeStrokeWidth ?? 0;
-  const radius     = item.shapeCornerRadius ?? 0;
-  const w          = item.width  ?? 120;
-  const h          = item.shapeHeight ?? w;
-
-  const base = {
-    backgroundColor: fill === 'transparent' ? 'transparent' : fill,
-    borderColor:     stroke,
-    borderWidth:     strokeW,
-  };
-
-  switch (shapeId) {
-    case 'rect':
-      return <View style={[base, { width: w, height: h }]} />;
-    case 'rounded':
-      return <View style={[base, { width: w, height: h, borderRadius: Math.max(radius, 12) }]} />;
-    case 'circle':
-      return <View style={[base, { width: w, height: w, borderRadius: w / 2 }]} />;
-    case 'diamond':
-      return (
-        <View style={{ width: w, height: w, justifyContent: 'center', alignItems: 'center' }}>
-          <View style={[base, { width: w * 0.7, height: w * 0.7, transform: [{ rotate: '45deg' }], borderRadius: 4 }]} />
-        </View>
-      );
-    case 'triangle':
-      return (
-        <View style={{ width: 0, height: 0,
-          borderLeftWidth: w / 2, borderRightWidth: w / 2,
-          borderBottomWidth: h,
-          borderLeftColor: 'transparent', borderRightColor: 'transparent',
-          borderBottomColor: fill === 'transparent' ? 'rgba(255,255,255,0.5)' : fill,
-        }} />
-      );
-    case 'line':
-      return <View style={[{ width: w, height: Math.max(strokeW || 4, 4), backgroundColor: fill === 'transparent' ? stroke : fill, borderRadius: 2 }]} />;
-    case 'star':
-    case 'heart':
-    case 'arrow':
-    case 'speech':
-    default: {
-      const SYMBOL_MAP: Record<string, string> = {
-        star: '★', heart: '♥', arrow: '➜', speech: '💬',
-      };
-      return (
-        <Text style={{
-          fontSize: Math.min(w, h) * 0.9,
-          color: fill === 'transparent' ? (stroke || '#FFFFFF') : fill,
-          lineHeight: Math.min(w, h) * 1,
-          textShadowColor: stroke !== 'transparent' ? stroke : 'transparent',
-          textShadowOffset: { width: 0, height: 0 },
-          textShadowRadius: strokeW * 2,
-        }}>
-          {SYMBOL_MAP[shapeId] ?? '★'}
-        </Text>
-      );
-    }
-  }
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CANVAS OBJECT  — z-index from render order ONLY (no bring-to-front on select)
@@ -1082,8 +1019,9 @@ export default function AddStoryScreen() {
       updateProgress(92);
       const meta = {
         canvasWidth: canvasW, canvasHeight: canvasH, canvasBg,
-        objects: isVideo ? objects.filter(o => o.id !== videoObj!.id) : [],
-        drawPaths: isVideo ? drawPaths : [],
+        objects: objects, // 🚀 PRODUCTION: Send ALL objects so viewer can reconstruct the exact canvas
+        primaryObjectId: isVideo ? videoObj!.id : null, // 🚀 Mark which object is the 'master' video
+        drawPaths: drawPaths,
       };
       const resp = await retryFn(() => api.post('/social/stories', {
         storageKey, mimeType: mime,

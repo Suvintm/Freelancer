@@ -58,9 +58,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useStories, StoryItem, StorySlide } from '../../src/hooks/useStories';
 import { storyApi } from '../../src/api/storyApi';
 import { useToastStore } from '../../src/store/useToastStore';
-import { CanvasTextItem }    from '../../src/modules/story/components/CanvasTextItem';
-import { CanvasStickerItem } from '../../src/modules/story/components/CanvasStickerItem';
-import { DrawingCanvas }     from '../../src/modules/story/components/DrawingCanvas';
+import { CanvasTextItem }      from '../../src/modules/story/components/CanvasTextItem';
+import { CanvasStickerItem }   from '../../src/modules/story/components/CanvasStickerItem';
+import { CanvasImageItem }     from '../../src/modules/story/components/CanvasImageItem';
+import { CanvasVideoItem }     from '../../src/modules/story/components/CanvasVideoItem';
+import { CanvasShapeItem }     from '../../src/modules/story/components/CanvasShapeItem';
+import { DrawingCanvas }       from '../../src/modules/story/components/DrawingCanvas';
 import { StoryObject }       from '../../src/modules/story/types';
 import { SUVIX_INDUSTRY_STORIES } from '../../src/data/suvixStories';
 const DEFAULT_AVATAR = require('../../assets/defualtprofile.png');
@@ -607,50 +610,101 @@ function StoryThread({
           />
         )}
 
-        {/* ── IMAGE slide ─────────────────────────────────────────────── */}
-        {!isVideo && (
-          <Image
-            source={{ uri: currentSlide.image }}
-            style={StyleSheet.absoluteFill}
-            resizeMode="cover"
-          />
-        )}
+        {/* ── CANVAS RECONSTRUCTION ENGINE v2 ─────────────────────────────── */}
+        {/* We loop through ALL objects to reconstruct the exact user layout */}
+        {overlayObjects.map((obj: any) => {
+          const itemW = (obj.width ?? (obj.type === 'TEXT' ? 200 : 120)) * scaleX;
+          
+          // Replicate DraggableItem positioning:
+          const left = anchorLeft + obj.x * scaleX - itemW / 2;
+          const top  = anchorTop  + obj.y * scaleY;
 
-        {/* ── VIDEO slide (Legacy or Modern) ─────────────────────────── */}
-        {isVideo && (
-          useLegacyVideo ? (
-            <LegacyVideo
-              source={{ uri: activeMediaUrl }}
-              style={StyleSheet.absoluteFill}
-              resizeMode={ResizeMode.COVER}
-              shouldPlay={isActive && !isPausedRef.current}
-              isLooping={false}
-              onLoad={() => {
-                setIsVideoReady(true);
-                setIsBuffering(false);
-                startAnimation(0);
+          // 🚀 MASTER PLAYER LOGIC: If this is the primary video, use the master player source.
+          const isPrimary = obj.id === (meta.primaryObjectId ?? null);
+
+          return (
+            <View
+              key={obj.id}
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                left, top,
+                width:   itemW,
+                opacity: obj.opacity ?? 1,
+                zIndex:  obj.zIndex  ?? 1,
+                transform: [
+                  { scale:  obj.scale    ?? 1 },
+                  { rotate: `${obj.rotation ?? 0}rad` },
+                ],
               }}
-              onBuffer={({ isBuffering: b }) => setIsBuffering(b)}
-              onError={(err) => {
-                console.error('❌ [LEGACY-PLAYER] Fatal Error:', err);
-                if (!activeMediaUrl.includes('amazonaws.com')) {
-                  console.log('⚠️ [FALLBACK] CDN Failure detected in Legacy Player. Bypassing to S3...');
-                  const s3Url = activeMediaUrl.replace('cdn.suvix.in', 'suvix-media-storage.s3.ap-south-1.amazonaws.com');
-                  setActiveMediaUrl(s3Url);
-                } else {
-                  setIsVideoReady(true); // Failsafe skip
-                }
-              }}
-            />
-          ) : (
-            player && (
-              <VideoView
-                player={player}
+            >
+              {obj.type === 'TEXT'    && <CanvasTextItem    item={obj} />}
+              {obj.type === 'STICKER' && <CanvasStickerItem item={obj} />}
+              {obj.type === 'IMAGE'   && <CanvasImageItem   item={obj} />}
+              {obj.type === 'SHAPE'   && <CanvasShapeItem   item={obj} />}
+              
+              {/* VIDEO LAYER */}
+              {obj.type === 'VIDEO' && (
+                isPrimary ? (
+                  // MASTER PLAYER (Controls timing/progress)
+                  useLegacyVideo ? (
+                    <LegacyVideo
+                      source={{ uri: activeMediaUrl }}
+                      style={{ width: '100%', aspectRatio: obj.aspectRatio ?? 9/16 }}
+                      resizeMode={ResizeMode.COVER}
+                      shouldPlay={isActive && !isPausedRef.current}
+                      onLoad={() => {
+                        setIsVideoReady(true);
+                        setIsBuffering(false);
+                        startAnimation(0);
+                      }}
+                      onBuffer={({ isBuffering: b }) => setIsBuffering(b)}
+                      onError={(err) => {
+                        console.error('❌ [MASTER-VIDEO] Error:', err);
+                        if (!activeMediaUrl.includes('amazonaws.com')) {
+                          const s3Url = activeMediaUrl.replace('cdn.suvix.in', 'suvix-media-storage.s3.ap-south-1.amazonaws.com');
+                          setActiveMediaUrl(s3Url);
+                        } else {
+                          setIsVideoReady(true);
+                        }
+                      }}
+                    />
+                  ) : (
+                    player && (
+                      <VideoView
+                        player={player}
+                        style={{ width: '100%', aspectRatio: obj.aspectRatio ?? 9/16 }}
+                        contentFit="cover"
+                        nativeControls={false}
+                      />
+                    )
+                  )
+                ) : (
+                  // SECONDARY VIDEOS (Synced to isPaused state)
+                  <CanvasVideoItem item={obj} isPaused={!isActive || isPausedRef.current || !isVideoReady} />
+                )
+              )}
+            </View>
+          );
+        })}
+
+        {/* 🚀 FAILSAFE: If no objects exist (legacy stories), render primary media at absoluteFill */}
+        {overlayObjects.length === 0 && (
+          isVideo ? (
+            useLegacyVideo ? (
+              <LegacyVideo
+                source={{ uri: activeMediaUrl }}
                 style={StyleSheet.absoluteFill}
-                contentFit="cover"
-                nativeControls={false}
+                resizeMode={ResizeMode.COVER}
+                shouldPlay={isActive && !isPausedRef.current}
+                onLoad={() => { setIsVideoReady(true); setIsBuffering(false); startAnimation(0); }}
+                onBuffer={({ isBuffering: b }) => setIsBuffering(b)}
               />
+            ) : (
+              player && <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
             )
+          ) : (
+            <Image source={{ uri: currentSlide.image }} style={StyleSheet.absoluteFill} resizeMode="cover" />
           )
         )}
 
@@ -694,36 +748,7 @@ function StoryThread({
           />
         )}
 
-        {/* ── Canvas object overlays (video stories only) ─────────────── */}
-        {overlayObjects.map(obj => {
-          const itemW = (obj.width ?? (obj.type === 'TEXT' ? 200 : 120)) * scaleX;
-
-          // Replicate DraggableItem positioning:
-          // Base anchor + scaled translation, centering the item horizontally.
-          const left = anchorLeft + obj.x * scaleX - itemW / 2;
-          const top  = anchorTop  + obj.y * scaleY;
-
-          return (
-            <View
-              key={obj.id}
-              pointerEvents="none"
-              style={{
-                position: 'absolute',
-                left,
-                top,
-                width:   itemW,
-                opacity: obj.opacity ?? 1,
-                transform: [
-                  { scale:  obj.scale    ?? 1 },
-                  { rotate: `${obj.rotation ?? 0}rad` },
-                ],
-              }}
-            >
-              {obj.type === 'TEXT'    && <CanvasTextItem    item={obj} />}
-              {obj.type === 'STICKER' && <CanvasStickerItem item={obj} />}
-            </View>
-          );
-        })}
+        {/* 🚀 Dynamic Rendering Loop moved up into the Bounding Box 🚀 */}
       </View>
 
       {/* ── Gesture layer ─────────────────────────────────────────────── */}
