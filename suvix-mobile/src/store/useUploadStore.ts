@@ -11,6 +11,7 @@ interface UploadState {
   isVisible: boolean;
   uploadType: 'POST' | 'STORY'; // New field to distinguish progress UI
   activeMediaId: string | null;
+  completedMediaIds: Set<string>; // 🛡️ Prevent late events from re-triggering finished UI
   
   // Actions
   startUpload: (mediaType: 'IMAGE' | 'VIDEO' | 'STORY', uploadType?: 'POST' | 'STORY') => void;
@@ -33,6 +34,7 @@ export const useUploadStore = create<UploadState>((set, get) => ({
   isVisible: false,
   uploadType: 'POST',
   activeMediaId: null,
+  completedMediaIds: new Set(),
 
   startUpload: (mediaType, uploadType = 'POST') => {
     set({
@@ -62,9 +64,11 @@ export const useUploadStore = create<UploadState>((set, get) => ({
   },
 
   setProcessing: () => {
-    // 🛡️ [RACE-CONDITION] If socket already finished it, don't revert to processing
-    if (get().status === 'success') return;
-
+    const { status, activeMediaId, completedMediaIds } = get();
+    
+    // 🛡️ [RACE-CONDITION] If already successful or this media is already done, ignore.
+    if (status === 'success' || (activeMediaId && completedMediaIds.has(activeMediaId))) return;
+    
     // 🛡️ [FAILSAFE] Prevent stuck animation if server crashes
     if (failsafeTimer) clearTimeout(failsafeTimer);
     
@@ -72,13 +76,13 @@ export const useUploadStore = create<UploadState>((set, get) => ({
       const { status, setFailed } = get();
       if (status === 'processing') {
         console.warn('🕒 [FAILSAFE] Upload processing timed out. Forcing failed state.');
-        setFailed('Connection lost during processing. Please check your feed.');
+        setFailed('Processing taking longer than expected. Check your stories in a moment.');
       }
-    }, 90000); // 90 second window for heavy transcodes
+    }, 90000); 
 
     set({ 
       status: 'processing', 
-      message: 'Background Processing Started' 
+      message: 'Optimizing Story for SuviX...' 
     });
   },
 
@@ -88,16 +92,21 @@ export const useUploadStore = create<UploadState>((set, get) => ({
       failsafeTimer = null;
     }
 
+    const { activeMediaId, completedMediaIds } = get();
+    if (activeMediaId) {
+      completedMediaIds.add(activeMediaId);
+    }
+
     set({ 
       status: 'success', 
       progress: 100, 
       message 
     });
 
-    // Auto-dismiss after 5 seconds
+    // Auto-dismiss after 3 seconds (snappier for production)
     setTimeout(() => {
       get().reset();
-    }, 4000);
+    }, 3000);
   },
 
   setFailed: (error = 'Upload failed') => {
