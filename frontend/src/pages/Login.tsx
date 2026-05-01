@@ -13,6 +13,11 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
+  const handleGoogleLogin = () => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
+    window.location.href = `${apiUrl}/auth/google`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -71,6 +76,7 @@ export default function Login() {
             {/* Google Auth at the Top */}
             <Button 
               variant="outline" 
+              onClick={handleGoogleLogin}
               className="w-full h-11 lg:h-12 border-zinc-800 text-white bg-zinc-900/50 hover:bg-zinc-900 rounded-xl flex items-center justify-center gap-3 font-bold text-sm"
             >
               <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4" />

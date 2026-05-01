@@ -9,6 +9,7 @@ import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import PlaceholderPage from './pages/PlaceholderPage';
 import Maintenance from './pages/Maintenance';
+import OAuthSuccess from './pages/OAuthSuccess';
 import { AppLayout } from './components/layout/AppLayout';
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -68,6 +69,7 @@ function App() {
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
         <Route path="/role-selection" element={<PublicRoute><RoleSelection /></PublicRoute>} />
+        <Route path="/oauth-success" element={<OAuthSuccess />} />
         
         {/* Authenticated Routes wrapped in AppLayout and AuthGuard */}
         <Route 

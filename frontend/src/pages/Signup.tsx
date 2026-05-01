@@ -27,10 +27,25 @@ export default function Signup() {
     password: '',
   });
   const [error, setError] = useState<string | null>(null);
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const { checkUsername } = useAuthStore();
+
+  const handleUsernameBlur = async () => {
+    if (formData.username.length < 3) return;
+    setUsernameStatus('checking');
+    const available = await checkUsername(formData.username);
+    setUsernameStatus(available ? 'available' : 'taken');
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'username') setUsernameStatus('idle');
+  };
+
+  const handleGoogleLogin = () => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
+    window.location.href = `${apiUrl}/auth/google`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -100,6 +115,7 @@ export default function Signup() {
             {/* Google Auth at the Top */}
             <Button 
               variant="outline" 
+              onClick={handleGoogleLogin}
               className="w-full h-11 lg:h-12 border-zinc-800 text-white bg-zinc-900/50 hover:bg-zinc-900 rounded-xl flex items-center justify-center gap-3 font-bold text-sm"
             >
               <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4" />
@@ -132,15 +148,28 @@ export default function Signup() {
                   onChange={handleChange}
                   required
                 />
-                <Input 
-                  name="username"
-                  label="Username Handle" 
-                  placeholder="unique_handle" 
-                  className="h-11 bg-zinc-900/50 backdrop-blur-sm border-zinc-800 text-xs lg:text-sm"
-                  value={formData.username}
-                  onChange={handleChange}
-                  required
-                />
+                <div className="relative">
+                  <Input 
+                    name="username"
+                    label="Username Handle" 
+                    placeholder="unique_handle" 
+                    className={`h-11 bg-zinc-900/50 backdrop-blur-sm border-zinc-800 text-xs lg:text-sm ${
+                      usernameStatus === 'available' ? 'border-green-500/50' : 
+                      usernameStatus === 'taken' ? 'border-red-500/50' : ''
+                    }`}
+                    value={formData.username}
+                    onChange={handleChange}
+                    onBlur={handleUsernameBlur}
+                    required
+                  />
+                  {usernameStatus !== 'idle' && (
+                    <div className="absolute right-3 top-[34px] text-[10px] font-bold">
+                      {usernameStatus === 'checking' && <span className="text-zinc-500">Checking...</span>}
+                      {usernameStatus === 'available' && <span className="text-green-500">Available</span>}
+                      {usernameStatus === 'taken' && <span className="text-red-500">Taken</span>}
+                    </div>
+                  )}
+                </div>
               </div>
               
               <Input 

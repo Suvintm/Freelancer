@@ -23,6 +23,11 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  const { user } = useAuthStore.getState();
+  if (user && !user.isOnboarded && location.pathname !== '/role-selection' && location.pathname !== '/signup') {
+    return <Navigate to="/role-selection" replace />;
+  }
+
   return <>{children}</>;
 };
 

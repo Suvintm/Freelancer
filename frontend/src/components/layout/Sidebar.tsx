@@ -105,83 +105,85 @@ export const Sidebar = () => {
           </button>
         </div>
 
-        {/* ── 2. YouTube Channel Overview ──────────────────────────── */}
-        <div className="rounded-2xl border border-border-main bg-container overflow-hidden">
+        {/* ── 2. YouTube Channel Overview (Providers only) ──────────── */}
+        {user?.primaryRole?.group === 'PROVIDER' && (
+          <div className="rounded-2xl border border-border-main bg-container overflow-hidden">
 
-          {/* Channel header strip */}
-          <div className="h-14 bg-gradient-to-r from-red-600/90 to-red-700 relative flex items-end px-3 pb-2.5">
-            <div className="absolute inset-0 opacity-10"
-              style={{
-                backgroundImage: 'repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)',
-                backgroundSize: '8px 8px',
-              }}
-            />
-            <div className="flex items-center gap-2 relative z-10">
-              <svg width="16" height="11" viewBox="0 0 24 17" fill="white">
-                <path d="M23.5 2.9c-.3-1-1.1-1.8-2.1-2.1C19.5 0 12 0 12 0S4.5 0 2.6.8C1.6 1.1.8 2 .5 2.9 0 4.8 0 8.5 0 8.5s0 3.7.5 5.6c.3 1 1.1 1.8 2.1 2.1C4.5 17 12 17 12 17s7.5 0 9.4-.8c1-.3 1.8-1.1 2.1-2.1.5-1.9.5-5.6.5-5.6s0-3.7-.5-5.6z"/>
-                <path d="M9.5 12.1V4.9l6.3 3.6-6.3 3.6z" fill="red"/>
-              </svg>
-              <span className="text-white text-[11px] font-bold tracking-wide">YouTube</span>
-            </div>
-          </div>
-
-          <div className="p-3 space-y-3">
-            {/* Channel identity */}
-            <div className="flex items-center gap-2.5">
-              <img
-                src={CHANNEL.channelAvatar}
-                alt={CHANNEL.channelName}
-                className="w-9 h-9 rounded-lg object-cover border border-border-main"
+            {/* Channel header strip */}
+            <div className="h-14 bg-gradient-to-r from-red-600/90 to-red-700 relative flex items-end px-3 pb-2.5">
+              <div className="absolute inset-0 opacity-10"
+                style={{
+                  backgroundImage: 'repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)',
+                  backgroundSize: '8px 8px',
+                }}
               />
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-semibold text-text-main leading-tight truncate font-display">
-                  {CHANNEL.channelName}
-                </p>
-                <span className="inline-block text-[10px] font-bold text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded mt-0.5">
-                  {CHANNEL.category}
-                </span>
+              <div className="flex items-center gap-2 relative z-10">
+                <svg width="16" height="11" viewBox="0 0 24 17" fill="white">
+                  <path d="M23.5 2.9c-.3-1-1.1-1.8-2.1-2.1C19.5 0 12 0 12 0S4.5 0 2.6.8C1.6 1.1.8 2 .5 2.9 0 4.8 0 8.5 0 8.5s0 3.7.5 5.6c.3 1 1.1 1.8 2.1 2.1C4.5 17 12 17 12 17s7.5 0 9.4-.8c1-.3 1.8-1.1 2.1-2.1.5-1.9.5-5.6.5-5.6s0-3.7-.5-5.6z"/>
+                  <path d="M9.5 12.1V4.9l6.3 3.6-6.3 3.6z" fill="red"/>
+                </svg>
+                <span className="text-white text-[11px] font-bold tracking-wide">YouTube</span>
               </div>
+            </div>
+
+            <div className="p-3 space-y-3">
+              {/* Channel identity */}
+              <div className="flex items-center gap-2.5">
+                <img
+                  src={CHANNEL.channelAvatar}
+                  alt={CHANNEL.channelName}
+                  className="w-9 h-9 rounded-lg object-cover border border-border-main"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold text-text-main leading-tight truncate font-display">
+                    {CHANNEL.channelName}
+                  </p>
+                  <span className="inline-block text-[10px] font-bold text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded mt-0.5">
+                    {CHANNEL.category}
+                  </span>
+                </div>
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="shrink-0 text-text-muted hover:text-text-main transition-colors"
+                  aria-label="Open channel"
+                >
+                  <ExternalLink size={14} />
+                </button>
+              </div>
+
+              {/* Channel stats */}
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { icon: <Eye size={13} />,        value: CHANNEL.views,               label: 'Views'       },
+                  { icon: <PlayCircle size={13} />,  value: CHANNEL.subscribers,         label: 'Subscribers' },
+                  { icon: <Video size={13} />,        value: String(CHANNEL.videos),      label: 'Videos'      },
+                ].map(({ icon, value, label }) => (
+                  <div
+                    key={label}
+                    className="flex flex-col items-center gap-1 p-2 rounded-xl bg-border-secondary"
+                  >
+                    <span className="text-text-muted">{icon}</span>
+                    <span className="text-[13px] font-bold text-text-main font-display leading-none">{value}</span>
+                    <span className="text-[10px] text-text-muted leading-none">{label}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Analytics quick-link */}
               <button
+                className="
+                  w-full flex items-center justify-center gap-1.5 h-8 rounded-lg
+                  bg-rose-500/10 hover:bg-rose-500/15 text-rose-500
+                  text-[12px] font-semibold transition-colors
+                "
                 onClick={() => navigate('/profile')}
-                className="shrink-0 text-text-muted hover:text-text-main transition-colors"
-                aria-label="Open channel"
               >
-                <ExternalLink size={14} />
+                <TrendingUp size={13} />
+                View channel details
               </button>
             </div>
-
-            {/* Channel stats */}
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { icon: <Eye size={13} />,        value: CHANNEL.views,               label: 'Views'       },
-                { icon: <PlayCircle size={13} />,  value: CHANNEL.subscribers,         label: 'Subscribers' },
-                { icon: <Video size={13} />,        value: String(CHANNEL.videos),      label: 'Videos'      },
-              ].map(({ icon, value, label }) => (
-                <div
-                  key={label}
-                  className="flex flex-col items-center gap-1 p-2 rounded-xl bg-border-secondary"
-                >
-                  <span className="text-text-muted">{icon}</span>
-                  <span className="text-[13px] font-bold text-text-main font-display leading-none">{value}</span>
-                  <span className="text-[10px] text-text-muted leading-none">{label}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Analytics quick-link */}
-            <button
-              className="
-                w-full flex items-center justify-center gap-1.5 h-8 rounded-lg
-                bg-rose-500/10 hover:bg-rose-500/15 text-rose-500
-                text-[12px] font-semibold transition-colors
-              "
-              onClick={() => navigate('/profile')}
-            >
-              <TrendingUp size={13} />
-              View channel details
-            </button>
           </div>
-        </div>
+        )}
 
         {/* ── 3. Story highlights ───────────────────────────────────── */}
         <div>

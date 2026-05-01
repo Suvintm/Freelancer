@@ -33,6 +33,7 @@ interface AuthState {
   checkAuth: () => Promise<void>;
   fetchUser: () => Promise<void>;
   updateUser: (updates: Partial<AuthUser>) => void;
+  checkUsername: (username: string) => Promise<boolean>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -156,6 +157,16 @@ export const useAuthStore = create<AuthState>()(
         set((state) => ({
           user: state.user ? { ...state.user, ...updates } : null,
         }));
+      },
+
+      checkUsername: async (username: string) => {
+        try {
+          const res = await api.get(`/auth/check-username/${username}`);
+          return res.data.available;
+        } catch (error) {
+          console.error('CheckUsername error:', error);
+          return false;
+        }
       },
     }),
     {
