@@ -572,20 +572,40 @@ function StoryThread({
   // Why -itemSize/2? Because we want the item CENTER at the anchor, not the top-left.
   // ─────────────────────────────────────────────────────────────────────────
 
-  const meta       = currentSlide.metadata ?? {};
-  const creatorW   = currentSlide.canvas_width  ?? meta.canvasWidth  ?? CANVAS_W;
-  const creatorH   = currentSlide.canvas_height ?? meta.canvasHeight ?? CANVAS_H;
-  const scaleX     = CANVAS_W / creatorW;
-  const scaleY     = CANVAS_H / creatorH;
-
-  const anchorLeft = CANVAS_W * ANCHOR_X_RATIO;
-  const anchorTop  = CANVAS_H * ANCHOR_Y_RATIO;
-
-  // Overlay objects. For IMAGE stories these are always [] (baked into screenshot).
-  // For VIDEO stories these are the dynamic overlay layers.
   const overlayObjects: StoryObject[] = meta.objects    ?? [];
   const overlayPaths                  = meta.drawPaths  ?? [];
   const canvasBg                      = meta.canvasBg   ?? null;
+  const primaryId                     = meta.primaryObjectId ?? null;
+
+  // 🚀 Find the primary object to determine master player layout
+  const primaryObj = isVideo ? overlayObjects.find(o => o.id === primaryId || (o.type === 'VIDEO' && !primaryId)) : null;
+  
+  const creatorW   = meta.canvasWidth  ?? currentSlide.canvas_width  ?? CANVAS_W;
+  const creatorH   = meta.canvasHeight ?? currentSlide.canvas_height ?? CANVAS_H;
+  const scaleX     = CANVAS_W / creatorW;
+  const scaleY     = CANVAS_H / creatorH;
+  const anchorLeft = CANVAS_W * ANCHOR_X_RATIO;
+  const anchorTop  = CANVAS_H * ANCHOR_Y_RATIO;
+
+  const getObjStyle = (obj: any) => {
+    const itemW = (obj.width ?? (obj.type === 'TEXT' ? 200 : 120)) * scaleX;
+    const left  = anchorLeft + obj.x * scaleX - itemW / 2;
+    const top   = anchorTop  + obj.y * scaleY;
+    const aspectRatio = obj.aspectRatio ?? 9/16;
+    
+    return {
+      position: 'absolute' as const,
+      left, top,
+      width: itemW,
+      height: itemW / aspectRatio,
+      opacity: obj.opacity ?? 1,
+      zIndex:  obj.zIndex  ?? 1,
+      transform: [
+        { scale:  obj.scale    ?? 1 },
+        { rotate: `${obj.rotation ?? 0}rad` },
+      ],
+    };
+  };
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render
@@ -600,7 +620,10 @@ function StoryThread({
         canvasBg?.type === 'solid' && { backgroundColor: canvasBg.color },
       ]}>
 
-        {/* Canvas background gradient */}
+        {/* ── BACKGROUND LAYER ─────────────────────────────────────────── */}
+        {canvasBg?.type === 'solid' && (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: canvasBg.color }]} />
+        )}
         {canvasBg?.type === 'gradient' && canvasBg.gradientColors && (
           <LinearGradient
             colors={canvasBg.gradientColors as [string, string]}
@@ -609,84 +632,90 @@ function StoryThread({
             end={{ x: 1, y: 1 }}
           />
         )}
+        
+        {/* Blurred video failsafe (Premium look like Instagram/TikTok) */}
+        {isVideo && (
+          <Image 
+            source={{ uri: currentSlide.image }} 
+            style={StyleSheet.absoluteFill} 
+            blurRadius={20}
+            opacity={0.4}
+          />
+        )}
 
-        {/* ── CANVAS RECONSTRUCTION ENGINE v2 ─────────────────────────────── */}
-        {/* We loop through ALL objects to reconstruct the exact user layout */}
+        {/* ── MASTER MEDIA PLAYER ───────────────────────────────────────── */}
+        {/* We render the primary video/image here. If it's part of the canvas, we use its coords. */}
+        {isVideo ? (
+          <View 
+            style={primaryObj ? getObjStyle(primaryObj) : StyleSheet.absoluteFill}
+            pointerEvents="none"
+          >
+            {useLegacyVideo ? (
+              <LegacyVideo
+                source={{ uri: activeMediaUrl }}
+                style={StyleSheet.absoluteFill}
+                resizeMode={ResizeMode.COVER}
+                shouldPlay={isActive && !isPausedRef.current}
+                onLoad={() => {
+                  console.log('✅ [MASTER] Video Loaded');
+                  setIsVideoReady(true);
+                  setIsBuffering(false);
+                  startAnimation(0);
+                }}
+                onBuffer={({ isBuffering: b }) => setIsBuffering(b)}
+                onError={(err) => {
+                  console.error('❌ [MASTER] Error:', err);
+                  if (!activeMediaUrl.includes('amazonaws.com')) {
+                    const s3Url = activeMediaUrl.replace('cdn.suvix.in', 'suvix-media-storage.s3.ap-south-1.amazonaws.com');
+                    setActiveMediaUrl(s3Url);
+                  } else {
+                    setIsVideoReady(true);
+                  }
+                }}
+              />
+            ) : (
+              player && (
+                <VideoView
+                  player={player}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                  nativeControls={false}
+                />
+              )
+            )}
+          </View>
+        ) : (
+          <View style={primaryObj ? getObjStyle(primaryObj) : StyleSheet.absoluteFill}>
+            <Image
+              source={{ uri: currentSlide.image }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
+            />
+          </View>
+        )}
+
+        {/* ── CANVAS OVERLAYS ───────────────────────────────────────────── */}
         {overlayObjects.map((obj: any) => {
-          const itemW = (obj.width ?? (obj.type === 'TEXT' ? 200 : 120)) * scaleX;
-          
-          // Replicate DraggableItem positioning:
-          const left = anchorLeft + obj.x * scaleX - itemW / 2;
-          const top  = anchorTop  + obj.y * scaleY;
-
-          // 🚀 MASTER PLAYER LOGIC: If this is the primary video, use the master player source.
-          const isPrimary = obj.id === (meta.primaryObjectId ?? null);
+          // 🚀 SKIP the primary object because the Master Player (above) already rendered it!
+          if (obj.id === primaryId || (isVideo && obj.type === 'VIDEO' && !primaryId)) return null;
 
           return (
             <View
               key={obj.id}
               pointerEvents="none"
-              style={{
-                position: 'absolute',
-                left, top,
-                width:   itemW,
-                opacity: obj.opacity ?? 1,
-                zIndex:  obj.zIndex  ?? 1,
-                transform: [
-                  { scale:  obj.scale    ?? 1 },
-                  { rotate: `${obj.rotation ?? 0}rad` },
-                ],
-              }}
+              style={getObjStyle(obj)}
             >
               {obj.type === 'TEXT'    && <CanvasTextItem    item={obj} />}
               {obj.type === 'STICKER' && <CanvasStickerItem item={obj} />}
               {obj.type === 'IMAGE'   && <CanvasImageItem   item={obj} />}
               {obj.type === 'SHAPE'   && <CanvasShapeItem   item={obj} />}
-              
-              {/* VIDEO LAYER */}
-              {obj.type === 'VIDEO' && (
-                isPrimary ? (
-                  // MASTER PLAYER (Controls timing/progress)
-                  useLegacyVideo ? (
-                    <LegacyVideo
-                      source={{ uri: activeMediaUrl }}
-                      style={{ width: '100%', aspectRatio: obj.aspectRatio ?? 9/16 }}
-                      resizeMode={ResizeMode.COVER}
-                      shouldPlay={isActive && !isPausedRef.current}
-                      onLoad={() => {
-                        setIsVideoReady(true);
-                        setIsBuffering(false);
-                        startAnimation(0);
-                      }}
-                      onBuffer={({ isBuffering: b }) => setIsBuffering(b)}
-                      onError={(err) => {
-                        console.error('❌ [MASTER-VIDEO] Error:', err);
-                        if (!activeMediaUrl.includes('amazonaws.com')) {
-                          const s3Url = activeMediaUrl.replace('cdn.suvix.in', 'suvix-media-storage.s3.ap-south-1.amazonaws.com');
-                          setActiveMediaUrl(s3Url);
-                        } else {
-                          setIsVideoReady(true);
-                        }
-                      }}
-                    />
-                  ) : (
-                    player && (
-                      <VideoView
-                        player={player}
-                        style={{ width: '100%', aspectRatio: obj.aspectRatio ?? 9/16 }}
-                        contentFit="cover"
-                        nativeControls={false}
-                      />
-                    )
-                  )
-                ) : (
-                  // SECONDARY VIDEOS (Synced to isPaused state)
-                  <CanvasVideoItem item={obj} isPaused={!isActive || isPausedRef.current || !isVideoReady} />
-                )
+              {obj.type === 'VIDEO'   && (
+                <CanvasVideoItem item={obj} isPaused={!isActive || isPausedRef.current || !isVideoReady} />
               )}
             </View>
           );
         })}
+
 
         {/* 🚀 FAILSAFE: If no objects exist (legacy stories), render primary media at absoluteFill */}
         {overlayObjects.length === 0 && (
