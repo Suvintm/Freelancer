@@ -138,7 +138,7 @@ const storyProcessor = async (job) => {
       const isCdn = !!CDN_BASE;
       console.log(`✨ [STORY-SUCCESS] Story ${story.id} Updated!`);
       console.log(`   🔗 Delivery: ${isCdn ? '🚀 CDN (cdn.suvix.in)' : '📦 Direct S3'}`);
-      console.log(`   📂 Primary Variant: ${primaryKey}`);
+      console.log(`   📂 Primary Variant: ${primaryUrlKey}`);
     } else {
       logger.warn(`⚠️ [STORY-WORKER] No Story row found for mediaId ${mediaId}`);
     }
