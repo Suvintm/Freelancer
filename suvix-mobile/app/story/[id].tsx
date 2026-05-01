@@ -328,8 +328,10 @@ function StoryThread({
   }, [clearAdvance, lockTapBriefly, onPrevUser, stopProgress]);
 
   // ── Video player ──────────────────────────────────────────────────────────
+  // 🚀 Android: Pass null to prevent native Media3 from being created (onTracksSelected crash).
+  // The legacy expo-av player handles playback on Android directly via the LegacyVideo component.
   const player = useVideoPlayer(
-    isVideo && currentSlide?.image ? { uri: currentSlide.image } : null,
+    isVideo && currentSlide?.image && Platform.OS !== 'android' ? { uri: currentSlide.image } : null,
     p => {
       p.loop = false;
       p.muted = false;
@@ -349,15 +351,18 @@ function StoryThread({
     setRetryCount(0);
     retryRef.current = 0;
 
-    if (player) {
+    if (Platform.OS === 'android') {
+      // 🚀 Android: expo-av handles this via its onLoad callback. Just log the source.
+      console.log(`🎥 [LEGACY-ANDROID] Source: ${currentSlide.image}`);
+    } else if (player) {
       console.log(`🎥 [PLAYER] Source: ${currentSlide.image}`);
       player.replace({ uri: currentSlide.image });
     }
   }, [slideIndex, isVideo, currentSlide?.image]); // Removed 'player' as dep to prevent reload loop
 
-  // Handle player status changes
+  // Handle player status changes (iOS only — Android uses expo-av onLoad/onError callbacks)
   useEffect(() => {
-    if (!player || !isVideo || !isActive) return;
+    if (!player || !isVideo || !isActive || Platform.OS === 'android') return;
 
     const onStatusChange = (status: any) => {
       // In some versions of expo-video, status is an object, in others a string
