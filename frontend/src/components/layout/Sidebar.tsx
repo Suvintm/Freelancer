@@ -162,7 +162,7 @@ export const Sidebar = () => {
                   {/* Stats Grid: Modern Minimalist */}
                   <div className="grid grid-cols-3 gap-3">
                     {[
-                      { icon: <Eye size={12} />,        value: (channel as any).view_count || '0', label: 'Views'       },
+                      { icon: <Eye size={12} />,        value: channel.view_count || '0', label: 'Views'       },
                       { icon: <PlayCircle size={12} />,  value: channel.subscriber_count || '0',   label: 'Subs' },
                       { icon: <Video size={12} />,      value: channel.video_count || '0',        label: 'Videos'      },
                     ].map(({ icon, value, label }) => (

@@ -22,6 +22,7 @@ export interface AuthUser {
     thumbnail_url: string;
     subscriber_count: number;
     video_count: number;
+    view_count?: string | number;
     subCategoryName?: string;
   }>;
 }
