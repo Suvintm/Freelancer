@@ -58,9 +58,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useStories, StoryItem, StorySlide } from '../../src/hooks/useStories';
 import { storyApi } from '../../src/api/storyApi';
 import { useToastStore } from '../../src/store/useToastStore';
-import { CanvasTextItem }    from '../../src/modules/story/components/CanvasTextItem';
-import { CanvasStickerItem } from '../../src/modules/story/components/CanvasStickerItem';
-import { DrawingCanvas }     from '../../src/modules/story/components/DrawingCanvas';
+import { CanvasTextItem }      from '../../src/modules/story/components/CanvasTextItem';
+import { CanvasStickerItem }   from '../../src/modules/story/components/CanvasStickerItem';
+import { CanvasImageItem }     from '../../src/modules/story/components/CanvasImageItem';
+import { CanvasVideoItem }     from '../../src/modules/story/components/CanvasVideoItem';
+import { CanvasShapeItem }     from '../../src/modules/story/components/CanvasShapeItem';
+import { DrawingCanvas }       from '../../src/modules/story/components/DrawingCanvas';
 import { StoryObject }       from '../../src/modules/story/types';
 import { SUVIX_INDUSTRY_STORIES } from '../../src/data/suvixStories';
 const DEFAULT_AVATAR = require('../../assets/defualtprofile.png');
@@ -195,7 +198,7 @@ function StoryThread({
   const [slideIndex,  setSlideIndex]  = useState(0);
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [isBuffering,  setIsBuffering]  = useState(true);
-  const [useLegacyVideo, setUseLegacyVideo] = useState(false);
+  const [useLegacyVideo, setUseLegacyVideo] = useState(Platform.OS === 'android'); // 🚀 Force Legacy on Android to avoid Media3 crash
   const [activeMediaUrl, setActiveMediaUrl] = useState('');
   const [retryCount,     setRetryCount]     = useState(0);
   const [isDeleting,   setIsDeleting]   = useState(false);
@@ -222,6 +225,8 @@ function StoryThread({
   const lastStartedRef  = useRef({ index: -1, time: 0 }); // Prevents double starts
   const advanceTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unlockTapTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryRef        = useRef(0);
+  const mediaUrlRef     = useRef('');
 
   // ── FIX: Break circular startAnimation ↔ handleNext dependency ───────────
   // handleNext is stored in a ref so startAnimation never needs it as a dep.
@@ -326,8 +331,10 @@ function StoryThread({
   }, [clearAdvance, lockTapBriefly, onPrevUser, stopProgress]);
 
   // ── Video player ──────────────────────────────────────────────────────────
+  // 🚀 Android: Pass null to prevent native Media3 from being created (onTracksSelected crash).
+  // The legacy expo-av player handles playback on Android directly via the LegacyVideo component.
   const player = useVideoPlayer(
-    isVideo && currentSlide?.image ? { uri: currentSlide.image } : null,
+    isVideo && currentSlide?.image && Platform.OS !== 'android' ? { uri: currentSlide.image } : null,
     p => {
       p.loop = false;
       p.muted = false;
@@ -340,20 +347,25 @@ function StoryThread({
     
     // Default to CDN URL
     setActiveMediaUrl(currentSlide.image);
+    mediaUrlRef.current = currentSlide.image;
     setIsVideoReady(false);
     setIsBuffering(true);
-    setUseLegacyVideo(false);
+    setUseLegacyVideo(Platform.OS === 'android'); // 🚀 Ensure Android stays on legacy during slide changes
     setRetryCount(0);
+    retryRef.current = 0;
 
-    if (player) {
+    if (Platform.OS === 'android') {
+      // 🚀 Android: expo-av handles this via its onLoad callback. Just log the source.
+      console.log(`🎥 [LEGACY-ANDROID] Source: ${currentSlide.image}`);
+    } else if (player) {
       console.log(`🎥 [PLAYER] Source: ${currentSlide.image}`);
       player.replace({ uri: currentSlide.image });
     }
   }, [slideIndex, isVideo, currentSlide?.image]); // Removed 'player' as dep to prevent reload loop
 
-  // Handle player status changes
+  // Handle player status changes (iOS only — Android uses expo-av onLoad/onError callbacks)
   useEffect(() => {
-    if (!player || !isVideo || !isActive) return;
+    if (!player || !isVideo || !isActive || Platform.OS === 'android') return;
 
     const onStatusChange = (status: any) => {
       // In some versions of expo-video, status is an object, in others a string
@@ -372,28 +384,32 @@ function StoryThread({
       } else if (st === 'loading' || st === 'buffering') {
         setIsBuffering(true);
       } else if (st === 'error') {
-        console.warn('⚠️ [PLAYER] Status Error. Code:', status?.error?.code, 'Msg:', status?.error?.message);
+        const error = status?.error;
+        console.warn('⚠️ [PLAYER] Status Error. Code:', error?.code, 'Msg:', error?.message);
         
         // 🚀 RETRY STRATEGY: Try CDN URL 2 times before falling back
-        if (retryCount < 2) {
-          const nextRetry = retryCount + 1;
-          console.log(`🔄 [RETRY] Attempt ${nextRetry}/2 on CDN...`);
+        if (retryRef.current < 2) {
+          retryRef.current += 1;
+          const nextRetry = retryRef.current;
+          console.log(`🔄 [RETRY] Attempt ${nextRetry}/2 on CDN... Source: ${mediaUrlRef.current}`);
+          
           setRetryCount(nextRetry);
           setTimeout(() => {
-            if (isMountedRef.current && player) {
-              player.replace({ uri: activeMediaUrl });
+            if (isMountedRef.current && player && mediaUrlRef.current) {
+              player.replace({ uri: mediaUrlRef.current });
             }
-          }, 1500 * nextRetry); // Exponential backoff
+          }, 2000 * nextRetry); // Exponential backoff
           return;
         }
 
         if (!useLegacyVideo) {
           console.log('🔄 [FALLBACK] Switching to Legacy Player (expo-av)...');
           setUseLegacyVideo(true);
-        } else if (!activeMediaUrl.includes('amazonaws.com')) {
+        } else if (mediaUrlRef.current && !mediaUrlRef.current.includes('amazonaws.com')) {
           console.log('⚠️ [FATAL] CDN Persistent Failure. Falling back to S3...');
-          const s3Url = activeMediaUrl.replace('cdn.suvix.in', 'suvix-media-storage.s3.ap-south-1.amazonaws.com');
+          const s3Url = mediaUrlRef.current.replace('cdn.suvix.in', 'suvix-media-storage.s3.ap-south-1.amazonaws.com');
           setActiveMediaUrl(s3Url);
+          mediaUrlRef.current = s3Url;
         }
       }
     };
@@ -594,44 +610,101 @@ function StoryThread({
           />
         )}
 
-        {/* ── IMAGE slide ─────────────────────────────────────────────── */}
-        {!isVideo && (
-          <Image
-            source={{ uri: currentSlide.image }}
-            style={StyleSheet.absoluteFill}
-            resizeMode="cover"
-          />
-        )}
+        {/* ── CANVAS RECONSTRUCTION ENGINE v2 ─────────────────────────────── */}
+        {/* We loop through ALL objects to reconstruct the exact user layout */}
+        {overlayObjects.map((obj: any) => {
+          const itemW = (obj.width ?? (obj.type === 'TEXT' ? 200 : 120)) * scaleX;
+          
+          // Replicate DraggableItem positioning:
+          const left = anchorLeft + obj.x * scaleX - itemW / 2;
+          const top  = anchorTop  + obj.y * scaleY;
 
-        {/* ── VIDEO slide (Legacy or Modern) ─────────────────────────── */}
-        {isVideo && (
-          useLegacyVideo ? (
-            <LegacyVideo
-              source={{ uri: activeMediaUrl }}
-              style={StyleSheet.absoluteFill}
-              resizeMode={ResizeMode.COVER}
-              shouldPlay={isActive && !isPausedRef.current}
-              isLooping={false}
-              onLoad={() => {
-                setIsVideoReady(true);
-                setIsBuffering(false);
-                startAnimation(0);
+          // 🚀 MASTER PLAYER LOGIC: If this is the primary video, use the master player source.
+          const isPrimary = obj.id === (meta.primaryObjectId ?? null);
+
+          return (
+            <View
+              key={obj.id}
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                left, top,
+                width:   itemW,
+                opacity: obj.opacity ?? 1,
+                zIndex:  obj.zIndex  ?? 1,
+                transform: [
+                  { scale:  obj.scale    ?? 1 },
+                  { rotate: `${obj.rotation ?? 0}rad` },
+                ],
               }}
-              onBuffer={({ isBuffering: b }) => setIsBuffering(b)}
-              onError={(err) => {
-                console.error('❌ [LEGACY-PLAYER] Fatal Error:', err);
-                setIsVideoReady(true); // Failsafe skip
-              }}
-            />
-          ) : (
-            player && (
-              <VideoView
-                player={player}
+            >
+              {obj.type === 'TEXT'    && <CanvasTextItem    item={obj} />}
+              {obj.type === 'STICKER' && <CanvasStickerItem item={obj} />}
+              {obj.type === 'IMAGE'   && <CanvasImageItem   item={obj} />}
+              {obj.type === 'SHAPE'   && <CanvasShapeItem   item={obj} />}
+              
+              {/* VIDEO LAYER */}
+              {obj.type === 'VIDEO' && (
+                isPrimary ? (
+                  // MASTER PLAYER (Controls timing/progress)
+                  useLegacyVideo ? (
+                    <LegacyVideo
+                      source={{ uri: activeMediaUrl }}
+                      style={{ width: '100%', aspectRatio: obj.aspectRatio ?? 9/16 }}
+                      resizeMode={ResizeMode.COVER}
+                      shouldPlay={isActive && !isPausedRef.current}
+                      onLoad={() => {
+                        setIsVideoReady(true);
+                        setIsBuffering(false);
+                        startAnimation(0);
+                      }}
+                      onBuffer={({ isBuffering: b }) => setIsBuffering(b)}
+                      onError={(err) => {
+                        console.error('❌ [MASTER-VIDEO] Error:', err);
+                        if (!activeMediaUrl.includes('amazonaws.com')) {
+                          const s3Url = activeMediaUrl.replace('cdn.suvix.in', 'suvix-media-storage.s3.ap-south-1.amazonaws.com');
+                          setActiveMediaUrl(s3Url);
+                        } else {
+                          setIsVideoReady(true);
+                        }
+                      }}
+                    />
+                  ) : (
+                    player && (
+                      <VideoView
+                        player={player}
+                        style={{ width: '100%', aspectRatio: obj.aspectRatio ?? 9/16 }}
+                        contentFit="cover"
+                        nativeControls={false}
+                      />
+                    )
+                  )
+                ) : (
+                  // SECONDARY VIDEOS (Synced to isPaused state)
+                  <CanvasVideoItem item={obj} isPaused={!isActive || isPausedRef.current || !isVideoReady} />
+                )
+              )}
+            </View>
+          );
+        })}
+
+        {/* 🚀 FAILSAFE: If no objects exist (legacy stories), render primary media at absoluteFill */}
+        {overlayObjects.length === 0 && (
+          isVideo ? (
+            useLegacyVideo ? (
+              <LegacyVideo
+                source={{ uri: activeMediaUrl }}
                 style={StyleSheet.absoluteFill}
-                contentFit="cover"
-                nativeControls={false}
+                resizeMode={ResizeMode.COVER}
+                shouldPlay={isActive && !isPausedRef.current}
+                onLoad={() => { setIsVideoReady(true); setIsBuffering(false); startAnimation(0); }}
+                onBuffer={({ isBuffering: b }) => setIsBuffering(b)}
               />
+            ) : (
+              player && <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
             )
+          ) : (
+            <Image source={{ uri: currentSlide.image }} style={StyleSheet.absoluteFill} resizeMode="cover" />
           )
         )}
 
@@ -675,36 +748,7 @@ function StoryThread({
           />
         )}
 
-        {/* ── Canvas object overlays (video stories only) ─────────────── */}
-        {overlayObjects.map(obj => {
-          const itemW = (obj.width ?? (obj.type === 'TEXT' ? 200 : 120)) * scaleX;
-
-          // Replicate DraggableItem positioning:
-          // Base anchor + scaled translation, centering the item horizontally.
-          const left = anchorLeft + obj.x * scaleX - itemW / 2;
-          const top  = anchorTop  + obj.y * scaleY;
-
-          return (
-            <View
-              key={obj.id}
-              pointerEvents="none"
-              style={{
-                position: 'absolute',
-                left,
-                top,
-                width:   itemW,
-                opacity: obj.opacity ?? 1,
-                transform: [
-                  { scale:  obj.scale    ?? 1 },
-                  { rotate: `${obj.rotation ?? 0}rad` },
-                ],
-              }}
-            >
-              {obj.type === 'TEXT'    && <CanvasTextItem    item={obj} />}
-              {obj.type === 'STICKER' && <CanvasStickerItem item={obj} />}
-            </View>
-          );
-        })}
+        {/* 🚀 Dynamic Rendering Loop moved up into the Bounding Box 🚀 */}
       </View>
 
       {/* ── Gesture layer ─────────────────────────────────────────────── */}

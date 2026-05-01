@@ -167,7 +167,7 @@ export const processVideo = async (rawBuffer, userId, mediaId, folder = STORAGE_
       const fileKey = `${folder}/${userId}/${mediaId}/hls/${file}`;
       const isPlaylist = file.endsWith(".m3u8");
       // 🚀 MIME Standardization: application/vnd.apple.mpegurl is the industry standard for HLS playlists.
-      const contentType = (isPlaylist ? "application/vnd.apple.mpegurl" : "video/MP2T").trim();
+      const contentType = (isPlaylist ? "application/vnd.apple.mpegurl" : "video/mp2t").trim();
       
       // 🚀 SEGMENT OPTIMIZATION: .ts files are immutable and can be cached for 1 year.
       // .m3u8 playlists should follow the Story TTL (12h).
