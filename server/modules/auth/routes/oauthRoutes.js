@@ -50,6 +50,17 @@ router.get(
     })
 );
 
+// Initiate Google OAuth for YouTube (Web)
+router.get(
+    "/google/youtube",
+    authLimiter,
+    passport.authenticate("google", {
+        scope: ["profile", "email", "https://www.googleapis.com/auth/youtube.readonly"],
+        prompt: "select_account",
+        session: false,
+    })
+);
+
 // Google OAuth callback (Web)
 router.get(
     "/google/callback",
@@ -70,7 +81,8 @@ router.get(
                 userId: user.id,
                 role: user.role,
                 isOnboarded: user.is_onboarded,
-                isVerified: user.is_verified
+                isVerified: user.is_verified,
+                accessToken: user.accessToken
             });
 
             // Redirect with a short-lived exchange code
@@ -104,7 +116,7 @@ router.post("/exchange-code", authLimiter, async (req, res) => {
         // Atomically consume the code (prevent replay attacks)
         await redis.del(redisKey);
 
-        const { userId } = JSON.parse(storedData);
+        const { userId, accessToken: googleAccessToken } = JSON.parse(storedData);
 
         // Fetch user with full profile context
         const user = await prisma.user.findUnique({
@@ -153,6 +165,7 @@ router.post("/exchange-code", authLimiter, async (req, res) => {
             success: true,
             token: accessToken,
             refreshToken,
+            googleAccessToken,
             user: {
                 id: user.id,
                 email: user.email,

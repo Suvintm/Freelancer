@@ -71,6 +71,8 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
 
                     if (user) {
                         logger.info(`[OAuth] Google login (Postgres): ${email}`);
+                        // @ts-ignore
+                        user.accessToken = accessToken;
                         return done(null, user);
                     }
 
@@ -92,6 +94,8 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
                             include: { profile: true }
                         });
                         logger.info(`[OAuth] Linked Google account to existing user in Postgres: ${email}`);
+                        // @ts-ignore
+                        user.accessToken = accessToken;
                         return done(null, user);
                     }
 

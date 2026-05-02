@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
@@ -14,9 +14,7 @@ const LANGUAGES = [
 
 export default function Signup() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { signup, isLoading } = useAuthStore();
-  const categoryId = location.state?.categoryId;
+  const { signup, isLoading, tempSignupData } = useAuthStore();
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -52,6 +50,8 @@ export default function Signup() {
     e.preventDefault();
     setError(null);
 
+    const { categoryId, roleSubCategoryIds, youtubeChannels } = tempSignupData || {};
+
     if (!categoryId) {
       setError('Please select a role first.');
       return;
@@ -61,6 +61,8 @@ export default function Signup() {
       await signup({
         ...formData,
         categoryId,
+        roleSubCategoryIds,
+        youtubeChannels
       });
       navigate('/home');
     } catch (err: unknown) {

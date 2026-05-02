@@ -38,6 +38,17 @@ interface AuthState {
   isInitialized: boolean;
   isLoading: boolean;
 
+  tempSignupData: any;
+  setTempSignupData: (data: any) => void;
+  youtubeDiscovery: {
+    channels: any[];
+    selectedChannelIds: string[];
+    categorizations: Record<string, string>;
+  };
+  addDiscoveredChannels: (channels: any[]) => void;
+  toggleYoutubeChannelSelection: (channelId: string) => void;
+  setYoutubeChannelCategory: (channelId: string, subCategoryId: string) => void;
+
   setAuth: (user: AuthUser, token: string, refreshToken: string) => void;
   setTokens: (token: string, refreshToken: string, user?: AuthUser) => void;
   login: (email: string, password: string) => Promise<void>;
@@ -58,6 +69,57 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isInitialized: false,
       isLoading: false,
+
+      tempSignupData: {},
+      youtubeDiscovery: {
+        channels: [],
+        selectedChannelIds: [],
+        categorizations: {},
+      },
+
+      setTempSignupData: (data) => {
+        set((state) => ({
+          tempSignupData: { ...state.tempSignupData, ...data },
+        }));
+      },
+
+      addDiscoveredChannels: (channels) => {
+        set((state) => ({
+          youtubeDiscovery: {
+            ...state.youtubeDiscovery,
+            channels,
+          },
+        }));
+      },
+
+      toggleYoutubeChannelSelection: (channelId) => {
+        set((state) => {
+          const { selectedChannelIds } = state.youtubeDiscovery;
+          const isSelected = selectedChannelIds.includes(channelId);
+          const newSelection = isSelected
+            ? selectedChannelIds.filter((id) => id !== channelId)
+            : [...selectedChannelIds, channelId];
+          
+          return {
+            youtubeDiscovery: {
+              ...state.youtubeDiscovery,
+              selectedChannelIds: newSelection,
+            },
+          };
+        });
+      },
+
+      setYoutubeChannelCategory: (channelId, subCategoryId) => {
+        set((state) => ({
+          youtubeDiscovery: {
+            ...state.youtubeDiscovery,
+            categorizations: {
+              ...state.youtubeDiscovery.categorizations,
+              [channelId]: subCategoryId,
+            },
+          },
+        }));
+      },
 
       setAuth: (user, token, refreshToken) => {
         set({

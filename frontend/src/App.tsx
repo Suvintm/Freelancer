@@ -3,6 +3,8 @@ import Welcome from './pages/Welcome';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import RoleSelection from './pages/RoleSelection';
+import SubcategorySelection from './pages/SubcategorySelection';
+import YouTubeConnect from './pages/YouTubeConnect';
 import Home from './pages/Home';
 import Explore from './pages/Explore';
 import Profile from './pages/Profile';
@@ -70,6 +72,8 @@ function App() {
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
         <Route path="/role-selection" element={<PublicRoute><RoleSelection /></PublicRoute>} />
+        <Route path="/subcategory-selection" element={<PublicRoute><SubcategorySelection /></PublicRoute>} />
+        <Route path="/youtube-connect" element={<PublicRoute><YouTubeConnect /></PublicRoute>} />
         <Route path="/oauth-success" element={<OAuthSuccess />} />
         
         {/* Authenticated Routes wrapped in AppLayout and AuthGuard */}
