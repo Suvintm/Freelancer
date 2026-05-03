@@ -19,7 +19,6 @@ import { api } from '../api/client';
 import { LoadingOverlay } from '../components/shared/LoadingOverlay';
 import { SuccessOverlay } from '../components/shared/SuccessOverlay';
 import logo from '../assets/darklogo.png';
-import ytIcon from '../assets/youtubeicon.png';
 
 export default function YouTubeConnect() {
   const navigate = useNavigate();

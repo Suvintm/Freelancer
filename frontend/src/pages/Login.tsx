@@ -19,7 +19,7 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 export default function Login() {
   const [showPass, setShowPass] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
-  const { login, isLoading: authLoading } = useAuthStore();
+  const { login } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -38,8 +38,8 @@ export default function Login() {
     try {
       await login(form.email, form.password);
       navigate('/home');
-    } catch (err: any) {
-      setError(err);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsLoading(false);
     }

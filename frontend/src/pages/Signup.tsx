@@ -32,7 +32,7 @@ export default function Signup() {
     motherTongue: 'English'
   });
   const [userStatus, setUserStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
-  const { signup, isLoading: authLoading, tempSignupData, youtubeDiscovery } = useAuthStore();
+  const { signup, tempSignupData, youtubeDiscovery } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -65,8 +65,8 @@ export default function Signup() {
         ).filter(Boolean)
       });
       navigate('/home');
-    } catch (err: any) {
-      setError(err);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsLoading(false);
     }
