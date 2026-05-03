@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -119,7 +119,7 @@ export default function YouTubeConnect() {
     <div className="min-h-screen w-full bg-black flex flex-col relative overflow-x-hidden">
       {/* 🎬 Global Overlays */}
       <LoadingOverlay isVisible={isLoading} theme="youtube" message="Verifying..." />
-      <SuccessOverlay isVisible={showSuccess} title="Linked" />
+      <SuccessOverlay isVisible={showSuccess} type="youtube" title="Linked" message="Identity synced successfully." />
 
       {/* 💎 Premium Header Layer (Compact Navigation) */}
       <div className="absolute top-0 inset-x-0 z-[100] p-4 md:p-8 lg:p-10 flex items-center justify-between pointer-events-none">

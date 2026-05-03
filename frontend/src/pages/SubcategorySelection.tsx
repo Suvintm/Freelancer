@@ -29,7 +29,7 @@ export default function SubcategorySelection() {
   const { tempSignupData, setTempSignupData } = useAuthStore();
   const { categories, isLoading } = useCategoryStore();
   
-  const [selectedSubs, setSelectedSubs] = useState<string[]>(tempSignupData?.roleSubCategoryIds || []);
+  const [selectedSubs, setSelectedSubs] = useState<string[]>((tempSignupData?.roleSubCategoryIds as string[]) || []);
   const [searchQuery, setSearchQuery] = useState('');
   const [isFinishing, setIsFinishing] = useState(false);
 

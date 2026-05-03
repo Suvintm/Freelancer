@@ -17,7 +17,7 @@ import logo from '../assets/darklogo.png';
 import { AuthBackground } from '../components/auth/AuthBackground';
 import { MobileAuthHeader } from '../components/auth/MobileAuthHeader';
 
-const EASE = [0.16, 1, 0.3, 1];
+const EASE = [0.16, 1, 0.3, 1] as const;
 const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi'];
 
 export default function Signup() {
