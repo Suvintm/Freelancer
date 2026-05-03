@@ -46,10 +46,11 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
           isLoading: false 
         });
       }
-    } catch (error: any) {
-      console.error('❌ [API] Fetch Categories Error:', error);
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      console.error('❌ [API] Fetch Categories Error:', err);
       set({ 
-        error: error.message || 'Failed to load roles from server', 
+        error: err.message || 'Failed to load roles from server', 
         isLoading: false 
       });
     }

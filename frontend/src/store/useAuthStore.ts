@@ -30,6 +30,15 @@ export interface AuthUser {
   following?: number;
 }
 
+export interface YouTubeChannel {
+  channelId: string;
+  channelName: string;
+  thumbnailUrl: string;
+  subscriberCount: number | string;
+  videoCount: number | string;
+  isClaimed?: boolean;
+}
+
 interface AuthState {
   token: string | null;
   refreshToken: string | null;
@@ -38,14 +47,14 @@ interface AuthState {
   isInitialized: boolean;
   isLoading: boolean;
 
-  tempSignupData: any;
-  setTempSignupData: (data: any) => void;
+  tempSignupData: Record<string, unknown>;
+  setTempSignupData: (data: Record<string, unknown>) => void;
   youtubeDiscovery: {
-    channels: any[];
+    channels: YouTubeChannel[];
     selectedChannelIds: string[];
     categorizations: Record<string, string>;
   };
-  addDiscoveredChannels: (channels: any[]) => void;
+  addDiscoveredChannels: (channels: YouTubeChannel[]) => void;
   toggleYoutubeChannelSelection: (channelId: string) => void;
   setYoutubeChannelCategory: (channelId: string, subCategoryId: string) => void;
   resetYoutubeDiscovery: () => void;

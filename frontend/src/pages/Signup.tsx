@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import logo from '../assets/darklogo.png';
 import { AuthBackground } from '../components/auth/AuthBackground';
+import { MobileAuthHeader } from '../components/auth/MobileAuthHeader';
 
 const EASE = [0.16, 1, 0.3, 1];
 const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi'];
@@ -68,14 +69,21 @@ export default function Signup() {
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-zinc-950 to-transparent z-10" />
       </div>
 
+      {/* Mobile Visual Header */}
+      <MobileAuthHeader 
+        title={<>Create your <br/><span className="text-zinc-500">future today.</span></>}
+        actionLabel="Login Here"
+        actionLink="/login"
+      />
+
       {/* Form Side (Right) */}
       <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-black">
-        {/* Header (Top-Left Branding) */}
+        {/* Desktop Header (Hidden on Mobile) */}
         <motion.header 
           initial={{ opacity: 0, y: -20 }} 
           animate={{ opacity: 1, y: 0 }} 
           transition={{ duration: 0.6, ease: EASE }} 
-          className="flex-none flex items-start justify-between px-6 py-8 lg:px-12 lg:py-12"
+          className="hidden lg:flex flex-none items-start justify-between px-6 py-8 lg:px-12 lg:py-12"
         >
           <div className="space-y-4">
             <img src={logo} alt="SuviX" className="h-10 lg:h-12" />

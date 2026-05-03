@@ -76,7 +76,7 @@ export default function YouTubeConnect() {
     }
 
     if (googleAccessToken) {
-      fetchChannels(googleAccessToken);
+      Promise.resolve().then(() => fetchChannels(googleAccessToken));
     }
   }, [googleAccessToken, categoryId, navigate, resetYoutubeDiscovery, youtubeDiscovery.channels.length, fetchChannels]);
 
