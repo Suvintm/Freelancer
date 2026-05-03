@@ -13,7 +13,7 @@ import {
   AtSign,
   Loader2
 } from 'lucide-react';
-import logo from '../assets/whitebglogo.png';
+import logo from '../assets/darklogo.png';
 import { AuthBackground } from '../components/auth/AuthBackground';
 
 const EASE = [0.16, 1, 0.3, 1];
@@ -60,16 +60,16 @@ export default function Signup() {
   };
 
   return (
-    <div className="h-screen w-full bg-white flex flex-col lg:flex-row overflow-hidden font-sans light">
+    <div className="h-screen w-full bg-black flex flex-col lg:flex-row overflow-hidden font-sans">
       {/* Visual Side (Left) */}
-      <div className="hidden lg:flex lg:w-[40%] relative overflow-hidden bg-[#F8F9FA] border-r border-zinc-100">
+      <div className="hidden lg:flex lg:w-[40%] relative overflow-hidden bg-zinc-950 border-r border-zinc-800">
         <AuthBackground />
-        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#F8F9FA] to-transparent z-10" />
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#F8F9FA] to-transparent z-10" />
+        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-zinc-950 to-transparent z-10" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-zinc-950 to-transparent z-10" />
       </div>
 
       {/* Form Side (Right) */}
-      <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-white">
+      <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-black">
         {/* Header (Top-Left Branding) */}
         <motion.header 
           initial={{ opacity: 0, y: -20 }} 
@@ -78,18 +78,18 @@ export default function Signup() {
           className="flex-none flex items-start justify-between px-6 py-8 lg:px-12 lg:py-12"
         >
           <div className="space-y-4">
-            <img src={logo} alt="SuviX" className="h-10 lg:h-12 brightness-0" />
+            <img src={logo} alt="SuviX" className="h-10 lg:h-12" />
             <div className="space-y-1">
-              <h1 className="text-2xl lg:text-4xl font-semibold text-zinc-900 leading-[1.1] tracking-tight">
+              <h1 className="text-2xl lg:text-4xl font-semibold text-white leading-[1.1] tracking-tight">
                 Create your <br /> 
-                <span className="text-zinc-400">future today.</span>
+                <span className="text-zinc-500">future today.</span>
               </h1>
             </div>
           </div>
 
           <div className="flex items-center gap-3 text-sm text-zinc-500">
             <span className="hidden sm:inline font-medium">Already a member?</span>
-            <Link to="/login" className="px-4 py-2 rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-900 text-[11px] font-semibold hover:bg-zinc-100 transition-colors">
+            <Link to="/login" className="px-4 py-2 rounded-xl border border-zinc-800 bg-zinc-900 text-white text-[11px] font-semibold hover:bg-zinc-800 transition-colors">
               Login Here
             </Link>
           </div>
@@ -100,16 +100,16 @@ export default function Signup() {
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: EASE, delay: 0.2 }} className="w-full max-w-[440px]">
             <div className="space-y-6">
               {/* Google */}
-              <button type="button" onClick={handleGoogleLogin} className="suvix-btn-outline w-full h-12 flex items-center justify-center gap-3 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-all text-zinc-900 text-sm font-semibold shadow-sm">
+              <button type="button" onClick={handleGoogleLogin} className="suvix-btn-outline w-full h-12 flex items-center justify-center gap-3 bg-zinc-900 border border-zinc-800 rounded-xl hover:bg-zinc-800 transition-all text-white text-sm font-semibold shadow-sm">
                 <img src="https://www.google.com/favicon.ico" alt="" className="w-4 h-4" />
                 Continue with Google
               </button>
 
               {/* Divider */}
               <div className="relative flex items-center">
-                <div className="flex-1 h-px bg-zinc-100" />
-                <span className="mx-4 text-[11px] font-label font-semibold tracking-widest text-zinc-400 uppercase">or</span>
-                <div className="flex-1 h-px bg-zinc-100" />
+                <div className="flex-1 h-px bg-zinc-800" />
+                <span className="mx-4 text-[11px] font-label font-semibold tracking-widest text-zinc-500 uppercase">or</span>
+                <div className="flex-1 h-px bg-zinc-800" />
               </div>
 
               {error && (
@@ -134,7 +134,7 @@ export default function Signup() {
                         onChange={handleChange}
                         onBlur={handleUsernameBlur}
                         required
-                        className={`suvix-input !pl-12 pr-4 bg-zinc-50/50 border-zinc-200 focus:bg-white focus:border-zinc-900 text-sm ${
+                        className={`suvix-input !pl-12 pr-4 bg-zinc-900 border-zinc-800 focus:border-white text-sm ${
                           userStatus === 'available' ? 'border-green-500/50' :
                           userStatus === 'taken'     ? 'border-red-500/50'   : ''
                         }`}
@@ -167,7 +167,7 @@ export default function Signup() {
                         name="motherTongue"
                         value={form.motherTongue}
                         onChange={handleChange}
-                        className="suvix-input !pl-12 bg-zinc-50/50 border-zinc-200 focus:bg-white focus:border-zinc-900 text-sm appearance-none"
+                        className="suvix-input !pl-12 bg-zinc-900 border-zinc-800 focus:border-white text-sm appearance-none"
                       >
                         {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
                       </select>
@@ -187,7 +187,7 @@ export default function Signup() {
                       value={form.password}
                       onChange={handleChange}
                       required
-                      className="suvix-input !pl-12 pr-12 bg-zinc-50/50 border-zinc-200 focus:bg-white focus:border-zinc-900"
+                      className="suvix-input !pl-12 pr-12 bg-zinc-900 border-zinc-800 focus:border-white"
                     />
                     <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-900 transition-colors">
                       {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -205,9 +205,9 @@ export default function Signup() {
               </form>
             </div>
 
-            <p className="mt-6 text-center lg:text-left text-sm text-zinc-500 font-medium">
+            <p className="mt-6 text-center lg:text-left text-sm text-zinc-400 font-medium">
               Already a member?{' '}
-              <Link to="/login" className="font-semibold text-zinc-900 hover:opacity-80 transition-opacity">Sign In</Link>
+              <Link to="/login" className="font-semibold text-white hover:opacity-80 transition-opacity">Sign In</Link>
             </p>
           </motion.div>
         </div>
@@ -232,7 +232,7 @@ function InputField({ label, icon, ...props }: {
         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">{icon}</span>
         <input
           {...props}
-          className={`suvix-input !pl-12 bg-zinc-50/50 border-zinc-200 focus:bg-white focus:border-zinc-900 text-sm ${props.className ?? ''}`}
+          className={`suvix-input !pl-12 bg-zinc-900 border-zinc-800 focus:border-white text-sm ${props.className ?? ''}`}
         />
       </div>
     </div>
