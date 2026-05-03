@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ob1 from '../../assets/images/onboarding/onboarding_1.jpg';
 import ob2 from '../../assets/images/onboarding/onboarding_2.jpg';
