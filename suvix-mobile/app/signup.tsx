@@ -15,6 +15,7 @@ import {
   Dimensions,
   useColorScheme,
   Animated,
+  Switch,
 } from 'react-native';
 import { 
   isValidEmail, 
@@ -54,6 +55,7 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [allowNotifications, setAllowNotifications] = useState(true);
   
   // ── Animation ─────────────────────────────────────────────────────────────
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -142,12 +144,14 @@ export default function SignupScreen() {
       
       // 🛰️ GET PUSH TOKEN (Elite Quality)
       let pushToken = null;
-      try {
-        const Notifications = require('expo-notifications');
-        const tokenData = await Notifications.getDevicePushTokenAsync();
-        pushToken = tokenData.data;
-      } catch (err) {
-        console.warn('⚠️ [PUSH] Could not capture token during signup:', err);
+      if (allowNotifications) {
+        try {
+          const Notifications = require('expo-notifications');
+          const tokenData = await Notifications.getDevicePushTokenAsync();
+          pushToken = tokenData.data;
+        } catch (err) {
+          console.warn('⚠️ [PUSH] Could not capture token during signup:', err);
+        }
       }
 
       await api.post('/auth/validate-signup', { 
@@ -368,6 +372,19 @@ export default function SignupScreen() {
                         ))}
                       </View>
                     )}
+                    <View style={[styles.notificationToggle, { borderTopColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.toggleLabel, { color: theme.text }]}>Enable Notifications</Text>
+                        <Text style={[styles.toggleSublabel, { color: theme.textSecondary }]}>Get real-time updates on your growth</Text>
+                      </View>
+                      <Switch
+                        value={allowNotifications}
+                        onValueChange={(val) => { handleImpact(); setAllowNotifications(val); }}
+                        trackColor={{ false: '#767577', true: theme.primary }}
+                        thumbColor={allowNotifications ? '#fff' : '#f4f3f4'}
+                        ios_backgroundColor="#3e3e3e"
+                      />
+                    </View>
 
                     <SuvixButton 
                       title={loading ? 'Building...' : 'Create Account'} 
@@ -535,5 +552,22 @@ const styles = StyleSheet.create({
   ytIdentityStatsText: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  notificationToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    marginBottom: 8,
+    borderTopWidth: 1,
+  },
+  toggleLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  toggleSublabel: {
+    fontSize: 11,
+    opacity: 0.6,
+    marginTop: 2,
   },
 });

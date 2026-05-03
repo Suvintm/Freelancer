@@ -1,144 +1,200 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
+import { motion } from 'framer-motion';
+import { 
+  Mail, 
+  Lock, 
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Loader2
+} from 'lucide-react';
+import logo from '../assets/darklogo.png';
 import { AuthBackground } from '../components/auth/AuthBackground';
-import { useAuthStore } from '../store/useAuthStore';
-import logo from '../assets/whitebglogo.png';
+import { MobileAuthHeader } from '../components/auth/MobileAuthHeader';
+
+const EASE = [0.16, 1, 0.3, 1] as const;
 
 export default function Login() {
+  const [showPass, setShowPass] = useState(false);
+  const [form, setForm] = useState({ email: '', password: '' });
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { login, isLoading } = useAuthStore();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
 
-  const handleGoogleLogin = () => {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
-    window.location.href = `${apiUrl}/auth/google`;
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      navigate('/role-selection');
+    }, 1200);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    try {
-      await login(email, password);
-      navigate('/home');
-    } catch (err: unknown) {
-      setError(err as string);
-    }
+  const handleGoogleLogin = () => {
+    // Logic for Google login
   };
 
   return (
-    <div className="flex h-screen w-full bg-black font-sans overflow-hidden relative">
-      {/* Desktop Left Panel */}
-      <div className="hidden lg:flex lg:w-[40%] p-8 bg-zinc-950 overflow-hidden relative border-r border-zinc-900">
+    <div className="h-screen w-full bg-black flex flex-col lg:flex-row overflow-hidden font-sans">
+      {/* Visual Side (Left) */}
+      <div className="hidden lg:flex lg:w-[44%] relative overflow-hidden bg-zinc-950 border-r border-zinc-800">
         <AuthBackground />
-        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black to-transparent z-10" />
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent z-10" />
+        {/* Gradient overlays for depth */}
+        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-zinc-950 to-transparent z-10" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-zinc-950 to-transparent z-10" />
       </div>
 
-      {/* Mobile Background */}
-      <div className="lg:hidden absolute inset-0 z-0 bg-black">
-        <AuthBackground />
-        <div className="absolute inset-x-0 bottom-0 h-[65%] bg-black z-10" />
-        <div className="absolute inset-x-0 bottom-[65%] h-48 bg-gradient-to-t from-black to-transparent z-10" />
-      </div>
+      {/* Mobile Visual Header */}
+      <MobileAuthHeader 
+        title="Welcome Back" 
+        subtitle="Please enter your details below to login."
+        actionLabel="Join Now"
+        actionLink="/role-selection"
+      />
 
-      {/* Right Panel / Mobile Content Layer */}
-      <div className="flex-1 lg:flex-none lg:w-[60%] flex flex-col h-full overflow-y-auto lg:overflow-hidden bg-transparent lg:bg-black z-20">
-        <div className="flex justify-between items-center p-8 lg:px-24 lg:py-10 mb-4 lg:mb-8 sticky top-0 z-30 lg:relative lg:bg-transparent">
-          {/* Mobile Header Overlay */}
-          <div className="lg:hidden absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black via-black/70 to-transparent -z-10" />
+      {/* Form Side (Right) */}
+      <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-black">
+        {/* Desktop Header (Hidden on Mobile) */}
+        <motion.header 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: EASE }}
+          className="hidden lg:flex flex-none items-start justify-between px-6 py-8 lg:px-12 lg:py-12"
+        >
+          <div className="space-y-4">
+            <img src={logo} alt="SuviX" className="h-10 lg:h-12" />
+            <div className="space-y-1">
+              <h1 className="text-2xl lg:text-4xl font-semibold text-white leading-[1.1] tracking-tight">
+                Elevate your <br /> 
+                <span className="text-zinc-500">creator journey.</span>
+              </h1>
+            </div>
+          </div>
           
-          <img src={logo} alt="SuviX" className="h-12 lg:h-16 w-auto brightness-0 invert relative z-10" />
-          <div className="flex items-center gap-2 text-xs lg:text-sm text-zinc-400 relative z-10">
-            <span className="hidden sm:inline">New to SuviX?</span>
-            <Link to="/role-selection">
-              <Button variant="ghost" className="text-white font-bold hover:bg-white/10 px-4 py-2 rounded-xl text-xs lg:text-sm border border-white/10">
-                Join Now
-              </Button>
+          <div className="flex items-center gap-3 text-sm text-zinc-500">
+            <span className="hidden sm:inline font-medium">New?</span>
+            <Link
+              to="/role-selection"
+              className="px-4 py-2 rounded-xl border border-zinc-800 bg-zinc-900 text-white text-[11px] font-semibold hover:bg-zinc-800 transition-colors"
+            >
+              Join Now
             </Link>
           </div>
-        </div>
+        </motion.header>
 
-        <div className="max-w-[360px] mx-auto w-full flex-1 flex flex-col justify-center px-8 pb-12 lg:px-0 lg:pb-0">
-          <div className="mb-8 text-center">
-            <h1 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight mb-1">
-              Welcome Back
-            </h1>
-            <p className="text-zinc-400 text-xs lg:text-sm">
-              Please enter your details below to login.
-            </p>
-          </div>
+        {/* Content Area */}
+        <div className="flex-1 flex items-start lg:items-center justify-center px-6 pb-12 lg:px-16 lg:-mt-12">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: EASE, delay: 0.1 }}
+            className="w-full max-w-[400px]"
+          >
+            <div className="space-y-6">
+              {/* Google Login */}
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                className="suvix-btn-outline w-full h-12 flex items-center justify-center gap-3 bg-zinc-900 border border-zinc-800 rounded-xl hover:bg-zinc-800 transition-all text-white text-sm font-semibold shadow-sm"
+              >
+                <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4" />
+                Continue with Google
+              </button>
 
-          <div className="space-y-6">
-            {/* Google Auth at the Top */}
-            <Button 
-              variant="outline" 
-              onClick={handleGoogleLogin}
-              className="w-full h-11 lg:h-12 border-zinc-800 text-white bg-zinc-900/50 hover:bg-zinc-900 rounded-xl flex items-center justify-center gap-3 font-bold text-sm"
-            >
-              <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4" />
-              Continue with Google
-            </Button>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-zinc-800"></div>
+              {/* Divider */}
+              <div className="relative flex items-center">
+                <div className="flex-1 h-px bg-zinc-800" />
+                <span className="mx-4 text-[11px] font-label font-semibold tracking-widest text-zinc-500 uppercase">
+                  or
+                </span>
+                <div className="flex-1 h-px bg-zinc-800" />
               </div>
-              <div className="relative flex justify-center text-[10px] uppercase">
-                <span className="bg-black/80 backdrop-blur-sm px-4 text-zinc-500 font-bold tracking-widest">OR</span>
-              </div>
+
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Email */}
+                <div className="space-y-1.5">
+                  <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <input
+                      type="email"
+                      required
+                      placeholder="name@example.com"
+                      className="suvix-input !pl-12 pr-4 bg-zinc-900 border-zinc-800 focus:border-white transition-all text-white"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">
+                      Password
+                    </label>
+                    <Link
+                      to="/forgot-password"
+                      className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 transition-colors"
+                    >
+                      Forgot?
+                    </Link>
+                  </div>
+                  <div className="relative">
+                    <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <input
+                      type={showPass ? 'text' : 'password'}
+                      required
+                      placeholder="••••••••"
+                      className="suvix-input !pl-12 pr-12 bg-zinc-900 border-zinc-800 focus:border-white transition-all text-white"
+                      value={form.password}
+                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPass(!showPass)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-900 transition-colors"
+                    >
+                      {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Submit */}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="suvix-btn-primary w-full h-12 mt-2 !bg-white !text-black hover:opacity-90 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all shadow-xl shadow-white/10 active:scale-[0.98]"
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <span>Sign In</span>
+                      <ArrowRight size={18} strokeWidth={2.5} />
+                    </>
+                  )}
+                </button>
+              </form>
             </div>
 
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-3 rounded-xl text-xs font-bold text-center">
-                {error}
-              </div>
-            )}
-
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              <Input 
-                label="Email Address" 
-                type="email" 
-                placeholder="name@example.com" 
-                className="h-12 bg-zinc-900/50 backdrop-blur-sm border-zinc-800"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-              <div className="space-y-1">
-                <Input 
-                  label="Password" 
-                  type="password" 
-                  placeholder="••••••••" 
-                  className="h-12 bg-zinc-900/50 backdrop-blur-sm border-zinc-800"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-                <div className="text-right">
-                  <Link to="#" className="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors">
-                    Forgot Password?
-                  </Link>
-                </div>
-              </div>
-
-              <Button 
-                size="md" 
-                className="w-full h-12 bg-white text-black hover:bg-zinc-200 rounded-xl font-bold"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Signing In...' : 'Sign In'}
-              </Button>
-            </form>
-          </div>
+            {/* Footer */}
+            <p className="mt-8 text-center lg:text-left text-sm text-zinc-400 font-medium">
+              Don't have an account?{' '}
+              <Link to="/role-selection" className="font-semibold text-white hover:opacity-80 transition-opacity">
+                Join SuviX
+              </Link>
+            </p>
+          </motion.div>
         </div>
 
-        <div className="mt-12 lg:mt-16 text-center text-xs text-zinc-500 font-medium pb-8 lg:pb-12">
-          © 2026 SuviX Inc. All rights reserved.
-        </div>
+        {/* Legal Footer */}
+        <p className="text-center lg:text-left lg:px-16 text-[11px] text-zinc-400 font-medium pb-8">
+          © 2026 SuviX Inc. Powered by professional excellence.
+        </p>
       </div>
     </div>
   );

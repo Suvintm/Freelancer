@@ -25,7 +25,18 @@ export default function OAuthSuccess() {
         const response = await api.post('/auth/exchange-code', { code });
         
         if (response.data.success) {
-          const { user, token, refreshToken } = response.data;
+          const { user, token, refreshToken, googleAccessToken } = response.data;
+          
+          // Check if we are in onboarding flow
+          const authStore = useAuthStore.getState();
+          const isYouTubeOnboarding = authStore.tempSignupData?.categorySlug === 'yt_influencer';
+
+          if (isYouTubeOnboarding && googleAccessToken) {
+            // Store the token temporarily or pass it back
+            navigate('/youtube-connect', { state: { googleAccessToken } });
+            return;
+          }
+
           setAuth(user, token, refreshToken);
           
           if (!user.isOnboarded) {

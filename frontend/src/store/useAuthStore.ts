@@ -30,6 +30,15 @@ export interface AuthUser {
   following?: number;
 }
 
+export interface YouTubeChannel {
+  channelId: string;
+  channelName: string;
+  thumbnailUrl: string;
+  subscriberCount: number | string;
+  videoCount: number | string;
+  isClaimed?: boolean;
+}
+
 interface AuthState {
   token: string | null;
   refreshToken: string | null;
@@ -37,6 +46,18 @@ interface AuthState {
   isAuthenticated: boolean;
   isInitialized: boolean;
   isLoading: boolean;
+
+  tempSignupData: Record<string, unknown>;
+  setTempSignupData: (data: Record<string, unknown>) => void;
+  youtubeDiscovery: {
+    channels: YouTubeChannel[];
+    selectedChannelIds: string[];
+    categorizations: Record<string, string>;
+  };
+  addDiscoveredChannels: (channels: YouTubeChannel[]) => void;
+  toggleYoutubeChannelSelection: (channelId: string) => void;
+  setYoutubeChannelCategory: (channelId: string, subCategoryId: string) => void;
+  resetYoutubeDiscovery: () => void;
 
   setAuth: (user: AuthUser, token: string, refreshToken: string) => void;
   setTokens: (token: string, refreshToken: string, user?: AuthUser) => void;
@@ -58,6 +79,67 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isInitialized: false,
       isLoading: false,
+
+      tempSignupData: {},
+      youtubeDiscovery: {
+        channels: [],
+        selectedChannelIds: [],
+        categorizations: {},
+      },
+
+      setTempSignupData: (data) => {
+        set((state) => ({
+          tempSignupData: { ...state.tempSignupData, ...data },
+        }));
+      },
+
+      addDiscoveredChannels: (channels) => {
+        set((state) => ({
+          youtubeDiscovery: {
+            ...state.youtubeDiscovery,
+            channels,
+          },
+        }));
+      },
+
+      toggleYoutubeChannelSelection: (channelId) => {
+        set((state) => {
+          const { selectedChannelIds } = state.youtubeDiscovery;
+          const isSelected = selectedChannelIds.includes(channelId);
+          const newSelection = isSelected
+            ? selectedChannelIds.filter((id) => id !== channelId)
+            : [...selectedChannelIds, channelId];
+          
+          return {
+            youtubeDiscovery: {
+              ...state.youtubeDiscovery,
+              selectedChannelIds: newSelection,
+            },
+          };
+        });
+      },
+
+      setYoutubeChannelCategory: (channelId, subCategoryId) => {
+        set((state) => ({
+          youtubeDiscovery: {
+            ...state.youtubeDiscovery,
+            categorizations: {
+              ...state.youtubeDiscovery.categorizations,
+              [channelId]: subCategoryId,
+            },
+          },
+        }));
+      },
+      
+      resetYoutubeDiscovery: () => {
+        set({
+          youtubeDiscovery: {
+            channels: [],
+            selectedChannelIds: [],
+            categorizations: {},
+          }
+        });
+      },
 
       setAuth: (user, token, refreshToken) => {
         set({
@@ -191,6 +273,8 @@ export const useAuthStore = create<AuthState>()(
         refreshToken: state.refreshToken,
         user: state.user,
         isAuthenticated: state.isAuthenticated,
+        tempSignupData: state.tempSignupData,
+        youtubeDiscovery: state.youtubeDiscovery,
       }),
     }
   )

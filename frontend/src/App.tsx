@@ -3,6 +3,8 @@ import Welcome from './pages/Welcome';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import RoleSelection from './pages/RoleSelection';
+import SubcategorySelection from './pages/SubcategorySelection';
+import YouTubeConnect from './pages/YouTubeConnect';
 import Home from './pages/Home';
 import Explore from './pages/Explore';
 import Profile from './pages/Profile';
@@ -35,14 +37,23 @@ function App() {
         try {
           const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
           const baseUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
-          const response = await fetch(`${baseUrl}/api/health`, { signal: AbortSignal.timeout(3000) });
+          
+          console.log(`🌐 [HEALTH] Checking connectivity: ${baseUrl}/api/health`);
+          
+          const response = await fetch(`${baseUrl}/api/health`, { 
+            signal: AbortSignal.timeout(10000) 
+          });
           
           if (response.status === 503) {
             navigate('/maintenance', { replace: true });
           }
-        } catch {
-          console.warn('🚧 [MAINTENANCE] Nexus is unreachable. Redirecting to maintenance portal.');
-          navigate('/maintenance', { replace: true });
+        } catch (error) {
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
+          console.error(`❌ [HEALTH] Nexus unreachable at ${apiUrl}:`, error);
+          
+          if (!apiUrl.includes('localhost')) {
+            navigate('/maintenance', { replace: true });
+          }
         } finally {
           setIsCheckingServer(false);
         }
@@ -70,6 +81,8 @@ function App() {
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
         <Route path="/role-selection" element={<PublicRoute><RoleSelection /></PublicRoute>} />
+        <Route path="/subcategory-selection" element={<PublicRoute><SubcategorySelection /></PublicRoute>} />
+        <Route path="/youtube-connect" element={<PublicRoute><YouTubeConnect /></PublicRoute>} />
         <Route path="/oauth-success" element={<OAuthSuccess />} />
         
         {/* Authenticated Routes wrapped in AppLayout and AuthGuard */}
