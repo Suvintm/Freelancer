@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, DeviceEventEmitter } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PagerView from 'react-native-pager-view';
 import { useSegments } from 'expo-router';
@@ -43,6 +43,16 @@ export default function TabsLayout() {
 
   // 🛰️ Universal Scroll Channel for Navbar Sync
   const globalScrollY = useSharedValue(0);
+
+  // ── Global Tab Switcher (Instant Shortcut) ─────────────────────────────────
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('SWITCH_TAB', (index: number) => {
+      pagerRef.current?.setPage(index);
+      setActiveIndex(index);
+      activeIndexRef.current = index;
+    });
+    return () => subscription.remove();
+  }, [filteredTabs]);
 
   useEffect(() => {
     const currentUserId = user?.id ?? null;
@@ -91,16 +101,14 @@ export default function TabsLayout() {
   useEffect(() => {
     if (segments[0] !== '(tabs)') return;
 
-    // Important: do not force 'index' when second segment is missing.
-    // This avoids snapping back to Home after local tab presses.
-    const targetTab = segments[1];
-    if (!targetTab) return;
+    // Important: if segments[1] is missing, it means we are at the root (Home)
+    const targetTab = segments[1] || 'index';
 
     const targetIndex = filteredTabs.findIndex((t) => t.name === targetTab);
     if (targetIndex === -1) return;
 
     if (targetIndex !== activeIndexRef.current) {
-      pagerRef.current?.setPageWithoutAnimation(targetIndex);
+      pagerRef.current?.setPage(targetIndex);
       setActiveIndex(targetIndex);
       activeIndexRef.current = targetIndex;
     }
@@ -152,7 +160,7 @@ export default function TabsLayout() {
       <View 
         style={[
           styles.navbarOverlay,
-          { display: (isReelsActive || filteredTabs[activeIndex]?.name === 'explore' || filteredTabs[activeIndex]?.name === 'profile') ? 'none' : 'flex' }
+          { display: (isReelsActive || filteredTabs[activeIndex]?.name === 'explore' || filteredTabs[activeIndex]?.name === 'profile' || filteredTabs[activeIndex]?.name === 'nearby') ? 'none' : 'flex' }
         ]}
         pointerEvents="box-none"
       >
@@ -184,7 +192,7 @@ export default function TabsLayout() {
         activeIndex={activeIndex}
         tabs={filteredTabs}
         onTabPress={goToPage}
-        hidden={isReelsActive}
+        hidden={isReelsActive || filteredTabs[activeIndex]?.name === 'nearby'}
       />
 
       {/* 👥 Global Account Switcher */}

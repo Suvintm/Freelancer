@@ -15,6 +15,7 @@ import {
   Dimensions,
   useColorScheme,
   Animated,
+  Switch,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -51,6 +52,7 @@ export default function LoginScreen() {
   const [loading, setLoading]         = useState(false);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [allowNotifications, setAllowNotifications] = useState(true);
 
   // ── Animation ─────────────────────────────────────────────────────────────
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -127,6 +129,25 @@ export default function LoginScreen() {
         setShowLoadingOverlay(false);
         setLoading(false);
         useAuthStore.getState().setIsAddingAccount(false);
+        
+        // 🛰️ REGISTER PUSH TOKEN (Elite Quality)
+        if (allowNotifications) {
+          try {
+            const Notifications = require('expo-notifications');
+            const tokenData = await Notifications.getDevicePushTokenAsync();
+            const pushToken = tokenData.data;
+            if (pushToken) {
+              await api.post('/notifications/tokens', { 
+                token: pushToken, 
+                platform: Platform.OS.toUpperCase() 
+              });
+              console.log('✅ [PUSH] Token registered successfully after login');
+            }
+          } catch (err) {
+            console.warn('⚠️ [PUSH] Could not register token after login:', err);
+          }
+        }
+
         router.replace('/(tabs)');
       } else {
         setShowLoadingOverlay(false);
@@ -238,6 +259,20 @@ export default function LoginScreen() {
                     >
                       <Text style={[styles.forgotText, { color: theme.textSecondary }]}>Forgot Password?</Text>
                     </TouchableOpacity>
+
+                    <View style={[styles.notificationToggle, { borderTopColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }]}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.toggleLabel, { color: theme.text }]}>Enable Notifications</Text>
+                        <Text style={[styles.toggleSublabel, { color: theme.textSecondary }]}>Get real-time updates on your growth</Text>
+                      </View>
+                      <Switch
+                        value={allowNotifications}
+                        onValueChange={(val) => { handleImpact(); setAllowNotifications(val); }}
+                        trackColor={{ false: '#767577', true: theme.primary }}
+                        thumbColor={allowNotifications ? '#fff' : '#f4f3f4'}
+                        ios_backgroundColor="#3e3e3e"
+                      />
+                    </View>
 
                     <SuvixButton
                       title={loading ? 'Checking...' : 'Sign In'}
@@ -361,4 +396,21 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 32 },
   footerText: { fontSize: 14, fontWeight: '600' },
   footerLink: { fontSize: 14, fontWeight: '900' },
+  notificationToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    marginBottom: 12,
+    borderTopWidth: 1,
+  },
+  toggleLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  toggleSublabel: {
+    fontSize: 12,
+    opacity: 0.6,
+    marginTop: 2,
+  },
 });
