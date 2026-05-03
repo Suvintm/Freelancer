@@ -43,7 +43,7 @@ const SLIDES = [
 ];
 
 // Spring transition used throughout
-const EASE   = { duration: 0.5, ease: [0.16, 1, 0.3, 1] as any };
+const EASE   = { duration: 0.5, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] };
 
 export default function Welcome() {
   const [active, setActive] = useState(0);
