@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ArrowRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import logo from '../assets/whitebglogo.png';
 
@@ -43,7 +43,6 @@ const SLIDES = [
 ];
 
 // Spring transition used throughout
-const SPRING = { type: 'spring', stiffness: 300, damping: 30 };
 const EASE   = { duration: 0.5, ease: [0.16, 1, 0.3, 1] };
 
 export default function Welcome() {
@@ -52,18 +51,18 @@ export default function Welcome() {
 
   const isLast = active === SLIDES.length - 1;
 
+  const goNext = useCallback(() => {
+    setDirection(1);
+    setActive(p => Math.min(p + 1, SLIDES.length - 1));
+  }, []);
+
   // Auto-advance every 5 seconds (only on desktop to mimic app behavior)
   useEffect(() => {
     const t = setTimeout(() => {
       if (!isLast) goNext();
     }, 5000);
     return () => clearTimeout(t);
-  }, [active]);
-
-  const goNext = useCallback(() => {
-    setDirection(1);
-    setActive(p => Math.min(p + 1, SLIDES.length - 1));
-  }, []);
+  }, [active, isLast, goNext]);
 
   const goTo = useCallback((i: number) => {
     setDirection(i > active ? 1 : -1);

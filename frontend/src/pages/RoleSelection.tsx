@@ -13,8 +13,7 @@ import { AuthBackground } from '../components/auth/AuthBackground';
 import { useAuthStore } from '../store/useAuthStore';
 import { useCategoryStore } from '../store/useCategoryStore';
 import logo from '../assets/darklogo.png';
-
-const EASE = [0.16, 1, 0.3, 1];
+import { RoleCategory } from '../types/role';
 
 // Import assets for high-fidelity thumbnails
 import youtubeThumb from '../assets/categories/youtube.jpg';
@@ -54,7 +53,7 @@ const CATEGORY_ORDER = [
 
 export default function RoleSelection() {
   const [selected, setSelected] = useState<string | null>(null);
-  const [infoCategory, setInfoCategory] = useState<any | null>(null);
+  const [infoCategory, setInfoCategory] = useState<RoleCategory | null>(null);
   const navigate = useNavigate();
   
   const { categories, isLoading, fetchCategories } = useCategoryStore();
@@ -99,30 +98,26 @@ export default function RoleSelection() {
     }
   };
 
-  const sortedCategories = CATEGORY_ORDER.map(slug => categories.find(c => c.slug === slug)).filter(Boolean);
+  const sortedCategories = CATEGORY_ORDER.map(slug => categories.find(c => c.slug === slug)).filter((c): c is RoleCategory => !!c);
   const remainingCategories = categories.filter(c => !CATEGORY_ORDER.includes(c.slug));
-  const finalDisplayCategories = [...sortedCategories, ...remainingCategories] as any[];
+  const finalDisplayCategories = [...sortedCategories, ...remainingCategories];
 
   return (
     <div className="flex h-screen w-full bg-black font-sans overflow-hidden relative text-white">
-      {/* Desktop Left Panel (Dark Premium Style) */}
       <div className="hidden lg:flex lg:w-[40%] p-8 bg-zinc-950 overflow-hidden relative border-r border-zinc-800">
         <AuthBackground />
         <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-zinc-950 to-transparent z-10" />
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-zinc-950 to-transparent z-10" />
       </div>
 
-      {/* Mobile Background */}
       <div className="lg:hidden absolute inset-0 z-0 bg-black">
         <AuthBackground />
         <div className="absolute inset-x-0 bottom-0 h-[60%] bg-black z-10" />
         <div className="absolute inset-x-0 bottom-[60%] h-48 bg-gradient-to-t from-black to-transparent z-10" />
       </div>
 
-      {/* Main Content Layer */}
       <div className="flex-1 lg:flex-none lg:w-[60%] flex flex-col h-full overflow-hidden bg-transparent lg:bg-black z-20">
         
-        {/* Sticky Header Section (Compact for visibility) */}
         <div className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl border-b border-zinc-800">
           <div className="flex flex-col lg:flex-row lg:items-start justify-between px-6 py-6 md:px-12 lg:px-20 lg:py-10">
             <div className="space-y-3">

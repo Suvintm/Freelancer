@@ -29,8 +29,6 @@ import { SuccessOverlay } from '../components/shared/SuccessOverlay';
 import logo from '../assets/darklogo.png';
 import ytIcon from '../assets/youtubeicon.png';
 
-const EASE = [0.16, 1, 0.3, 1];
-
 export default function YouTubeConnect() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -55,21 +53,6 @@ export default function YouTubeConnect() {
   const googleAccessToken = location.state?.googleAccessToken;
   const connected = youtubeDiscovery.channels.length > 0;
 
-  useEffect(() => {
-    if (!categoryId) {
-      navigate('/role-selection');
-      return;
-    }
-
-    if (!googleAccessToken && youtubeDiscovery.channels.length > 0) {
-      resetYoutubeDiscovery();
-    }
-
-    if (googleAccessToken) {
-      fetchChannels(googleAccessToken);
-    }
-  }, [googleAccessToken, categoryId, navigate]);
-
   const handleConnect = () => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
     window.location.href = `${apiUrl}/auth/google/youtube`;
@@ -84,12 +67,28 @@ export default function YouTubeConnect() {
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 2000);
       }
-    } catch (err: any) {
-      console.error('Error connecting to YouTube:', err.response?.data?.message || err.message);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } }; message?: string };
+      console.error('Error connecting to YouTube:', error.response?.data?.message || error.message);
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!categoryId) {
+      navigate('/role-selection');
+      return;
+    }
+
+    if (!googleAccessToken && youtubeDiscovery.channels.length > 0) {
+      resetYoutubeDiscovery();
+    }
+
+    if (googleAccessToken) {
+      fetchChannels(googleAccessToken);
+    }
+  }, [googleAccessToken, categoryId, navigate, resetYoutubeDiscovery, youtubeDiscovery.channels.length]);
 
   const allSelectedChannelsTagged = useMemo(() => {
     if (youtubeDiscovery.selectedChannelIds.length === 0) return false;
