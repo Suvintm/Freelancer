@@ -1,78 +1,66 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import { useState, useEffect } from 'react';
 import { locationService } from '../services/locationService';
 import { Editor } from '../types/editor';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5051/api';
-
 /**
- * HOOK: useNearbyEditors
- * Fetches editors from the backend and applies 15km randomization logic.
+ * HOOK: useNearbyEditors (MOCK MODE)
+ * Generates talent near the user's location for UI demonstration.
  */
 export const useNearbyEditors = (enabled: boolean = false) => {
   const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
-  const [permissionStatus, setPermissionStatus] = useState<boolean | null>(null);
+  const [editors, setEditors] = useState<Editor[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!enabled) return;
 
     const initLocation = async () => {
+      setIsLoading(true);
       const coords = await locationService.getCurrentLocation();
       if (coords) {
-        setUserLocation({ lat: coords.latitude, lng: coords.longitude });
-        setPermissionStatus(true);
-      } else {
-        setPermissionStatus(false);
-      }
-    };
-    initLocation();
-  }, [enabled]);
+        const uLat = coords.latitude;
+        const uLng = coords.longitude;
+        setUserLocation({ lat: uLat, lng: uLng });
 
-  const query = useQuery({
-    queryKey: ['nearby-editors', userLocation?.lat, userLocation?.lng],
-    queryFn: async () => {
-      if (!userLocation) return [];
-      
-      try {
-        const { data } = await axios.get(`${API_URL}/location/nearby`, {
-          params: {
-            lat: userLocation.lat,
-            lng: userLocation.lng,
-            radius: 15, // 15km range
-          },
-        });
-
-        const rawEditors = data.editors || [];
-
-        // Apply fuzzing (randomization) to each editor's location
-        return rawEditors.map((editor: any) => {
-          const realLat = editor.location?.lat || userLocation.lat + (Math.random() - 0.5) * 0.1;
-          const realLng = editor.location?.lng || userLocation.lng + (Math.random() - 0.5) * 0.1;
+        // Generate 12-15 Mock Editors in a 15km radius
+        const names = ["Aarav", "Priya", "Ishaan", "Ananya", "Vikram", "Saira", "Rohan", "Meera", "Arjun", "Aditi", "Kabir", "Zara"];
+        const categories = ["Video Editor", "VFX Artist", "Content Creator", "Cinematographer"];
+        
+        const mockEditors: Editor[] = names.map((name, i) => {
+          // Spread them out within ~10km (0.1 decimal degrees is roughly 11km)
+          const latOffset = (Math.random() - 0.5) * 0.15;
+          const lngOffset = (Math.random() - 0.5) * 0.15;
+          
+          const realLat = uLat + latOffset;
+          const realLng = uLng + lngOffset;
 
           return {
-            ...editor,
+            _id: `mock_${i}`,
+            username: name.toLowerCase() + (i + 1),
+            displayName: name,
+            profilePicture: `https://i.pravatar.cc/150?u=${name}`,
+            category: { name: categories[i % categories.length] },
+            isOnline: Math.random() > 0.4,
             realLocation: { lat: realLat, lng: realLng },
             displayLocation: {
-              lat: locationService.fuzzCoordinate(realLat, 2), // 2km fuzzing within the 15km zone
-              lng: locationService.fuzzCoordinate(realLng, 2),
+              lat: realLat,
+              lng: realLng,
             },
           } as Editor;
         });
-      } catch (e) {
-        console.error('⚠️ [NearbyEditors] Fetch failed:', e);
-        return [];
+
+        setEditors(mockEditors);
       }
-    },
-    enabled: !!userLocation,
-    staleTime: 2 * 60 * 1000, // Cache for 2 minutes
-  });
+      setIsLoading(false);
+    };
+
+    initLocation();
+  }, [enabled]);
 
   return {
-    editors: query.data || [],
-    isLoading: query.isLoading || (permissionStatus === null && !userLocation),
+    editors,
+    isLoading,
     userLocation,
-    permissionStatus,
-    refresh: query.refetch,
+    refresh: () => {},
   };
 };
