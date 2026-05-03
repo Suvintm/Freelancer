@@ -124,14 +124,14 @@ export default function RoleSelection() {
         
         {/* Sticky Header Section (Compact for visibility) */}
         <div className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-zinc-100">
-          <div className="flex flex-col lg:flex-row lg:items-start justify-between px-6 py-4 lg:px-20 lg:py-8">
+          <div className="flex flex-col lg:flex-row lg:items-start justify-between px-6 py-6 md:px-12 lg:px-20 lg:py-10">
             <div className="space-y-3">
-              <img src={logo} alt="SuviX" className="h-8 lg:h-10 brightness-0" />
-              <div className="space-y-0.5">
-                <h1 className="text-xl lg:text-3xl font-semibold text-zinc-900 leading-tight tracking-tight">
+              <img src={logo} alt="SuviX" className="h-8 md:h-10 lg:h-12 brightness-0" />
+              <div className="space-y-1">
+                <h1 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-zinc-900 leading-tight tracking-tight">
                   Start your <span className="text-zinc-400">new chapter.</span>
                 </h1>
-                <p className="text-zinc-500 text-[10px] lg:text-xs max-w-lg leading-relaxed">
+                <p className="text-zinc-500 text-[11px] md:text-sm max-w-lg leading-relaxed">
                   Select a category to explore opportunities tailored for your professional growth.
                 </p>
               </div>
@@ -139,15 +139,15 @@ export default function RoleSelection() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 lg:px-20 pb-12 scroll-smooth custom-scrollbar">
-          <div className="max-w-5xl mx-auto py-4">
+        <div className="flex-1 overflow-y-auto px-6 md:px-12 lg:px-20 pb-12 scroll-smooth custom-scrollbar">
+          <div className="max-w-6xl mx-auto py-8">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-20">
                 <Loader2 className="w-10 h-10 text-zinc-900 animate-spin mb-4" />
                 <p className="text-zinc-400 font-semibold tracking-wider uppercase text-[10px]">Loading Roles...</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
                 {finalDisplayCategories.map((item) => {
                   const isSelected = selected === item.id;
                   const assets = getCategoryAssets(item.slug);
@@ -218,20 +218,20 @@ export default function RoleSelection() {
         </div>
 
         {/* Fixed Bottom Action Bar (Contained in right side) */}
-        <div className="flex-none p-6 lg:p-8 bg-white border-t border-zinc-100 z-50">
+        <div className="flex-none p-6 md:p-10 lg:p-12 bg-white border-t border-zinc-100 z-50">
           <div className="max-w-4xl mx-auto flex justify-center">
             <Button 
               size="lg" 
               disabled={!selected || isLoading}
               onClick={handleContinue}
-              className={`w-full lg:w-72 h-12 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
+              className={`w-full md:w-80 lg:w-96 h-14 md:h-16 rounded-2xl font-bold text-base md:text-lg transition-all flex items-center justify-center gap-3 ${
                 selected 
-                  ? 'bg-black text-white hover:bg-zinc-900 translate-y-0 opacity-100 shadow-xl shadow-zinc-900/10' 
-                  : 'bg-zinc-100 text-zinc-400 cursor-not-allowed translate-y-4 opacity-50'
+                  ? 'bg-black text-white hover:bg-zinc-900 translate-y-0 opacity-100 shadow-2xl shadow-zinc-900/20' 
+                  : 'bg-zinc-100 text-zinc-400 cursor-not-allowed translate-y-2 opacity-50'
               }`}
             >
               Continue Path
-              <ArrowRight size={18} strokeWidth={2.5} />
+              <ArrowRight size={22} strokeWidth={3} />
             </Button>
           </div>
         </div>
