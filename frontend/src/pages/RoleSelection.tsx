@@ -13,7 +13,7 @@ import { AuthBackground } from '../components/auth/AuthBackground';
 import { useAuthStore } from '../store/useAuthStore';
 import { useCategoryStore } from '../store/useCategoryStore';
 import logo from '../assets/darklogo.png';
-import { RoleCategory } from '../store/useCategoryStore';
+import type { RoleCategory } from '../store/useCategoryStore';
 
 // Import assets for high-fidelity thumbnails
 import youtubeThumb from '../assets/categories/youtube.jpg';
