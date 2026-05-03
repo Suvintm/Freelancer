@@ -20,7 +20,7 @@ const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = "7d";
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const FRONTEND_URL = (process.env.NODE_ENV === 'production') ? "https://suvix.in" : (process.env.FRONTEND_URL || "http://localhost:5173");
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
@@ -72,8 +72,13 @@ router.get(
         try {
             const user = req.user;
 
+            // SMART REDIRECT: Detect if we are on production or local
+            const host = req.get('host');
+            const isProd = host.includes('suvix.in') || process.env.NODE_ENV === 'production';
+            const redirectBase = isProd ? "https://suvix.in" : (process.env.FRONTEND_URL || "http://localhost:5173");
+
             if (!user) {
-                return res.redirect(`${FRONTEND_URL}/login?error=no_user`);
+                return res.redirect(`${redirectBase}/login?error=no_user`);
             }
 
             // PRODUCTION-GRADE: NEVER EXPOSE TOKENS IN URLS
@@ -86,10 +91,13 @@ router.get(
             });
 
             // Redirect with a short-lived exchange code
-            res.redirect(`${FRONTEND_URL}/oauth-success?code=${otc}`);
+            res.redirect(`${redirectBase}/oauth-success?code=${otc}`);
         } catch (error) {
             logger.error("Google callback error:", error);
-            res.redirect(`${FRONTEND_URL}/login?error=callback_failed`);
+            const host = req.get('host');
+            const isProd = host.includes('suvix.in') || process.env.NODE_ENV === 'production';
+            const redirectBase = isProd ? "https://suvix.in" : (process.env.FRONTEND_URL || "http://localhost:5173");
+            res.redirect(`${redirectBase}/login?error=callback_failed`);
         }
     }
 );
