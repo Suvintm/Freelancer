@@ -1,121 +1,107 @@
-import { motion } from 'framer-motion';
-import auth1 from '../../assets/auth/auth_1.png';
-import auth2 from '../../assets/auth/auth_2.png';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import ob1 from '../../assets/images/onboarding/onboarding_1.jpg';
+import ob2 from '../../assets/images/onboarding/onboarding_2.jpg';
+import ob3 from '../../assets/images/onboarding/onboarding_3.jpg';
+import ob4 from '../../assets/images/onboarding/onboarding_4.jpg';
 
-const MarqueeColumn = ({ 
-  children, 
-  speed = 30, 
-  reverse = false, 
-  offset = 0 
-}: { 
-  children: React.ReactNode, 
-  speed?: number, 
-  reverse?: boolean,
-  offset?: number
-}) => {
-  return (
-    <div className="flex flex-col gap-4 overflow-hidden h-full">
-      <motion.div
-        animate={{ 
-          y: reverse 
-            ? [`${offset - 50}%`, `${offset}%`] 
-            : [`${offset}%`, `${offset - 50}%`] 
-        }}
-        transition={{
-          duration: speed,
-          repeat: Infinity,
-          ease: "linear",
-        }}
-        className="flex flex-col gap-4"
-      >
-        {children}
-        {children}
-      </motion.div>
-    </div>
-  );
-};
+const ONBOARDING_DATA = [
+  {
+    title: "Scale Your\nContent",
+    subtitle: "HIGH-FIDELITY VISUALS",
+    description: "Join our elite network of professional video editors and blow up your brand with cinematic content.",
+    image: ob1,
+  },
+  {
+    title: "Promote with\nPower",
+    subtitle: "CREATIVE ADVERTISING",
+    description: "Run high-impact social media ads and grow your reach with top-tier creators and promoters.",
+    image: ob2,
+  },
+  {
+    title: "Premium Gear\n& Services",
+    subtitle: "PROFESSIONAL RENTALS",
+    description: "Rent top-tier professional equipment or provide specialized services to scale your creative business.",
+    image: ob3,
+  },
+  {
+    title: "Join the\nEcosystem",
+    subtitle: "ELITE CREATOR NETWORK",
+    description: "Unlock the full potential of your talent. Choose your path and start your journey with SuviX today.",
+    image: ob4,
+  }
+];
 
 export const AuthBackground = () => {
-  const content1 = (
-    <>
-      <div className="bg-[#FF6D4D] rounded-3xl p-8 aspect-square flex flex-col justify-end text-white shadow-sm shrink-0">
-        <h2 className="text-4xl lg:text-5xl font-bold mb-4 tracking-tighter">41%</h2>
-        <p className="text-[10px] lg:text-sm font-medium leading-tight opacity-90">recruiters say entry-level positions are hardest.</p>
-      </div>
-      <div className="rounded-3xl overflow-hidden shadow-sm aspect-[4/5] shrink-0">
-        <img src={auth1} alt="Auth 1" className="w-full h-full object-cover" />
-      </div>
-    </>
-  );
+  const [current, setCurrent] = useState(0);
 
-  const content2 = (
-    <>
-      <div className="rounded-3xl overflow-hidden shadow-sm aspect-[3/4] shrink-0">
-        <img src={auth2} alt="Auth 2" className="w-full h-full object-cover" />
-      </div>
-      <div className="bg-[#4DCA88] rounded-3xl p-8 aspect-square flex flex-col justify-end text-white shadow-sm shrink-0">
-        <h2 className="text-4xl lg:text-5xl font-bold mb-4 tracking-tighter">76%</h2>
-        <p className="text-[10px] lg:text-sm font-medium leading-tight opacity-90">managers admit attracting right talent is challenge.</p>
-      </div>
-    </>
-  );
-
-  const content3 = (
-    <>
-      <div className="bg-blue-600 rounded-3xl p-8 aspect-square flex flex-col justify-end text-white shadow-sm shrink-0">
-        <h2 className="text-4xl lg:text-5xl font-bold mb-4 tracking-tighter">10k+</h2>
-        <p className="text-[10px] lg:text-sm font-medium leading-tight opacity-90">creators have joined SuviX brand system.</p>
-      </div>
-      <div className="rounded-3xl overflow-hidden shadow-sm aspect-[4/5] shrink-0">
-        <img src={auth1} alt="Auth 1" className="w-full h-full object-cover" />
-      </div>
-      <div className="bg-[#9333EA] rounded-3xl p-8 aspect-square flex flex-col justify-end text-white shadow-sm shrink-0">
-        <h2 className="text-4xl lg:text-5xl font-bold mb-4 tracking-tighter">94%</h2>
-        <p className="text-[10px] lg:text-sm font-medium leading-tight opacity-90">of creators see audience growth within 30 days.</p>
-      </div>
-    </>
-  );
-
-  const teamCard = (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-sm flex items-center justify-center p-6 aspect-square shrink-0">
-      <div className="flex -space-x-3">
-        {[1,2,3,4].map(i => (
-          <div key={i} className="w-8 h-8 rounded-full border-2 border-zinc-800 bg-zinc-800 overflow-hidden">
-            <img src={auth1} alt="Avatar" className="w-full h-full object-cover" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrent((prev) => (prev + 1) % ONBOARDING_DATA.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      <div className="flex gap-4 w-full h-[120%] -mt-[10%] px-4 lg:px-0">
-        {/* Column 1 */}
-        <div className="w-1/2 lg:w-1/3 h-full">
-          <MarqueeColumn speed={45} offset={0}>
-            {content1}
-            {teamCard}
-          </MarqueeColumn>
-        </div>
+    <div className="absolute inset-0 bg-black overflow-hidden select-none">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={current}
+          initial={{ opacity: 0, scale: 1.1 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          className="absolute inset-0"
+        >
+          {/* Background Image with Parallax */}
+          <motion.img
+            src={ONBOARDING_DATA[current].image}
+            alt=""
+            className="w-full h-full object-cover"
+            initial={{ x: 20 }}
+            animate={{ x: 0 }}
+            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          />
+          
+          {/* Gradients */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/80" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent" />
 
-        {/* Column 2 - Staggered by 25% */}
-        <div className="w-1/2 lg:w-1/3 h-full">
-          <MarqueeColumn speed={38} offset={-25}>
-            {content2}
-            <div className="rounded-3xl overflow-hidden shadow-sm aspect-square shrink-0">
-              <img src={auth1} alt="Auth 1" className="w-full h-full object-cover" />
-            </div>
-          </MarqueeColumn>
-        </div>
+          {/* Content Overlay */}
+          <div className="absolute inset-0 flex flex-col justify-end p-12 lg:p-16">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.8 }}
+              className="max-w-md space-y-4"
+            >
+              <div className="space-y-1">
+                <span className="text-[10px] font-black tracking-[0.2em] text-white/50 uppercase">
+                  {ONBOARDING_DATA[current].subtitle}
+                </span>
+                <h2 className="text-4xl lg:text-5xl font-black text-white leading-[1.1] whitespace-pre-line tracking-tighter">
+                  {ONBOARDING_DATA[current].title}
+                </h2>
+              </div>
+              <p className="text-sm lg:text-base text-zinc-300 font-medium leading-relaxed max-w-xs">
+                {ONBOARDING_DATA[current].description}
+              </p>
+            </motion.div>
+          </div>
+        </motion.div>
+      </AnimatePresence>
 
-        {/* Column 3 - Only on Desktop, Staggered by 15% */}
-        <div className="hidden lg:block lg:w-1/3 h-full">
-          <MarqueeColumn speed={42} offset={-15}>
-            {content3}
-            {teamCard}
-          </MarqueeColumn>
-        </div>
+      {/* Slide Indicators */}
+      <div className="absolute bottom-12 left-12 lg:left-16 flex items-center gap-2 z-20">
+        {ONBOARDING_DATA.map((_, i) => (
+          <div
+            key={i}
+            onClick={() => setCurrent(i)}
+            className={`h-1 transition-all duration-500 cursor-pointer rounded-full ${
+              current === i ? 'w-8 bg-white' : 'w-2 bg-white/20'
+            }`}
+          />
+        ))}
       </div>
     </div>
   );

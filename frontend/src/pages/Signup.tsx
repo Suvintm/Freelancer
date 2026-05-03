@@ -16,6 +16,7 @@ import {
 import logo from '../assets/darklogo.png';
 import { AuthBackground } from '../components/auth/AuthBackground';
 import { MobileAuthHeader } from '../components/auth/MobileAuthHeader';
+import { useAuthStore } from '../store/useAuthStore';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi'];
@@ -31,8 +32,9 @@ export default function Signup() {
     motherTongue: 'English'
   });
   const [userStatus, setUserStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const { signup, isLoading: authLoading, tempSignupData, youtubeDiscovery } = useAuthStore();
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -47,17 +49,32 @@ export default function Signup() {
     }, 800);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
+    setError(null);
+
+    try {
+      // Combine form data with onboarding data
+      await signup({
+        ...form,
+        categoryId: tempSignupData?.categoryId,
+        roleSubCategoryIds: tempSignupData?.roleSubCategoryIds,
+        youtubeChannels: youtubeDiscovery.selectedChannelIds.map(id => 
+          youtubeDiscovery.channels.find(c => c.channelId === id)
+        ).filter(Boolean)
+      });
+      navigate('/home');
+    } catch (err: any) {
+      setError(err);
+    } finally {
       setIsLoading(false);
-      navigate('/youtube-connect');
-    }, 1500);
+    }
   };
 
   const handleGoogleLogin = () => {
-    // Google signup logic
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
+    window.location.href = `${apiUrl}/auth/google`;
   };
 
   return (
