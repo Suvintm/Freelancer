@@ -15,16 +15,16 @@ import { useTheme } from '../../src/context/ThemeContext';
 import { NearbyMap } from '../../src/components/map/NearbyMap';
 import { useNearbyEditors } from '../../src/hooks/useNearbyEditors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { RefreshCw, AlertTriangle, ChevronLeft, Search, User, Navigation, MapPin } from 'lucide-react-native';
+import { RefreshCw, ChevronLeft, Search, User, Navigation } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import { Stack, useRouter, useNavigation } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useIsFocused } from '@react-navigation/native';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 import SuvixButton from '../../src/components/SuvixButton';
 import { Image } from 'expo-image';
 
-const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 /**
  * PREMIUM DISCOVERY NEARBY SCREEN
@@ -34,11 +34,10 @@ export default function NearbyScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const navigation = useNavigation();
   const isFocused = useIsFocused();
   
   const [hasStartedSearching, setHasStartedSearching] = useState(false);
-  const { editors, isLoading, userLocation, permissionStatus, refresh } = useNearbyEditors(hasStartedSearching && isFocused);
+  const { editors, isLoading, userLocation, refresh } = useNearbyEditors(hasStartedSearching && isFocused);
   
   const [address, setAddress] = useState("Locating...");
   const isDark = theme.dark;
@@ -61,7 +60,7 @@ export default function NearbyScreen() {
             const displayAddress = item.district || item.subregion || item.street || item.city || item.name || "Current Location";
             setAddress(displayAddress);
           }
-        } catch (err) {
+        } catch (_err) {
           setAddress("Nearby Area");
         }
       }

@@ -16,8 +16,6 @@ interface NearbyMapProps {
  * Fixed: Camera stability to prevent "Request Canceled" errors.
  */
 export const NearbyMap: React.FC<NearbyMapProps> = ({ userLocation, editors, theme }) => {
-  if (!userLocation) return null;
-
   // Memoize the style so it doesn't cause re-renders
   const osmStyle = useMemo(() => ({
     version: 8,
@@ -43,6 +41,8 @@ export const NearbyMap: React.FC<NearbyMapProps> = ({ userLocation, editors, the
       },
     ],
   }), []);
+
+  if (!userLocation) return null;
 
   return (
     <View style={styles.container}>
