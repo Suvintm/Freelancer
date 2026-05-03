@@ -137,6 +137,8 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
                     });
 
                     logger.info(`[OAuth] New user registered via Google: ${email}`);
+                    // @ts-ignore
+                    user.accessToken = accessToken;
                     return done(null, user);
                 } catch (error) {
                     console.error("Google OAuth error:", error);

@@ -109,10 +109,10 @@ export default function SubcategorySelection() {
         <header className="flex-none p-6 lg:p-10 flex items-center justify-between">
           <button 
             onClick={() => navigate('/role-selection')}
-            className="group flex items-center gap-2 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl border border-white/10 transition-all"
+            className="group flex items-center gap-2 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 transition-all"
           >
-            <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-            <span className="font-bold text-sm uppercase tracking-widest">Back</span>
+            <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+            <span className="font-semibold text-[10px] uppercase tracking-wider">Back</span>
           </button>
           <img src={logo} alt="SuviX" className="h-8 lg:h-10 w-auto brightness-0 invert" />
           <div className="w-20" />
@@ -125,35 +125,34 @@ export default function SubcategorySelection() {
               <motion.div 
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="inline-flex items-center justify-center w-20 h-20 rounded-[24px] bg-white/5 border border-white/10 mb-6 relative overflow-hidden"
+                className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/5 border border-white/10 mb-6 relative overflow-hidden"
               >
                 {overlayIcon ? (
-                  <img src={overlayIcon} alt="" className="w-12 h-12 object-contain z-10" />
+                  <img src={overlayIcon} alt="" className="w-8 h-8 object-contain z-10" />
                 ) : (
-                  <CheckCircle2 size={32} className="text-white/20" />
+                  <CheckCircle2 size={24} className="text-white/20" />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent" />
               </motion.div>
               
-              <h1 className="text-3xl lg:text-5xl font-black tracking-tight mb-4">
+              <h1 className="text-2xl lg:text-3xl font-semibold tracking-tight mb-3">
                 How do you <span className="text-zinc-500">specialize?</span>
               </h1>
-              <p className="text-zinc-400 text-xs lg:text-base max-w-2xl mx-auto leading-relaxed">
-                Selecting accurate niches helps SuviX match you with the highest-paying brands and exclusive opportunities in the <span className="text-white font-bold">{category.name}</span> industry.
+              <p className="text-zinc-400 text-sm max-w-xl mx-auto leading-relaxed">
+                Selecting accurate niches helps SuviX match you with the highest-paying brands in your industry.
               </p>
             </div>
 
             {/* Search Bar */}
             <div className="relative max-w-xl mx-auto mb-10">
-              <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
-                <Search size={20} className="text-zinc-500" />
+              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                <Search size={16} className="text-zinc-500" />
               </div>
               <input 
                 type="text" 
                 placeholder="Search specific niches..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-16 bg-white/5 border-2 border-white/5 rounded-2xl pl-14 pr-6 text-lg font-bold placeholder:text-zinc-600 focus:border-white/20 focus:outline-none transition-all focus:bg-white/10"
+                className="w-full h-11 bg-white/5 border border-white/5 rounded-xl pl-12 pr-6 text-sm font-medium placeholder:text-zinc-600 focus:border-white/20 focus:outline-none transition-all focus:bg-white/10"
               />
             </div>
 
@@ -163,24 +162,24 @@ export default function SubcategorySelection() {
                 {filteredSubs.map((sub) => {
                   const isSelected = selectedSubs.includes(sub.id);
                   return (
-                    <motion.button
+                     <motion.button
                       key={sub.id}
                       layout
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.9 }}
                       onClick={() => toggleSub(sub.id)}
-                      className={`group relative flex items-center gap-3 px-6 py-4 rounded-2xl border-2 transition-all duration-300 ${
+                      className={`group relative flex items-center gap-2 px-4 py-2 rounded-xl border transition-all duration-300 ${
                         isSelected 
-                          ? 'bg-white text-black border-white shadow-[0_0_30px_rgba(255,255,255,0.2)]' 
-                          : 'bg-zinc-900/50 text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800'
+                          ? 'bg-white text-black border-white shadow-xl shadow-white/5' 
+                          : 'bg-zinc-900/50 text-zinc-500 border-white/5 hover:border-white/10'
                       }`}
                     >
-                      <span className="font-black text-xs lg:text-sm uppercase tracking-tight">
+                      <span className="font-semibold text-[11px] uppercase tracking-tight">
                         {sub.name}
                       </span>
                       {isSelected && (
-                        <CheckCircle2 size={16} fill="black" className="text-white" />
+                        <CheckCircle2 size={12} fill="black" className="text-white" />
                       )}
                     </motion.button>
                   );
@@ -189,15 +188,15 @@ export default function SubcategorySelection() {
             </div>
 
             {/* Industry Insights Card */}
-            <div className="max-w-2xl mx-auto">
-              <div className="bg-gradient-to-br from-white/5 to-transparent border border-white/10 rounded-[32px] p-8 flex items-start gap-6 backdrop-blur-xl">
-                <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-                  <TrendingUp className="text-white" size={24} />
+             <div className="max-w-xl mx-auto">
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex items-start gap-4 backdrop-blur-xl">
+                <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                  <TrendingUp className="text-white" size={18} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black mb-1 uppercase tracking-widest text-zinc-500">Market Insight</h3>
-                  <p className="text-xs lg:text-sm text-zinc-300 leading-relaxed">
-                    Profiles with precise niche targeting receive <span className="text-white font-black">85% more</span> exclusive matching opportunities and higher engagement rates from premium clients.
+                  <h3 className="text-[10px] font-semibold mb-1 uppercase tracking-wider text-zinc-500">Market Insight</h3>
+                  <p className="text-[13px] text-zinc-400 leading-relaxed">
+                    Profiles with precise niche targeting receive <span className="text-white font-semibold">85% more</span> exclusive matching opportunities and higher engagement rates.
                   </p>
                 </div>
               </div>
@@ -208,25 +207,25 @@ export default function SubcategorySelection() {
         {/* Fixed Action Bar */}
         <div className="absolute inset-x-0 bottom-0 z-50 p-6 lg:p-12 bg-gradient-to-t from-black via-black/95 to-transparent pointer-events-none">
           <div className="max-w-4xl mx-auto flex justify-center pointer-events-auto">
-            <Button 
+             <Button 
               size="lg" 
               disabled={selectedSubs.length === 0 || isFinishing}
               onClick={handleFinish}
-              className={`w-full lg:w-96 h-16 rounded-[24px] font-black text-xl transition-all duration-500 flex items-center justify-center gap-3 shadow-[0_20px_50px_rgba(0,0,0,0.5)] ${
+              className={`w-full lg:w-72 h-12 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
                 selectedSubs.length > 0 
-                  ? 'bg-white text-black hover:scale-[1.02] active:scale-[0.98]' 
+                  ? 'bg-white text-black hover:scale-[1.01] active:scale-[0.98] shadow-xl shadow-white/5' 
                   : 'bg-zinc-900 text-zinc-600 cursor-not-allowed opacity-50'
               }`}
             >
               {isFinishing ? (
                 <>
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                  Finalizing Path...
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Finalizing...
                 </>
               ) : (
                 <>
-                  Confirm {selectedSubs.length > 0 ? `${selectedSubs.length} Niches` : 'Selection'}
-                  <ArrowRight size={24} strokeWidth={3} />
+                  Confirm {selectedSubs.length > 0 ? `${selectedSubs.length} Niche(s)` : 'Selection'}
+                  <ArrowRight size={18} strokeWidth={2.5} />
                 </>
               )}
             </Button>

@@ -1,238 +1,239 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Select } from '../components/ui/Select';
-import { AuthBackground } from '../components/auth/AuthBackground';
-import { useAuthStore } from '../store/useAuthStore';
+import { motion } from 'framer-motion';
+import { 
+  User, 
+  Mail, 
+  Lock, 
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Phone,
+  Globe,
+  AtSign,
+  Loader2
+} from 'lucide-react';
 import logo from '../assets/whitebglogo.png';
+import { AuthBackground } from '../components/auth/AuthBackground';
 
-const LANGUAGES = [
-  'English', 'Hindi', 'Kannada', 'Telugu', 'Tamil', 
-  'Malayalam', 'Marathi', 'Bengali', 'Gujarati', 'Punjabi'
-];
+const EASE = [0.16, 1, 0.3, 1];
+const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi'];
 
 export default function Signup() {
-  const navigate = useNavigate();
-  const { signup, isLoading, tempSignupData } = useAuthStore();
-
-  const [formData, setFormData] = useState({
+  const [showPass, setShowPass] = useState(false);
+  const [form, setForm] = useState({
     fullName: '',
     username: '',
     email: '',
     phone: '',
-    motherTongue: 'English',
     password: '',
+    motherTongue: 'English'
   });
+  const [userStatus, setUserStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
-  const { checkUsername } = useAuthStore();
-
-  const handleUsernameBlur = async () => {
-    if (formData.username.length < 3) return;
-    setUsernameStatus('checking');
-    const available = await checkUsername(formData.username);
-    setUsernameStatus(available ? 'available' : 'taken');
-  };
+  const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (name === 'username') setUsernameStatus('idle');
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleUsernameBlur = () => {
+    if (!form.username) return;
+    setUserStatus('checking');
+    setTimeout(() => {
+      setUserStatus(form.username.length > 3 ? 'available' : 'taken');
+    }, 800);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      navigate('/youtube-connect');
+    }, 1500);
   };
 
   const handleGoogleLogin = () => {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
-    window.location.href = `${apiUrl}/auth/google`;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    const { categoryId, roleSubCategoryIds, youtubeChannels } = tempSignupData || {};
-
-    if (!categoryId) {
-      setError('Please select a role first.');
-      return;
-    }
-
-    try {
-      await signup({
-        ...formData,
-        categoryId,
-        roleSubCategoryIds,
-        youtubeChannels
-      });
-      navigate('/home');
-    } catch (err: unknown) {
-      setError(err as string);
-    }
+    // Google signup logic
   };
 
   return (
-    <div className="flex h-screen w-full bg-black font-sans overflow-hidden relative">
-      {/* Desktop Left Panel */}
-      <div className="hidden lg:flex lg:w-[40%] p-8 bg-zinc-950 overflow-hidden relative border-r border-zinc-900">
+    <div className="h-screen w-full bg-white flex flex-col lg:flex-row overflow-hidden font-sans light">
+      {/* Visual Side (Left) */}
+      <div className="hidden lg:flex lg:w-[40%] relative overflow-hidden bg-[#F8F9FA] border-r border-zinc-100">
         <AuthBackground />
-        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black to-transparent z-10" />
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent z-10" />
+        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#F8F9FA] to-transparent z-10" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#F8F9FA] to-transparent z-10" />
       </div>
 
-      {/* Mobile Background */}
-      <div className="lg:hidden absolute inset-0 z-0 bg-black">
-        <AuthBackground />
-        <div className="absolute inset-x-0 bottom-0 h-[60%] bg-black z-10" />
-        <div className="absolute inset-x-0 bottom-[60%] h-48 bg-gradient-to-t from-black to-transparent z-10" />
-      </div>
+      {/* Form Side (Right) */}
+      <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-white">
+        {/* Header (Top-Left Branding) */}
+        <motion.header 
+          initial={{ opacity: 0, y: -20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ duration: 0.6, ease: EASE }} 
+          className="flex-none flex items-start justify-between px-6 py-8 lg:px-12 lg:py-12"
+        >
+          <div className="space-y-4">
+            <img src={logo} alt="SuviX" className="h-10 lg:h-12 brightness-0" />
+            <div className="space-y-1">
+              <h1 className="text-2xl lg:text-4xl font-semibold text-zinc-900 leading-[1.1] tracking-tight">
+                Create your <br /> 
+                <span className="text-zinc-400">future today.</span>
+              </h1>
+            </div>
+          </div>
 
-      {/* Right Panel / Mobile Content Layer */}
-      <div className="flex-1 lg:flex-none lg:w-[60%] flex flex-col h-full overflow-y-auto lg:overflow-hidden bg-transparent lg:bg-black z-20">
-        <div className="flex justify-between items-center p-8 lg:px-24 lg:py-10 mb-4 lg:mb-6 sticky top-0 z-30 lg:relative lg:bg-transparent">
-          {/* Mobile Header Overlay */}
-          <div className="lg:hidden absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black via-black/70 to-transparent -z-10" />
-          
-          <img src={logo} alt="SuviX" className="h-12 lg:h-16 w-auto brightness-0 invert relative z-10" />
-          <div className="flex items-center gap-2 text-xs lg:text-sm text-zinc-400 relative z-10">
-            <span className="hidden sm:inline">Already have an account?</span>
-            <Link to="/login">
-              <Button variant="ghost" className="text-white font-bold hover:bg-white/10 px-4 py-2 rounded-xl text-xs lg:text-sm border border-white/10">
-                Login Here
-              </Button>
+          <div className="flex items-center gap-3 text-sm text-zinc-500">
+            <span className="hidden sm:inline font-medium">Already a member?</span>
+            <Link to="/login" className="px-4 py-2 rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-900 text-[11px] font-semibold hover:bg-zinc-100 transition-colors">
+              Login Here
             </Link>
           </div>
-        </div>
+        </motion.header>
 
-        <div className="max-w-[380px] lg:max-w-[420px] mx-auto w-full flex-1 flex flex-col justify-center px-8 pb-12 lg:px-0 lg:pb-0">
-          <div className="mb-6 text-center">
-            <h1 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight mb-1">
-              Join SuviX
-            </h1>
-            <p className="text-zinc-400 text-xs lg:text-sm">
-              Enter your details below to create your account.
-            </p>
-          </div>
+        {/* Form Area */}
+        <div className="flex-1 flex items-start lg:items-center justify-center px-6 pb-12 lg:px-16 lg:-mt-12">
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: EASE, delay: 0.2 }} className="w-full max-w-[440px]">
+            <div className="space-y-6">
+              {/* Google */}
+              <button type="button" onClick={handleGoogleLogin} className="suvix-btn-outline w-full h-12 flex items-center justify-center gap-3 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-all text-zinc-900 text-sm font-semibold shadow-sm">
+                <img src="https://www.google.com/favicon.ico" alt="" className="w-4 h-4" />
+                Continue with Google
+              </button>
 
-          <div className="space-y-4 lg:space-y-5">
-            {/* Google Auth at the Top */}
-            <Button 
-              variant="outline" 
-              onClick={handleGoogleLogin}
-              className="w-full h-11 lg:h-12 border-zinc-800 text-white bg-zinc-900/50 hover:bg-zinc-900 rounded-xl flex items-center justify-center gap-3 font-bold text-sm"
-            >
-              <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4" />
-              Continue with Google
-            </Button>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-zinc-800"></div>
+              {/* Divider */}
+              <div className="relative flex items-center">
+                <div className="flex-1 h-px bg-zinc-100" />
+                <span className="mx-4 text-[11px] font-label font-semibold tracking-widest text-zinc-400 uppercase">or</span>
+                <div className="flex-1 h-px bg-zinc-100" />
               </div>
-              <div className="relative flex justify-center text-[10px] uppercase">
-                <span className="bg-black/80 backdrop-blur-sm px-4 text-zinc-500 font-bold tracking-widest">OR</span>
-              </div>
+
+              {error && (
+                <div className="bg-red-50/50 border border-red-100 text-red-500 px-4 py-3 rounded-xl text-xs font-semibold text-center">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Name + Handle grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Full Name" name="fullName" placeholder="John Doe" icon={<User size={16} />} value={form.fullName} onChange={handleChange} required />
+
+                  <div className="space-y-1.5">
+                    <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">Handle</label>
+                    <div className="relative">
+                      <AtSign size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
+                      <input
+                        name="username"
+                        placeholder="handle"
+                        value={form.username}
+                        onChange={handleChange}
+                        onBlur={handleUsernameBlur}
+                        required
+                        className={`suvix-input !pl-12 pr-4 bg-zinc-50/50 border-zinc-200 focus:bg-white focus:border-zinc-900 text-sm ${
+                          userStatus === 'available' ? 'border-green-500/50' :
+                          userStatus === 'taken'     ? 'border-red-500/50'   : ''
+                        }`}
+                      />
+                      {userStatus !== 'idle' && (
+                        <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold ${
+                          userStatus === 'available' ? 'text-green-600' :
+                          userStatus === 'taken'     ? 'text-red-500'   :
+                          'text-zinc-400'
+                        }`}>
+                          {userStatus === 'checking' ? '...' : userStatus}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Email */}
+                <InputField label="Email Address" name="email" type="email" placeholder="name@example.com" icon={<Mail size={16} />} value={form.email} onChange={handleChange} required />
+
+                {/* Phone + Language */}
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Phone" name="phone" placeholder="+91..." icon={<Phone size={16} />} value={form.phone} onChange={handleChange} required />
+
+                  <div className="space-y-1.5">
+                    <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">Language</label>
+                    <div className="relative">
+                      <Globe size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
+                      <select
+                        name="motherTongue"
+                        value={form.motherTongue}
+                        onChange={handleChange}
+                        className="suvix-input !pl-12 bg-zinc-50/50 border-zinc-200 focus:bg-white focus:border-zinc-900 text-sm appearance-none"
+                      >
+                        {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div className="space-y-1.5">
+                  <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">Password</label>
+                  <div className="relative">
+                    <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <input
+                      name="password"
+                      type={showPass ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      value={form.password}
+                      onChange={handleChange}
+                      required
+                      className="suvix-input !pl-12 pr-12 bg-zinc-50/50 border-zinc-200 focus:bg-white focus:border-zinc-900"
+                    />
+                    <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-900 transition-colors">
+                      {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Submit */}
+                <button type="submit" disabled={isLoading} className="suvix-btn-primary w-full h-12 mt-2 !bg-black !text-white hover:opacity-90 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all shadow-xl shadow-zinc-900/20 active:scale-[0.98]">
+                  {isLoading
+                    ? <Loader2 className="w-5 h-5 animate-spin" />
+                    : <><span>Create Account</span><ArrowRight size={18} strokeWidth={2.5} /></>
+                  }
+                </button>
+              </form>
             </div>
 
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-3 rounded-xl text-xs font-bold text-center">
-                {error}
-              </div>
-            )}
-
-            <form className="space-y-3 lg:space-y-4" onSubmit={handleSubmit}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Input 
-                  name="fullName"
-                  label="Full Name" 
-                  placeholder="Your Name" 
-                  className="h-11 bg-zinc-900/50 backdrop-blur-sm border-zinc-800 text-xs lg:text-sm"
-                  value={formData.fullName}
-                  onChange={handleChange}
-                  required
-                />
-                <div className="relative">
-                  <Input 
-                    name="username"
-                    label="Username Handle" 
-                    placeholder="unique_handle" 
-                    className={`h-11 bg-zinc-900/50 backdrop-blur-sm border-zinc-800 text-xs lg:text-sm ${
-                      usernameStatus === 'available' ? 'border-green-500/50' : 
-                      usernameStatus === 'taken' ? 'border-red-500/50' : ''
-                    }`}
-                    value={formData.username}
-                    onChange={handleChange}
-                    onBlur={handleUsernameBlur}
-                    required
-                  />
-                  {usernameStatus !== 'idle' && (
-                    <div className="absolute right-3 top-[34px] text-[10px] font-bold">
-                      {usernameStatus === 'checking' && <span className="text-zinc-500">Checking...</span>}
-                      {usernameStatus === 'available' && <span className="text-green-500">Available</span>}
-                      {usernameStatus === 'taken' && <span className="text-red-500">Taken</span>}
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <Input 
-                name="email"
-                label="Email Address" 
-                type="email" 
-                placeholder="email@example.com" 
-                className="h-11 bg-zinc-900/50 backdrop-blur-sm border-zinc-800 text-xs lg:text-sm"
-                value={formData.email}
-                onChange={handleChange}
-                required
-              />
-              
-              <div className="grid grid-cols-2 gap-3">
-                <Input 
-                  name="phone"
-                  label="Phone Number" 
-                  placeholder="+91..." 
-                  className="h-11 bg-zinc-900/50 backdrop-blur-sm border-zinc-800 text-xs lg:text-sm"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  required
-                />
-                <Select 
-                  name="motherTongue"
-                  label="Mother Tongue" 
-                  className="h-11 bg-zinc-900/50 backdrop-blur-sm border-zinc-800 text-xs lg:text-sm"
-                  value={formData.motherTongue}
-                  onChange={handleChange}
-                >
-                  {LANGUAGES.map(lang => (
-                    <option key={lang} value={lang}>{lang}</option>
-                  ))}
-                </Select>
-              </div>
-
-              <Input 
-                name="password"
-                label="Secure Password" 
-                type="password" 
-                placeholder="••••••••" 
-                className="h-11 bg-zinc-900/50 backdrop-blur-sm border-zinc-800 text-xs lg:text-sm"
-                value={formData.password}
-                onChange={handleChange}
-                required
-              />
-
-              <Button 
-                size="md" 
-                className="w-full h-12 bg-white text-black hover:bg-zinc-200 rounded-xl font-bold mt-2"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Creating Account...' : 'Create Account'}
-              </Button>
-            </form>
-          </div>
+            <p className="mt-6 text-center lg:text-left text-sm text-zinc-500 font-medium">
+              Already a member?{' '}
+              <Link to="/login" className="font-semibold text-zinc-900 hover:opacity-80 transition-opacity">Sign In</Link>
+            </p>
+          </motion.div>
         </div>
 
-        <div className="mt-8 text-center text-xs text-zinc-500 font-medium pb-8 lg:pb-10">
+        <p className="text-center lg:text-left lg:px-16 text-[10px] text-zinc-400 font-medium pb-8">
           © 2026 SuviX Inc. All rights reserved.
-        </div>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function InputField({ label, icon, ...props }: {
+  label: string;
+  icon: React.ReactNode;
+  [k: string]: any;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">{label}</label>
+      <div className="relative">
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">{icon}</span>
+        <input
+          {...props}
+          className={`suvix-input !pl-12 bg-zinc-50/50 border-zinc-200 focus:bg-white focus:border-zinc-900 text-sm ${props.className ?? ''}`}
+        />
       </div>
     </div>
   );

@@ -48,6 +48,7 @@ interface AuthState {
   addDiscoveredChannels: (channels: any[]) => void;
   toggleYoutubeChannelSelection: (channelId: string) => void;
   setYoutubeChannelCategory: (channelId: string, subCategoryId: string) => void;
+  resetYoutubeDiscovery: () => void;
 
   setAuth: (user: AuthUser, token: string, refreshToken: string) => void;
   setTokens: (token: string, refreshToken: string, user?: AuthUser) => void;
@@ -119,6 +120,16 @@ export const useAuthStore = create<AuthState>()(
             },
           },
         }));
+      },
+      
+      resetYoutubeDiscovery: () => {
+        set({
+          youtubeDiscovery: {
+            channels: [],
+            selectedChannelIds: [],
+            categorizations: {},
+          }
+        });
       },
 
       setAuth: (user, token, refreshToken) => {
@@ -253,6 +264,8 @@ export const useAuthStore = create<AuthState>()(
         refreshToken: state.refreshToken,
         user: state.user,
         isAuthenticated: state.isAuthenticated,
+        tempSignupData: state.tempSignupData,
+        youtubeDiscovery: state.youtubeDiscovery,
       }),
     }
   )

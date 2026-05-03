@@ -14,6 +14,8 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useCategoryStore } from '../store/useCategoryStore';
 import logo from '../assets/whitebglogo.png';
 
+const EASE = [0.16, 1, 0.3, 1];
+
 // Import assets for high-fidelity thumbnails
 import youtubeThumb from '../assets/categories/youtube.jpg';
 import youtubeIcon from '../assets/categories/youtubeicon.png';
@@ -102,45 +104,47 @@ export default function RoleSelection() {
   const finalDisplayCategories = [...sortedCategories, ...remainingCategories] as any[];
 
   return (
-    <div className="flex h-screen w-full bg-black font-sans overflow-hidden relative text-white">
-      {/* Desktop Left Panel */}
-      <div className="hidden lg:flex lg:w-[40%] p-8 bg-zinc-950 overflow-hidden relative border-r border-zinc-900">
+    <div className="flex h-screen w-full bg-white font-sans overflow-hidden relative text-zinc-900 light">
+      {/* Desktop Left Panel (Light Google Style) */}
+      <div className="hidden lg:flex lg:w-[40%] p-8 bg-[#F8F9FA] overflow-hidden relative border-r border-zinc-200">
         <AuthBackground />
-        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black to-transparent z-10" />
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent z-10" />
+        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#F8F9FA] to-transparent z-10" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#F8F9FA] to-transparent z-10" />
       </div>
 
       {/* Mobile Background */}
-      <div className="lg:hidden absolute inset-0 z-0 bg-black">
+      <div className="lg:hidden absolute inset-0 z-0 bg-white">
         <AuthBackground />
-        <div className="absolute inset-x-0 bottom-0 h-[60%] bg-black z-10" />
-        <div className="absolute inset-x-0 bottom-[60%] h-48 bg-gradient-to-t from-black to-transparent z-10" />
+        <div className="absolute inset-x-0 bottom-0 h-[60%] bg-white z-10" />
+        <div className="absolute inset-x-0 bottom-[60%] h-48 bg-gradient-to-t from-white to-transparent z-10" />
       </div>
 
       {/* Main Content Layer */}
-      <div className="flex-1 lg:flex-none lg:w-[60%] flex flex-col h-full overflow-hidden bg-transparent lg:bg-black z-20">
+      <div className="flex-1 lg:flex-none lg:w-[60%] flex flex-col h-full overflow-hidden bg-transparent lg:bg-white z-20">
         
-        {/* Sticky Header Section */}
-        <div className="sticky top-0 z-50 bg-gradient-to-b from-black via-black/95 to-transparent pb-6 lg:pb-10">
-          <div className="flex justify-center items-center p-6 lg:p-10 mb-2">
-            <img src={logo} alt="SuviX" className="h-10 lg:h-12 w-auto brightness-0 invert" />
-          </div>
-          <div className="text-center px-6">
-            <h1 className="text-2xl lg:text-5xl font-black text-white tracking-tight mb-2">
-              Choose Your Path
-            </h1>
-            <p className="text-zinc-400 text-[10px] lg:text-base max-w-2xl mx-auto italic leading-tight">
-              Wisely choose your category by checking the info of each category on the respective category info icon
-            </p>
+        {/* Sticky Header Section (Compact for visibility) */}
+        <div className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-zinc-100">
+          <div className="flex flex-col lg:flex-row lg:items-start justify-between px-6 py-4 lg:px-20 lg:py-8">
+            <div className="space-y-3">
+              <img src={logo} alt="SuviX" className="h-8 lg:h-10 brightness-0" />
+              <div className="space-y-0.5">
+                <h1 className="text-xl lg:text-3xl font-semibold text-zinc-900 leading-tight tracking-tight">
+                  Start your <span className="text-zinc-400">new chapter.</span>
+                </h1>
+                <p className="text-zinc-500 text-[10px] lg:text-xs max-w-lg leading-relaxed">
+                  Select a category to explore opportunities tailored for your professional growth.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 lg:px-20 pb-40 scroll-smooth custom-scrollbar">
+        <div className="flex-1 overflow-y-auto px-6 lg:px-20 pb-12 scroll-smooth custom-scrollbar">
           <div className="max-w-5xl mx-auto py-4">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-20">
-                <Loader2 className="w-12 h-12 text-white animate-spin mb-4" />
-                <p className="text-zinc-500 font-bold tracking-widest uppercase text-xs">Loading Roles...</p>
+                <Loader2 className="w-10 h-10 text-zinc-900 animate-spin mb-4" />
+                <p className="text-zinc-400 font-semibold tracking-wider uppercase text-[10px]">Loading Roles...</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
@@ -154,10 +158,10 @@ export default function RoleSelection() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => setSelected(item.id)}
-                      className={`relative group cursor-pointer aspect-[1/1.05] rounded-[24px] overflow-hidden border-[2.5px] transition-all duration-300 ${
+                      className={`relative group cursor-pointer aspect-[1/1.1] rounded-2xl overflow-hidden border transition-all duration-300 ${
                         isSelected 
-                          ? 'border-blue-500 ring-4 ring-blue-500/20' 
-                          : 'border-zinc-800 hover:border-zinc-700'
+                          ? 'border-zinc-900 ring-4 ring-zinc-900/5 shadow-xl shadow-zinc-900/10' 
+                          : 'border-zinc-200 hover:border-zinc-300 bg-white'
                       }`}
                     >
                       {/* Background Image */}
@@ -165,16 +169,16 @@ export default function RoleSelection() {
                         src={assets.thumb} 
                         alt={item.name} 
                         className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ${
-                          isSelected ? 'grayscale-0' : 'grayscale-[0.2] group-hover:grayscale-0'
+                          isSelected ? 'grayscale-0 scale-105' : 'grayscale-[0.4] group-hover:grayscale-0 group-hover:scale-105'
                         }`} 
                       />
 
                       {/* Info Icon - Top Right */}
                       <button 
-                        className="absolute top-3 right-3 z-20 bg-black/50 backdrop-blur-md w-8 h-8 rounded-full flex items-center justify-center border border-white/20 hover:bg-white/20 transition-colors"
+                        className="absolute top-3 right-3 z-20 bg-white/60 backdrop-blur-md w-8 h-8 rounded-full flex items-center justify-center border border-zinc-200 hover:bg-white transition-colors"
                         onClick={(e) => { e.stopPropagation(); setInfoCategory(item); }}
                       >
-                        <Info size={16} />
+                        <Info size={16} className="text-zinc-600" />
                       </button>
 
                       {/* Absolute Icon Overlay */}
@@ -182,28 +186,28 @@ export default function RoleSelection() {
                         <img 
                           src={assets.overlay} 
                           alt="" 
-                          className="absolute -bottom-2 -left-4 w-32 h-32 object-contain z-10 pointer-events-none drop-shadow-2xl" 
+                          className="absolute -bottom-2 -left-4 w-32 h-32 object-contain z-10 pointer-events-none drop-shadow-lg" 
                         />
                       )}
 
-                      {/* Gradient Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-0" />
+                      {/* Gradient Overlay (Lighter for light mode) */}
+                      <div className={`absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent z-0 transition-opacity ${isSelected ? 'opacity-60' : 'opacity-30 group-hover:opacity-50'}`} />
 
                       {/* Label */}
                       <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-5 flex items-center justify-between z-20">
-                        <span className="text-xs lg:text-base font-black tracking-tight text-white drop-shadow-md">
+                        <span className="text-xs lg:text-[15px] font-semibold tracking-tight text-white drop-shadow-md">
                           {item.name}
                         </span>
                         {isSelected && (
-                          <div className="bg-blue-500 p-1 rounded-full shadow-lg">
-                            <Check size={12} strokeWidth={4} className="text-black" />
+                          <div className="bg-white p-1 rounded-full shadow-lg">
+                            <Check size={10} strokeWidth={3} className="text-zinc-900" />
                           </div>
                         )}
                       </div>
 
-                      {/* Selection State Glow */}
+                      {/* Selection State Tint */}
                       {isSelected && (
-                        <div className="absolute inset-0 bg-blue-500/10 pointer-events-none" />
+                        <div className="absolute inset-0 bg-zinc-900/5 pointer-events-none" />
                       )}
                     </motion.div>
                   );
@@ -213,21 +217,21 @@ export default function RoleSelection() {
           </div>
         </div>
 
-        {/* Fixed Bottom Action Bar */}
-        <div className="absolute inset-x-0 bottom-0 z-50 p-6 lg:p-10 bg-gradient-to-t from-black via-black/90 to-transparent pointer-events-none">
-          <div className="max-w-4xl mx-auto flex justify-center pointer-events-auto">
+        {/* Fixed Bottom Action Bar (Contained in right side) */}
+        <div className="flex-none p-6 lg:p-8 bg-white border-t border-zinc-100 z-50">
+          <div className="max-w-4xl mx-auto flex justify-center">
             <Button 
               size="lg" 
               disabled={!selected || isLoading}
               onClick={handleContinue}
-              className={`w-full lg:w-80 h-14 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-2 shadow-2xl ${
+              className={`w-full lg:w-72 h-12 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
                 selected 
-                  ? 'bg-white text-black hover:bg-zinc-200 translate-y-0 opacity-100' 
-                  : 'bg-zinc-800 text-zinc-500 cursor-not-allowed translate-y-4 opacity-50'
+                  ? 'bg-black text-white hover:bg-zinc-900 translate-y-0 opacity-100 shadow-xl shadow-zinc-900/10' 
+                  : 'bg-zinc-100 text-zinc-400 cursor-not-allowed translate-y-4 opacity-50'
               }`}
             >
-              Continue
-              <ArrowRight size={20} strokeWidth={3} />
+              Continue Path
+              <ArrowRight size={18} strokeWidth={2.5} />
             </Button>
           </div>
         </div>
@@ -242,31 +246,31 @@ export default function RoleSelection() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setInfoCategory(null)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md" 
+              className="absolute inset-0 bg-zinc-900/40 backdrop-blur-sm" 
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-lg bg-zinc-950 border border-white/10 rounded-[32px] p-8 lg:p-10 shadow-2xl overflow-hidden"
+              className="relative w-full max-w-lg bg-white border border-zinc-200 rounded-[32px] p-8 lg:p-10 shadow-2xl overflow-hidden"
             >
               <div className="flex justify-between items-start mb-6">
-                <h2 className="text-2xl font-black text-white">{infoCategory.name}</h2>
+                <h2 className="text-xl font-semibold text-zinc-900">{infoCategory.name}</h2>
                 <button 
                   onClick={() => setInfoCategory(null)}
-                  className="bg-white/5 p-2 rounded-full hover:bg-white/10 transition-colors"
+                  className="bg-zinc-100 p-2 rounded-full hover:bg-zinc-200 transition-colors"
                 >
-                  <X size={20} />
+                  <X size={20} className="text-zinc-600" />
                 </button>
               </div>
 
-              <p className="text-zinc-400 text-sm lg:text-base leading-relaxed mb-8">
+              <p className="text-zinc-600 text-sm lg:text-base leading-relaxed mb-8">
                 {infoCategory.description || infoCategory.info || "Discover opportunities tailored for your professional growth."}
               </p>
 
               <Button 
                 onClick={() => setInfoCategory(null)}
-                className="w-full h-12 bg-white text-black font-bold rounded-xl"
+                className="w-full h-11 bg-zinc-900 text-white font-semibold text-xs rounded-xl"
               >
                 Got it
               </Button>
@@ -277,4 +281,3 @@ export default function RoleSelection() {
     </div>
   );
 }
-
