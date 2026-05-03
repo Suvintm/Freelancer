@@ -2,23 +2,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Youtube, 
   ChevronLeft, 
   Loader2,
   ArrowRight,
   PlusCircle,
   Check,
-  CheckCircle2,
   Users,
   Video,
-  Lock,
-  ChevronDown,
-  ChevronUp,
-  ExternalLink,
-  ShieldCheck,
-  Info,
-  Globe,
-  Fingerprint
+  ChevronDown
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuthStore } from '../store/useAuthStore';
@@ -45,7 +36,6 @@ export default function YouTubeConnect() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [isLinking, setIsLinking] = useState(false);
   const [pickerExpandedFor, setPickerExpandedFor] = useState<string | null>(null);
 
   const categoryId = tempSignupData?.categoryId;
@@ -58,7 +48,7 @@ export default function YouTubeConnect() {
     window.location.href = `${apiUrl}/auth/google/youtube`;
   };
 
-  const fetchChannels = async (token: string) => {
+  const fetchChannels = useCallback(async (token: string) => {
     setIsLoading(true);
     try {
       const res = await api.post('/auth/youtube/channels', { accessToken: token });
@@ -73,7 +63,7 @@ export default function YouTubeConnect() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [addDiscoveredChannels]);
 
   useEffect(() => {
     if (!categoryId) {
@@ -88,7 +78,7 @@ export default function YouTubeConnect() {
     if (googleAccessToken) {
       fetchChannels(googleAccessToken);
     }
-  }, [googleAccessToken, categoryId, navigate, resetYoutubeDiscovery, youtubeDiscovery.channels.length]);
+  }, [googleAccessToken, categoryId, navigate, resetYoutubeDiscovery, youtubeDiscovery.channels.length, fetchChannels]);
 
   const allSelectedChannelsTagged = useMemo(() => {
     if (youtubeDiscovery.selectedChannelIds.length === 0) return false;
@@ -107,9 +97,9 @@ export default function YouTubeConnect() {
     });
 
     setTempSignupData({ youtubeChannels });
-    setIsLinking(true);
+    setIsLoading(true); // Re-use isLoading for transition
     setTimeout(() => {
-      setIsLinking(false);
+      setIsLoading(false);
       navigate('/signup');
     }, 1800);
   };

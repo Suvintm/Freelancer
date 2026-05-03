@@ -31,7 +31,7 @@ export default function Signup() {
   });
   const [userStatus, setUserStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -220,11 +220,12 @@ export default function Signup() {
   );
 }
 
-function InputField({ label, icon, ...props }: {
+interface InputFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   icon: React.ReactNode;
-  [k: string]: any;
-}) {
+}
+
+function InputField({ label, icon, ...props }: InputFieldProps) {
   return (
     <div className="space-y-1.5">
       <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">{label}</label>
