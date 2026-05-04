@@ -43,6 +43,20 @@ export default function YouTubeConnect() {
   const googleAccessToken = location.state?.googleAccessToken;
   const connected = youtubeDiscovery.channels.length > 0;
 
+  // Fix ESLint: Stable particles to avoid Math.random during render
+  /* eslint-disable react-hooks/purity */
+  const particles = useMemo(() => 
+    [...Array(50)].map((_, i) => ({
+      id: i,
+      x: Math.random() * 100 + '%',
+      y: (i < 35) ? (Math.random() * 60 + '%') : (Math.random() * 100 + '%'),
+      opacity: Math.random() * 0.8,
+      scale: Math.random() * 0.7 + 0.3,
+      duration: Math.random() * 5 + 4,
+      isTop: i < 35
+    })), []);
+  /* eslint-enable react-hooks/purity */
+
   const handleConnect = () => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
     window.location.href = `${apiUrl}/auth/google/youtube`;
@@ -161,31 +175,28 @@ export default function YouTubeConnect() {
           }} 
         />
         {/* Floating Particle Swarm (High Speed & High Density) */}
-        {[...Array(50)].map((_, i) => {
-          const isTop = i < 35; 
-          return (
-            <motion.div
-              key={i}
-              initial={{ 
-                x: Math.random() * 100 + '%', 
-                y: isTop ? (Math.random() * 60 + '%') : (Math.random() * 100 + '%'),
-                opacity: Math.random() * 0.8,
-                scale: Math.random() * 0.7 + 0.3
-              }}
-              animate={{ 
-                y: [null, '-25%', '25%', '-10%'],
-                x: [null, '12%', '-12%', '6%'],
-                opacity: [0.3, 0.8, 0.3]
-              }}
-              transition={{ 
-                duration: Math.random() * 5 + 4, // FASTER: 4-9s instead of 10-25s
-                repeat: Infinity,
-                ease: "linear"
-              }}
-              className="absolute w-1 h-1 bg-red-500 rounded-full blur-[1px]"
-            />
-          );
-        })}
+        {particles.map((p) => (
+          <motion.div
+            key={p.id}
+            initial={{ 
+              x: p.x, 
+              y: p.y,
+              opacity: p.opacity,
+              scale: p.scale
+            }}
+            animate={{ 
+              y: [null, '-25%', '25%', '-10%'],
+              x: [null, '12%', '-12%', '6%'],
+              opacity: [0.3, 0.8, 0.3]
+            }}
+            transition={{ 
+              duration: p.duration,
+              repeat: Infinity,
+              ease: "linear"
+            }}
+            className="absolute w-1 h-1 bg-red-500 rounded-full blur-[1px]"
+          />
+        ))}
 
         {/* Cinematic Background Orbs (High-Motion) */}
         <motion.div 

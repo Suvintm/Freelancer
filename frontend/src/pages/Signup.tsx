@@ -24,7 +24,7 @@ const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada'
 export default function Signup() {
   const [showPass, setShowPass] = useState(false);
   const { signup, tempSignupData, youtubeDiscovery, clearTempSignupData } = useAuthStore();
-  const socialProfile = tempSignupData?.socialProfile as any;
+  const socialProfile = tempSignupData?.socialProfile as Record<string, string> | undefined;
 
   const [form, setForm] = useState({
     fullName: socialProfile?.name || '',
