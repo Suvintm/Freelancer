@@ -5,7 +5,6 @@ import {
   ChevronLeft, 
   Loader2,
   ArrowRight,
-  PlusCircle,
   Plus,
   Check,
   Users,
@@ -89,19 +88,49 @@ export default function YouTubeConnect() {
   const handleContinue = () => {
     if (youtubeDiscovery.selectedChannelIds.length === 0 || !allSelectedChannelsTagged) return;
 
-    const youtubeChannels = youtubeDiscovery.selectedChannelIds.map(id => {
-      const channel = youtubeDiscovery.channels.find(c => c.channelId === id);
-      return {
-        ...channel,
-        subCategoryId: youtubeDiscovery.categorizations[id]
-      };
+    const youtubeCategory = categories.find(c => c.slug === 'yt_influencer');
+
+    // Build channel payload matching mobile's SelectedYouTubeChannelPayload exactly
+    const youtubeChannels = youtubeDiscovery.selectedChannelIds
+      .map((id, index) => {
+        const channel = youtubeDiscovery.channels.find(c => c.channelId === id);
+        if (!channel) return null;
+        const subCategoryId = youtubeDiscovery.categorizations[id];
+        const subCategory = youtubeCategory?.subCategories?.find(s => s.id === subCategoryId);
+        return {
+          channelId: channel.channelId,
+          channelName: channel.channelName,
+          thumbnailUrl: channel.thumbnailUrl || null,
+          subscriberCount: Number(channel.subscriberCount || 0),
+          videoCount: Number(channel.videoCount || 0),
+          subCategoryId,
+          subCategorySlug: subCategory?.slug ?? null,   // ← was missing on web
+          isPrimary: index === 0,                        // ← was missing on web
+          isVerified: true,                              // ← was missing on web
+          videos: (channel as unknown as Record<string, unknown>).videos ?? [],  // ← was missing on web
+        };
+      })
+      .filter(Boolean);
+
+    const uniqueSubCategoryIds = Array.from(
+      new Set(youtubeChannels.map(ch => ch!.subCategoryId).filter(Boolean))
+    );
+
+    setTempSignupData({
+      ...tempSignupData,
+      categoryId: tempSignupData?.categoryId ?? categoryId,
+      categorySlug: youtubeCategory?.slug ?? 'yt_influencer',
+      roleSubCategoryIds: uniqueSubCategoryIds,
+      youtubeChannels,
     });
 
-    setTempSignupData({ ...tempSignupData, youtubeChannels });
-    setIsLoading(true); // Re-use isLoading for transition
+    setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-      navigate('/signup');
+      // If user came via Google OAuth (isSocialSignup), go to CompleteProfile (mobile pattern)
+      // Otherwise go to normal Signup form
+      const isSocial = useAuthStore.getState().tempSignupData?.isSocialSignup;
+      navigate(isSocial ? '/complete-profile' : '/signup');
     }, 1800);
   };
 
@@ -131,31 +160,29 @@ export default function YouTubeConnect() {
             backgroundSize: '32px 32px'
           }} 
         />
-
-        {/* Floating Particle Swarm (High Speed) */}
-        {[...Array(35)].map((_, i) => {
-          const isTop = i < 25; 
+        {/* Floating Particle Swarm (High Speed & High Density) */}
+        {[...Array(50)].map((_, i) => {
+          const isTop = i < 35; 
           return (
             <motion.div
               key={i}
               initial={{ 
                 x: Math.random() * 100 + '%', 
-                y: isTop ? (Math.random() * 50 + '%') : (Math.random() * 100 + '%'),
-                opacity: Math.random() * 0.6,
-                scale: Math.random() * 0.5 + 0.5
+                y: isTop ? (Math.random() * 60 + '%') : (Math.random() * 100 + '%'),
+                opacity: Math.random() * 0.8,
+                scale: Math.random() * 0.7 + 0.3
               }}
               animate={{ 
-                y: [null, '-15%', '15%', '-5%'],
-                x: [null, '8%', '-8%', '4%'],
-                opacity: [0.2, 0.6, 0.2]
+                y: [null, '-25%', '25%', '-10%'],
+                x: [null, '12%', '-12%', '6%'],
+                opacity: [0.3, 0.8, 0.3]
               }}
               transition={{ 
-                duration: 6 + Math.random() * 10, 
-                repeat: Infinity, 
-                ease: "easeInOut" 
+                duration: Math.random() * 5 + 4, // FASTER: 4-9s instead of 10-25s
+                repeat: Infinity,
+                ease: "linear"
               }}
-              className="absolute w-1.5 h-1.5 rounded-full bg-red-500/40 blur-[1px]"
-              style={{ boxShadow: '0 0 12px rgba(220,38,38,0.6)' }}
+              className="absolute w-1 h-1 bg-red-500 rounded-full blur-[1px]"
             />
           );
         })}
@@ -214,14 +241,14 @@ export default function YouTubeConnect() {
                 disabled={isLoading}
                 className={`w-full h-12 md:h-16 rounded-xl font-bold text-sm md:text-lg flex items-center justify-center gap-3 border-none active:scale-[0.98] transition-all duration-500 ${
                   connected 
-                    ? '!bg-zinc-900 !text-white border border-zinc-800 hover:!bg-zinc-800 shadow-xl' 
+                    ? '!bg-zinc-900 !text-zinc-400 border border-zinc-800 hover:!bg-zinc-800 shadow-xl' 
                     : '!bg-red-600 !text-white shadow-lg shadow-red-900/20'
                 }`}
               >
                 {connected ? (
                   <>
-                    <Plus size={20} strokeWidth={3} />
-                    Add or choose another account
+                    <Plus size={20} strokeWidth={3} className="text-zinc-500" />
+                    <span>Add another account</span>
                   </>
                 ) : (
                   <>
@@ -230,7 +257,7 @@ export default function YouTubeConnect() {
                   </>
                 )}
               </Button>
-              <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest text-center animate-pulse">
+              <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest text-center">
                 Choose the email linked to your channel
               </p>
             </div>
@@ -252,9 +279,9 @@ export default function YouTubeConnect() {
                 
                 <div className="flex flex-col gap-4 w-full max-w-4xl">
                   {youtubeDiscovery.channels.map((channel) => {
-                    const isSelected = youtubeDiscovery.selectedChannelIds.includes(channel.channelId);
                     const activeSubCategoryId = youtubeDiscovery.categorizations[channel.channelId];
-                    const activeSubCategoryName = youtubeCategory?.subCategories?.find(s => s.id === activeSubCategoryId)?.name;
+                    // Logic: A channel is "selected" ONLY if it has a niche assigned
+                    const isSelected = !!activeSubCategoryId;
                     const isPickerOpen = pickerExpandedFor === channel.channelId;
                     const isClaimed = channel.isClaimed;
 
@@ -269,7 +296,11 @@ export default function YouTubeConnect() {
                             ? 'border-white bg-zinc-900 shadow-2xl z-20' 
                             : 'border-zinc-800 bg-zinc-950/40 hover:border-zinc-700'
                         } ${isClaimed ? 'opacity-60 grayscale' : 'cursor-pointer'}`}
-                        onClick={() => !isClaimed && toggleYoutubeChannelSelection(channel.channelId)}
+                        onClick={() => {
+                          if (isClaimed) return;
+                          // Clicking card toggles expansion
+                          setPickerExpandedFor(isPickerOpen ? null : channel.channelId);
+                        }}
                       >
                         <div className="p-5 md:p-8">
                           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -290,7 +321,7 @@ export default function YouTubeConnect() {
                                 )}
                               </div>
                               
-                              <div className="flex-1 min-w-0">
+                              <div className="flex-1 min-w-0 text-left">
                                 <div className="flex items-center gap-3 mb-2 flex-wrap">
                                   <h4 className="text-lg md:text-xl font-bold text-white truncate tracking-tight">{channel.channelName}</h4>
                                   {isClaimed ? (
@@ -298,8 +329,14 @@ export default function YouTubeConnect() {
                                       <div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
                                       <span className="text-[10px] font-black text-red-500 uppercase tracking-widest">Already Linked</span>
                                     </div>
+                                  ) : isSelected ? (
+                                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-600/10 border border-green-600/20">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-green-600" />
+                                      <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">Niche Assigned</span>
+                                    </div>
                                   ) : null}
                                 </div>
+
                                 <div className="flex items-center gap-5">
                                   <div className="flex items-center gap-2 text-red-500">
                                     <Users size={14} />
@@ -309,12 +346,21 @@ export default function YouTubeConnect() {
                                   <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">Verified Identity</span>
                                 </div>
                               </div>
+                              
+                              <div className="flex-shrink-0">
+                                <motion.div
+                                  animate={{ rotate: isPickerOpen ? 180 : 0 }}
+                                  className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-500 group-hover:text-white group-hover:border-zinc-600 transition-colors"
+                                >
+                                  <ChevronDown size={20} />
+                                </motion.div>
+                              </div>
                             </div>
                           </div>
 
                           {/* 🔽 EXPANDED NICHE SECTION (Direct Selection) */}
                           <AnimatePresence>
-                            {isSelected && !isClaimed && (
+                            {isPickerOpen && !isClaimed && (
                               <motion.div 
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: 'auto', opacity: 1 }}
@@ -324,9 +370,9 @@ export default function YouTubeConnect() {
                                 <div className="mt-8 pt-8 border-t border-zinc-800/50 space-y-5">
                                   <div className="flex items-center justify-between">
                                     <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.3em]">Choose Channel Niche</p>
-                                    {activeSubCategoryId && (
+                                    {isSelected && (
                                       <span className="text-[9px] font-bold text-green-500 uppercase flex items-center gap-1">
-                                        <Check size={12} /> Selected
+                                        <Check size={12} /> Assigned
                                       </span>
                                     )}
                                   </div>
@@ -337,7 +383,13 @@ export default function YouTubeConnect() {
                                         key={sub.id}
                                         onClick={(e) => { 
                                           e.stopPropagation(); 
-                                          setYoutubeChannelCategory(channel.channelId, sub.id); 
+                                          setYoutubeChannelCategory(channel.channelId, sub.id);
+                                          // Auto-select the channel in the store if it's not already selected
+                                          if (!youtubeDiscovery.selectedChannelIds.includes(channel.channelId)) {
+                                            toggleYoutubeChannelSelection(channel.channelId);
+                                          }
+                                          // Collapse after selection for a cleaner look
+                                          setTimeout(() => setPickerExpandedFor(null), 300);
                                         }}
                                         className={`px-4 py-3 rounded-2xl text-[10px] font-bold transition-all border flex items-center justify-center text-center leading-tight min-h-[3rem] ${
                                           activeSubCategoryId === sub.id 

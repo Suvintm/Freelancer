@@ -26,19 +26,33 @@ export default function OAuthSuccess() {
         
         if (response.data.success) {
           if (response.data.isNewUser) {
-            const { socialProfile, googleAccessToken } = response.data;
+            const { socialProfile } = response.data;
             const { setTempSignupData, tempSignupData } = useAuthStore.getState();
             
-            // Buffer the social profile into temp data for atomic signup
+            // Buffer social profile + mark as social signup
             setTempSignupData({ 
               ...tempSignupData,
+              isSocialSignup: true,
               socialProfile: {
-                ...socialProfile,
-                provider: 'google'
+                name: socialProfile.name,
+                email: socialProfile.email,
+                picture: socialProfile.picture,
+                googleId: socialProfile.googleId,
               }
             });
 
-            navigate('/youtube-connect', { state: { googleAccessToken } });
+            // ROLE-FIRST PATTERN (matches intended UX):
+            // Step 1 — First Google auth (no role selected yet) → /role-selection
+            //   User picks role → subcategory/YT-connect → lands on /signup form
+            //   On /signup form, user clicks "Continue with Google" again
+            // Step 2 — Second Google auth (role now in tempSignupData) → /complete-profile
+            //   Only asks for username + phone (name/email already known from Google)
+            const currentStore = useAuthStore.getState();
+            if (currentStore.tempSignupData?.categoryId) {
+              navigate('/complete-profile');
+            } else {
+              navigate('/role-selection');
+            }
             return;
           }
 
@@ -46,23 +60,20 @@ export default function OAuthSuccess() {
           
           setAuth(user, token, refreshToken);
           
-          // 1. Detect if we were in the middle of YouTube discovery (CRITICAL for existing users)
+          // 1. Detect if we were in the middle of YouTube discovery (Specific onboarding context)
           const authStore = useAuthStore.getState();
-          const isYouTubeOnboarding = authStore.tempSignupData?.categoryId || authStore.tempSignupData?.categorySlug === 'yt_influencer';
+          const isYouTubeFlowExplicit = authStore.tempSignupData?.categoryId && 
+                                       (authStore.tempSignupData?.categorySlug === 'yt_influencer' || 
+                                        authStore.tempSignupData?.roleName?.toLowerCase().includes('youtube'));
 
-          if (isYouTubeOnboarding && googleAccessToken) {
+          if (isYouTubeFlowExplicit && googleAccessToken) {
             navigate('/youtube-connect', { state: { googleAccessToken } });
             return;
           }
 
-          // 2. If user is already onboarded, go to home
-          if (user.isOnboarded) {
-            navigate('/home');
-            return;
-          }
-
-          // 3. Fallback for new user without specific onboarding context
-          navigate('/role-selection');
+          // 2. Existing users always go home
+          navigate('/home');
+          return;
         } else {
           navigate('/login?error=exchange_failed');
         }

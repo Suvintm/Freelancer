@@ -49,6 +49,7 @@ interface AuthState {
 
   tempSignupData: Record<string, unknown>;
   setTempSignupData: (data: Record<string, unknown>) => void;
+  clearTempSignupData: () => void;
   youtubeDiscovery: {
     channels: YouTubeChannel[];
     selectedChannelIds: string[];
@@ -91,6 +92,17 @@ export const useAuthStore = create<AuthState>()(
         set((state) => ({
           tempSignupData: { ...state.tempSignupData, ...data },
         }));
+      },
+
+      clearTempSignupData: () => {
+        set({
+          tempSignupData: {},
+          youtubeDiscovery: {
+            channels: [],
+            selectedChannelIds: [],
+            categorizations: {},
+          },
+        });
       },
 
       addDiscoveredChannels: (channels) => {
@@ -199,21 +211,31 @@ export const useAuthStore = create<AuthState>()(
 
       logout: async () => {
         const { refreshToken } = get();
+        // 1. Tell server to invalidate this refresh token family (server-side session kill)
         if (refreshToken) {
           try {
             await api.post('/auth/logout', { refreshToken });
           } catch (error) {
-            console.error('Logout error:', error);
+            // Proceed with client-side logout regardless — server might be down
+            console.warn('[Logout] Server invalidation failed, proceeding locally:', error);
           }
         }
+        // 2. Atomically wipe ALL auth + onboarding state from memory
         set({
           token: null,
           refreshToken: null,
           user: null,
           isAuthenticated: false,
-          isInitialized: true,
+          isInitialized: true,   // keep true so AuthGuard redirects instead of spinning
+          isLoading: false,
+          tempSignupData: {},
+          youtubeDiscovery: { channels: [], selectedChannelIds: [], categorizations: {} },
         });
+        // 3. Wipe persisted storage so refresh/back-button can't restore session
         localStorage.removeItem('auth-storage');
+        sessionStorage.clear();
+        // 4. Dispatch event so interceptor-forced logouts also trigger navigation
+        window.dispatchEvent(new CustomEvent('suvix:logout'));
       },
 
       checkAuth: async () => {

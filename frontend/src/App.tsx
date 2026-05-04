@@ -12,6 +12,7 @@ import Settings from './pages/Settings';
 import PlaceholderPage from './pages/PlaceholderPage';
 import Maintenance from './pages/Maintenance';
 import OAuthSuccess from './pages/OAuthSuccess';
+import CompleteProfile from './pages/CompleteProfile';
 import { AppLayout } from './components/layout/AppLayout';
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -84,6 +85,7 @@ function App() {
         <Route path="/subcategory-selection" element={<SubcategorySelection />} />
         <Route path="/youtube-connect" element={<YouTubeConnect />} />
         <Route path="/oauth-success" element={<OAuthSuccess />} />
+        <Route path="/complete-profile" element={<CompleteProfile />} />
         
         {/* Authenticated Routes wrapped in AppLayout and AuthGuard */}
         <Route 

@@ -23,7 +23,7 @@ const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada'
 
 export default function Signup() {
   const [showPass, setShowPass] = useState(false);
-  const { signup, tempSignupData, youtubeDiscovery } = useAuthStore();
+  const { signup, tempSignupData, youtubeDiscovery, clearTempSignupData } = useAuthStore();
   const socialProfile = tempSignupData?.socialProfile as any;
 
   const [form, setForm] = useState({
@@ -36,6 +36,7 @@ export default function Signup() {
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [userStatus, setUserStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -56,6 +57,15 @@ export default function Signup() {
     setError(null);
 
     try {
+      // MATCHES MOBILE: pre-validate email + username before hitting register-full
+      // gives clear error messages without wasting a full registration attempt
+      await import('../api/client').then(({ api }) =>
+        api.post('/auth/validate-signup', {
+          email: form.email.trim().toLowerCase(),
+          username: form.username.trim().toLowerCase(),
+        })
+      );
+
       // Combine form data with onboarding data
       await signup({
         ...form,
@@ -72,6 +82,9 @@ export default function Signup() {
         googleId: socialProfile?.googleId,
         authProvider: socialProfile ? 'google' : 'local'
       });
+
+      // MATCHES MOBILE: clear all onboarding state after successful registration
+      clearTempSignupData();
       navigate('/home');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
