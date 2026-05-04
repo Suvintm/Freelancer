@@ -121,7 +121,7 @@ export default function YouTubeConnect() {
           subCategorySlug: subCategory?.slug ?? null,
           isPrimary: index === 0,
           isVerified: true,
-          videos: (channel as any).videos || [],
+          videos: channel.videos || [],
         };
       })
       .filter((ch): ch is NonNullable<typeof ch> => ch !== null);

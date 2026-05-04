@@ -37,6 +37,12 @@ export interface YouTubeChannel {
   subscriberCount: number | string;
   videoCount: number | string;
   isClaimed?: boolean;
+  videos?: Array<{
+    id: string;
+    title: string;
+    thumbnail: string;
+    publishedAt: string;
+  }>;
 }
 
 export interface TempSignupData {
@@ -95,7 +101,7 @@ interface AuthState {
   setAuth: (user: AuthUser, token: string, refreshToken: string) => void;
   setTokens: (token: string, refreshToken: string, user?: AuthUser) => void;
   login: (email: string, password: string) => Promise<void>;
-  signup: (data: any) => Promise<void>;
+  signup: (data: TempSignupData | Record<string, unknown>) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   fetchUser: () => Promise<void>;
