@@ -9,7 +9,8 @@ import {
   Check,
   Users,
   Video,
-  ChevronDown
+  ChevronDown,
+  TrendingUp
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuthStore } from '../store/useAuthStore';
@@ -18,7 +19,6 @@ import { api } from '../api/client';
 import { LoadingOverlay } from '../components/shared/LoadingOverlay';
 import { SuccessOverlay } from '../components/shared/SuccessOverlay';
 import logo from '../assets/darklogo.png';
-import ytIcon from '../assets/youtubeicon.png';
 
 export default function YouTubeConnect() {
   const navigate = useNavigate();
@@ -134,20 +134,16 @@ export default function YouTubeConnect() {
         </button>
       </div>
 
-      <main className="flex-1 flex flex-col items-center p-4 pt-20 md:p-12 relative">
+      <main className="flex-1 flex flex-col items-center p-4 pt-20 md:pt-24 relative">
         <div className="w-full max-w-[80rem] mx-auto relative z-10 flex flex-col items-center">
           {!connected ? (
             /* --- STATE 1: INITIAL DISCONNECTED (Compact Portal) --- */
             <motion.div 
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center text-center w-full max-w-[32rem] py-10 md:py-20"
+              className="flex flex-col items-center text-center w-full max-w-[48rem] py-4 md:py-8"
             >
-              <div className="flex items-center justify-center mb-10">
-                <img src={ytIcon} alt="" className="w-20 h-20 md:w-28 md:h-28 object-contain" />
-              </div>
-              
-              <div className="space-y-3 mb-10">
+              <div className="space-y-2 mb-6">
                 <h1 className="text-[clamp(1.75rem,7vw,4rem)] font-bold text-white tracking-tight leading-[1.1]">
                   Connect your <br />
                   <span className="text-zinc-600">digital identity.</span>
@@ -157,15 +153,109 @@ export default function YouTubeConnect() {
                 </p>
               </div>
 
-              <div className="w-full max-w-[20rem] space-y-4">
+              <div className="w-full max-w-[20rem] space-y-4 mb-10">
                 <Button 
                   onClick={handleConnect}
                   disabled={isLoading}
-                  className="w-full h-12 md:h-16 !bg-red-600 !text-white rounded-xl font-bold text-sm md:text-lg flex items-center justify-center gap-2 border-none"
+                  className="w-full h-12 md:h-16 !bg-red-600 !text-white rounded-xl font-bold text-sm md:text-lg flex items-center justify-center gap-2 border-none active:scale-[0.98] transition-transform"
                 >
                   Sync with YouTube
                   <ArrowRight size={16} />
                 </Button>
+              </div>
+
+              {/* 🎬 CREATOR MARQUEE (Elite Social Proof) */}
+              <div className="w-full relative overflow-hidden mb-16 py-4">
+                <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-black to-transparent z-10" />
+                <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-black to-transparent z-10" />
+                
+                <motion.div 
+                  className="flex gap-4 w-max px-4"
+                  animate={{ x: [0, -1200] }}
+                  transition={{ 
+                    duration: 35, 
+                    repeat: Infinity, 
+                    ease: "linear" 
+                  }}
+                >
+                  {[...Array(2)].map((_, i) => (
+                    <div key={i} className="flex gap-4">
+                      {[
+                        { name: "MrBeast", sub: "245M", img: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=200&h=200&fit=crop" },
+                        { name: "MKBHD", sub: "18.5M", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop" },
+                        { name: "Casey Neistat", sub: "12.6M", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop" },
+                        { name: "Peter McKinnon", sub: "5.9M", img: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop" },
+                        { name: "Ali Abdaal", sub: "5.2M", img: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&h=200&fit=crop" },
+                        { name: "Lofi Girl", sub: "14.1M", img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=200&fit=crop" },
+                        { name: "Veritasium", sub: "14.8M", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&h=200&fit=crop" }
+                      ].map((creator, idx) => (
+                        <div 
+                          key={idx}
+                          className="relative flex flex-col items-center p-4 rounded-[1.5rem] bg-zinc-900/30 border border-zinc-800/50 backdrop-blur-md group hover:border-zinc-700 transition-all duration-300 w-36"
+                        >
+                          {/* Profile Image */}
+                          <div className="relative mb-3">
+                            <img 
+                              src={creator.img} 
+                              alt="" 
+                              className="w-16 h-16 rounded-full object-cover border-2 border-zinc-800 shadow-xl relative z-10 group-hover:scale-105 transition-transform duration-300" 
+                            />
+                            {/* Instagram-style Red Verified Badge (Smaller) */}
+                            <div className="absolute -bottom-1 -right-1 z-20">
+                              <svg viewBox="0 0 24 24" className="w-5 h-5 fill-red-600 drop-shadow-[0_0_4px_rgba(220,38,38,0.4)]">
+                                <path d="M22.5 12.5c0-1.58-.811-3.029-2.126-3.882l.144-1.618a2.5 2.5 0 00-2.483-2.722l-1.614.076a4.522 4.522 0 00-3.321-2.13L12.5 1.5l-.6-.05c-1.58 0-3.029.811-3.882 2.126l-1.618-.144a2.5 2.5 0 00-2.722 2.483l.076 1.614a4.522 4.522 0 00-2.13 3.321L1.5 11.5l-.05.6c0 1.58.811 3.029 2.126 3.882l-.144 1.618a2.5 2.5 0 002.483 2.722l1.614-.076a4.522 4.522 0 003.321 2.13L11.5 22.5l.6.05c1.58 0 3.029-.811 3.882-2.126l1.618.144a2.5 2.5 0 002.722-2.483l-.076-1.614a4.522 4.522 0 002.13-3.321L22.5 12.5l.05-.6z" />
+                                <path d="M10.5 15.5l-3.5-3.5 1.414-1.414L10.5 12.672l5.586-5.586L17.5 8.5z" fill="white" />
+                              </svg>
+                            </div>
+                          </div>
+                          
+                          <div className="text-center space-y-1 relative z-10 w-full">
+                            <h4 className="text-sm font-bold text-white truncate font-display tracking-tight">{creator.name}</h4>
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-[9px] font-bold text-red-500 uppercase tracking-widest font-label bg-red-600/10 px-2 py-0.5 rounded-md">
+                                {creator.sub}
+                              </span>
+                              <span className="text-[7px] font-semibold text-zinc-600 uppercase tracking-[0.2em] font-label">Verified Identity</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </motion.div>
+              </div>
+
+              {/* Benefits Hero Card (Compacted) */}
+              <div className="w-full max-w-xl bg-zinc-900/40 border border-zinc-800 rounded-2xl p-6 text-left relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <Video size={80} className="text-zinc-500" />
+                </div>
+                
+                <div className="relative z-10 space-y-4">
+                  <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-red-600/10 border border-red-600/20 text-red-500 text-[9px] font-bold uppercase tracking-widest">
+                    Creator Benefits
+                  </div>
+                  <h3 className="text-xl font-bold text-white tracking-tight leading-tight">Unlock Your Creator Identity</h3>
+                  <p className="text-zinc-400 text-xs leading-relaxed max-w-sm">
+                    Sync your channel to display verified metrics, gain access to exclusive brand deals, and boost your profile credibility.
+                  </p>
+                  
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-1">
+                    {[
+                      { icon: <Users size={14} />, text: "Verified Stats" },
+                      { icon: <TrendingUp size={14} />, text: "Engagement" },
+                      { icon: <Check size={14} />, text: "Search Priority" },
+                      { icon: <Video size={14} />, text: "Brand Verified" }
+                    ].map((item, i) => (
+                      <div key={i} className="flex items-center gap-2 text-zinc-300 text-[10px] font-bold uppercase tracking-tight">
+                        <div className="p-1 rounded-lg bg-white/5 border border-white/10 text-red-500">
+                          {item.icon}
+                        </div>
+                        {item.text}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </motion.div>
           ) : (

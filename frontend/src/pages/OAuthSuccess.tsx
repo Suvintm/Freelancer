@@ -27,23 +27,25 @@ export default function OAuthSuccess() {
         if (response.data.success) {
           const { user, token, refreshToken, googleAccessToken } = response.data;
           
-          // Check if we are in onboarding flow
+          setAuth(user, token, refreshToken);
+          
+          // 1. If user is already onboarded, ALWAYS go to home
+          if (user.isOnboarded) {
+            navigate('/home');
+            return;
+          }
+
+          // 2. If new user, check if we were in the middle of YouTube discovery
           const authStore = useAuthStore.getState();
           const isYouTubeOnboarding = authStore.tempSignupData?.categorySlug === 'yt_influencer';
 
           if (isYouTubeOnboarding && googleAccessToken) {
-            // Store the token temporarily or pass it back
             navigate('/youtube-connect', { state: { googleAccessToken } });
             return;
           }
 
-          setAuth(user, token, refreshToken);
-          
-          if (!user.isOnboarded) {
-            navigate('/role-selection');
-          } else {
-            navigate('/home');
-          }
+          // 3. Fallback for new user without specific onboarding context
+          navigate('/role-selection');
         } else {
           navigate('/login?error=exchange_failed');
         }

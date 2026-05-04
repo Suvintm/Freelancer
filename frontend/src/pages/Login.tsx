@@ -12,26 +12,42 @@ import {
 import logo from '../assets/darklogo.png';
 import { AuthBackground } from '../components/auth/AuthBackground';
 import { MobileAuthHeader } from '../components/auth/MobileAuthHeader';
+import { useAuthStore } from '../store/useAuthStore';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 export default function Login() {
   const [showPass, setShowPass] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
+  const { login } = useAuthStore();
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Clear any stale onboarding data when landing on the Login page
+  React.useEffect(() => {
+    const store = useAuthStore.getState();
+    store.setTempSignupData({});
+    store.resetYoutubeDiscovery();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
+    setError(null);
+    try {
+      await login(form.email, form.password);
+      navigate('/home');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
       setIsLoading(false);
-      navigate('/role-selection');
-    }, 1200);
+    }
   };
 
   const handleGoogleLogin = () => {
-    // Logic for Google login
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
+    window.location.href = `${apiUrl}/auth/google`;
   };
 
   return (
@@ -109,6 +125,12 @@ export default function Login() {
                 </span>
                 <div className="flex-1 h-px bg-zinc-800" />
               </div>
+
+              {error && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-semibold text-center">
+                  {error}
+                </div>
+              )}
 
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-4">
