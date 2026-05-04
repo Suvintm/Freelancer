@@ -64,7 +64,7 @@ export default function OAuthSuccess() {
           const authStore = useAuthStore.getState();
           const isYouTubeFlowExplicit = authStore.tempSignupData?.categoryId && 
                                        (authStore.tempSignupData?.categorySlug === 'yt_influencer' || 
-                                        authStore.tempSignupData?.roleName?.toLowerCase().includes('youtube'));
+                                        authStore.tempSignupData?.roleName?.toString().toLowerCase().includes('youtube'));
 
           if (isYouTubeFlowExplicit && googleAccessToken) {
             navigate('/youtube-connect', { state: { googleAccessToken } });

@@ -118,13 +118,13 @@ export default function YouTubeConnect() {
           subscriberCount: Number(channel.subscriberCount || 0),
           videoCount: Number(channel.videoCount || 0),
           subCategoryId,
-          subCategorySlug: subCategory?.slug ?? null,   // ← was missing on web
-          isPrimary: index === 0,                        // ← was missing on web
-          isVerified: true,                              // ← was missing on web
-          videos: (channel as unknown as Record<string, unknown>).videos ?? [],  // ← was missing on web
+          subCategorySlug: subCategory?.slug ?? null,
+          isPrimary: index === 0,
+          isVerified: true,
+          videos: (channel as any).videos || [],
         };
       })
-      .filter(Boolean);
+      .filter((ch): ch is NonNullable<typeof ch> => ch !== null);
 
     const uniqueSubCategoryIds = Array.from(
       new Set(youtubeChannels.map(ch => ch!.subCategoryId).filter(Boolean))

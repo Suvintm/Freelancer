@@ -39,6 +39,38 @@ export interface YouTubeChannel {
   isClaimed?: boolean;
 }
 
+export interface TempSignupData {
+  categoryId?: string;
+  categorySlug?: string;
+  roleName?: string;
+  roleSubCategoryIds?: string[];
+  isSocialSignup?: boolean;
+  socialProfile?: {
+    name: string;
+    email: string;
+    picture?: string;
+    googleId: string;
+  };
+  youtubeChannels?: Array<{
+    channelId: string;
+    channelName: string;
+    thumbnailUrl?: string | null;
+    subscriberCount?: number | string;
+    videoCount?: number | string;
+    uploadsPlaylistId?: string | null;
+    subCategoryId?: string;
+    subCategorySlug?: string | null;
+    isPrimary?: boolean;
+    isVerified?: boolean;
+    videos?: Array<{
+      id: string;
+      title: string;
+      thumbnail: string;
+      publishedAt: string;
+    }>;
+  }>;
+}
+
 interface AuthState {
   token: string | null;
   refreshToken: string | null;
@@ -47,8 +79,8 @@ interface AuthState {
   isInitialized: boolean;
   isLoading: boolean;
 
-  tempSignupData: Record<string, unknown>;
-  setTempSignupData: (data: Record<string, unknown>) => void;
+  tempSignupData: TempSignupData;
+  setTempSignupData: (data: Partial<TempSignupData>) => void;
   clearTempSignupData: () => void;
   youtubeDiscovery: {
     channels: YouTubeChannel[];
@@ -63,7 +95,7 @@ interface AuthState {
   setAuth: (user: AuthUser, token: string, refreshToken: string) => void;
   setTokens: (token: string, refreshToken: string, user?: AuthUser) => void;
   login: (email: string, password: string) => Promise<void>;
-  signup: (data: Record<string, unknown>) => Promise<void>;
+  signup: (data: any) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   fetchUser: () => Promise<void>;

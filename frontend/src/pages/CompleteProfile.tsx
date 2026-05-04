@@ -64,7 +64,7 @@ export default function CompleteProfile() {
     return selectedCategory.subCategories.filter(s => ids.includes(s.id));
   }, [selectedCategory, tempSignupData?.roleSubCategoryIds]);
 
-  const youtubeChannels = tempSignupData?.youtubeChannels as Array<Record<string, unknown>> | undefined;
+  const youtubeChannels = tempSignupData?.youtubeChannels;
   const hasYouTubeChannels = !!youtubeChannels?.length;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
