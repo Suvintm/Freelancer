@@ -99,47 +99,23 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
                         return done(null, user);
                     }
 
-                    // 3. NEW USER REGISTRATION via Google
+                    // 3. NEW USER (Atomic Onboarding Flow)
                     // Smart Name Generation
                     let baseName = profile.displayName || profile.name?.givenName || "User";
                     let finalName = baseName.trim();
-                    let finalUsername = finalName.toLowerCase().replace(/\s+/g, '_') + `_${crypto.randomBytes(3).toString('hex')}`;
 
-                    // Atomic Creation (Auth + Profile)
-                    user = await prisma.$transaction(async (tx) => {
-                        const newUser = await tx.user.create({
-                            data: {
-                                email,
-                                google_id: googleId,
-                                password_hash: `OAUTH_USER_${crypto.randomBytes(8).toString("hex")}`,
-                                role: "suvix_user", 
-                                auth_provider: "google",
-                                is_verified: true,
-                                is_onboarded: false,
-                            }
-                        });
+                    // We do NOT create a record in the DB yet to keep it clean.
+                    const socialProfile = {
+                        isNewUser: true,
+                        email,
+                        googleId,
+                        name: finalName,
+                        picture: profilePicture,
+                        accessToken
+                    };
 
-                        await tx.userProfile.create({
-                            data: {
-                                userId: newUser.id,
-                                username: finalUsername,
-                                name: finalName,
-                                display_name: finalName,
-                                profile_picture: profilePicture,
-                                auth_provider: "google",
-                            }
-                        });
-
-                        return await tx.user.findUnique({
-                            where: { id: newUser.id },
-                            include: { profile: true }
-                        });
-                    });
-
-                    logger.info(`[OAuth] New user registered via Google: ${email}`);
-                    // @ts-ignore
-                    user.accessToken = accessToken;
-                    return done(null, user);
+                    logger.info(`[OAuth] New user detected via Google (Discovery Mode): ${email}`);
+                    return done(null, socialProfile);
                 } catch (error) {
                     console.error("Google OAuth error:", error);
                     return done(error, null);

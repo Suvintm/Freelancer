@@ -25,22 +25,39 @@ export default function OAuthSuccess() {
         const response = await api.post('/auth/exchange-code', { code });
         
         if (response.data.success) {
+          if (response.data.isNewUser) {
+            const { socialProfile, googleAccessToken } = response.data;
+            const { setTempSignupData, tempSignupData } = useAuthStore.getState();
+            
+            // Buffer the social profile into temp data for atomic signup
+            setTempSignupData({ 
+              ...tempSignupData,
+              socialProfile: {
+                ...socialProfile,
+                provider: 'google'
+              }
+            });
+
+            navigate('/youtube-connect', { state: { googleAccessToken } });
+            return;
+          }
+
           const { user, token, refreshToken, googleAccessToken } = response.data;
           
           setAuth(user, token, refreshToken);
           
-          // 1. If user is already onboarded, ALWAYS go to home
-          if (user.isOnboarded) {
-            navigate('/home');
-            return;
-          }
-
-          // 2. If new user, check if we were in the middle of YouTube discovery
+          // 1. Detect if we were in the middle of YouTube discovery (CRITICAL for existing users)
           const authStore = useAuthStore.getState();
-          const isYouTubeOnboarding = authStore.tempSignupData?.categorySlug === 'yt_influencer';
+          const isYouTubeOnboarding = authStore.tempSignupData?.categoryId || authStore.tempSignupData?.categorySlug === 'yt_influencer';
 
           if (isYouTubeOnboarding && googleAccessToken) {
             navigate('/youtube-connect', { state: { googleAccessToken } });
+            return;
+          }
+
+          // 2. If user is already onboarded, go to home
+          if (user.isOnboarded) {
+            navigate('/home');
             return;
           }
 

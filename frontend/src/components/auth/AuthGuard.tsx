@@ -24,7 +24,8 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   }
 
   const { user } = useAuthStore.getState();
-  if (user && !user.isOnboarded && location.pathname !== '/role-selection' && location.pathname !== '/signup') {
+  const onboardingPaths = ['/role-selection', '/signup', '/youtube-connect', '/subcategory-selection'];
+  if (user && !user.isOnboarded && !onboardingPaths.includes(location.pathname)) {
     return <Navigate to="/role-selection" replace />;
   }
 
