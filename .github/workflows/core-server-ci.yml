@@ -58,6 +58,12 @@ jobs:
     steps:
       - run: echo "Satisfying required check for server-only PR"
 
+  ci-static-analysis-stub:
+    name: Build & Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Satisfying required check for server-only PR"
+
   unit-tests:
     name: Unit & Integration Tests
     needs: ci-quality-gate
