@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Keyboard,
   Alert,
   ScrollView,
+  TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -17,6 +18,7 @@ import { Colors } from '../src/constants/Colors';
 import SuvixInput from '../src/components/SuvixInput';
 import SuvixButton from '../src/components/SuvixButton';
 import { useAuthStore } from '../src/store/useAuthStore';
+import { useCategoryStore } from '../src/store/useCategoryStore';
 import { api } from '../src/api/client';
 import * as Haptics from 'expo-haptics';
 
@@ -27,7 +29,33 @@ export default function CompleteProfileScreen() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { user, updateUser, setAuth, tempSignupData, clearTempSignupData } = useAuthStore();
+  const { categories, fetchCategories } = useCategoryStore();
   const isSocialPending = tempSignupData?.isSocialSignup;
+  const socialProfile = tempSignupData?.socialProfile;
+
+  // Load categories to resolve names
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  // GUARD: role-first pattern — must have a categoryId before finalizing
+  useEffect(() => {
+    if (!isSocialPending || !tempSignupData?.googleIdToken) {
+      // Not a social signup — shouldn't be here
+      router.replace('/login');
+      return;
+    }
+    if (!tempSignupData?.categoryId) {
+      // Social signup started but no role picked yet
+      router.replace('/role-selection');
+    }
+  }, [isSocialPending, tempSignupData?.googleIdToken, tempSignupData?.categoryId]);
+
+  // Resolve Names
+  const selectedCategory = categories.find(c => c.id === tempSignupData?.categoryId);
+  const selectedSubCategories = selectedCategory 
+    ? selectedCategory.subCategories.filter(s => tempSignupData?.roleSubCategoryIds?.includes(s.id))
+    : [];
 
   const handleImpact = (style: Haptics.ImpactFeedbackStyle = Haptics.ImpactFeedbackStyle.Light) => {
     Haptics.impactAsync(style);
@@ -102,8 +130,41 @@ export default function CompleteProfileScreen() {
               </View>
               <Text style={[styles.title, { color: theme.text }]}>Finalize Your Profile</Text>
               <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                Welcome to SuviX, {user?.name}! We just need a couple more details to get you started.
+                Welcome to SuviX, {socialProfile?.name || 'User'}! We just need a couple more details to get you started.
               </Text>
+            </View>
+
+            {/* SELECTION SUMMARY CARD */}
+            <View style={[styles.summaryCard, { backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+              <View style={styles.summaryItem}>
+                <Feather name="mail" size={14} color={theme.textSecondary} style={{ marginRight: 8 }} />
+                <Text style={[styles.summaryText, { color: theme.textSecondary }]}>{socialProfile?.email}</Text>
+              </View>
+              
+              {selectedCategory && (
+                <View style={[styles.summaryItem, { marginTop: 8 }]}>
+                  <Feather name="briefcase" size={14} color={theme.accent} style={{ marginRight: 8 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.summaryText, { color: theme.text, fontWeight: '700' }]}>{selectedCategory.name}</Text>
+                  </View>
+                  <TouchableOpacity 
+                    onPress={() => router.push('/role-selection')}
+                    style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}
+                  >
+                    <Text style={{ fontSize: 10, fontWeight: 'bold', color: theme.textSecondary }}>Change</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {selectedSubCategories.length > 0 && (
+                <View style={styles.tagContainer}>
+                  {selectedSubCategories.map(sub => (
+                    <View key={sub.id} style={[styles.tag, { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+                      <Text style={[styles.tagText, { color: theme.textSecondary }]}>{sub.name}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
 
             <View style={styles.form}>
@@ -175,4 +236,33 @@ const styles = StyleSheet.create({
   },
   disclaimerText: { fontSize: 11, color: '#FFF' },
   submitBtn: { marginTop: 10 },
+  summaryCard: {
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginBottom: 24,
+  },
+  summaryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  summaryText: {
+    fontSize: 13,
+  },
+  tagContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 12,
+  },
+  tag: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  tagText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
 });

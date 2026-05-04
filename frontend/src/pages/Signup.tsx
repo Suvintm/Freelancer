@@ -23,18 +23,20 @@ const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada'
 
 export default function Signup() {
   const [showPass, setShowPass] = useState(false);
+  const { signup, tempSignupData, youtubeDiscovery, clearTempSignupData } = useAuthStore();
+  const socialProfile = tempSignupData?.socialProfile as Record<string, string> | undefined;
+
   const [form, setForm] = useState({
-    fullName: '',
+    fullName: socialProfile?.name || '',
     username: '',
-    email: '',
+    email: socialProfile?.email || '',
     phone: '',
     password: '',
     motherTongue: 'English'
   });
-  const [userStatus, setUserStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
-  const { signup, tempSignupData, youtubeDiscovery } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [userStatus, setUserStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -55,15 +57,34 @@ export default function Signup() {
     setError(null);
 
     try {
+      // MATCHES MOBILE: pre-validate email + username before hitting register-full
+      // gives clear error messages without wasting a full registration attempt
+      await import('../api/client').then(({ api }) =>
+        api.post('/auth/validate-signup', {
+          email: form.email.trim().toLowerCase(),
+          username: form.username.trim().toLowerCase(),
+        })
+      );
+
       // Combine form data with onboarding data
       await signup({
         ...form,
         categoryId: tempSignupData?.categoryId,
         roleSubCategoryIds: tempSignupData?.roleSubCategoryIds,
-        youtubeChannels: youtubeDiscovery.selectedChannelIds.map(id => 
-          youtubeDiscovery.channels.find(c => c.channelId === id)
-        ).filter(Boolean)
+        youtubeChannels: youtubeDiscovery.selectedChannelIds.map(id => {
+          const channel = youtubeDiscovery.channels.find(c => c.channelId === id);
+          const categorization = youtubeDiscovery.categorizations[id];
+          return {
+            ...channel,
+            subCategoryId: categorization
+          };
+        }).filter(Boolean),
+        googleId: socialProfile?.googleId,
+        authProvider: socialProfile ? 'google' : 'local'
       });
+
+      // MATCHES MOBILE: clear all onboarding state after successful registration
+      clearTempSignupData();
       navigate('/home');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -201,24 +222,36 @@ export default function Signup() {
                 </div>
 
                 {/* Password */}
-                <div className="space-y-1.5">
-                  <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">Password</label>
-                  <div className="relative">
-                    <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
-                    <input
-                      name="password"
-                      type={showPass ? 'text' : 'password'}
-                      placeholder="••••••••"
-                      value={form.password}
-                      onChange={handleChange}
-                      required
-                      className="suvix-input !pl-12 pr-12 bg-zinc-900 border-zinc-800 focus:border-white"
-                    />
-                    <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-900 transition-colors">
-                      {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
+                {!socialProfile ? (
+                  <div className="space-y-1.5">
+                    <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">Password</label>
+                    <div className="relative">
+                      <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
+                      <input
+                        name="password"
+                        type={showPass ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={form.password}
+                        onChange={handleChange}
+                        required={!socialProfile}
+                        className="suvix-input !pl-12 pr-12 bg-zinc-900 border-zinc-800 focus:border-white"
+                      />
+                      <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-900 transition-colors">
+                        {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+                      <Lock size={16} className="text-red-500" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-white uppercase tracking-wider">Security Note</p>
+                      <p className="text-[11px] text-zinc-400 font-medium">Your account is secured via Google. No password needed.</p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Submit */}
                 <button type="submit" disabled={isLoading} className="suvix-btn-primary w-full h-12 mt-2 !bg-black !text-white hover:opacity-90 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all shadow-xl shadow-zinc-900/20 active:scale-[0.98]">

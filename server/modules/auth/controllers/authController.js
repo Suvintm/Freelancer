@@ -432,6 +432,8 @@ export const registerFull = asyncHandler(async (req, res) => {
     pushToken,
     platform,
     profilePictureBuffer: req.file ? req.file.buffer : null,
+    googleId: req.body.googleId || null,
+    authProvider: req.body.authProvider || "local",
   };
 
   const userWithProfile = await registerService(userData);

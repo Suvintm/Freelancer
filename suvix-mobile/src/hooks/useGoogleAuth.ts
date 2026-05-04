@@ -35,16 +35,24 @@ export const useGoogleAuth = () => {
    */
   const handleAuthResponse = useCallback(async (data: any, idToken: string) => {
     if (data.isNewUser) {
-      // Brand new account — buffer Google info and go to profile completion
-      const { setTempSignupData } = useAuthStore.getState();
+      // Buffer Google identity + mark as social signup
+      const { setTempSignupData, tempSignupData } = useAuthStore.getState();
       setTempSignupData({
+        ...tempSignupData,
         googleIdToken: idToken,
         isSocialSignup: true,
         socialProfile: data.socialProfile,
       });
-      // Let the guard handle routing to /complete-profile naturally
-      // by setting a partially-authenticated state
-      router.push('/complete-profile');
+
+      // ROLE-FIRST PATTERN:
+      // If user clicked Google from login page (no role yet) → role-selection first
+      // If user clicked Google from signup page (role already selected) → complete-profile
+      const currentStore = useAuthStore.getState();
+      if (currentStore.tempSignupData?.categoryId) {
+        router.push('/complete-profile');
+      } else {
+        router.push('/role-selection');
+      }
     } else {
       // Existing user — setAuth and let the _layout.tsx guard route them
       // to the correct dashboard based on their role

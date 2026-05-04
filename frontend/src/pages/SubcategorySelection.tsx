@@ -60,7 +60,10 @@ export default function SubcategorySelection() {
     setIsFinishing(true);
     setTempSignupData({ roleSubCategoryIds: selectedSubs });
     setTimeout(() => {
-      navigate('/signup');
+      // Social users (Google OAuth) → /complete-profile (minimal form, no password)
+      // Normal users                → /signup (full form)
+      const isSocial = useAuthStore.getState().tempSignupData?.isSocialSignup;
+      navigate(isSocial ? '/complete-profile' : '/signup');
     }, 500);
   };
 

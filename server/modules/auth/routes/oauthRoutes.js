@@ -81,7 +81,22 @@ router.get(
                 return res.redirect(`${redirectBase}/login?error=no_user`);
             }
 
-            // PRODUCTION-GRADE: NEVER EXPOSE TOKENS IN URLS
+            // [NEW] Handle Discovery Flow for Unregistered Users
+            if (user.isNewUser) {
+                const otc = await generateOTC({
+                    isNewUser: true,
+                    socialProfile: {
+                        email: user.email,
+                        name: user.name,
+                        picture: user.picture,
+                        googleId: user.googleId,
+                        accessToken: user.accessToken
+                    }
+                });
+                return res.redirect(`${redirectBase}/oauth-success?code=${otc}`);
+            }
+
+            // [EXISTING] Handle Login for Registered Users
             const otc = await generateOTC({ 
                 userId: user.id,
                 role: user.role,
@@ -124,7 +139,20 @@ router.post("/exchange-code", authLimiter, async (req, res) => {
         // Atomically consume the code (prevent replay attacks)
         await redis.del(redisKey);
 
-        const { userId, accessToken: googleAccessToken } = JSON.parse(storedData);
+        const data = JSON.parse(storedData);
+
+        // CASE A: Discovery Flow (New User)
+        if (data.isNewUser) {
+            logger.info(`[OAuth] Discovery OTC Exchanged: ${data.socialProfile.email}`);
+            return res.status(200).json({
+                success: true,
+                isNewUser: true,
+                socialProfile: data.socialProfile,
+                googleAccessToken: data.socialProfile.accessToken
+            });
+        }
+
+        const { userId, accessToken: googleAccessToken } = data;
 
         // Fetch user with full profile context
         const user = await prisma.user.findUnique({
