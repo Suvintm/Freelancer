@@ -146,7 +146,7 @@ export default function Home() {
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
-              className="bg-container lg:border lg:border-border-main lg:rounded-[40px] overflow-hidden group lg:shadow-xl dark:lg:shadow-none border-b border-border-main lg:border-b-0 pb-8 lg:pb-0"
+              className={`lg:border lg:border-border-main lg:rounded-[40px] overflow-hidden group lg:shadow-xl border-b border-border-main lg:border-b-0 pb-8 lg:pb-0 ${isDarkMode ? 'bg-black' : 'bg-white shadow-2xl'}`}
             >
               <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
