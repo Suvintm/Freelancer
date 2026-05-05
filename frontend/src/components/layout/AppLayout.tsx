@@ -5,7 +5,7 @@ import { GlobalHeader } from './GlobalHeader';
 import { RightSidebar } from './RightSidebar';
 import { BottomNav } from './BottomNav';
 import { MobileSidebar } from './MobileSidebar';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme } from '../../hooks/useTheme';
 import { useState } from 'react';
 
 export const AppLayout = ({ children }: { children: React.ReactNode }) => {
