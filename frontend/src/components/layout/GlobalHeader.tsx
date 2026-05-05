@@ -1,5 +1,5 @@
 import { Search, Bell, Plus, Sun, Moon, Menu } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTheme }  from '../../hooks/useTheme';
 import { useAuthStore } from '../../store/useAuthStore';
 import darkLogo  from '../../assets/darklogo.png';
@@ -8,7 +8,6 @@ import auth1     from '../../assets/auth/auth_1.png';
 
 export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { isDarkMode, toggleTheme } = useTheme();
   const { user } = useAuthStore();
 
@@ -108,15 +107,13 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
               <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">Live</span>
             </div>
 
-            {!location.pathname.includes('/home') && (
-              <button
-                onClick={toggleTheme}
-                className="w-8 h-8 hidden lg:flex items-center justify-center rounded-lg text-text-muted hover:bg-border-secondary hover:text-text-main transition-colors"
-                aria-label="Toggle theme"
-              >
-                {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
-              </button>
-            )}
+            <button
+              onClick={toggleTheme}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-text-muted hover:bg-border-secondary hover:text-text-main transition-colors"
+              aria-label="Toggle theme"
+            >
+              {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
 
             <button
               onClick={() => navigate('/notifications')}

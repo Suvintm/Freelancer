@@ -66,9 +66,14 @@ const POSTS = [
 export default function Home() {
   const [isScrolling, setIsScrolling] = useState(false);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isLaptop, setIsLaptop] = useState(window.innerWidth >= 1024);
   const { isDarkMode } = useTheme();
+  const effectiveDarkMode = isDarkMode || isLaptop;
 
   useEffect(() => {
+    const handleResize = () => setIsLaptop(window.innerWidth >= 1024);
+    window.addEventListener('resize', handleResize);
+
     const mainContainer = document.querySelector('main');
     if (!mainContainer) return;
 
@@ -80,13 +85,14 @@ export default function Home() {
 
     mainContainer.addEventListener('scroll', handleScroll);
     return () => {
+      window.removeEventListener('resize', handleResize);
       mainContainer.removeEventListener('scroll', handleScroll);
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     };
   }, []);
 
   return (
-    <div className={`min-h-full transition-colors duration-300 ${isDarkMode ? 'bg-black text-white' : 'lg:bg-black lg:text-white bg-white text-black'}`}>
+    <div className={`min-h-full transition-colors duration-300 ${effectiveDarkMode ? 'bg-black text-white' : 'bg-white text-black'}`}>
       <div className="max-w-6xl mx-auto space-y-4 lg:space-y-10 pb-20 px-4 lg:px-6 pt-6 lg:pt-10">
       {/* ─── DESKTOP SPLIT VIEW (Banner & Stories Swapped for Mobile Parity) ─── */}
       <div className="flex flex-col lg:flex-row-reverse gap-6 lg:items-center">
@@ -100,7 +106,7 @@ export default function Home() {
         <section className="lg:w-1/2 -mx-4 lg:mx-0">
           <div className="hidden lg:block mb-8 px-1">
             <img 
-              src={isDarkMode ? darkLogo : lightLogo} 
+              src={effectiveDarkMode ? darkLogo : lightLogo} 
               alt="SuviX" 
               className="h-8 w-auto opacity-90 hover:opacity-100 transition-opacity" 
             />
@@ -110,9 +116,9 @@ export default function Home() {
               <div key={story._id} className="flex flex-col items-center gap-2 flex-shrink-0 cursor-pointer group relative">
                 <div className="relative w-[60px] h-[60px] lg:w-[68px] lg:h-[68px] flex items-center justify-center">
                   <svg className="absolute inset-0 w-full h-full -rotate-90 opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-110 group-hover:scale-100">
-                    <circle cx="50%" cy="50%" r="48%" className={`fill-none stroke-current stroke-1 ${isDarkMode ? 'text-white' : 'text-black'}`} strokeDasharray="4 8" strokeLinecap="round" />
+                    <circle cx="50%" cy="50%" r="48%" className={`fill-none stroke-current stroke-1 ${effectiveDarkMode ? 'text-white' : 'text-black'}`} strokeDasharray="4 8" strokeLinecap="round" />
                   </svg>
-                  <div className={`absolute inset-0 rounded-full p-[2px] transition-transform duration-500 group-active:scale-90 ${story.hasActive || story.isUser ? (isDarkMode ? 'bg-gradient-to-tr from-white to-zinc-500' : 'bg-gradient-to-tr from-black to-zinc-400') : 'bg-border-main opacity-40'}`}>
+                  <div className={`absolute inset-0 rounded-full p-[2px] transition-transform duration-500 group-active:scale-90 ${story.hasActive || story.isUser ? (effectiveDarkMode ? 'bg-gradient-to-tr from-white to-zinc-500' : 'bg-gradient-to-tr from-black to-zinc-400') : 'bg-border-main opacity-40'}`}>
                     <div className="w-full h-full rounded-full bg-container p-[2px]">
                       <img src={story.avatar} alt={story.username} className="w-full h-full rounded-full object-cover bg-border-secondary shadow-inner" />
                     </div>
@@ -147,7 +153,7 @@ export default function Home() {
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
-              className={`lg:border lg:border-border-main lg:rounded-[40px] overflow-hidden group lg:shadow-xl border-b border-border-main lg:border-b-0 pb-8 lg:pb-0 ${isDarkMode ? 'bg-black' : 'lg:bg-black bg-white shadow-2xl'}`}
+              className={`lg:border lg:border-border-main lg:rounded-[40px] overflow-hidden group lg:shadow-xl border-b border-border-main lg:border-b-0 pb-8 lg:pb-0 ${effectiveDarkMode ? 'bg-black' : 'bg-white shadow-2xl'}`}
             >
               <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
