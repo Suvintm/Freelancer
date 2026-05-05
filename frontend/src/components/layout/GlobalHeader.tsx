@@ -1,4 +1,5 @@
 import { Search, Bell, Plus, Sun, Moon, Menu } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme }  from '../../hooks/useTheme';
 import { useAuthStore } from '../../store/useAuthStore';
 import darkLogo  from '../../assets/darklogo.png';
@@ -6,6 +7,7 @@ import lightLogo from '../../assets/lightlogo.png';
 import auth1     from '../../assets/auth/auth_1.png';
 
 export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
+  const navigate = useNavigate();
   const { isDarkMode, toggleTheme } = useTheme();
   const { user } = useAuthStore();
 
@@ -49,6 +51,7 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
           </button>
 
           <button
+            onClick={() => navigate('/notifications')}
             className="p-1.5 rounded-lg text-text-muted hover:bg-border-secondary hover:text-text-main transition-colors relative"
             aria-label="Notifications"
           >
@@ -113,6 +116,7 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
             </button>
 
             <button
+              onClick={() => navigate('/notifications')}
               className="w-8 h-8 flex items-center justify-center rounded-lg text-text-muted hover:bg-border-secondary hover:text-text-main transition-colors relative"
               aria-label="Notifications"
             >
