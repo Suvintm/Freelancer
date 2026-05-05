@@ -5,9 +5,11 @@ import { GlobalHeader } from './GlobalHeader';
 import { RightSidebar } from './RightSidebar';
 import { BottomNav } from './BottomNav';
 import { MobileSidebar } from './MobileSidebar';
+import { useTheme } from '../hooks/useTheme';
 import { useState } from 'react';
 
 export const AppLayout = ({ children }: { children: React.ReactNode }) => {
+  const { isDarkMode } = useTheme();
   const location = useLocation();
   const isExplorePage = location.pathname === '/explore';
   const isNotificationsPage = location.pathname === '/notifications';
