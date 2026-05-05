@@ -5,7 +5,7 @@ import darkLogo  from '../../assets/darklogo.png';
 import lightLogo from '../../assets/lightlogo.png';
 import auth1     from '../../assets/auth/auth_1.png';
 
-export const GlobalHeader = () => {
+export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   const { isDarkMode, toggleTheme } = useTheme();
   const { user } = useAuthStore();
 
@@ -21,7 +21,11 @@ export const GlobalHeader = () => {
       {/* ── Mobile layout ─────────────────────────────────────────── */}
       <div className="lg:hidden flex items-center justify-between w-full gap-3">
         {/* Hamburger */}
-        <button className="p-1.5 rounded-lg text-text-muted hover:bg-border-secondary hover:text-text-main transition-colors" aria-label="Menu">
+        <button 
+          onClick={onMenuPress}
+          className="p-1.5 rounded-lg text-text-muted hover:bg-border-secondary hover:text-text-main transition-colors" 
+          aria-label="Menu"
+        >
           <Menu size={20} />
         </button>
 

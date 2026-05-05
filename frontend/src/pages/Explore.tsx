@@ -32,7 +32,7 @@ export default function Explore() {
     <div className={`relative flex flex-col transition-colors duration-500 ${isDarkMode ? 'bg-[#0A0A0A] text-white' : 'bg-white text-black'}`}>
       
       {/* 🌌 STICKY ATMOSPHERIC HUB */}
-      <div className="sticky top-0 z-50 h-[80px] overflow-hidden">
+      <div className="sticky top-0 z-50 h-[64px] overflow-hidden">
         <motion.div 
           animate={{ backgroundColor: currentTab.color }}
           className="absolute inset-0 opacity-15"
@@ -69,21 +69,21 @@ export default function Explore() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="py-6"
+              className="pt-2 pb-6"
             >
               {/* 👋 IDENTITY HEADER (Compressed) */}
-              <div className="mb-8 px-6 md:px-8">
+              <div className="mb-5 px-6 md:px-8">
                 <h1 className="text-2xl font-black tracking-tighter text-white">Explore SuviX</h1>
                 <p className="text-[10px] text-zinc-500 font-medium tracking-tight">Empowering your creative vision</p>
                 
-                <div className="mt-6">
+                <div className="mt-4">
                   <p className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-600">Today's Recommendation For</p>
                   <p className="text-xl font-black text-white mt-0.5">Suvin</p>
                 </div>
               </div>
 
               {/* 🎞️ TRENDING REELS (Compact) */}
-              <section className="mb-10">
+              <section className="mb-7">
                 <SectionHeader title="Trending Reels" actionText="Watch All" />
                 <div className="flex gap-4 overflow-x-auto px-6 md:px-8 no-scrollbar pb-2">
                   {[
@@ -106,7 +106,7 @@ export default function Explore() {
               </section>
 
               {/* 📺 SUGGESTED FOR YOU (Compact) */}
-              <section className="mb-10">
+              <section className="mb-7">
                 <SectionHeader title="Suggested for You" actionText="See All" />
                 <div className="flex gap-4 overflow-x-auto px-6 md:px-8 no-scrollbar pb-2">
                   {[
@@ -127,7 +127,7 @@ export default function Explore() {
               </section>
 
               {/* 👤 FEATURED CREATORS (Compact) */}
-              <section className="mb-10">
+              <section className="mb-7">
                 <SectionHeader title="Featured Creators" actionText="Discover All" />
                 <div className="flex gap-4 overflow-x-auto px-6 md:px-8 no-scrollbar pb-2">
                   {[
@@ -161,7 +161,7 @@ export default function Explore() {
               </section>
 
               {/* 📸 PREMIUM GEAR RENTALS (Compact) */}
-              <section className="mb-10">
+              <section className="mb-7">
                 <SectionHeader title="Premium Gear Rentals" actionText="Browse Catalog" />
                 <div className="flex gap-4 overflow-x-auto px-6 md:px-8 no-scrollbar pb-2">
                   {[

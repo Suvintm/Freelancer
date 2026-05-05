@@ -4,15 +4,20 @@ import { Sidebar } from './Sidebar';
 import { GlobalHeader } from './GlobalHeader';
 import { RightSidebar } from './RightSidebar';
 import { BottomNav } from './BottomNav';
+import { MobileSidebar } from './MobileSidebar';
+import { useState } from 'react';
 
 export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const isExplorePage = location.pathname === '/explore';
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
     <div className="h-screen w-full bg-page flex flex-col font-sans overflow-hidden">
       {/* Global Top Navbar (Fixed) - Hidden on Explore */}
-      {!isExplorePage && <GlobalHeader />}
+      {!isExplorePage && <GlobalHeader onMenuPress={() => setIsMobileMenuOpen(true)} />}
+
+      <MobileSidebar isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
 
       <div className="flex-1 flex overflow-hidden relative">
         {/* 1. Left Column: Identity Sidebar (Desktop Only) - Hidden on Explore */}
