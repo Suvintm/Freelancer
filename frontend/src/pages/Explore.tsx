@@ -117,7 +117,7 @@ export default function Explore() {
                       { id: 3, name: 'LensLife', views: '210K', img: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=400' },
                       { id: 4, name: 'Motion_Guru', views: '95K', img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=400' },
                     ].map(reel => (
-                      <div key={reel.id} className="relative h-[220px] lg:h-[320px] w-[150px] lg:w-full shrink-0 overflow-hidden rounded-[24px] border border-white/5 group shadow-xl">
+                      <div key={reel.id} className="relative aspect-[9/16] w-[130px] lg:w-full shrink-0 overflow-hidden rounded-[24px] border border-white/5 group shadow-xl">
                         <img src={reel.img} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                         <div className="absolute bottom-4 left-4">
