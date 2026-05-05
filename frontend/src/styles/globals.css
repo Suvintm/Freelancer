@@ -14,11 +14,44 @@
   --font-body:    "Inter",          ui-sans-serif, system-ui, sans-serif;
   --font-label:   "Space Grotesk",  ui-sans-serif, system-ui, sans-serif;
   --font-mono:    "JetBrains Mono", "Fira Code",   ui-monospace, monospace;
+
+  /* Color Mappings for Tailwind Utilities */
+  --color-page:            var(--bg-page);
+  --color-container:       var(--bg-container);
+  --color-card:            var(--bg-card);
+  --color-input:           var(--bg-input);
+  --color-text-main:       var(--text-primary);
+  --color-text-muted:      var(--text-secondary);
+  --color-text-dim:        var(--text-muted);
+  --color-border-main:     var(--border-primary);
+  --color-border-secondary: var(--border-secondary);
+  --color-accent-primary:  var(--accent-blue);
+  --color-accent-red:      var(--accent-red);
+  --color-accent-green:    var(--accent-green);
 }
 
-/* ── Color Palette (matches mobile Colors.ts) ───────────────────────────── */
+/* ── Color Palette (SuviX Design System) ────────────────────────────────── */
 :root {
-  /* Dark (default — matches mobile primary dark) */
+  /* LIGHT MODE (Default) */
+  --bg-page:          #FFFFFF;
+  --bg-container:     #F9FAFB;
+  --bg-card:          #FFFFFF;
+  --bg-input:         #FFFFFF;
+  --bg-sidebar:       #F8F9FA;
+  --text-primary:     #09090B;
+  --text-secondary:   #4B5563;
+  --text-muted:       #9CA3AF;
+  --border-primary:   #E5E7EB;
+  --border-secondary: #F3F4F6;
+  --accent:           #000000;
+  --accent-blue:      #3B82F6;
+  --accent-red:       #EF4444;
+  --accent-green:     #22C55E;
+  --accent-yellow:    #FFD700;
+}
+
+/* DARK MODE (Activated via .dark class) */
+.dark {
   --bg-page:          #09090B;
   --bg-container:     #0B0B0D;
   --bg-card:          #111114;
@@ -34,20 +67,6 @@
   --accent-red:       #EF4444;
   --accent-green:     #22C55E;
   --accent-yellow:    #FFD700;
-}
-
-/* Light theme (when needed) */
-.light {
-  --bg-page:          #FFFFFF;
-  --bg-container:     #F9FAFB;
-  --bg-card:          #FFFFFF;
-  --bg-input:         #FFFFFF;
-  --text-primary:     #09090B;
-  --text-secondary:   #4B5563;
-  --text-muted:       #9CA3AF;
-  --border-primary:   #E5E7EB;
-  --border-secondary: #F3F4F6;
-  --accent:           #000000;
 }
 
 /* ── Base Styles ────────────────────────────────────────────────────────── */
