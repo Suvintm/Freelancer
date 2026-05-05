@@ -36,7 +36,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
           <div className="w-full h-full bg-container lg:rounded-[48px] border-b lg:border border-border-main shadow-xl dark:shadow-2xl flex flex-col relative overflow-hidden">
             <ReactLenis className="flex-1 overflow-y-auto scrollbar-hide bg-page/30">
               <main className="w-full h-full">
-                <div className="max-w-screen-2xl mx-auto px-4 pt-1 lg:pt-3 lg:px-6 lg:pb-32 pb-32">
+                <div className={isExplorePage ? "w-full min-h-full" : "max-w-screen-2xl mx-auto px-4 pt-1 lg:pt-3 lg:px-6 lg:pb-32 pb-32"}>
                   {children}
                 </div>
               </main>

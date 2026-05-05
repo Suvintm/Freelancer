@@ -35,7 +35,7 @@ export default function Explore() {
     <div className="relative flex flex-col min-h-full bg-[#000000] text-white font-sans selection:bg-rose-500/30">
       
       {/* 🌌 ELITE ATMOSPHERIC HEADER (Mobile: Dynamic Tab Glow | Desktop: Clean Sub-nav) */}
-      <div className="sticky top-0 z-[60] lg:relative lg:z-10 lg:bg-black/80 lg:backdrop-blur-xl lg:border-b lg:border-white/5 lg:mb-8 lg:-mx-6 lg:px-6">
+      <div className="sticky top-0 z-[60] lg:relative lg:z-10 lg:bg-black/80 lg:backdrop-blur-xl lg:border-b lg:border-white/5 lg:mb-8">
         
         {/* 🌈 Dynamic Atmospheric Overlay (Mobile Only - Sync with native app) */}
         <div className="absolute inset-0 h-[220px] lg:hidden pointer-events-none">
@@ -58,21 +58,21 @@ export default function Explore() {
         </div>
 
         {/* Tab Bar */}
-        <div className="relative z-20 flex items-center px-6 lg:px-0 pt-6 lg:pt-4 lg:pb-2">
-          <div className="flex gap-2 overflow-x-auto no-scrollbar py-2">
+        <div className="relative z-20 flex items-center px-6 lg:px-10 pt-4 lg:pt-4 lg:pb-1">
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-2">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`
-                  flex items-center gap-2 rounded-full px-5 py-2.5 text-[11px] font-bold transition-all duration-300
+                  flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[10px] font-bold transition-all duration-300
                   ${activeTab === tab.id 
-                    ? 'bg-white text-black shadow-[0_8px_30px_rgba(255,255,255,0.2)] scale-105' 
-                    : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white'
+                    ? 'bg-white text-black shadow-[0_4px_20px_rgba(255,255,255,0.15)] scale-105' 
+                    : 'bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-white'
                   }
                 `}
               >
-                <tab.icon size={13} strokeWidth={2.5} />
+                <tab.icon size={11} strokeWidth={2.5} />
                 {tab.id.toUpperCase()}
               </button>
             ))}
@@ -80,14 +80,14 @@ export default function Explore() {
         </div>
 
         {/* Explore Hero Header */}
-        <div className="relative z-20 mt-6 lg:mt-6 px-6 lg:px-0 mb-4">
-          <h1 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">Explore SuviX</h1>
-          <p className="text-[12px] lg:text-[14px] text-zinc-400 font-medium">Empowering your creative vision</p>
+        <div className="relative z-20 mt-2 lg:mt-4 px-6 lg:px-10 mb-4">
+          <h1 className="text-xl lg:text-2xl font-bold text-white tracking-tight">Explore SuviX</h1>
+          <p className="text-[11px] lg:text-[13px] text-zinc-400 font-medium">Empowering your creative vision</p>
         </div>
       </div>
 
       {/* 🚀 MAIN CONTENT AREA */}
-      <div className="relative z-10 flex-1 lg:mt-6">
+      <div className="relative z-10 flex-1 lg:mt-2 px-6 lg:px-10">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
