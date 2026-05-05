@@ -10,12 +10,14 @@ import { useState } from 'react';
 export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const isExplorePage = location.pathname === '/explore';
+  const isNotificationsPage = location.pathname === '/notifications';
+  const isFullPage = isExplorePage || isNotificationsPage;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
     <div className="h-screen w-full bg-page flex flex-col font-sans overflow-hidden">
-      {/* Global Top Navbar (Fixed) - Hidden on Mobile for Explore */}
-      <div className={isExplorePage ? "hidden lg:block" : "block"}>
+      {/* Global Top Navbar (Fixed) - Hidden on Mobile for Explore/Notifications */}
+      <div className={isFullPage ? "hidden lg:block" : "block"}>
         <GlobalHeader onMenuPress={() => setIsMobileMenuOpen(true)} />
       </div>
 
@@ -36,7 +38,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
           <div className="w-full h-full bg-container lg:rounded-[48px] border-b lg:border border-border-main shadow-xl dark:shadow-2xl flex flex-col relative overflow-hidden">
             <ReactLenis className="flex-1 overflow-y-auto scrollbar-hide bg-page/30">
               <main className="w-full h-full">
-                <div className={isExplorePage ? "w-full min-h-full" : "max-w-screen-2xl mx-auto px-4 pt-1 lg:pt-3 lg:px-6 lg:pb-32 pb-32"}>
+                <div className={isFullPage ? "w-full min-h-full" : "max-w-screen-2xl mx-auto px-4 pt-1 lg:pt-3 lg:px-6 lg:pb-32 pb-32"}>
                   {children}
                 </div>
               </main>
