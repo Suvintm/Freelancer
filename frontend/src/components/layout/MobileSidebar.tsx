@@ -2,11 +2,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, LayoutGrid, Compass, Film, Briefcase, 
   MessageSquare, Wallet, Settings, Shield, 
-  HelpCircle, LogOut, ChevronRight
+  HelpCircle, LogOut
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
-import { useTheme } from '../../hooks/useTheme';
 import auth1 from '../../assets/auth/auth_1.png';
 
 interface MobileSidebarProps {
@@ -18,7 +17,6 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
-  const { isDarkMode } = useTheme();
 
   const NAV_SECTIONS = [
     {
