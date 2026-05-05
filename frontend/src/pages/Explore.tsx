@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutGrid, Users, Play, Camera, CheckCircle2, UserPlus, MoreHorizontal } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
@@ -8,7 +8,7 @@ import { useAuthStore } from '../store/useAuthStore';
 
 const SectionHeader = ({ title, actionText, onAction }: { title: string; actionText?: string; onAction?: () => void }) => (
   <div className="mb-4 flex items-center justify-between px-6 lg:px-0">
-    <h2 className="text-xl lg:text-2xl font-bold text-text-main">{title}</h2>
+    <h2 className="text-xl lg:text-2xl font-bold text-white">{title}</h2>
     {actionText && (
       <button onClick={onAction} className="text-[11px] font-bold text-rose-500 hover:text-rose-400 transition-colors uppercase tracking-wider">
         {actionText}
@@ -32,21 +32,28 @@ export default function Explore() {
   const currentTab = TABS.find(t => t.id === activeTab) || TABS[0];
 
   return (
-    <div className={`relative flex flex-col min-h-full transition-colors duration-500 ${isDarkMode ? 'bg-page text-white' : 'bg-white text-black'}`}>
+    <div className="relative flex flex-col min-h-full bg-[#0A0A0A] text-white selection:bg-rose-500/30">
       
       {/* 🌌 ELITE ATMOSPHERIC HEADER (Mobile: Native Sync | Desktop: Dashboard Style) */}
-      <div className="sticky top-0 z-[60] lg:relative lg:z-10 lg:bg-container/80 lg:backdrop-blur-xl lg:border-b lg:border-border-main lg:mb-8 lg:-mx-6 lg:px-6">
+      <div className="sticky top-0 z-[60] lg:relative lg:z-10 lg:bg-[#0A0A0A]/80 lg:backdrop-blur-xl lg:border-b lg:border-white/10 lg:mb-8 lg:-mx-6 lg:px-6 overflow-hidden">
+        
+        {/* 🎨 DYNAMIC COLOR OVERLAY (Atmospheric Glow) */}
+        <motion.div 
+          animate={{ backgroundColor: currentTab.color }}
+          className="absolute inset-0 opacity-10 blur-[100px] pointer-events-none transition-colors duration-1000"
+        />
+
         {/* Waterfall Gradient (Mobile Only) */}
-        <div className="absolute inset-0 h-[180px] lg:hidden pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A0A] via-[#0A0A0A]/80 to-transparent" />
+        <div className="absolute inset-0 h-[220px] lg:hidden pointer-events-none">
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A0A] via-[#0A0A0A]/60 to-transparent" />
           <motion.div 
             animate={{ backgroundColor: currentTab.color }}
-            className="absolute inset-0 opacity-15"
+            className="absolute inset-0 opacity-20"
           />
         </div>
 
         {/* Tab Bar */}
-        <div className="relative z-20 flex items-center px-6 lg:px-0 pt-4 lg:pt-4 lg:pb-2">
+        <div className="relative z-20 flex items-center px-6 lg:px-0 pt-8 lg:pt-4 lg:pb-2">
           <div className="flex gap-2 overflow-x-auto no-scrollbar py-2">
             {TABS.map((tab) => (
               <button
@@ -55,8 +62,8 @@ export default function Explore() {
                 className={`
                   flex items-center gap-2 rounded-full px-5 py-2.5 text-[11px] font-bold transition-all duration-300
                   ${activeTab === tab.id 
-                    ? 'bg-white text-black shadow-[0_8px_20px_rgba(255,255,255,0.15)] scale-105' 
-                    : 'bg-white/5 text-zinc-500 hover:bg-white/10'
+                    ? 'bg-white text-black shadow-[0_8px_20px_rgba(255,255,255,0.25)] scale-105' 
+                    : 'bg-white/10 text-zinc-400 hover:bg-white/20'
                   }
                 `}
               >
@@ -68,9 +75,9 @@ export default function Explore() {
         </div>
 
         {/* Explore Hero (Sync with app) */}
-        <div className="relative z-20 mt-4 lg:mt-6 px-6 lg:px-0 mb-4">
-          <h1 className="text-2xl lg:text-3xl font-bold text-text-main">Explore SuviX</h1>
-          <p className="text-[12px] lg:text-[14px] text-text-muted font-medium">Empowering your creative vision</p>
+        <div className="relative z-20 mt-4 lg:mt-6 px-6 lg:px-0 mb-6">
+          <h1 className="text-2xl lg:text-3xl font-bold text-white">Explore SuviX</h1>
+          <p className="text-[12px] lg:text-[14px] text-white/60 font-medium">Empowering your creative vision</p>
         </div>
       </div>
 
@@ -86,8 +93,8 @@ export default function Explore() {
             >
               {/* 👋 PERSONALIZED GREETING (Native App Style) */}
               <div className="mb-10 px-6 lg:px-0">
-                <p className="text-[12px] font-bold uppercase tracking-widest text-zinc-500">Today's Recommendation For</p>
-                <h2 className="text-3xl lg:text-4xl font-bold text-text-main mt-1">
+                <p className="text-[12px] font-bold uppercase tracking-widest text-white/40">Today's Recommendation For</p>
+                <h2 className="text-3xl lg:text-4xl font-bold text-white mt-1">
                   {user?.name?.split(' ')[0] || 'Suvin'}
                 </h2>
               </div>
@@ -138,10 +145,10 @@ export default function Explore() {
                         <div className="absolute bottom-4 right-4 rounded-xl bg-black/80 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold text-white">{video.time}</div>
                       </div>
                       <div className="px-1">
-                        <h3 className="text-[15px] lg:text-lg font-bold text-text-main line-clamp-1 leading-tight">{video.title}</h3>
+                        <h3 className="text-[15px] lg:text-lg font-bold text-white line-clamp-1 leading-tight">{video.title}</h3>
                         <div className="flex items-center gap-2 mt-2">
-                           <div className="w-6 h-6 rounded-full bg-border-secondary" />
-                           <p className="text-[11px] lg:text-[13px] font-semibold text-text-muted">{video.author} • {video.views} views</p>
+                           <div className="w-6 h-6 rounded-full bg-white/10" />
+                           <p className="text-[11px] lg:text-[13px] font-semibold text-white/60">{video.author} • {video.views} views</p>
                         </div>
                       </div>
                     </div>
@@ -157,7 +164,7 @@ export default function Explore() {
                     { id: 1, name: 'Souvik Suman', handle: '@souviksuman_pro', reach: '3.7M Reach', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400' },
                     { id: 2, name: 'Mayank Creative', handle: '@mayank_creative', reach: '1.5M Reach', img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400' },
                   ].map(creator => (
-                    <div key={creator.id} className="w-[280px] lg:w-full shrink-0 rounded-[32px] bg-container border border-border-main p-6 lg:p-8 backdrop-blur-xl relative overflow-hidden group">
+                    <div key={creator.id} className="w-[280px] lg:w-full shrink-0 rounded-[32px] bg-white/[0.03] border border-white/10 p-6 lg:p-8 backdrop-blur-xl relative overflow-hidden group">
                       {/* Brand Glow */}
                       <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 blur-3xl group-hover:bg-rose-500/10 transition-colors" />
                       
@@ -167,7 +174,7 @@ export default function Explore() {
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <p className="text-base lg:text-lg font-bold text-text-main truncate">{creator.name}</p>
+                            <p className="text-base lg:text-lg font-bold text-white truncate">{creator.name}</p>
                             <CheckCircle2 size={14} className="text-rose-500 fill-rose-500/20" />
                           </div>
                           <p className="text-[12px] font-bold text-rose-500 tracking-wide">{creator.handle}</p>
@@ -176,17 +183,17 @@ export default function Explore() {
 
                       <div className="flex items-center justify-between mb-6 px-1">
                         <div>
-                          <p className="text-lg font-bold text-text-main">{creator.reach}</p>
-                          <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Monthly Growth</p>
+                          <p className="text-lg font-bold text-white">{creator.reach}</p>
+                          <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Monthly Growth</p>
                         </div>
-                        <button className="p-3 rounded-2xl bg-border-secondary text-text-muted hover:text-text-main transition-colors">
+                        <button className="p-3 rounded-2xl bg-white/5 text-white/40 hover:text-white transition-colors">
                           <MoreHorizontal size={20} />
                         </button>
                       </div>
 
                       <div className="flex gap-3 relative z-10">
-                        <button className="flex-[2] rounded-2xl bg-text-main py-4 text-[12px] font-bold text-container hover:opacity-90 transition-all">Connect</button>
-                        <button className="flex-1 rounded-2xl bg-border-secondary border border-border-main py-4 flex items-center justify-center text-text-main hover:bg-border-main transition-colors">
+                        <button className="flex-[2] rounded-2xl bg-white py-4 text-[12px] font-bold text-black hover:opacity-90 transition-all">Connect</button>
+                        <button className="flex-1 rounded-2xl bg-white/5 border border-white/10 py-4 flex items-center justify-center text-white hover:bg-white/10 transition-colors">
                           <UserPlus size={18} />
                         </button>
                       </div>
