@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutGrid, Users, Play, Camera, CheckCircle2, UserPlus, MoreHorizontal } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
@@ -8,9 +8,9 @@ import { useAuthStore } from '../store/useAuthStore';
 
 const SectionHeader = ({ title, actionText, onAction }: { title: string; actionText?: string; onAction?: () => void }) => (
   <div className="mb-4 flex items-center justify-between px-6 lg:px-0">
-    <h2 className="text-xl lg:text-2xl font-black tracking-tight text-text-main">{title}</h2>
+    <h2 className="text-xl lg:text-2xl font-bold text-text-main">{title}</h2>
     {actionText && (
-      <button onClick={onAction} className="text-[11px] font-black text-rose-500 hover:text-rose-400 transition-colors uppercase tracking-[0.15em]">
+      <button onClick={onAction} className="text-[11px] font-bold text-rose-500 hover:text-rose-400 transition-colors uppercase tracking-wider">
         {actionText}
       </button>
     )}
@@ -53,14 +53,14 @@ export default function Explore() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`
-                  flex items-center gap-2 rounded-full px-5 py-2.5 text-[11px] font-black transition-all duration-300
+                  flex items-center gap-2 rounded-full px-5 py-2.5 text-[11px] font-bold transition-all duration-300
                   ${activeTab === tab.id 
                     ? 'bg-white text-black shadow-[0_8px_20px_rgba(255,255,255,0.15)] scale-105' 
                     : 'bg-white/5 text-zinc-500 hover:bg-white/10'
                   }
                 `}
               >
-                <tab.icon size={13} strokeWidth={3} />
+                <tab.icon size={13} strokeWidth={2.5} />
                 {tab.id.toUpperCase()}
               </button>
             ))}
@@ -69,8 +69,8 @@ export default function Explore() {
 
         {/* Explore Hero (Sync with app) */}
         <div className="relative z-20 mt-4 lg:mt-6 px-6 lg:px-0 mb-4">
-          <h1 className="text-2xl lg:text-3xl font-black tracking-tighter text-text-main">Explore SuviX</h1>
-          <p className="text-[12px] lg:text-[14px] text-text-muted font-semibold tracking-tight">Empowering your creative vision</p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-text-main">Explore SuviX</h1>
+          <p className="text-[12px] lg:text-[14px] text-text-muted font-medium">Empowering your creative vision</p>
         </div>
       </div>
 
@@ -86,8 +86,8 @@ export default function Explore() {
             >
               {/* 👋 PERSONALIZED GREETING (Native App Style) */}
               <div className="mb-10 px-6 lg:px-0">
-                <p className="text-[12px] font-black uppercase tracking-[0.2em] text-zinc-500">Today's Recommendation For</p>
-                <h2 className="text-3xl lg:text-4xl font-black text-text-main mt-1">
+                <p className="text-[12px] font-bold uppercase tracking-widest text-zinc-500">Today's Recommendation For</p>
+                <h2 className="text-3xl lg:text-4xl font-bold text-text-main mt-1">
                   {user?.name?.split(' ')[0] || 'Suvin'}
                 </h2>
               </div>
@@ -105,10 +105,10 @@ export default function Explore() {
                       <img src={reel.img} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                       <div className="absolute bottom-6 left-6">
-                        <p className="text-sm lg:text-lg font-black text-white">{reel.name}</p>
+                        <p className="text-sm lg:text-lg font-bold text-white">{reel.name}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-                          <p className="text-[10px] lg:text-[12px] font-bold text-white/60 tracking-wider">👁️ {reel.views}</p>
+                          <p className="text-[10px] lg:text-[12px] font-semibold text-white/60 tracking-wider">👁️ {reel.views}</p>
                         </div>
                       </div>
                     </div>
@@ -135,13 +135,13 @@ export default function Explore() {
                            </div>
                         </div>
 
-                        <div className="absolute bottom-4 right-4 rounded-xl bg-black/80 backdrop-blur-md px-2.5 py-1 text-[10px] font-black text-white">{video.time}</div>
+                        <div className="absolute bottom-4 right-4 rounded-xl bg-black/80 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold text-white">{video.time}</div>
                       </div>
                       <div className="px-1">
-                        <h3 className="text-[15px] lg:text-lg font-black text-text-main line-clamp-1 leading-tight tracking-tight">{video.title}</h3>
+                        <h3 className="text-[15px] lg:text-lg font-bold text-text-main line-clamp-1 leading-tight">{video.title}</h3>
                         <div className="flex items-center gap-2 mt-2">
                            <div className="w-6 h-6 rounded-full bg-border-secondary" />
-                           <p className="text-[11px] lg:text-[13px] font-bold text-text-muted">{video.author} • {video.views} views</p>
+                           <p className="text-[11px] lg:text-[13px] font-semibold text-text-muted">{video.author} • {video.views} views</p>
                         </div>
                       </div>
                     </div>
@@ -167,25 +167,25 @@ export default function Explore() {
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <p className="text-base lg:text-lg font-black text-text-main truncate tracking-tight">{creator.name}</p>
+                            <p className="text-base lg:text-lg font-bold text-text-main truncate">{creator.name}</p>
                             <CheckCircle2 size={14} className="text-rose-500 fill-rose-500/20" />
                           </div>
-                          <p className="text-[12px] font-black text-rose-500 tracking-wide">{creator.handle}</p>
+                          <p className="text-[12px] font-bold text-rose-500 tracking-wide">{creator.handle}</p>
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between mb-6 px-1">
                         <div>
-                          <p className="text-lg font-black text-text-main">{creator.reach}</p>
+                          <p className="text-lg font-bold text-text-main">{creator.reach}</p>
                           <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Monthly Growth</p>
                         </div>
                         <button className="p-3 rounded-2xl bg-border-secondary text-text-muted hover:text-text-main transition-colors">
-                          < MoreHorizontal size={20} />
+                          <MoreHorizontal size={20} />
                         </button>
                       </div>
 
                       <div className="flex gap-3 relative z-10">
-                        <button className="flex-[2] rounded-2xl bg-text-main py-4 text-[12px] font-black text-container hover:opacity-90 transition-all">Connect</button>
+                        <button className="flex-[2] rounded-2xl bg-text-main py-4 text-[12px] font-bold text-container hover:opacity-90 transition-all">Connect</button>
                         <button className="flex-1 rounded-2xl bg-border-secondary border border-border-main py-4 flex items-center justify-center text-text-main hover:bg-border-main transition-colors">
                           <UserPlus size={18} />
                         </button>
@@ -206,12 +206,12 @@ export default function Explore() {
                     <div key={item.id} className="relative h-[220px] lg:h-[300px] w-[220px] lg:w-full shrink-0 overflow-hidden rounded-[32px] border border-white/5 shadow-2xl group">
                       <img src={item.img} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
-                      <div className="absolute top-5 right-5 rounded-xl bg-green-500 px-3 py-1.5 text-[10px] font-black text-white shadow-lg">
+                      <div className="absolute top-5 right-5 rounded-xl bg-green-500 px-3 py-1.5 text-[10px] font-bold text-white shadow-lg">
                         {item.price}
                       </div>
                       <div className="absolute bottom-6 left-6">
-                        <p className="text-[10px] lg:text-[11px] font-black text-white/50 uppercase tracking-[0.2em]">{item.cat}</p>
-                        <p className="text-base lg:text-xl font-black text-white mt-1 tracking-tight">{item.name}</p>
+                        <p className="text-[10px] lg:text-[11px] font-bold text-white/50 uppercase tracking-widest">{item.cat}</p>
+                        <p className="text-base lg:text-xl font-bold text-white mt-1">{item.name}</p>
                       </div>
                     </div>
                   ))}
