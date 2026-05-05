@@ -15,7 +15,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="h-screen w-full bg-page flex flex-col font-sans overflow-hidden">
       {/* Global Top Navbar (Fixed) - Hidden on Mobile for Explore */}
-      <div className={isExplorePage ? "hidden lg:block" : ""}>
+      <div className={isExplorePage ? "hidden lg:block" : "block"}>
         <GlobalHeader onMenuPress={() => setIsMobileMenuOpen(true)} />
       </div>
 
