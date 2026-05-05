@@ -172,7 +172,7 @@ export default function Explore() {
                       { id: 2, name: 'Mayank Creative', handle: '@mayank_creative', reach: '1.5M', img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400' },
                       { id: 3, name: 'Rohan Pro', handle: '@rohan_vfx', reach: '800K', img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=400' },
                     ].map(creator => (
-                      <div key={creator.id} className={`w-[240px] lg:w-full shrink-0 rounded-[24px] border border-white/5 p-5 lg:p-6 backdrop-blur-xl relative overflow-hidden group transition-colors duration-300 ${isDarkMode ? 'bg-black' : 'bg-white shadow-xl'}`}>
+                      <div key={creator.id} className="w-[240px] lg:w-full shrink-0 rounded-[24px] border border-white/5 p-5 lg:p-6 backdrop-blur-xl relative overflow-hidden group bg-black shadow-2xl transition-all">
                         <div className="absolute top-0 right-0 w-16 h-16 bg-rose-500/5 blur-3xl group-hover:bg-rose-500/10 transition-colors" />
                         
                         <div className="flex items-center gap-4 mb-5 relative z-10">
