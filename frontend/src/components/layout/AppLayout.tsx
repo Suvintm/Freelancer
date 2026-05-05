@@ -6,9 +6,9 @@ import { RightSidebar } from './RightSidebar';
 import { BottomNav } from './BottomNav';
 import { MobileSidebar } from './MobileSidebar';
 import { useTheme } from '../hooks/useTheme';
-import { useState } from 'react';
+import { useState, ReactNode } from 'react';
 
-export const AppLayout = ({ children }: { children: React.ReactNode }) => {
+export const AppLayout = ({ children }: { children: ReactNode }) => {
   const { isDarkMode } = useTheme();
   const location = useLocation();
   const isExplorePage = location.pathname === '/explore';
