@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutGrid, Users, Play, Camera, CheckCircle2, UserPlus, MoreHorizontal } from 'lucide-react';
-import { useTheme } from '../hooks/useTheme';
 import { useAuthStore } from '../store/useAuthStore';
 
 // ── Sub-components ──────────────────────────────────────────────────────────
@@ -19,7 +18,6 @@ const SectionHeader = ({ title, actionText, onAction }: { title: string; actionT
 
 export default function Explore() {
   const [activeTab, setActiveTab] = useState('All');
-  const { isDarkMode } = useTheme();
   const { user } = useAuthStore();
 
   const TABS = [

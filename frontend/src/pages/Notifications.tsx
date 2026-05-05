@@ -13,9 +13,22 @@ const NOTIFICATIONS = [
   { id: 5, type: 'verified', user: { name: 'SuviX Support', avatar: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=800' }, content: 'Your account has been officially verified', time: '5h', isVerified: true },
 ];
 
+interface NotificationItemData {
+  id: number;
+  type: string;
+  user: {
+    name: string;
+    avatar: string;
+  };
+  content: string;
+  time: string;
+  preview?: string;
+  isVerified: boolean;
+}
+
 // ── Components ─────────────────────────────────────────────────────────────
 
-const NotificationItem = ({ item, isDarkMode }: { item: any; isDarkMode: boolean }) => {
+const NotificationItem = ({ item, isDarkMode }: { item: NotificationItemData; isDarkMode: boolean }) => {
   const getIcon = () => {
     switch (item.type) {
       case 'like': return <Heart className="text-rose-500 fill-rose-500" size={16} />;
