@@ -87,7 +87,7 @@ export default function Explore() {
       </div>
 
       {/* 🚀 MAIN CONTENT AREA */}
-      <div className="relative z-10 flex-1 lg:mt-2 px-6 lg:px-10">
+      <div className="relative z-10 flex-1 lg:mt-2 px-0 lg:px-10">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
