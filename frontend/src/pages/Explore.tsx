@@ -58,14 +58,14 @@ export default function Explore() {
         </div>
 
         {/* Tab Bar */}
-        <div className="relative z-20 flex items-center px-6 lg:px-10 pt-4 lg:pt-4 lg:pb-1">
-          <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-2">
+        <div className="relative z-20 flex items-center px-0 lg:px-10 pt-4 lg:pt-4 lg:pb-1">
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-2 px-6 lg:px-0">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`
-                  flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[10px] font-bold transition-all duration-300
+                  flex items-center gap-1.5 rounded-full px-2.5 py-1 lg:px-3.5 lg:py-1.5 text-[9px] lg:text-[10px] font-bold transition-all duration-300
                   ${activeTab === tab.id 
                     ? 'bg-white text-black shadow-[0_4px_20px_rgba(255,255,255,0.15)] scale-105' 
                     : 'bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-white'
