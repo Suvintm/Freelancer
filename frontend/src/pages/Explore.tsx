@@ -35,7 +35,7 @@ export default function Explore() {
     <div className="relative flex flex-col min-h-full bg-[#000000] text-white font-sans selection:bg-rose-500/30">
       
       {/* 🌌 ELITE ATMOSPHERIC HEADER (Mobile: Dynamic Tab Glow | Desktop: Clean Sub-nav) */}
-      <div className="sticky top-0 z-[60] lg:relative lg:z-10 lg:bg-black/80 lg:backdrop-blur-xl lg:border-b lg:border-white/5 lg:mb-8">
+      <div className="sticky top-0 z-[60] lg:relative lg:z-10 lg:bg-black/80 lg:backdrop-blur-xl lg:border-b lg:border-white/5 lg:mb-4">
         
         {/* 🌈 Dynamic Atmospheric Overlay (Mobile Only - Sync with native app) */}
         <div className="absolute inset-0 h-[220px] lg:hidden pointer-events-none">
@@ -108,22 +108,23 @@ export default function Explore() {
                 </div>
 
                 {/* 🎞️ TRENDING REELS */}
-                <section className="mb-14">
+                <section className="mb-10">
                   <SectionHeader title="Trending Reels" actionText="Watch All" />
-                  <div className="flex gap-4 overflow-x-auto px-6 lg:px-0 no-scrollbar pb-4 lg:grid lg:grid-cols-3 lg:gap-8">
+                  <div className="flex gap-3 overflow-x-auto px-6 lg:px-0 no-scrollbar pb-4 lg:grid lg:grid-cols-4 lg:gap-6">
                     {[
                       { id: 1, name: 'VFX_Alex', views: '145K', img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400' },
                       { id: 2, name: 'FilmPro', views: '82K', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400' },
                       { id: 3, name: 'LensLife', views: '210K', img: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=400' },
+                      { id: 4, name: 'Motion_Guru', views: '95K', img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=400' },
                     ].map(reel => (
-                      <div key={reel.id} className="relative h-[280px] lg:h-[400px] w-[180px] lg:w-full shrink-0 overflow-hidden rounded-[32px] border border-white/5 group shadow-2xl">
+                      <div key={reel.id} className="relative h-[220px] lg:h-[320px] w-[150px] lg:w-full shrink-0 overflow-hidden rounded-[24px] border border-white/5 group shadow-xl">
                         <img src={reel.img} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
-                        <div className="absolute bottom-6 left-6">
-                          <p className="text-sm lg:text-lg font-bold text-white">{reel.name}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-                            <p className="text-[10px] lg:text-[12px] font-semibold text-zinc-400 tracking-wider">👁️ {reel.views}</p>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                        <div className="absolute bottom-4 left-4">
+                          <p className="text-xs lg:text-base font-bold text-white">{reel.name}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <div className="w-1 h-1 rounded-full bg-rose-500 animate-pulse" />
+                            <p className="text-[9px] lg:text-[11px] font-semibold text-zinc-400">👁️ {reel.views}</p>
                           </div>
                         </div>
                       </div>
@@ -132,31 +133,29 @@ export default function Explore() {
                 </section>
 
                 {/* 📺 SUGGESTED FOR YOU */}
-                <section className="mb-14">
+                <section className="mb-10">
                   <SectionHeader title="Suggested for You" actionText="See All" />
-                  <div className="flex gap-5 overflow-x-auto px-6 lg:px-0 no-scrollbar pb-6 lg:grid lg:grid-cols-2 lg:gap-10">
+                  <div className="flex gap-4 overflow-x-auto px-6 lg:px-0 no-scrollbar pb-6 lg:grid lg:grid-cols-3 lg:gap-8">
                     {[
                       { id: 1, title: 'Directing Music Videos', author: 'Director X', views: '450K', time: '12:45', img: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=800' },
                       { id: 2, title: 'Cinematic Lighting 101', author: 'LightMaster', views: '220K', time: '08:15', img: 'https://images.unsplash.com/photo-1536240478700-b86d35fd733c?q=80&w=800' },
+                      { id: 3, title: 'VFX Speed Art', author: 'FlowArt', views: '310K', time: '05:20', img: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=800' },
                     ].map(video => (
-                      <div key={video.id} className="w-[280px] lg:w-full shrink-0 group">
-                        <div className="relative aspect-[16/10] overflow-hidden rounded-[28px] border border-white/5 mb-4 shadow-xl">
+                      <div key={video.id} className="w-[240px] lg:w-full shrink-0 group">
+                        <div className="relative aspect-video overflow-hidden rounded-[20px] border border-white/5 mb-3 shadow-lg">
                           <img src={video.img} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                          
-                          {/* Play Overlay */}
-                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                             <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center text-black">
-                               <Play size={24} fill="currentColor" />
+                          <div className="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                             <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-black">
+                               <Play size={18} fill="currentColor" />
                              </div>
                           </div>
-
-                          <div className="absolute bottom-4 right-4 rounded-xl bg-black/80 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold text-white">{video.time}</div>
+                          <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 backdrop-blur-md px-2 py-0.5 text-[9px] font-bold text-white">{video.time}</div>
                         </div>
                         <div className="px-1">
-                          <h3 className="text-[15px] lg:text-lg font-bold text-white line-clamp-1 leading-tight">{video.title}</h3>
-                          <div className="flex items-center gap-2 mt-2">
-                             <div className="w-6 h-6 rounded-full bg-zinc-800" />
-                             <p className="text-[11px] lg:text-[13px] font-semibold text-zinc-500">{video.author} • {video.views} views</p>
+                          <h3 className="text-[13px] lg:text-[15px] font-bold text-white line-clamp-1 leading-tight">{video.title}</h3>
+                          <div className="flex items-center gap-2 mt-1.5">
+                             <div className="w-5 h-5 rounded-full bg-zinc-800" />
+                             <p className="text-[10px] lg:text-[12px] font-semibold text-zinc-500">{video.author} • {video.views}</p>
                           </div>
                         </div>
                       </div>
@@ -165,43 +164,44 @@ export default function Explore() {
                 </section>
 
                 {/* 👤 FEATURED CREATORS */}
-                <section className="mb-14">
+                <section className="mb-10">
                   <SectionHeader title="Featured Creators" actionText="Discover All" />
-                  <div className="flex gap-5 overflow-x-auto px-6 lg:px-0 no-scrollbar pb-6 lg:grid lg:grid-cols-3 lg:gap-8">
+                  <div className="flex gap-4 overflow-x-auto px-6 lg:px-0 no-scrollbar pb-6 lg:grid lg:grid-cols-3 lg:gap-8">
                     {[
-                      { id: 1, name: 'Souvik Suman', handle: '@souviksuman_pro', reach: '3.7M Reach', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400' },
-                      { id: 2, name: 'Mayank Creative', handle: '@mayank_creative', reach: '1.5M Reach', img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400' },
+                      { id: 1, name: 'Souvik Suman', handle: '@souviksuman_pro', reach: '3.7M', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400' },
+                      { id: 2, name: 'Mayank Creative', handle: '@mayank_creative', reach: '1.5M', img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400' },
+                      { id: 3, name: 'Rohan Pro', handle: '@rohan_vfx', reach: '800K', img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=400' },
                     ].map(creator => (
-                      <div key={creator.id} className="w-[280px] lg:w-full shrink-0 rounded-[32px] bg-[#0A0A0A] border border-white/5 p-6 lg:p-8 backdrop-blur-xl relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 blur-3xl group-hover:bg-rose-500/10 transition-colors" />
+                      <div key={creator.id} className="w-[240px] lg:w-full shrink-0 rounded-[24px] bg-[#0A0A0A] border border-white/5 p-5 lg:p-6 backdrop-blur-xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-rose-500/5 blur-3xl group-hover:bg-rose-500/10 transition-colors" />
                         
-                        <div className="flex items-center gap-5 mb-6 relative z-10">
-                          <div className="h-16 w-16 overflow-hidden rounded-2xl border-2 border-rose-500 p-0.5">
-                            <img src={creator.img} className="h-full w-full rounded-[14px] object-cover" />
+                        <div className="flex items-center gap-4 mb-5 relative z-10">
+                          <div className="h-12 w-12 overflow-hidden rounded-xl border-2 border-rose-500 p-0.5">
+                            <img src={creator.img} className="h-full w-full rounded-[10px] object-cover" />
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
-                              <p className="text-base lg:text-lg font-bold text-white truncate tracking-tight">{creator.name}</p>
-                              <CheckCircle2 size={14} className="text-rose-500 fill-rose-500/20" />
+                              <p className="text-sm lg:text-base font-bold text-white truncate">{creator.name}</p>
+                              <CheckCircle2 size={12} className="text-rose-500 fill-rose-500/20" />
                             </div>
-                            <p className="text-[12px] font-bold text-rose-500 tracking-wide">{creator.handle}</p>
+                            <p className="text-[11px] font-bold text-rose-500">{creator.handle}</p>
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between mb-6 px-1">
+                        <div className="flex items-center justify-between mb-5 px-1">
                           <div>
-                            <p className="text-lg font-bold text-white">{creator.reach}</p>
-                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Monthly Growth</p>
+                            <p className="text-base font-bold text-white">{creator.reach}</p>
+                            <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Reach</p>
                           </div>
-                          <button className="p-3 rounded-2xl bg-white/5 text-zinc-400 hover:text-white transition-colors">
-                            <MoreHorizontal size={20} />
+                          <button className="p-2 rounded-xl bg-white/5 text-zinc-400 hover:text-white transition-colors">
+                            <MoreHorizontal size={18} />
                           </button>
                         </div>
 
-                        <div className="flex gap-3 relative z-10">
-                          <button className="flex-[2] rounded-2xl bg-white py-4 text-[12px] font-bold text-black hover:opacity-90 transition-all">Connect</button>
-                          <button className="flex-1 rounded-2xl bg-white/5 border border-white/10 py-4 flex items-center justify-center text-white hover:bg-white/10 transition-colors">
-                            <UserPlus size={18} />
+                        <div className="flex gap-2 relative z-10">
+                          <button className="flex-[2] rounded-xl bg-white py-3 text-[11px] font-bold text-black hover:opacity-90 transition-all">Connect</button>
+                          <button className="flex-1 rounded-xl bg-white/5 border border-white/10 py-3 flex items-center justify-center text-white hover:bg-white/10 transition-colors">
+                            <UserPlus size={16} />
                           </button>
                         </div>
                       </div>
@@ -212,20 +212,22 @@ export default function Explore() {
                 {/* 📸 PREMIUM GEAR RENTALS */}
                 <section className="mb-20">
                   <SectionHeader title="Premium Gear Rentals" actionText="Browse Catalog" />
-                  <div className="flex gap-5 overflow-x-auto px-6 lg:px-0 no-scrollbar pb-6 lg:grid lg:grid-cols-3 lg:gap-8">
+                  <div className="flex gap-4 overflow-x-auto px-6 lg:px-0 no-scrollbar pb-6 lg:grid lg:grid-cols-4 lg:gap-6">
                     {[
-                      { id: 1, name: 'Sony FX3 Cinema', price: '₹2500/day', cat: 'CAMERA', img: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=400' },
-                      { id: 2, name: 'DJI Ronin RS3', price: '₹1200/day', cat: 'GIMBAL', img: 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?q=80&w=400' },
+                      { id: 1, name: 'Sony FX3', price: '₹2500', cat: 'CAMERA', img: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=400' },
+                      { id: 2, name: 'DJI RS3', price: '₹1200', cat: 'GIMBAL', img: 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?q=80&w=400' },
+                      { id: 3, name: 'Aputure 600d', price: '₹1800', cat: 'LIGHT', img: 'https://images.unsplash.com/photo-1536240478700-b86d35fd733c?q=80&w=800' },
+                      { id: 4, name: 'Zeiss 35mm', price: '₹1500', cat: 'LENS', img: 'https://images.unsplash.com/photo-1617005082133-548c4ea2e935?q=80&w=400' },
                     ].map(item => (
-                      <div key={item.id} className="relative h-[220px] lg:h-[300px] w-[220px] lg:w-full shrink-0 overflow-hidden rounded-[32px] border border-white/5 shadow-2xl group">
+                      <div key={item.id} className="relative h-[160px] lg:h-[220px] w-[160px] lg:w-full shrink-0 overflow-hidden rounded-[24px] border border-white/5 shadow-xl group">
                         <img src={item.img} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
-                        <div className="absolute top-5 right-5 rounded-xl bg-green-500 px-3 py-1.5 text-[10px] font-bold text-white shadow-lg">
+                        <div className="absolute top-4 right-4 rounded-lg bg-green-500 px-2 py-1 text-[9px] font-bold text-white shadow-lg">
                           {item.price}
                         </div>
-                        <div className="absolute bottom-6 left-6">
-                          <p className="text-[10px] lg:text-[11px] font-bold text-zinc-500 uppercase tracking-widest">{item.cat}</p>
-                          <p className="text-base lg:text-xl font-bold text-white mt-1">{item.name}</p>
+                        <div className="absolute bottom-4 left-4">
+                          <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">{item.cat}</p>
+                          <p className="text-xs lg:text-sm font-bold text-white mt-0.5">{item.name}</p>
                         </div>
                       </div>
                     ))}
