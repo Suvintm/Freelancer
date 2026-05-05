@@ -13,6 +13,7 @@ import PlaceholderPage from './pages/PlaceholderPage';
 import Maintenance from './pages/Maintenance';
 import OAuthSuccess from './pages/OAuthSuccess';
 import CompleteProfile from './pages/CompleteProfile';
+import Notifications from './pages/Notifications';
 import { AppLayout } from './components/layout/AppLayout';
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
