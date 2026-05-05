@@ -86,7 +86,8 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4 lg:space-y-10 pb-20">
+    <div className={`min-h-full transition-colors duration-300 ${isDarkMode ? 'bg-black text-white' : 'lg:bg-black lg:text-white bg-white text-black'}`}>
+      <div className="max-w-6xl mx-auto space-y-4 lg:space-y-10 pb-20 px-4 lg:px-6 pt-6 lg:pt-10">
       {/* ─── DESKTOP SPLIT VIEW (Banner & Stories Swapped for Mobile Parity) ─── */}
       <div className="flex flex-col lg:flex-row-reverse gap-6 lg:items-center">
         
@@ -146,7 +147,7 @@ export default function Home() {
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
-              className={`lg:border lg:border-border-main lg:rounded-[40px] overflow-hidden group lg:shadow-xl border-b border-border-main lg:border-b-0 pb-8 lg:pb-0 ${isDarkMode ? 'bg-black' : 'bg-white shadow-2xl'}`}
+              className={`lg:border lg:border-border-main lg:rounded-[40px] overflow-hidden group lg:shadow-xl border-b border-border-main lg:border-b-0 pb-8 lg:pb-0 ${isDarkMode ? 'bg-black' : 'lg:bg-black bg-white shadow-2xl'}`}
             >
               <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">

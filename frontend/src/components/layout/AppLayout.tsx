@@ -35,7 +35,11 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
               MOBILE: Edge-to-edge (no margins, no rounded corners)
               DESKTOP: Floating canvas (margins + rounded corners)
           */}
-          <div className={`w-full h-full lg:rounded-[48px] border-b lg:border border-border-main shadow-xl dark:shadow-2xl flex flex-col relative overflow-hidden transition-colors duration-300 ${isNotificationsPage || isExplorePage || location.pathname === '/home' ? 'bg-black' : 'bg-container'}`}>
+          <div className={`w-full h-full lg:rounded-[48px] border-b lg:border border-border-main shadow-xl dark:shadow-2xl flex flex-col relative overflow-hidden transition-colors duration-300 ${
+            location.pathname === '/home' 
+              ? (isDarkMode ? 'bg-black' : 'lg:bg-black bg-container')
+              : (isNotificationsPage || isExplorePage ? 'bg-black' : 'bg-container')
+          }`}>
             <ReactLenis className="flex-1 overflow-y-auto scrollbar-hide bg-page/30">
               <main className="w-full h-full">
                 <div className={isFullPage ? "w-full min-h-full" : "max-w-screen-2xl mx-auto px-4 pt-1 lg:pt-3 lg:px-6 lg:pb-32 pb-32"}>
