@@ -149,6 +149,16 @@ function App() {
           } 
         />
         <Route 
+          path="/notifications" 
+          element={
+            <AuthGuard>
+              <AppLayout>
+                <Notifications />
+              </AppLayout>
+            </AuthGuard>
+          } 
+        />
+        <Route 
           path="/profile" 
           element={
             <AuthGuard>
