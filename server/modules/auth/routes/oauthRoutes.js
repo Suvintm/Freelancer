@@ -73,11 +73,16 @@ router.get(
             const user = req.user;
 
             // SMART REDIRECT: Detect if we are on production or local
-            const host = req.get('host');
+            const host = req.get('host') || '';
             const isProd = host.includes('suvix.in') || process.env.NODE_ENV === 'production';
+            
+            // 🛡️ [RESILIENCE] In production, always use the secure domain
             const redirectBase = isProd ? "https://suvix.in" : (process.env.FRONTEND_URL || "http://localhost:5173");
 
+            logger.info(`[OAuth] Redirecting to ${redirectBase} (Host: ${host}, isProd: ${isProd})`);
+
             if (!user) {
+                logger.warn(`[OAuth] No user found in Passport request`);
                 return res.redirect(`${redirectBase}/login?error=no_user`);
             }
 
@@ -130,9 +135,12 @@ router.post("/exchange-code", authLimiter, async (req, res) => {
         if (!code) return res.status(400).json({ success: false, message: "Exchange code required" });
 
         const redisKey = `otc:${code}`;
+        logger.debug(`[OAuth] Exchange attempt for code: ${code.substring(0, 8)}...`);
+
         const storedData = await redis.get(redisKey);
 
         if (!storedData) {
+            logger.warn(`[OAuth] Exchange failed: Code not found or expired: ${code.substring(0, 8)}...`);
             return res.status(401).json({ success: false, message: "Invalid or expired exchange code" });
         }
 
@@ -153,38 +161,35 @@ router.post("/exchange-code", authLimiter, async (req, res) => {
         }
 
         const { userId, accessToken: googleAccessToken } = data;
+        logger.info(`[OAuth] Existing user exchange for ID: ${userId}`);
 
-        // Fetch user with full profile context
-        const user = await prisma.user.findUnique({
+        // Fetch user with FULL production-grade include (ensures consistency)
+        const userRaw = await prisma.user.findUnique({
             where: { id: userId },
-            include: { 
-              profile: {
-                include: { roles: { include: { subCategory: { include: { category: true } } } } }
-              },
-              youtubeProfiles: true 
-            }
+            include: USER_INCLUDE
         });
 
-        if (!user) throw new Error("User associated with code no longer exists");
+        if (!userRaw) {
+            logger.error(`[OAuth] Exchange failed: User ${userId} not found in DB`);
+            throw new Error("User associated with code no longer exists");
+        }
 
-        // Generate production-grade JWTs
+        // Generate tokens using the standard helper (ensures identity consistency)
         const familyId = crypto.randomUUID();
-        const accessToken = generateAccessToken({ id: user.id, role: user.role });
-        const refreshToken = generateRefreshToken({ id: user.id, familyId });
+        const { accessToken, refreshToken } = generateUserTokens(userRaw, familyId);
         const hashedToken = hashToken(refreshToken);
 
-        // CAPTURE METADATA
+        // Capture metadata for session
         const userAgent = req.headers["user-agent"] || "OAuth Client";
         const ip = req.ip || req.connection.remoteAddress;
 
         const sessionData = JSON.stringify({
-            userId: user.id,
+            userId: userRaw.id,
             familyId,
             metadata: { userAgent, ip, lastActive: new Date().toISOString() }
         });
 
-        // ATOMIC SESSION STORAGE (1 Hit)
-        // 🛡️ [RESILIENCE] Skip Redis session if limit is hit
+        // Store session in Redis
         try {
             await redis.pipeline()
                 .set(`refresh_token:${hashedToken}`, sessionData, "EX", 7 * 24 * 60 * 60)
@@ -192,32 +197,32 @@ router.post("/exchange-code", authLimiter, async (req, res) => {
                 .expire(`token_family:${familyId}`, 7 * 24 * 60 * 60)
                 .exec();
         } catch (err) {
-            logger.error(`⚠️ [REDIS-FAILURE] Session storage skipped in exchange-code: ${err.message}`);
+            logger.error(`⚠️ [REDIS-FAILURE] Session storage failed in exchange-code: ${err.message}`);
         }
 
-        logger.info(`[SECURITY] OTC Exchange Success: User ${user.id} - New family: ${familyId}`);
+        // Use standard formatter for response consistency
+        const formattedUser = formatAuthResponse(userRaw);
+
+        logger.info(`[SECURITY] OTC Exchange Success: User ${userRaw.id} - New family: ${familyId}`);
 
         res.status(200).json({
             success: true,
             token: accessToken,
             refreshToken,
             googleAccessToken,
-            user: {
-                id: user.id,
-                email: user.email,
-                name: user.profile?.name,
-                username: user.profile?.username,
-                isOnboarded: user.is_onboarded,
-                isVerified: user.is_verified,
-                createdAt: user.created_at,
-                role: user.role,
-                profilePicture: user.profile?.profile_picture,
-                youtubeProfile: user.youtubeProfiles
-            }
+            user: formattedUser
         });
     } catch (error) {
-        logger.error("OTC Exchange fail:", error);
-        res.status(500).json({ success: false, message: "Security handoff failed" });
+        logger.error("❌ OTC Exchange Critical Failure:", {
+            message: error.message,
+            stack: error.stack,
+            code: req.body.code?.substring(0, 8)
+        });
+        res.status(500).json({ 
+            success: false, 
+            message: "Security handoff failed",
+            debug: process.env.NODE_ENV === 'development' ? error.message : undefined 
+        });
     }
 });
 
