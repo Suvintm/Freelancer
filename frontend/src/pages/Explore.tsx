@@ -35,7 +35,7 @@ export default function Explore() {
     <div className={`relative flex flex-col min-h-full transition-colors duration-500 ${isDarkMode ? 'bg-page text-white' : 'bg-white text-black'}`}>
       
       {/* 🌌 ELITE ATMOSPHERIC HEADER (Mobile: Native Sync | Desktop: Dashboard Style) */}
-      <div className="sticky top-0 z-[60] lg:relative lg:z-10">
+      <div className="sticky top-0 z-[60] lg:relative lg:z-10 lg:bg-container/80 lg:backdrop-blur-xl lg:border-b lg:border-border-main lg:mb-8 lg:-mx-6 lg:px-6">
         {/* Waterfall Gradient (Mobile Only) */}
         <div className="absolute inset-0 h-[180px] lg:hidden pointer-events-none">
           <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A0A] via-[#0A0A0A]/80 to-transparent" />
@@ -46,7 +46,7 @@ export default function Explore() {
         </div>
 
         {/* Tab Bar */}
-        <div className="relative z-20 flex items-center px-6 lg:px-0 pt-4 lg:pt-0">
+        <div className="relative z-20 flex items-center px-6 lg:px-0 pt-4 lg:pt-4 lg:pb-2">
           <div className="flex gap-2 overflow-x-auto no-scrollbar py-2">
             {TABS.map((tab) => (
               <button
@@ -67,10 +67,10 @@ export default function Explore() {
           </div>
         </div>
 
-        {/* Explore Hero (Mobile Only - Sync with app) */}
-        <div className="lg:hidden relative z-20 mt-4 px-6">
-          <h1 className="text-2xl font-black tracking-tighter text-white">Explore SuviX</h1>
-          <p className="text-[12px] text-white/70 font-semibold tracking-tight">Empowering your creative vision</p>
+        {/* Explore Hero (Sync with app) */}
+        <div className="relative z-20 mt-4 lg:mt-6 px-6 lg:px-0 mb-4">
+          <h1 className="text-2xl lg:text-3xl font-black tracking-tighter text-text-main">Explore SuviX</h1>
+          <p className="text-[12px] lg:text-[14px] text-text-muted font-semibold tracking-tight">Empowering your creative vision</p>
         </div>
       </div>
 
