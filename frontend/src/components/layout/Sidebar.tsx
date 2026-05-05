@@ -2,6 +2,7 @@ import { ReactLenis }       from 'lenis/react';
 import { Plus, ExternalLink, PlayCircle, Eye, Video, TrendingUp, Settings } from 'lucide-react';
 import { useNavigate }      from 'react-router-dom';
 import { useAuthStore }     from '../../store/useAuthStore';
+import { useTheme }         from '../../hooks/useTheme';
 import auth1                from '../../assets/auth/auth_1.png';
 
 
@@ -29,6 +30,7 @@ function StatBubble({ value, label }: { value: string; label: string }) {
 export const Sidebar = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { isDarkMode } = useTheme();
 
   const CHANNEL = {
     name:           user?.name || 'User',
@@ -50,10 +52,10 @@ export const Sidebar = () => {
 
   return (
     <ReactLenis className="w-full h-full flex flex-col overflow-y-auto scrollbar-hide">
-      <div className="flex flex-col flex-1 px-4 py-5 gap-5">
+      <div className="flex flex-col h-full gap-6 p-6">
 
         {/* ── 1. User Identity Card ─────────────────────────────────── */}
-        <div className="rounded-2xl border border-border-main bg-container p-4 space-y-3">
+        <div className={`rounded-[32px] border border-border-main p-6 transition-all duration-500 shadow-xl lg:shadow-none ${isDarkMode ? 'bg-black' : 'bg-white shadow-2xl border-zinc-100'} space-y-3`}>
 
           {/* Avatar + name + role */}
           <div className="flex items-center gap-3">
@@ -113,10 +115,10 @@ export const Sidebar = () => {
             {displayChannels.map((channel) => (
               <div 
                 key={channel.channel_id} 
-                className="
-                  relative overflow-hidden rounded-2xl border border-border-main bg-container 
-                  hover:bg-border-secondary/30 transition-all duration-300 group
-                "
+                className={`
+                  relative overflow-hidden rounded-2xl border border-border-main transition-all duration-300 group
+                  ${isDarkMode ? 'bg-black' : 'bg-white shadow-xl border-zinc-100'}
+                `}
               >
                 {/* Subtle top indicator bar */}
                 <div className="h-1 w-full bg-rose-600 opacity-50" />
@@ -235,11 +237,12 @@ export const Sidebar = () => {
             {HIGHLIGHTS.map((item) => (
               <div
                 key={item.id}
-                className="
+                className={`
                   flex flex-col items-center gap-1.5 p-3
-                  rounded-xl bg-container border border-border-main
-                  cursor-pointer hover:bg-border-secondary transition-colors group
-                "
+                  rounded-xl border border-border-main
+                  cursor-pointer transition-colors group
+                  ${isDarkMode ? 'bg-black' : 'bg-white shadow-lg border-zinc-100'}
+                `}
               >
                 <div className="w-9 h-9 rounded-full overflow-hidden border border-border-main group-hover:border-text-muted transition-colors bg-border-secondary flex items-center justify-center">
                   {item.isNew ? (
