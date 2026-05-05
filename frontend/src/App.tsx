@@ -75,12 +75,12 @@ function App() {
   return (
     <main className="min-h-screen bg-black font-sans antialiased text-white">
       <Routes>
-        <Route path="/" element={<Welcome />} />
+        <Route path="/" element={<PublicRoute><Welcome /></PublicRoute>} />
         <Route path="/maintenance" element={<Maintenance />} />
         
         {/* Hybrid/Onboarding Routes (Accessible even if authenticated for Sync/Discovery) */}
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-        <Route path="/signup" element={<Signup />} />
+        <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
         <Route path="/role-selection" element={<RoleSelection />} />
         <Route path="/subcategory-selection" element={<SubcategorySelection />} />
         <Route path="/youtube-connect" element={<YouTubeConnect />} />

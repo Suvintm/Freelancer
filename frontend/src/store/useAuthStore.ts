@@ -249,31 +249,42 @@ export const useAuthStore = create<AuthState>()(
 
       logout: async () => {
         const { refreshToken } = get();
-        // 1. Tell server to invalidate this refresh token family (server-side session kill)
-        if (refreshToken) {
-          try {
-            await api.post('/auth/logout', { refreshToken });
-          } catch (error) {
-            // Proceed with client-side logout regardless — server might be down
-            console.warn('[Logout] Server invalidation failed, proceeding locally:', error);
-          }
-        }
-        // 2. Atomically wipe ALL auth + onboarding state from memory
+        
+        // 1. ATOMIC & IMMEDIATE: Wipe local state first so UI reacts instantly
         set({
           token: null,
           refreshToken: null,
           user: null,
           isAuthenticated: false,
-          isInitialized: true,   // keep true so AuthGuard redirects instead of spinning
+          isInitialized: true,
           isLoading: false,
           tempSignupData: {},
           youtubeDiscovery: { channels: [], selectedChannelIds: [], categorizations: {} },
         });
-        // 3. Wipe persisted storage so refresh/back-button can't restore session
+
+        // 2. WIPE STORAGE: Ensure nothing persists in browser cache
         localStorage.removeItem('auth-storage');
+        localStorage.clear(); // Nuclear option for auth-related data
         sessionStorage.clear();
-        // 4. Dispatch event so interceptor-forced logouts also trigger navigation
+
+        // 3. SERVER INVALIDATION: Attempt to kill session on backend
+        if (refreshToken) {
+          try {
+            // We don't 'await' this to keep the UI fast, but we fire the request
+            api.post('/auth/logout', { refreshToken }).catch(e => 
+              console.warn('[Logout] Server-side session kill failed:', e)
+            );
+          } catch (error) {
+            console.warn('[Logout] Pre-request failure:', error);
+          }
+        }
+
+        // 4. DISPATCH: Let AuthGuard and other listeners know we are out
         window.dispatchEvent(new CustomEvent('suvix:logout'));
+        
+        // 5. HARD REFRESH (Optional but recommended for production-level logout)
+        // This clears all in-memory variables and JS state that might be lingering
+        window.location.href = '/'; 
       },
 
       checkAuth: async () => {

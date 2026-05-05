@@ -45,7 +45,8 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 };
 
 export const PublicRoute = ({ children }: AuthGuardProps) => {
-  const { isAuthenticated, isInitialized } = useAuthStore();
+  const { isAuthenticated, isInitialized, user } = useAuthStore();
+  const location = useLocation();
 
   if (!isInitialized) {
     return (
@@ -55,8 +56,16 @@ export const PublicRoute = ({ children }: AuthGuardProps) => {
     );
   }
 
-  if (isAuthenticated) {
+  // If already logged in and fully onboarded, don't show login/signup pages
+  if (isAuthenticated && user?.isOnboarded) {
     return <Navigate to="/home" replace />;
+  }
+
+  // If logged in but NOT onboarded, only redirect if they are trying to access /login or /signup
+  // This allows them to stay on /role-selection or /complete-profile
+  const authEntryPaths = ['/login', '/signup', '/'];
+  if (isAuthenticated && !user?.isOnboarded && authEntryPaths.includes(location.pathname)) {
+    return <Navigate to="/role-selection" replace />;
   }
 
   return <>{children}</>;
