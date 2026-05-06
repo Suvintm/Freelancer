@@ -63,6 +63,29 @@ class CommunityController {
       res.status(500).json({ success: false, message: error.message });
     }
   }
+
+  async getMyCommunities(req, res) {
+    try {
+      const userId = req.user.id;
+      const communities = await communityService.getMyCommunities(userId);
+      res.json({ success: true, data: communities });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async getById(req, res) {
+    try {
+      const { communityId } = req.params;
+      const community = await communityService.getCommunityById(communityId);
+      if (!community) {
+        return res.status(404).json({ success: false, message: 'Community not found' });
+      }
+      res.json({ success: true, data: community });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
 }
 
 export default new CommunityController();

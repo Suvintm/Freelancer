@@ -10,6 +10,7 @@ class CommunityService {
     
     // Generate a unique slug
     let slug = slugify(name, { lower: true, strict: true });
+    
     const slugExists = await prisma.community.findUnique({ where: { slug } });
     if (slugExists) {
       slug = `${slug}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -51,6 +52,16 @@ class CommunityService {
           })),
         });
       }
+
+      // 4. Create an automatic welcome message
+      await prisma.communityMessage.create({
+        data: {
+          communityId: community.id,
+          senderId: ownerId,
+          content: `Welcome to our new community! 👋 Let's start the conversation.`,
+          type: 'text'
+        }
+      });
 
       return community;
     });
@@ -161,6 +172,52 @@ class CommunityService {
           }
         },
         media: true
+      }
+    });
+  }
+
+  /**
+   * Get communities for a user
+   */
+  async getMyCommunities(userId) {
+    return await prisma.community.findMany({
+      where: {
+        members: {
+          some: { userId }
+        }
+      },
+      include: {
+        _count: {
+          select: { members: true }
+        },
+        messages: {
+          orderBy: { created_at: 'desc' },
+          take: 1,
+          include: {
+            sender: {
+              include: { profile: true }
+            }
+          }
+        }
+      },
+      orderBy: { created_at: 'desc' }
+    });
+  }
+
+  /**
+   * Get community by ID
+   */
+  async getCommunityById(communityId) {
+    return await prisma.community.findUnique({
+      where: { id: communityId },
+      include: {
+        owner: {
+          select: { id: true, username: true }
+        },
+        linkedAccounts: true,
+        _count: {
+          select: { members: true }
+        }
       }
     });
   }

@@ -145,7 +145,7 @@ export default function ProfessionalChatScreen() {
       {/* 🏙️ PROFESSIONAL HEADER */}
       <View style={[styles.header, { paddingTop: insets.top, borderBottomColor: theme.border }]}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/chats')} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={28} color={theme.text} />
           </TouchableOpacity>
           

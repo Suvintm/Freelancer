@@ -40,6 +40,7 @@ export default function TabsLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const insets = useSafeAreaInsets();
   const segments = useSegments() as string[];
+  const previousRootSegmentRef = useRef<string | undefined>(undefined);
 
   // 🛰️ Universal Scroll Channel for Navbar Sync
   const globalScrollY = useSharedValue(0);
@@ -99,7 +100,21 @@ export default function TabsLayout() {
 
   // 3. Route Sync: Listen for segment changes and sync PagerView
   useEffect(() => {
-    if (segments[0] !== '(tabs)') return;
+    const currentRoot = segments[0];
+    const isReturningFromOtherStack = 
+      previousRootSegmentRef.current && 
+      previousRootSegmentRef.current !== '(tabs)' && 
+      currentRoot === '(tabs)';
+      
+    previousRootSegmentRef.current = currentRoot;
+
+    if (currentRoot !== '(tabs)') return;
+
+    // If returning from another stack (like /community/[id]) and no specific tab is in the URL,
+    // preserve the current PagerView state instead of forcing a reset to 'index' (Home).
+    if (isReturningFromOtherStack && !segments[1]) {
+      return;
+    }
 
     // Important: if segments[1] is missing, it means we are at the root (Home)
     const targetTab = segments[1] || 'index';

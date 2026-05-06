@@ -9,6 +9,8 @@ router.get('/s/:slug', communityController.getBySlug);
 // ── PROTECTED ROUTES ────────────────────────────────────────────────────────
 router.use(authenticate);
 
+router.get('/me', communityController.getMyCommunities);
+router.get('/:communityId', communityController.getById);
 router.post('/', communityController.create);
 router.post('/:communityId/join', communityController.join);
 router.get('/:communityId/messages', communityController.getMessages);

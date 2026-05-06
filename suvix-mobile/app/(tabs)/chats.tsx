@@ -10,6 +10,8 @@ import {
   Animated as RNAnimated,
   FlatList,
   Platform,
+  Alert,
+  RefreshControl,
 } from 'react-native';
 import { useTheme } from '../../src/context/ThemeContext';
 import { ScreenContainer } from '../../src/components/shared/ScreenContainer';
@@ -31,6 +33,9 @@ import Animated, {
 import { useRouter } from 'expo-router';
 import { CommunityCreationModal } from '../../src/components/modals/CommunityCreationModal';
 import { BlurView } from 'expo-blur';
+import { api } from '../../src/api/client';
+import { useQuery } from '@tanstack/react-query';
+import { useRefreshManager } from '../../src/hooks/useRefreshManager';
 
 const { width, height } = Dimensions.get('window');
 
@@ -189,7 +194,21 @@ const PinnedBubble = ({
   const isDark = theme.isDarkMode;
   return (
     <Animated.View entering={FadeInDown.delay(index * 60).springify()} style={styles.pinnedBubbleWrap}>
-      <TouchableOpacity activeOpacity={0.8} style={styles.pinnedBubbleTouch}>
+      <TouchableOpacity 
+        activeOpacity={0.8} 
+        style={styles.pinnedBubbleTouch}
+        onPress={() => {
+          if (item.type?.toUpperCase() === 'COMMUNITY') {
+            router.push(`/community/${item.id}`);
+          } else {
+            Alert.alert(
+              'Feature Coming Soon',
+              'Direct messaging workspace is currently under development. Stay tuned! 🚀',
+              [{ text: 'Got it', style: 'cancel' }]
+            );
+          }
+        }}
+      >
         {/* Ring gradient for unread */}
         {item.unread > 0 ? (
           <LinearGradient
@@ -412,6 +431,27 @@ export default function ChatsScreen({
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isCommunityModalVisible, setIsCommunityModalVisible] = useState(false);
 
+  // ── 🚀 React Query with Caching & Background Sync ──
+  const { data: communitiesData, isLoading, refetch, isRefetching } = useQuery({
+    queryKey: ['my_communities', user?.id],
+    queryFn: async () => {
+      const response = await api.get('/communities/me');
+      return response.data.data;
+    },
+    enabled: !!user?.id,
+    staleTime: 30000, // Keep fresh for 30s
+  });
+
+  // Keep global state in sync for other components
+  React.useEffect(() => {
+    if (communitiesData) {
+      updateUser({ communities: communitiesData });
+    }
+  }, [communitiesData, updateUser]);
+
+  // ── 🛡️ Rate-Limited Pull-to-Refresh ──
+  const handleRefresh = useRefreshManager(refetch);
+
   const searchAnim = useSharedValue(0); // 0 = normal, 1 = expanded
   const DEFAULT_AVATAR = require('../../assets/defualtprofile.png');
 
@@ -450,22 +490,36 @@ export default function ChatsScreen({
   }));
 
   // ── RELEVANT CHATS LOGIC (Merging Demo + Real) ──
+  const handleChatPress = (item: any) => {
+    if (item.type?.toUpperCase() === 'COMMUNITY') {
+      router.push(`/community/${item.id}`);
+    } else {
+      Alert.alert(
+        'Feature Coming Soon',
+        'Direct messaging workspace is currently under development. Stay tuned! 🚀',
+        [{ text: 'Got it', style: 'cancel' }]
+      );
+    }
+  };
 
   const allChatsList = React.useMemo(() => {
     // 1. Get real communities from user object
-    const userCommunities = (user?.communities || []).map((comm: any) => ({
-      id: comm.id,
-      name: comm.name,
-      message: 'Welcome to our new community! 👋',
-      time: 'Just now',
-      unread: 0,
-      avatar: comm.thumbnail || 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=120',
-      type: 'COMMUNITY',
-      verified: true,
-      online: false,
-      memberCount: 1,
-      emoji: '🎉',
-    }));
+    const userCommunities = (user?.communities || []).map((comm: any) => {
+      const lastMsg = comm.messages?.[0];
+      return {
+        id: comm.id,
+        name: comm.name,
+        message: lastMsg ? `${lastMsg.sender?.username}: ${lastMsg.content}` : 'Welcome to our new community! 👋',
+        time: lastMsg ? new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
+        unread: 0,
+        avatar: comm.thumbnail || 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=120',
+        type: 'COMMUNITY',
+        verified: true,
+        online: false,
+        memberCount: comm._count?.members || 1,
+        emoji: '🎉',
+      };
+    });
 
     // 2. Combine with demo data (excluding duplicates if any)
     return [...userCommunities, ...ALL_CHATS];
@@ -504,6 +558,14 @@ export default function ChatsScreen({
           data={filteredChats}
           keyExtractor={(it) => it.id}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={handleRefresh}
+              tintColor={theme.accent}
+              colors={[theme.accent]}
+            />
+          }
           contentContainerStyle={[
             styles.listContent,
             { paddingBottom: 120 + insets.bottom },
@@ -622,7 +684,7 @@ export default function ChatsScreen({
               item={item}
               theme={theme}
               index={index}
-              onPress={() => router.push(`/chat/${item.id}`)}
+              onPress={() => handleChatPress(item)}
             />
           )}
           ItemSeparatorComponent={() => <View style={{ height: 8 }} />}

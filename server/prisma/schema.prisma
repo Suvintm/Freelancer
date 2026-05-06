@@ -386,6 +386,7 @@ model Media {
   post        Post?       @relation(fields: [postId], references: [id], onDelete: Cascade)
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   story       Story?
+  communityMessages CommunityMessage[]
 
   @@index([postId])
   @@index([userId])
