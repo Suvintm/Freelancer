@@ -449,8 +449,30 @@ export default function ChatsScreen({
     width: interpolate(searchAnim.value, [0, 0.4], [150, 0]),
   }));
 
+  // ── RELEVANT CHATS LOGIC (Merging Demo + Real) ──
+
+  const allChatsList = React.useMemo(() => {
+    // 1. Get real communities from user object
+    const userCommunities = (user?.communities || []).map((comm: any) => ({
+      id: comm.id,
+      name: comm.name,
+      message: 'Welcome to our new community! 👋',
+      time: 'Just now',
+      unread: 0,
+      avatar: comm.thumbnail || 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=120',
+      type: 'COMMUNITY',
+      verified: true,
+      online: false,
+      memberCount: 1,
+      emoji: '🎉',
+    }));
+
+    // 2. Combine with demo data (excluding duplicates if any)
+    return [...userCommunities, ...ALL_CHATS];
+  }, [user?.communities]);
+
   const filteredChats = React.useMemo(() => {
-    let chats = ALL_CHATS;
+    let chats = allChatsList;
     if (activeTab === 'Direct') chats = chats.filter((c) => c.type === 'DIRECT');
     if (activeTab === 'Communities') chats = chats.filter((c) => c.type === 'COMMUNITY');
     if (searchQuery.trim()) {
@@ -460,7 +482,7 @@ export default function ChatsScreen({
       );
     }
     return chats;
-  }, [activeTab, searchQuery]);
+  }, [activeTab, searchQuery, allChatsList]);
 
   const totalUnread = React.useMemo(
     () => ALL_CHATS.reduce((acc, c) => acc + c.unread, 0),
