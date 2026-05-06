@@ -36,6 +36,11 @@ model User {
   media                  Media[]
   stories                Story[]
   story_views            StoryView[]
+  
+  // Community Relations
+  communities_owned      Community[]     @relation("CommunityOwner")
+  memberships            CommunityMember[]
+  community_messages     CommunityMessage[]
 
   @@index([role])
   @@index([is_onboarded])
@@ -575,3 +580,100 @@ model AdminSession {
   @@index([refreshTokenHash])
   @@map("admin_sessions")
 }
+
+// ==========================================
+// Community Models
+// ==========================================
+
+model Community {
+  id              String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId         String                  @map("owner_id") @db.Uuid
+  name            String                  @db.VarChar(100)
+  slug            String                  @unique @db.VarChar(100)
+  description     String?                 @db.Text
+  thumbnail       String?
+  category        CommunityCategory       @default(CUSTOM)
+  isPrivate       Boolean                 @default(false) @map("is_private")
+  metadata        Json?                   @default("{}")
+  created_at      DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at      DateTime                @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  owner           User                    @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members         CommunityMember[]
+  messages        CommunityMessage[]
+  linkedAccounts  CommunityLinkedAccount[]
+
+  @@index([ownerId])
+  @@index([slug])
+  @@map("communities")
+}
+
+model CommunityMember {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  communityId     String            @map("community_id") @db.Uuid
+  userId          String            @map("user_id") @db.Uuid
+  role            CommunityRole     @default(MEMBER)
+  joined_at       DateTime          @default(now()) @map("joined_at") @db.Timestamptz(6)
+
+  community       Community         @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, userId])
+  @@map("community_members")
+}
+
+model CommunityMessage {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  communityId     String            @map("community_id") @db.Uuid
+  senderId        String            @map("sender_id") @db.Uuid
+  type            String            @default("text") @db.VarChar(20)
+  content         String?           @db.Text
+  mediaId         String?           @map("media_id") @db.Uuid
+  metadata        Json?             @default("{}")
+  created_at      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  community       Community         @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  sender          User              @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  media           Media?            @relation(fields: [mediaId], references: [id])
+
+  @@index([communityId, created_at])
+  @@map("community_messages")
+}
+
+model CommunityLinkedAccount {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  communityId     String            @map("community_id") @db.Uuid
+  platform        CommunityPlatform
+  externalId      String            @map("external_id") @db.VarChar(255)
+  displayName     String?           @map("display_name") @db.VarChar(255)
+  url             String?           @db.VarChar(500)
+  isVerified      Boolean           @default(false) @map("is_verified")
+  created_at      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  community       Community         @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@index([communityId])
+  @@map("community_linked_accounts")
+}
+
+enum CommunityRole {
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum CommunityCategory {
+  CREATOR
+  EDITOR
+  TALENT
+  CUSTOM
+}
+
+enum CommunityPlatform {
+  YOUTUBE
+  INSTAGRAM
+  PORTFOLIO
+  TWITCH
+  DISCORD
+}
+

@@ -79,16 +79,20 @@ function App() {
         <Route path="/" element={<PublicRoute><Welcome /></PublicRoute>} />
         <Route path="/maintenance" element={<Maintenance />} />
         
-        {/* Hybrid/Onboarding Routes (Accessible even if authenticated for Sync/Discovery) */}
+        {/* Onboarding & Auth Routes (Publicly accessible but with internal logic) */}
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
-        <Route path="/role-selection" element={<RoleSelection />} />
-        <Route path="/subcategory-selection" element={<SubcategorySelection />} />
-        <Route path="/youtube-connect" element={<YouTubeConnect />} />
-        <Route path="/oauth-success" element={<OAuthSuccess />} />
-        <Route path="/complete-profile" element={<CompleteProfile />} />
         
-        {/* Authenticated Routes wrapped in AppLayout and AuthGuard */}
+        {/* These onboarding steps are accessible to unauthenticated users (pre-signup flow)
+            and also accessible to authenticated but non-onboarded users. */}
+        <Route path="/role-selection" element={<PublicRoute><RoleSelection /></PublicRoute>} />
+        <Route path="/subcategory-selection" element={<PublicRoute><SubcategorySelection /></PublicRoute>} />
+        <Route path="/youtube-connect" element={<PublicRoute><YouTubeConnect /></PublicRoute>} />
+        <Route path="/complete-profile" element={<PublicRoute><CompleteProfile /></PublicRoute>} />
+        
+        <Route path="/oauth-success" element={<OAuthSuccess />} />
+        
+        {/* Authenticated Protected Routes */}
         <Route 
           path="/home" 
           element={

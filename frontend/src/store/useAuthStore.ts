@@ -263,14 +263,14 @@ export const useAuthStore = create<AuthState>()(
         });
 
         // 2. WIPE STORAGE: Ensure nothing persists in browser cache
-        localStorage.removeItem('auth-storage');
-        localStorage.clear(); // Nuclear option for auth-related data
+        // Use the persist API to clear everything safely
+        useAuthStore.persist.clearStorage();
+        localStorage.clear(); 
         sessionStorage.clear();
 
         // 3. SERVER INVALIDATION: Attempt to kill session on backend
         if (refreshToken) {
           try {
-            // We don't 'await' this to keep the UI fast, but we fire the request
             api.post('/auth/logout', { refreshToken }).catch(e => 
               console.warn('[Logout] Server-side session kill failed:', e)
             );
@@ -282,8 +282,8 @@ export const useAuthStore = create<AuthState>()(
         // 4. DISPATCH: Let AuthGuard and other listeners know we are out
         window.dispatchEvent(new CustomEvent('suvix:logout'));
         
-        // 5. HARD REFRESH (Optional but recommended for production-level logout)
-        // This clears all in-memory variables and JS state that might be lingering
+        // 5. HARD REFRESH: This is the ultimate fix for flickering and stale JS state
+        // It ensures the next page load starts with a completely fresh environment
         window.location.href = '/'; 
       },
 
