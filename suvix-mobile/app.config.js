@@ -1,9 +1,23 @@
 require('dotenv').config();
+const { withAppBuildGradle } = require('@expo/config-plugins');
+
+const withAndroidDisableCrunchPngs = (config) => {
+  return withAppBuildGradle(config, (config) => {
+    if (config.modResults.language === 'groovy') {
+      config.modResults.contents = config.modResults.contents.replace(
+        /release\s*{/,
+        `release {
+            crunchPngs false`
+      );
+    }
+    return config;
+  });
+};
 
 export default ({ config }) => {
   console.log(`🔨 [BUILD] Configuring AdMob with Android ID: ${process.env.EXPO_PUBLIC_ADMOB_ANDROID_APP_ID ? 'DETECTED' : 'MISSING'}`);
 
-  return {
+  const updatedConfig = {
     ...config,
     extra: {
       ...config.extra,
@@ -25,4 +39,6 @@ export default ({ config }) => {
       ]
     ]
   };
+
+  return withAndroidDisableCrunchPngs(updatedConfig);
 };
