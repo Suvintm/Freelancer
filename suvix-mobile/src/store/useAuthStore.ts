@@ -104,6 +104,7 @@ interface AuthState {
   dataLoaded:         boolean;
   isAddingAccount:    boolean;
   isLoggingOut:       boolean;
+  isLoggingIn:        boolean;
   switchingToAccount: any | null;
   isBootstrapComplete: boolean;
   isIntroFinished:    boolean;
@@ -114,6 +115,7 @@ interface AuthState {
     categorizations: Record<string, string>;
   };
 
+  setIsLoggingIn:          (val: boolean) => void;
   setIsLoggingOut:         (val: boolean) => void;
   setIsRefreshing:         (val: boolean) => void;
   surgicallyUpdateUser:    (data: any) => void;
@@ -151,6 +153,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   dataLoaded:         false,
   isAddingAccount:    false,
   isLoggingOut:       false,
+  isLoggingIn:        false,
   switchingToAccount: null,
   isBootstrapComplete:false,
   isIntroFinished:    false,
@@ -163,6 +166,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   // ── Simple setters ─────────────────────────────────────────────────────────
 
+  setIsLoggingIn:         (val) => set({ isLoggingIn: val }),
   setIsLoggingOut:        (val) => set({ isLoggingOut: val }),
   setIsRefreshing:        (val) => set({ isRefreshing: val }),
   setIsAddingAccount:     (val) => set({ isAddingAccount: val }),
