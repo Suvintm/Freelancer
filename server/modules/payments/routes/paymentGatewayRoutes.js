@@ -22,6 +22,7 @@ import express from "express";
 import authMiddleware from "../../../middleware/authMiddleware.js";
 // import { protectAdmin } from "../../../middleware/adminAuth.js";
 import { proxyToPaymentService } from "../../../kafka/paymentProxy.js";
+import { publicApiLimiter, heavyLimiter, interactionLimiter } from "../../../middleware/rateLimiter.js";
 
 // ── RESTORED: Native Node (Java is not ready due to Kafka) ──────────────
 import {
@@ -46,7 +47,7 @@ router.post("/webhook/razorpay", express.raw({ type: "application/json" }), hand
 /**
  * Public Callback for Razorpay redirects (Mobile)
  */
-router.post("/callback", verifyPaymentCallback);
+router.post("/callback", interactionLimiter, verifyPaymentCallback);
 
 // ==================== PROTECTED ROUTES ====================
 router.use(authMiddleware);
@@ -54,24 +55,24 @@ router.use(authMiddleware);
 /**
  * GET /api/payment-gateway/config
  */
-router.get("/config", getPaymentConfig);
+router.get("/config", publicApiLimiter, getPaymentConfig);
 
 /**
  * POST /api/payment-gateway/create-order
  * Uses native Node.js Razorpay logic
  */
-router.post("/create-order", createPaymentOrder);
+router.post("/create-order", heavyLimiter, createPaymentOrder);
 
 /**
  * POST /api/payment-gateway/verify
  * Uses native Node.js Razorpay logic
  */
-router.post("/verify", verifyPayment);
+router.post("/verify", heavyLimiter, verifyPayment);
 
 /**
  * POST /api/payment-gateway/refund
  */
-router.post("/refund", processRefund);
+router.post("/refund", heavyLimiter, processRefund);
 
 /**
  * POST /api/payment-gateway/refund

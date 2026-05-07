@@ -54,7 +54,7 @@ class CommunityService {
       }
 
       // 4. Create an automatic welcome message
-      await prisma.communityMessage.create({
+      await tx.communityMessage.create({
         data: {
           communityId: community.id,
           senderId: ownerId,
@@ -171,9 +171,78 @@ class CommunityService {
             }
           }
         },
-        media: true
+        media: true,
+        reactions: {
+          select: {
+            id: true,
+            emoji: true,
+            user: {
+              select: {
+                id: true,
+                username: true,
+                profile: {
+                  select: { name: true, profile_picture: true }
+                }
+              }
+            }
+          }
+        }
       }
     });
+  }
+
+  /**
+   * React to a message
+   */
+  async reactToMessage(communityId, messageId, userId, emoji) {
+    // Validate message belongs to community
+    const message = await prisma.communityMessage.findUnique({
+      where: { id: messageId }
+    });
+
+    if (!message || message.communityId !== communityId) {
+      throw new Error('Message not found in this community');
+    }
+
+    // Check if user already reacted with this emoji
+    const existingReaction = await prisma.communityMessageReaction.findUnique({
+      where: {
+        messageId_userId_emoji: {
+          messageId,
+          userId,
+          emoji
+        }
+      }
+    });
+
+    if (existingReaction) {
+      // Toggle off
+      await prisma.communityMessageReaction.delete({
+        where: { id: existingReaction.id }
+      });
+      return { action: 'removed', emoji };
+    } else {
+      // Toggle on
+      const newReaction = await prisma.communityMessageReaction.create({
+        data: {
+          messageId,
+          userId,
+          emoji
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              profile: {
+                select: { name: true, profile_picture: true }
+              }
+            }
+          }
+        }
+      });
+      return { action: 'added', reaction: newReaction };
+    }
   }
 
   /**

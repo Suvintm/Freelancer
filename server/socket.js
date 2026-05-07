@@ -77,6 +77,16 @@ const setupSocketHandlers = () => {
 
     io.emit("users:online", Object.keys(userSocketMap));
 
+    socket.on("join_room", (roomName) => {
+      console.log(`📡 [SOCKET] User ${userId} joining room: ${roomName}`);
+      socket.join(roomName);
+    });
+
+    socket.on("leave_room", (roomName) => {
+      console.log(`📡 [SOCKET] User ${userId} leaving room: ${roomName}`);
+      socket.leave(roomName);
+    });
+
     socket.on("room:join", ({ orderId }) => {
       socket.join(`order_${orderId}`);
     });

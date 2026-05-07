@@ -32,8 +32,32 @@ import { BlurView } from 'expo-blur';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { api } from '../../src/api/client';
 import { useQuery } from '@tanstack/react-query';
+import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import { useSocketStore } from '../../src/store/useSocketStore';
 
 const { width, height } = Dimensions.get('window');
+
+const MessageSkeleton = () => {
+  const { theme, isDarkMode } = useTheme();
+  return (
+    <View style={styles.messageContainer}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+        <View style={[styles.senderAvatar, { backgroundColor: isDarkMode ? '#333' : '#eee' }]} />
+        <View style={[styles.contentBubble, { 
+          width: '70%', 
+          height: 80, 
+          backgroundColor: isDarkMode ? '#1A1A1B' : '#eee', 
+          borderColor: 'transparent',
+          borderRadius: 20,
+          marginLeft: 12,
+          borderBottomLeftRadius: 4
+        }]}>
+           <View style={[styles.bubbleTail, { borderRightColor: isDarkMode ? '#1A1A1B' : '#eee' }]} />
+        </View>
+      </View>
+    </View>
+  );
+};
 
 // ── MOCK DATA FOR WORKSPACE ───────────────────────────────────────────
 const MOCK_MESSAGES = [
@@ -79,9 +103,10 @@ const MOCK_MESSAGES = [
 export default function CommunityWorkspace() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const { theme } = useTheme();
+  const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
+  const { socket } = useSocketStore();
 
   // ── 🚀 Cached Community Details ──
   const { data: community, isLoading: isCommunityLoading } = useQuery({
@@ -97,12 +122,52 @@ export default function CommunityWorkspace() {
   const [messages, setMessages] = useState<any[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const isLoadingMessagesRef = useRef(false);
   const [hasMore, setHasMore] = useState(true);
+  const hasMoreRef = useRef(true);
   const [cursor, setCursor] = useState<string | null>(null);
 
-  const fetchMessages = async (isNewCursor = false) => {
-    if ((!hasMore && isNewCursor) || isLoadingMessages) return;
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  const [selectedMessageForReaction, setSelectedMessageForReaction] = useState<string | null>(null);
+
+  const openReactionSheet = (msgId: string) => {
+    setSelectedMessageForReaction(msgId);
+    bottomSheetRef.current?.expand();
+  };
+
+  const handleReact = async (emoji: string) => {
+    if (!selectedMessageForReaction) return;
+    bottomSheetRef.current?.close();
+
+    const targetMsgId = selectedMessageForReaction;
+    
+    // Optimistic UI update
+    setMessages(prev => prev.map(msg => {
+      if (msg.id === targetMsgId) {
+        const existingReactions = msg.reactions || [];
+        const userReactionIdx = existingReactions.findIndex((r: any) => r.user?.id === user?.id && r.emoji === emoji);
+        let newReactions;
+        if (userReactionIdx >= 0) {
+          newReactions = existingReactions.filter((_: any, idx: number) => idx !== userReactionIdx);
+        } else {
+          newReactions = [...existingReactions, { id: 'temp-' + Date.now(), emoji, user: { id: user?.id } }];
+        }
+        return { ...msg, reactions: newReactions };
+      }
+      return msg;
+    }));
+
     try {
+      await api.post(`/communities/${id}/messages/${targetMsgId}/react`, { emoji });
+    } catch (e) {
+      console.error('[Community] React error:', e);
+    }
+  };
+
+  const fetchMessages = async (isNewCursor = false) => {
+    if ((!hasMoreRef.current && isNewCursor) || isLoadingMessagesRef.current) return;
+    try {
+      isLoadingMessagesRef.current = true;
       setIsLoadingMessages(true);
       const url = `/communities/${id}/messages?limit=20${cursor && isNewCursor ? `&cursor=${cursor}` : ''}`;
       const response = await api.get(url);
@@ -119,14 +184,21 @@ export default function CommunityWorkspace() {
         }
         
         if (newMessages.length < 20) {
+          hasMoreRef.current = false;
           setHasMore(false);
         } else {
           setCursor(newMessages[newMessages.length - 1].id);
         }
+      } else {
+        hasMoreRef.current = false;
+        setHasMore(false);
       }
     } catch (error) {
       console.error('[Community] Fetch messages error:', error);
+      hasMoreRef.current = false;
+      setHasMore(false);
     } finally {
+      isLoadingMessagesRef.current = false;
       setIsLoadingMessages(false);
     }
   };
@@ -150,6 +222,39 @@ export default function CommunityWorkspace() {
   useEffect(() => {
     fetchMessages();
   }, [id]);
+
+  useEffect(() => {
+    if (socket && id) {
+      console.log(`📡 [COMMUNITY] Joining room community:${id}`);
+      socket.emit('join_room', `community:${id}`);
+
+      socket.on('new_community_message', (message: any) => {
+        console.log('📬 [COMMUNITY] New message received via socket:', message.id);
+        setMessages(prev => {
+           // Avoid duplicates (especially from optimistic updates)
+           if (prev.find(m => m.id === message.id)) return prev;
+           return [message, ...prev];
+        });
+      });
+
+      socket.on('message_reaction_update', (data: any) => {
+        const { messageId, result } = data;
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === messageId) {
+            return { ...msg, reactions: result.reactions };
+          }
+          return msg;
+        }));
+      });
+
+      return () => {
+        console.log(`🔌 [COMMUNITY] Leaving room community:${id}`);
+        socket.emit('leave_room', `community:${id}`);
+        socket.off('new_community_message');
+        socket.off('message_reaction_update');
+      };
+    }
+  }, [socket, id]);
 
   const scrollY = useSharedValue(0);
 
@@ -176,33 +281,55 @@ export default function CommunityWorkspace() {
     if (!path) return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200';
     if (path.startsWith('http')) return path;
     const baseUrl = api.defaults.baseURL || 'https://api.suvix.in/api';
-    const cleanBase = baseUrl.endsWith('/api') ? baseUrl.slice(0, -4) : baseUrl;
+    const cleanBase = baseUrl.replace(/\/api$/, '');
     const cleanPath = path.startsWith('/') ? path.slice(1) : path;
     return `${cleanBase}/${cleanPath}`;
   };
 
   const renderMessage = ({ item, index }: { item: any, index: number }) => {
+    // Check if it's a skeleton
+    if (item.isSkeleton) return <MessageSkeleton />;
+
     const isMedia = item.type === 'IMAGE' || item.type === 'VIDEO';
     const sender = item.sender;
     const profile = sender?.profile;
     const name = profile?.name || sender?.username || 'Unknown';
     const avatar = getFullImageUrl(profile?.profile_picture || sender?.avatar);
+    const prevItem = index < messages.length - 1 ? messages[index + 1] : null;
+    
+    // Grouping logic: check if the next message (older) is from the same sender within 30s
+    const isSameAsPrev = prevItem && prevItem.sender?.id === item.sender?.id;
+    const diffMs = prevItem ? Math.abs(new Date(item.created_at).getTime() - new Date(prevItem.created_at).getTime()) : Infinity;
+    const isGroupedWithPrev = isSameAsPrev && diffMs < 30000;
+
+    const showAvatar = !isGroupedWithPrev;
 
     return (
-      <Animated.View entering={FadeInDown.delay(index * 50).springify()} style={styles.messageContainer}>
-        {/* Sender Info Row */}
-        <View style={styles.senderRow}>
-          <Image source={{ uri: avatar }} style={styles.senderAvatar} />
-          <View style={{ marginLeft: 10, flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={[styles.senderName, { color: theme.text }]}>{name}</Text>
-              <Text style={[styles.adminTag, { color: theme.textSecondary }]}>• Admin</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Content Bubble */}
-        <View style={[styles.contentBubble, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
+      <Animated.View entering={FadeInDown.delay(index * 50).springify()} style={[styles.messageContainer, isGroupedWithPrev && { marginBottom: 4 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+          {showAvatar ? (
+            <Image source={{ uri: avatar }} style={styles.senderAvatar} />
+          ) : (
+            <View style={{ width: 32, height: 32 }} /> // Spacer for grouped messages
+          )}
+          
+          {/* Content Bubble */}
+          <TouchableOpacity 
+            activeOpacity={0.9}
+            onLongPress={() => openReactionSheet(item.id)}
+            style={[styles.contentBubble, { 
+              backgroundColor: isDarkMode ? '#1A1A1B' : theme.secondary, 
+              borderColor: isDarkMode ? '#27272A' : theme.border,
+              marginLeft: 12,
+              flexShrink: 1,
+              borderBottomLeftRadius: 4, // Flatten corner for tail
+            }]}
+          >
+            {/* 📐 Bubble Tail */}
+            <View style={[styles.bubbleTail, { 
+              borderRightColor: isDarkMode ? '#1A1A1B' : theme.secondary,
+              borderBottomColor: 'transparent'
+            }]} />
           {isMedia && item.media?.url ? (
             <View>
               <Image source={{ uri: getFullImageUrl(item.media.url) }} style={styles.mediaContent} />
@@ -223,44 +350,64 @@ export default function CommunityWorkspace() {
             </View>
           )}
 
-          {/* Reactions Row (Mocked for now) */}
-          <View style={styles.reactionsRow}>
-             <TouchableOpacity style={[styles.reactionPill, { backgroundColor: 'rgba(0,0,0,0.4)' }]}>
-                <Text style={styles.reactionEmoji}>❤️</Text>
-                <Text style={styles.reactionCount}>0</Text>
+          {/* Reactions */}
+          {item.reactions && item.reactions.length > 0 && (
+            <View style={styles.reactionsRow}>
+              {Object.entries(
+                item.reactions.reduce((acc: any, r: any) => {
+                  acc[r.emoji] = (acc[r.emoji] || 0) + 1;
+                  return acc;
+                }, {})
+              ).map(([emoji, count]: [string, any]) => {
+                const hasReacted = item.reactions.some((r: any) => r.user?.id === user?.id && r.emoji === emoji);
+                return (
+                  <TouchableOpacity 
+                    key={emoji} 
+                    onPress={() => handleReact(emoji)}
+                    style={[
+                      styles.reactionPill, 
+                      { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' },
+                      hasReacted && { backgroundColor: 'rgba(255, 48, 64, 0.2)', borderColor: 'rgba(255, 48, 64, 0.5)', borderWidth: 1 }
+                    ]}
+                  >
+                    <Text style={styles.reactionEmoji}>{emoji}</Text>
+                    <Text style={[styles.reactionCount, { color: theme.textSecondary }]}>{count}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+              <TouchableOpacity 
+                onPress={() => openReactionSheet(item.id)}
+                style={[styles.reactionPill, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}
+              >
+                <Feather name="plus" size={16} color={theme.textSecondary} />
               </TouchableOpacity>
-            <TouchableOpacity style={styles.addReaction}>
-              <Feather name="plus" size={16} color="white" />
-            </TouchableOpacity>
-          </View>
+            </View>
+          )}
+          </TouchableOpacity>
         </View>
 
-        {/* Timestamp */}
-        <Text style={[styles.timestamp, { color: theme.textSecondary }]}>
-          {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </Text>
+        {/* Time - Only show if not grouped or if it's the last in a group (newest) */}
+        {showAvatar && (
+          <Text style={[styles.messageTime, { color: theme.textSecondary, marginLeft: 44, marginTop: 4 }]}>
+            {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        )}
       </Animated.View>
     );
   };
 
-  if (isCommunityLoading && messages.length === 0) {
-    return (
-      <View style={{ flex: 1, backgroundColor: theme.isDarkMode ? '#1C1C1E' : '#F2F2F7', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={theme.accent} />
-      </View>
-    );
-  }
-
   return (
-    <View style={{ flex: 1, backgroundColor: theme.isDarkMode ? '#1C1C1E' : '#F2F2F7' }}>
-      <StatusBar barStyle={theme.isDarkMode ? 'light-content' : 'dark-content'} />
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
+      <StatusBar barStyle="light-content" />
       
+      {/* 🛡️ SAFE AREA TASK BAR (BLACK) */}
+      <View style={{ height: insets.top, backgroundColor: '#000' }} />
+
       {/* ── HEADER ── */}
       <View style={[styles.headerContainer, { 
-        paddingTop: insets.top,
         backgroundColor: theme.background,
         borderBottomWidth: 1,
-        borderBottomColor: theme.isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
+        borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
       }]}>
         <View style={styles.headerTopRow}>
           <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/chats')} style={styles.headerIconBtn}>
@@ -273,9 +420,11 @@ export default function CommunityWorkspace() {
                 source={{ uri: community?.thumbnail || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200' }} 
                 style={styles.mainAvatar} 
               />
-              <Text style={[styles.communityName, { color: theme.text }]}>{community?.name}</Text>
+              <Text style={[styles.communityName, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">
+                {community?.name}
+              </Text>
             </View>
-            <Text style={[styles.memberCount, { color: theme.textSecondary }]}>
+            <Text style={[styles.memberCount, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
               {community?.owner?.username} • {community?._count?.members || 0} members
             </Text>
           </Animated.View>
@@ -283,7 +432,7 @@ export default function CommunityWorkspace() {
           {/* Compact Header for Scroll */}
           <Animated.View 
             pointerEvents="none"
-            style={[styles.compactHeader, compactHeaderStyle, { paddingTop: insets.top }]}
+            style={[styles.compactHeader, compactHeaderStyle]}
           >
              <Text style={[styles.compactTitle, { color: theme.text }]}>{community?.name}</Text>
              <Text style={[styles.compactSubtitle, { color: theme.textSecondary }]}>{community?._count?.members || 0} members</Text>
@@ -297,14 +446,18 @@ export default function CommunityWorkspace() {
 
       {/* ── FEED ── */}
       <Animated.FlatList
-        data={messages}
+        data={isLoadingMessages && messages.length === 0 ? [
+          { id: 's1', isSkeleton: true },
+          { id: 's2', isSkeleton: true },
+          { id: 's3', isSkeleton: true }
+        ] : messages}
         keyExtractor={(item) => item.id}
         renderItem={renderMessage}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         onEndReached={() => fetchMessages(true)}
         onEndReachedThreshold={0.5}
-        ListFooterComponent={isLoadingMessages ? <ActivityIndicator style={{ marginVertical: 20 }} color={theme.accent} /> : null}
+        ListFooterComponent={isLoadingMessages && messages.length > 0 ? <ActivityIndicator style={{ marginVertical: 20 }} color={theme.accent} /> : null}
         contentContainerStyle={[styles.feedContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       />
@@ -314,9 +467,9 @@ export default function CommunityWorkspace() {
         paddingBottom: Math.max(insets.bottom, 20),
         backgroundColor: theme.background,
         borderTopWidth: 1,
-        borderTopColor: theme.isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
+        borderTopColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
       }]}>
-        <View style={[styles.inputWrapper, { backgroundColor: theme.isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
+        <View style={[styles.inputWrapper, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
            <TouchableOpacity style={styles.actionBtn}>
               <Feather name="image" size={20} color={theme.text} />
            </TouchableOpacity>
@@ -332,6 +485,30 @@ export default function CommunityWorkspace() {
            </TouchableOpacity>
         </View>
       </View>
+
+      {/* ── EMOJI PICKER SHEET ── */}
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={-1}
+        snapPoints={['20%']}
+        enablePanDownToClose={true}
+        backdropComponent={(props) => (
+          <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.3} />
+        )}
+        backgroundStyle={{ backgroundColor: isDarkMode ? '#1C1C1E' : '#FFFFFF' }}
+        handleIndicatorStyle={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)' }}
+      >
+        <BottomSheetView style={styles.sheetContainer}>
+          <Text style={[styles.sheetTitle, { color: theme.text }]}>Add Reaction</Text>
+          <View style={styles.emojiGrid}>
+            {['👍', '❤️', '😂', '😮', '😢', '🙏'].map(emoji => (
+              <TouchableOpacity key={emoji} onPress={() => handleReact(emoji)} style={styles.emojiBtn}>
+                <Text style={styles.emojiText}>{emoji}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </BottomSheetView>
+      </BottomSheet>
     </View>
   );
 }
@@ -362,6 +539,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginBottom: 2,
+    maxWidth: width * 0.65,
   },
   mainAvatar: {
     width: 24,
@@ -371,6 +549,7 @@ const styles = StyleSheet.create({
   communityName: {
     fontSize: 16,
     fontWeight: '800',
+    flexShrink: 1,
   },
   memberCount: {
     fontSize: 11,
@@ -407,27 +586,37 @@ const styles = StyleSheet.create({
     paddingLeft: 4,
   },
   senderAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
-  senderName: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  adminTag: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
+
   contentBubble: {
-    borderRadius: 24,
-    overflow: 'hidden',
+    borderRadius: 20,
+    overflow: 'visible', // Changed to visible for tail
     borderWidth: 1,
+    alignSelf: 'flex-start',
+    maxWidth: '85%',
+    position: 'relative',
+  },
+  bubbleTail: {
+    position: 'absolute',
+    bottom: -1,
+    left: -8,
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderRightWidth: 10,
+    borderBottomWidth: 10,
+    borderLeftWidth: 0,
+    borderTopWidth: 0,
+    borderBottomColor: 'transparent',
+    transform: [{ rotate: '0deg' }],
   },
   mediaContent: {
     width: '100%',
-    height: width * 1.2,
+    height: width * 0.8,
     resizeMode: 'cover',
   },
   playOverlay: {
@@ -446,7 +635,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   textContainer: {
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
   messageText: {
     fontSize: 15,
@@ -520,4 +710,31 @@ const styles = StyleSheet.create({
   sendBtn: {
     padding: 10,
   },
+  sheetContainer: {
+    flex: 1,
+    padding: 20,
+    alignItems: 'center',
+  },
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 20,
+  },
+  emojiGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+  },
+  emojiBtn: {
+    padding: 10,
+    backgroundColor: 'rgba(128,128,128,0.1)',
+    borderRadius: 25,
+    width: 50,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emojiText: {
+    fontSize: 24,
+  }
 });

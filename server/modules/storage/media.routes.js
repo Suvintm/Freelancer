@@ -4,6 +4,7 @@ import { getUploadUrl, confirmUpload } from "./media.controller.js";
 import prisma from "../../config/prisma.js";
 import { addMediaJob, mediaQueue } from "../workers/queues.js";
 import logger from "../../utils/logger.js";
+import { heavyLimiter } from "../../middleware/rateLimiter.js";
 
 /**
  * 🎬 MEDIA ROUTES (PRODUCTION READY)
@@ -16,14 +17,14 @@ const router = express.Router();
  * @desc    Generate an S3 pre-signed PUT URL for direct upload
  * @access  Private
  */
-router.get("/signed-url", authenticate, getUploadUrl);
+router.get("/signed-url", authenticate, heavyLimiter, getUploadUrl);
 
 /**
  * @route   POST /api/media/confirm
  * @desc    Confirm upload is complete and start background processing
  * @access  Private
  */
-router.post("/confirm", authenticate, confirmUpload);
+router.post("/confirm", authenticate, heavyLimiter, confirmUpload);
 
 /**
  * @route   GET /api/media/:id/status

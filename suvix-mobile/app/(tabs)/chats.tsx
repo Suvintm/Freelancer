@@ -97,7 +97,7 @@ const ALL_CHATS = [
     emoji: '🎬',
   },
   {
-    id: '2',
+    id: '00000000-0000-0000-0000-000000000002',
     name: 'Tech Innovators',
     message: 'Marcus: We should aim for the Q3 release 🚀',
     time: '15m',
@@ -122,7 +122,7 @@ const ALL_CHATS = [
     emoji: '📄',
   },
   {
-    id: '4',
+    id: '00000000-0000-0000-0000-000000000004',
     name: 'Design Synerge',
     message: 'Emma: Just updated the Figma files ✨',
     time: '3h',
@@ -147,7 +147,7 @@ const ALL_CHATS = [
     emoji: '🔧',
   },
   {
-    id: '6',
+    id: '00000000-0000-0000-0000-000000000006',
     name: 'UI/UX Collective',
     message: 'Lisa: New design system is live! 🎨',
     time: '8h',
@@ -431,6 +431,19 @@ export default function ChatsScreen({
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isCommunityModalVisible, setIsCommunityModalVisible] = useState(false);
 
+  const ChatCardSkeleton = () => {
+    const isDark = theme.isDarkMode;
+    return (
+      <View style={[styles.chatCard, { opacity: 0.6 }]}>
+        <View style={[styles.avatarContainer, { backgroundColor: isDark ? '#333' : '#eee', borderRadius: 16, width: 56, height: 56 }]} />
+        <View style={[styles.cardBody, { marginLeft: 12 }]}>
+          <View style={{ width: 120, height: 16, backgroundColor: isDark ? '#333' : '#eee', borderRadius: 4, marginBottom: 8 }} />
+          <View style={{ width: '80%', height: 14, backgroundColor: isDark ? '#333' : '#eee', borderRadius: 4 }} />
+        </View>
+      </View>
+    );
+  };
+
   // ── 🚀 React Query with Caching & Background Sync ──
   const { data: communitiesData, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['my_communities', user?.id],
@@ -439,7 +452,8 @@ export default function ChatsScreen({
       return response.data.data;
     },
     enabled: !!user?.id,
-    staleTime: 30000, // Keep fresh for 30s
+    staleTime: 5 * 60000, // Keep fresh for 5 mins
+    gcTime: 10 * 60000, // Cache for 10 mins
   });
 
   // Keep global state in sync for other components
@@ -555,8 +569,17 @@ export default function ChatsScreen({
             CHAT LIST
         ═══════════════════════════════════════════════════════════════════ */}
         <FlatList
-          data={filteredChats}
+          data={isLoading && !communitiesData ? [
+            { id: 's1', isSkeleton: true },
+            { id: 's2', isSkeleton: true },
+            { id: 's3', isSkeleton: true },
+            { id: 's4', isSkeleton: true }
+          ] : filteredChats}
           keyExtractor={(it) => it.id}
+          renderItem={({ item, index }) => {
+            if (item.isSkeleton) return <ChatCardSkeleton />;
+            return <ChatCard item={item} theme={theme} index={index} />;
+          }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
