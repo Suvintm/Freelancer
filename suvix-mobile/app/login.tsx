@@ -121,14 +121,16 @@ export default function LoginScreen() {
         password,
       });
 
-      if (response.data.success) {
-        handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
-        const { user: newUser, token, refreshToken, accessTokenExpiresAt } = response.data;
-        await setAuth(newUser, token, refreshToken, { accessTokenExpiresAt });
+        if (response.data.success) {
+          handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
+          const { user: newUser, token, refreshToken, accessTokenExpiresAt } = response.data;
+          
+          useAuthStore.getState().setIsLoggingIn(true);
+          await setAuth(newUser, token, refreshToken, { accessTokenExpiresAt });
 
-        setShowLoadingOverlay(false);
-        setLoading(false);
-        useAuthStore.getState().setIsAddingAccount(false);
+          setShowLoadingOverlay(false);
+          setLoading(false);
+          useAuthStore.getState().setIsAddingAccount(false);
         
         // 🛰️ REGISTER PUSH TOKEN (Elite Quality)
         if (allowNotifications) {
@@ -156,6 +158,7 @@ export default function LoginScreen() {
     } catch (error: any) {
       setShowLoadingOverlay(false);
       setLoading(false);
+      useAuthStore.getState().setIsLoggingIn(false);
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
       Alert.alert('Login Failed', error.response?.data?.message || 'Check your credentials.');
     }

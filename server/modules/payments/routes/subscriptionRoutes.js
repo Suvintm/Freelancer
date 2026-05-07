@@ -18,12 +18,13 @@ import {
   getAllSubscriptions,
 } from "../controllers/subscriptionController.js";
 import { createSubscriptionOrderValidator, verifySubscriptionPaymentValidator } from "../../../middleware/validators.js";
+import { publicApiLimiter, heavyLimiter, interactionLimiter } from "../../../middleware/rateLimiter.js";
 
 const router = express.Router();
 
 // ============ PUBLIC ROUTES ============
 // Get all available plans
-router.get("/plans", getPlans);
+router.get("/plans", publicApiLimiter, getPlans);
 
 // ============ ADMIN ROUTES (MOVED TO ADMIN-SERVER) ============
 // router.post("/admin/plan", protectAdmin, upsertPlan);
@@ -33,22 +34,22 @@ router.get("/plans", getPlans);
 router.use(protect);
 
 // Get user's subscriptions
-router.get("/my", getMySubscriptions);
+router.get("/my", publicApiLimiter, getMySubscriptions);
 
 // Check subscription status for a feature
-router.get("/check/:feature", checkSubscriptionStatus);
+router.get("/check/:feature", publicApiLimiter, checkSubscriptionStatus);
 
 // Start free trial
-router.post("/start-trial", startTrial);
+router.post("/start-trial", heavyLimiter, startTrial);
 
 // Create Razorpay order for subscription
-router.post("/create-order", createSubscriptionOrderValidator, createOrder);
+router.post("/create-order", heavyLimiter, createSubscriptionOrderValidator, createOrder);
 
 // Verify payment and activate subscription
-router.post("/verify-payment", verifySubscriptionPaymentValidator, verifyPayment);
+router.post("/verify-payment", heavyLimiter, verifySubscriptionPaymentValidator, verifyPayment);
 
 // Cancel subscription
-router.post("/cancel/:id", cancelSubscription);
+router.post("/cancel/:id", interactionLimiter, cancelSubscription);
 
 export default router;
 

@@ -128,8 +128,22 @@ export const updateProfilePicture = asyncHandler(async (req, res) => {
   // 🧹 [CACHE] Invalidate cache
   await deleteCache(CacheKey.userProfile(userId));
   
-  // 🛰️ [SOCKET] Surgical Sync
+  // 🛰️ [SOCKET] Surgical Sync & Community Broadcast
   emitToUser(userId, "user:profile_updated", { profilePicture: profile.profile_picture });
+  
+  // Also broadcast to community rooms if possible
+  const { getIO } = await import("../../../socket.js");
+  const io = getIO();
+  if (io) {
+    // We don't want to fetch ALL communities here for performance, 
+    // but we can emit a global event or the client can handle it if they are in the same room.
+    // For now, let's emit a global identity update that clients can use to refresh their local cache.
+    io.emit("identity:profile_updated", { 
+      userId, 
+      profilePicture: profile.profile_picture,
+      name: profile.name
+    });
+  }
 
   return res.status(200).json({
     success: true,

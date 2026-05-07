@@ -8,12 +8,11 @@ interface AuthGuardProps {
 }
 
 export const AuthGuard = ({ children }: AuthGuardProps) => {
-  const { isAuthenticated, isInitialized, user } = useAuthStore();
+  const { isAuthenticated, isInitialized, user, checkAuth } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Listen for interceptor-forced logouts (expired token, 401 on refresh)
-  // Without this, a session expiry mid-use leaves the user on a blank page
+  // 1. LISTEN FOR FORCED LOGOUTS (Interceptors)
   useEffect(() => {
     const handleForcedLogout = () => {
       navigate('/login', { replace: true });
@@ -22,6 +21,21 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     return () => window.removeEventListener('suvix:logout', handleForcedLogout);
   }, [navigate]);
 
+  // 2. BFCACHE PROTECTION: Handle browser 'back' after logout
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      // If page is restored from cache (back button), force an auth check
+      if (event.persisted) {
+        console.log('🔄 [BFCache] Page restored from cache, verifying session...');
+        checkAuth();
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, [checkAuth]);
+
+  // 3. STRICT GUARD: While state is unknown, show nothing but the spinner
+  // We NEVER render children if we aren't 100% sure the user is valid
   if (!isInitialized) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-black">
@@ -30,12 +44,12 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     );
   }
 
+  // 4. UNAUTHENTICATED: Immediate redirect
   if (!isAuthenticated) {
-    // Save attempted location so we can redirect back after login
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Onboarding guard — uses reactive `user` from hook (not stale getState())
+  // 5. ONBOARDING GUARD: Ensure user has completed setup
   const onboardingPaths = ['/role-selection', '/signup', '/youtube-connect', '/subcategory-selection', '/complete-profile'];
   if (user && !user.isOnboarded && !onboardingPaths.includes(location.pathname)) {
     return <Navigate to="/role-selection" replace />;

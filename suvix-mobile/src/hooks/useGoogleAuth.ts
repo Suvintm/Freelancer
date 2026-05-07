@@ -77,6 +77,7 @@ export const useGoogleAuth = () => {
     }
 
     setIsLoading(true);
+    useAuthStore.getState().setIsLoggingIn(true);
     try {
       const res = await api.post('/auth/google/mobile', { idToken });
       if (res.data.success) {
@@ -84,6 +85,7 @@ export const useGoogleAuth = () => {
       }
     } catch (error: any) {
       console.error('Google Auth Backend Error:', error.response?.data || error.message);
+      useAuthStore.getState().setIsLoggingIn(false);
       Alert.alert('Login Failed', "We couldn't verify your Google account. Please try again.");
     } finally {
       setIsLoading(false);

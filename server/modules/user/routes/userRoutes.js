@@ -7,12 +7,13 @@ import {
   updateMinimalProfile
 } from "../controllers/userController.js";
 import { upload } from "../../../middleware/upload.js";
+import { publicApiLimiter, heavyLimiter } from "../../../middleware/rateLimiter.js";
 
 const router = express.Router();
 
-router.get("/me", authenticate, getMyBasicInfo);
-router.patch("/me", authenticate, updateMyBasicInfo);
-router.post("/me/profile-picture", authenticate, upload.single("image"), updateProfilePicture);
-router.put("/profile/minimal", authenticate, updateMinimalProfile);
+router.get("/me", authenticate, publicApiLimiter, getMyBasicInfo);
+router.patch("/me", authenticate, heavyLimiter, updateMyBasicInfo);
+router.post("/me/profile-picture", authenticate, heavyLimiter, upload.single("image"), updateProfilePicture);
+router.put("/profile/minimal", authenticate, heavyLimiter, updateMinimalProfile);
 
 export default router;

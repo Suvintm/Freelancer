@@ -174,6 +174,7 @@ export const AccountSwitcherSheet = ({ sheetRef, isDark }: AccountSwitcherSheetP
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             close();
             try {
+              useAuthStore.getState().setIsLoggingOut(true);
               await api.post('/auth/logout-all');
             } catch { /* fail silently */ }
             const vault = useAccountVault.getState();
@@ -183,6 +184,7 @@ export const AccountSwitcherSheet = ({ sheetRef, isDark }: AccountSwitcherSheetP
               refreshToken: null,
               user: null,
               isAuthenticated: false,
+              isLoggingOut: false,
             });
           },
         },

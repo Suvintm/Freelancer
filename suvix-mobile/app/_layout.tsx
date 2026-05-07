@@ -38,6 +38,8 @@ import { useEffect, useRef } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
 import { AccountSwitchOverlay } from '../src/components/shared/AccountSwitchOverlay';
+import { LogoutOverlay } from '../src/components/shared/LogoutOverlay';
+import { LottieOverlay } from '../src/components/shared/LottieOverlay';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { getDeviceId } from '../src/hooks/useDeviceId';
 import { CrossAccountBanner } from '../src/components/shared/CrossAccountBanner';
@@ -76,6 +78,9 @@ function InitialRoot() {
     dataLoaded,
     switchingToAccount,
     isAddingAccount,
+    isLoggingOut,
+    isLoggingIn,
+    setIsLoggingIn,
   } = useAuthStore();
 
   const { isDarkMode } = useTheme();
@@ -336,21 +341,18 @@ function InitialRoot() {
           console.log('🚀 [GUARD] Onboarded user → /(tabs)');
           isNavigating.current = true;
           router.replace('/(tabs)');
-          setTimeout(() => { isNavigating.current = false; }, 1200);
+          setTimeout(() => { 
+            isNavigating.current = false;
+            setIsLoggingIn(false); // ✅ Landing confirmed
+          }, 1200);
+        } else {
+          // Already in tabs? Still clear the loader
+          setIsLoggingIn(false);
         }
         return;
       }
 
       // ── Not onboarded: decide where to send them ───────────────────────────
-      //
-      // FIX: We now check specific fields with a fallback. If either field is
-      // a non-empty string, we don't redirect to complete-profile.
-      // Previously used falsy check: !user.username || !user.name
-      // which would fire on empty string "" (valid for partial signups).
-      //
-      // isMissingSocialData: true ONLY when we have a confirmed user object
-      // with genuinely absent username/name (Google OAuth incomplete signup).
-      // ──────────────────────────────────────────────────────────────────────
       if (!inOnboarding) {
         const hasUsername = typeof user.username === 'string' && user.username.trim().length > 0;
         const hasName     = typeof user.name     === 'string' && user.name.trim().length > 0;
@@ -365,7 +367,13 @@ function InitialRoot() {
           isNavigating.current = true;
           router.replace('/role-selection');
         }
-        setTimeout(() => { isNavigating.current = false; }, 1200);
+        setTimeout(() => { 
+          isNavigating.current = false;
+          setIsLoggingIn(false); // ✅ Landing confirmed
+        }, 1200);
+      } else {
+        // Already in onboarding? Still clear
+        setIsLoggingIn(false);
       }
     }, 450);
 
@@ -385,6 +393,20 @@ function InitialRoot() {
         <AccountSwitchOverlay
           account={switchingToAccount}
           isDark={isDarkMode}
+        />
+      )}
+
+      {isLoggingOut && (
+        <LogoutOverlay 
+          user={user} 
+          isDark={isDarkMode} 
+        />
+      )}
+
+      {isLoggingIn && (
+        <LottieOverlay 
+          isVisible={true} 
+          message="Finalizing Identity..." 
         />
       )}
     </>
