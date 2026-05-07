@@ -1,8 +1,50 @@
 import prisma from '../../../config/prisma.js';
 import reactionBuffer from "../../../services/reactionBufferService.js";
 import slugify from 'slugify';
+import { smartResolveMediaUrl } from '../../../utils/mediaResolver.js';
 
 class CommunityService {
+  /**
+   * Resolve media URLs for a message object
+   */
+  formatMessage(message) {
+    if (!message) return message;
+    const formatted = { ...message };
+    
+    // Resolve sender avatar
+    if (formatted.sender?.profile?.profile_picture) {
+      formatted.sender.profile.profile_picture = smartResolveMediaUrl(formatted.sender.profile.profile_picture);
+    }
+    
+    // Resolve media content (if any)
+    if (formatted.media?.url) {
+      formatted.media.url = smartResolveMediaUrl(formatted.media.url);
+    }
+    
+    return formatted;
+  }
+
+  /**
+   * Resolve media URLs for a community object
+   */
+  formatCommunity(community) {
+    if (!community) return community;
+    const formatted = { ...community };
+    
+    if (formatted.thumbnail) {
+      formatted.thumbnail = smartResolveMediaUrl(formatted.thumbnail);
+    }
+    
+    if (formatted.owner?.profile?.profile_picture) {
+      formatted.owner.profile.profile_picture = smartResolveMediaUrl(formatted.owner.profile.profile_picture);
+    }
+
+    if (formatted.messages && Array.isArray(formatted.messages)) {
+      formatted.messages = formatted.messages.map(m => this.formatMessage(m));
+    }
+    
+    return formatted;
+  }
   /**
    * Create a new community
    */
@@ -136,18 +178,27 @@ class CommunityService {
       data: { updated_at: new Date() }
     });
 
-    return message;
+    return this.formatMessage(message);
   }
 
   /**
    * Get community by slug
    */
   async getCommunityBySlug(slug) {
-    return await prisma.community.findUnique({
+    const community = await prisma.community.findUnique({
       where: { slug },
       include: {
         owner: {
-          select: { id: true, username: true }
+          select: { 
+            id: true, 
+            username: true,
+            profile: {
+              select: {
+                name: true,
+                profile_picture: true
+              }
+            }
+          }
         },
         linkedAccounts: true,
         _count: {
@@ -155,13 +206,15 @@ class CommunityService {
         }
       }
     });
+
+    return this.formatCommunity(community);
   }
 
   /**
    * Get messages for community
    */
   async getMessages(communityId, limit = 50, cursor) {
-    return await prisma.communityMessage.findMany({
+    const messages = await prisma.communityMessage.findMany({
       where: { communityId },
       take: limit,
       skip: cursor ? 1 : 0,
@@ -198,6 +251,8 @@ class CommunityService {
         }
       }
     });
+
+    return messages.map(m => this.formatMessage(m));
   }
 
   /**
@@ -245,7 +300,7 @@ class CommunityService {
    * Get communities for a user
    */
   async getMyCommunities(userId, limit = 20, cursor) {
-    return await prisma.community.findMany({
+    const communities = await prisma.community.findMany({
       where: {
         members: {
           some: { userId }
@@ -254,8 +309,20 @@ class CommunityService {
       take: limit,
       skip: cursor ? 1 : 0,
       cursor: cursor ? { id: cursor } : undefined,
-      orderBy: { id: 'desc' },
+      orderBy: { updated_at: 'desc' },
       include: {
+        owner: {
+          select: {
+            id: true,
+            username: true,
+            profile: {
+              select: {
+                name: true,
+                profile_picture: true
+              }
+            }
+          }
+        },
         _count: {
           select: { members: true }
         },
@@ -268,20 +335,30 @@ class CommunityService {
             }
           }
         }
-      },
-      orderBy: { created_at: 'desc' }
+      }
     });
+
+    return communities.map(c => this.formatCommunity(c));
   }
 
   /**
    * Get community by ID
    */
   async getCommunityById(communityId) {
-    return await prisma.community.findUnique({
+    const community = await prisma.community.findUnique({
       where: { id: communityId },
       include: {
         owner: {
-          select: { id: true, username: true }
+          select: { 
+            id: true, 
+            username: true,
+            profile: {
+              select: {
+                name: true,
+                profile_picture: true
+              }
+            }
+          }
         },
         linkedAccounts: true,
         _count: {
@@ -289,6 +366,8 @@ class CommunityService {
         }
       }
     });
+
+    return this.formatCommunity(community);
   }
 }
 

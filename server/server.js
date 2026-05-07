@@ -149,6 +149,9 @@ app.use("/api", publicApiLimiter);
 app.use(geoCheckMiddleware);
 app.use(compression());
 
+// ============ STATIC FILES ============
+app.use("/uploads", express.static("uploads"));
+
 // ============ BODY PARSING ============
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));

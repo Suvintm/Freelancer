@@ -133,4 +133,3 @@ class CommunityController {
 }
 
 export default new CommunityController();
-

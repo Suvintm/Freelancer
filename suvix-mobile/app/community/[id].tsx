@@ -6,36 +6,26 @@ import {
   TouchableOpacity, 
   TextInput, 
   FlatList,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Dimensions,
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '../../src/context/ThemeContext';
 import { ScreenContainer } from '../../src/components/shared/ScreenContainer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Ionicons, Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { 
-  FadeInDown, 
-  FadeIn,
-  useSharedValue,
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  interpolate,
-  Extrapolate
-} from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { api } from '../../src/api/client';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { useSocketStore } from '../../src/store/useSocketStore';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
+const DEFAULT_AVATAR = require('../../assets/defualtprofile.png');
 
 const MessageSkeleton = () => {
   const { theme, isDarkMode } = useTheme();
@@ -43,16 +33,14 @@ const MessageSkeleton = () => {
     <View style={styles.messageContainer}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
         <View style={[styles.senderAvatar, { backgroundColor: isDarkMode ? '#333' : '#eee' }]} />
-        <View style={[styles.contentBubble, { 
-          width: '70%', 
-          height: 80, 
-          backgroundColor: isDarkMode ? '#1A1A1B' : '#eee', 
-          borderColor: 'transparent',
-          borderRadius: 20,
-          marginLeft: 12,
-          borderTopLeftRadius: 4
-        }]}>
-           <View style={[styles.bubbleTail, { borderRightColor: isDarkMode ? '#1A1A1B' : '#eee' }]} />
+        <View style={{ flex: 1 }}>
+          <View style={[styles.contentBubble, { 
+            width: '70%', 
+            height: 60, 
+            backgroundColor: isDarkMode ? '#1A1A1B' : '#eee', 
+            borderRadius: 18,
+            marginLeft: 8,
+          }]} />
         </View>
       </View>
     </View>
@@ -106,6 +94,15 @@ export default function CommunityWorkspace() {
     return infiniteData?.pages.flat() || [];
   }, [infiniteData]);
 
+  const getFullImageUrl = (path: string | undefined | null) => {
+    if (!path || path === 'null' || path === 'undefined') return null;
+    if (path.startsWith('http')) return path;
+    const baseUrl = api.defaults.baseURL || 'http://192.168.0.175:5051/api';
+    const cleanBase = baseUrl.replace(/\/api$/, '');
+    const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+    return `${cleanBase}/${cleanPath}`;
+  };
+
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
     const tempMsg = {
@@ -113,12 +110,17 @@ export default function CommunityWorkspace() {
       content: inputText.trim(),
       type: 'text',
       sender_id: user?.id,
-      sender: { ...user, username: user?.username || 'You' },
+      sender: { 
+        ...user, 
+        username: user?.username || 'You',
+        profile: {
+          profile_picture: user?.profilePicture 
+        }
+      },
       created_at: new Date().toISOString(),
       reactions: []
     };
 
-    // Optimistic Update
     queryClient.setQueryData(['community_messages', id], (old: any) => {
       if (!old) return old;
       return {
@@ -139,16 +141,12 @@ export default function CommunityWorkspace() {
     }
   };
 
-  const reactionBuffer = useRef<Record<string, number>>({});
-  const reactionTimerRef = useRef<any>(null);
-
   const handleReact = async (emoji: string, messageId?: string) => {
     const targetMsgId = messageId || selectedMessageForReaction;
     if (!targetMsgId || targetMsgId.startsWith('temp-')) return; 
     
     bottomSheetRef.current?.close();
 
-    // ── 🚀 Optimistic UI Update ──
     queryClient.setQueryData(['community_messages', id], (old: any) => {
       if (!old) return old;
       return {
@@ -168,26 +166,11 @@ export default function CommunityWorkspace() {
       };
     });
 
-    // ── 🚀 Production Batching (Debounce) ──
-    const bufferKey = `${targetMsgId}:${emoji}`;
-    reactionBuffer.current[bufferKey] = (reactionBuffer.current[bufferKey] || 0) + 1;
-
-    if (reactionTimerRef.current) clearTimeout(reactionTimerRef.current);
-    reactionTimerRef.current = setTimeout(async () => {
-      const currentBuffer = { ...reactionBuffer.current };
-      reactionBuffer.current = {};
-
-      for (const [key, count] of Object.entries(currentBuffer)) {
-        if (count % 2 !== 0) {
-          const [mId, emo] = key.split(':');
-          try {
-            await api.post(`/communities/${id}/messages/${mId}/react`, { emoji: emo });
-          } catch (e) {
-            console.error('[Community] Batch React error:', e);
-          }
-        }
-      }
-    }, 800);
+    try {
+      await api.post(`/communities/${id}/messages/${targetMsgId}/react`, { emoji });
+    } catch (e) {
+      console.error('[Community] React error:', e);
+    }
   };
 
   useEffect(() => {
@@ -218,37 +201,36 @@ export default function CommunityWorkspace() {
         });
       });
 
+      socket.on('identity:profile_updated', (data: any) => {
+        const { userId, profilePicture } = data;
+        queryClient.setQueryData(['community_messages', id], (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page: any) => page.map((msg: any) => {
+              if (msg.sender_id === userId || msg.sender?.id === userId) {
+                return {
+                  ...msg,
+                  sender: {
+                    ...msg.sender,
+                    profile: { ...msg.sender?.profile, profile_picture: profilePicture }
+                  }
+                };
+              }
+              return msg;
+            }))
+          };
+        });
+      });
+
       return () => {
         socket.emit('leave_room', `community:${id}`);
         socket.off('new_community_message');
         socket.off('message_reaction_update');
+        socket.off('identity:profile_updated');
       };
     }
   }, [socket, id, queryClient]);
-
-  const scrollY = useSharedValue(0);
-
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => { scrollY.value = event.contentOffset.y; },
-  });
-
-  const headerStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, 50], [1, 0], Extrapolate.CLAMP),
-    transform: [{ translateY: interpolate(scrollY.value, [0, 50], [0, -10], Extrapolate.CLAMP) }],
-  }));
-
-  const compactHeaderStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [40, 80], [0, 1], Extrapolate.CLAMP),
-  }));
-
-  const getFullImageUrl = (path: string | undefined | null) => {
-    if (!path) return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200';
-    if (path.startsWith('http')) return path;
-    const baseUrl = api.defaults.baseURL || 'http://192.168.0.175:5051/api';
-    const cleanBase = baseUrl.replace(/\/api$/, '');
-    const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-    return `${cleanBase}/${cleanPath}`;
-  };
 
   const renderMessage = ({ item, index }: { item: any, index: number }) => {
     if (item.isSkeleton) return <MessageSkeleton />;
@@ -256,37 +238,40 @@ export default function CommunityWorkspace() {
     const isMedia = item.type === 'IMAGE' || item.type === 'VIDEO';
     const sender = item.sender;
     const profile = sender?.profile;
-    const name = profile?.name || sender?.name || sender?.username || 'Unknown';
-    const avatar = getFullImageUrl(profile?.profile_picture || sender?.profile_picture || sender?.avatar);
+    const avatarPath = profile?.profile_picture || sender?.profile_picture || sender?.profilePicture || sender?.avatar;
+    const avatarUri = getFullImageUrl(avatarPath);
     
     const currentSenderId = item.sender_id || item.sender?.id;
-    const prevItem = index > 0 ? messages[index - 1] : null;
+    const prevItem = index < messages.length - 1 ? messages[index + 1] : null;
     const prevSenderId = prevItem?.sender_id || prevItem?.sender?.id;
 
-    const isSameAsPrev = prevItem && 
-      prevSenderId === currentSenderId && 
-      (Math.abs(new Date(item.created_at).getTime() - new Date(prevItem.created_at).getTime())) < 30000;
+    const isSameAsPrev = prevItem && prevSenderId === currentSenderId && (Math.abs(new Date(item.created_at).getTime() - new Date(prevItem.created_at).getTime())) < 30000;
 
     return (
-      <View style={[styles.messageContainer, { marginTop: isSameAsPrev ? 4 : 20 }]}>
+      <View style={[styles.messageContainer, { marginTop: isSameAsPrev ? 2 : 12 }]}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-           {/* AVATAR COLUMN */}
-           <View style={{ width: 32, alignItems: 'center' }}>
+           <View style={{ width: 30, alignItems: 'center' }}>
               {!isSameAsPrev && (
-                <Image source={{ uri: avatar }} style={styles.senderAvatar} />
+                <View style={[styles.senderAvatar, { backgroundColor: isDarkMode ? '#27272A' : '#E4E4E7' }]}>
+                   <Image 
+                     source={avatarUri ? { uri: avatarUri } : DEFAULT_AVATAR} 
+                     style={styles.senderAvatarImage} 
+                     contentFit="cover"
+                     cachePolicy="memory-disk"
+                   />
+                </View>
               )}
            </View>
 
-           {/* BUBBLE COLUMN */}
            <View style={{ flex: 1 }}>
               <View style={[
                 styles.contentBubble, 
                 { 
                   backgroundColor: isDarkMode ? '#1F1F21' : '#F4F4F5',
                   borderColor: isDarkMode ? '#2A2A2C' : '#E4E4E7',
-                  marginLeft: 10,
-                  borderRadius: 20,
-                  borderTopLeftRadius: isSameAsPrev ? 20 : 4
+                  marginLeft: 8,
+                  borderRadius: 18,
+                  borderTopLeftRadius: isSameAsPrev ? 18 : 4
                 }
               ]}>
                 {!isSameAsPrev && (
@@ -295,12 +280,7 @@ export default function CommunityWorkspace() {
 
                 {isMedia && (
                    <View style={styles.mediaWrapper}>
-                      <Image source={{ uri: getFullImageUrl(item.media?.url) }} style={styles.mediaContent} />
-                      {item.type === 'VIDEO' && (
-                        <View style={styles.playOverlay}>
-                          <Ionicons name="play" size={32} color="white" />
-                        </View>
-                      )}
+                      <Image source={{ uri: getFullImageUrl(item.media?.url) }} style={styles.mediaContent} contentFit="cover" />
                    </View>
                 )}
 
@@ -314,161 +294,125 @@ export default function CommunityWorkspace() {
                    {(() => {
                      const groups: Record<string, { emoji: string, count: number, hasReacted: boolean }> = {};
                      (item.reactions || []).forEach((r: any) => {
-                       if (!groups[r.emoji]) {
-                         groups[r.emoji] = { emoji: r.emoji, count: 0, hasReacted: false };
-                       }
+                       if (!groups[r.emoji]) groups[r.emoji] = { emoji: r.emoji, count: 0, hasReacted: false };
                        groups[r.emoji].count++;
-                       if (r.userId === user?.id || r.user?.id === user?.id) {
-                         groups[r.emoji].hasReacted = true;
-                       }
+                       if (r.userId === user?.id || r.user?.id === user?.id) groups[r.emoji].hasReacted = true;
                      });
                      return Object.values(groups).map((group, idx) => (
-                       <TouchableOpacity 
-                         key={idx} 
-                         onPress={() => handleReact(group.emoji, item.id)}
-                         activeOpacity={0.7}
-                         style={[
-                           styles.reactionPill, 
-                           { 
-                             backgroundColor: group.hasReacted ? (isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.1)') : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'),
-                             borderColor: group.hasReacted ? '#8B5CF6' : 'transparent',
-                             borderWidth: 1
-                           }
-                         ]}
-                       >
+                       <TouchableOpacity key={idx} onPress={() => handleReact(group.emoji, item.id)} activeOpacity={0.7} style={[styles.reactionPill, { backgroundColor: group.hasReacted ? (isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.1)') : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'), borderColor: group.hasReacted ? '#8B5CF6' : 'transparent', borderWidth: 1 }]}>
                           <Text style={styles.reactionEmoji}>{group.emoji}</Text>
                           <Text style={[styles.reactionCount, { color: group.hasReacted ? '#8B5CF6' : (isDarkMode ? '#A1A1AA' : '#71717A') }]}>{group.count}</Text>
                        </TouchableOpacity>
                      ));
                    })()}
-                   <TouchableOpacity 
-                     style={[styles.addReaction, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)' }]}
-                     onPress={() => {
-                       setSelectedMessageForReaction(item.id);
-                       bottomSheetRef.current?.expand();
-                     }}
-                   >
+                   <TouchableOpacity style={[styles.addReaction, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)' }]} onPress={() => { setSelectedMessageForReaction(item.id); bottomSheetRef.current?.expand(); }}>
                       <Feather name="plus" size={12} color={theme.textSecondary} />
                    </TouchableOpacity>
                 </View>
               </View>
-              
-              {!isSameAsPrev && (
-                <Text style={[styles.timestamp, { color: theme.textSecondary, marginLeft: 10 }]}>
-                  {new Date(item.created_at).toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })}
-                </Text>
-              )}
+              {!isSameAsPrev && <Text style={[styles.timestamp, { color: theme.textSecondary, marginLeft: 8 }]}>{new Date(item.created_at).toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })}</Text>}
            </View>
         </View>
       </View>
     );
   };
 
+  const headerAvatarPath = community?.thumbnail || community?.owner?.profile?.profile_picture;
+  const headerAvatarUri = getFullImageUrl(headerAvatarPath);
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <ScreenContainer hasHeader={false} isScrollable={false}>
-        {/* HEADER */}
-        <View style={[styles.headerContainer, { paddingTop: insets.top }]}>
-          <View style={styles.headerTopRow}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.headerIconBtn}>
-              <Ionicons name="chevron-back" size={28} color={theme.text} />
-            </TouchableOpacity>
-
-            <Animated.View style={[styles.headerCenter, headerStyle]}>
-              <View style={styles.headerTitleRow}>
-                <Image 
-                  source={{ uri: getFullImageUrl(community?.thumbnail) }} 
-                  style={styles.mainAvatar} 
-                />
-                <Text style={[styles.communityName, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">
-                  {community?.name}
-                </Text>
-              </View>
-              <Text style={[styles.memberCount, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
-                {community?.owner?.username} • {community?._count?.members || 0} members
-              </Text>
-            </Animated.View>
-
-            {/* Compact Header for Scroll */}
-            <Animated.View 
-              pointerEvents="none"
-              style={[styles.compactHeader, compactHeaderStyle]}
-            >
-               <Text style={[styles.compactTitle, { color: theme.text }]}>{community?.name}</Text>
-               <Text style={[styles.compactSubtitle, { color: theme.textSecondary }]}>{community?._count?.members || 0} members</Text>
-            </Animated.View>
-
-            <TouchableOpacity style={styles.headerIconBtn}>
-              <Ionicons name="notifications-outline" size={24} color={theme.text} />
-            </TouchableOpacity>
+      {/* HEADER: Manual padding + ScreenContainer's lack of header = Perfect Alignment */}
+      <View style={[styles.headerContainer, { paddingTop: insets.top + 8, borderBottomWidth: 1, borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+        <View style={styles.headerTopRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerIconBtn}>
+            <Ionicons name="chevron-back" size={26} color={theme.text} />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <View style={styles.headerTitleRow}>
+               <View style={[styles.mainAvatarContainer, { backgroundColor: isDarkMode ? '#27272A' : '#E4E4E7' }]}>
+                  <Image source={headerAvatarUri ? { uri: headerAvatarUri } : DEFAULT_AVATAR} style={styles.mainAvatar} contentFit="cover" cachePolicy="memory-disk" />
+               </View>
+               <View style={{ flexShrink: 1 }}>
+                  <Text style={[styles.communityName, { color: theme.text }]} numberOfLines={1}>{community?.name || 'Community'}</Text>
+                  <Text style={[styles.memberCount, { color: theme.textSecondary }]} numberOfLines={1}>
+                    {community?.owner?.username ? `@${community.owner.username}` : (community?.category || 'General')} • {community?._count?.members || 0} members
+                  </Text>
+               </View>
+            </View>
           </View>
+          <TouchableOpacity style={styles.headerIconBtn}>
+            <Ionicons name="ellipsis-vertical" size={22} color={theme.text} />
+          </TouchableOpacity>
         </View>
+      </View>
 
-        {/* FEED */}
-        <Animated.FlatList
-          data={isLoadingMessages && messages.length === 0 ? Array(3).fill({ isSkeleton: true }) : messages}
-          keyExtractor={(it, idx) => it.isSkeleton ? `s-${idx}` : it.id}
-          renderItem={renderMessage}
-          onScroll={scrollHandler}
-          scrollEventThrottle={16}
-          onEndReached={() => {
-            if (hasNextPage && !isFetchingNextPage) fetchNextPage();
-          }}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={isFetchingNextPage ? <ActivityIndicator style={{ marginVertical: 20 }} color={theme.accent} /> : null}
-          contentContainerStyle={[styles.feedContent, { paddingBottom: insets.bottom + 100 }]}
-          showsVerticalScrollIndicator={false}
-        />
+      {/* FEED: Swapping paddingTop and paddingBottom because list is INVERTED */}
+      <FlatList
+        inverted
+        data={isLoadingMessages && messages.length === 0 ? Array(3).fill({ isSkeleton: true }) : messages}
+        keyExtractor={(it, idx) => it.isSkeleton ? `s-${idx}` : it.id}
+        renderItem={renderMessage}
+        onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
+        onEndReachedThreshold={0.5}
+        ListHeaderComponent={isFetchingNextPage ? <ActivityIndicator style={{ marginVertical: 20 }} color={theme.accent} /> : null}
+        contentContainerStyle={[styles.feedContent, { 
+          paddingTop: 80, // Space at the BOTTOM (where input is)
+          paddingBottom: 10, // Space at the TOP (where header is)
+        }]}
+        showsVerticalScrollIndicator={false}
+      />
 
-        {/* BOTTOM ACTION BAR */}
+      {/* ACTION BAR: Minimized bottom space */}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={[styles.bottomBar, { 
-          paddingBottom: Math.max(insets.bottom, 20),
+          paddingBottom: 4, 
           backgroundColor: theme.background,
           borderTopWidth: 1,
           borderTopColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
         }]}>
           <View style={[styles.inputWrapper, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
              <TouchableOpacity style={styles.actionBtn}>
-                <Feather name="image" size={20} color={theme.text} />
+                <Feather name="plus" size={20} color={theme.text} />
              </TouchableOpacity>
              <TextInput 
                 style={[styles.input, { color: theme.text }]}
-                placeholder="Send a message..."
+                placeholder="Message..."
                 placeholderTextColor={theme.textSecondary}
                 value={inputText}
                 onChangeText={setInputText}
+                multiline
              />
-             <TouchableOpacity onPress={handleSendMessage} style={styles.sendBtn}>
-                <Ionicons name="send" size={20} color={theme.accent} />
+             <TouchableOpacity onPress={handleSendMessage} style={styles.sendBtn} disabled={!inputText.trim()}>
+                <Ionicons name="send" size={20} color={inputText.trim() ? theme.accent : theme.textSecondary} />
              </TouchableOpacity>
           </View>
         </View>
+      </KeyboardAvoidingView>
 
-        {/* EMOJI PICKER SHEET */}
-        <BottomSheet
-          ref={bottomSheetRef}
-          index={-1}
-          snapPoints={['20%']}
-          enablePanDownToClose={true}
-          backdropComponent={(props) => (
-            <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.3} />
-          )}
-          backgroundStyle={{ backgroundColor: isDarkMode ? '#1C1C1E' : '#FFFFFF' }}
-          handleIndicatorStyle={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)' }}
-        >
-          <BottomSheetView style={styles.sheetContainer}>
-            <Text style={[styles.sheetTitle, { color: theme.text }]}>Add Reaction</Text>
-            <View style={styles.emojiGrid}>
-              {['👍', '❤️', '😂', '😮', '😢', '🙏'].map(emoji => (
-                <TouchableOpacity key={emoji} onPress={() => handleReact(emoji)} style={styles.emojiBtn}>
-                  <Text style={styles.emojiText}>{emoji}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </BottomSheetView>
-        </BottomSheet>
-      </ScreenContainer>
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={-1}
+        snapPoints={['20%']}
+        enablePanDownToClose={true}
+        backdropComponent={(props) => (
+          <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.3} />
+        )}
+        backgroundStyle={{ backgroundColor: isDarkMode ? '#1C1C1E' : '#FFFFFF' }}
+        handleIndicatorStyle={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)' }}
+      >
+        <BottomSheetView style={styles.sheetContainer}>
+          <Text style={[styles.sheetTitle, { color: theme.text }]}>Add Reaction</Text>
+          <View style={styles.emojiGrid}>
+            {['👍', '❤️', '😂', '😮', '😢', '🙏'].map(emoji => (
+              <TouchableOpacity key={emoji} onPress={() => handleReact(emoji)} style={styles.emojiBtn}>
+                <Text style={styles.emojiText}>{emoji}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </BottomSheetView>
+      </BottomSheet>
     </View>
   );
 }
@@ -476,123 +420,105 @@ export default function CommunityWorkspace() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   headerContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 10,
+    paddingHorizontal: 12,
+    paddingBottom: 8,
     zIndex: 10,
   },
   headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    height: 60,
+    height: 56,
   },
   headerIconBtn: {
-    padding: 8,
+    padding: 6,
   },
   headerCenter: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginLeft: 4,
   },
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 2,
-    maxWidth: width * 0.65,
+    gap: 10,
+  },
+  mainAvatarContainer: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    overflow: 'hidden',
   },
   mainAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: '100%',
+    height: '100%',
   },
   communityName: {
     fontSize: 16,
     fontWeight: '800',
-    flexShrink: 1,
+    lineHeight: 20,
   },
   memberCount: {
     fontSize: 11,
     fontWeight: '600',
-  },
-  compactHeader: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 60,
-  },
-  compactTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  compactSubtitle: {
-    fontSize: 10,
-    fontWeight: '600',
+    opacity: 0.7,
   },
   feedContent: {
-    paddingTop: 20,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
   },
   messageContainer: {
-    marginBottom: 10,
+    marginBottom: 8,
   },
   senderAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    overflow: 'hidden',
+  },
+  senderAvatarImage: {
+    width: '100%',
+    height: '100%',
   },
   contentBubble: {
-    borderRadius: 20,
     borderWidth: 1,
     alignSelf: 'flex-start',
-    maxWidth: '85%',
+    maxWidth: '82%',
     position: 'relative',
   },
   bubbleTail: {
     position: 'absolute',
     top: 0,
-    left: -8,
+    left: -7,
     width: 0,
     height: 0,
     backgroundColor: 'transparent',
     borderStyle: 'solid',
-    borderRightWidth: 10,
-    borderBottomWidth: 10,
+    borderRightWidth: 8,
+    borderBottomWidth: 8,
     borderLeftWidth: 0,
     borderTopWidth: 0,
     borderBottomColor: 'transparent',
   },
   mediaWrapper: {
     width: '100%',
-    borderRadius: 18,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   mediaContent: {
     width: '100%',
-    height: width * 0.8,
-    resizeMode: 'cover',
-  },
-  playOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    height: width * 0.7,
   },
   textContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
   },
   messageText: {
     fontSize: 15,
-    fontWeight: '500',
-    lineHeight: 22,
+    fontWeight: '400',
+    lineHeight: 21,
   },
   reactionsRow: {
     flexDirection: 'row',
-    padding: 8,
+    padding: 6,
     paddingTop: 0,
     gap: 4,
     alignItems: 'center',
@@ -600,9 +526,9 @@ const styles = StyleSheet.create({
   reactionPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 8,
     gap: 2,
   },
   reactionEmoji: {
@@ -613,45 +539,42 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   addReaction: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
   },
   timestamp: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '700',
-    marginTop: 6,
+    marginTop: 4,
     textTransform: 'uppercase',
-    opacity: 0.5,
+    opacity: 0.4,
   },
   bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingTop: 12,
-    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingHorizontal: 12,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 25,
-    paddingHorizontal: 8,
-    height: 50,
+    borderRadius: 24,
+    paddingHorizontal: 6,
+    minHeight: 48,
   },
   actionBtn: {
-    padding: 10,
+    padding: 8,
   },
   input: {
     flex: 1,
     fontSize: 14,
     fontWeight: '600',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
+    maxHeight: 100,
   },
   sendBtn: {
-    padding: 10,
+    padding: 8,
   },
   sheetContainer: {
     flex: 1,
