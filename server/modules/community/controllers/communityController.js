@@ -107,7 +107,8 @@ class CommunityController {
   async getMyCommunities(req, res) {
     try {
       const userId = req.user.id;
-      const communities = await communityService.getMyCommunities(userId);
+      const { limit, cursor } = req.query;
+      const communities = await communityService.getMyCommunities(userId, parseInt(limit) || 20, cursor);
       res.json({ success: true, data: communities });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -31,7 +31,7 @@ import Animated, {
 import { BlurView } from 'expo-blur';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { api } from '../../src/api/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { useSocketStore } from '../../src/store/useSocketStore';
 
@@ -41,7 +41,7 @@ const MessageSkeleton = () => {
   const { theme, isDarkMode } = useTheme();
   return (
     <View style={styles.messageContainer}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
         <View style={[styles.senderAvatar, { backgroundColor: isDarkMode ? '#333' : '#eee' }]} />
         <View style={[styles.contentBubble, { 
           width: '70%', 
@@ -50,7 +50,7 @@ const MessageSkeleton = () => {
           borderColor: 'transparent',
           borderRadius: 20,
           marginLeft: 12,
-          borderBottomLeftRadius: 4
+          borderTopLeftRadius: 4
         }]}>
            <View style={[styles.bubbleTail, { borderRightColor: isDarkMode ? '#1A1A1B' : '#eee' }]} />
         </View>
@@ -59,47 +59,6 @@ const MessageSkeleton = () => {
   );
 };
 
-// ── MOCK DATA FOR WORKSPACE ───────────────────────────────────────────
-const MOCK_MESSAGES = [
-  {
-    id: '1',
-    type: 'media',
-    sender: { name: 'ijaaass._', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200', verified: true },
-    mediaUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=600',
-    caption: 'gymkha.co real one stays 🔱',
-    reactions: [
-      { emoji: '❤️', count: 117 },
-      { emoji: '🎖️', count: 27 },
-      { emoji: '🔥', count: 22 },
-    ],
-    time: 'YESTERDAY 1:57 PM'
-  },
-  {
-    id: '2',
-    type: 'video',
-    sender: { name: 'ijaaass._', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200', verified: true },
-    mediaUrl: 'https://images.unsplash.com/photo-1541534741688-6078c64b52d2?q=80&w=600',
-    reactions: [
-      { emoji: '❤️', count: 92 },
-      { emoji: '💖', count: 15 },
-      { emoji: '🔥', count: 31 },
-    ],
-    time: 'YESTERDAY 6:16 PM'
-  },
-  {
-    id: '3',
-    type: 'text',
-    sender: { name: 'ijaaass._', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200', verified: true },
-    content: 'Brevis ndo entry kand kand ee song n oru video cheyyanam enn thoonni😅',
-    reactions: [
-      { emoji: '❤️', count: 39 },
-      { emoji: '😂', count: 13 },
-      { emoji: '📈', count: 10 },
-    ],
-    time: 'APR 27, 1:09 PM'
-  }
-];
-
 export default function CommunityWorkspace() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
@@ -107,6 +66,11 @@ export default function CommunityWorkspace() {
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const { socket } = useSocketStore();
+  const queryClient = useQueryClient();
+
+  const [inputText, setInputText] = useState('');
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  const [selectedMessageForReaction, setSelectedMessageForReaction] = useState<string | null>(null);
 
   // ── 🚀 Cached Community Details ──
   const { data: community, isLoading: isCommunityLoading } = useQuery({
@@ -116,399 +80,395 @@ export default function CommunityWorkspace() {
       return response.data.data;
     },
     enabled: !!id,
-    staleTime: 60000, // Keep fresh for 60s
+    staleTime: 60000,
   });
 
-  const [messages, setMessages] = useState<any[]>([]);
-  const [inputText, setInputText] = useState('');
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const isLoadingMessagesRef = useRef(false);
-  const [hasMore, setHasMore] = useState(true);
-  const hasMoreRef = useRef(true);
-  const [cursor, setCursor] = useState<string | null>(null);
+  // ── 🚀 Infinite Message Loading ──
+  const {
+    data: infiniteData,
+    isLoading: isLoadingMessages,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['community_messages', id],
+    queryFn: async ({ pageParam }) => {
+      const response = await api.get(`/communities/${id}/messages?limit=20${pageParam ? `&cursor=${pageParam}` : ''}`);
+      return response.data.data;
+    },
+    initialPageParam: null,
+    getNextPageParam: (lastPage) => (lastPage.length < 20 ? null : lastPage[lastPage.length - 1].id),
+    enabled: !!id,
+    staleTime: 30000,
+  });
 
-  const bottomSheetRef = useRef<BottomSheet>(null);
-  const [selectedMessageForReaction, setSelectedMessageForReaction] = useState<string | null>(null);
-
-  const openReactionSheet = (msgId: string) => {
-    setSelectedMessageForReaction(msgId);
-    bottomSheetRef.current?.expand();
-  };
-
-  const handleReact = async (emoji: string) => {
-    if (!selectedMessageForReaction) return;
-    bottomSheetRef.current?.close();
-
-    const targetMsgId = selectedMessageForReaction;
-    
-    // Optimistic UI update
-    setMessages(prev => prev.map(msg => {
-      if (msg.id === targetMsgId) {
-        const existingReactions = msg.reactions || [];
-        const userReactionIdx = existingReactions.findIndex((r: any) => r.user?.id === user?.id && r.emoji === emoji);
-        let newReactions;
-        if (userReactionIdx >= 0) {
-          newReactions = existingReactions.filter((_: any, idx: number) => idx !== userReactionIdx);
-        } else {
-          newReactions = [...existingReactions, { id: 'temp-' + Date.now(), emoji, user: { id: user?.id } }];
-        }
-        return { ...msg, reactions: newReactions };
-      }
-      return msg;
-    }));
-
-    try {
-      await api.post(`/communities/${id}/messages/${targetMsgId}/react`, { emoji });
-    } catch (e) {
-      console.error('[Community] React error:', e);
-    }
-  };
-
-  const fetchMessages = async (isNewCursor = false) => {
-    if ((!hasMoreRef.current && isNewCursor) || isLoadingMessagesRef.current) return;
-    try {
-      isLoadingMessagesRef.current = true;
-      setIsLoadingMessages(true);
-      const url = `/communities/${id}/messages?limit=20${cursor && isNewCursor ? `&cursor=${cursor}` : ''}`;
-      const response = await api.get(url);
-      if (response.data.success) {
-        const newMessages = response.data.data;
-        if (isNewCursor) {
-          setMessages(prev => {
-            const existingIds = new Set(prev.map((m: any) => m.id));
-            const uniqueNew = newMessages.filter((m: any) => !existingIds.has(m.id));
-            return [...prev, ...uniqueNew];
-          });
-        } else {
-          setMessages(newMessages);
-        }
-        
-        if (newMessages.length < 20) {
-          hasMoreRef.current = false;
-          setHasMore(false);
-        } else {
-          setCursor(newMessages[newMessages.length - 1].id);
-        }
-      } else {
-        hasMoreRef.current = false;
-        setHasMore(false);
-      }
-    } catch (error) {
-      console.error('[Community] Fetch messages error:', error);
-      hasMoreRef.current = false;
-      setHasMore(false);
-    } finally {
-      isLoadingMessagesRef.current = false;
-      setIsLoadingMessages(false);
-    }
-  };
+  const messages = useMemo(() => {
+    return infiniteData?.pages.flat() || [];
+  }, [infiniteData]);
 
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
+    const tempMsg = {
+      id: 'temp-' + Date.now(),
+      content: inputText.trim(),
+      type: 'text',
+      sender_id: user?.id,
+      sender: { ...user, username: user?.username || 'You' },
+      created_at: new Date().toISOString(),
+      reactions: []
+    };
+
+    // Optimistic Update
+    queryClient.setQueryData(['community_messages', id], (old: any) => {
+      if (!old) return old;
+      return {
+        ...old,
+        pages: [[tempMsg, ...old.pages[0]], ...old.pages.slice(1)]
+      };
+    });
+
+    setInputText('');
+
     try {
-      const response = await api.post(`/communities/${id}/messages`, {
+      await api.post(`/communities/${id}/messages`, {
         content: inputText.trim(),
         type: 'text'
       });
-      if (response.data.success) {
-        setMessages(prev => [response.data.data, ...prev]);
-        setInputText('');
-      }
     } catch (error) {
       console.error('[Community] Send message error:', error);
     }
   };
 
-  useEffect(() => {
-    fetchMessages();
-  }, [id]);
+  const reactionBuffer = useRef<Record<string, number>>({});
+  const reactionTimerRef = useRef<any>(null);
+
+  const handleReact = async (emoji: string, messageId?: string) => {
+    const targetMsgId = messageId || selectedMessageForReaction;
+    if (!targetMsgId || targetMsgId.startsWith('temp-')) return; 
+    
+    bottomSheetRef.current?.close();
+
+    // ── 🚀 Optimistic UI Update ──
+    queryClient.setQueryData(['community_messages', id], (old: any) => {
+      if (!old) return old;
+      return {
+        ...old,
+        pages: old.pages.map((page: any) => page.map((msg: any) => {
+          if (msg.id !== targetMsgId) return msg;
+          const existingReactions = msg.reactions || [];
+          const userReactionIndex = existingReactions.findIndex((r: any) => r.emoji === emoji && (r.userId === user?.id || r.user?.id === user?.id));
+          let newReactions;
+          if (userReactionIndex > -1) {
+            newReactions = existingReactions.filter((_: any, idx: number) => idx !== userReactionIndex);
+          } else {
+            newReactions = [...existingReactions, { emoji, userId: user?.id, user: user }];
+          }
+          return { ...msg, reactions: newReactions };
+        }))
+      };
+    });
+
+    // ── 🚀 Production Batching (Debounce) ──
+    const bufferKey = `${targetMsgId}:${emoji}`;
+    reactionBuffer.current[bufferKey] = (reactionBuffer.current[bufferKey] || 0) + 1;
+
+    if (reactionTimerRef.current) clearTimeout(reactionTimerRef.current);
+    reactionTimerRef.current = setTimeout(async () => {
+      const currentBuffer = { ...reactionBuffer.current };
+      reactionBuffer.current = {};
+
+      for (const [key, count] of Object.entries(currentBuffer)) {
+        if (count % 2 !== 0) {
+          const [mId, emo] = key.split(':');
+          try {
+            await api.post(`/communities/${id}/messages/${mId}/react`, { emoji: emo });
+          } catch (e) {
+            console.error('[Community] Batch React error:', e);
+          }
+        }
+      }
+    }, 800);
+  };
 
   useEffect(() => {
     if (socket && id) {
-      console.log(`📡 [COMMUNITY] Joining room community:${id}`);
       socket.emit('join_room', `community:${id}`);
 
       socket.on('new_community_message', (message: any) => {
-        console.log('📬 [COMMUNITY] New message received via socket:', message.id);
-        setMessages(prev => {
-           // Avoid duplicates (especially from optimistic updates)
-           if (prev.find(m => m.id === message.id)) return prev;
-           return [message, ...prev];
+        queryClient.setQueryData(['community_messages', id], (old: any) => {
+          if (!old) return old;
+          const firstPage = old.pages[0];
+          if (firstPage.find((m: any) => m.id === message.id)) return old;
+          const newFirstPage = [message, ...firstPage.filter((m: any) => !m.id.startsWith('temp-'))];
+          return { ...old, pages: [newFirstPage, ...old.pages.slice(1)] };
         });
       });
 
       socket.on('message_reaction_update', (data: any) => {
         const { messageId, result } = data;
-        setMessages(prev => prev.map(msg => {
-          if (msg.id === messageId) {
-            return { ...msg, reactions: result.reactions };
-          }
-          return msg;
-        }));
+        queryClient.setQueryData(['community_messages', id], (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page: any) => page.map((msg: any) => {
+              if (msg.id === messageId) return { ...msg, reactions: result.reactions };
+              return msg;
+            }))
+          };
+        });
       });
 
       return () => {
-        console.log(`🔌 [COMMUNITY] Leaving room community:${id}`);
         socket.emit('leave_room', `community:${id}`);
         socket.off('new_community_message');
         socket.off('message_reaction_update');
       };
     }
-  }, [socket, id]);
+  }, [socket, id, queryClient]);
 
   const scrollY = useSharedValue(0);
 
   const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
+    onScroll: (event) => { scrollY.value = event.contentOffset.y; },
   });
 
-  const headerStyle = useAnimatedStyle(() => {
-    return {
-      opacity: interpolate(scrollY.value, [0, 50], [1, 0], Extrapolate.CLAMP),
-      transform: [{ translateY: interpolate(scrollY.value, [0, 50], [0, -10], Extrapolate.CLAMP) }],
-    };
-  });
+  const headerStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, 50], [1, 0], Extrapolate.CLAMP),
+    transform: [{ translateY: interpolate(scrollY.value, [0, 50], [0, -10], Extrapolate.CLAMP) }],
+  }));
 
-  const compactHeaderStyle = useAnimatedStyle(() => {
-    return {
-      opacity: interpolate(scrollY.value, [40, 80], [0, 1], Extrapolate.CLAMP),
-    };
-  });
+  const compactHeaderStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [40, 80], [0, 1], Extrapolate.CLAMP),
+  }));
 
   const getFullImageUrl = (path: string | undefined | null) => {
     if (!path) return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200';
     if (path.startsWith('http')) return path;
-    const baseUrl = api.defaults.baseURL || 'https://api.suvix.in/api';
+    const baseUrl = api.defaults.baseURL || 'http://192.168.0.175:5051/api';
     const cleanBase = baseUrl.replace(/\/api$/, '');
     const cleanPath = path.startsWith('/') ? path.slice(1) : path;
     return `${cleanBase}/${cleanPath}`;
   };
 
   const renderMessage = ({ item, index }: { item: any, index: number }) => {
-    // Check if it's a skeleton
     if (item.isSkeleton) return <MessageSkeleton />;
 
     const isMedia = item.type === 'IMAGE' || item.type === 'VIDEO';
     const sender = item.sender;
     const profile = sender?.profile;
-    const name = profile?.name || sender?.username || 'Unknown';
-    const avatar = getFullImageUrl(profile?.profile_picture || sender?.avatar);
-    const prevItem = index < messages.length - 1 ? messages[index + 1] : null;
+    const name = profile?.name || sender?.name || sender?.username || 'Unknown';
+    const avatar = getFullImageUrl(profile?.profile_picture || sender?.profile_picture || sender?.avatar);
     
-    // Grouping logic: check if the next message (older) is from the same sender within 30s
-    const isSameAsPrev = prevItem && prevItem.sender?.id === item.sender?.id;
-    const diffMs = prevItem ? Math.abs(new Date(item.created_at).getTime() - new Date(prevItem.created_at).getTime()) : Infinity;
-    const isGroupedWithPrev = isSameAsPrev && diffMs < 30000;
+    const currentSenderId = item.sender_id || item.sender?.id;
+    const prevItem = index > 0 ? messages[index - 1] : null;
+    const prevSenderId = prevItem?.sender_id || prevItem?.sender?.id;
 
-    const showAvatar = !isGroupedWithPrev;
+    const isSameAsPrev = prevItem && 
+      prevSenderId === currentSenderId && 
+      (Math.abs(new Date(item.created_at).getTime() - new Date(prevItem.created_at).getTime())) < 30000;
 
     return (
-      <Animated.View entering={FadeInDown.delay(index * 50).springify()} style={[styles.messageContainer, isGroupedWithPrev && { marginBottom: 4 }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-          {showAvatar ? (
-            <Image source={{ uri: avatar }} style={styles.senderAvatar} />
-          ) : (
-            <View style={{ width: 32, height: 32 }} /> // Spacer for grouped messages
-          )}
-          
-          {/* Content Bubble */}
-          <TouchableOpacity 
-            activeOpacity={0.9}
-            onLongPress={() => openReactionSheet(item.id)}
-            style={[styles.contentBubble, { 
-              backgroundColor: isDarkMode ? '#1A1A1B' : theme.secondary, 
-              borderColor: isDarkMode ? '#27272A' : theme.border,
-              marginLeft: 12,
-              flexShrink: 1,
-              borderBottomLeftRadius: 4, // Flatten corner for tail
-            }]}
-          >
-            {/* 📐 Bubble Tail */}
-            <View style={[styles.bubbleTail, { 
-              borderRightColor: isDarkMode ? '#1A1A1B' : theme.secondary,
-              borderBottomColor: 'transparent'
-            }]} />
-          {isMedia && item.media?.url ? (
-            <View>
-              <Image source={{ uri: getFullImageUrl(item.media.url) }} style={styles.mediaContent} />
-              {item.type === 'VIDEO' && (
-                <View style={styles.playOverlay}>
-                  <Ionicons name="play" size={40} color="white" />
-                </View>
+      <View style={[styles.messageContainer, { marginTop: isSameAsPrev ? 4 : 20 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+           {/* AVATAR COLUMN */}
+           <View style={{ width: 32, alignItems: 'center' }}>
+              {!isSameAsPrev && (
+                <Image source={{ uri: avatar }} style={styles.senderAvatar} />
               )}
-              {item.content && (
-                <View style={styles.captionContainer}>
-                  <Text style={[styles.captionText, { color: theme.text }]}>{item.content}</Text>
-                </View>
-              )}
-            </View>
-          ) : (
-            <View style={styles.textContainer}>
-              <Text style={[styles.messageText, { color: theme.text }]}>{item.content}</Text>
-            </View>
-          )}
+           </View>
 
-          {/* Reactions */}
-          {item.reactions && item.reactions.length > 0 && (
-            <View style={styles.reactionsRow}>
-              {Object.entries(
-                item.reactions.reduce((acc: any, r: any) => {
-                  acc[r.emoji] = (acc[r.emoji] || 0) + 1;
-                  return acc;
-                }, {})
-              ).map(([emoji, count]: [string, any]) => {
-                const hasReacted = item.reactions.some((r: any) => r.user?.id === user?.id && r.emoji === emoji);
-                return (
-                  <TouchableOpacity 
-                    key={emoji} 
-                    onPress={() => handleReact(emoji)}
-                    style={[
-                      styles.reactionPill, 
-                      { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' },
-                      hasReacted && { backgroundColor: 'rgba(255, 48, 64, 0.2)', borderColor: 'rgba(255, 48, 64, 0.5)', borderWidth: 1 }
-                    ]}
-                  >
-                    <Text style={styles.reactionEmoji}>{emoji}</Text>
-                    <Text style={[styles.reactionCount, { color: theme.textSecondary }]}>{count}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-              <TouchableOpacity 
-                onPress={() => openReactionSheet(item.id)}
-                style={[styles.reactionPill, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}
-              >
-                <Feather name="plus" size={16} color={theme.textSecondary} />
-              </TouchableOpacity>
-            </View>
-          )}
-          </TouchableOpacity>
+           {/* BUBBLE COLUMN */}
+           <View style={{ flex: 1 }}>
+              <View style={[
+                styles.contentBubble, 
+                { 
+                  backgroundColor: isDarkMode ? '#1F1F21' : '#F4F4F5',
+                  borderColor: isDarkMode ? '#2A2A2C' : '#E4E4E7',
+                  marginLeft: 10,
+                  borderRadius: 20,
+                  borderTopLeftRadius: isSameAsPrev ? 20 : 4
+                }
+              ]}>
+                {!isSameAsPrev && (
+                  <View style={[styles.bubbleTail, { borderRightColor: isDarkMode ? '#1F1F21' : '#F4F4F5' }]} />
+                )}
+
+                {isMedia && (
+                   <View style={styles.mediaWrapper}>
+                      <Image source={{ uri: getFullImageUrl(item.media?.url) }} style={styles.mediaContent} />
+                      {item.type === 'VIDEO' && (
+                        <View style={styles.playOverlay}>
+                          <Ionicons name="play" size={32} color="white" />
+                        </View>
+                      )}
+                   </View>
+                )}
+
+                {item.content && (
+                  <View style={styles.textContainer}>
+                    <Text style={[styles.messageText, { color: theme.text }]}>{item.content}</Text>
+                  </View>
+                )}
+
+                <View style={styles.reactionsRow}>
+                   {(() => {
+                     const groups: Record<string, { emoji: string, count: number, hasReacted: boolean }> = {};
+                     (item.reactions || []).forEach((r: any) => {
+                       if (!groups[r.emoji]) {
+                         groups[r.emoji] = { emoji: r.emoji, count: 0, hasReacted: false };
+                       }
+                       groups[r.emoji].count++;
+                       if (r.userId === user?.id || r.user?.id === user?.id) {
+                         groups[r.emoji].hasReacted = true;
+                       }
+                     });
+                     return Object.values(groups).map((group, idx) => (
+                       <TouchableOpacity 
+                         key={idx} 
+                         onPress={() => handleReact(group.emoji, item.id)}
+                         activeOpacity={0.7}
+                         style={[
+                           styles.reactionPill, 
+                           { 
+                             backgroundColor: group.hasReacted ? (isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.1)') : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'),
+                             borderColor: group.hasReacted ? '#8B5CF6' : 'transparent',
+                             borderWidth: 1
+                           }
+                         ]}
+                       >
+                          <Text style={styles.reactionEmoji}>{group.emoji}</Text>
+                          <Text style={[styles.reactionCount, { color: group.hasReacted ? '#8B5CF6' : (isDarkMode ? '#A1A1AA' : '#71717A') }]}>{group.count}</Text>
+                       </TouchableOpacity>
+                     ));
+                   })()}
+                   <TouchableOpacity 
+                     style={[styles.addReaction, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)' }]}
+                     onPress={() => {
+                       setSelectedMessageForReaction(item.id);
+                       bottomSheetRef.current?.expand();
+                     }}
+                   >
+                      <Feather name="plus" size={12} color={theme.textSecondary} />
+                   </TouchableOpacity>
+                </View>
+              </View>
+              
+              {!isSameAsPrev && (
+                <Text style={[styles.timestamp, { color: theme.textSecondary, marginLeft: 10 }]}>
+                  {new Date(item.created_at).toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })}
+                </Text>
+              )}
+           </View>
         </View>
-
-        {/* Time - Only show if not grouped or if it's the last in a group (newest) */}
-        {showAvatar && (
-          <Text style={[styles.messageTime, { color: theme.textSecondary, marginLeft: 44, marginTop: 4 }]}>
-            {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </Text>
-        )}
-      </Animated.View>
+      </View>
     );
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <StatusBar barStyle="light-content" />
-      
-      {/* 🛡️ SAFE AREA TASK BAR (BLACK) */}
-      <View style={{ height: insets.top, backgroundColor: '#000' }} />
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+      <ScreenContainer hasHeader={false} isScrollable={false}>
+        {/* HEADER */}
+        <View style={[styles.headerContainer, { paddingTop: insets.top }]}>
+          <View style={styles.headerTopRow}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.headerIconBtn}>
+              <Ionicons name="chevron-back" size={28} color={theme.text} />
+            </TouchableOpacity>
 
-      {/* ── HEADER ── */}
-      <View style={[styles.headerContainer, { 
-        backgroundColor: theme.background,
-        borderBottomWidth: 1,
-        borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
-      }]}>
-        <View style={styles.headerTopRow}>
-          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/chats')} style={styles.headerIconBtn}>
-            <Ionicons name="arrow-back" size={24} color={theme.text} />
-          </TouchableOpacity>
-          
-          <Animated.View style={[styles.headerCenter, headerStyle]}>
-            <View style={styles.headerTitleRow}>
-              <Image 
-                source={{ uri: community?.thumbnail || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200' }} 
-                style={styles.mainAvatar} 
-              />
-              <Text style={[styles.communityName, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">
-                {community?.name}
+            <Animated.View style={[styles.headerCenter, headerStyle]}>
+              <View style={styles.headerTitleRow}>
+                <Image 
+                  source={{ uri: getFullImageUrl(community?.thumbnail) }} 
+                  style={styles.mainAvatar} 
+                />
+                <Text style={[styles.communityName, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">
+                  {community?.name}
+                </Text>
+              </View>
+              <Text style={[styles.memberCount, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
+                {community?.owner?.username} • {community?._count?.members || 0} members
               </Text>
-            </View>
-            <Text style={[styles.memberCount, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
-              {community?.owner?.username} • {community?._count?.members || 0} members
-            </Text>
-          </Animated.View>
+            </Animated.View>
 
-          {/* Compact Header for Scroll */}
-          <Animated.View 
-            pointerEvents="none"
-            style={[styles.compactHeader, compactHeaderStyle]}
-          >
-             <Text style={[styles.compactTitle, { color: theme.text }]}>{community?.name}</Text>
-             <Text style={[styles.compactSubtitle, { color: theme.textSecondary }]}>{community?._count?.members || 0} members</Text>
-          </Animated.View>
+            {/* Compact Header for Scroll */}
+            <Animated.View 
+              pointerEvents="none"
+              style={[styles.compactHeader, compactHeaderStyle]}
+            >
+               <Text style={[styles.compactTitle, { color: theme.text }]}>{community?.name}</Text>
+               <Text style={[styles.compactSubtitle, { color: theme.textSecondary }]}>{community?._count?.members || 0} members</Text>
+            </Animated.View>
 
-          <TouchableOpacity style={styles.headerIconBtn}>
-            <Ionicons name="notifications-outline" size={24} color={theme.text} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* ── FEED ── */}
-      <Animated.FlatList
-        data={isLoadingMessages && messages.length === 0 ? [
-          { id: 's1', isSkeleton: true },
-          { id: 's2', isSkeleton: true },
-          { id: 's3', isSkeleton: true }
-        ] : messages}
-        keyExtractor={(item) => item.id}
-        renderItem={renderMessage}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
-        onEndReached={() => fetchMessages(true)}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={isLoadingMessages && messages.length > 0 ? <ActivityIndicator style={{ marginVertical: 20 }} color={theme.accent} /> : null}
-        contentContainerStyle={[styles.feedContent, { paddingBottom: insets.bottom + 100 }]}
-        showsVerticalScrollIndicator={false}
-      />
-
-      {/* ── BOTTOM ACTION BAR ── */}
-      <View style={[styles.bottomBar, { 
-        paddingBottom: Math.max(insets.bottom, 20),
-        backgroundColor: theme.background,
-        borderTopWidth: 1,
-        borderTopColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
-      }]}>
-        <View style={[styles.inputWrapper, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
-           <TouchableOpacity style={styles.actionBtn}>
-              <Feather name="image" size={20} color={theme.text} />
-           </TouchableOpacity>
-           <TextInput 
-              style={[styles.input, { color: theme.text }]}
-              placeholder="Send a message..."
-              placeholderTextColor={theme.textSecondary}
-              value={inputText}
-              onChangeText={setInputText}
-           />
-           <TouchableOpacity onPress={handleSendMessage} style={styles.sendBtn}>
-              <Ionicons name="send" size={20} color={theme.accent} />
-           </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* ── EMOJI PICKER SHEET ── */}
-      <BottomSheet
-        ref={bottomSheetRef}
-        index={-1}
-        snapPoints={['20%']}
-        enablePanDownToClose={true}
-        backdropComponent={(props) => (
-          <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.3} />
-        )}
-        backgroundStyle={{ backgroundColor: isDarkMode ? '#1C1C1E' : '#FFFFFF' }}
-        handleIndicatorStyle={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)' }}
-      >
-        <BottomSheetView style={styles.sheetContainer}>
-          <Text style={[styles.sheetTitle, { color: theme.text }]}>Add Reaction</Text>
-          <View style={styles.emojiGrid}>
-            {['👍', '❤️', '😂', '😮', '😢', '🙏'].map(emoji => (
-              <TouchableOpacity key={emoji} onPress={() => handleReact(emoji)} style={styles.emojiBtn}>
-                <Text style={styles.emojiText}>{emoji}</Text>
-              </TouchableOpacity>
-            ))}
+            <TouchableOpacity style={styles.headerIconBtn}>
+              <Ionicons name="notifications-outline" size={24} color={theme.text} />
+            </TouchableOpacity>
           </View>
-        </BottomSheetView>
-      </BottomSheet>
+        </View>
+
+        {/* FEED */}
+        <Animated.FlatList
+          data={isLoadingMessages && messages.length === 0 ? Array(3).fill({ isSkeleton: true }) : messages}
+          keyExtractor={(it, idx) => it.isSkeleton ? `s-${idx}` : it.id}
+          renderItem={renderMessage}
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
+          onEndReached={() => {
+            if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+          }}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={isFetchingNextPage ? <ActivityIndicator style={{ marginVertical: 20 }} color={theme.accent} /> : null}
+          contentContainerStyle={[styles.feedContent, { paddingBottom: insets.bottom + 100 }]}
+          showsVerticalScrollIndicator={false}
+        />
+
+        {/* BOTTOM ACTION BAR */}
+        <View style={[styles.bottomBar, { 
+          paddingBottom: Math.max(insets.bottom, 20),
+          backgroundColor: theme.background,
+          borderTopWidth: 1,
+          borderTopColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
+        }]}>
+          <View style={[styles.inputWrapper, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
+             <TouchableOpacity style={styles.actionBtn}>
+                <Feather name="image" size={20} color={theme.text} />
+             </TouchableOpacity>
+             <TextInput 
+                style={[styles.input, { color: theme.text }]}
+                placeholder="Send a message..."
+                placeholderTextColor={theme.textSecondary}
+                value={inputText}
+                onChangeText={setInputText}
+             />
+             <TouchableOpacity onPress={handleSendMessage} style={styles.sendBtn}>
+                <Ionicons name="send" size={20} color={theme.accent} />
+             </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* EMOJI PICKER SHEET */}
+        <BottomSheet
+          ref={bottomSheetRef}
+          index={-1}
+          snapPoints={['20%']}
+          enablePanDownToClose={true}
+          backdropComponent={(props) => (
+            <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.3} />
+          )}
+          backgroundStyle={{ backgroundColor: isDarkMode ? '#1C1C1E' : '#FFFFFF' }}
+          handleIndicatorStyle={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)' }}
+        >
+          <BottomSheetView style={styles.sheetContainer}>
+            <Text style={[styles.sheetTitle, { color: theme.text }]}>Add Reaction</Text>
+            <View style={styles.emojiGrid}>
+              {['👍', '❤️', '😂', '😮', '😢', '🙏'].map(emoji => (
+                <TouchableOpacity key={emoji} onPress={() => handleReact(emoji)} style={styles.emojiBtn}>
+                  <Text style={styles.emojiText}>{emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </BottomSheetView>
+        </BottomSheet>
+      </ScreenContainer>
     </View>
   );
 }
@@ -577,23 +537,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   messageContainer: {
-    marginBottom: 30,
-  },
-  senderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginBottom: 10,
-    paddingLeft: 4,
   },
   senderAvatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
   },
-
   contentBubble: {
     borderRadius: 20,
-    overflow: 'visible', // Changed to visible for tail
     borderWidth: 1,
     alignSelf: 'flex-start',
     maxWidth: '85%',
@@ -601,7 +553,7 @@ const styles = StyleSheet.create({
   },
   bubbleTail: {
     position: 'absolute',
-    bottom: -1,
+    top: 0,
     left: -8,
     width: 0,
     height: 0,
@@ -612,7 +564,11 @@ const styles = StyleSheet.create({
     borderLeftWidth: 0,
     borderTopWidth: 0,
     borderBottomColor: 'transparent',
-    transform: [{ rotate: '0deg' }],
+  },
+  mediaWrapper: {
+    width: '100%',
+    borderRadius: 18,
+    overflow: 'hidden',
   },
   mediaContent: {
     width: '100%',
@@ -625,15 +581,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.1)',
   },
-  captionContainer: {
-    padding: 16,
-    backgroundColor: 'rgba(0,0,0,0.02)',
-  },
-  captionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    lineHeight: 20,
-  },
   textContainer: {
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -645,41 +592,39 @@ const styles = StyleSheet.create({
   },
   reactionsRow: {
     flexDirection: 'row',
-    padding: 12,
-    gap: 8,
+    padding: 8,
+    paddingTop: 0,
+    gap: 4,
     alignItems: 'center',
   },
   reactionPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    gap: 2,
   },
   reactionEmoji: {
-    fontSize: 14,
+    fontSize: 10,
   },
   reactionCount: {
-    fontSize: 12,
+    fontSize: 9,
     fontWeight: '700',
-    color: 'white',
   },
   addReaction: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
   timestamp: {
-    fontSize: 10,
-    fontWeight: '800',
-    marginTop: 8,
-    marginLeft: 4,
+    fontSize: 9,
+    fontWeight: '700',
+    marginTop: 6,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    opacity: 0.5,
   },
   bottomBar: {
     position: 'absolute',
@@ -688,8 +633,6 @@ const styles = StyleSheet.create({
     right: 0,
     paddingTop: 12,
     paddingHorizontal: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
   },
   inputWrapper: {
     flexDirection: 'row',

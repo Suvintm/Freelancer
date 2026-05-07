@@ -57,6 +57,10 @@ import { scheduleQuotaMaintenance } from "./modules/workers/queues.js";
 import { initFirebaseAdmin } from "./utils/firebaseAdmin.js";
 initFirebaseAdmin();
 
+// Production Resilience: Reaction Worker
+import { initReactionWorker } from "./workers/reactionWorker.js";
+initReactionWorker(10000); // Flush every 10 seconds
+
 // Initialize BullMQ Background Workers
 // 🛡️ [RESILIENCE] Disable workers in production to stop Redis request flood
 if (process.env.NODE_ENV !== "production") {

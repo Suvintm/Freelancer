@@ -1,4 +1,5 @@
 import prisma from '../../../config/prisma.js';
+import reactionBuffer from "../../../services/reactionBufferService.js";
 import slugify from 'slugify';
 
 class CommunityService {
@@ -104,7 +105,7 @@ class CommunityService {
       throw new Error('Not a member of this community');
     }
 
-    return await prisma.communityMessage.create({
+    const message = await prisma.communityMessage.create({
       data: {
         communityId,
         senderId,
@@ -128,6 +129,14 @@ class CommunityService {
         }
       }
     });
+
+    // Update community updated_at for sorting
+    await prisma.community.update({
+      where: { id: communityId },
+      data: { updated_at: new Date() }
+    });
+
+    return message;
   }
 
   /**
@@ -216,45 +225,36 @@ class CommunityService {
     });
 
     if (existingReaction) {
-      // Toggle off
-      await prisma.communityMessageReaction.delete({
-        where: { id: existingReaction.id }
-      });
-      return { action: 'removed', emoji };
+      // Toggle off - Buffer the delete
+      reactionBuffer.push({ messageId, userId, emoji, type: 'remove' });
+      return { action: 'removed', emoji, userId };
     } else {
-      // Toggle on
-      const newReaction = await prisma.communityMessageReaction.create({
-        data: {
-          messageId,
-          userId,
-          emoji
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-              profile: {
-                select: { name: true, profile_picture: true }
-              }
-            }
-          }
-        }
-      });
-      return { action: 'added', reaction: newReaction };
+      // Toggle on - Buffer the create
+      reactionBuffer.push({ messageId, userId, emoji, type: 'add' });
+      return { 
+        action: 'added', 
+        emoji, 
+        userId,
+        // We return a mock reaction object for the socket broadcast
+        reaction: { messageId, userId, emoji, created_at: new Date() } 
+      };
     }
   }
 
   /**
    * Get communities for a user
    */
-  async getMyCommunities(userId) {
+  async getMyCommunities(userId, limit = 20, cursor) {
     return await prisma.community.findMany({
       where: {
         members: {
           some: { userId }
         }
       },
+      take: limit,
+      skip: cursor ? 1 : 0,
+      cursor: cursor ? { id: cursor } : undefined,
+      orderBy: { id: 'desc' },
       include: {
         _count: {
           select: { members: true }
