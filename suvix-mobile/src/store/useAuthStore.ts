@@ -103,6 +103,7 @@ interface AuthState {
   lastRefreshedAt:    number;
   dataLoaded:         boolean;
   isAddingAccount:    boolean;
+  isLoggingOut:       boolean;
   switchingToAccount: any | null;
   isBootstrapComplete: boolean;
   isIntroFinished:    boolean;
@@ -113,6 +114,7 @@ interface AuthState {
     categorizations: Record<string, string>;
   };
 
+  setIsLoggingOut:         (val: boolean) => void;
   setIsRefreshing:         (val: boolean) => void;
   surgicallyUpdateUser:    (data: any) => void;
   setIsAddingAccount:      (val: boolean) => void;
@@ -148,6 +150,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   lastRefreshedAt:    0,
   dataLoaded:         false,
   isAddingAccount:    false,
+  isLoggingOut:       false,
   switchingToAccount: null,
   isBootstrapComplete:false,
   isIntroFinished:    false,
@@ -160,6 +163,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   // ── Simple setters ─────────────────────────────────────────────────────────
 
+  setIsLoggingOut:        (val) => set({ isLoggingOut: val }),
   setIsRefreshing:        (val) => set({ isRefreshing: val }),
   setIsAddingAccount:     (val) => set({ isAddingAccount: val }),
   setIsBootstrapComplete: (val) => set({ isBootstrapComplete: val }),
@@ -316,6 +320,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: async () => {
     try {
+      set({ isLoggingOut: true });
       const { user, refreshToken } = get();
       const idToRemove = user?.id || useAccountVault.getState().activeAccountId;
 
@@ -341,6 +346,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         });
 
         const result = await get().switchAccount(nextId);
+        set({ isLoggingOut: false });
         if (result === 'success') return;
       }
 
@@ -350,6 +356,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user:               null,
         isAuthenticated:    false,
         isAddingAccount:    false,
+        isLoggingOut:       false,
         dataLoaded:         false,
         tempSignupData:     null,
         youtubeDiscovery: { channels: [], selectedChannelIds: [], categorizations: {} }

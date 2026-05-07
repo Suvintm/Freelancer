@@ -38,6 +38,7 @@ import { useEffect, useRef } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
 import { AccountSwitchOverlay } from '../src/components/shared/AccountSwitchOverlay';
+import { LogoutOverlay } from '../src/components/shared/LogoutOverlay';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { getDeviceId } from '../src/hooks/useDeviceId';
 import { CrossAccountBanner } from '../src/components/shared/CrossAccountBanner';
@@ -76,6 +77,7 @@ function InitialRoot() {
     dataLoaded,
     switchingToAccount,
     isAddingAccount,
+    isLoggingOut,
   } = useAuthStore();
 
   const { isDarkMode } = useTheme();
@@ -385,6 +387,13 @@ function InitialRoot() {
         <AccountSwitchOverlay
           account={switchingToAccount}
           isDark={isDarkMode}
+        />
+      )}
+
+      {isLoggingOut && (
+        <LogoutOverlay 
+          user={user} 
+          isDark={isDarkMode} 
         />
       )}
     </>
