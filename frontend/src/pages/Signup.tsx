@@ -134,9 +134,18 @@ export default function Signup() {
 
   const selectedChannels = youtubeDiscovery.selectedChannelIds.map(id => {
     const channel = youtubeDiscovery.channels.find(c => c.channelId === id);
+    if (!channel) return null;
     const categorization = youtubeDiscovery.categorizations[id];
-    return { ...channel, subCategoryId: categorization };
-  }).filter(Boolean);
+    return {
+      channelId: channel.channelId,
+      channelName: channel.channelName,
+      thumbnailUrl: channel.thumbnailUrl,
+      subscriberCount: channel.subscriberCount,
+      videoCount: channel.videoCount,
+      subCategoryId: categorization,
+      videos: channel.videos
+    };
+  }).filter((c): c is NonNullable<typeof c> => c !== null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

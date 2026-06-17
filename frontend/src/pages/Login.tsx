@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Mail, 
@@ -29,7 +29,6 @@ export default function Login() {
   const [showPass, setShowPass] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
   const { login, clearTempSignupData, resetYoutubeDiscovery } = useAuthStore();
-  const [searchParams] = useSearchParams();
   const [error, setError] = useState<string | null>(() => {
     const oauthError = new URLSearchParams(window.location.search).get('error');
     return oauthError ? (OAUTH_ERROR_MESSAGES[oauthError] || 'Authentication failed. Please try again.') : null;
