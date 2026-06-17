@@ -13,14 +13,18 @@ import {
   Briefcase,
   Tag,
   Mail,
+  Camera,
+  X,
 } from 'lucide-react';
 import logo from '../assets/darklogo.png';
 import { useAuthStore } from '../store/useAuthStore';
+import { useOnboardingStore } from '../store/useOnboardingStore';
 import { useCategoryStore } from '../store/useCategoryStore';
 import { api } from '../api/client';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi'];
+const COUNTRIES = ['India', 'United States', 'United Kingdom', 'Canada', 'Australia', 'United Arab Emirates', 'Saudi Arabia', 'Singapore'];
 
 /**
  * WEB EQUIVALENT OF MOBILE'S complete-profile.tsx
@@ -31,16 +35,32 @@ const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada'
  */
 export default function CompleteProfile() {
   const navigate = useNavigate();
-  const { tempSignupData, setAuth, clearTempSignupData } = useAuthStore();
+  const { setAuth } = useAuthStore();
+  const { tempSignupData, clearTempSignupData } = useOnboardingStore();
   const { categories, fetchCategories } = useCategoryStore();
 
   const socialProfile = tempSignupData?.socialProfile as Record<string, string> | undefined;
   const isSocialSignup = tempSignupData?.isSocialSignup as boolean | undefined;
 
-  const [form, setForm] = useState({ username: '', phone: '', motherTongue: 'English' });
+  const [form, setForm] = useState({ username: '', phone: '', motherTongue: 'English', country: 'India' });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [userStatus, setUserStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [profilePicture, setProfilePicture] = useState<File | null>(null);
+  const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(socialProfile?.picture || null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setProfilePicture(file);
+      setProfilePicturePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemoveCustomPicture = () => {
+    setProfilePicture(null);
+    setProfilePicturePreview(socialProfile?.picture || null);
+  };
 
   // Load categories so we can resolve real names
   useEffect(() => { fetchCategories(); }, [fetchCategories]);
@@ -107,18 +127,38 @@ export default function CompleteProfile() {
         username: form.username,
       });
 
-      const payload: Record<string, unknown> = {
-        fullName: socialProfile!.name,
-        username: form.username,
-        email: socialProfile!.email,
-        phone: form.phone,
-        motherTongue: form.motherTongue,
-        googleId: socialProfile!.googleId,
-        authProvider: 'google',
-        categoryId: tempSignupData?.categoryId ?? null,
-        roleSubCategoryIds: tempSignupData?.roleSubCategoryIds ?? [],
-        youtubeChannels: tempSignupData?.youtubeChannels ?? [],
-      };
+      let payload: Record<string, unknown> | FormData;
+
+      if (profilePicture) {
+        const formData = new FormData();
+        formData.append('fullName', socialProfile!.name);
+        formData.append('username', form.username);
+        formData.append('email', socialProfile!.email);
+        formData.append('phone', form.phone);
+        formData.append('motherTongue', form.motherTongue);
+        formData.append('country', form.country);
+        formData.append('googleId', socialProfile!.googleId);
+        formData.append('authProvider', 'google');
+        formData.append('categoryId', (tempSignupData?.categoryId as string) || '');
+        formData.append('roleSubCategoryIds', JSON.stringify(tempSignupData?.roleSubCategoryIds || []));
+        formData.append('youtubeChannels', JSON.stringify(tempSignupData?.youtubeChannels || []));
+        formData.append('profilePicture', profilePicture);
+        payload = formData;
+      } else {
+        payload = {
+          fullName: socialProfile!.name,
+          username: form.username,
+          email: socialProfile!.email,
+          phone: form.phone,
+          motherTongue: form.motherTongue,
+          country: form.country,
+          googleId: socialProfile!.googleId,
+          authProvider: 'google',
+          categoryId: tempSignupData?.categoryId ?? null,
+          roleSubCategoryIds: tempSignupData?.roleSubCategoryIds ?? [],
+          youtubeChannels: tempSignupData?.youtubeChannels ?? [],
+        };
+      }
 
       const res = await api.post('/auth/register-full', payload);
       if (res.data.success) {
@@ -164,17 +204,6 @@ export default function CompleteProfile() {
           transition={{ duration: 0.5, ease: EASE, delay: 0.08 }}
           className="flex items-center gap-4 p-4 rounded-2xl border border-zinc-800 bg-zinc-900/60 backdrop-blur-sm mb-3"
         >
-          {socialProfile.picture ? (
-            <img
-              src={socialProfile.picture}
-              alt=""
-              className="w-12 h-12 rounded-full object-cover border-2 border-zinc-700 flex-shrink-0"
-            />
-          ) : (
-            <div className="w-12 h-12 rounded-full bg-zinc-800 border-2 border-zinc-700 flex items-center justify-center flex-shrink-0">
-              <User size={20} className="text-zinc-400" />
-            </div>
-          )}
           <div className="flex-1 min-w-0">
             <p className="text-white font-bold text-sm truncate">{socialProfile.name}</p>
             <div className="flex items-center gap-1.5 mt-0.5">
@@ -184,7 +213,43 @@ export default function CompleteProfile() {
           </div>
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20 flex-shrink-0">
             <CheckCircle2 size={12} className="text-green-500" />
-            <span className="text-[10px] font-bold text-green-500 uppercase tracking-wider">Google</span>
+            <span className="text-[10px] font-bold text-green-500 uppercase tracking-wider">Google Verified</span>
+          </div>
+        </motion.div>
+
+        {/* ── Profile Picture Upload ── */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, ease: EASE, delay: 0.1 }}
+          className="flex items-center gap-4 p-4 rounded-2xl border border-zinc-800 bg-zinc-900/60 backdrop-blur-sm mb-3"
+        >
+          <div className="relative">
+            <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden">
+              {profilePicturePreview ? (
+                <img src={profilePicturePreview} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <User size={24} className="text-zinc-600" />
+              )}
+            </div>
+            <label className="absolute -bottom-2 -right-2 w-8 h-8 rounded-xl bg-white flex items-center justify-center cursor-pointer shadow-lg hover:scale-105 transition-transform">
+              <Camera size={14} className="text-black" />
+              <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+            </label>
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-white tracking-tight">Profile Picture</p>
+            {profilePicture ? (
+              <button
+                type="button"
+                onClick={handleRemoveCustomPicture}
+                className="text-[10px] text-red-400 font-bold hover:text-red-300 flex items-center gap-1 mt-0.5 cursor-pointer"
+              >
+                <X size={10} /> Revert to Google avatar
+              </button>
+            ) : (
+              <p className="text-[10px] text-zinc-500 font-medium mt-0.5">Google avatar synced. Upload to change.</p>
+            )}
           </div>
         </motion.div>
 
@@ -346,6 +411,22 @@ export default function CompleteProfile() {
                 className="w-full h-12 pl-10 pr-4 bg-zinc-900 border border-zinc-800 rounded-xl text-white text-sm font-medium focus:outline-none focus:border-zinc-600 transition-colors appearance-none"
               >
                 {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Country */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold tracking-wider text-zinc-500 uppercase">Country</label>
+            <div className="relative">
+              <Globe size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
+              <select
+                name="country"
+                value={form.country}
+                onChange={handleChange}
+                className="w-full h-12 pl-10 pr-4 bg-zinc-900 border border-zinc-800 rounded-xl text-white text-sm font-medium focus:outline-none focus:border-zinc-600 transition-colors appearance-none"
+              >
+                {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
           </div>

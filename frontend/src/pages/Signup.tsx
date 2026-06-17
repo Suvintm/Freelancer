@@ -22,9 +22,11 @@ import {
 import logo from '../assets/darklogo.png';
 import { AuthBackground } from '../components/auth/AuthBackground';
 import { useAuthStore } from '../store/useAuthStore';
+import { useOnboardingStore } from '../store/useOnboardingStore';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi'];
+const COUNTRIES = ['India', 'United States', 'United Kingdom', 'Canada', 'Australia', 'United Arab Emirates', 'Saudi Arabia', 'Singapore'];
 
 // ── Step progress indicator ───────────────────────────────────────────────────
 // Shows user where they are in the registration flow
@@ -79,7 +81,8 @@ function StepBar({ categorySlug }: StepBarProps) {
 // ── Main Signup Page ──────────────────────────────────────────────────────────
 export default function Signup() {
   const [showPass, setShowPass] = useState(false);
-  const { signup, tempSignupData, youtubeDiscovery, clearTempSignupData, checkUsername } = useAuthStore();
+  const { signup, checkUsername } = useAuthStore();
+  const { tempSignupData, clearTempSignupData } = useOnboardingStore();
   const socialProfile = tempSignupData?.socialProfile as Record<string, string> | undefined;
 
   const [form, setForm] = useState({
@@ -88,7 +91,8 @@ export default function Signup() {
     email: socialProfile?.email || '',
     phone: '',
     password: '',
-    motherTongue: 'English'
+    motherTongue: 'English',
+    country: 'India'
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -132,20 +136,7 @@ export default function Signup() {
     }
   };
 
-  const selectedChannels = youtubeDiscovery.selectedChannelIds.map(id => {
-    const channel = youtubeDiscovery.channels.find(c => c.channelId === id);
-    if (!channel) return null;
-    const categorization = youtubeDiscovery.categorizations[id];
-    return {
-      channelId: channel.channelId,
-      channelName: channel.channelName,
-      thumbnailUrl: channel.thumbnailUrl,
-      subscriberCount: channel.subscriberCount,
-      videoCount: channel.videoCount,
-      subCategoryId: categorization,
-      videos: channel.videos
-    };
-  }).filter((c): c is NonNullable<typeof c> => c !== null);
+  const selectedChannels = tempSignupData?.youtubeChannels ?? [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -341,6 +332,22 @@ export default function Signup() {
                   </div>
                 </div>
 
+                {/* Country */}
+                <div className="space-y-1.5">
+                  <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">Country</label>
+                  <div className="relative">
+                    <Globe size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <select
+                      name="country"
+                      value={form.country}
+                      onChange={handleChange}
+                      className="suvix-input !pl-12 bg-zinc-900 border-zinc-800 focus:border-white text-sm appearance-none"
+                    >
+                      {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                </div>
+
                 {/* YouTube Channel Preview (yt_influencer only) */}
                 {selectedChannels.length > 0 && (
                   <div className="space-y-3 pt-2">
@@ -348,13 +355,16 @@ export default function Signup() {
                     <div className="space-y-2">
                       {selectedChannels.map(ch => (
                         <div key={ch?.channelId} className="flex items-center gap-3 p-3 rounded-xl border border-zinc-800/50 bg-zinc-900/30 backdrop-blur-sm">
-                          <img src={ch?.thumbnailUrl} alt={ch?.channelName} className="w-10 h-10 rounded-full bg-zinc-800" />
+                          {ch?.thumbnailUrl && (
+                            <img src={ch.thumbnailUrl} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0 bg-zinc-800" />
+                          )}
                           <div className="flex-1 min-w-0">
                             <h4 className="text-sm font-bold text-white truncate">{ch?.channelName}</h4>
                             <div className="flex items-center gap-1.5 mt-0.5">
                               <Youtube size={12} className="text-[#FF0000]" />
                               <span className="text-[11px] font-semibold text-zinc-400">
-                                {Number(ch?.subscriberCount || 0).toLocaleString()} • {ch?.subCategoryId || 'Creator'}
+                                {Number(ch?.subscriberCount || 0).toLocaleString()} subscribers
+                                {ch?.subCategorySlug && ` • ${ch.subCategorySlug.replace(/_/g, ' ')}`}
                               </span>
                             </div>
                           </div>
