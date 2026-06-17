@@ -22,6 +22,7 @@ import {
 import logo from '../assets/darklogo.png';
 import { AuthBackground } from '../components/auth/AuthBackground';
 import { useAuthStore } from '../store/useAuthStore';
+import { useOnboardingStore } from '../store/useOnboardingStore';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi'];
@@ -80,7 +81,8 @@ function StepBar({ categorySlug }: StepBarProps) {
 // ── Main Signup Page ──────────────────────────────────────────────────────────
 export default function Signup() {
   const [showPass, setShowPass] = useState(false);
-  const { signup, tempSignupData, youtubeDiscovery, clearTempSignupData, checkUsername } = useAuthStore();
+  const { signup, checkUsername } = useAuthStore();
+  const { tempSignupData, clearTempSignupData } = useOnboardingStore();
   const socialProfile = tempSignupData?.socialProfile as Record<string, string> | undefined;
 
   const [form, setForm] = useState({

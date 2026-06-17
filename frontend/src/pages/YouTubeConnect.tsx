@@ -16,7 +16,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { useAuthStore } from '../store/useAuthStore';
+import { useOnboardingStore } from '../store/useOnboardingStore';
 import { useCategoryStore } from '../store/useCategoryStore';
 import { api } from '../api/client';
 import { LoadingOverlay } from '../components/shared/LoadingOverlay';
@@ -49,7 +49,7 @@ export default function YouTubeConnect() {
     youtubeDiscovery, 
     addDiscoveredChannels, 
     resetYoutubeDiscovery 
-  } = useAuthStore();
+  } = useOnboardingStore();
   const { categories, isLoading: categoriesLoading, fetchCategories } = useCategoryStore();
 
   const [isLoading, setIsLoading] = useState(false);

@@ -1,5 +1,6 @@
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useOnboardingStore } from '../../store/useOnboardingStore';
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 
@@ -105,7 +106,7 @@ interface OnboardingGuardProps {
 }
 
 export const OnboardingGuard = ({ children, requiredStep, fallback = '/role-selection' }: OnboardingGuardProps) => {
-  const { tempSignupData } = useAuthStore();
+  const { tempSignupData } = useOnboardingStore();
 
   const currentStep = tempSignupData?.onboardingStep;
   const categoryId = tempSignupData?.categoryId;

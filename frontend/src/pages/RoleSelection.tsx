@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { AuthBackground } from '../components/auth/AuthBackground';
-import { useAuthStore } from '../store/useAuthStore';
+import { useOnboardingStore } from '../store/useOnboardingStore';
 import { useCategoryStore } from '../store/useCategoryStore';
 import logo from '../assets/darklogo.png';
 import type { RoleCategory } from '../store/useCategoryStore';
@@ -57,7 +57,7 @@ export default function RoleSelection() {
   const navigate = useNavigate();
   
   const { categories, isLoading, error, fetchCategories } = useCategoryStore();
-  const { setTempSignupData, clearTempSignupData } = useAuthStore();
+  const { setTempSignupData, clearTempSignupData } = useOnboardingStore();
   const selectedCategory = categories.find(c => c.id === selected);
 
   // 🔐 PRODUCTION: Clear ALL stale onboarding data when landing on role selection.

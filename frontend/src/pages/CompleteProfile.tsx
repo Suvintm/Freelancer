@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import logo from '../assets/darklogo.png';
 import { useAuthStore } from '../store/useAuthStore';
+import { useOnboardingStore } from '../store/useOnboardingStore';
 import { useCategoryStore } from '../store/useCategoryStore';
 import { api } from '../api/client';
 
@@ -34,7 +35,8 @@ const COUNTRIES = ['India', 'United States', 'United Kingdom', 'Canada', 'Austra
  */
 export default function CompleteProfile() {
   const navigate = useNavigate();
-  const { tempSignupData, setAuth, clearTempSignupData } = useAuthStore();
+  const { setAuth } = useAuthStore();
+  const { tempSignupData, clearTempSignupData } = useOnboardingStore();
   const { categories, fetchCategories } = useCategoryStore();
 
   const socialProfile = tempSignupData?.socialProfile as Record<string, string> | undefined;

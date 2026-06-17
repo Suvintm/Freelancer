@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from '../api/client';
+import { useOnboardingStore } from './useOnboardingStore';
 
 export interface AuthUser {
   id: string;
@@ -28,66 +29,6 @@ export interface AuthUser {
   bio?: string;
   followers?: number;
   following?: number;
-}
-
-export interface YouTubeChannel {
-  channelId: string;
-  channelName: string;
-  thumbnailUrl: string;
-  subscriberCount: number | string;
-  videoCount: number | string;
-  isClaimed?: boolean;
-  videos?: Array<{
-    id: string;
-    title: string;
-    thumbnail: string;
-    publishedAt: string;
-  }>;
-}
-
-export interface TempSignupData {
-  // ── Onboarding flow control ──────────────────────────────────────────────
-  /** 'login' = Google on Login page (no signup). 'register' = new user onboarding. */
-  intent?: 'login' | 'register';
-  /** Current step in the onboarding sequence — used by OnboardingGuard for route enforcement. */
-  onboardingStep?: 'role' | 'subcategory' | 'youtube' | 'details' | 'complete';
-  /** How the user chose to authenticate — set before navigating away from RoleSelection. */
-  authMethod?: 'email' | 'google';
-
-  // ── Role & Niche ─────────────────────────────────────────────────────────
-  categoryId?: string;
-  categorySlug?: string;
-  roleName?: string;
-  roleSubCategoryIds?: string[];
-
-  // ── Social / OAuth ───────────────────────────────────────────────────────
-  isSocialSignup?: boolean;
-  socialProfile?: {
-    name: string;
-    email: string;
-    picture?: string;
-    googleId: string;
-  };
-
-  // ── YouTube ──────────────────────────────────────────────────────────────
-  youtubeChannels?: Array<{
-    channelId: string;
-    channelName: string;
-    thumbnailUrl?: string | null;
-    subscriberCount?: number | string;
-    videoCount?: number | string;
-    uploadsPlaylistId?: string | null;
-    subCategoryId?: string;
-    subCategorySlug?: string | null;
-    isPrimary?: boolean;
-    isVerified?: boolean;
-    videos?: Array<{
-      id: string;
-      title: string;
-      thumbnail: string;
-      publishedAt: string;
-    }>;
-  }>;
 }
 
 export interface SignupPayload {
@@ -131,19 +72,6 @@ interface AuthState {
   isInitialized: boolean;
   isLoading: boolean;
 
-  tempSignupData: TempSignupData;
-  setTempSignupData: (data: Partial<TempSignupData>) => void;
-  clearTempSignupData: () => void;
-  youtubeDiscovery: {
-    channels: YouTubeChannel[];
-    selectedChannelIds: string[];
-    categorizations: Record<string, string>;
-  };
-  addDiscoveredChannels: (channels: YouTubeChannel[]) => void;
-  toggleYoutubeChannelSelection: (channelId: string) => void;
-  setYoutubeChannelCategory: (channelId: string, subCategoryId: string) => void;
-  resetYoutubeDiscovery: () => void;
-
   setAuth: (user: AuthUser, token: string, refreshToken: string) => void;
   setTokens: (token: string, refreshToken: string, user?: AuthUser) => void;
   login: (email: string, password: string) => Promise<void>;
@@ -164,78 +92,6 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isInitialized: false,
       isLoading: false,
-
-      tempSignupData: {},
-      youtubeDiscovery: {
-        channels: [],
-        selectedChannelIds: [],
-        categorizations: {},
-      },
-
-      setTempSignupData: (data) => {
-        set((state) => ({
-          tempSignupData: { ...state.tempSignupData, ...data },
-        }));
-      },
-
-      clearTempSignupData: () => {
-        set({
-          tempSignupData: {},
-          youtubeDiscovery: {
-            channels: [],
-            selectedChannelIds: [],
-            categorizations: {},
-          },
-        });
-      },
-
-      addDiscoveredChannels: (channels) => {
-        set((state) => ({
-          youtubeDiscovery: {
-            ...state.youtubeDiscovery,
-            channels,
-          },
-        }));
-      },
-
-      toggleYoutubeChannelSelection: (channelId) => {
-        set((state) => {
-          const { selectedChannelIds } = state.youtubeDiscovery;
-          const isSelected = selectedChannelIds.includes(channelId);
-          const newSelection = isSelected
-            ? selectedChannelIds.filter((id) => id !== channelId)
-            : [...selectedChannelIds, channelId];
-          
-          return {
-            youtubeDiscovery: {
-              ...state.youtubeDiscovery,
-              selectedChannelIds: newSelection,
-            },
-          };
-        });
-      },
-
-      setYoutubeChannelCategory: (channelId, subCategoryId) => {
-        set((state) => ({
-          youtubeDiscovery: {
-            ...state.youtubeDiscovery,
-            categorizations: {
-              ...state.youtubeDiscovery.categorizations,
-              [channelId]: subCategoryId,
-            },
-          },
-        }));
-      },
-      
-      resetYoutubeDiscovery: () => {
-        set({
-          youtubeDiscovery: {
-            channels: [],
-            selectedChannelIds: [],
-            categorizations: {},
-          }
-        });
-      },
 
       setAuth: (user, token, refreshToken) => {
         set({
@@ -315,7 +171,7 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         const { refreshToken } = get();
         
-        // 1. ATOMIC & IMMEDIATE: Wipe local state first so UI reacts instantly
+        // 1. ATOMIC & IMMEDIATE: Wipe local auth state first
         set({
           token: null,
           refreshToken: null,
@@ -323,17 +179,17 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: false,
           isInitialized: true,
           isLoading: false,
-          tempSignupData: {},
-          youtubeDiscovery: { channels: [], selectedChannelIds: [], categorizations: {} },
         });
 
-        // 2. WIPE STORAGE: Ensure nothing persists in browser cache
-        // Use the persist API to clear everything safely
+        // 2. WIPE SPECIFIC STORAGE: Clear only the persisted Zustand stores
+        // This avoids destroying unrelated app state in localStorage
         useAuthStore.persist.clearStorage();
-        localStorage.clear(); 
-        sessionStorage.clear();
+        useOnboardingStore.persist.clearStorage();
 
-        // 3. SERVER INVALIDATION: Attempt to kill session on backend
+        // 3. CLEAR ONBOARDING STATE IN MEMORY
+        useOnboardingStore.getState().clearTempSignupData();
+
+        // 4. SERVER INVALIDATION: Attempt to kill session on backend
         if (refreshToken) {
           try {
             api.post('/auth/logout', { refreshToken }).catch(e => 
@@ -344,11 +200,10 @@ export const useAuthStore = create<AuthState>()(
           }
         }
 
-        // 4. DISPATCH: Let AuthGuard and other listeners know we are out
+        // 5. DISPATCH: Let AuthGuard and other listeners know we are out
         window.dispatchEvent(new CustomEvent('suvix:logout'));
         
-        // 5. HARD REFRESH: This is the ultimate fix for flickering and stale JS state
-        // It ensures the next page load starts with a completely fresh environment
+        // 6. HARD REFRESH: This is the ultimate fix for flickering and stale JS state
         window.location.href = '/'; 
       },
 
@@ -409,8 +264,6 @@ export const useAuthStore = create<AuthState>()(
         refreshToken: state.refreshToken,
         user: state.user,
         isAuthenticated: state.isAuthenticated,
-        tempSignupData: state.tempSignupData,
-        youtubeDiscovery: state.youtubeDiscovery,
       }),
     }
   )

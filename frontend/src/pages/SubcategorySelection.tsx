@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { AuthBackground } from '../components/auth/AuthBackground';
-import { useAuthStore } from '../store/useAuthStore';
+import { useOnboardingStore } from '../store/useOnboardingStore';
 import { useCategoryStore } from '../store/useCategoryStore';
 import logo from '../assets/whitebglogo.png';
 
@@ -26,7 +26,7 @@ import rentalIcon from '../assets/categories/rental.png';
 
 export default function SubcategorySelection() {
   const navigate = useNavigate();
-  const { tempSignupData, setTempSignupData } = useAuthStore();
+  const { tempSignupData, setTempSignupData } = useOnboardingStore();
   const { categories, isLoading } = useCategoryStore();
   
   const [selectedSubs, setSelectedSubs] = useState<string[]>((tempSignupData?.roleSubCategoryIds as string[]) || []);
@@ -66,7 +66,7 @@ export default function SubcategorySelection() {
     setTimeout(() => {
       // Social/Google users → /complete-profile (minimal form, no password)
       // Email users        → /signup (full form)
-      const isSocial = useAuthStore.getState().tempSignupData?.isSocialSignup;
+      const isSocial = useOnboardingStore.getState().tempSignupData?.isSocialSignup;
       navigate(isSocial ? '/complete-profile' : '/signup');
     }, 500);
   };

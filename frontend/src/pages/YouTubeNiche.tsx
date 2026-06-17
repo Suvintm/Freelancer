@@ -13,7 +13,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { useAuthStore } from '../store/useAuthStore';
+import { useOnboardingStore } from '../store/useOnboardingStore';
 import { useCategoryStore } from '../store/useCategoryStore';
 import logo from '../assets/darklogo.png';
 
@@ -41,7 +41,7 @@ const STATIC_PARTICLES = [...Array(50)].map((_, i) => ({
 
 export default function YouTubeNiche() {
   const navigate = useNavigate();
-  const { tempSignupData, setTempSignupData } = useAuthStore();
+  const { tempSignupData, setTempSignupData } = useOnboardingStore();
   const { categories } = useCategoryStore();
 
   const [selectedNiche, setSelectedNiche] = useState<string | null>(null);
@@ -74,7 +74,7 @@ export default function YouTubeNiche() {
     });
     setTimeout(() => {
       setIsSubmitting(false);
-      const isSocial = useAuthStore.getState().tempSignupData?.isSocialSignup;
+      const isSocial = useOnboardingStore.getState().tempSignupData?.isSocialSignup;
       navigate(isSocial ? '/complete-profile' : '/signup');
     }, 900);
   };

@@ -14,6 +14,7 @@ import logo from '../assets/darklogo.png';
 import { AuthBackground } from '../components/auth/AuthBackground';
 import { MobileAuthHeader } from '../components/auth/MobileAuthHeader';
 import { useAuthStore } from '../store/useAuthStore';
+import { useOnboardingStore } from '../store/useOnboardingStore';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -28,7 +29,8 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
 export default function Login() {
   const [showPass, setShowPass] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
-  const { login, clearTempSignupData, resetYoutubeDiscovery } = useAuthStore();
+  const { login } = useAuthStore();
+  const { clearTempSignupData, resetYoutubeDiscovery } = useOnboardingStore();
   const [error, setError] = useState<string | null>(() => {
     const oauthError = new URLSearchParams(window.location.search).get('error');
     return oauthError ? (OAUTH_ERROR_MESSAGES[oauthError] || 'Authentication failed. Please try again.') : null;
@@ -72,7 +74,7 @@ export default function Login() {
     resetYoutubeDiscovery();
 
     // Step 2: Set login intent so OAuthSuccess routes correctly
-    useAuthStore.getState().setTempSignupData({ intent: 'login' });
+    useOnboardingStore.getState().setTempSignupData({ intent: 'login' });
 
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
     window.location.href = `${apiUrl}/auth/google`;

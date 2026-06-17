@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
+import { useOnboardingStore } from '../store/useOnboardingStore';
 import { api } from '../api/client';
 
 /**
@@ -42,9 +43,9 @@ export default function OAuthSuccess() {
 
         // Read intent from tempSignupData (set before OAuth redirect)
         // This is the ONLY source of truth — we never read stale role data here.
-        const authStore = useAuthStore.getState();
-        const intent = authStore.tempSignupData?.intent ?? 'login';
-        const categorySlug = authStore.tempSignupData?.categorySlug;
+        const onboardingStore = useOnboardingStore.getState();
+        const intent = onboardingStore.tempSignupData?.intent ?? 'login';
+        const categorySlug = onboardingStore.tempSignupData?.categorySlug;
 
         if (response.data.isNewUser) {
           // ── NEW USER ────────────────────────────────────────────────────────
@@ -58,7 +59,7 @@ export default function OAuthSuccess() {
 
           // intent === 'register': proceed with onboarding
           const { socialProfile, googleAccessToken } = response.data;
-          const { setTempSignupData, tempSignupData } = useAuthStore.getState();
+          const { setTempSignupData, tempSignupData } = useOnboardingStore.getState();
           
           const isEmailFlow = tempSignupData?.authMethod === 'email';
 
@@ -83,8 +84,8 @@ export default function OAuthSuccess() {
           }
 
           // All other roles: if they need subcategory selection, go there first
-          const currentStore = useAuthStore.getState();
-          if (currentStore.tempSignupData?.categoryId) {
+          const currentOnboardingStore = useOnboardingStore.getState();
+          if (currentOnboardingStore.tempSignupData?.categoryId) {
             // Check if this role requires subcategory
             const needsSubcategory = categorySlug && 
               !['direct_client', 'yt_influencer'].includes(categorySlug);
