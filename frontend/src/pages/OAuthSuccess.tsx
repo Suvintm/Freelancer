@@ -60,16 +60,20 @@ export default function OAuthSuccess() {
           const { socialProfile, googleAccessToken } = response.data;
           const { setTempSignupData, tempSignupData } = useAuthStore.getState();
           
+          const isEmailFlow = tempSignupData?.authMethod === 'email';
+
           // Merge social profile into temp data (preserving role/intent already set)
           setTempSignupData({ 
             ...tempSignupData,
-            isSocialSignup: true,
-            socialProfile: {
-              name: socialProfile.name,
-              email: socialProfile.email,
-              picture: socialProfile.picture,
-              googleId: socialProfile.googleId,
-            }
+            isSocialSignup: !isEmailFlow,
+            ...(!isEmailFlow ? {
+              socialProfile: {
+                name: socialProfile.name,
+                email: socialProfile.email,
+                picture: socialProfile.picture,
+                googleId: socialProfile.googleId,
+              }
+            } : {})
           });
 
           // YouTube flow: user selected yt_influencer role AND we have a Google token
