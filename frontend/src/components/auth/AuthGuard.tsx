@@ -24,7 +24,6 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   // 2. BFCACHE PROTECTION: Handle browser 'back' after logout
   useEffect(() => {
     const handlePageShow = (event: PageTransitionEvent) => {
-      // If page is restored from cache (back button), force an auth check
       if (event.persisted) {
         console.log('🔄 [BFCache] Page restored from cache, verifying session...');
         checkAuth();
@@ -35,7 +34,6 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   }, [checkAuth]);
 
   // 3. STRICT GUARD: While state is unknown, show nothing but the spinner
-  // We NEVER render children if we aren't 100% sure the user is valid
   if (!isInitialized) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-black">
@@ -76,7 +74,6 @@ export const PublicRoute = ({ children }: AuthGuardProps) => {
   }
 
   // If logged in but NOT onboarded, only redirect if they are trying to access /login or /signup
-  // This allows them to stay on /role-selection or /complete-profile
   const authEntryPaths = ['/login', '/signup', '/'];
   if (isAuthenticated && !user?.isOnboarded && authEntryPaths.includes(location.pathname)) {
     return <Navigate to="/role-selection" replace />;
@@ -85,3 +82,49 @@ export const PublicRoute = ({ children }: AuthGuardProps) => {
   return <>{children}</>;
 };
 
+/**
+ * OnboardingGuard — Enforces sequential step access in the onboarding flow.
+ *
+ * Prevents URL-hacking into the middle of registration. Each onboarding route
+ * declares the minimum tempSignupData.onboardingStep required to access it.
+ *
+ * Step order: role → subcategory → youtube → details → complete
+ *
+ * Example: A user cannot visit /subcategory-selection directly unless
+ * onboardingStep >= 'role' is already set in tempSignupData.
+ */
+const STEP_ORDER = ['role', 'subcategory', 'youtube', 'details', 'complete'] as const;
+type OnboardingStep = typeof STEP_ORDER[number];
+
+interface OnboardingGuardProps {
+  children: ReactNode;
+  /** The minimum onboardingStep required to access this page. */
+  requiredStep: OnboardingStep;
+  /** Where to redirect if the guard fails. Defaults to '/role-selection'. */
+  fallback?: string;
+}
+
+export const OnboardingGuard = ({ children, requiredStep, fallback = '/role-selection' }: OnboardingGuardProps) => {
+  const { tempSignupData } = useAuthStore();
+
+  const currentStep = tempSignupData?.onboardingStep;
+  const categoryId = tempSignupData?.categoryId;
+
+  // Base requirement: must have a category selected at minimum
+  if (!categoryId) {
+    return <Navigate to={fallback} replace />;
+  }
+
+  // If a specific step is required, verify the user has reached at least that step
+  if (requiredStep !== 'role') {
+    const currentIndex = currentStep ? STEP_ORDER.indexOf(currentStep) : -1;
+    const requiredIndex = STEP_ORDER.indexOf(requiredStep);
+
+    if (currentIndex < requiredIndex - 1) {
+      // User hasn't completed enough steps — send them back
+      return <Navigate to={fallback} replace />;
+    }
+  }
+
+  return <>{children}</>;
+};

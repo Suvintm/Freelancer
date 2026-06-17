@@ -37,8 +37,9 @@ export default function SubcategorySelection() {
   const category = useMemo(() => categories.find(c => c.id === categoryId), [categories, categoryId]);
 
   useEffect(() => {
+    // 🔐 PRODUCTION GUARD: Subcategory selection requires a role to have been selected first.
     if (!categoryId) {
-      navigate('/role-selection');
+      navigate('/role-selection', { replace: true });
     }
   }, [categoryId, navigate]);
 
@@ -58,10 +59,13 @@ export default function SubcategorySelection() {
   const handleFinish = () => {
     if (selectedSubs.length === 0) return;
     setIsFinishing(true);
-    setTempSignupData({ roleSubCategoryIds: selectedSubs });
+    setTempSignupData({
+      roleSubCategoryIds: selectedSubs,
+      onboardingStep: 'subcategory', // Advance step so OnboardingGuard knows sequence
+    });
     setTimeout(() => {
-      // Social users (Google OAuth) → /complete-profile (minimal form, no password)
-      // Normal users                → /signup (full form)
+      // Social/Google users → /complete-profile (minimal form, no password)
+      // Email users        → /signup (full form)
       const isSocial = useAuthStore.getState().tempSignupData?.isSocialSignup;
       navigate(isSocial ? '/complete-profile' : '/signup');
     }, 500);

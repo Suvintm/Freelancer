@@ -45,6 +45,11 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
           initialized: true, 
           isLoading: false 
         });
+      } else {
+        set({
+          error: 'Failed to load roles from server',
+          isLoading: false
+        });
       }
     } catch (error: unknown) {
       const err = error as { message?: string };

@@ -3,6 +3,17 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { api } from '../api/client';
 
+/**
+ * OAuthSuccess — The OAuth callback landing page.
+ *
+ * PRODUCTION FIX: Routing is now entirely driven by `tempSignupData.intent`
+ * which is set BEFORE the OAuth redirect, NOT by stale localStorage data.
+ *
+ * Intent values and their behavior:
+ *  - 'login'    → Existing user: go home. New user: error (no account found).
+ *  - 'register' → New user: go through onboarding. Existing user: just log in.
+ *  - undefined  → Fallback: treat as login attempt.
+ */
 export default function OAuthSuccess() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -24,59 +35,83 @@ export default function OAuthSuccess() {
       try {
         const response = await api.post('/auth/exchange-code', { code });
         
-        if (response.data.success) {
-          if (response.data.isNewUser) {
-            const { socialProfile } = response.data;
-            const { setTempSignupData, tempSignupData } = useAuthStore.getState();
-            
-            // Buffer social profile + mark as social signup
-            setTempSignupData({ 
-              ...tempSignupData,
-              isSocialSignup: true,
-              socialProfile: {
-                name: socialProfile.name,
-                email: socialProfile.email,
-                picture: socialProfile.picture,
-                googleId: socialProfile.googleId,
-              }
-            });
+        if (!response.data.success) {
+          navigate('/login?error=exchange_failed');
+          return;
+        }
 
-            // ROLE-FIRST PATTERN (matches intended UX):
-            // Step 1 — First Google auth (no role selected yet) → /role-selection
-            //   User picks role → subcategory/YT-connect → lands on /signup form
-            //   On /signup form, user clicks "Continue with Google" again
-            // Step 2 — Second Google auth (role now in tempSignupData) → /complete-profile
-            //   Only asks for username + phone (name/email already known from Google)
-            const currentStore = useAuthStore.getState();
-            if (currentStore.tempSignupData?.categoryId) {
-              navigate('/complete-profile');
-            } else {
-              navigate('/role-selection');
-            }
+        // Read intent from tempSignupData (set before OAuth redirect)
+        // This is the ONLY source of truth — we never read stale role data here.
+        const authStore = useAuthStore.getState();
+        const intent = authStore.tempSignupData?.intent ?? 'login';
+        const categorySlug = authStore.tempSignupData?.categorySlug;
+
+        if (response.data.isNewUser) {
+          // ── NEW USER ────────────────────────────────────────────────────────
+
+          if (intent === 'login') {
+            // User clicked Google on the Login page but has no account.
+            // Do NOT create an account — send them to signup with an error.
+            navigate('/login?error=no_account');
             return;
           }
 
-          const { user, token, refreshToken, googleAccessToken } = response.data;
+          // intent === 'register': proceed with onboarding
+          const { socialProfile, googleAccessToken } = response.data;
+          const { setTempSignupData, tempSignupData } = useAuthStore.getState();
           
-          setAuth(user, token, refreshToken);
-          
-          // 1. Detect if we were in the middle of YouTube discovery (Specific onboarding context)
-          const authStore = useAuthStore.getState();
-          const isYouTubeFlowExplicit = authStore.tempSignupData?.categoryId && 
-                                       (authStore.tempSignupData?.categorySlug === 'yt_influencer' || 
-                                        authStore.tempSignupData?.roleName?.toString().toLowerCase().includes('youtube'));
+          // Merge social profile into temp data (preserving role/intent already set)
+          setTempSignupData({ 
+            ...tempSignupData,
+            isSocialSignup: true,
+            socialProfile: {
+              name: socialProfile.name,
+              email: socialProfile.email,
+              picture: socialProfile.picture,
+              googleId: socialProfile.googleId,
+            }
+          });
 
-          if (isYouTubeFlowExplicit && googleAccessToken) {
+          // YouTube flow: user selected yt_influencer role AND we have a Google token
+          if (categorySlug === 'yt_influencer' && googleAccessToken) {
             navigate('/youtube-connect', { state: { googleAccessToken } });
             return;
           }
 
-          // 2. Existing users always go home
-          navigate('/home');
+          // All other roles: if they need subcategory selection, go there first
+          const currentStore = useAuthStore.getState();
+          if (currentStore.tempSignupData?.categoryId) {
+            // Check if this role requires subcategory
+            const needsSubcategory = categorySlug && 
+              !['direct_client', 'yt_influencer'].includes(categorySlug);
+            
+            if (needsSubcategory) {
+              navigate('/subcategory-selection');
+            } else {
+              navigate('/complete-profile');
+            }
+          } else {
+            // No role data — send back to role selection to start fresh
+            navigate('/role-selection');
+          }
           return;
-        } else {
-          navigate('/login?error=exchange_failed');
         }
+
+        // ── EXISTING USER ──────────────────────────────────────────────────
+
+        const { user, token, refreshToken, googleAccessToken } = response.data;
+
+        if (intent === 'register' && categorySlug === 'yt_influencer' && googleAccessToken) {
+          // Edge case: existing user who is trying to re-link YouTube during onboarding
+          // Pass token to YouTubeConnect to show their claimed channels
+          navigate('/youtube-connect', { state: { googleAccessToken } });
+          return;
+        }
+
+        // Standard login: set auth and go home
+        setAuth(user, token, refreshToken);
+        navigate('/home');
+
       } catch (error) {
         console.error('OAuth exchange error:', error);
         navigate('/login?error=server_error');
@@ -88,7 +123,7 @@ export default function OAuthSuccess() {
 
   return (
     <div className="h-screen w-full bg-black flex flex-col items-center justify-center gap-6">
-      <div className="w-16 h-16 border-4 border-accent-primary border-t-transparent rounded-full animate-spin" />
+      <div className="w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin" />
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold text-white uppercase tracking-widest font-display">Securing Session</h2>
         <p className="text-zinc-500 text-sm font-medium uppercase tracking-wider">Finalizing your secure login...</p>

@@ -46,10 +46,21 @@ export interface YouTubeChannel {
 }
 
 export interface TempSignupData {
+  // ── Onboarding flow control ──────────────────────────────────────────────
+  /** 'login' = Google on Login page (no signup). 'register' = new user onboarding. */
+  intent?: 'login' | 'register';
+  /** Current step in the onboarding sequence — used by OnboardingGuard for route enforcement. */
+  onboardingStep?: 'role' | 'subcategory' | 'youtube' | 'details' | 'complete';
+  /** How the user chose to authenticate — set before navigating away from RoleSelection. */
+  authMethod?: 'email' | 'google';
+
+  // ── Role & Niche ─────────────────────────────────────────────────────────
   categoryId?: string;
   categorySlug?: string;
   roleName?: string;
   roleSubCategoryIds?: string[];
+
+  // ── Social / OAuth ───────────────────────────────────────────────────────
   isSocialSignup?: boolean;
   socialProfile?: {
     name: string;
@@ -57,6 +68,8 @@ export interface TempSignupData {
     picture?: string;
     googleId: string;
   };
+
+  // ── YouTube ──────────────────────────────────────────────────────────────
   youtubeChannels?: Array<{
     channelId: string;
     channelName: string;
@@ -75,6 +88,39 @@ export interface TempSignupData {
       publishedAt: string;
     }>;
   }>;
+}
+
+export interface SignupPayload {
+  username?: string;
+  email?: string;
+  password?: string;
+  fullName?: string;
+  phone?: string;
+  motherTongue?: string;
+  categoryId?: string;
+  roleSubCategoryIds?: string[];
+  youtubeChannels?: Array<{
+    channelId: string;
+    channelName: string;
+    thumbnailUrl?: string | null;
+    subscriberCount?: number | string;
+    videoCount?: number | string;
+    uploadsPlaylistId?: string | null;
+    subCategoryId?: string;
+    subCategorySlug?: string | null;
+    isPrimary?: boolean;
+    isVerified?: boolean;
+    videos?: Array<{
+      id: string;
+      title: string;
+      thumbnail: string;
+      publishedAt: string;
+    }>;
+  }>;
+  googleId?: string;
+  authProvider?: string;
+  profilePicture?: File | string | null;
+  pushToken?: string;
 }
 
 interface AuthState {
@@ -101,7 +147,7 @@ interface AuthState {
   setAuth: (user: AuthUser, token: string, refreshToken: string) => void;
   setTokens: (token: string, refreshToken: string, user?: AuthUser) => void;
   login: (email: string, password: string) => Promise<void>;
-  signup: (data: TempSignupData | Record<string, unknown>) => Promise<void>;
+  signup: (data: SignupPayload) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   fetchUser: () => Promise<void>;
@@ -228,10 +274,29 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      signup: async (data) => {
+      signup: async (data: SignupPayload) => {
         set({ isLoading: true });
         try {
-          const res = await api.post('/auth/register-full', data);
+          let payload: Record<string, unknown> | FormData = data as unknown as Record<string, unknown>;
+          
+          // If a profile picture is provided, we must use FormData for multipart/form-data upload
+          if (data.profilePicture instanceof File) {
+            const formData = new FormData();
+            Object.entries(data as unknown as Record<string, unknown>).forEach(([key, value]) => {
+              if (value === undefined || value === null) return;
+              
+              if (key === 'youtubeChannels' || key === 'roleSubCategoryIds') {
+                formData.append(key, JSON.stringify(value));
+              } else if (value instanceof File) {
+                formData.append(key, value);
+              } else {
+                formData.append(key, String(value));
+              }
+            });
+            payload = formData;
+          }
+
+          const res = await api.post('/auth/register-full', payload);
           if (res.data.success) {
             const { user, token, refreshToken } = res.data;
             get().setAuth(user, token, refreshToken);

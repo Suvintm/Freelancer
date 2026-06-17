@@ -207,7 +207,7 @@ export const login = asyncHandler(async (req, res) => {
     );
   }
 
-  if (!user.password_hash && user.google_id) {
+  if (user.google_id && (!user.password_hash || user.password_hash.startsWith("OAUTH_ATOMIC_") || user.password_hash.startsWith("OAUTH_"))) {
     throw new ApiError(
       403,
       "This account is linked with Google. Please use 'Continue with Google' to sign in."
