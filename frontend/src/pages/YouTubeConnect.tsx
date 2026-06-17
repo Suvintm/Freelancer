@@ -30,6 +30,16 @@ const formatCount = (n: number | string): string => {
   return num.toLocaleString();
 };
 
+// Generated once at module load to maintain strict component render purity
+const STATIC_PARTICLES = [...Array(50)].map((_, i) => ({
+  id: i,
+  x: Math.random() * 100 + '%',
+  y: (i < 35) ? (Math.random() * 60 + '%') : (Math.random() * 100 + '%'),
+  opacity: Math.random() * 0.8,
+  scale: Math.random() * 0.7 + 0.3,
+  duration: Math.random() * 5 + 4,
+}));
+
 export default function YouTubeConnect() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -51,17 +61,6 @@ export default function YouTubeConnect() {
   const googleAccessToken = location.state?.googleAccessToken as string | undefined;
   const connected = youtubeDiscovery.channels.length > 0;
   const hasUnclaimedChannel = youtubeDiscovery.channels.some(c => !c.isClaimed);
-
-  // Stable particles
-  const particles = useMemo(() => 
-    [...Array(50)].map((_, i) => ({
-      id: i,
-      x: Math.random() * 100 + '%',
-      y: (i < 35) ? (Math.random() * 60 + '%') : (Math.random() * 100 + '%'),
-      opacity: Math.random() * 0.8,
-      scale: Math.random() * 0.7 + 0.3,
-      duration: Math.random() * 5 + 4,
-    })), []);
 
   const handleConnect = () => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
@@ -156,7 +155,7 @@ export default function YouTubeConnect() {
           className="absolute inset-0 opacity-[0.12]" 
           style={{ backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0)`, backgroundSize: '32px 32px' }} 
         />
-        {particles.map((p) => (
+        {STATIC_PARTICLES.map((p) => (
           <motion.div
             key={p.id}
             initial={{ x: p.x, y: p.y, opacity: p.opacity, scale: p.scale }}

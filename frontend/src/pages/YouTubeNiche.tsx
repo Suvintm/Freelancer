@@ -29,6 +29,16 @@ const formatVideoDate = (dateString?: string) => {
   return new Date(dateString).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
+// Generated once at module load to maintain strict component render purity
+const STATIC_PARTICLES = [...Array(50)].map((_, i) => ({
+  id: i,
+  x: Math.random() * 100 + '%',
+  y: (i < 35) ? (Math.random() * 60 + '%') : (Math.random() * 100 + '%'),
+  opacity: Math.random() * 0.8,
+  scale: Math.random() * 0.7 + 0.3,
+  duration: Math.random() * 5 + 4,
+}));
+
 export default function YouTubeNiche() {
   const navigate = useNavigate();
   const { tempSignupData, setTempSignupData } = useAuthStore();
@@ -46,17 +56,6 @@ export default function YouTubeNiche() {
   }
 
   const selectedNicheName = youtubeCategory?.subCategories?.find(s => s.id === selectedNiche)?.name;
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const particles = useMemo(() =>
-    [...Array(50)].map((_, i) => ({
-      id: i,
-      x: Math.random() * 100 + '%',
-      y: (i < 35) ? (Math.random() * 60 + '%') : (Math.random() * 100 + '%'),
-      opacity: Math.random() * 0.8,
-      scale: Math.random() * 0.7 + 0.3,
-      duration: Math.random() * 5 + 4,
-    })), []);
 
   const handleContinue = () => {
     if (!selectedNiche) return;
@@ -90,7 +89,7 @@ export default function YouTubeNiche() {
           className="absolute inset-0 opacity-[0.12]"
           style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0)', backgroundSize: '32px 32px' }}
         />
-        {particles.map((p) => (
+        {STATIC_PARTICLES.map((p) => (
           <motion.div
             key={p.id}
             initial={{ x: p.x, y: p.y, opacity: p.opacity, scale: p.scale }}

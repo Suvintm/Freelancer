@@ -29,10 +29,13 @@ export default function Login() {
   const [showPass, setShowPass] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
   const { login, clearTempSignupData, resetYoutubeDiscovery } = useAuthStore();
-  const [error, setError] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const [error, setError] = useState<string | null>(() => {
+    const oauthError = new URLSearchParams(window.location.search).get('error');
+    return oauthError ? (OAUTH_ERROR_MESSAGES[oauthError] || 'Authentication failed. Please try again.') : null;
+  });
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
   // 🔐 PRODUCTION: On Login mount, wipe ALL stale onboarding data.
   // This is the definitive fix for the stale-state contamination bug where
@@ -41,13 +44,7 @@ export default function Login() {
   React.useEffect(() => {
     clearTempSignupData();
     resetYoutubeDiscovery();
-
-    // Display any OAuth error returned from /oauth-success redirect
-    const oauthError = searchParams.get('error');
-    if (oauthError) {
-      setError(OAUTH_ERROR_MESSAGES[oauthError] || 'Authentication failed. Please try again.');
-    }
-  }, [clearTempSignupData, resetYoutubeDiscovery, searchParams]);
+  }, [clearTempSignupData, resetYoutubeDiscovery]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

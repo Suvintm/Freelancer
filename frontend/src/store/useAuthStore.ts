@@ -90,6 +90,39 @@ export interface TempSignupData {
   }>;
 }
 
+export interface SignupPayload {
+  username?: string;
+  email?: string;
+  password?: string;
+  fullName?: string;
+  phone?: string;
+  motherTongue?: string;
+  categoryId?: string;
+  roleSubCategoryIds?: string[];
+  youtubeChannels?: Array<{
+    channelId: string;
+    channelName: string;
+    thumbnailUrl?: string | null;
+    subscriberCount?: number | string;
+    videoCount?: number | string;
+    uploadsPlaylistId?: string | null;
+    subCategoryId?: string;
+    subCategorySlug?: string | null;
+    isPrimary?: boolean;
+    isVerified?: boolean;
+    videos?: Array<{
+      id: string;
+      title: string;
+      thumbnail: string;
+      publishedAt: string;
+    }>;
+  }>;
+  googleId?: string;
+  authProvider?: string;
+  profilePicture?: File | string | null;
+  pushToken?: string;
+}
+
 interface AuthState {
   token: string | null;
   refreshToken: string | null;
@@ -114,7 +147,7 @@ interface AuthState {
   setAuth: (user: AuthUser, token: string, refreshToken: string) => void;
   setTokens: (token: string, refreshToken: string, user?: AuthUser) => void;
   login: (email: string, password: string) => Promise<void>;
-  signup: (data: any) => Promise<void>;
+  signup: (data: SignupPayload) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   fetchUser: () => Promise<void>;
@@ -241,15 +274,15 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      signup: async (data) => {
+      signup: async (data: SignupPayload) => {
         set({ isLoading: true });
         try {
-          let payload: any = data;
+          let payload: Record<string, unknown> | FormData = data as unknown as Record<string, unknown>;
           
           // If a profile picture is provided, we must use FormData for multipart/form-data upload
           if (data.profilePicture instanceof File) {
             const formData = new FormData();
-            Object.entries(data).forEach(([key, value]) => {
+            Object.entries(data as unknown as Record<string, unknown>).forEach(([key, value]) => {
               if (value === undefined || value === null) return;
               
               if (key === 'youtubeChannels' || key === 'roleSubCategoryIds') {
