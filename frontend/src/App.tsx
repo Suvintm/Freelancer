@@ -5,6 +5,7 @@ import Signup from './pages/Signup';
 import RoleSelection from './pages/RoleSelection';
 import SubcategorySelection from './pages/SubcategorySelection';
 import YouTubeConnect from './pages/YouTubeConnect';
+import YouTubeNiche from './pages/YouTubeNiche';
 import Home from './pages/Home';
 import Explore from './pages/Explore';
 import Profile from './pages/Profile';
@@ -18,7 +19,7 @@ import { AppLayout } from './components/layout/AppLayout';
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from './store/useAuthStore';
-import { AuthGuard, PublicRoute } from './components/auth/AuthGuard';
+import { AuthGuard, PublicRoute, OnboardingGuard } from './components/auth/AuthGuard';
 
 function App() {
   const navigate = useNavigate();
@@ -79,17 +80,63 @@ function App() {
         <Route path="/" element={<PublicRoute><Welcome /></PublicRoute>} />
         <Route path="/maintenance" element={<Maintenance />} />
         
-        {/* Onboarding & Auth Routes (Publicly accessible but with internal logic) */}
+        {/* Auth pages — publicly accessible */}
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-        <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
         
-        {/* These onboarding steps are accessible to unauthenticated users (pre-signup flow)
-            and also accessible to authenticated but non-onboarded users. */}
+        {/* Onboarding Routes — protected by OnboardingGuard for step sequencing */}
+        {/* role-selection is always accessible (it clears state on mount) */}
         <Route path="/role-selection" element={<PublicRoute><RoleSelection /></PublicRoute>} />
-        <Route path="/subcategory-selection" element={<PublicRoute><SubcategorySelection /></PublicRoute>} />
-        <Route path="/youtube-connect" element={<PublicRoute><YouTubeConnect /></PublicRoute>} />
-        <Route path="/complete-profile" element={<PublicRoute><CompleteProfile /></PublicRoute>} />
-        
+
+        {/* subcategory-selection requires role to be selected first */}
+        <Route
+          path="/subcategory-selection"
+          element={
+            <OnboardingGuard requiredStep="role">
+              <SubcategorySelection />
+            </OnboardingGuard>
+          }
+        />
+
+        {/* youtube-connect requires role = yt_influencer to be selected */}
+        <Route
+          path="/youtube-connect"
+          element={
+            <OnboardingGuard requiredStep="role">
+              <YouTubeConnect />
+            </OnboardingGuard>
+          }
+        />
+
+        {/* youtube-niche: niche selection after channel is fetched */}
+        <Route
+          path="/youtube-niche"
+          element={
+            <OnboardingGuard requiredStep="youtube">
+              <YouTubeNiche />
+            </OnboardingGuard>
+          }
+        />
+
+        {/* complete-profile is for Google OAuth users only — requires youtube or subcategory step */}
+        <Route
+          path="/complete-profile"
+          element={
+            <OnboardingGuard requiredStep="role">
+              <CompleteProfile />
+            </OnboardingGuard>
+          }
+        />
+
+        {/* signup is for email users — requires role to be selected */}
+        <Route
+          path="/signup"
+          element={
+            <OnboardingGuard requiredStep="role">
+              <Signup />
+            </OnboardingGuard>
+          }
+        />
+
         <Route path="/oauth-success" element={<OAuthSuccess />} />
         
         {/* Authenticated Protected Routes */}

@@ -98,7 +98,7 @@ export default function Welcome() {
         transition={{ delay: 0.2, ...EASE }}
         className="absolute top-0 left-0 right-0 z-30 px-6 pt-12 md:px-10 md:pt-14"
       >
-        <img src={logo} alt="SuviX" className="h-10 md:h-12 w-auto" />
+        <img src={logo} alt="SuviX" className="h-10 md:h-12 lg:h-16 w-auto" />
       </motion.header>
 
       {/* ── MAIN CONTENT CARD ────────────────────────────────────────────── */}
@@ -154,12 +154,12 @@ export default function Welcome() {
           <div className="mt-8 flex flex-col sm:flex-row gap-3 lg:flex-row lg:gap-4">
             {!isLast ? (
               <>
-                {/* Skip */}
+                {/* Already a member? */}
                 <Link
                   to="/login"
-                  className="order-2 sm:order-1 flex items-center justify-center h-13 px-6 text-white/50 font-sans font-semibold text-[15px] hover:text-white/80 transition-colors"
+                  className="order-2 sm:order-1 flex items-center justify-center h-13 px-6 text-white/50 font-sans font-semibold text-[14px] hover:text-white/80 transition-colors"
                 >
-                  Sign In Instead
+                  Already have an account? <span className="text-white ml-1.5 hover:underline">Sign In</span>
                 </Link>
 
                 {/* Continue */}

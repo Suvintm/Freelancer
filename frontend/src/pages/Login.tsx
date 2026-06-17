@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Mail, 
@@ -7,7 +7,8 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
-  Loader2
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import logo from '../assets/darklogo.png';
 import { AuthBackground } from '../components/auth/AuthBackground';
@@ -16,20 +17,37 @@ import { useAuthStore } from '../store/useAuthStore';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
+// Maps OAuth error codes returned from /oauth-success to human-readable messages
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  no_code:         'Google sign-in was cancelled. Please try again.',
+  exchange_failed: 'Google authentication failed. Please try again.',
+  server_error:    'A server error occurred. Please try again later.',
+  no_account:      'No account found for this Google profile. Please sign up first.',
+};
+
 export default function Login() {
   const [showPass, setShowPass] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
-  const { login } = useAuthStore();
+  const { login, clearTempSignupData, resetYoutubeDiscovery } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  // Clear any stale onboarding data when landing on the Login page
+  // 🔐 PRODUCTION: On Login mount, wipe ALL stale onboarding data.
+  // This is the definitive fix for the stale-state contamination bug where
+  // a previous registration session's yt_influencer tempSignupData would
+  // cause Google Login to redirect to YouTube Connect instead of Home.
   React.useEffect(() => {
-    const store = useAuthStore.getState();
-    store.setTempSignupData({});
-    store.resetYoutubeDiscovery();
-  }, []);
+    clearTempSignupData();
+    resetYoutubeDiscovery();
+
+    // Display any OAuth error returned from /oauth-success redirect
+    const oauthError = searchParams.get('error');
+    if (oauthError) {
+      setError(OAUTH_ERROR_MESSAGES[oauthError] || 'Authentication failed. Please try again.');
+    }
+  }, [clearTempSignupData, resetYoutubeDiscovery, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +63,21 @@ export default function Login() {
     }
   };
 
+  /**
+   * PRODUCTION: Google on Login = LOGIN ONLY.
+   * We clear all stale data and set intent='login' in tempSignupData BEFORE
+   * redirecting to Google. When OAuthSuccess reads intent='login', it will:
+   *  - Existing user → log in and go to /home ✅
+   *  - New user → redirect to /login?error=no_account (NOT create an account) ✅
+   */
   const handleGoogleLogin = () => {
+    // Step 1: Nuke all stale data
+    clearTempSignupData();
+    resetYoutubeDiscovery();
+
+    // Step 2: Set login intent so OAuthSuccess routes correctly
+    useAuthStore.getState().setTempSignupData({ intent: 'login' });
+
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
     window.location.href = `${apiUrl}/auth/google`;
   };
@@ -55,7 +87,6 @@ export default function Login() {
       {/* Visual Side (Left) */}
       <div className="hidden lg:flex lg:w-[44%] relative overflow-hidden bg-zinc-950 border-r border-zinc-800">
         <AuthBackground />
-        {/* Gradient overlays for depth */}
         <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-zinc-950 to-transparent z-10" />
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-zinc-950 to-transparent z-10" />
       </div>
@@ -65,12 +96,12 @@ export default function Login() {
         title="Welcome Back" 
         subtitle="Please enter your details below to login."
         actionLabel="Join Now"
-        actionLink="/role-selection"
+        actionLink="/"
       />
 
       {/* Form Side (Right) */}
       <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-black">
-        {/* Desktop Header (Hidden on Mobile) */}
+        {/* Desktop Header */}
         <motion.header 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -89,8 +120,9 @@ export default function Login() {
           
           <div className="flex items-center gap-3 text-sm text-zinc-500">
             <span className="hidden sm:inline font-medium">New?</span>
+            {/* 🔐 Goes to Welcome page — users must experience onboarding slides before role selection */}
             <Link
-              to="/role-selection"
+              to="/"
               className="px-4 py-2 rounded-xl border border-zinc-800 bg-zinc-900 text-white text-[11px] font-semibold hover:bg-zinc-800 transition-colors"
             >
               Join Now
@@ -107,7 +139,7 @@ export default function Login() {
             className="w-full max-w-[400px]"
           >
             <div className="space-y-6">
-              {/* Google Login */}
+              {/* Google Login — LOGIN ONLY (clearly labelled) */}
               <button
                 type="button"
                 onClick={handleGoogleLogin}
@@ -126,13 +158,15 @@ export default function Login() {
                 <div className="flex-1 h-px bg-zinc-800" />
               </div>
 
+              {/* Error Display — shows OAuth errors from URL params + form errors */}
               {error && (
-                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-semibold text-center">
-                  {error}
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold flex items-start gap-2">
+                  <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                  <span>{error}</span>
                 </div>
               )}
 
-              {/* Form */}
+              {/* Email + Password Form */}
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Email */}
                 <div className="space-y-1.5">
@@ -160,7 +194,7 @@ export default function Login() {
                     </label>
                     <Link
                       to="/forgot-password"
-                      className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 transition-colors"
+                      className="text-xs font-semibold text-zinc-500 hover:text-white transition-colors"
                     >
                       Forgot?
                     </Link>
@@ -178,7 +212,7 @@ export default function Login() {
                     <button
                       type="button"
                       onClick={() => setShowPass(!showPass)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-900 transition-colors"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors"
                     >
                       {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -206,7 +240,8 @@ export default function Login() {
             {/* Footer */}
             <p className="mt-8 text-center lg:text-left text-sm text-zinc-400 font-medium">
               Don't have an account?{' '}
-              <Link to="/role-selection" className="font-semibold text-white hover:opacity-80 transition-opacity">
+              {/* 🔐 Goes to Welcome (/), not /role-selection directly */}
+              <Link to="/" className="font-semibold text-white hover:opacity-80 transition-opacity">
                 Join SuviX
               </Link>
             </p>

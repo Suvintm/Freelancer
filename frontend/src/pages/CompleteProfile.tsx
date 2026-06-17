@@ -45,10 +45,16 @@ export default function CompleteProfile() {
   // Load categories so we can resolve real names
   useEffect(() => { fetchCategories(); }, [fetchCategories]);
 
-  // Guard: must have social profile + role before reaching this page
+  // 🔐 PRODUCTION GUARD: Must have social profile + role before reaching this page.
+  // Use replace:true so browser back button doesn't re-enter a completed step.
   useEffect(() => {
-    if (!isSocialSignup || !socialProfile?.email) { navigate('/login'); return; }
-    if (!tempSignupData?.categoryId) { navigate('/role-selection'); }
+    if (!isSocialSignup || !socialProfile?.email) {
+      navigate('/login', { replace: true });
+      return;
+    }
+    if (!tempSignupData?.categoryId) {
+      navigate('/role-selection', { replace: true });
+    }
   }, [isSocialSignup, socialProfile, tempSignupData?.categoryId, navigate]);
 
   // Resolve real category name from store
@@ -116,8 +122,9 @@ export default function CompleteProfile() {
 
       const res = await api.post('/auth/register-full', payload);
       if (res.data.success) {
-        clearTempSignupData();
+        // Mark onboarding as complete before clearing (for any analytics/logging)
         setAuth(res.data.user, res.data.token, res.data.refreshToken);
+        clearTempSignupData();
         navigate('/home');
       }
     } catch (err: unknown) {
