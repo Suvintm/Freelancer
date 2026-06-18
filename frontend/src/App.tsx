@@ -20,6 +20,12 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthInit } from './queries/useCurrentUser';
 import { AuthGuard, PublicRoute, OnboardingGuard } from './components/auth/AuthGuard';
+import LottieComponent from 'lottie-react';
+import loaderAnimation from './assets/lottie/loader.json';
+
+// Handle ESM/CJS interop for lottie-react
+const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
+
 
 function App() {
   const navigate = useNavigate();
@@ -68,7 +74,13 @@ function App() {
   if ((!isInitialized || isCheckingServer) && location.pathname !== '/maintenance') {
     return (
       <div className="h-screen w-full bg-[#0A0A0A] flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-orange-500/20 border-t-orange-500 rounded-full animate-spin" />
+        <div className="w-32 h-32">
+          <Lottie 
+            animationData={loaderAnimation} 
+            loop={true} 
+            style={{ width: '100%', height: '100%' }} 
+          />
+        </div>
       </div>
     );
   }
