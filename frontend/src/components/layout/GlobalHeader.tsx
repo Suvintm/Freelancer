@@ -26,10 +26,12 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
         {/* Hamburger */}
         <button 
           onClick={onMenuPress}
-          className="p-1.5 rounded-lg text-text-muted hover:bg-border-secondary hover:text-text-main transition-colors" 
+          className="p-1.5 rounded-lg text-text-muted hover:bg-border-secondary hover:text-text-main transition-colors flex flex-col gap-[3px]" 
           aria-label="Menu"
         >
-          <Menu size={20} />
+          <div className="w-[22px] h-[3px] bg-current rounded-full" />
+          <div className="w-[16px] h-[3px] bg-current rounded-full" />
+          <span className="text-[8px] font-bold tracking-[0.1em] mt-[1px] leading-none text-current">MENU</span>
         </button>
 
         {/* Centred logo */}

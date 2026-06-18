@@ -29,7 +29,7 @@ const BANNERS = [
 const AUTO_INTERVAL = 4800;
 const DRAG_THRESHOLD = 50;
 
-export const UnifiedBanner = () => {
+export const UnifiedBanner = ({ className }: { className?: string }) => {
   const [index, setIndex]     = useState(0);
   const [dragging, setDragging] = useState(false);
 
@@ -51,7 +51,7 @@ export const UnifiedBanner = () => {
   };
 
   return (
-    <div className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden select-none group bg-zinc-900">
+    <div className={`relative w-full rounded-2xl overflow-hidden select-none group bg-zinc-900 ${className || 'aspect-[16/9]'}`}>
 
       {/* Slides */}
       <AnimatePresence mode="popLayout" initial={false}>
