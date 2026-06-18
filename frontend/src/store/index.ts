@@ -3,7 +3,7 @@ import type { Reducer } from '@reduxjs/toolkit';
 import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
 import storageModule from 'redux-persist/lib/storage';
 
-const storage = (storageModule as { default?: unknown }).default || storageModule;
+const storage = (storageModule as { default?: typeof storageModule }).default || storageModule;
 import { authReducer } from './slices/authSlice';
 import type { AuthUser } from './slices/authSlice';
 import { onboardingReducer } from './slices/onboardingSlice';
