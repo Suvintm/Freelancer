@@ -1,9 +1,11 @@
 import { ReactLenis }       from 'lenis/react';
 import { Plus, ExternalLink, PlayCircle, Eye, Video, TrendingUp, Settings } from 'lucide-react';
 import { useNavigate }      from 'react-router-dom';
-import { useAuthStore }     from '../../store/useAuthStore';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../../store/slices/authSlice';
 import { useTheme }         from '../../hooks/useTheme';
 import auth1                from '../../assets/auth/auth_1.png';
+import defaultProfile       from '../../assets/defaultprofile.png';
 
 
 
@@ -29,13 +31,13 @@ function StatBubble({ value, label }: { value: string; label: string }) {
 
 export const Sidebar = () => {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const user = useSelector(selectUser);
   const { isDarkMode } = useTheme();
 
   const CHANNEL = {
     name:           user?.name || 'User',
     handle:         `@${user?.username || 'user'}`,
-    avatar:         user?.profilePicture || auth1,
+    avatar:         user?.profilePicture || defaultProfile,
     subscribers:    '0',
     views:          '0',
     videos:         0,

@@ -17,9 +17,12 @@ import {
   X,
 } from 'lucide-react';
 import logo from '../assets/darklogo.png';
-import { useAuthStore } from '../store/useAuthStore';
-import { useOnboardingStore } from '../store/useOnboardingStore';
-import { useCategoryStore } from '../store/useCategoryStore';
+import { useDispatch, useSelector } from 'react-redux';
+import { setAuth } from '../store/slices/authSlice';
+import type { RootState } from '../store';
+import { clearTempSignupData } from '../store/slices/onboardingSlice';
+import { useCategories } from '../queries/useCategories';
+import { authService } from '../api/services/auth.service';
 import { api } from '../api/client';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -35,9 +38,9 @@ const COUNTRIES = ['India', 'United States', 'United Kingdom', 'Canada', 'Austra
  */
 export default function CompleteProfile() {
   const navigate = useNavigate();
-  const { setAuth } = useAuthStore();
-  const { tempSignupData, clearTempSignupData } = useOnboardingStore();
-  const { categories, fetchCategories } = useCategoryStore();
+  const dispatch = useDispatch();
+  const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
+  const { categories } = useCategories();
 
   const socialProfile = tempSignupData?.socialProfile as Record<string, string> | undefined;
   const isSocialSignup = tempSignupData?.isSocialSignup as boolean | undefined;
@@ -62,8 +65,7 @@ export default function CompleteProfile() {
     setProfilePicturePreview(socialProfile?.picture || null);
   };
 
-  // Load categories so we can resolve real names
-  useEffect(() => { fetchCategories(); }, [fetchCategories]);
+
 
   // 🔐 PRODUCTION GUARD: Must have social profile + role before reaching this page.
   // Use replace:true so browser back button doesn't re-enter a completed step.
@@ -108,7 +110,7 @@ export default function CompleteProfile() {
     if (!form.username || form.username.length < 3) return;
     setUserStatus('checking');
     try {
-      const available = await useAuthStore.getState().checkUsername(form.username);
+      const available = await authService.checkUsername(form.username);
       setUserStatus(available ? 'available' : 'taken');
     } catch { setUserStatus('idle'); }
   };
@@ -160,11 +162,13 @@ export default function CompleteProfile() {
         };
       }
 
-      const res = await api.post('/auth/register-full', payload);
+      const res = await api.post('/auth/register-full', payload, {
+        headers: payload instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined
+      });
       if (res.data.success) {
         // Mark onboarding as complete before clearing (for any analytics/logging)
-        setAuth(res.data.user, res.data.token, res.data.refreshToken);
-        clearTempSignupData();
+        dispatch(setAuth({ user: res.data.user, token: res.data.token, refreshToken: res.data.refreshToken }));
+        dispatch(clearTempSignupData());
         navigate('/home');
       }
     } catch (err: unknown) {

@@ -18,53 +18,52 @@ import Notifications from './pages/Notifications';
 import { AppLayout } from './components/layout/AppLayout';
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuthStore } from './store/useAuthStore';
+import { useAuthInit } from './queries/useCurrentUser';
 import { AuthGuard, PublicRoute, OnboardingGuard } from './components/auth/AuthGuard';
 
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { checkAuth, isInitialized } = useAuthStore();
+  const { isInitialized } = useAuthInit();
   const [isCheckingServer, setIsCheckingServer] = useState(true);
 
   useEffect(() => {
-    // 🛰️ INITIAL AUTH CHECK
-    checkAuth().finally(() => {
-      // 🛰️ SERVER HEALTH CHECK (Only after auth is initialized)
-      const checkServer = async () => {
-        if (location.pathname === '/maintenance') {
-          setIsCheckingServer(false);
-          return;
-        }
+    if (!isInitialized) return;
 
-        try {
-          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
-          const baseUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
-          
-          console.log(`🌐 [HEALTH] Checking connectivity: ${baseUrl}/api/health`);
-          
-          const response = await fetch(`${baseUrl}/api/health`, { 
-            signal: AbortSignal.timeout(10000) 
-          });
-          
-          if (response.status === 503) {
-            navigate('/maintenance', { replace: true });
-          }
-        } catch (error) {
-          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
-          console.error(`❌ [HEALTH] Nexus unreachable at ${apiUrl}:`, error);
-          
-          if (!apiUrl.includes('localhost')) {
-            navigate('/maintenance', { replace: true });
-          }
-        } finally {
-          setIsCheckingServer(false);
-        }
-      };
+    // 🛰️ SERVER HEALTH CHECK (Only after auth is initialized)
+    const checkServer = async () => {
+      if (location.pathname === '/maintenance') {
+        setIsCheckingServer(false);
+        return;
+      }
 
-      checkServer();
-    });
-  }, [checkAuth, navigate, location.pathname]);
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
+        const baseUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
+        
+        console.log(`🌐 [HEALTH] Checking connectivity: ${baseUrl}/api/health`);
+        
+        const response = await fetch(`${baseUrl}/api/health`, { 
+          signal: AbortSignal.timeout(10000) 
+        });
+        
+        if (response.status === 503) {
+          navigate('/maintenance', { replace: true });
+        }
+      } catch (error) {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
+        console.error(`❌ [HEALTH] Nexus unreachable at ${apiUrl}:`, error);
+        
+        if (!apiUrl.includes('localhost')) {
+          navigate('/maintenance', { replace: true });
+        }
+      } finally {
+        setIsCheckingServer(false);
+      }
+    };
+
+    checkServer();
+  }, [isInitialized, navigate, location.pathname]);
 
   if ((!isInitialized || isCheckingServer) && location.pathname !== '/maintenance') {
     return (

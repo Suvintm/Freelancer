@@ -21,8 +21,11 @@ import {
 } from 'lucide-react';
 import logo from '../assets/darklogo.png';
 import { AuthBackground } from '../components/auth/AuthBackground';
-import { useAuthStore } from '../store/useAuthStore';
-import { useOnboardingStore } from '../store/useOnboardingStore';
+import { useDispatch, useSelector } from 'react-redux';
+import { clearTempSignupData } from '../store/slices/onboardingSlice';
+import { useSignup } from '../mutations/useSignup';
+import type { RootState } from '../store';
+import { authService } from '../api/services/auth.service';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi'];
@@ -81,8 +84,9 @@ function StepBar({ categorySlug }: StepBarProps) {
 // ── Main Signup Page ──────────────────────────────────────────────────────────
 export default function Signup() {
   const [showPass, setShowPass] = useState(false);
-  const { signup, checkUsername } = useAuthStore();
-  const { tempSignupData, clearTempSignupData } = useOnboardingStore();
+  const dispatch = useDispatch();
+  const { mutateAsync: signupMutation } = useSignup();
+  const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
   const socialProfile = tempSignupData?.socialProfile as Record<string, string> | undefined;
 
   const [form, setForm] = useState({
@@ -129,7 +133,7 @@ export default function Signup() {
     if (!form.username || form.username.length < 3) return;
     setUserStatus('checking');
     try {
-      const available = await checkUsername(form.username.trim().toLowerCase());
+      const available = await authService.checkUsername(form.username.trim().toLowerCase());
       setUserStatus(available ? 'available' : 'taken');
     } catch {
       setUserStatus('idle');
@@ -160,7 +164,7 @@ export default function Signup() {
       );
 
       // Build complete registration payload from tempSignupData + form data
-      await signup({
+      await signupMutation({
         ...form,
         categoryId: tempSignupData?.categoryId,
         roleSubCategoryIds: tempSignupData?.roleSubCategoryIds,
@@ -172,7 +176,7 @@ export default function Signup() {
       });
 
       // Clear ALL onboarding state after successful registration
-      clearTempSignupData();
+      dispatch(clearTempSignupData());
       navigate('/home');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -353,7 +357,7 @@ export default function Signup() {
                   <div className="space-y-3 pt-2">
                     <h3 className="text-[10px] font-bold tracking-[0.15em] text-zinc-500 uppercase ml-1">Linked Identity</h3>
                     <div className="space-y-2">
-                      {selectedChannels.map(ch => (
+                      {selectedChannels.map((ch) => (
                         <div key={ch?.channelId} className="flex items-center gap-3 p-3 rounded-xl border border-zinc-800/50 bg-zinc-900/30 backdrop-blur-sm">
                           {ch?.thumbnailUrl && (
                             <img src={ch.thumbnailUrl} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0 bg-zinc-800" />

@@ -1,7 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuthStore } from '../store/useAuthStore';
-import { useOnboardingStore } from '../store/useOnboardingStore';
+import { useDispatch } from 'react-redux';
+import { setAuth } from '../store/slices/authSlice';
+import { setTempSignupData } from '../store/slices/onboardingSlice';
+import { store } from '../store';
+import type { RootState } from '../store';
 import { api } from '../api/client';
 
 /**
@@ -18,7 +21,7 @@ import { api } from '../api/client';
 export default function OAuthSuccess() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { setAuth } = useAuthStore();
+  const dispatch = useDispatch();
   const exchangeStarted = useRef(false);
 
   useEffect(() => {
@@ -43,7 +46,7 @@ export default function OAuthSuccess() {
 
         // Read intent from tempSignupData (set before OAuth redirect)
         // This is the ONLY source of truth — we never read stale role data here.
-        const onboardingStore = useOnboardingStore.getState();
+        const onboardingStore = (store.getState() as RootState).onboarding;
         const intent = onboardingStore.tempSignupData?.intent ?? 'login';
         const categorySlug = onboardingStore.tempSignupData?.categorySlug;
 
@@ -59,13 +62,11 @@ export default function OAuthSuccess() {
 
           // intent === 'register': proceed with onboarding
           const { socialProfile, googleAccessToken } = response.data;
-          const { setTempSignupData, tempSignupData } = useOnboardingStore.getState();
-          
+          const tempSignupData = (store.getState() as RootState).onboarding.tempSignupData;
           const isEmailFlow = tempSignupData?.authMethod === 'email';
 
           // Merge social profile into temp data (preserving role/intent already set)
-          setTempSignupData({ 
-            ...tempSignupData,
+          dispatch(setTempSignupData({ 
             isSocialSignup: !isEmailFlow,
             ...(!isEmailFlow ? {
               socialProfile: {
@@ -75,7 +76,7 @@ export default function OAuthSuccess() {
                 googleId: socialProfile.googleId,
               }
             } : {})
-          });
+          }));
 
           // YouTube flow: user selected yt_influencer role AND we have a Google token
           if (categorySlug === 'yt_influencer' && googleAccessToken) {
@@ -84,7 +85,7 @@ export default function OAuthSuccess() {
           }
 
           // All other roles: if they need subcategory selection, go there first
-          const currentOnboardingStore = useOnboardingStore.getState();
+          const currentOnboardingStore = (store.getState() as RootState).onboarding;
           if (currentOnboardingStore.tempSignupData?.categoryId) {
             // Check if this role requires subcategory
             const needsSubcategory = categorySlug && 
@@ -114,7 +115,7 @@ export default function OAuthSuccess() {
         }
 
         // Standard login: set auth and go home
-        setAuth(user, token, refreshToken);
+        dispatch(setAuth({ user, token, refreshToken }));
         navigate('/home');
 
       } catch (error) {
@@ -124,7 +125,7 @@ export default function OAuthSuccess() {
     };
 
     exchangeCode();
-  }, [searchParams, navigate, setAuth]);
+  }, [searchParams, navigate, dispatch]);
 
   return (
     <div className="h-screen w-full bg-black flex flex-col items-center justify-center gap-6">

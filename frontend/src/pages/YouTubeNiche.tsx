@@ -13,8 +13,10 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { useOnboardingStore } from '../store/useOnboardingStore';
-import { useCategoryStore } from '../store/useCategoryStore';
+import { useDispatch, useSelector } from 'react-redux';
+import { setTempSignupData } from '../store/slices/onboardingSlice';
+import { useCategories } from '../queries/useCategories';
+import type { RootState } from '../store';
 import logo from '../assets/darklogo.png';
 
 const formatCount = (n: number | string): string => {
@@ -41,8 +43,9 @@ const STATIC_PARTICLES = [...Array(50)].map((_, i) => ({
 
 export default function YouTubeNiche() {
   const navigate = useNavigate();
-  const { tempSignupData, setTempSignupData } = useOnboardingStore();
-  const { categories } = useCategoryStore();
+  const dispatch = useDispatch();
+  const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
+  const { categories } = useCategories();
 
   const [selectedNiche, setSelectedNiche] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,20 +64,19 @@ export default function YouTubeNiche() {
     if (!selectedNiche) return;
     setIsSubmitting(true);
     const subCategory = youtubeCategory?.subCategories?.find(s => s.id === selectedNiche);
-    const youtubeChannels = (tempSignupData?.youtubeChannels ?? []).map(ch => ({
+    const youtubeChannels = (tempSignupData?.youtubeChannels ?? []).map((ch) => ({
       ...ch,
       subCategoryId:   selectedNiche,
       subCategorySlug: subCategory?.slug ?? null,
     }));
-    setTempSignupData({
-      ...tempSignupData,
+    dispatch(setTempSignupData({
       youtubeChannels,
       roleSubCategoryIds: [selectedNiche],
       onboardingStep:     'youtube',
-    });
+    }));
     setTimeout(() => {
       setIsSubmitting(false);
-      const isSocial = useOnboardingStore.getState().tempSignupData?.isSocialSignup;
+      const isSocial = tempSignupData?.isSocialSignup;
       navigate(isSocial ? '/complete-profile' : '/signup');
     }, 900);
   };

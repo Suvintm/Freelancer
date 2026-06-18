@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import type { RootState } from '../store';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
 
@@ -14,9 +15,9 @@ export const api: AxiosInstance = axios.create({
 
 // Request Interceptor
 api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-  // Use a dynamic import to avoid circular dependencies if useAuthStore is used later
-  const { useAuthStore } = await import('../store/useAuthStore');
-  const token = useAuthStore.getState().token;
+  // Use a dynamic import to avoid circular dependencies
+  const { store } = await import('../store');
+  const token = (store.getState() as RootState).auth.token;
 
   if (token && !config.headers.Authorization) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -34,7 +35,7 @@ function subscribeTokenRefresh(cb: (token: string) => void) {
 }
 
 function onRefreshed(token: string) {
-  refreshSubscribers.map(cb => cb(token));
+  refreshSubscribers.forEach(cb => cb(token));
   refreshSubscribers = [];
 }
 
@@ -67,8 +68,8 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { useAuthStore } = await import('../store/useAuthStore');
-        const { refreshToken } = useAuthStore.getState();
+        const { store } = await import('../store');
+        const { refreshToken } = (store.getState() as RootState).auth;
 
         if (!refreshToken) throw new Error('No refresh token available');
 
@@ -81,7 +82,8 @@ api.interceptors.response.use(
           const newRefreshToken = res.data.refreshToken;
           const refreshedUser = res.data.user;
 
-          await useAuthStore.getState().setTokens(newToken, newRefreshToken, refreshedUser);
+          const { setTokens } = await import('../store/slices/authSlice');
+          store.dispatch(setTokens({ token: newToken, refreshToken: newRefreshToken, user: refreshedUser }));
           
           isRefreshing = false;
           onRefreshed(newToken);
@@ -92,8 +94,19 @@ api.interceptors.response.use(
       } catch (refreshError) {
         isRefreshing = false;
         refreshSubscribers = [];
-        const { useAuthStore } = await import('../store/useAuthStore');
-        useAuthStore.getState().logout();
+        
+        const { store } = await import('../store');
+        const { clearAuth } = await import('../store/slices/authSlice');
+        const { clearTempSignupData } = await import('../store/slices/onboardingSlice');
+        
+        store.dispatch(clearAuth());
+        store.dispatch(clearTempSignupData());
+        
+        const { persistor } = await import('../store');
+        await persistor.purge();
+
+        window.dispatchEvent(new CustomEvent('suvix:logout'));
+        window.location.href = '/'; 
         return Promise.reject(refreshError);
       }
     }

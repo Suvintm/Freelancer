@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Plus } from 'lucide-react';
-import auth1 from '../assets/auth/auth_1.png';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../store/slices/authSlice';
+import defaultProfile from '../assets/defaultprofile.png';
 import { FeatureGallery } from '../components/home/FeatureGallery';
 import { UnifiedBanner } from '../components/home/UnifiedBanner';
 import { useTheme } from '../hooks/useTheme';
@@ -53,10 +55,7 @@ const SUVIX_INDUSTRY_STORIES: Story[] = [
   }
 ];
 
-const STORIES: Story[] = [
-  { _id: 'me', username: 'Your Story', avatar: auth1, isUser: true, hasActive: false },
-  ...SUVIX_INDUSTRY_STORIES,
-];
+// STORIES array moved inside Home component to support dynamic user state.
 
 const POSTS = [
   { id: 1, user: 'Sonya Leena', location: 'Dubai, UAE', img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=800', likes: '360', comment: 'You can never dull my sparkle ✨', commentsCount: 12 },
@@ -67,6 +66,13 @@ export default function Home() {
   const [isScrolling, setIsScrolling] = useState(false);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isDarkMode } = useTheme();
+  const user = useSelector(selectUser);
+  const userAvatar = user?.profilePicture || defaultProfile;
+
+  const stories: Story[] = [
+    { _id: 'me', username: 'Your Story', avatar: userAvatar, isUser: true, hasActive: false },
+    ...SUVIX_INDUSTRY_STORIES,
+  ];
 
   useEffect(() => {
     const mainContainer = document.querySelector('main');
@@ -105,7 +111,7 @@ export default function Home() {
             />
           </div>
           <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide px-6 lg:px-0">
-            {STORIES.map((story) => (
+            {stories.map((story) => (
               <div key={story._id} className="flex flex-col items-center gap-2 flex-shrink-0 cursor-pointer group relative">
                 <div className="relative w-[60px] h-[60px] lg:w-[68px] lg:h-[68px] flex items-center justify-center">
                   <svg className="absolute inset-0 w-full h-full -rotate-90 opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-110 group-hover:scale-100">
