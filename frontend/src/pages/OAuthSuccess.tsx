@@ -4,6 +4,7 @@ import { useDispatch } from 'react-redux';
 import { setAuth } from '../store/slices/authSlice';
 import { setTempSignupData } from '../store/slices/onboardingSlice';
 import { store } from '../store';
+import type { RootState } from '../store';
 import { api } from '../api/client';
 
 /**
@@ -45,7 +46,7 @@ export default function OAuthSuccess() {
 
         // Read intent from tempSignupData (set before OAuth redirect)
         // This is the ONLY source of truth — we never read stale role data here.
-        const onboardingStore = (store.getState() as any).onboarding;
+        const onboardingStore = (store.getState() as RootState).onboarding;
         const intent = onboardingStore.tempSignupData?.intent ?? 'login';
         const categorySlug = onboardingStore.tempSignupData?.categorySlug;
 
@@ -61,7 +62,7 @@ export default function OAuthSuccess() {
 
           // intent === 'register': proceed with onboarding
           const { socialProfile, googleAccessToken } = response.data;
-          const tempSignupData = (store.getState() as any).onboarding.tempSignupData;
+          const tempSignupData = (store.getState() as RootState).onboarding.tempSignupData;
           const isEmailFlow = tempSignupData?.authMethod === 'email';
 
           // Merge social profile into temp data (preserving role/intent already set)
@@ -84,7 +85,7 @@ export default function OAuthSuccess() {
           }
 
           // All other roles: if they need subcategory selection, go there first
-          const currentOnboardingStore = (store.getState() as any).onboarding;
+          const currentOnboardingStore = (store.getState() as RootState).onboarding;
           if (currentOnboardingStore.tempSignupData?.categoryId) {
             // Check if this role requires subcategory
             const needsSubcategory = categorySlug && 

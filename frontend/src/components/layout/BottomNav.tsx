@@ -8,7 +8,9 @@ import {
   MessageCircle
 } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
-import auth1 from '../../assets/auth/auth_1.png';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../../store/slices/authSlice';
+import defaultProfile from '../../assets/defaultprofile.png';
 
 const NAV_ITEMS = [
   { name: 'home', icon: Home, label: 'Home', path: '/home' },
@@ -23,6 +25,8 @@ const NAV_ITEMS = [
 export const BottomNav = () => {
   const location = useLocation();
   const { isDarkMode } = useTheme();
+  const user = useSelector(selectUser);
+  const profileAvatar = user?.profilePicture || defaultProfile;
 
   const activeColor = isDarkMode ? '#FFFFFF' : '#111111';
   const inactiveColor = isDarkMode ? '#777777' : '#AAAAAA';
@@ -60,7 +64,7 @@ export const BottomNav = () => {
               <div className="flex items-center justify-center h-6">
                 {item.isProfile ? (
                   <div className={`w-6 h-6 rounded-full p-[1px] border-2 transition-colors ${isActive ? 'border-current' : 'border-transparent'}`} style={{ color }}>
-                    <img src={auth1} alt="Profile" className="w-full h-full rounded-full object-cover" />
+                    <img src={profileAvatar} alt="Profile" className="w-full h-full rounded-full object-cover" />
                   </div>
                 ) : item.icon && (
                   <item.icon size={22} color={color} strokeWidth={isActive ? 3 : 2} />

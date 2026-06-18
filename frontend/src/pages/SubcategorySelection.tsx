@@ -14,6 +14,7 @@ import { AuthBackground } from '../components/auth/AuthBackground';
 import { useDispatch, useSelector } from 'react-redux';
 import { setTempSignupData } from '../store/slices/onboardingSlice';
 import { useCategories } from '../queries/useCategories';
+import type { RootState } from '../store';
 import logo from '../assets/whitebglogo.png';
 
 // Import assets for icons (matching RoleSelection)
@@ -28,7 +29,7 @@ import rentalIcon from '../assets/categories/rental.png';
 export default function SubcategorySelection() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const tempSignupData = useSelector((state: any) => state.onboarding.tempSignupData);
+  const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
   const { categories, isLoading } = useCategories();
   
   const [selectedSubs, setSelectedSubs] = useState<string[]>((tempSignupData?.roleSubCategoryIds as string[]) || []);

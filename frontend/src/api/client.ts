@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import type { RootState } from '../store';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
 
@@ -16,7 +17,7 @@ export const api: AxiosInstance = axios.create({
 api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   // Use a dynamic import to avoid circular dependencies
   const { store } = await import('../store');
-  const token = (store.getState() as any).auth.token;
+  const token = (store.getState() as RootState).auth.token;
 
   if (token && !config.headers.Authorization) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -68,7 +69,7 @@ api.interceptors.response.use(
 
       try {
         const { store } = await import('../store');
-        const { refreshToken } = (store.getState() as any).auth;
+        const { refreshToken } = (store.getState() as RootState).auth;
 
         if (!refreshToken) throw new Error('No refresh token available');
 

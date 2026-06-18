@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
 import { useTheme }         from '../../hooks/useTheme';
 import auth1                from '../../assets/auth/auth_1.png';
+import defaultProfile       from '../../assets/defaultprofile.png';
 
 
 
@@ -36,7 +37,7 @@ export const Sidebar = () => {
   const CHANNEL = {
     name:           user?.name || 'User',
     handle:         `@${user?.username || 'user'}`,
-    avatar:         user?.profilePicture || auth1,
+    avatar:         user?.profilePicture || defaultProfile,
     subscribers:    '0',
     views:          '0',
     videos:         0,
@@ -113,7 +114,7 @@ export const Sidebar = () => {
         {/* ── 2. YouTube Channel Overview (Providers only) ──────────── */}
         {user?.primaryRole?.group === 'PROVIDER' && youtubeChannels.length > 0 && (
           <div className="space-y-3">
-            {displayChannels.map((channel: any) => (
+            {displayChannels.map((channel) => (
               <div 
                 key={channel.channel_id} 
                 className={`

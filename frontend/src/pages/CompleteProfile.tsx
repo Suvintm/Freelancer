@@ -19,6 +19,7 @@ import {
 import logo from '../assets/darklogo.png';
 import { useDispatch, useSelector } from 'react-redux';
 import { setAuth } from '../store/slices/authSlice';
+import type { RootState } from '../store';
 import { clearTempSignupData } from '../store/slices/onboardingSlice';
 import { useCategories } from '../queries/useCategories';
 import { authService } from '../api/services/auth.service';
@@ -38,7 +39,7 @@ const COUNTRIES = ['India', 'United States', 'United Kingdom', 'Canada', 'Austra
 export default function CompleteProfile() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const tempSignupData = useSelector((state: any) => state.onboarding.tempSignupData);
+  const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
   const { categories } = useCategories();
 
   const socialProfile = tempSignupData?.socialProfile as Record<string, string> | undefined;
@@ -161,7 +162,9 @@ export default function CompleteProfile() {
         };
       }
 
-      const res = await api.post('/auth/register-full', payload);
+      const res = await api.post('/auth/register-full', payload, {
+        headers: payload instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined
+      });
       if (res.data.success) {
         // Mark onboarding as complete before clearing (for any analytics/logging)
         dispatch(setAuth({ user: res.data.user, token: res.data.token, refreshToken: res.data.refreshToken }));
@@ -315,7 +318,7 @@ export default function CompleteProfile() {
             className="mb-3 space-y-2"
           >
             <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em] px-1">Linked Channel</p>
-            {youtubeChannels!.map((ch: any) => (
+            {youtubeChannels!.map((ch) => (
               <div
                 key={ch.channelId as string}
                 className="flex items-center gap-3 p-3 rounded-xl border border-zinc-800 bg-zinc-900/40"

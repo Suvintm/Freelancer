@@ -16,6 +16,7 @@ import { Button } from '../components/ui/Button';
 import { useDispatch, useSelector } from 'react-redux';
 import { setTempSignupData } from '../store/slices/onboardingSlice';
 import { useCategories } from '../queries/useCategories';
+import type { RootState } from '../store';
 import logo from '../assets/darklogo.png';
 
 const formatCount = (n: number | string): string => {
@@ -43,7 +44,7 @@ const STATIC_PARTICLES = [...Array(50)].map((_, i) => ({
 export default function YouTubeNiche() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const tempSignupData = useSelector((state: any) => state.onboarding.tempSignupData);
+  const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
   const { categories } = useCategories();
 
   const [selectedNiche, setSelectedNiche] = useState<string | null>(null);
@@ -63,7 +64,7 @@ export default function YouTubeNiche() {
     if (!selectedNiche) return;
     setIsSubmitting(true);
     const subCategory = youtubeCategory?.subCategories?.find(s => s.id === selectedNiche);
-    const youtubeChannels = (tempSignupData?.youtubeChannels ?? []).map((ch: any) => ({
+    const youtubeChannels = (tempSignupData?.youtubeChannels ?? []).map((ch) => ({
       ...ch,
       subCategoryId:   selectedNiche,
       subCategorySlug: subCategory?.slug ?? null,
@@ -215,7 +216,7 @@ export default function YouTubeNiche() {
                 <span className="text-[8px] font-bold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded uppercase tracking-wider">Live Synced</span>
               </div>
               <div className="flex gap-2.5 overflow-x-auto pb-2 custom-scrollbar">
-                {channel.videos.slice(0, 6).map((video: any) => (
+                {channel.videos.slice(0, 6).map((video) => (
                   <a
                     key={video.id}
                     href={`https://www.youtube.com/watch?v=${video.id}`}

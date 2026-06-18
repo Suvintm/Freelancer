@@ -1,8 +1,9 @@
 import { configureStore } from '@reduxjs/toolkit';
+import type { Reducer } from '@reduxjs/toolkit';
 import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
 import storageModule from 'redux-persist/lib/storage';
 
-const storage = (storageModule as any).default || storageModule;
+const storage = (storageModule as { default?: unknown }).default || storageModule;
 import { authReducer } from './slices/authSlice';
 import type { AuthUser } from './slices/authSlice';
 import { onboardingReducer } from './slices/onboardingSlice';
@@ -23,8 +24,8 @@ const onboardingPersistConfig = {
 
 export const store = configureStore({
   reducer: {
-    auth: persistReducer(authPersistConfig, authReducer) as any,
-    onboarding: persistReducer(onboardingPersistConfig, onboardingReducer) as any,
+    auth: persistReducer(authPersistConfig, authReducer) as unknown as Reducer,
+    onboarding: persistReducer(onboardingPersistConfig, onboardingReducer) as unknown as Reducer,
     ui: uiReducer,
   },
   middleware: (getDefaultMiddleware) =>

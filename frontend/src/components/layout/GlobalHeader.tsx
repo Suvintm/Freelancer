@@ -5,7 +5,7 @@ import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
 import darkLogo  from '../../assets/darklogo.png';
 import lightLogo from '../../assets/lightlogo.png';
-import auth1     from '../../assets/auth/auth_1.png';
+import defaultProfile from '../../assets/defaultprofile.png';
 
 export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   const userData = {
     name: user?.name || 'User',
     username: user?.username || 'user',
-    avatar: user?.profilePicture || auth1,
+    avatar: user?.profilePicture || defaultProfile,
   };
 
   return (

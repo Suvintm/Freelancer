@@ -27,7 +27,9 @@ export const authService = {
       payload = formData;
     }
 
-    const res = await api.post('/auth/register-full', payload);
+    const res = await api.post('/auth/register-full', payload, {
+      headers: payload instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined
+    });
     return res.data; // { success, user, token, refreshToken, message }
   },
 

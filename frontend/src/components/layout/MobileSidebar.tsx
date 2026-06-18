@@ -8,7 +8,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
 import { useLogout } from '../../mutations/useLogout';
-import auth1 from '../../assets/auth/auth_1.png';
+import defaultProfile from '../../assets/defaultprofile.png';
 
 interface MobileSidebarProps {
   isOpen: boolean;
@@ -81,7 +81,7 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
               <div className="relative flex items-center gap-4">
                 <div className="relative">
                   <img
-                    src={user?.profilePicture || auth1}
+                    src={user?.profilePicture || defaultProfile}
                     alt={user?.name}
                     className="w-14 h-14 rounded-2xl object-cover border-2 border-accent-primary ring-4 ring-accent-primary/5"
                   />

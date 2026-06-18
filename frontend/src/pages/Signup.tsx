@@ -24,6 +24,7 @@ import { AuthBackground } from '../components/auth/AuthBackground';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearTempSignupData } from '../store/slices/onboardingSlice';
 import { useSignup } from '../mutations/useSignup';
+import type { RootState } from '../store';
 import { authService } from '../api/services/auth.service';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -85,7 +86,7 @@ export default function Signup() {
   const [showPass, setShowPass] = useState(false);
   const dispatch = useDispatch();
   const { mutateAsync: signupMutation } = useSignup();
-  const tempSignupData = useSelector((state: any) => state.onboarding.tempSignupData);
+  const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
   const socialProfile = tempSignupData?.socialProfile as Record<string, string> | undefined;
 
   const [form, setForm] = useState({
@@ -356,7 +357,7 @@ export default function Signup() {
                   <div className="space-y-3 pt-2">
                     <h3 className="text-[10px] font-bold tracking-[0.15em] text-zinc-500 uppercase ml-1">Linked Identity</h3>
                     <div className="space-y-2">
-                      {selectedChannels.map((ch: any) => (
+                      {selectedChannels.map((ch) => (
                         <div key={ch?.channelId} className="flex items-center gap-3 p-3 rounded-xl border border-zinc-800/50 bg-zinc-900/30 backdrop-blur-sm">
                           {ch?.thumbnailUrl && (
                             <img src={ch.thumbnailUrl} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0 bg-zinc-800" />
