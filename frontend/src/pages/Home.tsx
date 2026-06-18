@@ -144,41 +144,52 @@ export default function Home() {
       </div>
 
       {/* ─── MOBILE SPLIT LAYOUT ─── */}
-      <div className="flex lg:hidden gap-3 items-start pl-0 pr-4 sm:pr-0">
+      <div className="flex lg:hidden gap-3 items-start -ml-4">
         
         {/* Left Column: Vertical Stories Sidebar (Instagram style) */}
-        <div className={`
-          w-[84px] h-[310px] flex-shrink-0 flex flex-col items-center py-4 px-1 rounded-r-[40px] rounded-l-none overflow-y-auto scrollbar-hide gap-4.5 shadow-xl
-          ${isDarkMode ? 'bg-zinc-950/40' : 'bg-white'}
-        `}>
-          {stories.map((story) => (
-            <motion.div 
-              key={story._id} 
-              whileTap={{ scale: 0.92, rotate: story.isUser ? 0 : [0, -3, 3, 0] }}
-              transition={{ duration: 0.2 }}
-              className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer group relative"
-            >
-              <div className="relative w-[56px] h-[56px] flex items-center justify-center">
-                <svg className="absolute inset-0 w-full h-full -rotate-90 opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-110 group-hover:scale-100">
-                  <circle cx="50%" cy="50%" r="48%" className={`fill-none stroke-current stroke-1 ${isDarkMode ? 'text-white' : 'text-black'}`} strokeDasharray="4 8" strokeLinecap="round" />
-                </svg>
-                <div className={`absolute inset-0 rounded-full p-[2px] transition-transform duration-500 group-active:scale-95 ${story.hasActive || story.isUser ? (isDarkMode ? 'bg-gradient-to-tr from-white to-zinc-500' : 'bg-gradient-to-tr from-black to-zinc-400') : 'bg-border-main opacity-40'}`}>
-                  <div className="w-full h-full rounded-full bg-container p-[2px]">
-                    <img src={story.avatar} alt={story.username} className="w-full h-full rounded-full object-cover bg-border-secondary shadow-inner" />
+        <div className="relative flex-shrink-0">
+          <div className={`
+            w-[84px] h-[310px] flex flex-col items-center py-4 px-1 rounded-r-[40px] rounded-l-none overflow-y-auto scrollbar-hide gap-4.5 shadow-xl
+            ${isDarkMode ? 'bg-[#242526]' : 'bg-[#F0F2F5]'}
+          `}>
+            {stories.map((story) => (
+              <motion.div 
+                key={story._id} 
+                whileTap={{ scale: 0.92, rotate: story.isUser ? 0 : [0, -3, 3, 0] }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer group relative"
+              >
+                <div className="relative w-[56px] h-[56px] flex items-center justify-center">
+                  <svg className="absolute inset-0 w-full h-full -rotate-90 opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-110 group-hover:scale-100">
+                    <circle cx="50%" cy="50%" r="48%" className={`fill-none stroke-current stroke-1 ${isDarkMode ? 'text-white' : 'text-black'}`} strokeDasharray="4 8" strokeLinecap="round" />
+                  </svg>
+                  <div className={`absolute inset-0 rounded-full p-[2px] transition-transform duration-500 group-active:scale-95 ${story.hasActive || story.isUser ? (isDarkMode ? 'bg-gradient-to-tr from-white to-zinc-500' : 'bg-gradient-to-tr from-black to-zinc-400') : 'bg-border-main opacity-40'}`}>
+                    <div className="w-full h-full rounded-full bg-container p-[2px]">
+                      <img src={story.avatar} alt={story.username} className="w-full h-full rounded-full object-cover bg-border-secondary shadow-inner" />
+                    </div>
                   </div>
+                  {story.isUser && !story.hasActive && (
+                    <div className="absolute bottom-0 right-0 bg-blue-500 rounded-full border-2 border-container p-0.5 shadow-lg">
+                      <Plus size={8} className="text-white" strokeWidth={4} />
+                    </div>
+                  )}
                 </div>
-                {story.isUser && !story.hasActive && (
-                  <div className="absolute bottom-0 right-0 bg-blue-500 rounded-full border-2 border-container p-0.5 shadow-lg">
-                    <Plus size={8} className="text-white" strokeWidth={4} />
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-1 max-w-[56px]">
-                <span className={`text-[8.5px] font-bold truncate ${story.hasActive ? 'text-text-main' : 'text-text-muted'}`}>{story.username}</span>
-                {story.verifiedColor && <VerifiedDecagram size={9} color={story.verifiedColor} className="flex-shrink-0" />}
-              </div>
-            </motion.div>
-          ))}
+                <div className="flex items-center gap-1 max-w-[56px]">
+                  <span className={`text-[8.5px] font-bold truncate ${story.hasActive ? 'text-text-main' : 'text-text-muted'}`}>{story.username}</span>
+                  {story.verifiedColor && <VerifiedDecagram size={9} color={story.verifiedColor} className="flex-shrink-0" />}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+          
+          {/* Floating Rotated Plus Icon */}
+          <div className="absolute -top-3 right-3 transform rotate-12 z-10 pointer-events-none">
+            <Plus 
+              size={24} 
+              strokeWidth={3.5} 
+              className={`${isDarkMode ? 'text-zinc-500/80' : 'text-zinc-400/80'} drop-shadow-sm`} 
+            />
+          </div>
         </div>
 
         {/* Right Column: Stacked Banner & Features Gallery */}
