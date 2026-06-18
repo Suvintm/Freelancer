@@ -1,4 +1,4 @@
-import { Search, Bell, Plus, Sun, Moon, Menu } from 'lucide-react';
+import { Search, Bell, Plus, Sun, Moon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme }  from '../../hooks/useTheme';
 import { useSelector } from 'react-redux';

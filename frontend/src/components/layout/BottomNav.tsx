@@ -7,10 +7,10 @@ import {
   Briefcase,
   MessageCircle
 } from 'lucide-react';
-import { useTheme } from '../../hooks/useTheme';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
 import defaultProfile from '../../assets/defaultprofile.png';
+
 
 const NAV_ITEMS = [
   { name: 'home', icon: Home, label: 'Home', path: '/home' },
