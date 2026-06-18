@@ -7,10 +7,10 @@ import {
   Briefcase,
   MessageCircle
 } from 'lucide-react';
-import { useTheme } from '../../hooks/useTheme';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
 import defaultProfile from '../../assets/defaultprofile.png';
+
 
 const NAV_ITEMS = [
   { name: 'home', icon: Home, label: 'Home', path: '/home' },
@@ -24,62 +24,47 @@ const NAV_ITEMS = [
 
 export const BottomNav = () => {
   const location = useLocation();
-  const { isDarkMode } = useTheme();
   const user = useSelector(selectUser);
   const profileAvatar = user?.profilePicture || defaultProfile;
 
-  const activeColor = isDarkMode ? '#FFFFFF' : '#111111';
-  const inactiveColor = isDarkMode ? '#777777' : '#AAAAAA';
-
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-nav border-t-0 shadow-[0_-2px_12px_rgba(0,0,0,0.07)] flex items-center justify-around px-2 z-[60] pb-safe">
-      <div className="flex w-full items-center h-full">
+    <div className="lg:hidden fixed bottom-6 left-4 right-4 z-[60] flex justify-center pb-safe">
+      <nav className="h-[64px] w-full max-w-md bg-black rounded-[32px] shadow-2xl flex items-center justify-between px-2 sm:px-4">
         {NAV_ITEMS.map((item) => {
           const isActive = location.pathname === item.path;
-          const color = isActive ? activeColor : inactiveColor;
-
-          if (item.isSpecial) {
-            return (
-              <Link 
-                key={item.path}
-                to={item.path}
-                className="flex-1 flex flex-col items-center justify-center -mt-8"
-              >
-                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-xl transition-transform active:scale-90 ${isDarkMode ? 'bg-white text-black' : 'bg-black text-white'}`}>
-                  <Play size={20} fill="currentColor" />
-                </div>
-                <span className="text-[8px] font-black uppercase tracking-[0.4px] mt-2 text-[#777777]">
-                  Reels
-                </span>
-              </Link>
-            );
-          }
 
           return (
             <Link 
               key={item.path}
               to={item.path}
-              className="flex-1 flex flex-col items-center justify-center gap-1 h-full"
+              className={`
+                relative flex items-center justify-center h-12 transition-all duration-300 ease-out overflow-hidden
+                ${isActive ? 'bg-[#2A2A2A] px-4 rounded-full gap-2.5 flex-shrink-0' : 'w-12 rounded-full flex-shrink-0 hover:bg-white/5'}
+              `}
             >
-              <div className="flex items-center justify-center h-6">
+              <div className="flex items-center justify-center shrink-0">
                 {item.isProfile ? (
-                  <div className={`w-6 h-6 rounded-full p-[1px] border-2 transition-colors ${isActive ? 'border-current' : 'border-transparent'}`} style={{ color }}>
-                    <img src={profileAvatar} alt="Profile" className="w-full h-full rounded-full object-cover" />
+                  <div className={`w-6 h-6 rounded-full overflow-hidden transition-all ${isActive ? 'ring-2 ring-white' : 'opacity-70'}`}>
+                    <img src={profileAvatar} alt="Profile" className="w-full h-full object-cover" />
                   </div>
                 ) : item.icon && (
-                  <item.icon size={22} color={color} strokeWidth={isActive ? 3 : 2} />
+                  <item.icon 
+                    size={isActive ? 20 : 22} 
+                    className={`transition-colors ${isActive ? 'text-white' : 'text-[#888888]'}`} 
+                    strokeWidth={isActive ? 2.5 : 2}
+                  />
                 )}
               </div>
-              <span 
-                className="text-[8px] font-black uppercase tracking-[0.4px] transition-colors"
-                style={{ color, fontWeight: isActive ? '900' : '500' }}
-              >
-                {item.label}
-              </span>
+              
+              {isActive && (
+                <span className="text-[13px] font-bold text-white tracking-wide whitespace-nowrap">
+                  {item.label}
+                </span>
+              )}
             </Link>
           );
         })}
-      </div>
-    </nav>
+      </nav>
+    </div>
   );
 };

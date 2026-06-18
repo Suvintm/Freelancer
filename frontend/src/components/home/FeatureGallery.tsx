@@ -107,8 +107,8 @@ export const FeatureGallery = ({ paused, isMobileLayout }: { paused?: boolean; i
         </motion.div>
 
         {/* Edge Fades */}
-        <div className="absolute inset-y-0 left-0 w-8 lg:w-16 bg-gradient-to-r from-page to-transparent pointer-events-none z-20" />
-        <div className="absolute inset-y-0 right-0 w-8 lg:w-16 bg-gradient-to-l from-page to-transparent pointer-events-none z-20" />
+        <div className="absolute inset-y-0 left-0 w-4 lg:w-8 bg-gradient-to-r from-page to-transparent pointer-events-none z-20" />
+        <div className="absolute inset-y-0 right-0 w-4 lg:w-8 bg-gradient-to-l from-page to-transparent pointer-events-none z-20" />
       </div>
     </div>
   );

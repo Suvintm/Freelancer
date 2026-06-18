@@ -144,13 +144,13 @@ export default function Home() {
       </div>
 
       {/* ─── MOBILE SPLIT LAYOUT ─── */}
-      <div className="flex lg:hidden gap-3 items-start -ml-4">
+      <div className="flex lg:hidden gap-3 items-start -mr-4 flex-row-reverse">
         
-        {/* Left Column: Vertical Stories Sidebar (Instagram style) */}
+        {/* Right Column: Vertical Stories Sidebar (Instagram style) */}
         <div className="relative flex-shrink-0">
           <div className={`
-            w-[84px] h-[310px] flex flex-col items-center py-4 px-1 rounded-r-[40px] rounded-l-none overflow-y-auto scrollbar-hide gap-4.5 shadow-xl
-            ${isDarkMode ? 'bg-[#242526]' : 'bg-[#F0F2F5]'}
+            w-[84px] h-[310px] flex flex-col items-center py-4 px-1 rounded-l-[40px] rounded-r-none overflow-y-auto scrollbar-hide gap-4.5 shadow-xl overscroll-y-contain touch-pan-y will-change-scroll
+            ${isDarkMode ? 'bg-[#242526]' : 'bg-[#E4E6EB]'}
           `}>
             {stories.map((story) => (
               <motion.div 
@@ -183,7 +183,7 @@ export default function Home() {
           </div>
           
           {/* Floating Rotated Plus Icon */}
-          <div className="absolute -top-3 right-3 transform rotate-12 z-10 pointer-events-none">
+          <div className="absolute -top-3 left-3 transform -rotate-12 z-10 pointer-events-none">
             <Plus 
               size={24} 
               strokeWidth={3.5} 
@@ -192,10 +192,10 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Right Column: Stacked Banner & Features Gallery */}
+        {/* Left Column: Stacked Banner & Features Gallery */}
         <div className="flex-1 min-w-0 flex flex-col gap-3">
-          <div className="w-full">
-            <UnifiedBanner />
+          <div className="w-full h-[226px]">
+            <UnifiedBanner className="h-full" />
           </div>
           <div className="w-full">
             <FeatureGallery paused={isScrolling} isMobileLayout={true} />
