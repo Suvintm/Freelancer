@@ -1,7 +1,8 @@
 import { Search, Bell, Plus, Sun, Moon, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme }  from '../../hooks/useTheme';
-import { useAuthStore } from '../../store/useAuthStore';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../../store/slices/authSlice';
 import darkLogo  from '../../assets/darklogo.png';
 import lightLogo from '../../assets/lightlogo.png';
 import auth1     from '../../assets/auth/auth_1.png';
@@ -9,7 +10,7 @@ import auth1     from '../../assets/auth/auth_1.png';
 export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   const navigate = useNavigate();
   const { isDarkMode, toggleTheme } = useTheme();
-  const { user } = useAuthStore();
+  const user = useSelector(selectUser);
 
   const userData = {
     name: user?.name || 'User',

@@ -1,6 +1,9 @@
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../store/useAuthStore';
-import { useOnboardingStore } from '../../store/useOnboardingStore';
+import { useSelector } from 'react-redux';
+import { selectIsAuthenticated, selectIsInitialized, selectUser } from '../../store/slices/authSlice';
+import type { RootState } from '../../store';
+import { queryClient } from '../../queries/queryClient';
+import { CURRENT_USER_QUERY_KEY } from '../../queries/useCurrentUser';
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 
@@ -9,7 +12,9 @@ interface AuthGuardProps {
 }
 
 export const AuthGuard = ({ children }: AuthGuardProps) => {
-  const { isAuthenticated, isInitialized, user, checkAuth } = useAuthStore();
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const isInitialized = useSelector(selectIsInitialized);
+  const user = useSelector(selectUser);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -27,12 +32,12 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
         console.log('🔄 [BFCache] Page restored from cache, verifying session...');
-        checkAuth();
+        queryClient.invalidateQueries({ queryKey: CURRENT_USER_QUERY_KEY });
       }
     };
     window.addEventListener('pageshow', handlePageShow);
     return () => window.removeEventListener('pageshow', handlePageShow);
-  }, [checkAuth]);
+  }, []);
 
   // 3. STRICT GUARD: While state is unknown, show nothing but the spinner
   if (!isInitialized) {
@@ -58,7 +63,9 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 };
 
 export const PublicRoute = ({ children }: AuthGuardProps) => {
-  const { isAuthenticated, isInitialized, user } = useAuthStore();
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const isInitialized = useSelector(selectIsInitialized);
+  const user = useSelector(selectUser);
   const location = useLocation();
 
   if (!isInitialized) {
@@ -83,30 +90,17 @@ export const PublicRoute = ({ children }: AuthGuardProps) => {
   return <>{children}</>;
 };
 
-/**
- * OnboardingGuard — Enforces sequential step access in the onboarding flow.
- *
- * Prevents URL-hacking into the middle of registration. Each onboarding route
- * declares the minimum tempSignupData.onboardingStep required to access it.
- *
- * Step order: role → subcategory → youtube → details → complete
- *
- * Example: A user cannot visit /subcategory-selection directly unless
- * onboardingStep >= 'role' is already set in tempSignupData.
- */
 const STEP_ORDER = ['role', 'subcategory', 'youtube', 'details', 'complete'] as const;
 type OnboardingStep = typeof STEP_ORDER[number];
 
 interface OnboardingGuardProps {
   children: ReactNode;
-  /** The minimum onboardingStep required to access this page. */
   requiredStep: OnboardingStep;
-  /** Where to redirect if the guard fails. Defaults to '/role-selection'. */
   fallback?: string;
 }
 
 export const OnboardingGuard = ({ children, requiredStep, fallback = '/role-selection' }: OnboardingGuardProps) => {
-  const { tempSignupData } = useOnboardingStore();
+  const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
 
   const currentStep = tempSignupData?.onboardingStep;
   const categoryId = tempSignupData?.categoryId;

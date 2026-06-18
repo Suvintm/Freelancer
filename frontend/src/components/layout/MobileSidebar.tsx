@@ -5,7 +5,9 @@ import {
   HelpCircle, LogOut
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../../store/useAuthStore';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../../store/slices/authSlice';
+import { useLogout } from '../../mutations/useLogout';
 import auth1 from '../../assets/auth/auth_1.png';
 
 interface MobileSidebarProps {
@@ -16,7 +18,8 @@ interface MobileSidebarProps {
 export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuthStore();
+  const user = useSelector(selectUser);
+  const { mutateAsync: logout } = useLogout();
 
   const NAV_SECTIONS = [
     {

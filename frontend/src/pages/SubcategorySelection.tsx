@@ -11,8 +11,9 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { AuthBackground } from '../components/auth/AuthBackground';
-import { useOnboardingStore } from '../store/useOnboardingStore';
-import { useCategoryStore } from '../store/useCategoryStore';
+import { useDispatch, useSelector } from 'react-redux';
+import { setTempSignupData } from '../store/slices/onboardingSlice';
+import { useCategories } from '../queries/useCategories';
 import logo from '../assets/whitebglogo.png';
 
 // Import assets for icons (matching RoleSelection)
@@ -26,8 +27,9 @@ import rentalIcon from '../assets/categories/rental.png';
 
 export default function SubcategorySelection() {
   const navigate = useNavigate();
-  const { tempSignupData, setTempSignupData } = useOnboardingStore();
-  const { categories, isLoading } = useCategoryStore();
+  const dispatch = useDispatch();
+  const tempSignupData = useSelector((state: any) => state.onboarding.tempSignupData);
+  const { categories, isLoading } = useCategories();
   
   const [selectedSubs, setSelectedSubs] = useState<string[]>((tempSignupData?.roleSubCategoryIds as string[]) || []);
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,14 +61,14 @@ export default function SubcategorySelection() {
   const handleFinish = () => {
     if (selectedSubs.length === 0) return;
     setIsFinishing(true);
-    setTempSignupData({
+    dispatch(setTempSignupData({
       roleSubCategoryIds: selectedSubs,
       onboardingStep: 'subcategory', // Advance step so OnboardingGuard knows sequence
-    });
+    }));
     setTimeout(() => {
       // Social/Google users → /complete-profile (minimal form, no password)
       // Email users        → /signup (full form)
-      const isSocial = useOnboardingStore.getState().tempSignupData?.isSocialSignup;
+      const isSocial = tempSignupData?.isSocialSignup;
       navigate(isSocial ? '/complete-profile' : '/signup');
     }, 500);
   };

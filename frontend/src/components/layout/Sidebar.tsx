@@ -1,7 +1,8 @@
 import { ReactLenis }       from 'lenis/react';
 import { Plus, ExternalLink, PlayCircle, Eye, Video, TrendingUp, Settings } from 'lucide-react';
 import { useNavigate }      from 'react-router-dom';
-import { useAuthStore }     from '../../store/useAuthStore';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../../store/slices/authSlice';
 import { useTheme }         from '../../hooks/useTheme';
 import auth1                from '../../assets/auth/auth_1.png';
 
@@ -29,7 +30,7 @@ function StatBubble({ value, label }: { value: string; label: string }) {
 
 export const Sidebar = () => {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const user = useSelector(selectUser);
   const { isDarkMode } = useTheme();
 
   const CHANNEL = {
@@ -112,7 +113,7 @@ export const Sidebar = () => {
         {/* ── 2. YouTube Channel Overview (Providers only) ──────────── */}
         {user?.primaryRole?.group === 'PROVIDER' && youtubeChannels.length > 0 && (
           <div className="space-y-3">
-            {displayChannels.map((channel) => (
+            {displayChannels.map((channel: any) => (
               <div 
                 key={channel.channel_id} 
                 className={`

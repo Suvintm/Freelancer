@@ -13,8 +13,9 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { useOnboardingStore } from '../store/useOnboardingStore';
-import { useCategoryStore } from '../store/useCategoryStore';
+import { useDispatch, useSelector } from 'react-redux';
+import { setTempSignupData } from '../store/slices/onboardingSlice';
+import { useCategories } from '../queries/useCategories';
 import logo from '../assets/darklogo.png';
 
 const formatCount = (n: number | string): string => {
@@ -41,8 +42,9 @@ const STATIC_PARTICLES = [...Array(50)].map((_, i) => ({
 
 export default function YouTubeNiche() {
   const navigate = useNavigate();
-  const { tempSignupData, setTempSignupData } = useOnboardingStore();
-  const { categories } = useCategoryStore();
+  const dispatch = useDispatch();
+  const tempSignupData = useSelector((state: any) => state.onboarding.tempSignupData);
+  const { categories } = useCategories();
 
   const [selectedNiche, setSelectedNiche] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,20 +63,19 @@ export default function YouTubeNiche() {
     if (!selectedNiche) return;
     setIsSubmitting(true);
     const subCategory = youtubeCategory?.subCategories?.find(s => s.id === selectedNiche);
-    const youtubeChannels = (tempSignupData?.youtubeChannels ?? []).map(ch => ({
+    const youtubeChannels = (tempSignupData?.youtubeChannels ?? []).map((ch: any) => ({
       ...ch,
       subCategoryId:   selectedNiche,
       subCategorySlug: subCategory?.slug ?? null,
     }));
-    setTempSignupData({
-      ...tempSignupData,
+    dispatch(setTempSignupData({
       youtubeChannels,
       roleSubCategoryIds: [selectedNiche],
       onboardingStep:     'youtube',
-    });
+    }));
     setTimeout(() => {
       setIsSubmitting(false);
-      const isSocial = useOnboardingStore.getState().tempSignupData?.isSocialSignup;
+      const isSocial = tempSignupData?.isSocialSignup;
       navigate(isSocial ? '/complete-profile' : '/signup');
     }, 900);
   };
@@ -214,7 +215,7 @@ export default function YouTubeNiche() {
                 <span className="text-[8px] font-bold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded uppercase tracking-wider">Live Synced</span>
               </div>
               <div className="flex gap-2.5 overflow-x-auto pb-2 custom-scrollbar">
-                {channel.videos.slice(0, 6).map((video) => (
+                {channel.videos.slice(0, 6).map((video: any) => (
                   <a
                     key={video.id}
                     href={`https://www.youtube.com/watch?v=${video.id}`}

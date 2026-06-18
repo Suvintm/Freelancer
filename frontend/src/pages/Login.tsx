@@ -13,8 +13,9 @@ import {
 import logo from '../assets/darklogo.png';
 import { AuthBackground } from '../components/auth/AuthBackground';
 import { MobileAuthHeader } from '../components/auth/MobileAuthHeader';
-import { useAuthStore } from '../store/useAuthStore';
-import { useOnboardingStore } from '../store/useOnboardingStore';
+import { useDispatch } from 'react-redux';
+import { clearTempSignupData, resetYoutubeDiscovery, setTempSignupData } from '../store/slices/onboardingSlice';
+import { useLogin } from '../mutations/useLogin';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -29,13 +30,12 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
 export default function Login() {
   const [showPass, setShowPass] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
-  const { login } = useAuthStore();
-  const { clearTempSignupData, resetYoutubeDiscovery } = useOnboardingStore();
+  const dispatch = useDispatch();
+  const { mutateAsync: login, isPending: isLoading } = useLogin();
   const [error, setError] = useState<string | null>(() => {
     const oauthError = new URLSearchParams(window.location.search).get('error');
     return oauthError ? (OAUTH_ERROR_MESSAGES[oauthError] || 'Authentication failed. Please try again.') : null;
   });
-  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   // 🔐 PRODUCTION: On Login mount, wipe ALL stale onboarding data.
@@ -43,21 +43,18 @@ export default function Login() {
   // a previous registration session's yt_influencer tempSignupData would
   // cause Google Login to redirect to YouTube Connect instead of Home.
   React.useEffect(() => {
-    clearTempSignupData();
-    resetYoutubeDiscovery();
-  }, [clearTempSignupData, resetYoutubeDiscovery]);
+    dispatch(clearTempSignupData());
+    dispatch(resetYoutubeDiscovery());
+  }, [dispatch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
     try {
-      await login(form.email, form.password);
+      await login({ email: form.email, password: form.password });
       navigate('/home');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -70,11 +67,11 @@ export default function Login() {
    */
   const handleGoogleLogin = () => {
     // Step 1: Nuke all stale data
-    clearTempSignupData();
-    resetYoutubeDiscovery();
+    dispatch(clearTempSignupData());
+    dispatch(resetYoutubeDiscovery());
 
     // Step 2: Set login intent so OAuthSuccess routes correctly
-    useOnboardingStore.getState().setTempSignupData({ intent: 'login' });
+    dispatch(setTempSignupData({ intent: 'login' }));
 
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
     window.location.href = `${apiUrl}/auth/google`;

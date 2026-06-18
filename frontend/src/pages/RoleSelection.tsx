@@ -10,10 +10,11 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { AuthBackground } from '../components/auth/AuthBackground';
-import { useOnboardingStore } from '../store/useOnboardingStore';
-import { useCategoryStore } from '../store/useCategoryStore';
+import { useDispatch } from 'react-redux';
+import { clearTempSignupData, setTempSignupData } from '../store/slices/onboardingSlice';
+import { useCategories } from '../queries/useCategories';
+import type { RoleCategory } from '../api/services/category.service';
 import logo from '../assets/darklogo.png';
-import type { RoleCategory } from '../store/useCategoryStore';
 
 // Import assets for high-fidelity thumbnails
 import youtubeThumb from '../assets/categories/youtube.jpg';
@@ -56,20 +57,16 @@ export default function RoleSelection() {
   const [infoCategory, setInfoCategory] = useState<RoleCategory | null>(null);
   const navigate = useNavigate();
   
-  const { categories, isLoading, error, fetchCategories } = useCategoryStore();
-  const { setTempSignupData, clearTempSignupData } = useOnboardingStore();
+  const dispatch = useDispatch();
+  const { categories, isLoading, error, refetch } = useCategories();
   const selectedCategory = categories.find(c => c.id === selected);
 
   // 🔐 PRODUCTION: Clear ALL stale onboarding data when landing on role selection.
   // This prevents the stale-state contamination bug where a previous session's
   // tempSignupData (e.g. yt_influencer role) corrupts a new login attempt.
   useEffect(() => {
-    clearTempSignupData();
-  }, [clearTempSignupData]);
-
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+    dispatch(clearTempSignupData());
+  }, [dispatch]);
 
   const getCategoryAssets = (slug: string) => {
     switch(slug) {
@@ -96,14 +93,14 @@ export default function RoleSelection() {
   const handleEmailSignup = () => {
     if (!selected || !selectedCategory) return;
 
-    setTempSignupData({
+    dispatch(setTempSignupData({
       categoryId: selected,
       categorySlug: selectedCategory.slug,
       roleName: selectedCategory.name,
       intent: 'register',
       authMethod: 'email',
       onboardingStep: 'role',
-    });
+    }));
 
     if (selectedCategory.slug === 'direct_client') {
       // Clients don't need subcategory — go straight to signup form
@@ -128,14 +125,14 @@ export default function RoleSelection() {
     if (!selected || !selectedCategory) return;
 
     // Save role context BEFORE redirect (Zustand persist = survives page reload)
-    setTempSignupData({
+    dispatch(setTempSignupData({
       categoryId: selected,
       categorySlug: selectedCategory.slug,
       roleName: selectedCategory.name,
       intent: 'register',
       authMethod: 'google',
       onboardingStep: 'role',
-    });
+    }));
 
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
 
@@ -220,7 +217,7 @@ export default function RoleSelection() {
                   We are having trouble loading the workspace roles from the server. Please check your network connection or try reloading.
                 </p>
                 <button 
-                  onClick={() => fetchCategories()}
+                  onClick={() => refetch()}
                   className="px-6 py-2.5 rounded-xl bg-white text-black text-xs font-bold hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer shadow-lg"
                 >
                   Retry Connection

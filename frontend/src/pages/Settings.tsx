@@ -14,12 +14,12 @@ import {
   Laptop
 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
-import { useAuthStore } from '../store/useAuthStore';
+import { useLogout } from '../mutations/useLogout';
 
 export default function Settings() {
   const [activeCategory, setActiveCategory] = useState('profile');
   const { isDarkMode, toggleTheme } = useTheme();
-  const { logout } = useAuthStore();
+  const { mutateAsync: logout } = useLogout();
   const navigate = useNavigate();
 
   const handleLogout = async () => {

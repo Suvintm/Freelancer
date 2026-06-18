@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutGrid, Users, Play, Camera, CheckCircle2, UserPlus, MoreHorizontal } from 'lucide-react';
-import { useAuthStore } from '../store/useAuthStore';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../store/slices/authSlice';
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
@@ -18,7 +19,7 @@ const SectionHeader = ({ title, actionText, onAction }: { title: string; actionT
 
 export default function Explore() {
   const [activeTab, setActiveTab] = useState('All');
-  const { user } = useAuthStore();
+  const user = useSelector(selectUser);
 
   const TABS = [
     { id: 'All', icon: LayoutGrid, color: '#6366f1' },

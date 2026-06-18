@@ -16,8 +16,9 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { useOnboardingStore } from '../store/useOnboardingStore';
-import { useCategoryStore } from '../store/useCategoryStore';
+import { useDispatch, useSelector } from 'react-redux';
+import { setTempSignupData, addDiscoveredChannels, resetYoutubeDiscovery } from '../store/slices/onboardingSlice';
+import { useCategories } from '../queries/useCategories';
 import { api } from '../api/client';
 import { LoadingOverlay } from '../components/shared/LoadingOverlay';
 import { SuccessOverlay } from '../components/shared/SuccessOverlay';
@@ -43,14 +44,10 @@ const STATIC_PARTICLES = [...Array(50)].map((_, i) => ({
 export default function YouTubeConnect() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { 
-    tempSignupData, 
-    setTempSignupData, 
-    youtubeDiscovery, 
-    addDiscoveredChannels, 
-    resetYoutubeDiscovery 
-  } = useOnboardingStore();
-  const { categories, isLoading: categoriesLoading, fetchCategories } = useCategoryStore();
+  const dispatch = useDispatch();
+  const tempSignupData = useSelector((state: any) => state.onboarding.tempSignupData);
+  const youtubeDiscovery = useSelector((state: any) => state.onboarding.youtubeDiscovery);
+  const { categories, isLoading: categoriesLoading } = useCategories();
 
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -60,7 +57,7 @@ export default function YouTubeConnect() {
   const categoryId = tempSignupData?.categoryId;
   const googleAccessToken = location.state?.googleAccessToken as string | undefined;
   const connected = youtubeDiscovery.channels.length > 0;
-  const hasUnclaimedChannel = youtubeDiscovery.channels.some(c => !c.isClaimed);
+  const hasUnclaimedChannel = youtubeDiscovery.channels.some((c: any) => !c.isClaimed);
 
   const handleConnect = () => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
@@ -73,7 +70,7 @@ export default function YouTubeConnect() {
     try {
       const res = await api.post('/auth/youtube/channels', { accessToken: token });
       if (res.data.success) {
-        addDiscoveredChannels(res.data.channels);
+        dispatch(addDiscoveredChannels(res.data.channels));
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 2000);
       } else {
@@ -85,17 +82,15 @@ export default function YouTubeConnect() {
     } finally {
       setIsLoading(false);
     }
-  }, [addDiscoveredChannels]);
+  }, [dispatch]);
 
   useEffect(() => {
     if (!categoryId) {
       navigate('/role-selection', { replace: true });
       return;
     }
-    fetchCategories();
-
     if (!googleAccessToken && youtubeDiscovery.channels.length > 0) {
-      resetYoutubeDiscovery();
+      dispatch(resetYoutubeDiscovery());
     }
 
     if (googleAccessToken && youtubeDiscovery.channels.length === 0 && !fetchStarted.current) {
@@ -112,8 +107,8 @@ export default function YouTubeConnect() {
     const ytCat = categories.find(c => c.slug === 'yt_influencer');
 
     const youtubeChannels = youtubeDiscovery.channels
-      .filter(c => !c.isClaimed)
-      .map((channel, index) => ({
+      .filter((c: any) => !c.isClaimed)
+      .map((channel: any, index: number) => ({
         channelId:       channel.channelId,
         channelName:     channel.channelName,
         thumbnailUrl:    channel.thumbnailUrl || null,
@@ -124,12 +119,11 @@ export default function YouTubeConnect() {
         videos:          channel.videos || [],
       }));
 
-    setTempSignupData({
-      ...tempSignupData,
+    dispatch(setTempSignupData({
       categorySlug:   ytCat?.slug ?? 'yt_influencer',
       youtubeChannels,
       onboardingStep: 'youtube',
-    });
+    }));
 
     navigate('/youtube-niche');
   };
@@ -322,7 +316,7 @@ export default function YouTubeConnect() {
 
                 {/* Channel Cards — display only, no niche picker here */}
                 <div className="flex flex-col gap-4 w-full max-w-4xl">
-                  {youtubeDiscovery.channels.map((channel) => {
+                  {youtubeDiscovery.channels.map((channel: any) => {
                     const isClaimed = channel.isClaimed;
                     return (
                       <motion.div
@@ -509,7 +503,7 @@ export default function YouTubeConnect() {
                 <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-none mb-1">Channel Status</p>
                 <p className="text-sm font-bold text-white leading-none">
                   {hasUnclaimedChannel
-                    ? `${youtubeDiscovery.channels.filter(c => !c.isClaimed).length} ready · click Next to choose your niche`
+                    ? `${youtubeDiscovery.channels.filter((c: any) => !c.isClaimed).length} ready · click Next to choose your niche`
                     : 'All channels already registered'
                   }
                 </p>
