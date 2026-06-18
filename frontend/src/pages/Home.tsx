@@ -89,35 +89,81 @@ export default function Home() {
       mainContainer.removeEventListener('scroll', handleScroll);
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     };
-  }, []);
-
-  return (
+  }, []);  return (
     <div className="max-w-6xl mx-auto space-y-4 lg:space-y-10 pb-20">
-      {/* ─── DESKTOP SPLIT VIEW (Banner & Stories Swapped for Mobile Parity) ─── */}
-      <div className="flex flex-col lg:flex-row-reverse gap-6 lg:items-center">
-        
-        {/* 1. Banner Section (Top on Mobile, Right on Desktop) */}
-        <section className="lg:w-1/2 px-6 lg:px-0">
-          <UnifiedBanner />
-        </section>
+      
+      {/* ─── DESKTOP TOP VIEW LAYOUT ─── */}
+      <div className="hidden lg:flex flex-col gap-10">
+        <div className="flex flex-col lg:flex-row-reverse gap-6 lg:items-center">
+          {/* 1. Banner Section */}
+          <section className="lg:w-1/2 px-6 lg:px-0">
+            <UnifiedBanner />
+          </section>
 
-        {/* 2. Stories Section (Bottom on Mobile, Left on Desktop) */}
-        <section className="lg:w-1/2 -mx-4 lg:mx-0">
-          <div className="hidden lg:block mb-8 px-1">
-            <img 
-              src={isDarkMode ? darkLogo : lightLogo} 
-              alt="SuviX" 
-              className="h-8 w-auto opacity-90 hover:opacity-100 transition-opacity" 
-            />
-          </div>
-          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide px-6 lg:px-0">
+          {/* 2. Stories Section */}
+          <section className="lg:w-1/2 -mx-4 lg:mx-0">
+            <div className="hidden lg:block mb-8 px-1">
+              <img 
+                src={isDarkMode ? darkLogo : lightLogo} 
+                alt="SuviX" 
+                className="h-8 w-auto opacity-90 hover:opacity-100 transition-opacity" 
+              />
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide px-6 lg:px-0">
+              {stories.map((story) => (
+                <div key={story._id} className="flex flex-col items-center gap-2 flex-shrink-0 cursor-pointer group relative">
+                  <div className="relative w-[60px] h-[60px] lg:w-[68px] lg:h-[68px] flex items-center justify-center">
+                    <svg className="absolute inset-0 w-full h-full -rotate-90 opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-110 group-hover:scale-100">
+                      <circle cx="50%" cy="50%" r="48%" className={`fill-none stroke-current stroke-1 ${isDarkMode ? 'text-white' : 'text-black'}`} strokeDasharray="4 8" strokeLinecap="round" />
+                    </svg>
+                    <div className={`absolute inset-0 rounded-full p-[2px] transition-transform duration-500 group-active:scale-95 ${story.hasActive || story.isUser ? (isDarkMode ? 'bg-gradient-to-tr from-white to-zinc-500' : 'bg-gradient-to-tr from-black to-zinc-400') : 'bg-border-main opacity-40'}`}>
+                      <div className="w-full h-full rounded-full bg-container p-[2px]">
+                        <img src={story.avatar} alt={story.username} className="w-full h-full rounded-full object-cover bg-border-secondary shadow-inner" />
+                      </div>
+                    </div>
+                    {story.isUser && !story.hasActive && (
+                      <div className="absolute bottom-0 right-0 bg-blue-500 rounded-full border-2 border-container p-0.5 shadow-lg">
+                        <Plus size={8} className="text-white" strokeWidth={4} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 max-w-[60px] lg:max-w-[68px]">
+                    <span className={`text-[9px] font-bold truncate ${story.hasActive ? 'text-text-main' : 'text-text-muted'}`}>{story.username}</span>
+                    {story.verifiedColor && <VerifiedDecagram size={10} color={story.verifiedColor} className="flex-shrink-0" />}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        {/* Feature Gallery */}
+        <section className="-mx-4 lg:mx-0 -mt-2 lg:mt-0">
+          <FeatureGallery paused={isScrolling} />
+        </section>
+      </div>
+
+      {/* ─── MOBILE SPLIT LAYOUT ─── */}
+      <div className="flex lg:hidden gap-3 items-start -ml-4">
+        
+        {/* Left Column: Vertical Stories Sidebar (Instagram style) */}
+        <div className="relative flex-shrink-0">
+          <div className={`
+            w-[84px] h-[310px] flex flex-col items-center py-4 px-1 rounded-r-[40px] rounded-l-none overflow-y-auto scrollbar-hide gap-4.5 shadow-xl
+            ${isDarkMode ? 'bg-[#242526]' : 'bg-[#F0F2F5]'}
+          `}>
             {stories.map((story) => (
-              <div key={story._id} className="flex flex-col items-center gap-2 flex-shrink-0 cursor-pointer group relative">
-                <div className="relative w-[60px] h-[60px] lg:w-[68px] lg:h-[68px] flex items-center justify-center">
+              <motion.div 
+                key={story._id} 
+                whileTap={{ scale: 0.92, rotate: story.isUser ? 0 : [0, -3, 3, 0] }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer group relative"
+              >
+                <div className="relative w-[56px] h-[56px] flex items-center justify-center">
                   <svg className="absolute inset-0 w-full h-full -rotate-90 opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-110 group-hover:scale-100">
                     <circle cx="50%" cy="50%" r="48%" className={`fill-none stroke-current stroke-1 ${isDarkMode ? 'text-white' : 'text-black'}`} strokeDasharray="4 8" strokeLinecap="round" />
                   </svg>
-                  <div className={`absolute inset-0 rounded-full p-[2px] transition-transform duration-500 group-active:scale-90 ${story.hasActive || story.isUser ? (isDarkMode ? 'bg-gradient-to-tr from-white to-zinc-500' : 'bg-gradient-to-tr from-black to-zinc-400') : 'bg-border-main opacity-40'}`}>
+                  <div className={`absolute inset-0 rounded-full p-[2px] transition-transform duration-500 group-active:scale-95 ${story.hasActive || story.isUser ? (isDarkMode ? 'bg-gradient-to-tr from-white to-zinc-500' : 'bg-gradient-to-tr from-black to-zinc-400') : 'bg-border-main opacity-40'}`}>
                     <div className="w-full h-full rounded-full bg-container p-[2px]">
                       <img src={story.avatar} alt={story.username} className="w-full h-full rounded-full object-cover bg-border-secondary shadow-inner" />
                     </div>
@@ -128,20 +174,34 @@ export default function Home() {
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-1 max-w-[60px] lg:max-w-[68px]">
-                  <span className={`text-[9px] font-bold truncate ${story.hasActive ? 'text-text-main' : 'text-text-muted'}`}>{story.username}</span>
-                  {story.verifiedColor && <VerifiedDecagram size={10} color={story.verifiedColor} className="flex-shrink-0" />}
+                <div className="flex items-center gap-1 max-w-[56px]">
+                  <span className={`text-[8.5px] font-bold truncate ${story.hasActive ? 'text-text-main' : 'text-text-muted'}`}>{story.username}</span>
+                  {story.verifiedColor && <VerifiedDecagram size={9} color={story.verifiedColor} className="flex-shrink-0" />}
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
-        </section>
-      </div>
+          
+          {/* Floating Rotated Plus Icon */}
+          <div className="absolute -top-3 right-3 transform rotate-12 z-10 pointer-events-none">
+            <Plus 
+              size={24} 
+              strokeWidth={3.5} 
+              className={`${isDarkMode ? 'text-zinc-500/80' : 'text-zinc-400/80'} drop-shadow-sm`} 
+            />
+          </div>
+        </div>
 
-      {/* 3. Feature Gallery */}
-      <section className="-mx-4 lg:mx-0 -mt-2 lg:mt-0">
-        <FeatureGallery paused={isScrolling} />
-      </section>
+        {/* Right Column: Stacked Banner & Features Gallery */}
+        <div className="flex-1 min-w-0 flex flex-col gap-3">
+          <div className="w-full">
+            <UnifiedBanner />
+          </div>
+          <div className="w-full">
+            <FeatureGallery paused={isScrolling} isMobileLayout={true} />
+          </div>
+        </div>
+      </div>
 
       {/* 4. Unified Feed */}
       <section className="-mx-4 lg:mx-0 -mt-2 lg:mt-0">

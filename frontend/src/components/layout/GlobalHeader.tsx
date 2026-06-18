@@ -19,7 +19,7 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   };
 
   return (
-    <header className="h-14 w-full shrink-0 bg-nav border-b border-border-main flex items-center px-4 lg:px-6 z-50 relative">
+    <header className={`h-14 w-full shrink-0 border-b border-border-main flex items-center px-4 lg:px-6 z-50 relative ${isDarkMode ? 'bg-black' : 'bg-nav'}`}>
 
       {/* ── Mobile layout ─────────────────────────────────────────── */}
       <div className="lg:hidden flex items-center justify-between w-full gap-3">
