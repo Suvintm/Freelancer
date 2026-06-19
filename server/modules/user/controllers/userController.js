@@ -209,9 +209,40 @@ export const updateMinimalProfile = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Update current user cover banner
+// @route   PUT /api/user/me/cover-banner
+// @access  Private
+export const updateCoverBanner = asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) throw new ApiError(401, "Unauthorized");
+
+  const { bannerUrl } = req.body;
+
+  const profile = await prisma.userProfile.update({
+    where: { userId },
+    data: {
+      cover_banner: bannerUrl || null,
+      updated_at: new Date(),
+    },
+  });
+
+  // 🧹 [CACHE] Invalidate cache
+  await deleteCache(CacheKey.userProfile(userId));
+
+  // 🛰️ [SOCKET] Surgical Sync
+  emitToUser(userId, "user:profile_updated", { coverBanner: smartResolveMediaUrl(profile.cover_banner) });
+
+  return res.status(200).json({
+    success: true,
+    message: "Cover banner updated successfully",
+    coverBanner: smartResolveMediaUrl(profile.cover_banner),
+  });
+});
+
 export default {
   getMyBasicInfo,
   updateMyBasicInfo,
   updateProfilePicture,
-  updateMinimalProfile
+  updateMinimalProfile,
+  updateCoverBanner
 };

@@ -2,7 +2,7 @@ import React from 'react';
 import { YTCreatorHome } from './home/YTCreatorHome';
 import { GymHome } from './home/GymHome';
 import { SingerHome } from './home/SingerHome';
-import { YTCreatorMain } from './main/YTCreatorMain';
+import { YTCreatorProfile } from '../../pages/yt_creator/profile/YTCreatorProfile';
 import { GymMain } from './main/GymMain';
 import { SingerMain } from './main/SingerMain';
 
@@ -49,7 +49,7 @@ export const ProfileDispatcher: React.FC<ProfileDispatcherProps> = ({
   // viewType === 'main'
   switch (role) {
     case 'yt_creator':
-      return <YTCreatorMain />;
+      return <YTCreatorProfile />;
     case 'gym':
       return <GymMain />;
     case 'singer':

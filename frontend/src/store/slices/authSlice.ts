@@ -8,6 +8,7 @@ export interface AuthUser {
   email: string;
   role: string;
   profilePicture?: string;
+  coverBanner?: string | null;
   isOnboarded: boolean;
   primaryRole: {
     group: 'CLIENT' | 'PROVIDER';
@@ -23,6 +24,25 @@ export interface AuthUser {
     video_count: number;
     view_count?: string | number;
     subCategoryName?: string;
+    videos?: Array<{
+      id: string;
+      title: string;
+      thumbnail: string;
+      publishedAt: string;
+      viewCount?: string;
+      duration?: string;
+    }>;
+  }>;
+  youtubeVideos?: Array<{
+    id: string;
+    video_id?: string;
+    title: string;
+    thumbnail: string;
+    published_at?: string;
+    publishedAt?: string;
+    view_count?: string | number;
+    duration?: string;
+    channel_id?: string;
   }>;
   bio?: string;
   followers?: number;
