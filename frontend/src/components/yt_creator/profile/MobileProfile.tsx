@@ -445,7 +445,7 @@ export const MobileProfile = () => {
                       {(video.published_at || video.publishedAt) && (
                         <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/60 px-1.5 py-0.5 rounded backdrop-blur-sm">
                           <span className="text-[9px] font-bold text-white/90">
-                            {new Date(video.published_at || video.publishedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                            {new Date((video.published_at || video.publishedAt)!).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                           </span>
                         </div>
                       )}

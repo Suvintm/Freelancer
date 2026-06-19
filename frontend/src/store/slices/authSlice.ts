@@ -40,6 +40,7 @@ export interface AuthUser {
     video_id?: string;
     title: string;
     thumbnail: string;
+    description?: string;
     published_at?: string;
     publishedAt?: string;
     view_count?: string | number;

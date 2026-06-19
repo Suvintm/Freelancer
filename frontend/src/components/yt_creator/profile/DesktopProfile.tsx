@@ -352,7 +352,7 @@ export const DesktopProfile = () => {
                         <>
                           <span className="w-1 h-1 rounded-full bg-border-main" />
                           <span className="text-[10px] font-bold text-text-muted">
-                            {new Date(video.published_at || video.publishedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                            {new Date((video.published_at || video.publishedAt)!).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                           </span>
                         </>
                       )}
@@ -441,7 +441,7 @@ export const DesktopProfile = () => {
                           <>
                             <span className="w-1 h-1 rounded-full bg-border-main" />
                             <span className="text-[11px] font-bold text-text-muted">
-                              {new Date(post.published_at || post.publishedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                              {new Date((post.published_at || post.publishedAt)!).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                             </span>
                           </>
                         )}
