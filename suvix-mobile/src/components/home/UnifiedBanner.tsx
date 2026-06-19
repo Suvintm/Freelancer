@@ -25,9 +25,10 @@ type UnifiedBannerProps = {
   data?: any[];
   pageName?: string;
   paused?: boolean;
+  width?: number;
 };
 
-export const UnifiedBanner = ({ data, paused = false }: UnifiedBannerProps) => {
+export const UnifiedBanner = ({ data, paused = false, width }: UnifiedBannerProps) => {
   const { theme } = useTheme();
   const router = useRouter();
   const { data: fetchedData = [] } = useBannerData();
@@ -41,8 +42,9 @@ export const UnifiedBanner = ({ data, paused = false }: UnifiedBannerProps) => {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isUserDraggingRef = useRef(false);
 
-  const cardWidth = screenWidth;
-  const imageWidth = screenWidth - HORIZONTAL_PADDING * 2;
+  const cardWidth = width || screenWidth;
+  const imagePadding = width !== undefined ? 0 : HORIZONTAL_PADDING;
+  const imageWidth = cardWidth - imagePadding * 2;
   const bannerHeight = imageWidth / BANNER_ASPECT_RATIO;
 
   const sourceData = Array.isArray(data) && data.length ? data : fetchedData;
@@ -88,7 +90,7 @@ export const UnifiedBanner = ({ data, paused = false }: UnifiedBannerProps) => {
       if (finished && !isUserDraggingRef.current) {
         const next = (activeIndex + 1) % banners.length;
         listRef.current?.scrollToOffset({
-          offset: next * screenWidth,
+          offset: next * cardWidth,
           animated: true,
         });
         setActiveIndex(next);
@@ -99,12 +101,12 @@ export const UnifiedBanner = ({ data, paused = false }: UnifiedBannerProps) => {
     return () => progressAnim.stopAnimation((val) => {
       currentProgressRef.current = val;
     });
-  }, [activeIndex, paused, banners.length, screenWidth]);
+  }, [activeIndex, paused, banners.length, cardWidth]);
 
   useEffect(() => {
     setActiveIndex(0);
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
-  }, [banners.length, screenWidth]);
+  }, [banners.length, cardWidth]);
 
   const handleImpact = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -115,13 +117,13 @@ export const UnifiedBanner = ({ data, paused = false }: UnifiedBannerProps) => {
 
     // Parallax Interpolation
     const translateX = scrollX.interpolate({
-        inputRange: [(index - 1) * screenWidth, index * screenWidth, (index + 1) * screenWidth],
-        outputRange: [-screenWidth * 0.15, 0, screenWidth * 0.15],
+        inputRange: [(index - 1) * cardWidth, index * cardWidth, (index + 1) * cardWidth],
+        outputRange: [-cardWidth * 0.15, 0, cardWidth * 0.15],
         extrapolate: 'clamp',
     });
 
     return (
-      <View style={[styles.card, { width: cardWidth, height: bannerHeight }]}>
+      <View style={[styles.card, { width: cardWidth, height: bannerHeight, paddingHorizontal: imagePadding }]}>
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={() => {
@@ -174,7 +176,7 @@ export const UnifiedBanner = ({ data, paused = false }: UnifiedBannerProps) => {
         </TouchableOpacity>
       </View>
     );
-  }, [bannerHeight, cardWidth, router, theme.secondary, scrollX, activeIndex, paused, progressAnim]);
+  }, [bannerHeight, cardWidth, router, theme.secondary, scrollX, activeIndex, paused, progressAnim, imagePadding]);
 
   if (!banners.length) return null;
 
@@ -197,13 +199,13 @@ export const UnifiedBanner = ({ data, paused = false }: UnifiedBannerProps) => {
           progressAnim.stopAnimation();
         }}
         onMomentumScrollEnd={(e) => {
-          const i = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+          const i = Math.round(e.nativeEvent.contentOffset.x / cardWidth);
           isUserDraggingRef.current = false;
           setActiveIndex(i);
           Haptics.selectionAsync();
         }}
         decelerationRate="fast"
-        snapToInterval={screenWidth}
+        snapToInterval={cardWidth}
         disableIntervalMomentum
         removeClippedSubviews={false}
         windowSize={3}
@@ -230,7 +232,7 @@ export const UnifiedBanner = ({ data, paused = false }: UnifiedBannerProps) => {
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 12,
+    // margins handled by parent
   },
   card: {
     paddingHorizontal: HORIZONTAL_PADDING,

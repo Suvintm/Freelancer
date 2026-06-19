@@ -1,8 +1,9 @@
 import React, { useMemo, useCallback } from 'react';
 import { useAuthStore } from '../../src/store/useAuthStore';
-import { View, Text, StyleSheet, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, BackHandler, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../src/context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Modules
 import CreatorDashboard from '../../src/modules/creators';
@@ -39,7 +40,23 @@ export default function DashboardIndex({ scrollY }: { scrollY?: SharedValue<numb
   const { user, isLoadingUser, isAuthenticated } = useAuthStore();
   const [isReady, setIsReady] = React.useState(false);
   const [isHomeScrolling, setIsHomeScrolling] = React.useState(false);
+  const [scrollEnabled, setScrollEnabled] = React.useState(true);
+  const [leftColumnHeight, setLeftColumnHeight] = React.useState<number | undefined>(undefined);
   const scrollIdleTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
+  
+  const sidebarWidth = Math.round(screenWidth * 0.215);
+  const leftColumnWidth = screenWidth - sidebarWidth - 10 - 16; // width - sidebar - gap - paddingLeft
+
+  const bannerHeight = leftColumnWidth / (16 / 9);
+  const cardWidth = leftColumnWidth * 0.78;
+  const cardHeight = cardWidth / 2.42;
+  const featureGalleryHeight = cardHeight + 28; // Header text + margins + card height
+
+  const navbarHeight = insets.top + 50; // top safe area + navbar height
+  const topSpacing = navbarHeight + 24; // Added extra gap below top nav bar for a clear split layout
 
   // STAGGERED INITIALIZATION: Delay heavy Reanimated components to avoid Main Thread choke
   React.useEffect(() => {
@@ -104,28 +121,45 @@ export default function DashboardIndex({ scrollY }: { scrollY?: SharedValue<numb
     <View style={{ flex: 1, backgroundColor: theme.primary }}>
       <UnifiedFeed 
         scrollY={scrollY}
+        scrollEnabled={scrollEnabled}
         ListHeaderComponent={
-          <View>
-            {/* Banner Section (Always persistent) */}
-            <View style={styles.bannerWrapper}>
-              {isReady ? (
-                <UnifiedBanner paused={isHomeScrolling} />
-              ) : (
-                <View style={{ height: 200 }} />
+          <View style={[styles.splitLayoutContainer, { paddingTop: topSpacing }]}>
+            {/* Left Column: Banner & Feature Gallery */}
+            <View 
+              style={{ width: leftColumnWidth }}
+              onLayout={(e) => setLeftColumnHeight(Math.round(e.nativeEvent.layout.height))}
+            >
+              {/* Banner Section */}
+              <View style={styles.bannerWrapper}>
+                {isReady ? (
+                  <UnifiedBanner paused={isHomeScrolling} width={leftColumnWidth} />
+                ) : (
+                  <View style={{ height: leftColumnWidth / (16 / 9) }} />
+                )}
+              </View>
+ 
+              <View style={{ height: 24 }} />
+ 
+              {/* Feature Gallery */}
+              {isReady && (
+                <FeatureGallery paused={isHomeScrolling} isLoading={isDiscoveryLoading} width={leftColumnWidth} />
               )}
             </View>
  
-             {/* Stories Section (Always visible) */}
-             <StoryBar isLoading={isDiscoveryLoading} />
- 
-             <View style={{ height: 16 }} />
- 
-             {/* Feature Gallery / Service Quick Links (Always visible) */}
-             {isReady && (
-               <FeatureGallery paused={isHomeScrolling} isLoading={isDiscoveryLoading} />
-             )}
-           </View>
-         }
+            {/* Right Column: Vertical Stories Sidebar */}
+            <View style={[styles.rightColumn, { width: sidebarWidth, height: leftColumnHeight }]}>
+              <StoryBar 
+                isLoading={isDiscoveryLoading} 
+                layout="vertical" 
+                width={sidebarWidth} 
+                height={leftColumnHeight}
+                isHomeScrolling={isHomeScrolling}
+                onScrollBeginDrag={() => setScrollEnabled(false)}
+                onScrollEndDrag={() => setScrollEnabled(true)}
+              />
+            </View>
+          </View>
+        }
         onScrollBeginDrag={() => setIsHomeScrolling(true)}
         onScrollEndDrag={() => setIsHomeScrolling(false)}
       />
@@ -146,8 +180,20 @@ const styles = StyleSheet.create({
   errorText: { 
     fontSize: 14
   },
+  splitLayoutContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingLeft: 16,
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
   bannerWrapper: {
-    paddingTop: 80, // Restored space for the absolute TopNavbar
+    width: '100%',
+  },
+  rightColumn: {
+    alignItems: 'flex-end',
+    zIndex: 100,
+    elevation: 100,
   },
   moduleSection: {
     paddingTop: 0,

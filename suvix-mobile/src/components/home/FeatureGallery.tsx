@@ -66,15 +66,19 @@ const ORIGINAL_FEATURES: FeatureCard[] = [
 type FeatureGalleryProps = {
   paused?: boolean;
   isLoading?: boolean;
+  width?: number;
 };
 
-export const FeatureGallery = ({ paused = false, isLoading = false }: FeatureGalleryProps) => {
+export const FeatureGallery = ({ paused = false, isLoading = false, width }: FeatureGalleryProps) => {
   const { theme } = useTheme();
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
   const progress = useSharedValue(0);
 
-  const cardWidth = screenWidth * 0.65;
+  const containerWidth = width || screenWidth;
+  const cardWidth = width ? containerWidth * 0.78 : containerWidth * 0.65;
+  const GALLERY_ASPECT_RATIO = 2.42;
+  const cardHeight = cardWidth / GALLERY_ASPECT_RATIO;
   const fullCardWidth = cardWidth + CARD_MARGIN;
   const singleSetWidth = fullCardWidth * ORIGINAL_FEATURES.length;
 
@@ -136,19 +140,19 @@ export const FeatureGallery = ({ paused = false, isLoading = false }: FeatureGal
   if (isLoading) {
     return (
       <View style={s.container}>
-        <View style={s.header}>
+        <View style={[s.header, { paddingHorizontal: width ? 12 : HORIZONTAL_PADDING }]}>
           <Skeleton height={10} width={100} borderRadius={4} />
           <Skeleton circle height={14} width={14} />
         </View>
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false} 
-          contentContainerStyle={{ paddingLeft: HORIZONTAL_PADDING }}
+          contentContainerStyle={{ paddingLeft: width ? 12 : HORIZONTAL_PADDING }}
         >
           {[1, 2, 3].map((i) => (
             <Skeleton 
               key={i} 
-              height={90} 
+              height={cardHeight} 
               width={cardWidth} 
               borderRadius={20} 
               style={{ marginRight: CARD_MARGIN }} 
@@ -161,19 +165,19 @@ export const FeatureGallery = ({ paused = false, isLoading = false }: FeatureGal
 
   return (
     <View style={s.container}>
-      <View style={s.header}>
+      <View style={[s.header, { paddingHorizontal: width ? 12 : HORIZONTAL_PADDING }]}>
         <Text style={[s.headerTitle, { color: theme.text }]}>DISCOVER SUVIX</Text>
         <Ionicons name="infinite" size={14} color={theme.textSecondary} style={{ opacity: 0.5 }} />
       </View>
 
-      <View style={[s.marqueeContainer, { width: screenWidth }]}>
-        <Animated.View style={[s.marqueeList, { paddingLeft: HORIZONTAL_PADDING }, animatedStyle]}>
+      <View style={[s.marqueeContainer, { width: containerWidth }]}>
+        <Animated.View style={[s.marqueeList, { paddingLeft: width ? 12 : HORIZONTAL_PADDING }, animatedStyle]}>
           {features.map((item, index) => (
             <TouchableOpacity
               key={`feature-${item.id}-${index}`}
               activeOpacity={0.9}
               onPress={() => handlePress(item.route)}
-              style={[s.card, { width: cardWidth, borderColor: theme.border }]}
+              style={[s.card, { width: cardWidth, height: cardHeight, borderColor: theme.border }]}
             >
               <ImageBackground source={{ uri: item.image }} style={StyleSheet.absoluteFill} resizeMode="cover">
                 <LinearGradient

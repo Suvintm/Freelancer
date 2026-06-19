@@ -61,7 +61,7 @@ const ChatCard = ({
   const getFullImageUrl = (path: string | undefined | null) => {
     if (!path) return 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=200';
     if (path.startsWith('http')) return path;
-    const baseUrl = api.defaults.baseURL || 'http://192.168.0.175:5051/api';
+    const baseUrl = api.defaults.baseURL || 'http://192.168.0.176:5051/api';
     const cleanBase = baseUrl.replace(/\/api$/, '');
     const cleanPath = path.startsWith('/') ? path.slice(1) : path;
     return `${cleanBase}/${cleanPath}`;

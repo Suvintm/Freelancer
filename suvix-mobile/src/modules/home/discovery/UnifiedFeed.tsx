@@ -24,9 +24,17 @@ interface UnifiedFeedProps {
   onScrollEndDrag?: () => void;
   onScroll?: (event: any) => void;
   scrollY?: SharedValue<number>;
+  scrollEnabled?: boolean;
 }
 
-export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEndDrag, onScroll: customOnScroll, scrollY }: UnifiedFeedProps) => {
+export const UnifiedFeed = ({ 
+  ListHeaderComponent, 
+  onScrollBeginDrag, 
+  onScrollEndDrag, 
+  onScroll: customOnScroll, 
+  scrollY,
+  scrollEnabled = true
+}: UnifiedFeedProps) => {
   const { theme } = useTheme();
   const { onScroll: hideTabBarOnScroll } = useScrollToHideTabBar();
   const { feed, isLoading, refreshFeed } = useDiscoveryStore();
@@ -144,6 +152,7 @@ export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEn
         contentContainerStyle={styles.listContent}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
+        scrollEnabled={scrollEnabled}
         onScroll={(e) => {
           if (scrollY) {
             scrollY.value = e.nativeEvent.contentOffset.y;
@@ -156,6 +165,7 @@ export const UnifiedFeed = ({ ListHeaderComponent, onScrollBeginDrag, onScrollEn
           <RefreshControl
             refreshing={isLoading}
             onRefresh={handleRefresh}
+            enabled={scrollEnabled}
             tintColor={theme.isDarkMode ? theme.accent : '#FF3040'}
             colors={[theme.isDarkMode ? theme.accent : '#FF3040']}
             progressViewOffset={80} // Aligns with the TopNavbar space for more immediate response

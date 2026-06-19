@@ -54,6 +54,7 @@ model UserProfile {
   username          String             @unique @db.VarChar(100)
   name              String             @db.VarChar(100)
   profile_picture   String?            @map("profile_picture")
+  cover_banner      String?            @map("cover_banner")
   bio               String?
   mother_tongue     String?            @map("mother_tongue") @db.VarChar(50)
   auth_provider     AuthProvider?      @default(local) @map("auth_provider")

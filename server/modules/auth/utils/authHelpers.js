@@ -154,6 +154,7 @@ export const formatAuthResponse = (user) => {
     country: p.country || user.profile?.location_country || "INDIA",
     subCategoryName: p.subCategory?.name || null,
     thumbnail_url: smartResolveMediaUrl(p.thumbnail_url),
+    banner_url: smartResolveMediaUrl(p.banner_url),
   }));
 
   const youtubeVideos = (user.youtubeProfiles || [])
@@ -212,6 +213,7 @@ export const formatAuthResponse = (user) => {
     },
 
     profilePicture: smartResolveMediaUrl(user.profile?.profile_picture),
+    coverBanner: smartResolveMediaUrl(user.profile?.cover_banner),
     location: user.profile?.location_country || null,
     bio: user.profile?.bio || null,
     phone: user.profile?.phone || null,

@@ -216,7 +216,8 @@ export const deleteChannel = async (req, res, next) => {
       isOnboarded: user.is_onboarded,
       youtubeProfile: remainingChannels.map(p => ({
         ...p,
-        thumbnail_url: smartResolveMediaUrl(p.thumbnail_url)
+        thumbnail_url: smartResolveMediaUrl(p.thumbnail_url),
+        banner_url: smartResolveMediaUrl(p.banner_url)
       })),
       youtubeVideos: remainingChannels
         .flatMap(p => (p.videos || []).map(v => {
