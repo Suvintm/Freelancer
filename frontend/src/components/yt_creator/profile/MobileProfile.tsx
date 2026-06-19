@@ -15,7 +15,7 @@ import DIAMOND_BTN from '../../../assets/playbuttons/diamondbtn.png';
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1524666041070-9d87656c25bb?auto=format&fit=crop&q=80&w=400';
 
 export const MobileProfile = () => {
-  const user = useSelector(selectUser) as any;
+  const user = useSelector(selectUser);
   const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState('yt_posts');
   const [showBannerMenu, setShowBannerMenu] = useState(false);
@@ -46,19 +46,19 @@ export const MobileProfile = () => {
   if (!user) return null;
 
   const youtubeProfiles = user.youtubeProfile || [];
-  const primaryChannel = youtubeProfiles.find((p: any) => p.channel_name) || youtubeProfiles[0] || {} as any;
+  const primaryChannel = youtubeProfiles.find((p) => p.channel_name) || youtubeProfiles[0] || { channel_name: '', thumbnail_url: '' };
   
   const availableBanners = youtubeProfiles
-    .filter((p: any) => p.banner_url)
-    .map((p: any) => ({ id: p.channelId || p.channel_name, name: p.channel_name, url: p.banner_url }));
+    .filter((p) => p.banner_url)
+    .map((p) => ({ id: p.channelId || p.channel_name, name: p.channel_name, url: p.banner_url || '' }));
   
-  const totalVideos = youtubeProfiles.reduce((acc: number, p: any) => acc + (p.video_count || 0), 0);
+  const totalVideos = youtubeProfiles.reduce((acc: number, p) => acc + (p.video_count || 0), 0);
   
   const displayName = user.name || primaryChannel.channel_name || 'YouTube Creator';
   
   const allRoles = Array.from(new Set(
     youtubeProfiles
-      .map((p: any) => p.subCategoryName)
+      .map((p) => p.subCategoryName)
       .filter(Boolean)
   )) as string[];
 
@@ -155,7 +155,7 @@ export const MobileProfile = () => {
                       {!selectedBanner && <Check size={8} className="text-[#FF0000] flex-shrink-0" />}
                     </button>
                     
-                    {availableBanners.map((b: any) => (
+                    {availableBanners.map((b) => (
                       <button 
                         key={b.id}
                         onClick={() => { handleBannerChange(b.url); setShowBannerMenu(false); }}
@@ -295,7 +295,7 @@ export const MobileProfile = () => {
           </button>
 
           {milestones.map((m, i) => {
-            const unlockedChannels = youtubeProfiles.filter((p: any) => (p.subscriber_count || 0) >= m.count).length;
+            const unlockedChannels = youtubeProfiles.filter((p) => (p.subscriber_count || 0) >= m.count).length;
             const isUnlocked = unlockedChannels > 0;
 
             return (
@@ -333,7 +333,7 @@ export const MobileProfile = () => {
         </div>
 
         <div className="flex flex-col gap-3">
-          {youtubeProfiles.length > 0 ? youtubeProfiles.map((channel: any, i: number) => (
+          {youtubeProfiles.length > 0 ? youtubeProfiles.map((channel, i) => (
             <div key={channel.id || i} className="bg-border-secondary rounded-xl p-3 border border-border-main">
               <div className="flex items-center gap-3">
                 <img src={channel.thumbnail_url || DEFAULT_AVATAR} alt={channel.channel_name} className="w-12 h-12 rounded-full bg-page object-cover border border-border-main" />
@@ -423,7 +423,7 @@ export const MobileProfile = () => {
               </div>
 
               <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
-                {allVideos.length > 0 ? allVideos.slice(0, 10).map((video: any, idx: number) => (
+                {allVideos.length > 0 ? allVideos.slice(0, 10).map((video, idx) => (
                   <div key={video.id} className="flex-shrink-0 w-[260px] bg-border-secondary rounded-xl overflow-hidden border border-border-main">
                     <div className="relative aspect-video bg-page">
                       <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover" />
@@ -442,11 +442,13 @@ export const MobileProfile = () => {
                         </div>
                       </div>
 
-                      <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/60 px-1.5 py-0.5 rounded backdrop-blur-sm">
-                        <span className="text-[9px] font-bold text-white/90">
-                          {new Date(video.published_at || video.publishedAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
-                      </div>
+                      {(video.published_at || video.publishedAt) && (
+                        <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/60 px-1.5 py-0.5 rounded backdrop-blur-sm">
+                          <span className="text-[9px] font-bold text-white/90">
+                            {new Date(video.published_at || video.publishedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="p-3">
                       <h4 className="text-[12px] font-bold text-text-main leading-snug line-clamp-2 mb-1">{video.title}</h4>

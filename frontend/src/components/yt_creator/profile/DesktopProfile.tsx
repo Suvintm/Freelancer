@@ -15,7 +15,7 @@ const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1524666041070-9d87656c
  * Desktop only view for the YT Creator Profile
  */
 export const DesktopProfile = () => {
-  const user = useSelector(selectUser) as any;
+  const user = useSelector(selectUser);
   const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState('yt_posts');
   const [showBannerMenu, setShowBannerMenu] = useState(false);
@@ -46,13 +46,13 @@ export const DesktopProfile = () => {
   if (!user) return null;
 
   const youtubeProfiles = user.youtubeProfile || [];
-  const primaryChannel = youtubeProfiles.find((p: any) => p.channel_name) || youtubeProfiles[0] || {} as any;
+  const primaryChannel = youtubeProfiles.find((p) => p.channel_name) || youtubeProfiles[0] || { channel_name: '', thumbnail_url: '' };
   
   const availableBanners = youtubeProfiles
-    .filter((p: any) => p.banner_url)
-    .map((p: any) => ({ id: p.channelId || p.channel_name, name: p.channel_name, url: p.banner_url }));
+    .filter((p) => p.banner_url)
+    .map((p) => ({ id: p.channelId || p.channel_name, name: p.channel_name, url: p.banner_url || '' }));
   
-  const totalVideos = youtubeProfiles.reduce((acc: number, p: any) => acc + (p.video_count || 0), 0);
+  const totalVideos = youtubeProfiles.reduce((acc: number, p) => acc + (p.video_count || 0), 0);
   
   const displayName = user.name || primaryChannel.channel_name || 'YouTube Creator';
   const username = user.username ? `@${user.username}` : '@creator';
@@ -159,7 +159,7 @@ export const DesktopProfile = () => {
                       {!selectedBanner && <Check size={12} className="text-[#FF0000] flex-shrink-0" />}
                     </button>
                     
-                    {availableBanners.map((b: any) => (
+                    {availableBanners.map((b) => (
                       <button 
                         key={b.id}
                         onClick={() => { handleBannerChange(b.url); setShowBannerMenu(false); }}
@@ -285,7 +285,7 @@ export const DesktopProfile = () => {
               <h3 className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-3 opacity-50">YT Creator Milestones</h3>
               <div className="flex gap-5 overflow-x-auto pb-4 scrollbar-hide overscroll-x-contain touch-pan-x">
                 {milestones.map((m, i) => {
-                  const unlockedChannels = youtubeProfiles.filter((p: any) => (p.subscriber_count || 0) >= m.count).length;
+                  const unlockedChannels = youtubeProfiles.filter((p) => (p.subscriber_count || 0) >= m.count).length;
                   const isUnlocked = unlockedChannels > 0;
                   
                   return (
@@ -328,7 +328,7 @@ export const DesktopProfile = () => {
               </div>
               
               <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide overscroll-x-contain touch-pan-x">
-                {allVideos.length > 0 ? allVideos.slice(0, 10).map((video: any) => (
+                {allVideos.length > 0 ? allVideos.slice(0, 10).map((video) => (
                   <div key={video.id} className="flex-shrink-0 w-52 group cursor-pointer">
                     <div className="relative aspect-video rounded-xl overflow-hidden mb-2 bg-border-secondary border border-border-secondary">
                       <img 
@@ -348,10 +348,14 @@ export const DesktopProfile = () => {
                     )}
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-[10px] font-bold text-text-muted">{formatCount(video.viewCount)} views</span>
-                      <span className="w-1 h-1 rounded-full bg-border-main" />
-                      <span className="text-[10px] font-bold text-text-muted">
-                        {new Date(video.published_at || video.publishedAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </span>
+                      {(video.published_at || video.publishedAt) && (
+                        <>
+                          <span className="w-1 h-1 rounded-full bg-border-main" />
+                          <span className="text-[10px] font-bold text-text-muted">
+                            {new Date(video.published_at || video.publishedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 )) : (
@@ -401,7 +405,7 @@ export const DesktopProfile = () => {
             {/* YT Posts Feed */}
             {activeTab === 'yt_posts' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {allVideos.length > 0 ? allVideos.map((post: any) => (
+                {allVideos.length > 0 ? allVideos.map((post) => (
                   <div key={post.id} className="group cursor-pointer">
                     {/* Video Thumbnail Container */}
                     <div className="relative aspect-video rounded-2xl overflow-hidden bg-border-secondary border border-border-secondary mb-3">
@@ -433,10 +437,14 @@ export const DesktopProfile = () => {
                       </h3>
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-[11px] font-bold text-text-muted">{formatCount(post.viewCount)} views</span>
-                        <span className="w-1 h-1 rounded-full bg-border-main" />
-                        <span className="text-[11px] font-bold text-text-muted">
-                          {new Date(post.published_at || post.publishedAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
+                        {(post.published_at || post.publishedAt) && (
+                          <>
+                            <span className="w-1 h-1 rounded-full bg-border-main" />
+                            <span className="text-[11px] font-bold text-text-muted">
+                              {new Date(post.published_at || post.publishedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

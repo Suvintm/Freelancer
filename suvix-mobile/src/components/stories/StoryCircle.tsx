@@ -27,7 +27,7 @@ const DEFAULT_AVATAR = require('../../../assets/defualtprofile.png');
  * PREMIUM STORY CIRCLE with 'Dashed Wave' Elevation
  * Features a high-fidelity SVG pulsing wave border that orbits a static avatar.
  */
-export const StoryCircle = React.memo(({ story }: { story: StoryItem }) => {
+export const StoryCircle = React.memo(({ story, layout = 'horizontal' }: { story: StoryItem, layout?: 'horizontal' | 'vertical' }) => {
   const { isDarkMode, theme } = useTheme();
   const router = useRouter();
   const [isNavigating, setIsNavigating] = useState(false);
@@ -115,21 +115,41 @@ export const StoryCircle = React.memo(({ story }: { story: StoryItem }) => {
   // Stroke color based on theme
   const strokeColor = isDarkMode ? '#FFFFFF' : '#09090b';
 
+  const isVertical = layout === 'vertical';
+
+  const containerStyle = [s.container, isVertical && { width: 64, marginHorizontal: 0, marginVertical: 6 }];
+  const avatarWrapperStyle = [s.avatarWrapper, isVertical && { width: 56, height: 56, marginBottom: 4 }];
+  const waveLayerStyle = [s.waveLayer, isVertical && { width: 62, height: 62 }];
+  
+  const borderStyle = isVertical 
+    ? { width: 56, height: 56, borderRadius: 28, padding: 2 } 
+    : s.gradientBorder;
+    
+  const plainBorderStyle = isVertical
+    ? { width: 56, height: 56, borderRadius: 28, borderWidth: 1, padding: 1.5, justifyContent: 'center' as const, alignItems: 'center' as const }
+    : s.plainBorder;
+
+  const innerCircleStyle = [s.innerCircle, isVertical && { borderRadius: 26, padding: 1.5 }];
+  const avatarStyle = [s.avatar, isVertical && { borderRadius: 24 }];
+  const plusBadgeStyle = [s.plusBadge, isVertical && { width: 16, height: 16, borderRadius: 8, bottom: 0, right: 0 }];
+  const usernameStyle = [s.username, { color: theme.text }, isSeen && s.seenUsername, isVertical && { fontSize: 8.5, maxWidth: 50 }];
+  const verifiedIconSize = isVertical ? 10 : 13;
+
   return (
-    <View style={s.container}>
+    <View style={containerStyle}>
       <Pressable onPress={handlePress} style={s.pressable}>
-        <View style={s.avatarWrapper}>
+        <View style={avatarWrapperStyle}>
             {/* ─── PREMIUM DASHED WAVE LAYER (SVG) ─── */}
-            <Animated.View style={[s.waveLayer, waveStyle]}>
-                <Svg width="80" height="80" viewBox="0 0 80 80">
+            <Animated.View style={[waveLayerStyle, waveStyle]}>
+                <Svg width={isVertical ? "62" : "80"} height={isVertical ? "62" : "80"} viewBox={isVertical ? "0 0 62 62" : "0 0 80 80"}>
                     <Circle
-                        cx="40"
-                        cy="40"
-                        r="38"
+                        cx={isVertical ? "31" : "40"}
+                        cy={isVertical ? "31" : "40"}
+                        r={isVertical ? "29" : "38"}
                         stroke={strokeColor}
-                        strokeWidth="2"
+                        strokeWidth={isVertical ? "1.5" : "2"}
                         fill="none"
-                        strokeDasharray="6, 10" // Discontinuous Dots
+                        strokeDasharray={isVertical ? "4, 6" : "6, 10"} // Discontinuous Dots
                         strokeLinecap="round"
                         opacity={0.6}
                     />
@@ -142,21 +162,21 @@ export const StoryCircle = React.memo(({ story }: { story: StoryItem }) => {
                     colors={gradientColors}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
-                    style={s.gradientBorder}
+                    style={borderStyle}
                 >
-                    <View style={[s.innerCircle, { backgroundColor: theme.primary }]}>
+                    <View style={[innerCircleStyle, { backgroundColor: theme.primary }]}>
                         <Image 
                           source={story.avatar ? { uri: story.avatar } : DEFAULT_AVATAR} 
-                          style={s.avatar} 
+                          style={avatarStyle} 
                         />
                     </View>
                 </LinearGradient>
             ) : (
-                <View style={[s.plainBorder, isSeen && s.seenBorder]}>
-                    <View style={[s.innerCircle, { backgroundColor: theme.primary }]}>
+                <View style={[plainBorderStyle, isSeen && s.seenBorder]}>
+                    <View style={[innerCircleStyle, { backgroundColor: theme.primary }]}>
                         <Image 
                           source={story.avatar ? { uri: story.avatar } : DEFAULT_AVATAR} 
-                          style={s.avatar} 
+                          style={avatarStyle} 
                         />
                     </View>
                 </View>
@@ -164,25 +184,25 @@ export const StoryCircle = React.memo(({ story }: { story: StoryItem }) => {
 
             {story.isUserStory && (
                 <TouchableOpacity 
-                    style={s.plusBadge} 
+                    style={plusBadgeStyle} 
                     onPress={() => router.push('/story/create')}
                     activeOpacity={0.8}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                    <Ionicons name="add" size={14} color="#FFF" />
+                    <Ionicons name="add" size={isVertical ? 10 : 14} color="#FFF" />
                 </TouchableOpacity>
             )}
         </View>
         
         <View style={s.usernameContainer}>
           <Text 
-              style={[s.username, { color: theme.text }, isSeen && s.seenUsername]} 
+              style={usernameStyle} 
               numberOfLines={1}
           >
               {story.username}
           </Text>
           {story.verifiedColor && (
-              <MaterialCommunityIcons name="check-decagram" size={13} color={story.verifiedColor} style={s.verifiedIcon} />
+              <MaterialCommunityIcons name="check-decagram" size={verifiedIconSize} color={story.verifiedColor} style={s.verifiedIcon} />
           )}
         </View>
       </Pressable>
