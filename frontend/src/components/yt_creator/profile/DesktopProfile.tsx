@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Youtube, Camera, Settings, Plus, BarChart3, Briefcase, Users2, Edit3, Lock, PlaySquare, LayoutGrid, Image as ImageIcon, Check } from 'lucide-react';
@@ -19,6 +19,58 @@ export const DesktopProfile = () => {
   const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState('yt_posts');
   const [showBannerMenu, setShowBannerMenu] = useState(false);
+  const [isEditingBio, setIsEditingBio] = useState(false);
+  const [bioText, setBioText] = useState(user?.bio || '');
+  const [isSavingBio, setIsSavingBio] = useState(false);
+  const bioRef = useRef<HTMLDivElement>(null);
+  const [isBioExpanded, setIsBioExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!isBioExpanded) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (bioRef.current && !bioRef.current.contains(event.target as Node)) {
+        setIsBioExpanded(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isBioExpanded]);
+
+  const maxChars = 75;
+  const needsTruncation = user?.bio && (user.bio.length > maxChars || user.bio.includes('\n'));
+  
+  const displayBio = () => {
+    if (!user?.bio) return '';
+    if (isBioExpanded || !needsTruncation) return user.bio;
+    
+    const newlineIdx = user.bio.indexOf('\n');
+    let limit = maxChars;
+    if (newlineIdx !== -1 && newlineIdx < maxChars) {
+      limit = newlineIdx;
+    }
+    
+    return user.bio.substring(0, limit) + '...';
+  };
+
+  const startEditingBio = () => {
+    setBioText(user?.bio || '');
+    setIsEditingBio(true);
+  };
+
+  const handleSaveBio = async () => {
+    setIsSavingBio(true);
+    try {
+      const response = await api.patch('/user/me', { bio: bioText });
+      if (response.data?.success) {
+        dispatch(updateUser({ bio: response.data.user.bio }));
+        setIsEditingBio(false);
+      }
+    } catch (err) {
+      console.error('Failed to save bio:', err);
+    } finally {
+      setIsSavingBio(false);
+    }
+  };
 
   const selectedBanner = user?.coverBanner || null;
 
@@ -198,25 +250,145 @@ export const DesktopProfile = () => {
 
       <div className="px-8 relative z-10">
         <div className="flex flex-col gap-4">
-          <div className="flex items-end justify-between w-full">
-            {/* Profile Avatar - SHRUNK & TIGHTER OVERLAP */}
-            <div className="relative group -mt-14">
-              <div className="w-28 h-28 xl:w-32 xl:h-32 rounded-full border-[5px] border-page bg-page overflow-hidden shadow-xl ring-1 ring-border-main">
-                <img 
-                  src={user.profilePicture || DEFAULT_AVATAR} 
-                  alt="Profile"
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                />
+          <div className="flex items-start justify-between w-full">
+            {/* Left Column: Avatar, Identity and Bio */}
+            <div className="flex flex-col gap-4 min-w-0 max-w-[50%]">
+              {/* Profile Avatar & Identity Block - Next to each other, aligned to the bottom to avoid banner overlap */}
+              <div className="flex items-end gap-4 -mt-14">
+                <div className="relative group shrink-0">
+                  <div className="w-28 h-28 xl:w-32 xl:h-32 rounded-full border-[5px] border-page bg-page overflow-hidden shadow-xl ring-1 ring-border-main">
+                    <img 
+                      src={user.profilePicture || DEFAULT_AVATAR} 
+                      alt="Profile"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                  </div>
+                  
+                  {/* Camera Edit Badge - SMALLER */}
+                  <button className="absolute bottom-0 right-0 w-8 h-8 bg-[#FF3040] rounded-full border-[3px] border-page flex items-center justify-center shadow-lg hover:bg-red-600 transition-all active:scale-90">
+                    <Camera size={14} className="text-white" />
+                  </button>
+                </div>
+
+                {/* Identity Block - Beside Avatar, limited letters/words with ellipsis */}
+                <div className="space-y-0.5 min-w-0 max-w-[150px] lg:max-w-[180px] xl:max-w-[220px] mb-2">
+                   <div className="flex items-center gap-1 min-w-0">
+                      <h1 className="text-lg lg:text-xl font-bold text-text-main leading-tight truncate" title={displayName}>
+                        {displayName}
+                      </h1>
+                      {/* Mathematically perfect rosette verified badge in red */}
+                      <svg viewBox="0 0 24 24" className="w-[18px] h-[18px] shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <title>Verified Creator</title>
+                        <path 
+                          d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" 
+                          fill="#FF3040" 
+                        />
+                        <path 
+                          d="m9 12 2 2 4-4" 
+                          stroke="white" 
+                          strokeWidth="2.5" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                        />
+                      </svg>
+                   </div>
+                   <p className="text-xs font-medium text-gray-700 truncate" title={username}>{username}</p>
+                </div>
               </div>
-              
-              {/* Camera Edit Badge - SMALLER */}
-              <button className="absolute bottom-0 right-0 w-8 h-8 bg-[#FF3040] rounded-full border-[3px] border-page flex items-center justify-center shadow-lg hover:bg-red-600 transition-all active:scale-90">
-                <Camera size={14} className="text-white" />
-              </button>
+
+              {/* Bio - Directly below Avatar & Identity with some gaps, half profile width */}
+              <div className="w-full" ref={bioRef}>
+                <AnimatePresence mode="wait">
+                  {isEditingBio ? (
+                    <motion.div 
+                      key="edit"
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -5 }}
+                      className="w-full flex flex-col gap-2"
+                    >
+                      <textarea
+                        value={bioText}
+                        onChange={(e) => setBioText(e.target.value)}
+                        maxLength={150}
+                        rows={3}
+                        disabled={isSavingBio}
+                        className="w-full text-[13px] text-gray-700 bg-zinc-950/20 dark:bg-black/40 border border-border-main rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-[#FF3040]/30 focus:border-[#FF3040]/50 transition-all font-medium resize-none"
+                        placeholder="Tell us about yourself..."
+                      />
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-text-muted font-bold">
+                          {bioText.length}/150
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => setIsEditingBio(false)}
+                            disabled={isSavingBio}
+                            className="h-8 px-4 rounded-xl border border-border-main text-[11px] font-bold hover:bg-border-secondary transition-all disabled:opacity-50 cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button 
+                            onClick={handleSaveBio}
+                            disabled={isSavingBio}
+                            className="h-8 px-4 rounded-xl bg-[#FF3040] text-text-main text-[11px] font-bold hover:bg-red-600 transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                          >
+                            {isSavingBio ? (
+                              <>
+                                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" />
+                                <span>Saving...</span>
+                              </>
+                            ) : (
+                              <span>Save</span>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div 
+                      key="view"
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 5 }}
+                      className="flex items-start gap-2.5 w-full"
+                    >
+                      <div className="flex-1">
+                        {user.bio ? (
+                          <p className="text-[13px] text-gray-700 leading-relaxed font-medium whitespace-pre-wrap">
+                            {displayBio()}
+                            {needsTruncation && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setIsBioExpanded(!isBioExpanded);
+                                }}
+                                className="text-[#FF3040] hover:text-red-600 font-bold ml-1 text-[11px] cursor-pointer inline-block"
+                              >
+                                {isBioExpanded ? ' less' : ' more'}
+                              </button>
+                            )}
+                          </p>
+                        ) : (
+                          <p className="text-[13px] text-gray-500 leading-relaxed font-medium italic whitespace-pre-wrap">
+                            No bio added yet.
+                          </p>
+                        )}
+                      </div>
+                      <button 
+                        onClick={startEditingBio}
+                        className="text-gray-500 hover:text-text-main transition-colors mt-0.5 shrink-0 cursor-pointer"
+                      >
+                        <Edit3 size={13} />
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
 
             {/* Right Column: Actions & Toolbox - COMPACT */}
-            <div className="flex flex-col items-end gap-2 mt-3">
+            <div className="flex flex-col items-end gap-2 mt-3 shrink-0">
               <div className="flex items-center gap-2">
                 <button className="h-9 px-5 rounded-xl bg-border-secondary border border-border-main-black text-text-main text-[12px] font-bold hover:bg-border-main transition-all flex items-center gap-2 active:scale-95">
                   <Settings size={14} />
@@ -229,7 +401,7 @@ export const DesktopProfile = () => {
               </div>
 
               {/* Toolbox Row - SHRUNK */}
-              <div className="flex items-center border border-black/50 rounded-lg gap-1.5 w-full">
+              <div className="flex items-center border border-black/50 rounded-lg gap-1.5 w-64">
                 {[
                   { label: 'Analytics', icon: BarChart3, color: 'text-text-main', bg: 'bg-container hover:bg-border-secondary' },
                   { label: 'Deals',     icon: Briefcase, color: 'text-text-main', bg: 'bg-container hover:bg-border-secondary' },
@@ -244,126 +416,83 @@ export const DesktopProfile = () => {
                   </button>
                 ))}
               </div>
-            </div>
-          </div>
 
-          {/* Identity Block - COMPACT */}
-          <div className="space-y-0 ml-1">
-             <div className="flex items-center gap-1.5">
-                <h1 className="text-lg lg:text-xl font-bold text-text-main leading-tight">{displayName}</h1>
-                <div className="w-4 h-4 bg-[#FF3040] rounded-full flex items-center justify-center shadow-md">
-                   <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 text-text-main fill-none stroke-current" strokeWidth={5} strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                   </svg>
-                </div>
-             </div>
-             <p className="text-xs font-medium text-gray-700">{username}</p>
-          </div>
-
-          {/* Bio - EXTREMELY TIGHT */}
-          <div className="mt-1 flex items-start gap-2.5 max-w-xl">
-            <div className="flex-1">
-              {user.bio ? (
-               <p className="text-[13px] text-gray-700 leading-relaxed font-medium">
-                  {user.bio}
-                </p>
-              ) : (
-                <p className="text-[13px] text-gray-500 leading-relaxed font-medium italic">
-                  No bio added yet.
-                </p>
-              )}
-            </div>
-            <button className="text-gray-500 hover:text-text-main transition-colors mt-0.5">
-              <Edit3 size={13} />
-            </button>
-          </div>
-
-          {/* Bottom Grid: Milestones & Latest Videos (30/70) - TIGHTER GAP */}
-          <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1.2fr_2.8fr] gap-10">
-            {/* Left Column: Milestones (Smaller & Circular) */}
-            <div className="overflow-hidden">
-              <h3 className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-3 opacity-50">YT Creator Milestones</h3>
-              <div className="flex gap-5 overflow-x-auto pb-4 scrollbar-hide overscroll-x-contain touch-pan-x">
+              {/* Milestones Play Buttons - Positioned right below actions/toolbox */}
+              <div className="flex gap-3 justify-end mt-1.5">
                 {milestones.map((m, i) => {
                   const unlockedChannels = youtubeProfiles.filter((p) => (p.subscriber_count || 0) >= m.count).length;
                   const isUnlocked = unlockedChannels > 0;
                   
                   return (
-                    <div key={i} className="flex-shrink-0 flex flex-col items-center gap-2">
+                    <div key={i} className="flex flex-col items-center gap-1">
                       <div className="relative group">
                         {/* Circular Container for Play Button */}
-                        <div className={`w-16 h-16 lg:w-20 lg:h-20 rounded-full border flex items-center justify-center overflow-hidden transition-all duration-300 ${isUnlocked ? 'bg-card border-border-main shadow-md group-hover:border-red-500/50' : 'bg-container border-border-secondary border-dashed shadow-inner'}`}>
+                        <div className={`w-10 h-10 rounded-full border flex items-center justify-center overflow-hidden transition-all duration-300 ${isUnlocked ? 'bg-card border-border-main shadow-md group-hover:border-red-500/50' : 'bg-container border-border-secondary border-dashed shadow-inner'}`} title={`${m.label} Milestone (${formatCount(m.count)} subs)`}>
                           <img 
                             src={m.img} 
                             alt={m.label} 
-                            className={`w-10 h-10 lg:w-12 lg:h-12 object-contain transition-transform duration-300 group-hover:scale-110 ${!isUnlocked ? 'opacity-50 grayscale contrast-125 mix-blend-luminosity' : 'drop-shadow-lg'}`}
+                            className={`w-6 h-6 object-contain transition-transform duration-300 group-hover:scale-110 ${!isUnlocked ? 'opacity-50 grayscale contrast-125 mix-blend-luminosity' : 'drop-shadow-lg'}`}
                           />
                         </div>
                         
                         {!isUnlocked && (
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-7 h-7 rounded-full bg-black/70 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-xl">
-                              <Lock size={12} className="text-white" />
+                            <div className="w-4 h-4 rounded-full bg-black/70 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-xl">
+                              <Lock size={7} className="text-white" />
                             </div>
                           </div>
                         )}
                       </div>
-                      <div className="text-center space-y-0.5">
-                        <span className={`block text-[11px] font-black uppercase tracking-wider ${isUnlocked ? 'text-text-main' : 'text-text-muted'}`}>{m.label}</span>
-                        <span className={`block text-[8px] font-bold uppercase tracking-widest ${isUnlocked ? 'text-emerald-500' : 'text-text-dim'}`}>
-                          {isUnlocked ? 'Unlocked' : 'Locked'}
-                        </span>
-                      </div>
+                      <span className={`text-[8px] font-black uppercase tracking-wider ${isUnlocked ? 'text-text-main' : 'text-text-muted'}`}>{m.label}</span>
                     </div>
                   );
                 })}
               </div>
             </div>
-
-            {/* Right Column: Latest Videos Carousel (Wider) */}
-            <div className="overflow-hidden">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] opacity-50">Latest Content</h3>
-                <button className="text-[9px] font-black text-red-500 uppercase tracking-widest hover:underline">View All</button>
-              </div>
-              
-              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide overscroll-x-contain touch-pan-x">
-                {allVideos.length > 0 ? allVideos.slice(0, 10).map((video) => (
-                  <div key={video.id} className="flex-shrink-0 w-52 group cursor-pointer">
-                    <div className="relative aspect-video rounded-xl overflow-hidden mb-2 bg-border-secondary border border-border-secondary">
-                      <img 
-                        src={video.thumbnail} 
-                        alt={video.title} 
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                      />
-                      {video.duration && (
-                        <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/80 backdrop-blur-md text-[9px] font-bold text-text-main">{video.duration}</div>
-                      )}
-                    </div>
-                    <h4 className="text-[12px] font-bold text-text-main leading-tight line-clamp-1 group-hover:text-red-500 transition-colors">{video.title}</h4>
-                    {video.description && (
-                      <p className="text-[10px] text-text-muted line-clamp-2 mt-1 leading-snug">
-                        {video.description}
-                      </p>
+          </div>
+          {/* Latest Content Section - Full Width */}
+          <div className="mt-5 overflow-hidden">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] opacity-50">Latest Content</h3>
+              <button className="text-[9px] font-black text-red-500 uppercase tracking-widest hover:underline">View All</button>
+            </div>
+            
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide overscroll-x-contain touch-pan-x">
+              {allVideos.length > 0 ? allVideos.slice(0, 10).map((video) => (
+                <div key={video.id} className="flex-shrink-0 w-52 group cursor-pointer">
+                  <div className="relative aspect-video rounded-xl overflow-hidden mb-2 bg-border-secondary border border-border-secondary">
+                    <img 
+                      src={video.thumbnail} 
+                      alt={video.title} 
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                    {video.duration && (
+                      <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/80 backdrop-blur-md text-[9px] font-bold text-text-main">{video.duration}</div>
                     )}
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] font-bold text-text-muted">{formatCount(video.viewCount)} views</span>
-                      {(video.published_at || video.publishedAt) && (
-                        <>
-                          <span className="w-1 h-1 rounded-full bg-border-main" />
-                          <span className="text-[10px] font-bold text-text-muted">
-                            {new Date((video.published_at || video.publishedAt)!).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </span>
-                        </>
-                      )}
-                    </div>
                   </div>
-                )) : (
-                  <div className="w-full py-10 flex items-center justify-center border border-dashed border-border-main rounded-2xl">
-                    <p className="text-xs font-bold text-text-muted uppercase tracking-widest">No recent videos found</p>
+                  <h4 className="text-[12px] font-bold text-text-main leading-tight line-clamp-1 group-hover:text-red-500 transition-colors">{video.title}</h4>
+                  {video.description && (
+                    <p className="text-[10px] text-text-muted line-clamp-2 mt-1 leading-snug">
+                      {video.description}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[10px] font-bold text-text-muted">{formatCount(video.viewCount)} views</span>
+                    {(video.published_at || video.publishedAt) && (
+                      <>
+                        <span className="w-1 h-1 rounded-full bg-border-main" />
+                        <span className="text-[10px] font-bold text-text-muted">
+                          {new Date((video.published_at || video.publishedAt)!).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </>
+                    )}
                   </div>
-                )}
-              </div>
+                </div>
+              )) : (
+                <div className="w-full py-10 flex items-center justify-center border border-dashed border-border-main rounded-2xl">
+                  <p className="text-xs font-bold text-text-muted uppercase tracking-widest">No recent videos found</p>
+                </div>
+              )}
             </div>
           </div>
 
