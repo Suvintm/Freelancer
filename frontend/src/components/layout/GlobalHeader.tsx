@@ -85,21 +85,32 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
           <div className="relative w-full max-w-md group">
             <Search
               size={14}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-text-main transition-colors"
+              className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors ${
+                isDarkMode 
+                  ? 'text-text-muted group-focus-within:text-text-main' 
+                  : 'text-zinc-500 group-focus-within:text-zinc-300'
+              }`}
             />
             <input
               type="text"
               placeholder="Search creators, jobs, or inspiration…"
-              className="
-                w-full h-9 bg-border-secondary border border-border-main rounded-full
-                pl-9 pr-12 text-[13px] text-text-main placeholder:text-text-muted
+              className={`
+                w-full h-9 rounded-full pl-9 pr-12 text-[13px]
                 focus:outline-none focus:ring-2 focus:ring-accent-primary/20 focus:border-accent-primary/40
-                transition-all
-              "
+                transition-all border
+                ${isDarkMode 
+                  ? 'bg-border-secondary border-border-main text-text-main placeholder:text-text-muted' 
+                  : 'bg-black border-zinc-950 text-white placeholder:text-zinc-500'
+                }
+              `}
             />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded border border-border-main bg-container opacity-40 group-focus-within:opacity-100 transition-opacity">
-              <span className="text-[10px] font-bold text-text-muted">⌘</span>
-              <span className="text-[10px] font-bold text-text-muted">K</span>
+            <div className={`absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded border opacity-40 group-focus-within:opacity-100 transition-opacity ${
+              isDarkMode 
+                ? 'border-border-main bg-container text-text-muted' 
+                : 'border-zinc-800 bg-zinc-900 text-zinc-400'
+            }`}>
+              <span className="text-[10px] font-bold">⌘</span>
+              <span className="text-[10px] font-bold">K</span>
             </div>
           </div>
 

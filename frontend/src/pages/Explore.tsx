@@ -3,23 +3,28 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutGrid, Users, Play, Camera, CheckCircle2, UserPlus, MoreHorizontal } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../store/slices/authSlice';
+import { useTheme } from '../hooks/useTheme';
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
-const SectionHeader = ({ title, actionText, onAction }: { title: string; actionText?: string; onAction?: () => void }) => (
-  <div className="mb-4 flex items-center justify-between px-6 lg:px-0">
-    <h2 className="text-xl lg:text-2xl font-bold text-white tracking-tight">{title}</h2>
-    {actionText && (
-      <button onClick={onAction} className="text-[11px] font-bold text-rose-500 hover:text-rose-400 transition-colors uppercase tracking-wider">
-        {actionText}
-      </button>
-    )}
-  </div>
-);
+const SectionHeader = ({ title, actionText, onAction }: { title: string; actionText?: string; onAction?: () => void }) => {
+  const { isDarkMode } = useTheme();
+  return (
+    <div className="mb-4 flex items-center justify-between px-6 lg:px-0">
+      <h2 className={`text-xl lg:text-2xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}>{title}</h2>
+      {actionText && (
+        <button onClick={onAction} className="text-[11px] font-bold text-rose-500 hover:text-rose-400 transition-colors uppercase tracking-wider">
+          {actionText}
+        </button>
+      )}
+    </div>
+  );
+};
 
 export default function Explore() {
   const [activeTab, setActiveTab] = useState('All');
   const user = useSelector(selectUser);
+  const { isDarkMode } = useTheme();
 
   const TABS = [
     { id: 'All', icon: LayoutGrid, color: '#6366f1' },
@@ -31,21 +36,31 @@ export default function Explore() {
   const currentTab = TABS.find(t => t.id === activeTab) || TABS[0];
 
   return (
-    <div className="relative flex flex-col min-h-full bg-[#000000] text-white font-sans selection:bg-rose-500/30">
+    <div className={`relative flex flex-col min-h-full font-sans selection:bg-rose-500/30 transition-colors duration-300 ${
+      isDarkMode ? 'bg-[#000000] text-white' : 'bg-zinc-50 text-zinc-950'
+    }`}>
       
       {/* 🌌 ELITE ATMOSPHERIC HEADER (Mobile: Dynamic Tab Glow | Desktop: Clean Sub-nav) */}
-      <div className="sticky top-0 z-[60] lg:relative lg:z-10 lg:bg-black/80 lg:backdrop-blur-xl lg:border-b lg:border-white/5 lg:mb-4">
+      <div className={`sticky top-0 z-[60] lg:relative lg:z-10 lg:backdrop-blur-xl lg:border-b lg:mb-4 transition-colors duration-300 ${
+        isDarkMode 
+          ? 'lg:bg-black/80 lg:border-white/5' 
+          : 'lg:bg-white/80 lg:border-zinc-200'
+      }`}>
         
         {/* 🌈 Dynamic Atmospheric Overlay (Mobile Only - Sync with native app) */}
         <div className="absolute inset-0 h-[220px] lg:hidden pointer-events-none">
           {/* Main Gradient Smoke */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black via-black/90 to-transparent" />
+          <div className={`absolute inset-0 bg-gradient-to-b to-transparent transition-colors duration-300 ${
+            isDarkMode 
+              ? 'from-black via-black/90' 
+              : 'from-zinc-50 via-zinc-50/90'
+          }`} />
           
           {/* Active Tab Glow */}
           <motion.div 
             key={activeTab}
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.25 }}
+            animate={{ opacity: isDarkMode ? 0.25 : 0.15 }}
             transition={{ duration: 0.8 }}
             className="absolute inset-0"
             style={{ 
@@ -66,8 +81,12 @@ export default function Explore() {
                 className={`
                   flex items-center gap-1.5 rounded-full px-2.5 py-1 lg:px-3.5 lg:py-1.5 text-[9px] lg:text-[10px] font-bold transition-all duration-300
                   ${activeTab === tab.id 
-                    ? 'bg-white text-black shadow-[0_4px_20px_rgba(255,255,255,0.15)] scale-105' 
-                    : 'bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-white'
+                    ? (isDarkMode 
+                        ? 'bg-white text-black shadow-[0_4px_20px_rgba(255,255,255,0.15)] scale-105' 
+                        : 'bg-zinc-950 text-white shadow-[0_4px_20px_rgba(0,0,0,0.1)] scale-105')
+                    : (isDarkMode 
+                        ? 'bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-white' 
+                        : 'bg-zinc-200/60 text-zinc-600 hover:bg-zinc-200 hover:text-zinc-950')
                   }
                 `}
               >
@@ -78,11 +97,7 @@ export default function Explore() {
           </div>
         </div>
 
-        {/* Explore Hero Header */}
-        <div className="relative z-20 mt-2 lg:mt-4 px-6 lg:px-10 mb-4">
-          <h1 className="text-xl lg:text-2xl font-bold text-white tracking-tight">Explore SuviX</h1>
-          <p className="text-[11px] lg:text-[13px] text-zinc-400 font-medium">Empowering your creative vision</p>
-        </div>
+
       </div>
 
       {/* 🚀 MAIN CONTENT AREA */}
@@ -100,8 +115,10 @@ export default function Explore() {
               <>
                 {/* 👋 PERSONALIZED GREETING */}
                 <div className="mb-10 px-6 lg:px-0">
-                  <p className="text-[12px] font-bold uppercase tracking-[0.2em] text-zinc-600">Today's Recommendation For</p>
-                  <h2 className="text-3xl lg:text-4xl font-bold text-white mt-1">
+                  <p className="text-[12px] font-bold uppercase tracking-[0.2em] text-zinc-500">Today's Recommendation For</p>
+                  <h2 className={`text-3xl lg:text-4xl font-bold mt-1 transition-colors ${
+                    isDarkMode ? 'text-white' : 'text-zinc-950'
+                  }`}>
                     {user?.name?.split(' ')[0] || 'Suvin'}
                   </h2>
                 </div>
@@ -116,7 +133,9 @@ export default function Explore() {
                       { id: 3, name: 'LensLife', views: '210K', img: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=400' },
                       { id: 4, name: 'Motion_Guru', views: '95K', img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=400' },
                     ].map(reel => (
-                      <div key={reel.id} className="relative aspect-[9/16] w-[130px] lg:w-full shrink-0 overflow-hidden rounded-[24px] border border-white/5 group shadow-xl">
+                      <div key={reel.id} className={`relative aspect-[9/16] w-[130px] lg:w-full shrink-0 overflow-hidden rounded-[24px] border transition-all duration-300 group ${
+                        isDarkMode ? 'border-white/5 shadow-2xl' : 'border-zinc-200 shadow-md'
+                      }`}>
                         <img src={reel.img} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                         <div className="absolute bottom-4 left-4">
@@ -141,7 +160,9 @@ export default function Explore() {
                       { id: 3, title: 'VFX Speed Art', author: 'FlowArt', views: '310K', time: '05:20', img: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=800' },
                     ].map(video => (
                       <div key={video.id} className="w-[240px] lg:w-full shrink-0 group">
-                        <div className="relative aspect-video overflow-hidden rounded-[20px] border border-white/5 mb-3 shadow-lg">
+                        <div className={`relative aspect-video overflow-hidden rounded-[20px] border mb-3 shadow-lg transition-all duration-300 ${
+                          isDarkMode ? 'border-white/5' : 'border-zinc-200'
+                        }`}>
                           <img src={video.img} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
                           <div className="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-black">
@@ -151,10 +172,16 @@ export default function Explore() {
                           <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 backdrop-blur-md px-2 py-0.5 text-[9px] font-bold text-white">{video.time}</div>
                         </div>
                         <div className="px-1">
-                          <h3 className="text-[13px] lg:text-[15px] font-bold text-white line-clamp-1 leading-tight">{video.title}</h3>
+                          <h3 className={`text-[13px] lg:text-[15px] font-bold line-clamp-1 leading-tight transition-colors ${
+                            isDarkMode ? 'text-white' : 'text-zinc-950'
+                          }`}>{video.title}</h3>
                           <div className="flex items-center gap-2 mt-1.5">
-                             <div className="w-5 h-5 rounded-full bg-zinc-800" />
-                             <p className="text-[10px] lg:text-[12px] font-semibold text-zinc-500">{video.author} • {video.views}</p>
+                             <div className={`w-5 h-5 rounded-full transition-colors ${
+                               isDarkMode ? 'bg-zinc-800' : 'bg-zinc-200'
+                             }`} />
+                             <p className={`text-[10px] lg:text-[12px] font-semibold transition-colors ${
+                               isDarkMode ? 'text-zinc-500' : 'text-zinc-600'
+                             }`}>{video.author} • {video.views}</p>
                           </div>
                         </div>
                       </div>
@@ -171,7 +198,11 @@ export default function Explore() {
                       { id: 2, name: 'Mayank Creative', handle: '@mayank_creative', reach: '1.5M', img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400' },
                       { id: 3, name: 'Rohan Pro', handle: '@rohan_vfx', reach: '800K', img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=400' },
                     ].map(creator => (
-                      <div key={creator.id} className="w-[240px] lg:w-full shrink-0 rounded-[24px] border border-white/5 p-5 lg:p-6 backdrop-blur-xl relative overflow-hidden group bg-black shadow-2xl transition-all">
+                      <div key={creator.id} className={`w-[240px] lg:w-full shrink-0 rounded-[24px] border p-5 lg:p-6 backdrop-blur-xl relative overflow-hidden group transition-all duration-300 ${
+                        isDarkMode 
+                          ? 'bg-black border-white/5 shadow-2xl' 
+                          : 'bg-white border-zinc-200 shadow-lg'
+                      }`}>
                         <div className="absolute top-0 right-0 w-16 h-16 bg-rose-500/5 blur-3xl group-hover:bg-rose-500/10 transition-colors" />
                         
                         <div className="flex items-center gap-4 mb-5 relative z-10">
@@ -180,7 +211,9 @@ export default function Explore() {
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
-                              <p className="text-sm lg:text-base font-bold text-white truncate">{creator.name}</p>
+                              <p className={`text-sm lg:text-base font-bold truncate transition-colors ${
+                                isDarkMode ? 'text-white' : 'text-zinc-950'
+                              }`}>{creator.name}</p>
                               <CheckCircle2 size={12} className="text-rose-500 fill-rose-500/20" />
                             </div>
                             <p className="text-[11px] font-bold text-rose-500">{creator.handle}</p>
@@ -189,17 +222,33 @@ export default function Explore() {
 
                         <div className="flex items-center justify-between mb-5 px-1">
                           <div>
-                            <p className="text-base font-bold text-white">{creator.reach}</p>
-                            <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Reach</p>
+                            <p className={`text-base font-bold transition-colors ${
+                              isDarkMode ? 'text-white' : 'text-zinc-950'
+                            }`}>{creator.reach}</p>
+                            <p className={`text-[9px] font-bold uppercase tracking-widest transition-colors ${
+                              isDarkMode ? 'text-zinc-500' : 'text-zinc-400'
+                            }`}>Reach</p>
                           </div>
-                          <button className="p-2 rounded-xl bg-white/5 text-zinc-400 hover:text-white transition-colors">
+                          <button className={`p-2 rounded-xl transition-colors ${
+                            isDarkMode 
+                              ? 'bg-white/5 text-zinc-400 hover:text-white' 
+                              : 'bg-zinc-100 text-zinc-50 hover:text-zinc-950'
+                          }`}>
                             <MoreHorizontal size={18} />
                           </button>
                         </div>
 
                         <div className="flex gap-2 relative z-10">
-                          <button className="flex-[2] rounded-xl bg-white py-3 text-[11px] font-bold text-black hover:opacity-90 transition-all">Connect</button>
-                          <button className="flex-1 rounded-xl bg-white/5 border border-white/10 py-3 flex items-center justify-center text-white hover:bg-white/10 transition-colors">
+                          <button className={`flex-[2] rounded-xl py-3 text-[11px] font-bold transition-all duration-300 ${
+                            isDarkMode 
+                              ? 'bg-white text-black hover:opacity-90' 
+                              : 'bg-zinc-950 text-white hover:bg-zinc-900'
+                          }`}>Connect</button>
+                          <button className={`flex-1 rounded-xl border py-3 flex items-center justify-center transition-colors duration-300 ${
+                            isDarkMode 
+                              ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' 
+                              : 'bg-zinc-100 border-zinc-200 text-zinc-800 hover:bg-zinc-200'
+                          }`}>
                             <UserPlus size={16} />
                           </button>
                         </div>
@@ -218,7 +267,9 @@ export default function Explore() {
                       { id: 3, name: 'Aputure 600d', price: '₹1800', cat: 'LIGHT', img: 'https://images.unsplash.com/photo-1536240478700-b86d35fd733c?q=80&w=800' },
                       { id: 4, name: 'Zeiss 35mm', price: '₹1500', cat: 'LENS', img: 'https://images.unsplash.com/photo-1617005082133-548c4ea2e935?q=80&w=400' },
                     ].map(item => (
-                      <div key={item.id} className="relative h-[160px] lg:h-[220px] w-[160px] lg:w-full shrink-0 overflow-hidden rounded-[24px] border border-white/5 shadow-xl group">
+                      <div key={item.id} className={`relative h-[160px] lg:h-[220px] w-[160px] lg:w-full shrink-0 overflow-hidden rounded-[24px] border shadow-xl group transition-colors duration-300 ${
+                        isDarkMode ? 'border-white/5' : 'border-zinc-200'
+                      }`}>
                         <img src={item.img} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
                         <div className="absolute top-4 right-4 rounded-lg bg-green-500 px-2 py-1 text-[9px] font-bold text-white shadow-lg">

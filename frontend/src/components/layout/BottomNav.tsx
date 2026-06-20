@@ -5,7 +5,8 @@ import {
   MapPin, 
   Play, 
   Briefcase,
-  MessageCircle
+  MessageCircle,
+  PlusCircle
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { name: 'reels', icon: Play, label: 'Reels', path: '/reels', isSpecial: true },
   { name: 'jobs', icon: Briefcase, label: 'Jobs', path: '/jobs' },
   { name: 'chats', icon: MessageCircle, label: 'Chats', path: '/chats' },
+  { name: 'upload', icon: PlusCircle, label: 'Upload', path: '/upload-portal' },
   { name: 'profile', icon: null, label: 'Profile', path: '/profile', isProfile: true },
 ];
 

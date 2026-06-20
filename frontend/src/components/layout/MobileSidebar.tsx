@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutGrid, Compass, MessageSquare, Briefcase, 
-  Users, User, LogOut, Plus, Moon, MoreVertical, X
+  Users, User, LogOut, Plus, Moon, MoreVertical, X, MapPin
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -25,6 +25,7 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
   const NAV_ITEMS = [
     { icon: LayoutGrid, label: 'Dashboard', path: '/home' },
     { icon: Compass, label: 'Project', path: '/projects' },
+    { icon: MapPin, label: 'Nearby', path: '/nearby' },
     { icon: MessageSquare, label: 'Chat', path: '/chats' },
     { icon: Briefcase, label: 'Services', path: '/services' },
     { icon: Users, label: 'Customers', path: '/customers' },

@@ -17,11 +17,13 @@ import {
   ArrowLeft,
   CheckCircle,
   AlertCircle,
-  ChevronDown
+  ChevronDown,
+  Loader2
 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import { useLogout } from '../mutations/useLogout';
 import defaultProfile from '../assets/defaultprofile.png';
+import { api } from '../api/client';
 
 // ── Reusable Form Fields ───────────────────────────────────────────────────
 
@@ -207,6 +209,48 @@ export default function Settings() {
   const [displayName, setDisplayName] = useState(user?.name || 'SuviX Creator');
   const [username, setUsername] = useState(user?.username || 'suvix.official');
   const [bio, setBio] = useState(user?.bio || 'Professional Creator · UI Designer');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File size exceeds 5MB limit.");
+      return;
+    }
+
+    // 1. Instantly update the UI optimistically using a local Data URL
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (dataUrl) {
+        dispatch(updateUser({ profilePicture: dataUrl }));
+      }
+    };
+    reader.readAsDataURL(file);
+
+    // 2. Upload to backend
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      // Using our API client to hit the backend route
+      // The backend route is POST /api/user/me/profile-picture
+      await api.post("/user/me/profile-picture", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      // The backend returns { profilePicture: new_secure_url } and also emits a socket event
+      // Redux already has the optimistic base64 update, but the socket event or next fetch will sync the official S3 URL.
+      showToast("Profile picture successfully uploaded!");
+    } catch (error) {
+      console.error("Failed to upload profile picture:", error);
+      showToast("Failed to upload profile picture. Please try again.");
+    }
+  };
 
   // Account forms
   const [email, setEmail] = useState(user?.email || 'creator@suvix.app');
@@ -244,14 +288,31 @@ export default function Settings() {
   };
 
   // Submit Handlers
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    dispatch(updateUser({
-      name: displayName,
-      username: username,
-      bio: bio
-    }));
-    showToast('Profile updated successfully!');
+    setIsSavingProfile(true);
+    try {
+      // Simulate network delay for smooth animation visibility
+      await new Promise(resolve => setTimeout(resolve, 600));
+      const res = await api.patch('/user/me', {
+        name: displayName,
+        username: username,
+        bio: bio
+      });
+      if (res.data.success) {
+        dispatch(updateUser({
+          name: res.data.user.name,
+          username: res.data.user.username,
+          bio: res.data.user.bio
+        }));
+        showToast('Profile updated successfully!');
+      }
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      showToast('Failed to update profile.');
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   const handleSaveAccount = (e: React.FormEvent) => {
@@ -294,6 +355,11 @@ export default function Settings() {
   ];
 
   const youtubeChannels = user?.youtubeProfile || [];
+  
+  const hasProfileChanges = 
+    displayName !== (user?.name || '') ||
+    username !== (user?.username || '') ||
+    bio !== (user?.bio || '');
 
   return (
     <div className="absolute inset-0 z-[60] bg-page flex flex-col lg:flex-row gap-5 p-3 lg:p-6 overflow-hidden overscroll-none">
@@ -314,7 +380,7 @@ export default function Settings() {
         </div>
 
         {/* Options List */}
-        <nav className="flex-1 overflow-y-auto scrollbar-hide space-y-1.5 pr-1">
+        <nav className="flex-1 overflow-y-auto no-scrollbar space-y-1.5 pr-1">
           {CATEGORIES.map((cat) => {
             const isActive = activeCategory === cat.id;
             return (
@@ -367,7 +433,7 @@ export default function Settings() {
         {/* Glow Element */}
         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-accent-primary/[0.03] blur-[120px] pointer-events-none" />
 
-        <div className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 relative">
+        <div className="flex-1 overflow-y-auto no-scrollbar p-6 lg:p-8 relative">
           <div className="max-w-2xl">
             
             {/* Back button for mobile */}
@@ -382,31 +448,64 @@ export default function Settings() {
             {/* ──── Profile Panel ──── */}
             {activeCategory === 'profile' && (
               <form onSubmit={handleSaveProfile} className="space-y-8">
-                <div>
-                  <h3 className={`text-lg font-bold font-display tracking-tight mb-1 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}>
-                    Edit Profile
-                  </h3>
-                  <p className={`text-[13px] ${isDarkMode ? 'text-text-muted' : 'text-zinc-500'}`}>
-                    Control your digital identity and public brand identity.
-                  </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className={`text-lg font-bold font-display tracking-tight mb-1 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}>
+                      Edit Profile
+                    </h3>
+                    <p className={`text-[13px] ${isDarkMode ? 'text-text-muted' : 'text-zinc-500'}`}>
+                      Control your digital identity and public brand identity.
+                    </p>
+                  </div>
+                  <button 
+                    type="submit"
+                    disabled={!hasProfileChanges || isSavingProfile}
+                    className={`flex items-center justify-center gap-1.5 h-9 px-5 rounded-xl text-[12px] font-bold transition-all min-w-[120px] ${
+                      hasProfileChanges 
+                        ? isDarkMode 
+                          ? 'bg-white text-black hover:bg-zinc-100 active:scale-[0.98] cursor-pointer' 
+                          : 'bg-zinc-950 text-white hover:bg-zinc-900 shadow-sm active:scale-[0.98] cursor-pointer'
+                        : isDarkMode 
+                          ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' 
+                          : 'bg-zinc-200 text-zinc-400 cursor-not-allowed'
+                    }`}
+                  >
+                    {isSavingProfile ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Changes'
+                    )}
+                  </button>
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-center gap-6 pb-2">
                   <div className="relative group w-24 h-24">
-                    <div className={`w-full h-full rounded-full overflow-hidden border p-1 transition-all group-hover:opacity-90 ${
-                      isDarkMode ? 'border-border-secondary bg-zinc-950/40' : 'border-zinc-950 border-[1.5px] bg-white'
-                    }`}>
-                      <img 
-                        src={user?.profilePicture || defaultProfile} 
-                        alt="Avatar" 
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    </div>
-                    <button type="button" className={`absolute -bottom-1 -right-1 w-8 h-8 rounded-full border flex items-center justify-center shadow-lg transition-transform active:scale-90 hover:scale-105 cursor-pointer ${
-                      isDarkMode ? 'bg-white text-black border-zinc-200' : 'bg-zinc-950 text-white border-zinc-950'
-                    }`}>
-                      <Camera size={14} />
-                    </button>
+                    <input 
+                      type="file" 
+                      id="profile-upload" 
+                      accept="image/*" 
+                      onChange={handleFileChange} 
+                      className="hidden" 
+                    />
+                    <label htmlFor="profile-upload" className="cursor-pointer block w-full h-full">
+                      <div className={`w-full h-full rounded-full overflow-hidden border p-1 transition-all group-hover:opacity-90 ${
+                        isDarkMode ? 'border-border-secondary bg-zinc-950/40' : 'border-zinc-950 border-[1.5px] bg-white'
+                      }`}>
+                        <img 
+                          src={user?.profilePicture || defaultProfile} 
+                          alt="Avatar" 
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      </div>
+                      <div className={`absolute -bottom-1 -right-1 w-8 h-8 rounded-full border flex items-center justify-center shadow-lg transition-transform active:scale-90 hover:scale-105 cursor-pointer ${
+                        isDarkMode ? 'bg-white text-black border-zinc-200' : 'bg-zinc-950 text-white border-zinc-950'
+                      }`}>
+                        <Camera size={14} />
+                      </div>
+                    </label>
                   </div>
                   <div className="text-center sm:text-left space-y-1">
                     <p className={`text-[13px] font-semibold ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}>
@@ -441,17 +540,6 @@ export default function Settings() {
                     placeholder="Tell your story..."
                     isDarkMode={isDarkMode}
                   />
-                </div>
-
-                <div className="pt-4 border-t border-border-secondary/40">
-                  <button 
-                    type="submit"
-                    className={`h-11 px-8 rounded-xl text-[13px] font-bold transition-all active:scale-[0.98] cursor-pointer w-full sm:w-auto ${
-                      isDarkMode ? 'bg-white text-black hover:bg-zinc-100' : 'bg-zinc-950 text-white hover:bg-zinc-900 shadow-sm'
-                    }`}
-                  >
-                    Save Changes
-                  </button>
                 </div>
               </form>
             )}

@@ -46,6 +46,7 @@ import socialRoutes from "./modules/social/routes/postRoutes.js";
 import storyRoutes from "./modules/story/routes/storyRoutes.js";
 import profileRoutes from "./modules/profile/profile.routes.js";
 import communityRoutes from "./modules/community/routes/communityRoutes.js";
+import tempFeedRoutes from "./modules/temp-feed/routes/tempFeedRoutes.js";
 
 // PostgreSQL Support
 import { connectPostgres } from "./config/prisma.js";
@@ -191,6 +192,7 @@ app.use((req, res, next) => {
 
 // ============ RELEVANT API ROUTES ============
 app.use("/api/payment-gateway", paymentGatewayRoutes);
+app.use("/api/temp-feed", tempFeedRoutes);
 
 // Health checks
 app.get("/api/health", (req, res) => {
