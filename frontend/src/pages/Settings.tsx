@@ -15,14 +15,9 @@ import {
   Sun,
   Laptop,
   ArrowLeft,
-  Mail,
-  Phone,
-  Lock,
   CheckCircle,
   AlertCircle,
-  ChevronDown,
-  ExternalLink,
-  Plus
+  ChevronDown
 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import { useLogout } from '../mutations/useLogout';

@@ -97,8 +97,6 @@ export const MobileProfile = () => {
     .map((p) => ({ id: p.channelId || p.channel_name, name: p.channel_name, url: p.banner_url || '' }));
 
   const totalVideos = youtubeProfiles.reduce((acc: number, p) => acc + (p.video_count || 0), 0);
-  const totalSubscribers = youtubeProfiles.reduce((acc: number, p) => acc + (p.subscriber_count || 0), 0);
-  const totalViews = youtubeProfiles.reduce((acc: number, p) => acc + Number(p.view_count || 0), 0);
 
   const displayName = user.name || primaryChannel.channel_name || 'YouTube Creator';
 
@@ -128,11 +126,13 @@ export const MobileProfile = () => {
     { label: 'Diamond', count: 10000, img: DIAMOND_BTN },
   ];
 
+  const [now] = useState(() => Date.now());
+
   const allVideos = user.youtubeVideos || [];
 
   const timeAgo = (d?: string): string => {
     if (!d) return '';
-    const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
+    const days = Math.floor((now - new Date(d).getTime()) / 86400000);
     if (days === 0) return 'Today';
     if (days === 1) return 'Yesterday';
     if (days < 7) return `${days}d ago`;
@@ -142,7 +142,7 @@ export const MobileProfile = () => {
   };
 
   const isRecent = (d?: string): boolean =>
-    !!d && Date.now() - new Date(d).getTime() < 30 * 24 * 60 * 60 * 1000;
+    !!d && now - new Date(d).getTime() < 30 * 24 * 60 * 60 * 1000;
 
   return (
     <div className="flex lg:hidden w-full flex-col min-h-screen bg-[#000000] pb-24 font-sans text-white">
