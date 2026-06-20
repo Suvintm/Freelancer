@@ -24,6 +24,7 @@ export const MobileProfile = () => {
   const [isSavingBio, setIsSavingBio] = useState(false);
   const bioRef = useRef<HTMLDivElement>(null);
   const [isBioExpanded, setIsBioExpanded] = useState(false);
+  const [now] = useState(() => Date.now());
 
   useEffect(() => {
     if (!isBioExpanded) return;
@@ -125,8 +126,6 @@ export const MobileProfile = () => {
     { label: 'Gold', count: 1000, img: GOLD_BTN },
     { label: 'Diamond', count: 10000, img: DIAMOND_BTN },
   ];
-
-  const [now] = useState(() => Date.now());
 
   const allVideos = user.youtubeVideos || [];
 
