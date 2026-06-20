@@ -13,15 +13,16 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const isExplorePage = location.pathname === '/explore';
   const isNotificationsPage = location.pathname === '/notifications';
   const isProfilePage = location.pathname === '/profile';
+  const isNearbyPage = location.pathname === '/nearby';
   const isFullPage = isExplorePage || isNotificationsPage;
-  const isNoPaddingMobile = isFullPage || isProfilePage;
+  const isNoPaddingMobile = isFullPage || isProfilePage || isNearbyPage;
   const { isDarkMode } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
     <div className="h-screen w-full bg-page flex flex-col font-sans overflow-hidden">
-      {/* Global Top Navbar (Fixed) - Hidden on Mobile for Explore/Notifications/Profile */}
-      <div className={(isFullPage || isProfilePage) ? "hidden lg:block" : "block"}>
+      {/* Global Top Navbar (Fixed) - Hidden on Mobile for Explore/Notifications/Profile/Nearby */}
+      <div className={(isFullPage || isProfilePage || isNearbyPage) ? "hidden lg:block" : "block"}>
         <GlobalHeader onMenuPress={() => setIsMobileMenuOpen(true)} />
       </div>
 
@@ -39,14 +40,20 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
               MOBILE: Edge-to-edge (no margins, no rounded corners)
               DESKTOP: Floating canvas (margins + rounded corners)
           */}
-          <div className={`w-full h-full lg:rounded-[48px] border-b lg:border border-border-main shadow-xl dark:shadow-2xl flex flex-col relative overflow-hidden transition-colors duration-300 ${isExplorePage ? 'bg-black' : (isFullPage || location.pathname === '/home' ? (isDarkMode ? 'bg-black' : 'bg-white') : 'bg-container')}`}>
-            <ReactLenis className="flex-1 overflow-y-auto scrollbar-hide bg-page/30">
-              <main className="w-full h-full">
-                <div className={isNoPaddingMobile ? "w-full min-h-full lg:max-w-screen-2xl lg:mx-auto lg:px-6 lg:pt-3 lg:pb-32 pb-32" : "max-w-screen-2xl mx-auto px-4 pt-5 lg:pt-3 lg:px-6 lg:pb-32 pb-32"}>
-                  {children}
-                </div>
-              </main>
-            </ReactLenis>
+          <div className={`w-full h-full lg:rounded-[48px] border-b lg:border border-border-main shadow-xl dark:shadow-2xl flex flex-col relative overflow-hidden transition-colors duration-300 ${isFullPage || location.pathname === '/home' ? (isDarkMode ? 'bg-black' : 'bg-white') : 'bg-container'}`}>
+            {location.pathname === '/nearby' ? (
+              <div className="w-full h-full relative overflow-hidden">
+                {children}
+              </div>
+            ) : (
+              <ReactLenis className="flex-1 overflow-y-auto scrollbar-hide bg-page/30">
+                <main className="w-full h-full">
+                  <div className={isNoPaddingMobile ? "w-full min-h-full lg:max-w-screen-2xl lg:mx-auto lg:px-6 lg:pt-3 lg:pb-32 pb-32" : "max-w-screen-2xl mx-auto px-4 pt-5 lg:pt-3 lg:px-6 lg:pb-32 pb-32"}>
+                    {children}
+                  </div>
+                </main>
+              </ReactLenis>
+            )}
 
             {/* Premium Aesthetic Overlays (Only visible on Desktop canvas) */}
             <div className="hidden lg:block absolute inset-0 pointer-events-none rounded-[48px] ring-1 ring-inset ring-text-main/5" />

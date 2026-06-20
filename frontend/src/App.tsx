@@ -10,6 +10,7 @@ import Home from './pages/Home';
 import Explore from './pages/Explore';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
+import Nearby from './pages/Nearby';
 import PlaceholderPage from './pages/PlaceholderPage';
 import Maintenance from './pages/Maintenance';
 import OAuthSuccess from './pages/OAuthSuccess';
@@ -176,7 +177,7 @@ function App() {
           element={
             <AuthGuard>
               <AppLayout>
-                <PlaceholderPage title="Nearby" />
+                <Nearby />
               </AppLayout>
             </AuthGuard>
           } 

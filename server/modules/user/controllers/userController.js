@@ -111,6 +111,12 @@ export const updateProfilePicture = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Please upload an image file");
   }
 
+  // Fetch the old profile to get the existing picture key
+  const oldProfile = await prisma.userProfile.findUnique({
+    where: { userId },
+    select: { profile_picture: true }
+  });
+
   // 💾 Standardized Storage Upload (Universal Service)
   const result = await storageService.uploadBuffer(req.file.buffer, "avatars", {
     userId,
@@ -124,6 +130,14 @@ export const updateProfilePicture = asyncHandler(async (req, res) => {
       updated_at: new Date(),
     },
   });
+
+  // 🗑️ Delete the old profile picture from S3 to save storage costs
+  if (
+    oldProfile?.profile_picture &&
+    !oldProfile.profile_picture.startsWith("http")
+  ) {
+    await storageService.deleteFile(oldProfile.profile_picture);
+  }
 
   // 🧹 [CACHE] Invalidate cache
   await deleteCache(CacheKey.userProfile(userId));

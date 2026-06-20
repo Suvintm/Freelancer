@@ -134,10 +134,11 @@ export const deleteFile = async (keys) => {
     const keyArray = Array.isArray(keys) ? keys : [keys];
     if (keyArray.length === 0) return true;
 
-    logger.info(`🗑️ [STORAGE] Deleting ${keyArray.length} asset(s) from S3...`);
+    logger.info(`🗑️ [STORAGE] Deleting ${keyArray.length} asset(s) from S3: ${keyArray.join(", ")}`);
     
     await storage.deleteObjects(keyArray);
     
+    logger.info(`✅ [STORAGE] Successfully deleted ${keyArray.length} asset(s) from S3.`);
     return true;
   } catch (error) {
     logger.error(`❌ [STORAGE] Deletion failed: ${error.message}`);
