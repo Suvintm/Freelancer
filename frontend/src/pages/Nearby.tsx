@@ -1081,7 +1081,7 @@ export default function Nearby() {
                         key={talent.id}
                         onClick={() => handleFocusTalent(talent)}
                         className={`p-3 rounded-xl border flex items-center gap-3 active:scale-98 transition-all ${
-                          selectedTalent?.id === talent.id 
+                          (selectedTalent as LeafletAny)?.id === talent.id 
                             ? (isDarkMode ? 'bg-[#0B0B0B] border-[#FF3040]' : 'bg-zinc-50 border-[#FF3040]') 
                             : (isDarkMode ? 'bg-black border-[#1A1A1B]' : 'bg-white border-zinc-200 shadow-sm')
                         }`}
