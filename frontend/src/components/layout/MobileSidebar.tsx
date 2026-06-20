@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  LayoutGrid, Compass, MessageSquare, Briefcase, 
-  Users, User, LogOut, Plus, Moon, MoreVertical, X, MapPin
+  Home, Search, Compass, MapPin, PlaySquare, Briefcase, PlusSquare, Settings, User,
+  LogOut, Plus, Moon, MoreVertical, X
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -23,13 +23,15 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
   const { isDarkMode, toggleTheme } = useTheme();
 
   const NAV_ITEMS = [
-    { icon: LayoutGrid, label: 'Dashboard', path: '/home' },
-    { icon: Compass, label: 'Project', path: '/projects' },
-    { icon: MapPin, label: 'Nearby', path: '/nearby' },
-    { icon: MessageSquare, label: 'Chat', path: '/chats' },
-    { icon: Briefcase, label: 'Services', path: '/services' },
-    { icon: Users, label: 'Customers', path: '/customers' },
-    { icon: User, label: 'Account', path: '/profile' },
+    { icon: Home,       label: 'Feed',      path: '/home'    },
+    { icon: Search,     label: 'Explore',   path: '/explore' },
+    { icon: Compass,    label: 'Discover',  path: '/discover'},
+    { icon: MapPin,     label: 'Nearby',    path: '/nearby'  },
+    { icon: PlaySquare, label: 'Reels',     path: '/reels'   },
+    { icon: Briefcase,  label: 'Jobs',      path: '/jobs'    },
+    { icon: PlusSquare, label: 'Upload Portal', path: '/upload-portal' },
+    { icon: Settings,   label: 'Settings',  path: '/settings'},
+    { icon: User,       label: 'Profile',   path: '/profile' }
   ];
 
   const handleNavigate = (path: string) => {
@@ -81,7 +83,7 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
             {/* Add New Button */}
             <div className="px-6 py-2">
               <button
-                onClick={() => handleNavigate('/projects')} // Custom action for Add New, e.g., create a project
+                onClick={() => handleNavigate('/upload-portal')} // Navigate to Upload Portal
                 className={`w-full flex items-center justify-center gap-2 h-[48px] rounded-xl font-bold text-sm tracking-wide shadow-sm active:scale-[0.98] transition-all duration-200 ${
                   isDarkMode 
                     ? 'bg-white text-zinc-950 hover:bg-zinc-100' 
