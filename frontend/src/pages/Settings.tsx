@@ -210,7 +210,7 @@ export default function Settings() {
 
   // Account forms
   const [email, setEmail] = useState(user?.email || 'creator@suvix.app');
-  const [phone, setPhone] = useState(user?.phone || '+1 (555) 019-2834');
+  const [phone, setPhone] = useState((user as any)?.phone || '+1 (555) 019-2834');
   const [language, setLanguage] = useState('English');
 
   // Security forms

@@ -106,11 +106,11 @@ export const MobileProfile = () => {
   )) as string[];
 
   const allLocations = Array.from(new Set(
-    youtubeProfiles.map((p) => p.country).filter(Boolean)
+    youtubeProfiles.map((p) => (p as any).country).filter(Boolean)
   )) as string[];
 
   const languages = Array.from(new Set(
-    youtubeProfiles.map((p) => p.language).filter(Boolean)
+    youtubeProfiles.map((p) => (p as any).language).filter(Boolean)
   )) as string[];
 
   const formatCount = (num?: number | string) => {
