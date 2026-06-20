@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   MapPin, Search, Navigation, SlidersHorizontal, MessageSquare, 
-  User, Star, RefreshCw, X, Radio, ArrowLeft, Layers, Compass,
+  Star, RefreshCw, X, Radio, ArrowLeft, Layers, Compass,
   ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -45,6 +45,9 @@ interface GeocodeResult {
   lon: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LeafletAny = any;
+
 export default function Nearby() {
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
@@ -65,13 +68,13 @@ export default function Nearby() {
   const [selectedTalent, setSelectedTalent] = useState<Talent | null>(null);
 
   // Leaflet Load State
-  const [leafletLoaded, setLeafletLoaded] = useState(false);
+  const [leafletLoaded, setLeafletLoaded] = useState(() => typeof window !== 'undefined' && !!(window as LeafletAny).L);
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<any>(null);
-  const markersGroupRef = useRef<any>(null);
-  const userMarkerRef = useRef<any>(null);
-  const userCircleRef = useRef<any>(null);
-  const tileLayerRef = useRef<any>(null);
+  const mapInstance = useRef<LeafletAny>(null);
+  const markersGroupRef = useRef<LeafletAny>(null);
+  const userMarkerRef = useRef<LeafletAny>(null);
+  const userCircleRef = useRef<LeafletAny>(null);
+  const tileLayerRef = useRef<LeafletAny>(null);
 
   // Talents State
   const [talents, setTalents] = useState<Talent[]>([]);
@@ -83,12 +86,11 @@ export default function Nearby() {
   // Premium Features States
   const [activeLayer, setActiveLayer] = useState<'street' | 'satellite' | 'terrain'>('street');
   const [showLayerDropdown, setShowLayerDropdown] = useState(false);
-  const activeRouteRef = useRef<any>(null);
+  const activeRouteRef = useRef<LeafletAny>(null);
 
   // --- 1. DYNAMIC LEAFLET LOADER ---
   useEffect(() => {
-    if ((window as any).L) {
-      setLeafletLoaded(true);
+    if ((window as LeafletAny).L) {
       return;
     }
 
@@ -103,21 +105,22 @@ export default function Nearby() {
     document.body.appendChild(jsScript);
   }, []);
 
-  // --- 2. LOCATION PERMISSION HANDLER ---
-  useEffect(() => {
-    // Check if permission was already granted previously
-    if (navigator.permissions && navigator.permissions.query) {
-      navigator.permissions.query({ name: 'geolocation' }).then((result) => {
-        setPermissionStatus(result.state === 'granted' ? 'granted' : result.state === 'denied' ? 'denied' : 'prompt');
-        if (result.state === 'granted') {
-          fetchUserLocation();
-        }
-      }).catch(() => {
-        setPermissionStatus('prompt');
-      });
-    } else {
-      setPermissionStatus('prompt');
-    }
+  const fetchUserLocation = useCallback(() => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        });
+      },
+      () => {
+        // Fallback default
+        setUserLocation((prev) => {
+          if (!prev) return { lat: 19.0760, lng: 72.8777 };
+          return prev;
+        });
+      }
+    );
   }, []);
 
   const requestPermission = () => {
@@ -140,22 +143,41 @@ export default function Nearby() {
     );
   };
 
-  const fetchUserLocation = () => {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setUserLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        });
-      },
-      () => {
-        // Fallback default
-        if (!userLocation) {
-          setUserLocation({ lat: 19.0760, lng: 72.8777 });
+  // --- 2. LOCATION PERMISSION HANDLER ---
+  useEffect(() => {
+    let active = true;
+    const checkPermission = async () => {
+      // Force execution to be asynchronous to avoid React cascading render warnings
+      await Promise.resolve();
+      if (!active) return;
+
+      if (navigator.permissions && navigator.permissions.query) {
+        try {
+          const result = await navigator.permissions.query({ name: 'geolocation' });
+          if (active) {
+            setPermissionStatus(result.state === 'granted' ? 'granted' : result.state === 'denied' ? 'denied' : 'prompt');
+            if (result.state === 'granted') {
+              fetchUserLocation();
+            }
+          }
+        } catch {
+          if (active) {
+            setPermissionStatus('prompt');
+          }
+        }
+      } else {
+        if (active) {
+          setPermissionStatus('prompt');
         }
       }
-    );
-  };
+    };
+
+    checkPermission();
+
+    return () => {
+      active = false;
+    };
+  }, [fetchUserLocation]);
 
   // --- 3. REVERSE GEODECOING (Get address name) ---
   useEffect(() => {
@@ -236,7 +258,7 @@ export default function Nearby() {
   // --- 5. INITIALIZE MAP, USER MARKER & RANGE CIRCLE ---
   useEffect(() => {
     if (!leafletLoaded || !mapRef.current || !userLocation) return;
-    const L = (window as any).L;
+    const L = (window as LeafletAny).L;
 
     if (!mapInstance.current) {
       // Map instance setup
@@ -305,7 +327,7 @@ export default function Nearby() {
       userMarkerRef.current = L.marker([userLocation.lat, userLocation.lng], { icon: userIcon, draggable: true })
         .addTo(mapInstance.current);
 
-      userMarkerRef.current.on('dragend', (event: any) => {
+      userMarkerRef.current.on('dragend', (event: LeafletAny) => {
         const marker = event.target;
         const position = marker.getLatLng();
         setUserLocation({ lat: position.lat, lng: position.lng });
@@ -344,7 +366,7 @@ export default function Nearby() {
   // --- 6. UPDATE TALENT MAP PINS ---
   useEffect(() => {
     if (!leafletLoaded || !mapInstance.current || !markersGroupRef.current) return;
-    const L = (window as any).L;
+    const L = (window as LeafletAny).L;
 
     // Clear old markers
     markersGroupRef.current.clearLayers();
@@ -392,7 +414,7 @@ export default function Nearby() {
   // --- 6a. DRAW DYNAMIC ANIMATED ROUTE POLYLINE PATH TO SELECTED TALENT ---
   useEffect(() => {
     if (!leafletLoaded || !mapInstance.current) return;
-    const L = (window as any).L;
+    const L = (window as LeafletAny).L;
 
     // Clear old route if exists
     if (activeRouteRef.current) {
@@ -879,16 +901,16 @@ export default function Nearby() {
                         isDarkMode ? 'bg-[#0B0B0B] border-[#1A1A1B] text-white' : 'bg-white border-zinc-200 text-zinc-950'
                       }`}
                     >
-                      {[
+                      {([
                         { id: 'street', label: 'Default Map', icon: Compass },
                         { id: 'satellite', label: 'Satellite', icon: Radio },
                         { id: 'terrain', label: 'Terrain', icon: MapPin }
-                      ].map((layerOpt) => (
+                      ] as const).map((layerOpt) => (
                         <button
                           type="button"
                           key={layerOpt.id}
                           onClick={() => {
-                            setActiveLayer(layerOpt.id as any);
+                            setActiveLayer(layerOpt.id);
                             setShowLayerDropdown(false);
                           }}
                           className={`w-full text-left px-2.5 py-1.5 rounded-xl text-[10px] font-bold flex items-center gap-2 cursor-pointer transition-all ${

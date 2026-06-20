@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Plus, Volume2, VolumeX } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../store/slices/authSlice';
 import defaultProfile from '../assets/defaultprofile.png';
@@ -9,6 +9,10 @@ import { UnifiedBanner } from '../components/home/UnifiedBanner';
 import { useTheme } from '../hooks/useTheme';
 import darkLogo from '../assets/darklogo.png';
 import lightLogo from '../assets/lightlogo.png';
+import { api } from '../api/client';
+import { FeedPost } from '../components/temp-feed/FeedPost';
+import { FeedReel } from '../components/temp-feed/FeedReel';
+import { FeedYoutube } from '../components/temp-feed/FeedYoutube';
 
 interface Story {
   _id: string;
@@ -58,16 +62,19 @@ const SUVIX_INDUSTRY_STORIES: Story[] = [
 // STORIES array moved inside Home component to support dynamic user state.
  
 interface Post {
-  id: number;
+  id: string | number;
   user: string;
   location: string;
   img: string;
-  likes: string;
+  likes: string | number;
   comment: string;
   commentsCount: number;
   musicUrl?: string;
   videoUrl?: string;
   isVideo?: boolean;
+  isYtVideo?: boolean;
+  images?: string[];
+  type?: string;
 }
 
 const POSTS: Post[] = [
@@ -280,6 +287,18 @@ const POSTS: Post[] = [
   }
 ];
 
+interface DbFeedItem {
+  _id: string;
+  user: string;
+  location?: string;
+  images?: string[];
+  likes: string | number;
+  comment: string;
+  commentsCount: number;
+  videoUrl?: string;
+  type: string;
+}
+
 export default function Home() {
   const [isScrolling, setIsScrolling] = useState(false);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -287,14 +306,102 @@ export default function Home() {
   const user = useSelector(selectUser);
   const userAvatar = user?.profilePicture || defaultProfile;
 
+  const [feedPosts, setFeedPosts] = useState<Post[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [globalMuted, setGlobalMuted] = useState(true);
+  const [activePostId, setActivePostId] = useState<string | number | null>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const observerOptions = {
+      root: null,
+      // For mobile: focus on the middle of the screen (center 10% of viewport)
+      // For desktop: require 60% visibility of the element
+      rootMargin: isMobile ? '-45% 0px -45% 0px' : '0px',
+      threshold: isMobile ? 0 : 0.6
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const postId = entry.target.getAttribute('data-post-id');
+        if (postId) {
+          const id = isNaN(Number(postId)) ? postId : Number(postId);
+          if (entry.isIntersecting) {
+            setActivePostId(id);
+          } else {
+            setActivePostId((prevActiveId) => {
+              if (prevActiveId === id) {
+                return null;
+              }
+              return prevActiveId;
+            });
+          }
+        }
+      });
+    }, observerOptions);
+
+    const elements = document.querySelectorAll('[data-post-id]');
+    elements.forEach((el) => observer.observe(el));
+
+    return () => {
+      elements.forEach((el) => observer.unobserve(el));
+    };
+  }, [feedPosts, isMobile]); // Re-run when feedPosts or mobile layout status changes
+
+  useEffect(() => {
+    const fetchFeed = async () => {
+      setIsLoading(true);
+      try {
+        const response = await api.get('/temp-feed');
+        if (response.data.success && response.data.data.length > 0) {
+          const dbPosts: Post[] = response.data.data.map((item: DbFeedItem) => ({
+            id: item._id,
+            user: item.user,
+            location: item.location || 'Unknown Location',
+            img: item.images?.[0] || '',
+            images: item.images || [],
+            likes: item.likes,
+            comment: item.comment,
+            commentsCount: item.commentsCount,
+            videoUrl: item.videoUrl || '',
+            isVideo: item.type === 'reel' || item.type === 'yt_video',
+            isYtVideo: item.type === 'yt_video',
+            type: item.type
+          }));
+          
+          // Shuffling dynamically on page refresh to show fresh content
+          const shuffled = [...dbPosts].sort(() => Math.random() - 0.5);
+          setFeedPosts(shuffled);
+        } else {
+          setFeedPosts(POSTS);
+        }
+      } catch (error) {
+        console.error('Error fetching temp feed:', error);
+        setFeedPosts(POSTS);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFeed();
+  }, []);
+
   const stories: Story[] = [
     { _id: 'me', username: 'Your Story', avatar: userAvatar, isUser: true, hasActive: false },
     ...SUVIX_INDUSTRY_STORIES,
   ];
 
   useEffect(() => {
-    const mainContainer = document.querySelector('main');
-    if (!mainContainer) return;
+    const scrollContainer = document.querySelector('main')?.closest('.overflow-y-auto') || document.querySelector('main');
+    if (!scrollContainer) return;
 
     const handleScroll = () => {
       setIsScrolling(true);
@@ -302,9 +409,9 @@ export default function Home() {
       scrollTimeoutRef.current = setTimeout(() => setIsScrolling(false), 150);
     };
 
-    mainContainer.addEventListener('scroll', handleScroll);
+    scrollContainer.addEventListener('scroll', handleScroll);
     return () => {
-      mainContainer.removeEventListener('scroll', handleScroll);
+      scrollContainer.removeEventListener('scroll', handleScroll);
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     };
   }, []);
@@ -435,237 +542,26 @@ export default function Home() {
 
       {/* 4. Unified Feed */}
       <section className="-mx-4 lg:mx-0 -mt-2 lg:mt-0">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
-          {POSTS.map((post) => (
-            <PostCard key={post.id} post={post} isDarkMode={isDarkMode} />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="flex justify-center items-center py-20">
+            <Loader2 size={32} className="animate-spin text-accent-primary" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+            {feedPosts.map((post) => {
+              const isActive = activePostId === post.id;
+              if (post.type === 'reel') return <FeedReel key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
+              if (post.type === 'yt_video') return <FeedYoutube key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
+              return <FeedPost key={post.id} post={post} isDarkMode={isDarkMode} />;
+            })}
+          </div>
+        )}
       </section>
     </div>
   );
 }
 
-function PostCard({ post, isDarkMode }: { post: Post; isDarkMode: boolean }) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false); // Default to unmuted so music is heard immediately on hover
-  const [isMobile, setIsMobile] = useState(false);
-  const [progress, setProgress] = useState(0);
 
-  useEffect(() => {
-    const checkDevice = () => {
-      setIsMobile(window.innerWidth < 1024);
-    };
-    checkDevice();
-    window.addEventListener('resize', checkDevice);
-    return () => window.removeEventListener('resize', checkDevice);
-  }, []);
-
-  const handleTimeUpdate = (e: React.SyntheticEvent<HTMLMediaElement>) => {
-    const target = e.currentTarget;
-    if (target.duration) {
-      setProgress((target.currentTime / target.duration) * 100);
-    }
-  };
-
-  const playMedia = () => {
-    if (post.isVideo) {
-      if (videoRef.current) {
-        videoRef.current.play().then(() => {
-          setIsPlaying(true);
-        }).catch((err) => {
-          console.log('Video autoplay blocked or interrupted:', err);
-        });
-      }
-    } else {
-      if (audioRef.current) {
-        audioRef.current.play().then(() => {
-          setIsPlaying(true);
-        }).catch((err) => {
-          console.log('Audio autoplay blocked or interrupted:', err);
-        });
-      }
-    }
-  };
-
-  const pauseMedia = () => {
-    if (post.isVideo) {
-      if (videoRef.current) {
-        videoRef.current.pause();
-        setIsPlaying(false);
-      }
-    } else {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      }
-    }
-  };
-
-  // Hover play for laptop/desktop
-  const handleMouseEnter = () => {
-    if (!isMobile) {
-      playMedia();
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (!isMobile) {
-      pauseMedia();
-    }
-  };
-
-  // Viewport scroll play for mobile view
-  const handleViewportEnter = () => {
-    if (isMobile) {
-      playMedia();
-    }
-  };
-
-  const handleViewportLeave = () => {
-    if (isMobile) {
-      pauseMedia();
-    }
-  };
-
-  const toggleMute = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (post.isVideo) {
-      if (videoRef.current) {
-        videoRef.current.muted = !videoRef.current.muted;
-        setIsMuted(videoRef.current.muted);
-      }
-    } else {
-      if (audioRef.current) {
-        audioRef.current.muted = !audioRef.current.muted;
-        setIsMuted(audioRef.current.muted);
-      }
-    }
-  };
-
-  return (
-    <motion.article 
-      initial={{ opacity: 0 }}
-      whileInView={{ opacity: 1 }}
-      viewport={{ once: true, amount: 0.3 }}
-      onViewportEnter={handleViewportEnter}
-      onViewportLeave={handleViewportLeave}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      className={`lg:border lg:border-border-main lg:rounded-[40px] overflow-hidden group lg:shadow-xl border-b border-border-main lg:border-b-0 pb-8 lg:pb-0 relative ${
-        isDarkMode ? 'bg-black' : 'bg-white shadow-2xl'
-      }`}
-    >
-      {post.isVideo ? (
-        <video 
-          ref={videoRef}
-          src={post.videoUrl}
-          loop
-          muted={isMuted}
-          playsInline
-          preload="metadata"
-          onTimeUpdate={handleTimeUpdate}
-          className="hidden" // Just holding reference, layout renders it in image container
-        />
-      ) : (
-        <audio 
-          ref={audioRef} 
-          src={post.musicUrl} 
-          loop 
-          muted={isMuted}
-          preload="metadata"
-          onTimeUpdate={handleTimeUpdate}
-        />
-      )}
-
-      <div className="p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full border-2 border-border-main p-0.5">
-            <img src={post.img} alt={post.user} className="w-full h-full rounded-full object-cover" />
-          </div>
-          <div>
-            <h4 className="text-[13px] font-black text-text-main leading-none mb-1">{post.user}</h4>
-            <p className="text-[10px] text-text-muted font-bold">{post.location}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {isPlaying && (
-            <button 
-              onClick={toggleMute}
-              className={`p-1.5 rounded-full transition-colors ${
-                isDarkMode ? 'bg-zinc-800 text-white hover:bg-zinc-700' : 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200'
-              }`}
-              title={isMuted ? "Unmute" : "Mute"}
-            >
-              {isMuted ? <VolumeX size={13} /> : <Volume2 size={13} className="animate-pulse text-green-500" />}
-            </button>
-          )}
-          <button className="text-text-muted hover:text-text-main transition-colors p-2"><MoreHorizontal size={18} /></button>
-        </div>
-      </div>
-
-      <div className="aspect-[4/5] lg:aspect-square relative overflow-hidden bg-border-secondary">
-        {post.isVideo ? (
-          <video 
-            ref={videoRef}
-            src={post.videoUrl}
-            loop
-            muted={isMuted}
-            playsInline
-            onTimeUpdate={handleTimeUpdate}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <img src={post.img} alt="Post content" className="w-full h-full object-cover" />
-        )}
-        
-        {/* Sleek bottom progress bar overlay */}
-        {isPlaying && (
-          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/40 z-10">
-            <div 
-              className="h-full bg-green-500 transition-all duration-75 origin-left"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        )}
-
-        {/* Play/Music indicator overlay with animated soundwave visualizer */}
-        {isPlaying && (
-          <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-sm px-2.5 py-1.5 rounded-full flex items-center gap-2 text-white text-[9px] font-bold tracking-wide border border-white/10 select-none z-15">
-            {/* Animated sound wave bars */}
-            <div className="flex items-end gap-[2px] h-[10px] w-[14px]">
-              <span className="w-[2px] bg-green-400 rounded-full visualizer-bar" style={{ animationDelay: '0.1s' }} />
-              <span className="w-[2px] bg-green-400 rounded-full visualizer-bar" style={{ animationDelay: '0.4s' }} />
-              <span className="w-[2px] bg-green-400 rounded-full visualizer-bar" style={{ animationDelay: '0.2s' }} />
-            </div>
-            <span>{post.isVideo ? 'VIDEO PLAYING' : 'MUSIC PLAYING'}</span>
-          </div>
-        )}
-      </div>
-
-      <div className="p-4 lg:p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <button className="text-text-main hover:text-rose-500 transition-colors transform active:scale-90"><Heart size={24} /></button>
-            <button className="text-text-main hover:text-text-main transition-colors transform active:scale-90"><MessageCircle size={24} /></button>
-            <button className="text-text-main hover:text-text-main transition-colors transform active:scale-90"><Share2 size={24} /></button>
-          </div>
-          <button className="text-text-main hover:text-text-main transition-colors transform active:scale-90"><Bookmark size={24} /></button>
-        </div>
-
-        <div className="space-y-1.5">
-          <p className="text-[13px] text-text-main font-black">{post.likes} likes</p>
-          <p className="text-[13px] text-text-main leading-relaxed">
-            <span className="font-black mr-2 uppercase tracking-tight text-[11px]">{post.user.split(' ')[0]}</span>
-            <span className="text-text-muted dark:text-zinc-400 font-medium">{post.comment}</span>
-          </p>
-          <button className="text-[12px] text-text-muted font-bold mt-2 opacity-60 hover:opacity-100 transition-opacity">View all {post.commentsCount} comments</button>
-        </div>
-      </div>
-    </motion.article>
-  );
-}
 
 function VerifiedDecagram({ size, color, className }: { size: number, color: string, className?: string }) {
   return (

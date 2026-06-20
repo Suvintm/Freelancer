@@ -2,7 +2,7 @@ import { ReactLenis }    from 'lenis/react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Home, Search, PlaySquare, Briefcase,
-  Settings, LogOut, Compass, User, MapPin
+  Settings, LogOut, Compass, User, MapPin, PlusSquare
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { icon: MapPin,     label: 'Nearby',    path: '/nearby'  },
   { icon: PlaySquare, label: 'Reels',     path: '/reels'   },
   { icon: Briefcase,  label: 'Jobs',      path: '/jobs'    },
+  { icon: PlusSquare, label: 'Upload Portal', path: '/upload-portal' },
   { icon: Settings,   label: 'Settings',  path: '/settings'},
   { icon: User,       label: 'Profile',   path: '/profile' }
 ];

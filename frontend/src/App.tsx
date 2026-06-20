@@ -16,6 +16,7 @@ import Maintenance from './pages/Maintenance';
 import OAuthSuccess from './pages/OAuthSuccess';
 import CompleteProfile from './pages/CompleteProfile';
 import Notifications from './pages/Notifications';
+import TempUploadPortal from './pages/TempUploadPortal';
 import { AppLayout } from './components/layout/AppLayout';
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -238,6 +239,16 @@ function App() {
             <AuthGuard>
               <AppLayout>
                 <Settings />
+              </AppLayout>
+            </AuthGuard>
+          } 
+        />
+        <Route 
+          path="/upload-portal" 
+          element={
+            <AuthGuard>
+              <AppLayout>
+                <TempUploadPortal />
               </AppLayout>
             </AuthGuard>
           } 
