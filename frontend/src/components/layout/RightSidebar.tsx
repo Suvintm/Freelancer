@@ -2,9 +2,12 @@ import { ReactLenis }    from 'lenis/react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Home, Search, PlaySquare, Briefcase,
-  Settings, LogOut, Compass,
+  Settings, LogOut, Compass, User,
 } from 'lucide-react';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../../store/slices/authSlice';
 import { useTheme } from '../../hooks/useTheme';
+import defaultProfile from '../../assets/defaultprofile.png';
 
 const NAV_ITEMS = [
   { icon: Home,       label: 'Feed',      path: '/home'    },
@@ -13,11 +16,14 @@ const NAV_ITEMS = [
   { icon: PlaySquare, label: 'Reels',     path: '/reels'   },
   { icon: Briefcase,  label: 'Jobs',      path: '/jobs'    },
   { icon: Settings,   label: 'Settings',  path: '/settings'},
+  { icon: User,       label: 'Profile',   path: '/profile' }
 ];
 
 export const RightSidebar = () => {
   const location = useLocation();
   const { isDarkMode } = useTheme();
+  const user = useSelector(selectUser);
+  const avatarUrl = user?.profilePicture || defaultProfile;
 
   return (
     <ReactLenis className="w-full h-full flex flex-col overflow-y-auto scrollbar-hide">
@@ -32,6 +38,8 @@ export const RightSidebar = () => {
           <nav className="space-y-1 flex-1">
             {NAV_ITEMS.map((item) => {
               const isActive = location.pathname === item.path;
+              const isProfile = item.label === 'Profile';
+
               return (
                 <Link
                   key={item.path}
@@ -47,10 +55,18 @@ export const RightSidebar = () => {
                           : 'text-zinc-600 hover:bg-zinc-200/60 hover:text-zinc-950 border-transparent hover:border-zinc-300')
                   ].join(' ')}
                 >
-                  <item.icon
-                    size={16}
-                    strokeWidth={isActive ? 2.5 : 1.75}
-                  />
+                  {isProfile ? (
+                    <img
+                      src={avatarUrl}
+                      alt="Profile"
+                      className="w-4 h-4 rounded-full object-cover border border-current"
+                    />
+                  ) : (
+                    <item.icon
+                      size={16}
+                      strokeWidth={isActive ? 2.5 : 1.75}
+                    />
+                  )}
                   {item.label}
                 </Link>
               );

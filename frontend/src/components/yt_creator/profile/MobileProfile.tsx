@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { AnimatePresence, motion } from 'framer-motion';
-import { 
-  Youtube, Camera, Settings, Plus, BarChart3, Briefcase, Users2, Edit3, 
-  Lock, PlaySquare, LayoutGrid, CheckCircle2, Globe, 
-  Trash2, ChevronRight, AlertCircle, Play, Image as ImageIcon, Check
+import {
+  Youtube, Camera, Settings, Plus, BarChart3, Briefcase, Users2, Edit3,
+  Lock, PlaySquare, LayoutGrid, CheckCircle2, Globe,
+  Trash2, ChevronRight, AlertCircle, Play, Image as ImageIcon, Check, Eye
 } from 'lucide-react';
 import { selectUser, updateUser } from '../../../store/slices/authSlice';
 import { api } from '../../../api/client';
@@ -19,20 +19,64 @@ export const MobileProfile = () => {
   const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState('yt_posts');
   const [showBannerMenu, setShowBannerMenu] = useState(false);
+  const [isEditingBio, setIsEditingBio] = useState(false);
+  const [bioText, setBioText] = useState(user?.bio || '');
+  const [isSavingBio, setIsSavingBio] = useState(false);
+  const bioRef = useRef<HTMLDivElement>(null);
+  const [isBioExpanded, setIsBioExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!isBioExpanded) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (bioRef.current && !bioRef.current.contains(event.target as Node)) {
+        setIsBioExpanded(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isBioExpanded]);
+
+  const maxChars = 75;
+  const needsTruncation = user?.bio && (user.bio.length > maxChars || user.bio.includes('\n'));
+
+  const displayBio = () => {
+    if (!user?.bio) return '';
+    if (isBioExpanded || !needsTruncation) return user.bio;
+    const newlineIdx = user.bio.indexOf('\n');
+    let limit = maxChars;
+    if (newlineIdx !== -1 && newlineIdx < maxChars) limit = newlineIdx;
+    return user.bio.substring(0, limit) + '...';
+  };
+
+  const startEditingBio = () => {
+    setBioText(user?.bio || '');
+    setIsEditingBio(true);
+  };
+
+  const handleSaveBio = async () => {
+    setIsSavingBio(true);
+    try {
+      const response = await api.patch('/user/me', { bio: bioText });
+      if (response.data?.success) {
+        dispatch(updateUser({ bio: response.data.user.bio }));
+        setIsEditingBio(false);
+      }
+    } catch (err) {
+      console.error('Failed to save bio:', err);
+    } finally {
+      setIsSavingBio(false);
+    }
+  };
 
   const selectedBanner = user?.coverBanner || null;
 
   const handleBannerChange = async (bannerUrl: string | null) => {
     const previousBanner = user?.coverBanner || null;
     try {
-      // 1. Optimistic Update in Redux
       dispatch(updateUser({ coverBanner: bannerUrl }));
-      
-      // 2. Persist in DB
       await api.put('/user/me/cover-banner', { bannerUrl });
     } catch (err) {
       console.error('Failed to update cover banner:', err);
-      // Revert on error
       dispatch(updateUser({ coverBanner: previousBanner }));
     }
   };
@@ -47,19 +91,27 @@ export const MobileProfile = () => {
 
   const youtubeProfiles = user.youtubeProfile || [];
   const primaryChannel = youtubeProfiles.find((p) => p.channel_name) || youtubeProfiles[0] || { channel_name: '', thumbnail_url: '' };
-  
+
   const availableBanners = youtubeProfiles
     .filter((p) => p.banner_url)
     .map((p) => ({ id: p.channelId || p.channel_name, name: p.channel_name, url: p.banner_url || '' }));
-  
+
   const totalVideos = youtubeProfiles.reduce((acc: number, p) => acc + (p.video_count || 0), 0);
-  
+  const totalSubscribers = youtubeProfiles.reduce((acc: number, p) => acc + (p.subscriber_count || 0), 0);
+  const totalViews = youtubeProfiles.reduce((acc: number, p) => acc + Number(p.view_count || 0), 0);
+
   const displayName = user.name || primaryChannel.channel_name || 'YouTube Creator';
-  
+
   const allRoles = Array.from(new Set(
-    youtubeProfiles
-      .map((p) => p.subCategoryName)
-      .filter(Boolean)
+    youtubeProfiles.map((p) => p.subCategoryName).filter(Boolean)
+  )) as string[];
+
+  const allLocations = Array.from(new Set(
+    youtubeProfiles.map((p) => p.country).filter(Boolean)
+  )) as string[];
+
+  const languages = Array.from(new Set(
+    youtubeProfiles.map((p) => p.language).filter(Boolean)
   )) as string[];
 
   const formatCount = (num?: number | string) => {
@@ -76,23 +128,40 @@ export const MobileProfile = () => {
     { label: 'Diamond', count: 10000, img: DIAMOND_BTN },
   ];
 
-  // Use top-level youtubeVideos from auth response which has resolved thumbnails
   const allVideos = user.youtubeVideos || [];
 
+  const timeAgo = (d?: string): string => {
+    if (!d) return '';
+    const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return `${days}d ago`;
+    if (days < 30) return `${Math.floor(days / 7)}w ago`;
+    if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+    return `${Math.floor(days / 365)}y ago`;
+  };
+
+  const isRecent = (d?: string): boolean =>
+    !!d && Date.now() - new Date(d).getTime() < 30 * 24 * 60 * 60 * 1000;
+
   return (
-    <div className="flex lg:hidden w-full flex-col min-h-screen bg-page pb-24 font-sans text-text-main">
-      {/* 1. Top Banner Wrapper - allows absolute popover to float above and not get clipped */}
-      <div 
+    <div className="flex lg:hidden w-full flex-col min-h-screen bg-[#000000] pb-24 font-sans text-white">
+
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 1 — YT BANNER + STATS ON BANNER
+      ═══════════════════════════════════════════════════════ */}
+      <div
         className="relative w-full"
         onMouseLeave={() => setShowBannerMenu(false)}
       >
-        <div className="relative w-full h-[100px] overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#FF0000] via-[#990000] to-black" />
-          
-          {/* Animated Custom Banner Overlay */}
+        <div className="relative w-full h-[110px] overflow-hidden">
+          {/* Base Gradient */}
+          <div className="absolute inset-0 bg-gradient-to-bl from-black via-[#990000] to-[#FF0000]" />
+
+          {/* Custom Banner overlay */}
           <AnimatePresence>
             {selectedBanner && (
-              <motion.img 
+              <motion.img
                 key={selectedBanner}
                 src={selectedBanner}
                 initial={{ opacity: 0 }}
@@ -104,27 +173,43 @@ export const MobileProfile = () => {
             )}
           </AnimatePresence>
 
+          {/* YouTube watermark icon */}
           <AnimatePresence>
             {!selectedBanner && (
-              <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 0.2 }} 
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.15 }}
                 exit={{ opacity: 0 }}
                 className="absolute inset-0 flex items-center justify-center pointer-events-none"
               >
-                <Youtube size={64} className="text-white/30" />
+                <Youtube size={60} className="text-white" />
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Stats row — aligned right and raised, bare white text */}
+          <div className="absolute bottom-0 left-0 right-0 flex items-end justify-end gap-6 pr-6 pb-6">
+            <div className="flex flex-col items-center">
+              <span className="text-[16px] font-bold text-white leading-none">{formatCount(user.followers)}</span>
+              <span className="text-[8px] font-semibold text-white/80 uppercase tracking-wider mt-0.5">Followers</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="text-[16px] font-bold text-white leading-none">{formatCount(user.following)}</span>
+              <span className="text-[8px] font-semibold text-white/80 uppercase tracking-wider mt-0.5">Following</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="text-[16px] font-bold text-white leading-none">{formatCount(totalVideos)}</span>
+              <span className="text-[8px] font-semibold text-white/80 uppercase tracking-wider mt-0.5">Posts</span>
+            </div>
+          </div>
         </div>
 
-        {/* Edit Cover Overlay & Button (Mobile keeps it visible or semi-visible) - Moved outside overflow-hidden */}
+        {/* Edit Cover button — floats top-right above overflow */}
         {availableBanners.length > 0 && (
           <>
             <div className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 z-10 pointer-events-none ${showBannerMenu ? 'opacity-100' : 'opacity-0'}`} />
-            
             <div className="absolute top-3 right-3 z-30 flex flex-col items-end">
-              <button 
+              <button
                 onClick={() => setShowBannerMenu(!showBannerMenu)}
                 className="bg-black/50 backdrop-blur-md border border-white/20 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg active:scale-95"
               >
@@ -132,10 +217,9 @@ export const MobileProfile = () => {
                 Edit Cover
               </button>
 
-              {/* Banner Selection Popover */}
               <AnimatePresence>
                 {showBannerMenu && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: -10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -145,8 +229,7 @@ export const MobileProfile = () => {
                     <div className="px-2.5 py-1 border-b border-white/10 flex items-center justify-between mb-1">
                       <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Select Cover</span>
                     </div>
-
-                    <button 
+                    <button
                       onClick={() => { handleBannerChange(null); setShowBannerMenu(false); }}
                       className={`flex items-center gap-2 px-2 py-1.5 rounded-xl transition-colors text-left ${!selectedBanner ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white'}`}
                     >
@@ -154,9 +237,8 @@ export const MobileProfile = () => {
                       <span className="text-[9px] font-bold flex-1">Default</span>
                       {!selectedBanner && <Check size={8} className="text-[#FF0000] flex-shrink-0" />}
                     </button>
-                    
                     {availableBanners.map((b) => (
-                      <button 
+                      <button
                         key={b.id}
                         onClick={() => { handleBannerChange(b.url); setShowBannerMenu(false); }}
                         className={`flex items-center gap-2 px-2 py-1.5 rounded-xl transition-colors text-left ${selectedBanner === b.url ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white'}`}
@@ -174,189 +256,283 @@ export const MobileProfile = () => {
         )}
       </div>
 
-      {/* 2. Profile Wrap */}
-      <div className="px-4 relative bg-page rounded-t-[24px] -mt-6 pt-4 pb-6 z-10">
-        
-        {/* Avatar & Stats Row */}
-        <div className="flex items-start justify-between">
-          <div className="relative -mt-12 group">
-            <div className="w-24 h-24 rounded-full border-4 border-page bg-page overflow-hidden shadow-xl">
-              <img 
-                src={user.profilePicture || DEFAULT_AVATAR} 
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 2 — PROFILE HEADER ROW
+          Avatar (left, overlapping banner) + Buttons (right)
+      ═══════════════════════════════════════════════════════ */}
+      <div className="px-4 bg-[#000000] -mt-5 rounded-t-[24px] pt-0 pb-0 z-10 relative">
+        <div className="flex items-start gap-3 w-full">
+
+          {/* Avatar */}
+          <div className="relative shrink-0 -mt-5">
+            <div className="w-[80px] h-[80px] rounded-full border-[3px] border-[#000000] bg-[#0B0B0B] overflow-hidden shadow-2xl">
+              <img
+                src={user.profilePicture || DEFAULT_AVATAR}
                 alt="Profile"
                 className="w-full h-full object-cover"
               />
             </div>
-            <button className="absolute bottom-0 right-0 w-7 h-7 bg-[#FF3040] rounded-full border-2 border-page flex items-center justify-center shadow-lg active:scale-95">
-              <Camera size={12} className="text-white" />
+            <button className="absolute bottom-0.5 right-0.5 w-[22px] h-[22px] bg-[#FF3040] rounded-full border-2 border-[#000000] flex items-center justify-center shadow-lg active:scale-95">
+              <Camera size={10} className="text-white" />
             </button>
           </div>
 
-          <div className="flex flex-col flex-1 ml-4 mt-2">
-            <div className="flex justify-around items-center w-full mb-3">
-              <div className="flex flex-col items-center">
-                <span className="text-sm font-black text-text-main">{formatCount(user.followers)}</span>
-                <span className="text-[10px] font-bold text-text-muted uppercase">Followers</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="text-sm font-black text-text-main">{formatCount(user.following)}</span>
-                <span className="text-[10px] font-bold text-text-muted uppercase">Following</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="text-sm font-black text-text-main">{formatCount(totalVideos)}</span>
-                <span className="text-[10px] font-bold text-text-muted uppercase">Posts</span>
-              </div>
-            </div>
-
+          {/* Right column: Buttons + Toolbox */}
+          <div className="flex-1 flex flex-col gap-1.5 pb-1 mt-4">
+            {/* Settings + Add Story row */}
             <div className="flex items-center gap-2">
-              <button className="flex-1 h-8 rounded-lg bg-border-secondary border border-border-main text-text-main text-[11px] font-bold flex items-center justify-center gap-1.5 active:scale-95">
-                <Settings size={12} />
+              <button className="flex-1 h-[30px] rounded-lg bg-[#0B0B0B] border border-[#1A1A1B] text-white text-[10px] font-bold flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer">
+                <Settings size={11} />
                 Settings
               </button>
-              <button className="flex-1 h-8 rounded-lg bg-[#FF3040] text-text-main text-[11px] font-bold flex items-center justify-center gap-1.5 active:scale-95">
-                <Plus size={14} />
+              <button className="flex-1 h-[30px] rounded-lg bg-[#FF3040] text-white text-[10px] font-bold flex items-center justify-center gap-1 active:scale-95 cursor-pointer">
+                <Plus size={12} />
                 Add Story
               </button>
             </div>
 
-            {/* Toolbox */}
-            <div className="flex items-center gap-1 mt-2">
-              <button className="flex-1 h-8 rounded-md bg-border-secondary flex items-center justify-center gap-1 border border-border-main/50">
-                <BarChart3 size={10} className="text-red-500" />
-                <span className="text-[9px] font-bold text-text-main">Analytics</span>
+            {/* Toolbox row */}
+            <div className="flex items-center gap-1.5">
+              <button className="flex-1 h-[26px] rounded-lg bg-[#0B0B0B] border border-[#1A1A1B] flex items-center justify-center gap-1 cursor-pointer active:scale-95">
+                <BarChart3 size={9} className="text-[#FF0000]" />
+                <span className="text-[8px] font-bold text-white uppercase tracking-wider">Analytics</span>
               </button>
-              <button className="flex-1 h-8 rounded-md bg-border-secondary flex items-center justify-center gap-1 border border-border-main/50">
-                <Briefcase size={10} className="text-emerald-500" />
-                <span className="text-[9px] font-bold text-text-main">Deals</span>
+              <button className="flex-1 h-[26px] rounded-lg bg-[#0B0B0B] border border-[#1A1A1B] flex items-center justify-center gap-1 cursor-pointer active:scale-95">
+                <Briefcase size={9} className="text-white" />
+                <span className="text-[8px] font-bold text-white uppercase tracking-wider">Deals</span>
               </button>
-              <button className="flex-1 h-8 rounded-md bg-border-secondary flex items-center justify-center gap-1 border border-border-main/50">
-                <Users2 size={10} className="text-blue-500" />
-                <span className="text-[9px] font-bold text-text-main">Community</span>
+              <button className="flex-1 h-[26px] rounded-lg bg-[#0B0B0B] border border-[#1A1A1B] flex items-center justify-center gap-1 cursor-pointer active:scale-95">
+                <Users2 size={9} className="text-[#22C55E]" />
+                <span className="text-[8px] font-bold text-white uppercase tracking-wider">Community</span>
               </button>
             </div>
           </div>
         </div>
 
-        {/* Info Block */}
-        <div className="mt-4">
-          <div className="flex items-center gap-1">
-            <h1 className="text-[15px] font-bold text-text-main">{displayName}</h1>
-            <CheckCircle2 size={14} className="text-[#FF3040] fill-[#FF3040]/20" />
+        {/* ═══════════════════════════════════════════════════════
+            SECTION 3 — IDENTITY BLOCK
+            Name · Chips · Location · Bio
+        ═══════════════════════════════════════════════════════ */}
+        <div className="mt-0.5 pl-1">
+          {/* Name + verified badge */}
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-[15px] font-bold text-white leading-tight">{displayName}</h1>
+            {/* Red verified rosette */}
+            <svg viewBox="0 0 24 24" className="w-[14px] h-[14px] shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"
+                fill="#FF3040"
+              />
+              <path d="m9 12 2 2 4-4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </div>
 
+          {/* Category / role chips */}
           <div className="flex flex-wrap gap-1.5 mt-1.5">
             {allRoles.length > 0 ? allRoles.map((role, i) => (
-              <span key={i} className="px-2 py-0.5 rounded bg-border-secondary border border-border-main text-[9px] font-bold text-text-muted uppercase">
+              <span key={i} className="px-2 py-0.5 rounded-md bg-[#0B0B0B] border border-[#1A1A1B] text-[9px] font-bold text-[#A1A1AA] uppercase tracking-widest">
                 {role}
               </span>
             )) : (
-              <span className="px-2 py-0.5 rounded border border-dashed border-border-main text-[9px] font-bold text-text-dim uppercase">
-                SELECT NICHE
+              <span className="px-2 py-0.5 rounded-md border border-dashed border-[#1A1A1B] text-[9px] font-bold text-[#A1A1AA] uppercase tracking-widest">
+                SELECT CHANNEL ROLE
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-1 mt-2">
-            <Globe size={10} className="text-text-dim" />
-            <span className="text-[10px] font-bold text-text-dim uppercase">GLOBAL</span>
+          {/* Location + Language */}
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <Globe size={10} className="text-[#A1A1AA] shrink-0" />
+            <span className="text-[10px] font-semibold text-[#A1A1AA] uppercase tracking-wide">
+              {allLocations.length > 0 ? allLocations.join(' • ') : 'GLOBAL'}
+              {languages.length > 0 ? ` • ${languages.join(', ').toUpperCase()}` : ''}
+            </span>
           </div>
 
-          <div className="mt-2.5 flex items-start gap-2">
-            {user.bio ? (
-              <>
-                <p className="flex-1 text-[12px] text-text-muted leading-relaxed font-medium">
-                  {user.bio}
-                </p>
-                <button className="text-text-dim mt-0.5">
-                  <Edit3 size={12} />
-                </button>
-              </>
-            ) : (
-              <button className="flex items-center gap-1.5 text-[#FF3040] text-[11px] font-bold bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20">
-                <Edit3 size={12} />
-                Add profile bio
-              </button>
-            )}
+          {/* Bio */}
+          <div className="mt-2.5 w-full" ref={bioRef}>
+            <AnimatePresence mode="wait">
+              {isEditingBio ? (
+                <motion.div
+                  key="edit"
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="w-full flex flex-col gap-2"
+                >
+                  <textarea
+                    value={bioText}
+                    onChange={(e) => setBioText(e.target.value)}
+                    maxLength={150}
+                    rows={3}
+                    disabled={isSavingBio}
+                    className="w-full text-[12px] text-[#A1A1AA] bg-[#0B0B0B] border border-[#1A1A1B] rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-[#FF3040]/30 focus:border-[#FF3040]/50 transition-all font-medium resize-none placeholder-[#A1A1AA]/40"
+                    placeholder="Tell us about yourself..."
+                  />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-[#A1A1AA]/60 font-bold">{bioText.length}/150</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setIsEditingBio(false)}
+                        disabled={isSavingBio}
+                        className="h-7 px-3 rounded-lg border border-[#1A1A1B] text-[11px] font-bold text-white hover:bg-[#0B0B0B] transition-all disabled:opacity-50 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSaveBio}
+                        disabled={isSavingBio}
+                        className="h-7 px-3 rounded-lg bg-[#FF3040] text-white text-[11px] font-bold hover:bg-red-600 transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        {isSavingBio ? (
+                          <>
+                            <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" />
+                            <span>Saving...</span>
+                          </>
+                        ) : <span>Save</span>}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="view"
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 4 }}
+                  className="flex items-start gap-2 w-full"
+                >
+                  <div className="flex-1 max-w-[50%]">
+                    {user.bio ? (
+                      <p className="text-[12px] text-[#A1A1AA] leading-relaxed font-medium whitespace-pre-wrap">
+                        {displayBio()}
+                        {needsTruncation && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setIsBioExpanded(!isBioExpanded); }}
+                            className="text-[#FF3040] hover:text-red-400 font-bold ml-1 text-[11px] cursor-pointer inline-block"
+                          >
+                            {isBioExpanded ? ' less' : ' more'}
+                          </button>
+                        )}
+                      </p>
+                    ) : (
+                      <button
+                        onClick={startEditingBio}
+                        className="flex items-center gap-1.5 text-[#FF3040] text-[11px] font-bold bg-[#FF3040]/10 px-3 py-1.5 rounded-lg border border-[#FF3040]/20 cursor-pointer"
+                      >
+                        <Edit3 size={12} />
+                        Add profile bio
+                      </button>
+                    )}
+                  </div>
+                  {user.bio && (
+                    <button
+                      onClick={startEditingBio}
+                      className="text-[#A1A1AA] hover:text-white transition-colors mt-0.5 shrink-0 cursor-pointer"
+                    >
+                      <Edit3 size={13} />
+                    </button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
 
-      {/* 3. Milestones */}
-      <div className="border-t border-border-main/50 pt-4 pb-2">
-        <h3 className="text-[10px] font-black text-text-dim uppercase tracking-widest px-4 mb-3">YT Creator Milestones</h3>
-        <div className="flex gap-4 overflow-x-auto px-4 pb-4 scrollbar-hide">
-          
-          <button className="flex-shrink-0 flex flex-col items-center gap-2">
-            <div className="w-[72px] h-[72px] rounded-2xl bg-container flex items-center justify-center border border-border-main shadow-lg active:scale-95 transition-transform">
-              <Plus size={24} className="text-text-main" />
-            </div>
-            <span className="text-[10px] font-bold text-text-main">Add Post</span>
-            <span className="text-[8px] font-black text-[#FF3040] uppercase">Share Now</span>
-          </button>
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 4 — YT CREATOR MILESTONES
+      ═══════════════════════════════════════════════════════ */}
+      <div className="mt-4 pb-1 px-4">
+        <h3 className="text-[10px] font-semibold text-[#A1A1AA] uppercase tracking-[0.12em] mb-2">
+          YT Creator Milestones
+        </h3>
+        <div className="flex justify-start gap-5 pb-1">
 
-          {milestones.map((m, i) => {
+          {milestones.map((m) => {
             const unlockedChannels = youtubeProfiles.filter((p) => (p.subscriber_count || 0) >= m.count).length;
             const isUnlocked = unlockedChannels > 0;
 
             return (
-              <div key={i} className="flex-shrink-0 flex flex-col items-center gap-2">
-                <div className={`relative w-[72px] h-[72px] rounded-2xl flex items-center justify-center border transition-all duration-300 ${isUnlocked ? 'bg-card border-border-main shadow-md' : 'bg-container border-border-secondary border-dashed shadow-inner'}`}>
-                  <img src={m.img} alt={m.label} className={`w-10 h-10 object-contain transition-transform duration-300 ${!isUnlocked ? 'opacity-50 grayscale contrast-125 mix-blend-luminosity' : 'drop-shadow-lg'}`} />
+              <div key={m.label} className="flex-shrink-0 flex flex-col items-center gap-1">
+                <div className={`relative w-[60px] h-[60px] rounded-full flex items-center justify-center border border-[#1A1A1B] bg-[#0B0B0B]/40 transition-all duration-300`}>
+                  <img
+                    src={m.img}
+                    alt={m.label}
+                    className={`w-8 h-8 object-contain transition-all duration-300 ${!isUnlocked ? 'opacity-40 grayscale' : 'drop-shadow-lg'}`}
+                  />
                   {!isUnlocked && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-7 h-7 rounded-full bg-black/70 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-xl">
-                        <Lock size={12} className="text-white" />
-                      </div>
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full">
+                      <Lock size={13} className="text-white" />
                     </div>
                   )}
                 </div>
-                <div className="text-center space-y-0.5">
-                  <span className={`block text-[11px] font-black uppercase tracking-wider ${isUnlocked ? 'text-text-main' : 'text-text-muted'}`}>{m.label}</span>
-                  <span className={`block text-[8px] font-bold uppercase tracking-widest ${isUnlocked ? 'text-emerald-500' : 'text-text-dim'}`}>
-                    {isUnlocked ? 'Unlocked' : 'Locked'}
-                  </span>
-                </div>
+                <span className={`text-[9px] font-bold tracking-wide ${isUnlocked ? 'text-white' : 'text-[#A1A1AA]/50'}`}>{m.label}</span>
+                <span className={`text-[7.5px] font-semibold uppercase tracking-wider ${isUnlocked ? 'text-white' : 'text-[#A1A1AA]/40'}`}>
+                  {unlockedChannels} / {youtubeProfiles.length || 1} UNLOCKED
+                </span>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* 4. Linked Channels */}
-      <div className="px-4 py-4 border-t border-border-main/50">
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 5 — LINKED CHANNELS
+      ═══════════════════════════════════════════════════════ */}
+      <div className="px-4 pt-3 pb-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[12px] font-bold text-text-main">Linked Channels ({youtubeProfiles.length})</h3>
-          <button className="flex items-center gap-1 bg-border-secondary px-2.5 py-1.5 rounded-lg border border-[#FF3040]/30 active:scale-95">
-            <Plus size={12} className="text-[#FF3040]" />
-            <span className="text-[10px] font-bold text-[#FF3040]">Add Another</span>
+          <h3 className="text-[13px] font-bold text-white">Linked Channels ({youtubeProfiles.length})</h3>
+          <button className="flex items-center gap-1.5 bg-[#0B0B0B] px-2.5 py-1.5 rounded-lg border border-white/20 active:scale-95 cursor-pointer">
+            <Plus size={12} className="text-white" />
+            <span className="text-[10px] font-bold text-white">Add Another</span>
           </button>
         </div>
 
         <div className="flex flex-col gap-3">
           {youtubeProfiles.length > 0 ? youtubeProfiles.map((channel, i) => (
-            <div key={channel.id || i} className="bg-border-secondary rounded-xl p-3 border border-border-main">
+            <div key={channel.id || i} className="bg-[#0B0B0B] rounded-xl p-3 border border-[#1A1A1B]">
               <div className="flex items-center gap-3">
-                <img src={channel.thumbnail_url || DEFAULT_AVATAR} alt={channel.channel_name} className="w-12 h-12 rounded-full bg-page object-cover border border-border-main" />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[13px] font-bold text-text-main line-clamp-1">{channel.channel_name}</span>
+                <img
+                  src={channel.thumbnail_url || DEFAULT_AVATAR}
+                  alt={channel.channel_name}
+                  className="w-[48px] h-[48px] rounded-full bg-[#000] object-cover border border-[#1A1A1B] shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  {/* Channel name + PRIMARY badge */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[13px] font-bold text-white line-clamp-1">{channel.channel_name}</span>
                     {i === 0 && (
-                      <span className="bg-[#FF3040]/10 text-[#FF3040] text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest border border-[#FF3040]/20">Primary</span>
+                      <span className="bg-[#FF3040] text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest shrink-0">
+                        PRIMARY
+                      </span>
                     )}
+                    {/* Highest achievement badge */}
+                    {(channel.subscriber_count || 0) >= 10000 ? (
+                      <img src={DIAMOND_BTN} alt="Diamond" className="w-4 h-4 object-contain shrink-0" />
+                    ) : (channel.subscriber_count || 0) >= 1000 ? (
+                      <img src={GOLD_BTN} alt="Gold" className="w-4 h-4 object-contain shrink-0" />
+                    ) : (channel.subscriber_count || 0) >= 100 ? (
+                      <img src={SILVER_BTN} alt="Silver" className="w-4 h-4 object-contain shrink-0" />
+                    ) : null}
                   </div>
+
+                  {/* Stats row */}
                   <div className="flex items-center gap-3 mt-1.5">
                     <div className="flex items-center gap-1">
-                      <Users2 size={10} className="text-red-500" />
-                      <span className="text-[10px] font-bold text-white/60">{formatCount(channel.subscriber_count)}</span>
+                      <Users2 size={11} className="text-[#FF0000]" />
+                      <span className="text-[10px] font-bold text-[#A1A1AA]">{formatCount(channel.subscriber_count)}</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Youtube size={10} className="text-blue-500" />
-                      <span className="text-[10px] font-bold text-white/60">{formatCount(channel.view_count || 0)}</span>
+                      <Eye size={11} className="text-white/60" />
+                      <span className="text-[10px] font-bold text-[#A1A1AA]">{formatCount(channel.view_count || 0)}</span>
                     </div>
                   </div>
+
+                  {/* Niche */}
                   <div className="mt-1.5">
                     {channel.subCategoryName ? (
-                      <span className="text-[9px] font-bold text-[#FF3040] uppercase">{channel.subCategoryName}</span>
+                      <span className="text-[9px] font-bold text-[#FF3040] uppercase tracking-wider">{channel.subCategoryName}</span>
                     ) : (
                       <div className="flex items-center gap-1">
                         <AlertCircle size={8} className="text-yellow-500" />
@@ -366,123 +542,224 @@ export const MobileProfile = () => {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-border-main/50">
+
+              {/* Bottom divider row — verified + delete + analytics */}
+              <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#1A1A1B]">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 size={14} className="text-red-500" />
-                  <button className="p-1 active:scale-90">
-                    <Trash2 size={14} className="text-text-dim hover:text-red-500 transition-colors" />
+                  <CheckCircle2 size={15} className="text-[#FF0000]" />
+                  <button className="p-0.5 active:scale-90 cursor-pointer">
+                    <Trash2 size={14} className="text-[#A1A1AA]/60 hover:text-[#FF3040] transition-colors" />
                   </button>
                 </div>
-                <button className="flex items-center gap-0.5 active:opacity-70">
+                <button className="flex items-center gap-0.5 active:opacity-70 cursor-pointer">
                   <span className="text-[10px] font-bold text-[#FF3040]">Analytics</span>
                   <ChevronRight size={12} className="text-[#FF3040]" />
                 </button>
               </div>
             </div>
           )) : (
-            <div className="bg-border-secondary rounded-xl p-6 border border-border-main text-center border-dashed">
-              <p className="text-xs font-medium text-text-dim">No channels linked yet.</p>
+            <div className="bg-[#0B0B0B] rounded-xl p-6 border border-dashed border-[#1A1A1B] text-center">
+              <Youtube size={28} className="text-[#A1A1AA]/40 mx-auto mb-2" />
+              <p className="text-[11px] font-medium text-[#A1A1AA]/60">No channels linked yet.</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* 5. Tabs & Feed */}
-      <div className="mt-2 border-t border-border-main/50 pt-2">
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 6 — TAB BAR
+      ═══════════════════════════════════════════════════════ */}
+      <div className="mt-1 border-t border-[#1A1A1B]">
         <div className="flex items-center justify-around">
           {TABS.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex flex-col items-center gap-1.5 py-3 flex-1 relative ${activeTab === tab.id ? 'text-red-500' : 'text-text-dim'}`}
+              className={`flex flex-col items-center gap-1.5 py-3 flex-1 relative cursor-pointer ${activeTab === tab.id ? 'text-[#FF3040]' : 'text-[#A1A1AA]'}`}
             >
-              <tab.icon size={18} className={activeTab === tab.id ? 'text-red-500' : 'text-text-dim'} />
+              <tab.icon size={18} className={activeTab === tab.id ? 'text-[#FF3040]' : 'text-[#A1A1AA]'} />
               <span className="text-[10px] font-black uppercase tracking-widest">{tab.label}</span>
               {activeTab === tab.id && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500 rounded-full" />
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#FF3040] rounded-full" />
               )}
             </button>
           ))}
         </div>
+      </div>
 
-        <div className="pt-4 px-4 pb-8">
-          {activeTab === 'yt_posts' && (
-            <div className="w-full">
-              <div className="flex items-center justify-between mb-4">
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 7 — TAB CONTENT
+      ═══════════════════════════════════════════════════════ */}
+      <div className="pb-8">
+
+        {/* ── YT POSTS TAB ─────────────────────────────────── */}
+        {activeTab === 'yt_posts' && (
+          <div className="w-full pt-5">
+
+            {/* FEATURED Section */}
+            <div>
+              {/* Section header */}
+              <div className="flex items-center justify-between px-4 mb-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-4 bg-[#FF0000] rounded-full" />
-                  <span className="text-[11px] font-black text-text-main uppercase tracking-widest">Featured</span>
+                  <div className="w-[3px] h-[16px] bg-[#FF0000] rounded-full" />
+                  <span className="text-[11px] font-black text-white uppercase tracking-widest">Featured</span>
                   {allVideos.length > 0 && (
-                    <span className="bg-[#FF0000]/10 text-[#FF0000] text-[8px] font-black px-1.5 py-0.5 rounded border border-[#FF0000]/20">TOP {Math.min(allVideos.length, 10)}</span>
+                    <span className="bg-[#FF0000]/15 text-[#FF0000] text-[8px] font-black px-1.5 py-0.5 rounded border border-[#FF0000]/20 tracking-widest">
+                      TOP {Math.min(allVideos.length, 6)}
+                    </span>
                   )}
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-[8px] font-bold text-text-dim uppercase tracking-widest">Swipe</span>
-                  <ChevronRight size={10} className="text-[#FF3040]" />
+                  <span className="text-[8px] font-bold text-[#A1A1AA] uppercase tracking-widest">SWIPE</span>
+                  <ChevronRight size={11} className="text-[#FF3040]" />
+                  <ChevronRight size={11} className="text-[#FF3040] -ml-2" />
                 </div>
               </div>
 
-              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
-                {allVideos.length > 0 ? allVideos.slice(0, 10).map((video, idx) => (
-                  <div key={video.id} className="flex-shrink-0 w-[260px] bg-border-secondary rounded-xl overflow-hidden border border-border-main">
-                    <div className="relative aspect-video bg-page">
-                      <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover" />
-                      
-                      <div className="absolute top-2 left-2 bg-[#FF0000] text-text-main text-[8px] font-black px-1.5 py-0.5 rounded tracking-widest">
-                        NEW
-                      </div>
-                      
-                      <div className="absolute top-2 right-2 bg-black/60 text-text-main text-[9px] font-bold px-1.5 py-0.5 rounded backdrop-blur-sm">
+              {/* Featured horizontal scroll */}
+              <div className="flex gap-3.5 overflow-x-auto pb-4 scrollbar-hide -ml-0 px-4">
+                {allVideos.length > 0 ? allVideos.slice(0, 6).map((video, idx) => (
+                  <div
+                    key={video.id || idx}
+                    className="flex-shrink-0 w-[72vw] max-w-[280px] bg-[#0B0B0B] rounded-xl overflow-hidden border border-[#1A1A1B]"
+                  >
+                    {/* 16:9 Thumbnail */}
+                    <div className="relative w-full aspect-video bg-[#0B0B0B]">
+                      <img
+                        src={video.thumbnail}
+                        alt={video.title}
+                        className="w-full h-full object-cover"
+                      />
+                      {/* Bottom gradient */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
+
+                      {/* NEW badge */}
+                      {isRecent(video.published_at || video.publishedAt) && (
+                        <div className="absolute top-2 left-2 bg-[#FF0000] text-white text-[8px] font-black px-1.5 py-0.5 rounded tracking-widest">
+                          NEW
+                        </div>
+                      )}
+
+                      {/* Index badge */}
+                      <div className="absolute top-2 right-2 bg-black/60 text-white text-[9px] font-bold px-1.5 py-0.5 rounded backdrop-blur-sm">
                         #{idx + 1}
                       </div>
 
+                      {/* Centre play button */}
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center border border-border-main">
-                          <Play size={16} className="text-text-main fill-white ml-1" />
+                        <div className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center border border-white/20">
+                          <Play size={14} className="text-white fill-white ml-0.5" />
                         </div>
                       </div>
 
-                      {(video.published_at || video.publishedAt) && (
-                        <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/60 px-1.5 py-0.5 rounded backdrop-blur-sm">
-                          <span className="text-[9px] font-bold text-white/90">
-                            {new Date((video.published_at || video.publishedAt)!).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {/* Time pill bottom-left */}
+                      <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/60 px-1.5 py-0.5 rounded backdrop-blur-sm">
+                        <span className="text-[8px] font-bold text-white/85">
+                          {timeAgo(video.published_at || video.publishedAt)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Info bar below thumbnail */}
+                    <div className="p-2.5">
+                      <h4 className="text-[11px] font-bold text-white leading-snug line-clamp-2 mb-1.5">{video.title || 'Untitled Video'}</h4>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                          {primaryChannel.thumbnail_url ? (
+                            <img src={primaryChannel.thumbnail_url} className="w-[14px] h-[14px] rounded-full object-cover border border-[#1A1A1B] shrink-0" alt="" />
+                          ) : (
+                            <Youtube size={11} className="text-[#FF0000] shrink-0" />
+                          )}
+                          <span className="text-[9px] font-semibold text-[#A1A1AA] line-clamp-1">
+                            {primaryChannel.channel_name || 'Creator'}
                           </span>
                         </div>
-                      )}
-                    </div>
-                    <div className="p-3">
-                      <h4 className="text-[12px] font-bold text-text-main leading-snug line-clamp-2 mb-1">{video.title}</h4>
-                      {video.description && (
-                        <p className="text-[10px] text-text-muted line-clamp-2 mb-2 leading-snug">
-                          {video.description}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <img src={primaryChannel.thumbnail_url || DEFAULT_AVATAR} className="w-5 h-5 rounded-full object-cover border border-border-main" />
-                        <span className="text-[10px] font-bold text-text-dim">{primaryChannel.channel_name || 'Creator'}</span>
+                        {/* Watch pill */}
+                        <div className="flex items-center gap-1 bg-[#FF3040]/10 px-2 py-0.5 rounded-full border border-[#FF3040]/20 shrink-0">
+                          <Play size={8} className="text-[#FF3040] fill-[#FF3040]" />
+                          <span className="text-[8px] font-black text-[#FF3040] uppercase tracking-wider">WATCH</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 )) : (
-                  <div className="w-full py-10 flex items-center justify-center border border-dashed border-border-main rounded-2xl">
-                    <p className="text-xs font-bold text-white/30 uppercase tracking-widest">No featured videos</p>
+                  <div className="w-full py-10 flex items-center justify-center border border-dashed border-[#1A1A1B] rounded-2xl mx-4">
+                    <div className="flex flex-col items-center gap-2">
+                      <Youtube size={32} className="text-[#A1A1AA]/30" />
+                      <p className="text-[11px] font-bold text-[#A1A1AA]/40 uppercase tracking-widest">No featured videos</p>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
-          )}
-          
-          {activeTab === 'posts' && (
-            <div className="text-center py-10 border border-dashed border-border-main rounded-xl">
-              <p className="text-xs font-bold text-white/30 uppercase tracking-widest">Posts grid coming soon</p>
-            </div>
-          )}
-          {activeTab === 'reels' && (
-            <div className="text-center py-10 border border-dashed border-border-main rounded-xl">
-              <p className="text-xs font-bold text-white/30 uppercase tracking-widest">Reels feed coming soon</p>
-            </div>
-          )}
-        </div>
+
+            {/* ALL VIDEOS (Archive) Section */}
+            {allVideos.length > 6 && (
+              <div className="px-4 mt-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-[3px] h-[16px] bg-white/40 rounded-full" />
+                    <span className="text-[11px] font-black text-white uppercase tracking-widest">All Videos</span>
+                    <span className="bg-white/8 text-[#A1A1AA] text-[8px] font-black px-1.5 py-0.5 rounded border border-white/10 tracking-widest">
+                      {allVideos.length - 6} MORE
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2.5">
+                  {allVideos.slice(6).map((video, idx) => (
+                    <div key={video.id || idx} className="flex bg-[#0B0B0B] rounded-xl overflow-hidden border border-[#1A1A1B]">
+                      {/* Thumbnail */}
+                      <div className="relative w-[140px] shrink-0">
+                        <img
+                          src={video.thumbnail}
+                          alt={video.title}
+                          className="w-full h-full object-cover"
+                          style={{ minHeight: '80px' }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/40 pointer-events-none" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-7 h-7 rounded-full bg-black/50 flex items-center justify-center border border-white/20">
+                            <Play size={10} className="text-white fill-white ml-0.5" />
+                          </div>
+                        </div>
+                      </div>
+                      {/* Info */}
+                      <div className="flex-1 p-2.5 min-w-0 flex flex-col justify-between">
+                        <h4 className="text-[11px] font-bold text-white leading-snug line-clamp-2">{video.title || 'Untitled Video'}</h4>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-[9px] font-medium text-[#A1A1AA] line-clamp-1 flex-1 min-w-0">
+                            {primaryChannel.channel_name || 'Creator'}
+                          </span>
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            <span className="text-[9px] font-bold text-[#FF3040]">Watch</span>
+                            <ChevronRight size={10} className="text-[#FF3040]" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── POSTS TAB ─────────────────────────────────────── */}
+        {activeTab === 'posts' && (
+          <div className="mx-4 mt-4 text-center py-10 border border-dashed border-[#1A1A1B] rounded-xl">
+            <LayoutGrid size={28} className="text-[#A1A1AA]/30 mx-auto mb-2" />
+            <p className="text-[11px] font-bold text-[#A1A1AA]/40 uppercase tracking-widest">Posts grid coming soon</p>
+          </div>
+        )}
+
+        {/* ── REELS TAB ─────────────────────────────────────── */}
+        {activeTab === 'reels' && (
+          <div className="mx-4 mt-4 text-center py-10 border border-dashed border-[#1A1A1B] rounded-xl">
+            <PlaySquare size={28} className="text-[#A1A1AA]/30 mx-auto mb-2" />
+            <p className="text-[11px] font-bold text-[#A1A1AA]/40 uppercase tracking-widest">Reels feed coming soon</p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -11,7 +11,7 @@ export const TopNavbar = () => {
           <input 
             type="text" 
             placeholder="Search creators, jobs, or inspiration..."
-            className="w-full h-11 bg-zinc-900/30 border border-zinc-800/50 rounded-[20px] pl-12 pr-4 text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/30 transition-all"
+            className="w-full h-11 bg-zinc-900/30 border border-zinc-800/50 rounded-[20px] pl-12 pr-4 text-[13px] text-black placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/30 transition-all"
           />
         </div>
       </div>
