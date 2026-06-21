@@ -417,7 +417,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4 lg:space-y-10 pb-20">
+    <div className="w-full max-w-3xl mx-auto space-y-6 lg:space-y-10 pb-20 pt-1 lg:pt-4">
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes soundwave-bar {
           0%, 100% { transform: scaleY(0.2); }
@@ -430,30 +430,33 @@ export default function Home() {
       ` }} />
       
       {/* ─── DESKTOP TOP VIEW LAYOUT ─── */}
-      <div className="hidden lg:flex flex-col gap-10">
-        <div className="flex flex-col lg:flex-row-reverse gap-6 lg:items-center">
-          {/* 1. Banner Section */}
-          <section className="lg:w-1/2 px-6 lg:px-0">
-            <UnifiedBanner />
-          </section>
+      <div className="hidden lg:flex flex-col gap-8 pb-4">
+        {/* Logo Section */}
+        <div className="w-full px-2 mt-2 mb-[-16px] flex justify-center lg:justify-start">
+          <img 
+            src={isDarkMode ? darkLogo : lightLogo} 
+            alt="SuviX" 
+            className="h-8 w-auto opacity-90 hover:opacity-100 transition-opacity" 
+          />
+        </div>
 
-          {/* 2. Stories Section */}
-          <section className="lg:w-1/2 -mx-4 lg:mx-0">
-            <div className="hidden lg:block mb-8 px-1">
-              <img 
-                src={isDarkMode ? darkLogo : lightLogo} 
-                alt="SuviX" 
-                className="h-8 w-auto opacity-90 hover:opacity-100 transition-opacity" 
-              />
-            </div>
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide px-6 lg:px-0">
+        {/* 1. Banner Section (Full Width Stacked) */}
+        <section className="w-full">
+          <UnifiedBanner />
+        </section>
+
+        {/* 2 & 3. Stories and Feature Gallery (Side by Side) */}
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 lg:items-center w-full">
+          {/* Stories Section (60%) */}
+          <section className="w-full lg:w-[60%]">
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
               {stories.map((story) => (
                 <div key={story._id} className="flex flex-col items-center gap-2 flex-shrink-0 cursor-pointer group relative">
                   <div className="relative w-[60px] h-[60px] lg:w-[68px] lg:h-[68px] flex items-center justify-center">
                     <svg className="absolute inset-0 w-full h-full -rotate-90 opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-110 group-hover:scale-100">
                       <circle cx="50%" cy="50%" r="48%" className={`fill-none stroke-current stroke-1 ${isDarkMode ? 'text-white' : 'text-black'}`} strokeDasharray="4 8" strokeLinecap="round" />
                     </svg>
-                    <div className={`absolute inset-0 rounded-full p-[2px] transition-transform duration-500 group-active:scale-95 ${story.hasActive || story.isUser ? 'bg-black' : 'bg-black/20'}`}>
+                    <div className={`absolute inset-0 rounded-full p-[2px] transition-transform duration-500 group-active:scale-95 ${story.hasActive || story.isUser ? (isDarkMode ? 'bg-white' : 'bg-black') : (isDarkMode ? 'bg-white/20' : 'bg-black/20')}`}>
                       <div className="w-full h-full rounded-full bg-container p-[2px]">
                         <img src={story.avatar} alt={story.username} className="w-full h-full rounded-full object-cover bg-border-secondary shadow-inner" />
                       </div>
@@ -465,29 +468,39 @@ export default function Home() {
                     )}
                   </div>
                   <div className="flex items-center gap-1 max-w-[60px] lg:max-w-[68px]">
-                    <span className={`text-[9px] font-bold truncate ${story.hasActive ? 'text-text-main' : 'text-text-muted'}`}>{story.username}</span>
+                    <span className={`text-[10px] font-medium truncate ${story.hasActive ? 'text-text-main' : 'text-text-muted'}`}>{story.username}</span>
                     {story.verifiedColor && <VerifiedDecagram size={10} color={story.verifiedColor} className="flex-shrink-0" />}
                   </div>
                 </div>
               ))}
             </div>
           </section>
-        </div>
 
-        {/* Feature Gallery */}
-        <section className="-mx-4 lg:mx-0 -mt-2 lg:mt-0">
-          <FeatureGallery paused={isScrolling} />
-        </section>
+          {/* Feature Gallery (40%) */}
+          <section className="w-full lg:w-[40%] -mt-2 lg:mt-0">
+            <FeatureGallery paused={isScrolling} />
+          </section>
+        </div>
       </div>
 
       {/* ─── MOBILE SPLIT LAYOUT ─── */}
-      <div className="flex lg:hidden gap-3 items-start -mr-4 flex-row-reverse">
+      <div className="relative lg:hidden -mr-4 -ml-4 -mt-3 lg:mt-0 min-h-[310px]">
         
-        {/* Right Column: Vertical Stories Sidebar (Instagram style) */}
-        <div className="relative flex-shrink-0">
+        {/* Left Column: Stacked Banner & Feature Gallery (Full width, behind the stories sidebar) */}
+        <div className="w-full flex flex-col gap-3">
+          <div className="w-full h-[226px] pr-[84px]">
+            <UnifiedBanner className="h-full" />
+          </div>
+          <div className="w-full">
+            <FeatureGallery paused={isScrolling} isMobileLayout={true} />
+          </div>
+        </div>
+
+        {/* Floating Right Column: Vertical Stories Sidebar (Instagram style) */}
+        <div className="absolute right-0 top-0 z-20 flex-shrink-0">
           <div className={`
-            w-[84px] h-[310px] flex flex-col items-center py-4 px-1 rounded-l-[40px] rounded-r-none overflow-y-auto scrollbar-hide gap-4.5   overscroll-y-contain touch-pan-y will-change-scroll
-            ${isDarkMode ? 'bg-[#242526]' : 'bg-[#C8CBD0]'}
+            w-[84px] h-[310px] flex flex-col items-center py-4 px-1 rounded-l-[40px] rounded-r-none overflow-y-auto scrollbar-hide gap-4.5 overscroll-y-contain touch-pan-y will-change-scroll shadow-lg
+            ${isDarkMode ? 'bg-[#242526]/90 backdrop-blur-md' : 'bg-[#C8CBD0]/90 backdrop-blur-md'}
           `}>
             {stories.map((story) => (
               <motion.div 
@@ -500,7 +513,7 @@ export default function Home() {
                   <svg className="absolute inset-0 w-full h-full -rotate-90 opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-110 group-hover:scale-100">
                     <circle cx="50%" cy="50%" r="48%" className={`fill-none stroke-current stroke-1 ${isDarkMode ? 'text-white' : 'text-black'}`} strokeDasharray="4 8" strokeLinecap="round" />
                   </svg>
-                  <div className={`absolute inset-0 rounded-full p-[2px] transition-transform duration-500 group-active:scale-95 ${story.hasActive || story.isUser ? 'bg-black' : 'bg-black/20'}`}>
+                  <div className={`absolute inset-0 rounded-full p-[2px] transition-transform duration-500 group-active:scale-95 ${story.hasActive || story.isUser ? (isDarkMode ? 'bg-white' : 'bg-black') : (isDarkMode ? 'bg-white/20' : 'bg-black/20')}`}>
                     <div className="w-full h-full rounded-full bg-container p-[2px]">
                       <img src={story.avatar} alt={story.username} className="w-full h-full rounded-full object-cover bg-border-secondary shadow-inner" />
                     </div>
@@ -512,7 +525,7 @@ export default function Home() {
                   )}
                 </div>
                 <div className="flex items-center gap-1 max-w-[56px]">
-                  <span className={`text-[8.5px] font-bold truncate ${story.hasActive ? 'text-text-main' : 'text-text-muted'}`}>{story.username}</span>
+                  <span className={`text-[8.5px] font-medium truncate ${story.hasActive ? 'text-text-main' : 'text-text-muted'}`}>{story.username}</span>
                   {story.verifiedColor && <VerifiedDecagram size={9} color={story.verifiedColor} className="flex-shrink-0" />}
                 </div>
               </motion.div>
@@ -528,16 +541,6 @@ export default function Home() {
             />
           </div>
         </div>
-
-        {/* Left Column: Stacked Banner & Features Gallery */}
-        <div className="flex-1 min-w-0 flex flex-col gap-3">
-          <div className="w-full h-[226px]">
-            <UnifiedBanner className="h-full" />
-          </div>
-          <div className="w-full">
-            <FeatureGallery paused={isScrolling} isMobileLayout={true} />
-          </div>
-        </div>
       </div>
 
       {/* 4. Unified Feed */}
@@ -547,7 +550,7 @@ export default function Home() {
             <Loader2 size={32} className="animate-spin text-accent-primary" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+          <div className="flex flex-col gap-6 lg:gap-10">
             {feedPosts.map((post) => {
               const isActive = activePostId === post.id;
               if (post.type === 'reel') return <FeedReel key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;

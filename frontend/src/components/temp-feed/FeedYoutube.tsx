@@ -96,9 +96,6 @@ export function FeedYoutube({
   return (
     <motion.article 
       data-post-id={post.id}
-      initial={{ opacity: 0 }}
-      whileInView={{ opacity: 1 }}
-      viewport={{ once: true, amount: 0.5 }}
       className={`lg:border lg:border-border-main lg:rounded-[40px] overflow-hidden group lg:shadow-xl border-b border-border-main lg:border-b-0 pb-8 lg:pb-0 relative ${
         isDarkMode ? 'bg-black' : 'bg-white shadow-2xl'
       }`}
@@ -109,8 +106,8 @@ export function FeedYoutube({
             <img src={avatarSrc} alt={post.user} className="w-full h-full rounded-full object-cover" />
           </div>
           <div>
-            <h4 className="text-[13px] font-black text-text-main leading-none mb-1">{post.user}</h4>
-            <p className="text-[10px] text-text-muted font-bold">{post.location}</p>
+            <h4 className="text-[13px] font-semibold text-text-main leading-none mb-1">{post.user}</h4>
+            <p className="text-[10px] text-text-muted font-medium">{post.location}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -141,7 +138,7 @@ export function FeedYoutube({
           className="w-full h-full object-cover"
         />
 
-        <div className="absolute top-3 left-3 bg-red-600 backdrop-blur-sm px-2.5 py-1 rounded-full flex items-center gap-1.5 text-white text-[9px] font-black tracking-wide border border-white/10 select-none z-15 shadow-md">
+        <div className="absolute top-3 left-3 bg-red-600 backdrop-blur-sm px-2.5 py-1 rounded-full flex items-center gap-1.5 text-white text-[9px] font-semibold tracking-wide border border-white/10 select-none z-15 shadow-md">
           <Youtube size={10} fill="white" />
           <span>YOUTUBE VIDEO</span>
         </div>
@@ -176,13 +173,13 @@ export function FeedYoutube({
               </div>
             )}
             <p className="text-[13px] text-text-main font-medium">
-              Liked by <span className="font-black">Jane</span>, <span className="font-black">Alex</span> and <span className="font-black">{typeof post.likes === 'number' ? post.likes.toLocaleString() : post.likes} others</span>
+              Liked by <span className="font-semibold">Jane</span>, <span className="font-semibold">Alex</span> and <span className="font-semibold">{typeof post.likes === 'number' ? post.likes.toLocaleString() : post.likes} others</span>
             </p>
           </div>
 
           {/* Caption */}
           <p className="text-[13px] text-text-main leading-relaxed">
-            <span className="font-black mr-2 uppercase tracking-tight text-[11px]">{post.user.split(' ')[0]}</span>
+            <span className="font-semibold mr-2 uppercase tracking-tight text-[11px]">{post.user.split(' ')[0]}</span>
             <span className="text-text-muted dark:text-zinc-400 font-medium">{post.comment}</span>
           </p>
 
@@ -190,14 +187,14 @@ export function FeedYoutube({
           {post.tags && post.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
               {post.tags.map((tag, idx) => (
-                <span key={idx} className="text-[12px] font-bold text-blue-500 hover:text-blue-600 transition-colors cursor-pointer">
+                <span key={idx} className="text-[12px] font-medium text-blue-500 hover:text-blue-600 transition-colors cursor-pointer">
                   #{tag}
                 </span>
               ))}
             </div>
           )}
 
-          <button className="text-[12px] text-text-muted font-bold mt-2 opacity-60 hover:opacity-100 transition-opacity">View all {post.commentsCount} comments</button>
+          <button className="text-[12px] text-text-muted font-medium mt-2 opacity-60 hover:opacity-100 transition-opacity">View all {post.commentsCount} comments</button>
         </div>
 
         {/* YT Subscribe Banner */}
@@ -208,15 +205,15 @@ export function FeedYoutube({
                 <Youtube size={20} />
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">YouTube Channel</p>
-                <p className="text-[13px] font-black text-text-main truncate">{post.ytChannelName}</p>
+                <p className="text-[10px] font-medium text-text-muted uppercase tracking-wider">YouTube Channel</p>
+                <p className="text-[13px] font-semibold text-text-main truncate">{post.ytChannelName}</p>
               </div>
             </div>
             <a 
               href={post.ytSubscribeLink || '#'} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-[12px] font-bold transition-colors shadow-md active:scale-95"
+              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-[12px] font-medium transition-colors shadow-md active:scale-95"
             >
               Subscribe
             </a>

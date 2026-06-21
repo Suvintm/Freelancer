@@ -7,11 +7,20 @@ import logger from "../../../utils/logger.js";
  */
 const uploadToCloudinary = (fileBuffer, resourceType = "auto", folder = "temp_feed") => {
   return new Promise((resolve, reject) => {
+    const uploadOptions = {
+      resource_type: resourceType,
+      folder: folder,
+    };
+
+    // Force standard web-compatible H.264/AAC MP4 format for all video uploads
+    if (resourceType === "video") {
+      uploadOptions.transformation = [
+        { format: "mp4", video_codec: "h264", audio_codec: "aac" }
+      ];
+    }
+
     const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        resource_type: resourceType,
-        folder: folder,
-      },
+      uploadOptions,
       (error, result) => {
         if (error) {
           logger.error(`❌ [CLOUDINARY] Upload failed: ${error.message}`);
