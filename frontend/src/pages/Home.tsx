@@ -13,6 +13,7 @@ import { api } from '../api/client';
 import { FeedPost } from '../components/temp-feed/FeedPost';
 import { FeedReel } from '../components/temp-feed/FeedReel';
 import { FeedYoutube } from '../components/temp-feed/FeedYoutube';
+import { FeedThumbnailVote } from '../components/temp-feed/FeedThumbnailVote';
 
 interface Story {
   _id: string;
@@ -78,6 +79,23 @@ interface Post {
 }
 
 const POSTS: Post[] = [
+  {
+    id: 'mock_thumb_vote',
+    type: 'thumbnail_vote',
+    user: 'SuviX Official',
+    location: 'Global',
+    img: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800',
+    images: [
+      'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800',
+      'https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&q=80&w=800',
+      'https://images.unsplash.com/photo-1611162618071-b39a2ec055fb?auto=format&fit=crop&q=80&w=800',
+      'https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?auto=format&fit=crop&q=80&w=800'
+    ],
+    likes: '12,400',
+    comment: 'Help me choose the thumbnail for my next UI/UX redesign tutorial! Which one grabs your attention?',
+    commentsCount: 342,
+    tags: ['UIUX', 'Design', 'YouTubeGrowth']
+  },
   { 
     id: 1, 
     user: 'Sonya Leena', 
@@ -555,6 +573,7 @@ export default function Home() {
               const isActive = activePostId === post.id;
               if (post.type === 'reel') return <FeedReel key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
               if (post.type === 'yt_video') return <FeedYoutube key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
+              if (post.type === 'thumbnail_vote') return <FeedThumbnailVote key={post.id} post={post} isDarkMode={isDarkMode} />;
               return <FeedPost key={post.id} post={post} isDarkMode={isDarkMode} />;
             })}
           </div>
