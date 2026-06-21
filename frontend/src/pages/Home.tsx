@@ -76,6 +76,7 @@ interface Post {
   isYtVideo?: boolean;
   images?: string[];
   type?: string;
+  tags?: string[];
 }
 
 const POSTS: Post[] = [
