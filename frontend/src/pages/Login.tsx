@@ -25,6 +25,7 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   exchange_failed: 'Google authentication failed. Please try again.',
   server_error:    'A server error occurred. Please try again later.',
   no_account:      'No account found for this Google profile. Please sign up first.',
+  server_busy:     'Server busy ! Please try again later or contact SuviX team.',
 };
 
 export default function Login() {
@@ -50,6 +51,14 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // SECURITY RESTRICTION: Block unauthorized emails during DEV phase
+    const allowedEmails = ['suvintm19@gmail.com', 'suvintm19@gamil.com'];
+    if (!allowedEmails.includes(form.email.toLowerCase().trim())) {
+      setError('Server busy ! Please try again later or contact SuviX team.');
+      return;
+    }
+
     try {
       await login({ email: form.email, password: form.password });
       navigate('/home');

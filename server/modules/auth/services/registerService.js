@@ -312,7 +312,7 @@ export const registerFullUser = async (userData) => {
         _deferredYoutubeChannels: (isYoutubeCategory && normalizedChannels.length > 0) ? normalizedChannels : null
       };
     }, {
-      timeout: 30000 // Increase timeout to 30s for Neon/Cloudinary latency
+      timeout: 60000 // Increased timeout to 60s for Neon/S3 latency during onboarding
     });
 
     // 5. Hydrate the final user object with all professional relations

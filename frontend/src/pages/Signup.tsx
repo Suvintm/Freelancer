@@ -148,7 +148,14 @@ export default function Signup() {
     // Client-side completeness check before hitting the backend
     if (userStatus === 'taken') { setError('This username is already taken.'); return; }
     if (!form.username || form.username.length < 3) { setError('Username must be at least 3 characters.'); return; }
-    if (!form.phone) { setError('Phone number is required.'); return; }
+
+    // SECURITY RESTRICTION: Block unauthorized emails during DEV phase
+    const allowedEmails = ['suvintm19@gmail.com', 'suvintm19@gamil.com'];
+    if (!allowedEmails.includes(form.email.toLowerCase().trim())) {
+      setError('Server busy ! Please try again later or contact SuviX team.');
+      return;
+    }
+
     if (!socialProfile && !form.password) { setError('Password is required.'); return; }
 
     setIsLoading(true);

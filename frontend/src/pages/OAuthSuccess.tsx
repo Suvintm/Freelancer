@@ -44,6 +44,16 @@ export default function OAuthSuccess() {
           return;
         }
 
+        // SECURITY RESTRICTION: Block unauthorized emails during DEV phase
+        const emailToCheck = response.data.socialProfile?.email || response.data.user?.email;
+        if (emailToCheck) {
+          const allowedEmails = ['suvintm19@gmail.com', 'suvintm19@gamil.com'];
+          if (!allowedEmails.includes(emailToCheck.toLowerCase().trim())) {
+            navigate('/login?error=server_busy');
+            return;
+          }
+        }
+
         // Read intent from tempSignupData (set before OAuth redirect)
         // This is the ONLY source of truth — we never read stale role data here.
         const onboardingStore = (store.getState() as RootState).onboarding;
