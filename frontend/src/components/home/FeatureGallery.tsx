@@ -35,7 +35,7 @@ export const FeatureGallery = ({ paused, isMobileLayout }: { paused?: boolean; i
       {/* Header matching mobile */}
       {!isMobileLayout && (
         <div className="flex items-center justify-between px-2 lg:px-6">
-          <h3 className="text-[9px] lg:text-[10px] font-black text-text-main tracking-[0.15em] opacity-90 uppercase">Discover SuviX</h3>
+          <h3 className="text-[9px] lg:text-[10px] font-semibold text-text-main tracking-[0.15em] opacity-90 uppercase">Discover SuviX</h3>
           <InfiniteIcon size={14} className="text-text-muted opacity-50" />
         </div>
       )}
@@ -87,13 +87,13 @@ export const FeatureGallery = ({ paused, isMobileLayout }: { paused?: boolean; i
                 
                 <div className="flex-1 min-w-0">
                   <h4 className={`
-                    font-black text-white tracking-tight leading-tight mb-0.5
+                    font-semibold text-white tracking-tight leading-tight mb-0.5
                     ${isMobileLayout ? 'text-[10.5px]' : 'text-[12px] lg:text-[14px]'}
                   `}>
                     {feature.title}
                   </h4>
                   <p className={`
-                    text-white/70 font-bold tracking-tight truncate
+                    text-white/70 font-medium tracking-tight truncate
                     ${isMobileLayout ? 'text-[8px]' : 'text-[9px] lg:text-[10px]'}
                   `}>
                     {feature.desc}
