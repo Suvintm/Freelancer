@@ -53,7 +53,22 @@ export default function Nearby() {
   const { isDarkMode } = useTheme();
 
   // --- STATE ENGINE ---
+  const [viewState, setViewState] = useState<'landing' | 'map'>('landing');
   const [permissionStatus, setPermissionStatus] = useState<'prompt' | 'granted' | 'denied' | 'checking'>('checking');
+
+  // --- SLIDESHOW STATE ---
+  const [bgImageIndex, setBgImageIndex] = useState(0);
+  const darkImages = ['/assets/nearby_hero_dark_wide.png', '/assets/nearby_hero_dark.png'];
+  const lightImages = ['/assets/nearby_hero_light_wide.png', '/assets/nearby_hero_light.png'];
+  const activeImages = isDarkMode ? darkImages : lightImages;
+
+  useEffect(() => {
+    if (viewState !== 'landing') return;
+    const timer = setInterval(() => {
+      setBgImageIndex((prev) => (prev + 1) % activeImages.length);
+    }, 4500); // Crossfade every 4.5 seconds
+    return () => clearInterval(timer);
+  }, [viewState, activeImages.length, isDarkMode]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [addressName, setAddressName] = useState('Locating address...');
   const [searchQuery, setSearchQuery] = useState('');
@@ -156,7 +171,7 @@ export default function Nearby() {
           const result = await navigator.permissions.query({ name: 'geolocation' });
           if (active) {
             setPermissionStatus(result.state === 'granted' ? 'granted' : result.state === 'denied' ? 'denied' : 'prompt');
-            if (result.state === 'granted') {
+            if (result.state === 'granted' && viewState === 'map') {
               fetchUserLocation();
             }
           }
@@ -177,7 +192,7 @@ export default function Nearby() {
     return () => {
       active = false;
     };
-  }, [fetchUserLocation]);
+  }, [fetchUserLocation, viewState]);
 
   // --- 3. REVERSE GEODECOING (Get address name) ---
   useEffect(() => {
@@ -565,6 +580,113 @@ export default function Nearby() {
 
   // Categories list
   const CATEGORIES = ['All', 'Video Editor', 'VFX Artist', 'Cinematographer', 'Sound Designer', 'Colorist'];
+
+  // --- RENDER LANDING PAGE ---
+  if (viewState === 'landing') {
+    return (
+      <div className={`h-full w-full overflow-y-auto scrollbar-hide flex flex-col items-center pb-20 transition-colors duration-300 ${isDarkMode ? 'bg-black text-white' : 'bg-zinc-50 text-zinc-950'}`}>
+        {/* Header Action */}
+        <div className="w-full absolute top-4 left-4 z-10">
+          <button 
+            onClick={() => navigate('/home')}
+            className={`w-10 h-10 rounded-2xl backdrop-blur-md border flex items-center justify-center active:scale-90 shadow-xl transition-colors duration-300 ${
+              isDarkMode 
+                ? 'bg-black/80 border-[#1A1A1B] text-white hover:text-[#FF3040]' 
+                : 'bg-white/90 border-zinc-200 text-zinc-950 hover:text-[#FF3040]'
+            }`}
+          >
+            <ArrowLeft size={16} />
+          </button>
+        </div>
+
+        {/* Hero Image */}
+        <div className={`w-full relative overflow-hidden shrink-0 h-[350px] md:h-[450px] flex justify-center items-center ${isDarkMode ? 'bg-black' : 'bg-zinc-100'}`}>
+          {/* Slideshow Images */}
+          {activeImages.map((src, idx) => (
+            <img 
+              key={src}
+              src={src} 
+              alt="Nearby Creators Network" 
+              className={`absolute inset-0 w-full h-full object-cover z-10 transition-opacity duration-[1500ms] ease-in-out ${
+                idx === bgImageIndex ? 'opacity-85' : 'opacity-0'
+              }`}
+            />
+          ))}
+          
+          {/* Gradient Overlay for Text Readability */}
+          <div className={`absolute inset-0 z-20 bg-gradient-to-t ${isDarkMode ? 'from-black via-black/40 to-transparent' : 'from-zinc-50 via-zinc-50/40 to-transparent'}`} />
+          
+          <div className="absolute bottom-8 left-6 right-6 lg:left-12 z-30">
+            <h1 className="text-3xl md:text-5xl font-black tracking-tight mb-2 max-w-2xl">Discover the Local Creator Network.</h1>
+            <p className={`text-sm md:text-base max-w-lg ${isDarkMode ? 'text-zinc-300' : 'text-zinc-600'}`}>
+              Connect with verified YouTube creators, top-tier video editors, and VFX artists in your city.
+            </p>
+          </div>
+        </div>
+
+        {/* Intent Selection */}
+        <div className="w-full max-w-5xl px-6 lg:px-12 mt-8 flex flex-col gap-6">
+          <h2 className="text-sm font-bold uppercase tracking-widest text-[#FF3040]">What are you looking for?</h2>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {CATEGORIES.filter(c => c !== 'All').map(cat => (
+              <button
+                key={cat}
+                onClick={() => {
+                  setActiveCategory(cat);
+                  setViewState('map');
+                  if (permissionStatus === 'prompt') {
+                    requestPermission();
+                  } else if (permissionStatus === 'granted') {
+                    fetchUserLocation();
+                  }
+                }}
+                className={`p-5 rounded-3xl border flex flex-col items-start gap-4 text-left transition-all hover:scale-[1.02] active:scale-95 shadow-lg ${
+                  isDarkMode 
+                    ? 'bg-zinc-900/30 border-[#1A1A1B] hover:border-[#FF3040]/50 hover:bg-[#FF3040]/5' 
+                    : 'bg-white border-zinc-200 hover:border-[#FF3040]/50 hover:bg-[#FF3040]/5'
+                }`}
+              >
+                <div className="w-12 h-12 rounded-2xl bg-[#FF3040]/10 flex items-center justify-center text-[#FF3040]">
+                  <Search size={20} />
+                </div>
+                <div>
+                  <h3 className={`text-lg font-bold mb-0.5 ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>Find {cat}s</h3>
+                  <p className={`text-[11px] leading-tight ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>Search the map for local professionals.</p>
+                </div>
+              </button>
+            ))}
+            
+            {/* "Explore All" card */}
+            <button
+              onClick={() => {
+                setActiveCategory('All');
+                setViewState('map');
+                if (permissionStatus === 'prompt') {
+                  requestPermission();
+                } else if (permissionStatus === 'granted') {
+                  fetchUserLocation();
+                }
+              }}
+              className={`p-5 rounded-3xl border flex flex-col items-start gap-4 text-left transition-all hover:scale-[1.02] active:scale-95 shadow-lg ${
+                isDarkMode 
+                  ? 'bg-zinc-900/30 border-[#1A1A1B] hover:border-zinc-700 hover:bg-zinc-800/50' 
+                  : 'bg-white border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50'
+              }`}
+            >
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDarkMode ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-100 text-zinc-600'}`}>
+                <Compass size={20} />
+              </div>
+              <div>
+                <h3 className={`text-lg font-bold mb-0.5 ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>Explore All</h3>
+                <p className={`text-[11px] leading-tight ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>View everyone around you on the radar.</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // --- RENDER ONBOARDING/RADAR IF PERMISSION NOT GRANTED ---
   if (permissionStatus === 'checking') {
