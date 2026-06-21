@@ -20,7 +20,7 @@ import {
   Loader2
 } from 'lucide-react';
 
-type UploadType = 'reel' | 'post' | 'yt_video';
+type UploadType = 'reel' | 'post' | 'yt_video' | 'thumbnail_vote';
 
 interface TempFeedItem {
   _id: string;
@@ -167,9 +167,11 @@ export default function TempUploadPortal() {
           throw new Error('Please select a video file.');
         }
         formData.append('video', selectedVideo);
-      } else if (activeTab === 'post') {
+      } else if (activeTab === 'post' || activeTab === 'thumbnail_vote') {
         formData.append('comment', caption);
-        if (selectedImages.length === 0) {
+        if (activeTab === 'thumbnail_vote' && selectedImages.length < 2) {
+          throw new Error('Please select at least 2 images for a thumbnail vote.');
+        } else if (selectedImages.length === 0) {
           throw new Error('Please select at least one image.');
         }
         selectedImages.forEach((image) => {
@@ -288,7 +290,18 @@ export default function TempUploadPortal() {
           }`}
         >
           <Youtube size={16} />
-          YT Video (File)
+          YT Video
+        </button>
+        <button
+          onClick={() => { setActiveTab('thumbnail_vote'); resetForm(); setStatusMessage(null); }}
+          className={`flex-1 py-3 px-4 rounded-lg flex items-center justify-center gap-2 text-[12px] font-bold transition-all ${
+            activeTab === 'thumbnail_vote'
+              ? (isDarkMode ? 'bg-white text-black shadow-md' : 'bg-zinc-950 text-white shadow-md')
+              : 'text-text-muted hover:text-text-main'
+          }`}
+        >
+          <UploadCloud size={16} />
+          Thumb Vote
         </button>
       </div>
 
@@ -398,10 +411,10 @@ export default function TempUploadPortal() {
                   />
                 </div>
               </div>
-            ) : activeTab === 'post' ? (
+            ) : (activeTab === 'post' || activeTab === 'thumbnail_vote') ? (
               <div className="space-y-1.5">
                 <label className="block text-[11px] font-bold uppercase tracking-[0.12em] text-text-muted">
-                  Post Caption
+                  {activeTab === 'thumbnail_vote' ? 'Vote Context/Caption' : 'Post Caption'}
                 </label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-3.5 text-text-muted"><FileText size={14} /></span>
@@ -409,7 +422,7 @@ export default function TempUploadPortal() {
                     rows={4}
                     value={caption}
                     onChange={(e) => setCaption(e.target.value)}
-                    placeholder="Describe your post..."
+                    placeholder={activeTab === 'thumbnail_vote' ? 'e.g. Help me choose!' : 'Describe your post...'}
                     className={`w-full rounded-xl pl-10 pr-4 py-3 text-[13px] font-medium transition-all focus:outline-none ${
                       isDarkMode 
                         ? 'bg-zinc-950/60 border border-border-secondary text-white placeholder-text-muted/40 focus:border-zinc-500' 
@@ -524,27 +537,42 @@ export default function TempUploadPortal() {
                 )}
               </div>
             ) : (
-              // Post Multiple Images Uploader
-              <div className="flex-1 flex flex-col gap-3">
+              <div className="flex-1 flex flex-col space-y-3">
                 <div 
-                  onClick={() => imagesInputRef.current?.click()}
-                  className={`min-h-[100px] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-4 text-center cursor-pointer transition-all ${
+                  className={`border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-8 transition-colors ${
                     isDarkMode 
-                      ? 'bg-zinc-950/40 border-border-main hover:bg-zinc-950/80 hover:border-zinc-500' 
-                      : 'bg-zinc-50 border-zinc-300 hover:bg-zinc-100/60 hover:border-zinc-900'
+                      ? 'border-border-secondary bg-zinc-950/40 hover:bg-zinc-900/60 hover:border-zinc-500' 
+                      : 'border-zinc-300 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-400'
                   }`}
                 >
-                  <UploadCloud size={24} className="text-text-muted mb-1.5" />
-                  <p className="text-[11px] font-semibold text-text-main">Click to add images</p>
-                  <p className="text-[9px] text-text-muted mt-0.5">Supports multiple JPG, PNG, WEBP files</p>
-                  <input 
-                    type="file" 
-                    ref={imagesInputRef} 
-                    onChange={handleImagesSelect} 
-                    accept="image/*" 
-                    multiple 
-                    className="hidden" 
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImagesSelect}
+                    ref={imagesInputRef}
+                    className="hidden"
                   />
+                  <div className="w-12 h-12 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center mb-4">
+                    <ImageIcon size={24} />
+                  </div>
+                  <p className="text-[13px] font-bold text-text-main mb-1">
+                    Upload Images
+                  </p>
+                  <p className="text-[11px] font-medium text-text-muted mb-4 text-center">
+                    {activeTab === 'thumbnail_vote' 
+                      ? 'Select 2 to 4 images.'
+                      : 'Select one or more images.'} PNG, JPG, WEBP up to 10MB
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => imagesInputRef.current?.click()}
+                    className={`px-5 py-2.5 rounded-full text-[12px] font-bold transition-all ${
+                      isDarkMode ? 'bg-white text-black hover:bg-zinc-200' : 'bg-zinc-950 text-white hover:bg-zinc-800'
+                    }`}
+                  >
+                    Browse Files
+                  </button>
                 </div>
 
                 {imagePreviews.length > 0 && (

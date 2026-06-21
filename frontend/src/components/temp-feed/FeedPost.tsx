@@ -50,8 +50,8 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
 
   return (
     <motion.article 
-      className={`lg:border lg:border-border-main lg:rounded-[40px] overflow-hidden group lg:shadow-xl border-b border-border-main lg:border-b-0 pb-8 lg:pb-0 relative ${
-        isDarkMode ? 'bg-black' : 'bg-white shadow-2xl'
+      className={`lg:border lg:border-border-main lg:rounded-[40px] overflow-hidden group lg:shadow-xl mb-6 lg:mb-0 pb-4 lg:pb-0 relative ${
+        isDarkMode ? 'bg-black lg:bg-[#0a0a0a]' : 'bg-white shadow-sm lg:shadow-2xl'
       }`}
     >
       <div className="p-4 flex items-center justify-between">
@@ -64,7 +64,7 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
             <p className="text-[10px] text-text-muted font-medium">{post.location}</p>
           </div>
         </div>
-        <button className="text-text-muted hover:text-text-main transition-colors p-2">
+        <button className={`p-2 transition-colors ${isDarkMode ? 'text-white hover:text-zinc-300' : 'text-zinc-950 hover:text-zinc-600'}`}>
           <MoreHorizontal size={18} />
         </button>
       </div>
@@ -141,11 +141,11 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
       <div className="p-4 lg:p-6 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <button className="text-text-main hover:text-rose-500 transition-colors transform active:scale-90"><Heart size={24} /></button>
-            <button className="text-text-main hover:text-text-main transition-colors transform active:scale-90"><MessageCircle size={24} /></button>
-            <button className="text-text-main hover:text-text-main transition-colors transform active:scale-90"><Share2 size={24} /></button>
+            <button className={`transition-colors transform active:scale-90 hover:text-rose-500 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Heart size={24} /></button>
+            <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><MessageCircle size={24} /></button>
+            <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Share2 size={24} /></button>
           </div>
-          <button className="text-text-main hover:text-text-main transition-colors transform active:scale-90"><Bookmark size={24} /></button>
+          <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Bookmark size={24} /></button>
         </div>
 
         <div className="space-y-2">
