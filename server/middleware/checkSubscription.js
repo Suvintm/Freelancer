@@ -1,9 +1,9 @@
 /**
- * Subscription Middleware
+ * Subscription Middleware (PostgreSQL / Prisma version)
  * Checks if user has an active subscription for a specific feature
  */
 
-import { Subscription } from "../modules/payments/models/Subscription.js";
+import prisma from "../config/prisma.js";
 
 /**
  * Middleware factory to require subscription for a feature
@@ -13,8 +13,9 @@ import { Subscription } from "../modules/payments/models/Subscription.js";
 export const requireSubscription = (feature) => {
   return async (req, res, next) => {
     try {
+      const userId = req.user?._id || req.user?.id;
       // User must be authenticated
-      if (!req.user) {
+      if (!userId) {
         return res.status(401).json({
           success: false,
           message: "Authentication required",
@@ -22,12 +23,17 @@ export const requireSubscription = (feature) => {
       }
 
       // Check for active subscription
-      const hasSubscription = await Subscription.hasActiveSubscription(
-        req.user._id,
-        feature
-      );
+      const subscription = await prisma.subscription.findFirst({
+        where: {
+          userId,
+          feature: { in: [feature, "all"] },
+          status: { in: ["active", "trial"] },
+          endDate: { gte: new Date() }
+        },
+        include: { plan: true }
+      });
 
-      if (!hasSubscription) {
+      if (!subscription) {
         return res.status(403).json({
           success: false,
           requiresSubscription: true,
@@ -36,13 +42,8 @@ export const requireSubscription = (feature) => {
         });
       }
 
-      // Get the active subscription and attach to request
-      const subscription = await Subscription.getActiveSubscription(
-        req.user._id,
-        feature
-      );
+      // Attach to request
       req.subscription = subscription;
-
       next();
     } catch (error) {
       console.error("Subscription middleware error:", error);
@@ -61,11 +62,17 @@ export const requireSubscription = (feature) => {
 export const checkSubscription = (feature) => {
   return async (req, res, next) => {
     try {
-      if (req.user) {
-        const subscription = await Subscription.getActiveSubscription(
-          req.user._id,
-          feature
-        );
+      const userId = req.user?._id || req.user?.id;
+      if (userId) {
+        const subscription = await prisma.subscription.findFirst({
+          where: {
+            userId,
+            feature: { in: [feature, "all"] },
+            status: { in: ["active", "trial"] },
+            endDate: { gte: new Date() }
+          },
+          include: { plan: true }
+        });
         req.hasSubscription = !!subscription;
         req.subscription = subscription;
       } else {

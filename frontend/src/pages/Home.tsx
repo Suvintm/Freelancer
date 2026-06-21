@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, Loader2 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../store/slices/authSlice';
+import { MdStar, MdChevronRight, MdCheckCircle } from 'react-icons/md';
 import defaultProfile from '../assets/defaultprofile.png';
 import { FeatureGallery } from '../components/home/FeatureGallery';
 import { UnifiedBanner } from '../components/home/UnifiedBanner';
@@ -77,6 +79,7 @@ interface Post {
   images?: string[];
   type?: string;
   tags?: string[];
+  watchOnYtLink?: string;
 }
 
 const POSTS: Post[] = [
@@ -316,9 +319,11 @@ interface DbFeedItem {
   commentsCount: number;
   videoUrl?: string;
   type: string;
+  watchOnYtLink?: string;
 }
 
 export default function Home() {
+  const navigate = useNavigate();
   const [isScrolling, setIsScrolling] = useState(false);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isDarkMode } = useTheme();
@@ -393,7 +398,8 @@ export default function Home() {
             videoUrl: item.videoUrl || '',
             isVideo: item.type === 'reel' || item.type === 'yt_video',
             isYtVideo: item.type === 'yt_video',
-            type: item.type
+            type: item.type,
+            watchOnYtLink: item.watchOnYtLink || '',
           }));
           
           // Shuffling dynamically on page refresh to show fresh content
@@ -563,19 +569,32 @@ export default function Home() {
       </div>
 
       {/* 4. Unified Feed */}
-      <section className="-mx-4 lg:mx-0 -mt-2 lg:mt-0">
+      <section className="-mx-4 lg:mx-auto -mt-2 lg:mt-0 lg:max-w-[470px] w-full">
         {isLoading ? (
           <div className="flex justify-center items-center py-20">
             <Loader2 size={32} className="animate-spin text-accent-primary" />
           </div>
         ) : (
-          <div className="flex flex-col gap-6 lg:gap-10">
-            {feedPosts.map((post) => {
+          <div className="flex flex-col gap-6 lg:gap-8 w-full">
+            {feedPosts.map((post, idx) => {
               const isActive = activePostId === post.id;
-              if (post.type === 'reel') return <FeedReel key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
-              if (post.type === 'yt_video') return <FeedYoutube key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
-              if (post.type === 'thumbnail_vote') return <FeedThumbnailVote key={post.id} post={post} isDarkMode={isDarkMode} />;
-              return <FeedPost key={post.id} post={post} isDarkMode={isDarkMode} />;
+              let postEl = null;
+              if (post.type === 'reel') {
+                postEl = <FeedReel key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
+              } else if (post.type === 'yt_video') {
+                postEl = <FeedYoutube key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
+              } else if (post.type === 'thumbnail_vote') {
+                postEl = <FeedThumbnailVote key={post.id} post={post} isDarkMode={isDarkMode} />;
+              } else {
+                postEl = <FeedPost key={post.id} post={post} isDarkMode={isDarkMode} />;
+              }
+
+              return (
+                <Fragment key={post.id}>
+                  {postEl}
+                  <SuggestedEditorsCarousel index={idx} />
+                </Fragment>
+              );
             })}
           </div>
         )}
@@ -591,5 +610,153 @@ function VerifiedDecagram({ size, color, className }: { size: number, color: str
     <svg width={size} height={size} viewBox="0 0 24 24" fill={color} className={className}>
       <path d="M23,12L20.56,9.22L20.9,5.54L17.29,4.72L15.4,1.54L12,3L8.6,1.54L6.71,4.72L3.1,5.53L3.44,9.21L1,12L3.44,14.78L3.1,18.47L6.71,19.29L8.6,22.47L12,21L15.4,22.46L17.29,19.28L20.9,18.46L20.56,14.79L23,12M10,17L6,13L7.41,11.59L10,14.17L16.59,7.58L18,9L10,17Z" />
     </svg>
+  );
+}
+
+// Mock list of professional editors with monochrome style cards
+const MOCK_SUGGESTED_EDITORS = [
+  {
+    id: 'ed-1',
+    name: 'Alex Rivers',
+    role: 'VFX Specialist',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
+    rating: '4.9',
+    reviews: '82'
+  },
+  {
+    id: 'ed-2',
+    name: 'Elena Rostova',
+    role: 'Cinematic Colorist',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150',
+    rating: '5.0',
+    reviews: '120'
+  },
+  {
+    id: 'ed-3',
+    name: 'Marcus Chen',
+    role: 'Shorts Specialist',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150',
+    rating: '4.8',
+    reviews: '95'
+  },
+  {
+    id: 'ed-4',
+    name: 'Sarah Jenkins',
+    role: 'Documentary Editor',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150',
+    rating: '5.0',
+    reviews: '43'
+  },
+  {
+    id: 'ed-5',
+    name: 'Damilola Adebayo',
+    role: 'Gaming Video Editor',
+    avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=150',
+    rating: '4.7',
+    reviews: '74'
+  },
+  {
+    id: 'ed-6',
+    name: 'Chloe Miller',
+    role: 'Motion Graphics Designer',
+    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=150',
+    rating: '4.9',
+    reviews: '56'
+  }
+];
+
+function SuggestedEditorsCarousel({ index }: { index: number }) {
+  const navigate = useNavigate();
+  const { isDarkMode } = useTheme();
+
+  // Shift items so each post has a different set of suggested editors
+  const offset = (index * 2) % MOCK_SUGGESTED_EDITORS.length;
+  const shiftedEditors = [
+    ...MOCK_SUGGESTED_EDITORS.slice(offset),
+    ...MOCK_SUGGESTED_EDITORS.slice(0, offset)
+  ].slice(0, 5); // Show up to 5 editors in the scrollable view
+
+  return (
+    <div className={`w-full lg:-mx-8 lg:w-[calc(100%+4rem)] rounded-[32px] border p-6 space-y-5 my-4 transition-all duration-300 ${
+      isDarkMode 
+        ? 'bg-[#0d0d10] border-zinc-850 text-zinc-300' 
+        : 'bg-white border-zinc-200/60 shadow-[0_2px_16px_rgba(0,0,0,0.03)] text-zinc-800'
+    }`}>
+      {/* Title Header */}
+      <div className="flex items-center justify-between px-1">
+        <div>
+          <h4 className="text-[10.5px] font-bold uppercase tracking-[0.14em] opacity-95 text-text-main">
+            ✨ Suggested Editors for you
+          </h4>
+          <p className="text-[10px] text-text-muted mt-0.5">Top-rated YouTube creators ready to collaborate</p>
+        </div>
+        <button 
+          onClick={() => navigate('/explore')}
+          className={`flex items-center gap-0.5 text-[10.5px] font-bold cursor-pointer transition-colors ${
+            isDarkMode ? 'text-zinc-500 hover:text-white' : 'text-zinc-400 hover:text-zinc-950'
+          }`}
+        >
+          <span>See All</span>
+          <MdChevronRight size={15} />
+        </button>
+      </div>
+
+      {/* Horizontal List Scrollable container */}
+      <div className="flex items-center gap-4 overflow-x-auto pb-2.5 pt-1 scrollbar-hide snap-x px-1">
+        {shiftedEditors.map((editor) => (
+          <div
+            key={editor.id}
+            className={`w-[155px] shrink-0 rounded-[22px] border p-4 flex flex-col items-center justify-between snap-center transition-all ${
+              isDarkMode 
+                ? 'bg-[#15151a]/40 border-zinc-800/80 hover:border-zinc-700 hover:bg-[#15151a]/60' 
+                : 'bg-zinc-50 border-zinc-150 hover:bg-white hover:shadow-md'
+            }`}
+          >
+            {/* Creator Avatar with mini verification tick */}
+            <div className="relative">
+              <img
+                src={editor.avatar || defaultProfile}
+                alt={editor.name}
+                className={`w-14 h-14 rounded-full object-cover border-2 ${
+                  isDarkMode ? 'border-zinc-800' : 'border-white shadow-sm'
+                }`}
+              />
+              <span className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 bg-[#7c42f8] rounded-full flex items-center justify-center border-2 border-container text-white">
+                <MdCheckCircle size={11} className="text-white fill-white" />
+              </span>
+            </div>
+
+            {/* Profile Info */}
+            <div className="text-center mt-3.5 w-full min-w-0">
+              <p className="text-[12.5px] font-bold text-text-main leading-tight truncate">
+                {editor.name}
+              </p>
+              <p className="text-[9.5px] text-text-muted mt-1 leading-tight truncate">
+                {editor.role}
+              </p>
+            </div>
+
+            {/* Ratings */}
+            <div className="flex items-center justify-center gap-0.5 mt-2.5">
+              <MdStar size={12} className="text-amber-500 fill-amber-500" />
+              <span className="text-[10px] font-bold text-text-main leading-none">{editor.rating}</span>
+              <span className="text-[9px] text-text-muted leading-none">({editor.reviews})</span>
+            </div>
+
+            {/* Profile Link Button */}
+            <button
+              onClick={() => navigate(`/explore`)}
+              className={`w-full h-8 rounded-xl text-[10px] font-bold mt-4 active:scale-[0.98] transition-all cursor-pointer ${
+                isDarkMode 
+                  ? 'bg-white text-black hover:bg-zinc-100' 
+                  : 'bg-zinc-950 text-white hover:bg-zinc-900'
+              }`}
+            >
+              View Profile
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

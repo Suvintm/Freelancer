@@ -1,7 +1,6 @@
 // paymentController.js - Handle payment history and receipts
 import asyncHandler from "express-async-handler";
-import { Payment } from "../models/Payment.js";
-import { Order } from "../../marketplace/models/Order.js";
+import prisma from "../../../config/prisma.js";
 import { ApiError } from "../../../middleware/errorHandler.js";
 
 /**
@@ -9,31 +8,32 @@ import { ApiError } from "../../../middleware/errorHandler.js";
  * GET /api/payments/history
  */
 export const getPaymentHistory = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20, type, status, sort = "-createdAt" } = req.query;
-  const userId = req.user._id;
+  const { page = 1, limit = 20, type, status, sort = "desc" } = req.query;
+  const userId = req.user._id || req.user.id;
   const userRole = req.user.role;
 
-  // Build query based on user role
-  let query = {};
+  let where = {};
   if (userRole === "client") {
-    query.client = userId;
+    where.clientId = userId;
   } else if (userRole === "editor") {
-    query.editor = userId;
+    where.editorId = userId;
   }
 
-  // Add filters
-  if (type) query.type = type;
-  if (status) query.status = status;
+  if (type) where.type = type;
+  if (status) where.status = status;
 
-  const payments = await Payment.find(query)
-    .populate("order", "orderNumber title")
-    .populate("client", "name profilePicture")
-    .populate("editor", "name profilePicture")
-    .sort(sort)
-    .skip((page - 1) * limit)
-    .limit(parseInt(limit));
+  const payments = await prisma.payment.findMany({
+    where,
+    include: {
+      client: { select: { id: true, username: true, profile: { select: { profile_picture: true } } } },
+      editor: { select: { id: true, username: true, profile: { select: { profile_picture: true } } } }
+    },
+    orderBy: { created_at: sort === "asc" ? "asc" : "desc" },
+    skip: (parseInt(page) - 1) * parseInt(limit),
+    take: parseInt(limit)
+  });
 
-  const total = await Payment.countDocuments(query);
+  const total = await prisma.payment.count({ where });
 
   res.json({
     success: true,
@@ -52,90 +52,74 @@ export const getPaymentHistory = asyncHandler(async (req, res) => {
  * GET /api/payments/stats
  */
 export const getPaymentStats = asyncHandler(async (req, res) => {
-  const userId = req.user._id;
+  const userId = req.user._id || req.user.id;
   const userRole = req.user.role;
 
   let matchCondition = {};
   if (userRole === "client") {
-    matchCondition.client = userId;
+    matchCondition.clientId = userId;
   } else if (userRole === "editor") {
-    matchCondition.editor = userId;
+    matchCondition.editorId = userId;
   }
 
   // Get total and completed stats
-  const stats = await Payment.aggregate([
-    { $match: { ...matchCondition, status: "completed" } },
-    {
-      $group: {
-        _id: null,
-        totalTransactions: { $sum: 1 },
-        totalAmount: { $sum: "$amount" },
-        totalEarnings: { $sum: "$editorEarning" },
-        totalFees: { $sum: "$platformFee" },
-        avgAmount: { $avg: "$amount" },
-      },
-    },
-  ]);
+  const completedStats = await prisma.payment.aggregate({
+    where: { ...matchCondition, status: "completed" },
+    _sum: { amount: true, editorEarning: true, platformFee: true },
+    _avg: { amount: true },
+    _count: { id: true }
+  });
 
-  // Get pending amount
-  const pendingStats = await Payment.aggregate([
-    { $match: { ...matchCondition, status: "pending" } },
-    {
-      $group: {
-        _id: null,
-        pendingAmount: { $sum: "$amount" },
-        pendingCount: { $sum: 1 },
-      },
-    },
-  ]);
+  const pendingStats = await prisma.payment.aggregate({
+    where: { ...matchCondition, status: "pending" },
+    _sum: { amount: true },
+    _count: { id: true }
+  });
 
-  // Get monthly stats (last 6 months)
+  // For monthly stats, Prisma doesn't have a direct grouping by month, so we'll use a raw query
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-  const monthlyStats = await Payment.aggregate([
-    {
-      $match: {
-        ...matchCondition,
-        status: "completed",
-        createdAt: { $gte: sixMonthsAgo },
-      },
-    },
-    {
-      $group: {
-        _id: {
-          year: { $year: "$createdAt" },
-          month: { $month: "$createdAt" },
-        },
-        amount: { $sum: userRole === "editor" ? "$editorEarning" : "$amount" },
-        count: { $sum: 1 },
-      },
-    },
-    { $sort: { "_id.year": 1, "_id.month": 1 } },
-  ]);
+  const monthlyStatsRaw = await prisma.$queryRaw`
+    SELECT 
+      EXTRACT(YEAR FROM created_at) as year,
+      EXTRACT(MONTH FROM created_at) as month,
+      SUM(CASE WHEN ${userRole === "editor"} THEN editor_earning ELSE amount END) as amount,
+      COUNT(*) as count
+    FROM payments
+    WHERE status = 'completed'
+      AND created_at >= ${sixMonthsAgo}
+      ${userRole === "client" ? prisma.$raw`AND client_id = ${userId}::uuid` : prisma.$raw``}
+      ${userRole === "editor" ? prisma.$raw`AND editor_id = ${userId}::uuid` : prisma.$raw``}
+    GROUP BY year, month
+    ORDER BY year ASC, month ASC
+  `;
 
   // Get recent payments
-  const recentPayments = await Payment.find({
-    ...matchCondition,
-    status: "completed",
-  })
-    .populate("order", "orderNumber title")
-    .populate("client", "name")
-    .populate("editor", "name")
-    .sort("-completedAt")
-    .limit(5);
+  const recentPayments = await prisma.payment.findMany({
+    where: { ...matchCondition, status: "completed" },
+    include: {
+      client: { select: { id: true, username: true } },
+      editor: { select: { id: true, username: true } }
+    },
+    orderBy: { completedAt: "desc" },
+    take: 5
+  });
 
   res.json({
     success: true,
-    stats: stats[0] || {
-      totalTransactions: 0,
-      totalAmount: 0,
-      totalEarnings: 0,
-      totalFees: 0,
-      avgAmount: 0,
+    stats: {
+      totalTransactions: completedStats._count.id || 0,
+      totalAmount: completedStats._sum.amount || 0,
+      totalEarnings: completedStats._sum.editorEarning || 0,
+      totalFees: completedStats._sum.platformFee || 0,
+      avgAmount: completedStats._avg.amount || 0,
     },
-    pending: pendingStats[0] || { pendingAmount: 0, pendingCount: 0 },
-    monthlyStats,
+    pending: {
+      pendingAmount: pendingStats._sum.amount || 0,
+      pendingCount: pendingStats._count.id || 0
+    },
+    monthlyStats: monthlyStatsRaw,
     recentPayments,
   });
 });
@@ -146,21 +130,22 @@ export const getPaymentStats = asyncHandler(async (req, res) => {
  */
 export const getPaymentById = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const userId = req.user._id;
+  const userId = req.user._id || req.user.id;
 
-  const payment = await Payment.findById(id)
-    .populate("order", "orderNumber title description deadline createdAt completedAt")
-    .populate("client", "name email profilePicture")
-    .populate("editor", "name email profilePicture")
-    .populate("gig", "title");
+  const payment = await prisma.payment.findUnique({
+    where: { id },
+    include: {
+      client: { select: { id: true, username: true, email: true, profile: { select: { profile_picture: true } } } },
+      editor: { select: { id: true, username: true, email: true, profile: { select: { profile_picture: true } } } }
+    }
+  });
 
   if (!payment) {
     throw new ApiError(404, "Payment not found");
   }
 
-  // Check access
-  const isClient = payment.client._id.toString() === userId.toString();
-  const isEditor = payment.editor._id.toString() === userId.toString();
+  const isClient = payment.clientId === userId;
+  const isEditor = payment.editorId === userId;
   const isAdmin = req.user.role === "admin";
 
   if (!isClient && !isEditor && !isAdmin) {
@@ -179,20 +164,22 @@ export const getPaymentById = asyncHandler(async (req, res) => {
  */
 export const getReceiptData = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const userId = req.user._id;
+  const userId = req.user._id || req.user.id;
 
-  const payment = await Payment.findById(id)
-    .populate("order", "orderNumber title description deadline createdAt completedAt")
-    .populate("client", "name email")
-    .populate("editor", "name email");
+  const payment = await prisma.payment.findUnique({
+    where: { id },
+    include: {
+      client: { select: { id: true, username: true, email: true } },
+      editor: { select: { id: true, username: true, email: true } }
+    }
+  });
 
   if (!payment) {
     throw new ApiError(404, "Payment not found");
   }
 
-  // Check access
-  const isClient = payment.client._id.toString() === userId.toString();
-  const isEditor = payment.editor._id.toString() === userId.toString();
+  const isClient = payment.clientId === userId;
+  const isEditor = payment.editorId === userId;
   const isAdmin = req.user.role === "admin";
 
   if (!isClient && !isEditor && !isAdmin) {
@@ -200,49 +187,31 @@ export const getReceiptData = asyncHandler(async (req, res) => {
   }
 
   // Update download tracking
-  payment.receiptDownloadedAt = new Date();
-  await payment.save();
-
-  // Calculate additional info
-  const order = payment.order || payment.orderSnapshot;
-  const createdDate = new Date(order.createdAt || payment.orderSnapshot?.createdAt);
-  const completedDate = new Date(order.completedAt || payment.orderSnapshot?.completedAt || payment.completedAt);
-  const deadline = new Date(order.deadline || payment.orderSnapshot?.deadline);
-  
-  const totalDays = Math.ceil((completedDate - createdDate) / (1000 * 60 * 60 * 24));
-  const daysBeforeDeadline = Math.ceil((deadline - completedDate) / (1000 * 60 * 60 * 24));
+  await prisma.payment.update({
+    where: { id },
+    data: { receiptDownloadedAt: new Date() }
+  });
 
   res.json({
     success: true,
     receipt: {
       receiptNumber: payment.receiptNumber,
       transactionId: payment.transactionId,
-      date: payment.completedAt || payment.createdAt,
+      date: payment.completedAt || payment.created_at,
       
-      // Parties
       client: {
-        name: payment.client?.name || "Client",
+        name: payment.client?.username || "Client",
         email: payment.client?.email,
       },
       editor: {
-        name: payment.editor?.name || "Editor",
+        name: payment.editor?.username || "Editor",
         email: payment.editor?.email,
       },
       
-      // Order details
       order: {
-        orderNumber: order?.orderNumber || payment.orderSnapshot?.orderNumber,
-        title: order?.title || payment.orderSnapshot?.title,
-        description: order?.description || payment.orderSnapshot?.description,
-        createdAt: createdDate,
-        completedAt: completedDate,
-        deadline: deadline,
-        totalDays,
-        daysBeforeDeadline,
-        onTime: daysBeforeDeadline >= 0,
+        orderNumber: payment.order,
       },
       
-      // Payment details
       payment: {
         amount: payment.amount,
         platformFee: payment.platformFee,
@@ -251,7 +220,6 @@ export const getReceiptData = asyncHandler(async (req, res) => {
         status: payment.status,
       },
       
-      // Platform info
       platform: {
         name: "Suvix",
         website: "suvix.com",
@@ -260,12 +228,3 @@ export const getReceiptData = asyncHandler(async (req, res) => {
     },
   });
 });
-
-// ADMIN ENDPOINTS MOVED TO ADMIN-SERVER
-
-
-
-
-
-
-

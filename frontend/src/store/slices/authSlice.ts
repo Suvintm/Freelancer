@@ -51,6 +51,13 @@ export interface AuthUser {
   bio?: string;
   followers?: number;
   following?: number;
+  subscription?: {
+    tier: 'free' | 'creator' | 'pro' | 'elite';
+    features: string[];
+    expiresAt?: string;
+    isTrial?: boolean;
+    daysRemaining?: number;
+  };
 }
 
 export interface SignupPayload {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark } from 'lucide-react';
+import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark, Youtube } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
 
 interface Post {
@@ -15,6 +15,7 @@ interface Post {
   type?: string;
   tags?: string[];
   likedByAvatars?: string[];
+  watchOnYtLink?: string;
 }
 
 export function FeedReel({ 
@@ -133,7 +134,10 @@ export function FeedReel({
         </div>
       </div>
 
-      <div className="w-full max-h-[min(85vh,800px)] aspect-[4/5] lg:aspect-[9/16] relative overflow-hidden bg-black flex items-center justify-center cursor-pointer" onClick={() => { if (isPlaying) { pauseMedia(); } else { playMedia(); } }}>
+      <div 
+        className={`w-full max-h-[min(75vh,580px)] relative overflow-hidden flex items-center justify-center cursor-pointer ${isDarkMode ? 'bg-black' : 'bg-zinc-50'}`} 
+        onClick={() => { if (isPlaying) { pauseMedia(); } else { playMedia(); } }}
+      >
         <video 
           ref={videoRef}
           src={post.videoUrl}
@@ -144,7 +148,7 @@ export function FeedReel({
             // Force muted=true at load time because JSX muted prop doesn't work reliably
             if (videoRef.current) videoRef.current.muted = true;
           }}
-          className="w-full h-full object-cover"
+          className="w-full h-auto max-h-[min(75vh,580px)] object-contain"
         />
 
         {isPlaying && (
@@ -165,6 +169,17 @@ export function FeedReel({
             </div>
             <span>REEL PLAYING</span>
           </div>
+        )}
+
+        {/* Watch on YT Button */}
+        {post.watchOnYtLink && (
+          <button 
+            onClick={(e) => { e.stopPropagation(); window.open(post.watchOnYtLink, '_blank'); }}
+            className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md hover:bg-black/80 px-3 py-1.5 rounded-full flex items-center gap-2 text-white text-[11px] font-semibold tracking-wide border border-white/20 transition-all z-20 shadow-lg cursor-pointer"
+          >
+            <Youtube size={14} className="text-red-500" />
+            Watch full video on YT
+          </button>
         )}
       </div>
       <div className="p-4 lg:p-6 space-y-4">

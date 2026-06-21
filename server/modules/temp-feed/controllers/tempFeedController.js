@@ -12,11 +12,13 @@ const uploadToCloudinary = (fileBuffer, resourceType = "auto", folder = "temp_fe
       folder: folder,
     };
 
-    // Force standard web-compatible H.264/AAC MP4 format for all video uploads
+    // Force standard web-compatible H.264/AAC MP4 format for all video uploads eagerly
+    // This prevents mobile HEVC/HDR videos from showing a black screen on laptops.
     if (resourceType === "video") {
-      uploadOptions.transformation = [
-        { format: "mp4", video_codec: "h264", audio_codec: "aac" }
+      uploadOptions.eager = [
+        { format: "mp4", video_codec: "h264", audio_codec: "aac", quality: "auto" }
       ];
+      uploadOptions.eager_async = true;
     }
 
     const uploadStream = cloudinary.uploader.upload_stream(
@@ -52,7 +54,7 @@ const deleteFromCloudinary = async (publicId, resourceType = "image") => {
  */
 export const createTempFeedItem = async (req, res) => {
   try {
-    const { type, user, location, comment, tags, ytChannelName, ytSubscribeLink } = req.body;
+    const { type, user, location, comment, tags, ytChannelName, ytSubscribeLink, watchOnYtLink } = req.body;
 
     if (!type || !user) {
       return res.status(400).json({ success: false, message: "Type and User are required fields." });
@@ -83,6 +85,7 @@ export const createTempFeedItem = async (req, res) => {
       likedByAvatars: dummyFaces,
       ytChannelName: ytChannelName || "",
       ytSubscribeLink: ytSubscribeLink || "",
+      watchOnYtLink: watchOnYtLink || "",
     };
 
     if (type === "reel" || type === "yt_video") {
@@ -96,7 +99,27 @@ export const createTempFeedItem = async (req, res) => {
       logger.info(`🛰️ [TEMP-FEED] Uploading video to Cloudinary for ${type}...`);
       const uploadResult = await uploadToCloudinary(videoFile.buffer, "video", "temp_feed/videos");
       
-      feedData.videoUrl = uploadResult.secure_url;
+      // Ensure universal playback across laptops by rewriting URL to specifically request H.264 MP4 format
+      const rawUrl = uploadResult.secure_url;
+      let safeVideoUrl = rawUrl;
+      
+      if (rawUrl.includes('/upload/')) {
+        const urlParts = rawUrl.split('/upload/');
+        let pathPart = urlParts[1];
+        
+        // Strip out the original extension (e.g. .mov) and force .mp4
+        const lastDotIndex = pathPart.lastIndexOf('.');
+        if (lastDotIndex !== -1) {
+          pathPart = pathPart.substring(0, lastDotIndex) + '.mp4';
+        } else {
+          pathPart += '.mp4';
+        }
+        
+        // Inject Cloudinary delivery transformations
+        safeVideoUrl = `${urlParts[0]}/upload/f_mp4,vc_h264,ac_aac,q_auto/${pathPart}`;
+      }
+
+      feedData.videoUrl = safeVideoUrl;
       feedData.videoPublicId = uploadResult.public_id;
     } else if (type === "post") {
       // Expect one or more image files

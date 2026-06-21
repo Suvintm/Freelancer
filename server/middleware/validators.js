@@ -220,7 +220,7 @@ export const extendDeadlineValidator = [
 export const createSubscriptionOrderValidator = [
     body("planId")
         .notEmpty().withMessage("Plan ID is required")
-        .isMongoId().withMessage("Invalid plan ID format"),
+        .isUUID().withMessage("Invalid plan ID format"),
 
     validate,
 ];
@@ -231,7 +231,7 @@ export const verifySubscriptionPaymentValidator = [
     body("signature").notEmpty().withMessage("Signature required"),
     body("subscriptionId")
         .notEmpty().withMessage("Subscription ID required")
-        .isMongoId().withMessage("Invalid subscription ID"),
+        .isUUID().withMessage("Invalid subscription ID"),
 
     validate,
 ];

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Youtube, Camera, Settings, Plus, BarChart3, Briefcase, Users2, Edit3,
@@ -17,6 +18,7 @@ const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1524666041070-9d87656c
 export const MobileProfile = () => {
   const user = useSelector(selectUser);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('yt_posts');
   const [showBannerMenu, setShowBannerMenu] = useState(false);
   const [isEditingBio, setIsEditingBio] = useState(false);
@@ -482,7 +484,10 @@ export const MobileProfile = () => {
       <div className="px-4 pt-3 pb-4">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[13px] font-bold text-white">Linked Channels ({youtubeProfiles.length})</h3>
-          <button className="flex items-center gap-1.5 bg-[#0B0B0B] px-2.5 py-1.5 rounded-lg border border-white/20 active:scale-95 cursor-pointer">
+          <button 
+            onClick={() => navigate('/youtube-connect')}
+            className="flex items-center gap-1.5 bg-[#0B0B0B] px-2.5 py-1.5 rounded-lg border border-white/20 active:scale-95 cursor-pointer"
+          >
             <Plus size={12} className="text-white" />
             <span className="text-[10px] font-bold text-white">Add Another</span>
           </button>
@@ -490,7 +495,11 @@ export const MobileProfile = () => {
 
         <div className="flex flex-col gap-3">
           {youtubeProfiles.length > 0 ? youtubeProfiles.map((channel, i) => (
-            <div key={channel.id || i} className="bg-[#0B0B0B] rounded-xl p-3 border border-[#1A1A1B]">
+            <div 
+              key={channel.id || i} 
+              onClick={() => navigate(`/channel/${channel.channel_id}`)}
+              className="bg-[#0B0B0B] hover:bg-[#111112] transition-colors rounded-xl p-3 border border-[#1A1A1B] cursor-pointer"
+            >
               <div className="flex items-center gap-3">
                 <img
                   src={channel.thumbnail_url || DEFAULT_AVATAR}
@@ -543,14 +552,20 @@ export const MobileProfile = () => {
               </div>
 
               {/* Bottom divider row — verified + delete + analytics */}
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#1A1A1B]">
+              <div 
+                className="flex items-center justify-between mt-3 pt-3 border-t border-[#1A1A1B]"
+                onClick={(e) => e.stopPropagation()} // Prevent card navigation when clicking specific action buttons
+              >
                 <div className="flex items-center gap-2">
                   <CheckCircle2 size={15} className="text-[#FF0000]" />
                   <button className="p-0.5 active:scale-90 cursor-pointer">
                     <Trash2 size={14} className="text-[#A1A1AA]/60 hover:text-[#FF3040] transition-colors" />
                   </button>
                 </div>
-                <button className="flex items-center gap-0.5 active:opacity-70 cursor-pointer">
+                <button 
+                  onClick={() => navigate(`/channel/${channel.channel_id}`)}
+                  className="flex items-center gap-0.5 active:opacity-70 cursor-pointer"
+                >
                   <span className="text-[10px] font-bold text-[#FF3040]">Analytics</span>
                   <ChevronRight size={12} className="text-[#FF3040]" />
                 </button>

@@ -20,6 +20,7 @@
 import jwt from "jsonwebtoken";
 import prisma from "../config/prisma.js";
 import { USER_INCLUDE, formatAuthResponse } from "../modules/auth/utils/authHelpers.js";
+import { getUserSubscriptionData } from "../modules/auth/controllers/authController.js";
 import { ApiError } from "./errorHandler.js";
 import logger from "../utils/logger.js";
 import { getCache, setCache, deleteCache, CacheKey, TTL } from "../utils/cache.js";
@@ -185,7 +186,8 @@ export const authenticate = async (req, res, next) => {
         });
 
         if (rawUser) {
-          user = formatAuthResponse(rawUser);
+          const subscription = await getUserSubscriptionData(userId);
+          user = formatAuthResponse(rawUser, subscription);
           await setCache(cacheKey, user, TTL.USER_PROFILE);
         }
       } catch (prismaError) {
@@ -263,7 +265,8 @@ export const optionalAuth = async (req, res, next) => {
             include: USER_INCLUDE,
           });
           if (rawUser) {
-            user = formatAuthResponse(rawUser);
+            const subscription = await getUserSubscriptionData(decoded.id);
+            user = formatAuthResponse(rawUser, subscription);
             await setCache(cacheKey, user, TTL.USER_PROFILE);
           }
         }

@@ -40,6 +40,7 @@ import oauthRoutes from "./modules/auth/routes/oauthRoutes.js";
 import userRoutes from "./modules/user/routes/userRoutes.js";
 import notificationRoutes from "./modules/notification/routes/notificationRoutes.js";
 import paymentGatewayRoutes from "./modules/payments/routes/paymentGatewayRoutes.js";
+import subscriptionRoutes from "./modules/payments/routes/subscriptionRoutes.js";
 import youtubeRoutes from "./modules/youtube-creator/routes/youtubeRoutes.js";
 import mediaRoutes from "./modules/storage/media.routes.js";
 import socialRoutes from "./modules/social/routes/postRoutes.js";
@@ -192,6 +193,7 @@ app.use((req, res, next) => {
 
 // ============ RELEVANT API ROUTES ============
 app.use("/api/payment-gateway", paymentGatewayRoutes);
+app.use("/api/payments", subscriptionRoutes);
 app.use("/api/temp-feed", tempFeedRoutes);
 
 // Health checks

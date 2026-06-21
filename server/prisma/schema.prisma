@@ -42,7 +42,13 @@ model User {
   memberships               CommunityMember[]
   community_messages        CommunityMessage[]
   communityMessageReactions CommunityMessageReaction[]
-
+  subscriptions             Subscription[]
+  paymentsAsClient          Payment[]                  @relation("ClientPayments")
+  paymentsAsEditor          Payment[]                  @relation("EditorPayments")
+  refundsAsClient           Refund[]                   @relation("ClientRefunds")
+  refundsAsEditor           Refund[]                   @relation("EditorRefunds")
+  withdrawalRequests        WithdrawalRequest[]
+  walletTransactions        WalletTransaction[]
   @@index([role])
   @@index([is_onboarded])
   @@map("users")
@@ -692,4 +698,231 @@ enum CommunityPlatform {
   PORTFOLIO
   TWITCH
   DISCORD
+}
+
+enum SubscriptionStatus {
+  trial
+  active
+  expired
+  cancelled
+  payment_pending
+}
+
+model SubscriptionPlan {
+  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name               String         @db.VarChar(100)
+  slug               String         @unique @db.VarChar(100)
+  feature            String         @db.VarChar(100)
+  planTier           String         @default("free") @db.VarChar(50) @map("plan_tier")
+  duration           String         @db.VarChar(50)
+  durationDays       Int            @map("duration_days")
+  price              Float
+  originalPrice      Float          @default(0) @map("original_price")
+  currency           String         @default("INR") @db.VarChar(10)
+  discountPercent    Float          @default(0) @map("discount_percent")
+  trialDays          Int            @default(3) @map("trial_days")
+  features           String[]
+  description        String?        @db.Text
+  badge              String?        @db.VarChar(50)
+  isActive           Boolean        @default(true) @map("is_active")
+  sortOrder          Int            @default(0) @map("sort_order")
+  totalSubscriptions Int            @default(0) @map("total_subscriptions")
+  created_at         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at         DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  subscriptions      Subscription[]
+
+  @@index([feature, isActive, sortOrder])
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String             @map("user_id") @db.Uuid
+  planId             String             @map("plan_id") @db.Uuid
+  planName           String             @map("plan_name") @db.VarChar(100)
+  planType           String             @map("plan_type") @db.VarChar(50)
+  feature            String             @db.VarChar(100)
+  planTier           String             @default("free") @db.VarChar(50) @map("plan_tier")
+  status             SubscriptionStatus @default(payment_pending)
+  startDate          DateTime           @default(now()) @map("start_date") @db.Timestamptz(6)
+  endDate            DateTime           @map("end_date") @db.Timestamptz(6)
+  isTrial            Boolean            @default(false) @map("is_trial")
+  trialEndDate       DateTime?          @map("trial_end_date") @db.Timestamptz(6)
+  amount             Float
+  currency           String             @default("INR") @db.VarChar(10)
+  razorpayOrderId    String?            @map("razorpay_order_id") @db.VarChar(255)
+  razorpayPaymentId  String?            @map("razorpay_payment_id") @db.VarChar(255)
+  razorpaySignature  String?            @map("razorpay_signature") @db.VarChar(255)
+  autoRenew          Boolean            @default(true) @map("auto_renew")
+  cancelledAt        DateTime?          @map("cancelled_at") @db.Timestamptz(6)
+  cancellationReason String?            @map("cancellation_reason") @db.Text
+  renewalCount       Int                @default(0) @map("renewal_count")
+  lastRenewalDate    DateTime?          @map("last_renewal_date") @db.Timestamptz(6)
+  created_at         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at         DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan               SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([userId, feature, status])
+  @@index([userId, endDate])
+  @@index([status, endDate])
+  @@map("subscriptions")
+}
+
+enum PaymentType {
+  escrow_deposit
+  escrow_release
+  refund
+  direct
+}
+
+enum PaymentStatus {
+  pending
+  processing
+  completed
+  failed
+  refunded
+}
+
+model Payment {
+  id                    String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order                 String        @db.VarChar(255) // Reference to legacy Order ID
+  clientId              String        @map("client_id") @db.Uuid
+  editorId              String        @map("editor_id") @db.Uuid
+  gig                   String?       @db.VarChar(255) // Reference to legacy Gig ID
+  amount                Float
+  platformFee           Float         @map("platform_fee")
+  editorEarning         Float         @map("editor_earning")
+  type                  PaymentType
+  status                PaymentStatus @default(pending)
+  transactionId         String?       @unique @map("transaction_id") @db.VarChar(255)
+  stripePaymentIntentId String?       @map("stripe_payment_intent_id") @db.VarChar(255)
+  stripeTransferId      String?       @map("stripe_transfer_id") @db.VarChar(255)
+  initiatedAt           DateTime      @default(now()) @map("initiated_at") @db.Timestamptz(6)
+  completedAt           DateTime?     @map("completed_at") @db.Timestamptz(6)
+  receiptNumber         String?       @unique @map("receipt_number") @db.VarChar(255)
+  receiptDownloadedAt   DateTime?     @map("receipt_downloaded_at") @db.Timestamptz(6)
+  notes                 String?       @db.Text
+  created_at            DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at            DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  client                User          @relation("ClientPayments", fields: [clientId], references: [id], onDelete: Cascade)
+  editor                User          @relation("EditorPayments", fields: [editorId], references: [id], onDelete: Cascade)
+  refunds               Refund[]
+  walletTransactions    WalletTransaction[]
+
+  @@index([order])
+  @@index([clientId])
+  @@index([editorId])
+  @@map("payments")
+}
+
+enum RefundStatus {
+  requested
+  approved
+  rejected
+  processed
+  failed
+}
+
+model Refund {
+  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId         String        @map("payment_id") @db.Uuid
+  clientId          String        @map("client_id") @db.Uuid
+  editorId          String        @map("editor_id") @db.Uuid
+  order             String?       @db.VarChar(255)
+  amount            Float
+  reason            String        @db.Text
+  status            RefundStatus  @default(requested)
+  stripeRefundId    String?       @map("stripe_refund_id") @db.VarChar(255)
+  resolutionNotes   String?       @map("resolution_notes") @db.Text
+  requestedAt       DateTime      @default(now()) @map("requested_at") @db.Timestamptz(6)
+  processedAt       DateTime?     @map("processed_at") @db.Timestamptz(6)
+  created_at        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  payment           Payment       @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  client            User          @relation("ClientRefunds", fields: [clientId], references: [id], onDelete: Cascade)
+  editor            User          @relation("EditorRefunds", fields: [editorId], references: [id], onDelete: Cascade)
+  walletTransactions WalletTransaction[]
+
+  @@index([paymentId])
+  @@index([clientId])
+  @@index([status])
+  @@map("refunds")
+}
+
+enum WithdrawalStatus {
+  pending
+  processing
+  completed
+  rejected
+}
+
+model WithdrawalRequest {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String           @map("user_id") @db.Uuid
+  amount            Float
+  status            WithdrawalStatus @default(pending)
+  paymentMethod     String           @map("payment_method") @db.VarChar(50)
+  transactionId     String?          @map("transaction_id") @db.VarChar(255)
+  adminNotes        String?          @map("admin_notes") @db.Text
+  requestedAt       DateTime         @default(now()) @map("requested_at") @db.Timestamptz(6)
+  processedAt       DateTime?        @map("processed_at") @db.Timestamptz(6)
+  created_at        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  walletTransactions WalletTransaction[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("withdrawal_requests")
+}
+
+enum WalletTxType {
+  credit
+  debit
+}
+
+enum WalletPurpose {
+  gig_payment
+  gig_earning
+  refund
+  withdrawal
+  bonus
+  fee
+}
+
+enum WalletTxStatus {
+  pending
+  completed
+  failed
+}
+
+model WalletTransaction {
+  id                  String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String             @map("user_id") @db.Uuid
+  amount              Float
+  type                WalletTxType
+  purpose             WalletPurpose
+  status              WalletTxStatus     @default(completed)
+  reference           String?            @db.VarChar(255)
+  description         String             @db.VarChar(255)
+  paymentId           String?            @map("payment_id") @db.Uuid
+  order               String?            @db.VarChar(255)
+  withdrawalId        String?            @map("withdrawal_id") @db.Uuid
+  refundId            String?            @map("refund_id") @db.Uuid
+  created_at          DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at          DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment             Payment?           @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  withdrawal          WithdrawalRequest? @relation(fields: [withdrawalId], references: [id], onDelete: SetNull)
+  refund              Refund?            @relation(fields: [refundId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([paymentId])
+  @@map("wallet_transactions")
 }

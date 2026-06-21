@@ -60,8 +60,45 @@ import {
 const cookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-  sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-  maxAge: 7 * 24 * 60 * 60 * 1000,
+  sameSite: "strict",
+  maxAge: REFRESH_TOKEN_TTL_SECONDS * 1000,
+};
+
+// ─── Helper: Get User Subscription Data ──────────────────────────────────────
+export const getUserSubscriptionData = async (userId) => {
+  try {
+    const sub = await prisma.subscription.findFirst({
+      where: {
+        userId: userId,
+        status: { in: ["active", "trial"] },
+        endDate: { gte: new Date() }
+      },
+      orderBy: {
+        endDate: "desc"
+      }
+    });
+
+    if (!sub) return null;
+
+    // Determine features based on planTier
+    const allFeatures = ["nearby_pro", "verified_badge", "yt_analytics", "portfolio_link", "priority_explore", "ai_suggestions", "team_collab"];
+    let features = [];
+    
+    if (sub.planTier === "creator") features = ["nearby_pro", "portfolio_link", "priority_explore"];
+    else if (sub.planTier === "pro") features = ["nearby_pro", "portfolio_link", "priority_explore", "verified_badge", "yt_analytics", "ai_suggestions"];
+    else if (sub.planTier === "elite") features = allFeatures;
+
+    return {
+      tier: sub.planTier,
+      features,
+      expiresAt: sub.endDate,
+      isTrial: sub.isTrial,
+      daysRemaining: Math.max(0, Math.ceil((new Date(sub.endDate) - new Date()) / (1000 * 60 * 60 * 24)))
+    };
+  } catch (error) {
+    logger.error(`Error fetching subscription for user ${userId}:`, error);
+    return null;
+  }
 };
 
 // ─── Refresh Token Rotation ────────────────────────────────────────────────
@@ -305,10 +342,12 @@ export const login = asyncHandler(async (req, res) => {
     `[SECURITY] Successful login for user ${user.id} (${email}). Family: ${familyId}`
   );
 
+  const subscription = await getUserSubscriptionData(user.id);
+
   res.cookie("refreshToken", refreshToken, cookieOptions);
   res.status(200).json({
     success: true,
-    user: formatAuthResponse(user),
+    user: formatAuthResponse(user, subscription),
     token: accessToken,
     refreshToken,
     accessTokenExpiresAt: Date.now() + ACCESS_TOKEN_TTL_MS,
@@ -544,7 +583,8 @@ export const getMe = asyncHandler(async (req, res) => {
 
   if (!user) throw new ApiError(404, "User session invalid.");
 
-  const formattedUser = formatAuthResponse(user);
+  const subscription = await getUserSubscriptionData(user.id);
+  const formattedUser = formatAuthResponse(user, subscription);
 
   // Cache the formatted response for subsequent requests
   await setCache(cacheKey, formattedUser, TTL.USER_PROFILE);

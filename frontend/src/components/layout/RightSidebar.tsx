@@ -1,8 +1,9 @@
 import { ReactLenis }    from 'lenis/react';
 import { Link, useLocation } from 'react-router-dom';
+import { useMemo } from 'react';
 import {
   Home, Search, PlaySquare, Briefcase,
-  Settings, LogOut, Compass, User, MapPin, PlusSquare
+  Settings, LogOut, Compass, User, MapPin, PlusSquare, Youtube
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
@@ -27,6 +28,21 @@ export const RightSidebar = () => {
   const user = useSelector(selectUser);
   const avatarUrl = user?.profilePicture || defaultProfile;
 
+  const hasYoutube = user?.youtubeProfile && user.youtubeProfile.length > 0;
+
+  const menuItems = useMemo(() => {
+    const items = [...NAV_ITEMS];
+    if (hasYoutube) {
+      const settingsIndex = items.findIndex(item => item.path === '/settings');
+      if (settingsIndex !== -1) {
+        items.splice(settingsIndex, 0, { icon: Youtube, label: 'YT Dashboard', path: '/youtube-dashboard' });
+      } else {
+        items.push({ icon: Youtube, label: 'YT Dashboard', path: '/youtube-dashboard' });
+      }
+    }
+    return items;
+  }, [hasYoutube]);
+
   return (
     <ReactLenis className="w-full h-full flex flex-col overflow-y-auto scrollbar-hide">
       <div className="flex flex-col flex-1 px-4 py-6">
@@ -38,7 +54,7 @@ export const RightSidebar = () => {
           </p>
 
           <nav className="space-y-1 flex-1">
-            {NAV_ITEMS.map((item) => {
+            {menuItems.map((item) => {
               const isActive = location.pathname === item.path;
               const isProfile = item.label === 'Profile';
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MoreHorizontal, ChevronLeft, ChevronRight, Heart, MessageCircle, Share2, Bookmark } from 'lucide-react';
+import { MoreHorizontal, ChevronLeft, ChevronRight, Heart, MessageCircle, Share2, Bookmark, Youtube } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
 
 interface Post {
@@ -15,6 +15,7 @@ interface Post {
   type?: string;
   tags?: string[];
   likedByAvatars?: string[];
+  watchOnYtLink?: string;
 }
 
 export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean }) {
@@ -70,24 +71,24 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
       </div>
 
       <div 
-        className="w-full max-h-[min(85vh,800px)] aspect-[4/5] lg:aspect-square relative overflow-hidden bg-black flex items-center justify-center"
+        className={`w-full max-h-[min(75vh,580px)] relative overflow-hidden flex items-center justify-center ${isDarkMode ? 'bg-black' : 'bg-zinc-50'}`}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
         {post.images && post.images.length > 0 ? (
-          <div className="w-full h-full relative group">
+          <div className="w-full relative group flex items-center">
             {/* Images wrapper */}
             <div 
-              className="flex w-full h-full transition-transform duration-500 ease-out"
+              className="flex w-full transition-transform duration-500 ease-out items-center"
               style={{ transform: `translateX(-${currentImgIndex * 100}%)` }}
             >
               {post.images.map((img, idx) => (
-                <div key={idx} className="w-full h-full flex-shrink-0 flex items-center justify-center bg-black">
+                <div key={idx} className="w-full flex-shrink-0 flex items-center justify-center">
                   <img 
                     src={img} 
                     alt={`Slide ${idx + 1}`} 
-                    className="w-full h-full object-contain" 
+                    className="w-full h-auto max-h-[min(75vh,580px)] object-contain" 
                   />
                 </div>
               ))}
@@ -134,7 +135,18 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
             </div>
           </div>
         ) : (
-          <img src={post.img} alt="Post content" className="w-full h-full object-contain" />
+          <img src={post.img} alt="Post content" className="w-full h-auto max-h-[min(75vh,580px)] object-contain" />
+        )}
+
+        {/* Watch on YT Button */}
+        {post.watchOnYtLink && (
+          <button 
+            onClick={(e) => { e.stopPropagation(); window.open(post.watchOnYtLink, '_blank'); }}
+            className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md hover:bg-black/80 px-3 py-1.5 rounded-full flex items-center gap-2 text-white text-[11px] font-semibold tracking-wide border border-white/20 transition-all z-20 shadow-lg cursor-pointer"
+          >
+            <Youtube size={14} className="text-red-500" />
+            Watch full video on YT
+          </button>
         )}
       </div>
 

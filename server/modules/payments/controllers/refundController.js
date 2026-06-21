@@ -6,6 +6,7 @@ import { Order } from "../../marketplace/models/Order.js";
 import User from "../../user/models/User.js";
 import { ApiError } from "../../../middleware/errorHandler.js";
 import logger from "../../../utils/logger.js";
+import notificationService from "../../notification/services/notificationService.js";
 
 /**
  * @desc    Initiate refund for an order
@@ -142,20 +143,18 @@ const processRefundInternal = async (refund) => {
  */
 const createRefundNotification = async (clientId, refund, method) => {
   try {
-    const Notification = (await import("../../../connectivity/models/Notification.js")).default;
-    
     const message = method === "wallet"
       ? `₹${refund.refundAmount} has been added to your wallet`
       : `₹${refund.refundAmount} refund initiated. It will be credited in 5-7 business days.`;
 
-    await Notification.create({
-      user: clientId,
-      type: "payment",
+    await notificationService.notify({
+      userId: clientId,
+      type: "SYSTEM",
       title: "Refund Processed",
-      message,
-      data: {
-        refundId: refund._id,
-        amount: refund.refundAmount,
+      body: message,
+      metadata: {
+        refundId: refund._id.toString(),
+        amount: refund.refundAmount.toString(),
         method,
       },
     });

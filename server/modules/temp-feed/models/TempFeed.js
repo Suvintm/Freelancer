@@ -62,6 +62,10 @@ const tempFeedSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    watchOnYtLink: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );

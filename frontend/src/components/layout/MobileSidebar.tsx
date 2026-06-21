@@ -1,7 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import { useMemo } from 'react';
 import { 
   Home, Search, Compass, MapPin, PlaySquare, Briefcase, PlusSquare, Settings, User,
-  LogOut, Plus, Moon, MoreVertical, X
+  LogOut, Plus, Moon, MoreVertical, X, Youtube
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -33,6 +34,21 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
     { icon: Settings,   label: 'Settings',  path: '/settings'},
     { icon: User,       label: 'Profile',   path: '/profile' }
   ];
+
+  const hasYoutube = user?.youtubeProfile && user.youtubeProfile.length > 0;
+
+  const menuItems = useMemo(() => {
+    const items = [...NAV_ITEMS];
+    if (hasYoutube) {
+      const settingsIndex = items.findIndex(item => item.path === '/settings');
+      if (settingsIndex !== -1) {
+        items.splice(settingsIndex, 0, { icon: Youtube, label: 'YT Dashboard', path: '/youtube-dashboard' });
+      } else {
+        items.push({ icon: Youtube, label: 'YT Dashboard', path: '/youtube-dashboard' });
+      }
+    }
+    return items;
+  }, [hasYoutube]);
 
   const handleNavigate = (path: string) => {
     navigate(path);
@@ -97,7 +113,7 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
 
             {/* Scrollable Nav */}
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1.5 scrollbar-hide">
-              {NAV_ITEMS.map((item) => {
+              {menuItems.map((item) => {
                 const isActive = location.pathname === item.path;
                 return (
                   <button

@@ -1,5 +1,5 @@
 import { ReactLenis }       from 'lenis/react';
-import { Plus, ExternalLink, TrendingUp, Settings } from 'lucide-react';
+import { Plus, ExternalLink, TrendingUp, Settings, Sparkles } from 'lucide-react';
 import { useNavigate }      from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
@@ -55,7 +55,15 @@ export const Sidebar = () => {
       <div className="flex flex-col h-full gap-6 p-6">
 
         {/* ── 1. User Identity Card ─────────────────────────────────── */}
-        <div className={`rounded-[32px] border transition-all duration-300 ${isDarkMode ? 'bg-black border-border-main shadow-xl lg:shadow-none' : 'bg-zinc-50/50 border-zinc-950 border-[1.5px] shadow-sm hover:shadow-md hover:-translate-y-0.5'} p-6 space-y-3`}>
+        <div className={`relative rounded-[32px] border transition-all duration-300 ${isDarkMode ? 'bg-black border-border-main shadow-xl lg:shadow-none' : 'bg-zinc-50/50 border-zinc-950 border-[1.5px] shadow-sm hover:shadow-md hover:-translate-y-0.5'} p-6 space-y-3`}>
+
+          {/* Premium Plan Badge */}
+          {user?.subscription && (user.subscription.tier !== 'free' || user.subscription.planTier) && (
+            <div className="absolute top-4 right-4 px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm flex items-center gap-1 z-10 bg-gradient-to-r from-blue-600 to-indigo-600 text-white animate-pulse">
+              <Sparkles size={8} className="text-white fill-white" />
+              <span>{user.subscription.tier || user.subscription.planTier || 'PREMIUM'}</span>
+            </div>
+          )}
 
           {/* Avatar + name + role */}
           <div className="flex items-center gap-3">
