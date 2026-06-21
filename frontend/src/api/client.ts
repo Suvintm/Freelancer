@@ -6,7 +6,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5051/api'
 
 export const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: 60000, // Increased to 60s for heavy onboarding operations
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
