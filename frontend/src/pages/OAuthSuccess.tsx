@@ -47,7 +47,7 @@ export default function OAuthSuccess() {
         // SECURITY RESTRICTION: Block unauthorized emails during DEV phase
         const emailToCheck = response.data.socialProfile?.email || response.data.user?.email;
         if (emailToCheck) {
-          const allowedEmails = ['suvintm19@gmail.com', 'suvintm19@gamil.com'];
+          const allowedEmails = ['suvintm19@gmail.com', 'suvintm19@gamil.com', 'suvintm1515@gmail.com'];
           if (!allowedEmails.includes(emailToCheck.toLowerCase().trim())) {
             navigate('/login?error=server_busy');
             return;
@@ -126,6 +126,11 @@ export default function OAuthSuccess() {
 
         // Standard login: set auth and go home
         dispatch(setAuth({ user, token, refreshToken }));
+        
+        sessionStorage.removeItem('isAddingAccount');
+
+        queryClient.setQueryData(CURRENT_USER_QUERY_KEY, user);
+
         navigate('/home');
 
       } catch (error) {

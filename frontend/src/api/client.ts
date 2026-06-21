@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import type { RootState } from '../store';
+import { selectToken, selectRefreshToken } from '../store/slices/authSlice';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
 
@@ -17,7 +18,7 @@ export const api: AxiosInstance = axios.create({
 api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   // Use a dynamic import to avoid circular dependencies
   const { store } = await import('../store');
-  const token = (store.getState() as RootState).auth.token;
+  const token = selectToken(store.getState() as RootState);
 
   if (token && !config.headers.Authorization) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -69,7 +70,7 @@ api.interceptors.response.use(
 
       try {
         const { store } = await import('../store');
-        const { refreshToken } = (store.getState() as RootState).auth;
+        const refreshToken = selectRefreshToken(store.getState() as RootState);
 
         if (!refreshToken) throw new Error('No refresh token available');
 
@@ -96,17 +97,26 @@ api.interceptors.response.use(
         refreshSubscribers = [];
         
         const { store } = await import('../store');
-        const { clearAuth } = await import('../store/slices/authSlice');
+        const { clearAuth, selectAllSessions } = await import('../store/slices/authSlice');
         const { clearTempSignupData } = await import('../store/slices/onboardingSlice');
         
+        // Clear active session
         store.dispatch(clearAuth());
         store.dispatch(clearTempSignupData());
         
-        const { persistor } = await import('../store');
-        await persistor.purge();
-
-        window.dispatchEvent(new CustomEvent('suvix:logout'));
-        window.location.href = '/'; 
+        // If it was the last session, purge entirely
+        const remainingSessions = selectAllSessions(store.getState() as RootState);
+        if (remainingSessions.length === 0) {
+          const { persistor } = await import('../store');
+          await persistor.purge();
+          window.dispatchEvent(new CustomEvent('suvix:logout'));
+          window.location.href = '/'; 
+        } else {
+          // If there are other sessions, we just gracefully switch to another one 
+          // without full logout redirect
+          window.location.reload(); 
+        }
+        
         return Promise.reject(refreshError);
       }
     }

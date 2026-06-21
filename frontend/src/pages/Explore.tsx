@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutGrid, Users, Play, Camera, CheckCircle2, UserPlus, MoreHorizontal } from 'lucide-react';
-import { useSelector } from 'react-redux';
-import { selectUser } from '../store/slices/authSlice';
+import { LayoutGrid, Users, Play, Camera, CheckCircle2, UserPlus, MoreHorizontal, Loader2, Youtube, MessageSquare } from 'lucide-react';
+import { useSelector, useDispatch } from 'react-redux';
+import { selectUser, updateUser } from '../store/slices/authSlice';
 import { useTheme } from '../hooks/useTheme';
+import defaultProfile from '../assets/defaultprofile.png';
+import { api } from '../api/client';
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
@@ -25,11 +27,81 @@ export default function Explore() {
   const [activeTab, setActiveTab] = useState('All');
   const user = useSelector(selectUser);
   const { isDarkMode } = useTheme();
+  const dispatch = useDispatch();
+
+  const handleFollowToggle = async (targetUserId: string) => {
+    if (!user) return;
+    const isFollowing = user.followingIds?.includes(targetUserId);
+
+    // Optimistic Update
+    const currentFollowingIds = user.followingIds || [];
+    const newFollowingIds = isFollowing
+      ? currentFollowingIds.filter(id => id !== targetUserId)
+      : [...currentFollowingIds, targetUserId];
+
+    dispatch(updateUser({ followingIds: newFollowingIds }));
+
+    try {
+      const endpoint = isFollowing ? '/user/unfollow' : '/user/follow';
+      const response = await api.post(endpoint, { targetUserId });
+      if (response.data?.success) {
+        dispatch(updateUser({ followingIds: response.data.followingIds }));
+      }
+    } catch (err) {
+      console.error('Failed to toggle follow status:', err);
+      // Revert on error
+      dispatch(updateUser({ followingIds: currentFollowingIds }));
+    }
+  };
+
+  const [editors, setEditors] = useState<any[]>([]);
+  const [isLoadingEditors, setIsLoadingEditors] = useState(false);
+  const [creators, setCreators] = useState<any[]>([]);
+  const [isLoadingCreators, setIsLoadingCreators] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'Editors') {
+      const fetchEditors = async () => {
+        setIsLoadingEditors(true);
+        try {
+          const response = await api.get('/profile/category/video_editor');
+          if (response.data?.success) {
+            setEditors(response.data.data);
+          }
+        } catch (error) {
+          console.error("Error fetching editors:", error);
+        } finally {
+          setIsLoadingEditors(false);
+        }
+      };
+      fetchEditors();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'YT Creators') {
+      const fetchCreators = async () => {
+        setIsLoadingCreators(true);
+        try {
+          const response = await api.get('/profile/category/yt_influencer');
+          if (response.data?.success) {
+            setCreators(response.data.data);
+          }
+        } catch (error) {
+          console.error("Error fetching creators:", error);
+        } finally {
+          setIsLoadingCreators(false);
+        }
+      };
+      fetchCreators();
+    }
+  }, [activeTab]);
 
   const TABS = [
     { id: 'All', icon: LayoutGrid, color: '#6366f1' },
     { id: 'Editors', icon: Users, color: '#a855f7' },
-    { id: 'YT Videos', icon: Play, color: '#ef4444' },
+    { id: 'YT Creators', icon: Youtube, color: '#ef4444' },
+    { id: 'YT Videos', icon: Play, color: '#ec4899' },
     { id: 'Rental', icon: Camera, color: '#10b981' },
   ];
 
@@ -284,6 +356,243 @@ export default function Explore() {
                   </div>
                 </section>
               </>
+            )}
+
+            {activeTab === 'Editors' && (
+              <div className="px-6 lg:px-0 mb-20">
+                <div className="mb-8">
+                  <p className="text-[12px] font-bold uppercase tracking-[0.2em] text-zinc-500">Discover Elite Talent</p>
+                  <h2 className={`text-3xl lg:text-4xl font-bold mt-1 transition-colors ${
+                    isDarkMode ? 'text-white' : 'text-zinc-950'
+                  }`}>
+                    Professional Video Editors
+                  </h2>
+                </div>
+
+                {isLoadingEditors ? (
+                  <div className="flex justify-center items-center py-20">
+                    <Loader2 size={32} className="animate-spin text-rose-500" />
+                  </div>
+                ) : editors.length === 0 ? (
+                  <div className="text-center py-20 opacity-55">
+                    <Users size={48} className="mx-auto mb-4" />
+                    <p className="text-sm font-medium">No professional editors found. Add some from the seed script!</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {editors.map((editor) => (
+                      <motion.div
+                        key={editor.id}
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        whileHover={{ y: -4 }}
+                        transition={{ duration: 0.3 }}
+                        className={`rounded-[24px] border p-5 lg:p-6 backdrop-blur-xl relative overflow-hidden group transition-all duration-300 ${
+                          isDarkMode 
+                            ? 'bg-black border-white/5 shadow-2xl hover:border-white/10' 
+                            : 'bg-white border-zinc-200 shadow-lg hover:shadow-xl'
+                        }`}
+                      >
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-rose-500/5 blur-3xl group-hover:bg-rose-500/10 transition-colors" />
+                        
+                        <div className="flex items-start gap-4 mb-5 relative z-10">
+                          <div className="h-14 w-14 overflow-hidden rounded-xl border-2 border-rose-500 p-0.5 flex-shrink-0">
+                            <img 
+                              src={editor.profilePicture || defaultProfile} 
+                              alt={editor.name} 
+                              className="h-full w-full rounded-[10px] object-cover" 
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className={`text-base font-bold truncate transition-colors ${
+                                isDarkMode ? 'text-white' : 'text-zinc-950'
+                              }`}>{editor.name}</p>
+                              <CheckCircle2 size={12} className="text-rose-500 fill-rose-500/20" />
+                            </div>
+                            <p className="text-[11px] font-bold text-rose-500">@{editor.username}</p>
+                            <p className="text-[10px] text-zinc-500 font-medium mt-0.5">{editor.location || 'India'}</p>
+                          </div>
+                        </div>
+
+                        {/* Bio or tag line */}
+                        <div className="mb-5">
+                          <p className={`text-xs line-clamp-2 leading-relaxed ${
+                            isDarkMode ? 'text-zinc-400' : 'text-zinc-650'
+                          }`}>
+                            {editor.bio || `Specialist in cinematic editing, storytelling, and high-fidelity video production.`}
+                          </p>
+                        </div>
+
+                        {/* Skills / Subcategories Badges */}
+                        {editor.roles && editor.roles.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-6">
+                            {editor.roles.map((role, idx) => (
+                              <span
+                                key={idx}
+                                className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                  isDarkMode 
+                                    ? 'bg-white/5 text-zinc-400 border border-white/5' 
+                                    : 'bg-zinc-100 text-zinc-600 border border-zinc-200'
+                                }`}
+                              >
+                                {role}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="flex gap-2 relative z-10 w-full">
+                          <button
+                            onClick={() => handleFollowToggle(editor.userId)}
+                            className={`flex-[2] rounded-xl py-3 text-[11px] font-bold transition-all duration-300 cursor-pointer active:scale-[0.98] ${
+                              user?.followingIds?.includes(editor.userId)
+                                ? isDarkMode
+                                  ? 'bg-zinc-800/80 border border-zinc-700/80 text-zinc-400 hover:bg-zinc-850'
+                                  : 'bg-zinc-200 border border-zinc-300 text-zinc-650 hover:bg-zinc-250'
+                                : isDarkMode
+                                  ? 'bg-white text-black hover:opacity-90'
+                                  : 'bg-zinc-950 text-white hover:bg-zinc-905'
+                            }`}
+                          >
+                            {user?.followingIds?.includes(editor.userId) ? 'Following' : 'Follow'}
+                          </button>
+                          <button 
+                            onClick={() => navigate('/communication-hub?userId=' + editor.userId)}
+                            className={`flex-1 rounded-xl border py-3 text-[11px] font-bold flex items-center justify-center transition-colors duration-300 cursor-pointer ${
+                              isDarkMode 
+                                ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' 
+                                : 'bg-zinc-100 border-zinc-200 text-zinc-800 hover:bg-zinc-200'
+                            }`}
+                          >
+                            Connect
+                          </button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'YT Creators' && (
+              <div className="px-6 lg:px-0 mb-20">
+                <div className="mb-8">
+                  <p className="text-[12px] font-bold uppercase tracking-[0.2em] text-zinc-500">Connect with Influencers</p>
+                  <h2 className={`text-3xl lg:text-4xl font-bold mt-1 transition-colors ${
+                    isDarkMode ? 'text-white' : 'text-zinc-950'
+                  }`}>
+                    YouTube Creators
+                  </h2>
+                </div>
+
+                {isLoadingCreators ? (
+                  <div className="flex justify-center items-center py-20">
+                    <Loader2 size={32} className="animate-spin text-rose-500" />
+                  </div>
+                ) : creators.length === 0 ? (
+                  <div className="text-center py-20 opacity-55">
+                    <Youtube size={48} className="mx-auto mb-4 text-red-500" />
+                    <p className="text-sm font-medium">No YouTube creators found. Add some from the seed script!</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {creators.map((creator) => (
+                      <motion.div
+                        key={creator.id}
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        whileHover={{ y: -4 }}
+                        transition={{ duration: 0.3 }}
+                        className={`rounded-[24px] border p-5 lg:p-6 backdrop-blur-xl relative overflow-hidden group transition-all duration-300 ${
+                          isDarkMode 
+                            ? 'bg-black border-white/5 shadow-2xl hover:border-white/10' 
+                            : 'bg-white border-zinc-200 shadow-lg hover:shadow-xl'
+                        }`}
+                      >
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-red-500/5 blur-3xl group-hover:bg-red-500/10 transition-colors" />
+                        
+                        <div className="flex items-start gap-4 mb-5 relative z-10">
+                          <div className="h-14 w-14 overflow-hidden rounded-xl border-2 border-red-500 p-0.5 flex-shrink-0">
+                            <img 
+                              src={creator.profilePicture || defaultProfile} 
+                              alt={creator.name} 
+                              className="h-full w-full rounded-[10px] object-cover" 
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className={`text-base font-bold truncate transition-colors ${
+                                isDarkMode ? 'text-white' : 'text-zinc-950'
+                              }`}>{creator.name}</p>
+                              <CheckCircle2 size={12} className="text-red-500 fill-red-500/20" />
+                            </div>
+                            <p className="text-[11px] font-bold text-red-500">@{creator.username}</p>
+                            <p className="text-[10px] text-zinc-500 font-medium mt-0.5">{creator.location || 'India'}</p>
+                          </div>
+                        </div>
+
+                        {/* Bio / Niche info */}
+                        <div className="mb-5">
+                          <p className={`text-xs line-clamp-2 leading-relaxed ${
+                            isDarkMode ? 'text-zinc-400' : 'text-zinc-650'
+                          }`}>
+                            {creator.bio || `Content creator specializing in engaging digital media, YouTube entertainment, and video storytelling.`}
+                          </p>
+                        </div>
+
+                        {/* Subcategory / Roles Badges */}
+                        {creator.roles && creator.roles.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-6">
+                            {creator.roles.map((role, idx) => (
+                              <span
+                                key={idx}
+                                className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                  isDarkMode 
+                                    ? 'bg-white/5 text-zinc-400 border border-white/5' 
+                                    : 'bg-zinc-100 text-zinc-600 border border-zinc-200'
+                                }`}
+                              >
+                                {role}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-2 relative z-10 w-full">
+                          <button
+                            onClick={() => handleFollowToggle(creator.userId)}
+                            className={`flex-[3] rounded-xl py-3 text-[11px] font-bold transition-all duration-300 cursor-pointer active:scale-[0.98] ${
+                              user?.followingIds?.includes(creator.userId)
+                                ? isDarkMode
+                                  ? 'bg-zinc-800/80 border border-zinc-700/80 text-zinc-400 hover:bg-zinc-850'
+                                  : 'bg-zinc-200 border border-zinc-300 text-zinc-650 hover:bg-zinc-250'
+                                : isDarkMode
+                                  ? 'bg-white text-black hover:opacity-90'
+                                  : 'bg-zinc-950 text-white hover:bg-zinc-905'
+                            }`}
+                          >
+                            {user?.followingIds?.includes(creator.userId) ? 'Following' : 'Follow'}
+                          </button>
+                          
+                          <button 
+                            onClick={() => navigate('/communication-hub?userId=' + creator.userId)}
+                            className={`flex-1 rounded-xl border py-3 text-[11px] font-bold flex items-center justify-center transition-colors duration-300 cursor-pointer ${
+                              isDarkMode 
+                                ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' 
+                                : 'bg-zinc-100 border-zinc-200 text-zinc-800 hover:bg-zinc-250'
+                            }`}
+                            title="Contact Message"
+                          >
+                            <MessageSquare size={16} />
+                          </button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </motion.div>
         </AnimatePresence>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../store/slices/authSlice';
 import { useTheme } from '../hooks/useTheme';
@@ -35,11 +35,20 @@ interface TempFeedItem {
 
 export default function TempUploadPortal() {
   const navigate = useNavigate();
+  const routeLocation = useLocation();
   const { isDarkMode } = useTheme();
   const user = useSelector(selectUser);
 
   // Form states
   const [activeTab, setActiveTab] = useState<UploadType>('reel');
+
+  useEffect(() => {
+    const params = new URLSearchParams(routeLocation.search);
+    const typeParam = params.get('type') as UploadType;
+    if (typeParam && ['reel', 'post', 'yt_video', 'thumbnail_vote'].includes(typeParam)) {
+      setActiveTab(typeParam);
+    }
+  }, [routeLocation.search]);
   const [username, setUsername] = useState(user?.username || 'suvix_creator');
   const [location, setLocation] = useState('');
   const [caption, setCaption] = useState('');

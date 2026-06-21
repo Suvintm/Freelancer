@@ -48,6 +48,7 @@ import storyRoutes from "./modules/story/routes/storyRoutes.js";
 import profileRoutes from "./modules/profile/profile.routes.js";
 import communityRoutes from "./modules/community/routes/communityRoutes.js";
 import tempFeedRoutes from "./modules/temp-feed/routes/tempFeedRoutes.js";
+import messageRoutes from "./modules/message/routes/messageRoutes.js";
 
 // PostgreSQL Support
 import { connectPostgres } from "./config/prisma.js";
@@ -174,6 +175,7 @@ app.use("/api/social/stories", storyRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/youtube-creator", youtubeRoutes);
 app.use("/api/communities", communityRoutes);
+app.use("/api/messages", messageRoutes);
 
 // ============ SECURITY: NOSQL SANITIZATION ============
 // This protects MongoDB-specific routes (Reels, Feed, etc.)

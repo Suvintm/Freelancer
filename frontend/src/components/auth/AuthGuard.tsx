@@ -76,8 +76,12 @@ export const PublicRoute = ({ children }: AuthGuardProps) => {
     );
   }
 
+  // Check if user is trying to add another account
+  const isAddingAccount = sessionStorage.getItem('isAddingAccount') === 'true';
+
   // If already logged in and fully onboarded, don't show login/signup pages
-  if (isAuthenticated && user?.isOnboarded) {
+  // UNLESS they explicitly want to add an account
+  if (isAuthenticated && user?.isOnboarded && !isAddingAccount) {
     return <Navigate to="/home" replace />;
   }
 

@@ -1,4 +1,4 @@
-import { Search, Bell, Plus, Sun, Moon, Sparkles, Crown, Zap, Gem, ChevronRight } from 'lucide-react';
+import { Search, Bell, Plus, Sun, Moon, Sparkles, Crown, Zap, Gem, ChevronRight, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme }  from '../../hooks/useTheme';
 import { useSelector } from 'react-redux';
@@ -6,6 +6,13 @@ import { selectUser } from '../../store/slices/authSlice';
 import { useSubscription } from '../../hooks/useSubscription';
 import { useState, useEffect, useRef } from 'react';
 import { SearchDropdown } from './SearchDropdown';
+import { 
+  MdOutlineVideoCameraBack, 
+  MdOutlineImage, 
+  MdOutlinePlayCircle, 
+  MdOutlineCheckCircle, 
+  MdOutlinePoll 
+} from 'react-icons/md';
 import darkLogo  from '../../assets/darklogo.png';
 import lightLogo from '../../assets/lightlogo.png';
 import defaultProfile from '../../assets/defaultprofile.png';
@@ -18,9 +25,22 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   const [query, setQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileSearchExpanded, setIsMobileSearchExpanded] = useState(false);
+  const [isCreateDropdownOpen, setIsCreateDropdownOpen] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const createDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Click outside to close create dropdown
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (createDropdownRef.current && !createDropdownRef.current.contains(e.target as Node)) {
+        setIsCreateDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Global keydown listeners for shortcuts
   useEffect(() => {
@@ -150,6 +170,14 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
             aria-label="Toggle theme"
           >
             {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
+          <button
+            onClick={() => navigate('/communication-hub')}
+            className="p-1.5 rounded-lg text-text-muted hover:bg-border-secondary hover:text-text-main transition-colors relative animate-fade-in"
+            aria-label="Messages"
+          >
+            <MessageSquare size={18} />
           </button>
 
           <button
@@ -283,6 +311,15 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
             </button>
 
             <button
+              onClick={() => navigate('/communication-hub')}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-text-muted hover:bg-border-secondary hover:text-text-main transition-colors relative"
+              aria-label="Messages"
+            >
+              <MessageSquare size={16} />
+              <span className="text-[11.5px] font-bold uppercase tracking-wider hidden xl:inline">Chat</span>
+            </button>
+
+            <button
               onClick={() => navigate('/notifications')}
               className="w-8 h-8 flex items-center justify-center rounded-lg text-text-muted hover:bg-border-secondary hover:text-text-main transition-colors relative"
               aria-label="Notifications"
@@ -300,16 +337,88 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
             <p className="text-[9px] font-bold text-text-muted uppercase tracking-wider opacity-60">Balance</p>
           </div>
 
-          <button className="
-            inline-flex items-center gap-1.5 h-8 px-4 rounded-full
-            bg-gradient-to-r from-orange-500 to-rose-500
-            hover:from-orange-600 hover:to-rose-600
-            text-white text-[12px] font-semibold
-            shadow-sm active:scale-[0.98] transition-all shrink-0
-          ">
-            <Plus size={13} strokeWidth={2.5} />
-            Create post
-          </button>
+          <div ref={createDropdownRef} className="relative shrink-0 z-40">
+            <button 
+              onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
+              className="
+                inline-flex items-center gap-1.5 h-8 px-4 rounded-full
+                bg-gradient-to-r from-orange-500 to-rose-500
+                hover:from-orange-600 hover:to-rose-600
+                text-white text-[12px] font-semibold cursor-pointer
+                shadow-sm active:scale-[0.98] transition-all shrink-0
+              "
+            >
+              <Plus size={13} strokeWidth={2.5} />
+              Create post
+            </button>
+
+            {isCreateDropdownOpen && (
+              <div className={`
+                absolute right-0 mt-2 w-64 rounded-2xl border shadow-xl p-2 flex flex-col gap-0.5 z-50 animate-in fade-in slide-in-from-top-1
+                ${isDarkMode 
+                  ? 'bg-[#0d0d10] border-zinc-850 text-zinc-300' 
+                  : 'bg-white border-zinc-200/80 text-zinc-800'
+                }
+              `}>
+                {[
+                  {
+                    title: 'Upload Reel',
+                    subtitle: 'Share short-form videos',
+                    url: '/upload-portal?type=reel',
+                    icon: <MdOutlineVideoCameraBack size={16} />
+                  },
+                  {
+                    title: 'Upload Post',
+                    subtitle: 'Post updates, text or images',
+                    url: '/upload-portal?type=post',
+                    icon: <MdOutlineImage size={16} />
+                  },
+                  {
+                    title: 'Upload YT Videos',
+                    subtitle: 'Link or sync YouTube videos',
+                    url: '/upload-portal?type=yt_video',
+                    icon: <MdOutlinePlayCircle size={16} />
+                  },
+                  {
+                    title: 'Create Thumbnail Voting',
+                    subtitle: 'Get feedback on thumbnails',
+                    url: '/upload-portal?type=thumbnail_vote',
+                    icon: <MdOutlineCheckCircle size={16} />
+                  },
+                  {
+                    title: 'Create Polls',
+                    subtitle: 'Gather feedback from audience',
+                    url: '/upload-portal?type=post',
+                    icon: <MdOutlinePoll size={16} />
+                  }
+                ].map((item) => (
+                  <button
+                    key={item.title}
+                    onClick={() => {
+                      navigate(item.url);
+                      setIsCreateDropdownOpen(false);
+                    }}
+                    className={`flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl transition-all cursor-pointer ${
+                      isDarkMode 
+                        ? 'hover:bg-zinc-900/40 text-zinc-400 hover:text-white' 
+                        : 'hover:bg-zinc-50 text-zinc-600 hover:text-zinc-950'
+                    }`}
+                  >
+                    {/* Circle icon wrapper matching Google/Meta style */}
+                    <div className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center transition-all ${
+                      isDarkMode ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-950'
+                    }`}>
+                      {item.icon}
+                    </div>
+                    <div className="min-w-0">
+                      <p className={`text-[12.5px] font-bold leading-none ${isDarkMode ? 'text-zinc-300' : 'text-zinc-800'}`}>{item.title}</p>
+                      <p className={`text-[9.5px] leading-tight mt-1.5 truncate ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>{item.subtitle}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* 3. Right identity — aligns with right sidebar */}

@@ -54,6 +54,7 @@ export const USER_INCLUDE = {
     },
   },
   stats: true,
+  follows: true,
 };
 
 // ─── Primary Identity Resolver ────────────────────────────────────────────
@@ -231,6 +232,7 @@ export const formatAuthResponse = (user, subscription = null) => {
 
     followers: user.stats?.followers_count || 0,
     following: user.stats?.following_count || 0,
+    followingIds: (user.follows || []).map((f) => f.followingId),
     subscription,
   };
 };

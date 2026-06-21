@@ -2,7 +2,7 @@
  * 🛣️ PROFILE ROUTES
  */
 import { Router } from "express";
-import { getProfilePosts, getProfileReels } from "./profile.controller.js";
+import { getProfilePosts, getProfileReels, getProfilesByCategory } from "./profile.controller.js";
 import { publicApiLimiter } from "../../middleware/rateLimiter.js";
 
 const router = Router();
@@ -21,5 +21,11 @@ router.get("/:userId/posts", getProfilePosts);
  * Publicly accessible list of reels
  */
 router.get("/:userId/reels", getProfileReels);
+
+/**
+ * @route GET /api/profile/category/:categorySlug
+ * Publicly accessible list of profiles by category slug
+ */
+router.get("/category/:categorySlug", getProfilesByCategory);
 
 export default router;

@@ -8,6 +8,7 @@ import YouTubeConnect from './pages/YouTubeConnect';
 import YouTubeNiche from './pages/YouTubeNiche';
 import Home from './pages/Home';
 import Explore from './pages/Explore';
+import CommunicationHub from './pages/CommunicationHub';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import Nearby from './pages/Nearby';
@@ -171,6 +172,16 @@ function App() {
             <AuthGuard>
               <AppLayout>
                 <Explore />
+              </AppLayout>
+            </AuthGuard>
+          } 
+        />
+        <Route 
+          path="/communication-hub" 
+          element={
+            <AuthGuard>
+              <AppLayout>
+                <CommunicationHub />
               </AppLayout>
             </AuthGuard>
           } 

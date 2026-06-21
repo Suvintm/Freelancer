@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ReactLenis }       from 'lenis/react';
 import { Plus, ExternalLink, TrendingUp, Settings, Sparkles } from 'lucide-react';
 import { useNavigate }      from 'react-router-dom';
@@ -6,6 +7,7 @@ import { selectUser } from '../../store/slices/authSlice';
 import { useTheme }         from '../../hooks/useTheme';
 import auth1                from '../../assets/auth/auth_1.png';
 import defaultProfile       from '../../assets/defaultprofile.png';
+import { AccountSwitcher } from '../profile/AccountSwitcher';
 
 
 
@@ -33,6 +35,7 @@ export const Sidebar = () => {
   const navigate = useNavigate();
   const user = useSelector(selectUser);
   const { isDarkMode } = useTheme();
+  const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
 
   const CHANNEL = {
     name:           user?.name || 'User',
@@ -66,27 +69,47 @@ export const Sidebar = () => {
           )}
 
           {/* Avatar + name + role */}
-          <div className="flex items-center gap-3">
-            <div className="relative shrink-0">
-              <img
-                src={CHANNEL.avatar}
-                alt={CHANNEL.name}
-                className={`w-11 h-11 rounded-full object-cover border-2 ${isDarkMode ? 'border-border-main' : 'border-zinc-200'}`}
-              />
-              {/* Verified badge */}
-              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-rose-500 rounded-full flex items-center justify-center border-2 border-container">
-                <svg width="7" height="6" viewBox="0 0 7 6" fill="none">
-                  <path d="M1 3l1.5 1.5L6 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[14px] font-semibold text-text-main font-display leading-tight truncate">
-                {CHANNEL.name}
-              </p>
-              <p className="text-[12px] text-text-muted leading-tight mt-0.5 truncate">
-                {CHANNEL.handle}
-              </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative shrink-0">
+                <img
+                  src={CHANNEL.avatar}
+                  alt={CHANNEL.name}
+                  className={`w-11 h-11 rounded-full object-cover border-2 ${isDarkMode ? 'border-border-main' : 'border-zinc-200'}`}
+                />
+                {/* Verified badge */}
+                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-rose-500 rounded-full flex items-center justify-center border-2 border-container">
+                  <svg width="7" height="6" viewBox="0 0 7 6" fill="none">
+                    <path d="M1 3l1.5 1.5L6 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div 
+                  className="flex items-center gap-1 cursor-pointer group"
+                  onClick={() => setIsSwitcherOpen(true)}
+                >
+                  <p className="text-[14px] font-semibold text-text-main font-display leading-tight truncate">
+                    {CHANNEL.name}
+                  </p>
+                  <svg 
+                    width="12" 
+                    height="12" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                    className="text-text-muted group-hover:text-text-main transition-colors"
+                  >
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </div>
+                <p className="text-[12px] text-text-muted leading-tight mt-0.5 truncate">
+                  {CHANNEL.handle}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -119,8 +142,8 @@ export const Sidebar = () => {
           </button>
         </div>
 
-        {/* ── 2. YouTube Channel Overview (Providers only) ──────────── */}
-        {user?.primaryRole?.group === 'PROVIDER' && (
+        {/* ── 2. YouTube Channel Overview (YouTube Creators only) ──────────── */}
+        {user?.primaryRole?.category === 'yt_influencer' && (
           <div className="space-y-3">
             <h4 className="text-[11px] font-bold text-text-muted uppercase tracking-[0.12em] px-1 mb-1">
               Connected Channel
@@ -340,6 +363,11 @@ export const Sidebar = () => {
           © 2024 SuviX Inc.
         </p>
       </div>
+
+      <AccountSwitcher 
+        isOpen={isSwitcherOpen} 
+        onClose={() => setIsSwitcherOpen(false)} 
+      />
     </ReactLenis>
   );
 };

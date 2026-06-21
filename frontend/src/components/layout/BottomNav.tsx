@@ -19,7 +19,7 @@ const NAV_ITEMS = [
   { name: 'nearby', icon: MapPin, label: 'Nearby', path: '/nearby' },
   { name: 'reels', icon: Play, label: 'Reels', path: '/reels', isSpecial: true },
   { name: 'jobs', icon: Briefcase, label: 'Jobs', path: '/jobs' },
-  { name: 'chats', icon: MessageCircle, label: 'Chats', path: '/chats' },
+  { name: 'chats', icon: MessageCircle, label: 'Chats', path: '/communication-hub' },
   { name: 'upload', icon: PlusCircle, label: 'Upload', path: '/upload-portal' },
   { name: 'profile', icon: null, label: 'Profile', path: '/profile', isProfile: true },
 ];

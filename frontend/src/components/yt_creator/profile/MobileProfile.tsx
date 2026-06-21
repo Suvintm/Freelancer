@@ -5,7 +5,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   Youtube, Camera, Settings, Plus, BarChart3, Briefcase, Users2, Edit3,
   Lock, PlaySquare, LayoutGrid, CheckCircle2, Globe,
-  Trash2, ChevronRight, AlertCircle, Play, Image as ImageIcon, Check, Eye
+  Trash2, ChevronRight, AlertCircle, Play, Image as ImageIcon, Check, Eye,
+  X, Heart, MessageCircle
 } from 'lucide-react';
 import { selectUser, updateUser } from '../../../store/slices/authSlice';
 import { api } from '../../../api/client';
@@ -20,6 +21,54 @@ export const MobileProfile = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('yt_posts');
+  const [reels, setReels] = useState<any[]>([]);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [ytVideos, setYtVideos] = useState<any[]>([]);
+  const [isLoadingFeed, setIsLoadingFeed] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<any | null>(null);
+
+  const fetchFeed = async () => {
+    if (!user?.username) return;
+    setIsLoadingFeed(true);
+    try {
+      const response = await api.get('/temp-feed');
+      if (response.data.success) {
+        const creatorFeed = response.data.data.filter(
+          (item: any) => item.user === user.username
+        );
+        setReels(creatorFeed.filter((item: any) => item.type === 'reel'));
+        setPosts(creatorFeed.filter((item: any) => item.type === 'post'));
+        setYtVideos(creatorFeed.filter((item: any) => item.type === 'yt_video'));
+      }
+    } catch (err) {
+      console.error('Failed to fetch temp feed for profile:', err);
+    } finally {
+      setIsLoadingFeed(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFeed();
+  }, [user?.username]);
+
+  const handleDeleteItem = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this item?')) return;
+    try {
+      const response = await api.delete(`/temp-feed/${id}`);
+      if (response.data.success) {
+        setReels((prev) => prev.filter((item) => item._id !== id));
+        setPosts((prev) => prev.filter((item) => item._id !== id));
+        setYtVideos((prev) => prev.filter((item) => item._id !== id));
+        if (selectedMedia?._id === id) {
+          setSelectedMedia(null);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete feed item:', err);
+      alert('Error deleting item');
+    }
+  };
   const [showBannerMenu, setShowBannerMenu] = useState(false);
   const [isEditingBio, setIsEditingBio] = useState(false);
   const [bioText, setBioText] = useState(user?.bio || '');
@@ -86,6 +135,7 @@ export const MobileProfile = () => {
 
   const TABS = [
     { id: 'yt_posts', label: 'YT Posts', icon: Youtube },
+    { id: 'yt_videos', label: 'YT Videos', icon: Play },
     { id: 'posts',    label: 'Posts',    icon: LayoutGrid },
     { id: 'reels',    label: 'Reels',    icon: PlaySquare },
   ];
@@ -759,22 +809,245 @@ export const MobileProfile = () => {
           </div>
         )}
 
+        {/* ── YT VIDEOS TAB ─────────────────────────────────── */}
+        {activeTab === 'yt_videos' && (
+          isLoadingFeed ? (
+            <div className="w-full py-10 flex items-center justify-center">
+              <div className="w-6 h-6 border-2 border-[#FF3040] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : ytVideos.length > 0 ? (
+            <div className="grid grid-cols-3 gap-1 px-1">
+              {ytVideos.map((video) => (
+                <div 
+                  key={video._id} 
+                  onClick={() => setSelectedMedia(video)}
+                  className="relative aspect-video bg-[#0B0B0B] border border-[#1A1A1B] active:opacity-75 overflow-hidden"
+                >
+                  <video 
+                    src={video.videoUrl} 
+                    preload="metadata" 
+                    className="w-full h-full object-cover pointer-events-none"
+                  />
+                  <div className="absolute bottom-1.5 left-1.5 bg-black/60 p-1 rounded-full text-white scale-75">
+                    <Play size={12} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mx-4 mt-4 text-center py-10 border border-dashed border-[#1A1A1B] rounded-xl">
+              <Play size={24} className="text-[#A1A1AA]/30 mx-auto mb-2" />
+              <p className="text-[10px] font-bold text-[#A1A1AA]/40 uppercase tracking-widest">No platform videos uploaded yet</p>
+            </div>
+          )
+        )}
+
         {/* ── POSTS TAB ─────────────────────────────────────── */}
         {activeTab === 'posts' && (
-          <div className="mx-4 mt-4 text-center py-10 border border-dashed border-[#1A1A1B] rounded-xl">
-            <LayoutGrid size={28} className="text-[#A1A1AA]/30 mx-auto mb-2" />
-            <p className="text-[11px] font-bold text-[#A1A1AA]/40 uppercase tracking-widest">Posts grid coming soon</p>
-          </div>
+          isLoadingFeed ? (
+            <div className="w-full py-10 flex items-center justify-center">
+              <div className="w-6 h-6 border-2 border-[#FF3040] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : posts.length > 0 ? (
+            <div className="grid grid-cols-3 gap-1 px-1">
+              {posts.map((post) => (
+                <div 
+                  key={post._id} 
+                  onClick={() => setSelectedMedia(post)}
+                  className="relative aspect-square bg-[#0B0B0B] border border-[#1A1A1B] active:opacity-75 overflow-hidden"
+                >
+                  <img 
+                    src={post.images?.[0]} 
+                    alt={post.comment} 
+                    className="w-full h-full object-cover"
+                  />
+                  {post.images && post.images.length > 1 && (
+                    <div className="absolute top-1.5 right-1.5 bg-black/60 p-1 rounded text-white scale-75">
+                      <LayoutGrid size={12} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mx-4 mt-4 text-center py-10 border border-dashed border-[#1A1A1B] rounded-xl">
+              <LayoutGrid size={24} className="text-[#A1A1AA]/30 mx-auto mb-2" />
+              <p className="text-[10px] font-bold text-[#A1A1AA]/40 uppercase tracking-widest">No posts uploaded yet</p>
+            </div>
+          )
         )}
 
         {/* ── REELS TAB ─────────────────────────────────────── */}
         {activeTab === 'reels' && (
-          <div className="mx-4 mt-4 text-center py-10 border border-dashed border-[#1A1A1B] rounded-xl">
-            <PlaySquare size={28} className="text-[#A1A1AA]/30 mx-auto mb-2" />
-            <p className="text-[11px] font-bold text-[#A1A1AA]/40 uppercase tracking-widest">Reels feed coming soon</p>
-          </div>
+          isLoadingFeed ? (
+            <div className="w-full py-10 flex items-center justify-center">
+              <div className="w-6 h-6 border-2 border-[#FF3040] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : reels.length > 0 ? (
+            <div className="grid grid-cols-3 gap-1 px-1">
+              {reels.map((reel) => (
+                <div 
+                  key={reel._id} 
+                  onClick={() => setSelectedMedia(reel)}
+                  className="relative aspect-[9/16] bg-[#0B0B0B] border border-[#1A1A1B] active:opacity-75 overflow-hidden"
+                >
+                  <video 
+                    src={reel.videoUrl} 
+                    preload="metadata" 
+                    className="w-full h-full object-cover pointer-events-none"
+                  />
+                  <div className="absolute bottom-1.5 left-1.5 bg-black/60 p-1 rounded-full text-white scale-75">
+                    <PlaySquare size={12} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mx-4 mt-4 text-center py-10 border border-dashed border-[#1A1A1B] rounded-xl">
+              <PlaySquare size={24} className="text-[#A1A1AA]/30 mx-auto mb-2" />
+              <p className="text-[10px] font-bold text-[#A1A1AA]/40 uppercase tracking-widest">No reels uploaded yet</p>
+            </div>
+          )
         )}
       </div>
+
+      {/* Immersive Media Details Modal (Mobile-Optimized) */}
+      <AnimatePresence>
+        {selectedMedia && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed inset-0 z-50 bg-[#000000] flex flex-col justify-between"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-[#1A1A1B] bg-black">
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => setSelectedMedia(null)}
+                  className="p-1 text-white active:scale-95 cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+                <div className="flex items-center gap-2">
+                  <img 
+                    src={user.profilePicture || DEFAULT_AVATAR} 
+                    className="w-8 h-8 rounded-full object-cover border border-[#1A1A1B]" 
+                    alt="" 
+                  />
+                  <div>
+                    <h4 className="text-xs font-bold text-white leading-tight">{displayName}</h4>
+                    <p className="text-[10px] text-[#A1A1AA]">@{user.username || 'creator'}</p>
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => handleDeleteItem(selectedMedia._id)}
+                className="p-2 text-[#A1A1AA] hover:text-red-500 active:scale-90 cursor-pointer"
+                title="Delete Post"
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
+
+            {/* Media Area */}
+            <div className="flex-1 bg-black flex items-center justify-center relative overflow-hidden select-none">
+              {selectedMedia.type === 'reel' ? (
+                <video 
+                  src={selectedMedia.videoUrl} 
+                  controls 
+                  autoPlay 
+                  loop 
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <PostImageSlider images={selectedMedia.images || []} />
+              )}
+            </div>
+
+            {/* Footer / Caption Area */}
+            <div className="p-4 bg-black/95 border-t border-[#1A1A1B] space-y-3">
+              <div className="flex items-center justify-between text-xs font-bold text-white">
+                <span className="flex items-center gap-1.5"><Heart size={16} className="text-[#FF3040] fill-[#FF3040]" /> {selectedMedia.likes || 0} Likes</span>
+                <span className="flex items-center gap-1.5"><MessageCircle size={16} className="text-[#A1A1AA]" /> {selectedMedia.commentsCount || 0} Comments</span>
+              </div>
+              
+              <div className="space-y-1.5">
+                {selectedMedia.location && (
+                  <p className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider">{selectedMedia.location}</p>
+                )}
+                {selectedMedia.comment && (
+                  <p className="text-xs text-white leading-relaxed font-medium">
+                    {selectedMedia.comment}
+                  </p>
+                )}
+                {selectedMedia.tags && selectedMedia.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {selectedMedia.tags.map((tag: string, idx: number) => (
+                      <span 
+                        key={idx} 
+                        className="text-[9px] font-bold text-[#FF3040] uppercase tracking-wider mr-1.5"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const PostImageSlider = ({ images }: { images: string[] }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  if (images.length === 0) return null;
+
+  return (
+    <div className="relative w-full h-full flex items-center justify-center bg-black">
+      <img 
+        src={images[currentIndex]} 
+        alt="" 
+        className="w-full h-full object-contain select-none"
+      />
+
+      {images.length > 1 && (
+        <>
+          {/* Left Arrow */}
+          <button 
+            onClick={() => setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1))}
+            className="absolute left-4 p-2 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors border border-white/10 cursor-pointer"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          {/* Right Arrow */}
+          <button 
+            onClick={() => setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0))}
+            className="absolute right-4 p-2 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors border border-white/10 cursor-pointer"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+
+          {/* Dots Indicator */}
+          <div className="absolute bottom-4 flex gap-1.5">
+            {images.map((_, idx) => (
+              <div 
+                key={idx}
+                className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'bg-white scale-125' : 'bg-white/40'}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 };

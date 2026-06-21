@@ -136,4 +136,40 @@ export const getProfileReels = async (targetUserId, cursor = null) => {
   return paginated;
 };
 
-export default { getProfilePosts, getProfileReels };
+/**
+ * Get profiles belonging to a specific category slug
+ */
+export const getProfilesByCategory = async (categorySlug) => {
+  const profiles = await prisma.userProfile.findMany({
+    where: {
+      category: {
+        slug: categorySlug
+      }
+    },
+    include: {
+      category: true,
+      roles: {
+        include: {
+          subCategory: true
+        }
+      }
+    },
+    orderBy: {
+      created_at: 'desc'
+    }
+  });
+
+  return profiles.map(profile => ({
+    id: profile.id,
+    userId: profile.userId,
+    name: profile.name,
+    username: profile.username,
+    profilePicture: profile.profile_picture,
+    bio: profile.bio,
+    location: `${profile.location_city || ''}, ${profile.location_country || ''}`.replace(/^,\s*/, ''),
+    category: profile.category?.name,
+    roles: profile.roles.map(r => r.subCategory.name)
+  }));
+};
+
+export default { getProfilePosts, getProfileReels, getProfilesByCategory };

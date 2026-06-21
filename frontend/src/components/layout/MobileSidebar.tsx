@@ -1,8 +1,8 @@
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useMemo } from 'react';
 import { 
   Home, Search, Compass, MapPin, PlaySquare, Briefcase, PlusSquare, Settings, User,
-  LogOut, Plus, Moon, MoreVertical, X, Youtube
+  LogOut, Plus, Moon, MoreVertical, X, Youtube, MessageSquare
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -10,6 +10,7 @@ import { selectUser } from '../../store/slices/authSlice';
 import { useLogout } from '../../mutations/useLogout';
 import { useTheme } from '../../hooks/useTheme';
 import defaultProfile from '../../assets/defaultprofile.png';
+import { AccountSwitcher } from '../profile/AccountSwitcher';
 
 interface MobileSidebarProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
   const user = useSelector(selectUser);
   const { mutateAsync: logout } = useLogout();
   const { isDarkMode, toggleTheme } = useTheme();
+  const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
 
   const NAV_ITEMS = [
     { icon: Home,       label: 'Feed',      path: '/home'    },
@@ -30,12 +32,13 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
     { icon: MapPin,     label: 'Nearby',    path: '/nearby'  },
     { icon: PlaySquare, label: 'Reels',     path: '/reels'   },
     { icon: Briefcase,  label: 'Jobs',      path: '/jobs'    },
+    { icon: MessageSquare, label: 'Chats',  path: '/communication-hub' },
     { icon: PlusSquare, label: 'Upload Portal', path: '/upload-portal' },
     { icon: Settings,   label: 'Settings',  path: '/settings'},
     { icon: User,       label: 'Profile',   path: '/profile' }
   ];
 
-  const hasYoutube = user?.youtubeProfile && user.youtubeProfile.length > 0;
+  const hasYoutube = user?.primaryRole?.category === 'yt_influencer' && user?.youtubeProfile && user.youtubeProfile.length > 0;
 
   const menuItems = useMemo(() => {
     const items = [...NAV_ITEMS];
@@ -185,9 +188,12 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
               </div>
 
               {/* User Profile Card */}
-              <div className={`flex items-center gap-3 p-2 rounded-2xl ${
-                isDarkMode ? 'hover:bg-zinc-900/50' : 'hover:bg-zinc-50'
-              }`}>
+              <div 
+                className={`flex items-center gap-3 p-2 rounded-2xl cursor-pointer transition-colors ${
+                  isDarkMode ? 'hover:bg-zinc-900/50' : 'hover:bg-zinc-50'
+                }`}
+                onClick={() => setIsSwitcherOpen(true)}
+              >
                 <img
                   src={user?.profilePicture || defaultProfile}
                   alt={user?.name || 'Rana'}
@@ -205,12 +211,32 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
                   className={`p-1 rounded-lg transition-colors ${
                     isDarkMode ? 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200' : 'text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700'
                   }`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsSwitcherOpen(true);
+                  }}
                 >
-                  <MoreVertical size={16} />
+                  <svg 
+                    width="16" 
+                    height="16" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
                 </button>
               </div>
             </div>
           </motion.div>
+          
+          <AccountSwitcher 
+            isOpen={isSwitcherOpen} 
+            onClose={() => setIsSwitcherOpen(false)} 
+          />
         </>
       )}
     </AnimatePresence>
