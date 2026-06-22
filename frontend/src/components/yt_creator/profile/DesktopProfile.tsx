@@ -15,41 +15,66 @@ const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1524666041070-9d87656c
  * DesktopProfile (YT Creator)
  * Desktop only view for the YT Creator Profile
  */
+interface FeedItem {
+  _id: string;
+  id?: string | number;
+  user: string;
+  type: 'reel' | 'post' | 'yt_video' | 'thumbnail_vote';
+  img: string;
+  images?: string[];
+  comment?: string;
+  votes?: number[];
+  likes?: string | number;
+  createdAt: string;
+  videoUrl?: string;
+  commentsCount?: number;
+  location?: string;
+  tags?: string[];
+}
+
 export const DesktopProfile = () => {
   const user = useSelector(selectUser);
   const dispatch = useDispatch();
   const { isDarkMode } = useTheme();
   const [activeTab, setActiveTab] = useState('yt_posts');
-  const [reels, setReels] = useState<any[]>([]);
-  const [posts, setPosts] = useState<any[]>([]);
-  const [ytVideos, setYtVideos] = useState<any[]>([]);
-  const [thumbnailVotes, setThumbnailVotes] = useState<any[]>([]);
+  const [reels, setReels] = useState<FeedItem[]>([]);
+  const [posts, setPosts] = useState<FeedItem[]>([]);
+  const [ytVideos, setYtVideos] = useState<FeedItem[]>([]);
+  const [thumbnailVotes, setThumbnailVotes] = useState<FeedItem[]>([]);
   const [isLoadingFeed, setIsLoadingFeed] = useState(false);
-  const [selectedMedia, setSelectedMedia] = useState<any | null>(null);
-
-  const fetchFeed = async () => {
-    if (!user?.username) return;
-    setIsLoadingFeed(true);
-    try {
-      const response = await api.get('/temp-feed');
-      if (response.data.success) {
-        const creatorFeed = response.data.data.filter(
-          (item: any) => item.user === user.username
-        );
-        setReels(creatorFeed.filter((item: any) => item.type === 'reel'));
-        setPosts(creatorFeed.filter((item: any) => item.type === 'post'));
-        setYtVideos(creatorFeed.filter((item: any) => item.type === 'yt_video'));
-        setThumbnailVotes(creatorFeed.filter((item: any) => item.type === 'thumbnail_vote'));
-      }
-    } catch (err) {
-      console.error('Failed to fetch temp feed for profile:', err);
-    } finally {
-      setIsLoadingFeed(false);
-    }
-  };
+  const [selectedMedia, setSelectedMedia] = useState<FeedItem | null>(null);
 
   useEffect(() => {
+    let active = true;
+    const fetchFeed = async () => {
+      // Force execution to be asynchronous to avoid React cascading render warnings
+      await Promise.resolve();
+      if (!active || !user?.username) return;
+      setIsLoadingFeed(true);
+      try {
+        const response = await api.get('/temp-feed');
+        if (response.data.success && active) {
+          const creatorFeed = response.data.data.filter(
+            (item: FeedItem) => item.user === user.username
+          );
+          setReels(creatorFeed.filter((item: FeedItem) => item.type === 'reel'));
+          setPosts(creatorFeed.filter((item: FeedItem) => item.type === 'post'));
+          setYtVideos(creatorFeed.filter((item: FeedItem) => item.type === 'yt_video'));
+          setThumbnailVotes(creatorFeed.filter((item: FeedItem) => item.type === 'thumbnail_vote'));
+        }
+      } catch (err) {
+        console.error('Failed to fetch temp feed for profile:', err);
+      } finally {
+        if (active) {
+          setIsLoadingFeed(false);
+        }
+      }
+    };
+
     fetchFeed();
+    return () => {
+      active = false;
+    };
   }, [user?.username]);
 
   const handleDeleteItem = async (id: string, e?: React.MouseEvent) => {

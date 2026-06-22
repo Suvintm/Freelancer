@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Loader2, MessageCircle, ChevronDown } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Plus, Loader2 } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectUser, updateUser } from '../store/slices/authSlice';
 import { MdStar, MdChevronRight, MdCheckCircle } from 'react-icons/md';
@@ -325,7 +325,6 @@ interface DbFeedItem {
 }
 
 export default function Home() {
-  const navigate = useNavigate();
   const [isScrolling, setIsScrolling] = useState(false);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isDarkMode } = useTheme();
@@ -337,38 +336,6 @@ export default function Home() {
   const [globalMuted, setGlobalMuted] = useState(true);
   const [activePostId, setActivePostId] = useState<string | number | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-
-  // Quick-access inbox widget states
-  const [conversations, setConversations] = useState<any[]>([]);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const [activeCardIndex, setActiveCardIndex] = useState(0);
-
-  // Fetch latest messages for quick-access widget
-  useEffect(() => {
-    const fetchLatestMsg = async () => {
-      try {
-        const response = await api.get('/messages/conversations');
-        if (response.data?.success && response.data.data) {
-          setConversations(response.data.data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch latest messages for widget:', err);
-      }
-    };
-    fetchLatestMsg();
-  }, []);
-
-  // Handle clicking outside to close the dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -476,127 +443,9 @@ export default function Home() {
     };
   }, []);
 
-  const formatTimeAgo = (dateStr: string) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMins < 1) return 'now';
-    if (diffMins < 60) return `${diffMins}min`;
-    if (diffHours < 24) return `${diffHours}h`;
-    return `${diffDays}d`;
-  };
 
-  const renderLatestMessageWidget = () => {
-    const visibleConvs = conversations.slice(activeCardIndex, activeCardIndex + 3);
-    if (visibleConvs.length === 0) return null;
 
-    return (
-      <div className="relative w-64 sm:w-72 h-[82px] select-none">
-        <AnimatePresence mode="popLayout">
-          {visibleConvs.map((conv, idx) => {
-            const isTop = idx === 0;
-            return (
-              <motion.div
-                key={conv.user.id}
-                style={{
-                  position: 'absolute',
-                  width: '100%',
-                  height: '72px',
-                  top: 0,
-                  left: 0,
-                  pointerEvents: isTop ? 'auto' : 'none',
-                }}
-                initial={{ opacity: 0, scale: 0.9, y: 15 }}
-                animate={{
-                  opacity: 1 - idx * 0.25,
-                  scale: 1 - idx * 0.04,
-                  y: idx * 5,
-                  zIndex: 30 - idx,
-                }}
-                exit={{
-                  x: 240,
-                  opacity: 0,
-                  scale: 0.85,
-                  transition: { duration: 0.25 }
-                }}
-                transition={{ type: 'spring', stiffness: 350, damping: 26 }}
-                onClick={() => {
-                  if (isTop) {
-                    navigate(`/communication-hub?userId=${conv.user.id}`);
-                  }
-                }}
-                className={`flex items-center gap-2 p-1.5 rounded-xl border shadow-lg cursor-pointer ${
-                  isDarkMode 
-                    ? 'bg-white border-zinc-200 text-zinc-950 shadow-md' 
-                    : 'bg-black border-white/15 text-white shadow-[0_4px_20px_rgba(255,255,255,0.05)]'
-                }`}
-              >
-                {/* Avatar with green circle ring */}
-                <div className="relative shrink-0">
-                  <div className="w-8 h-8 rounded-full p-[1px] ring-2 ring-emerald-500/85">
-                    <img 
-                      src={conv.user.profilePicture || defaultProfile} 
-                      alt={conv.user.name} 
-                      className="w-full h-full rounded-full object-cover bg-border-secondary shadow-inner"
-                    />
-                  </div>
-                </div>
-
-                {/* Name & snippet & button */}
-                <div className="min-w-0 flex-1 flex flex-col justify-between h-full py-0.5">
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-[10px] font-bold truncate leading-none">{conv.user.name}</h4>
-                      <span className={`text-[7.5px] font-semibold shrink-0 leading-none ${
-                        isDarkMode ? 'text-zinc-500' : 'text-zinc-400'
-                      }`}>
-                        {formatTimeAgo(conv.lastMessage.createdAt)}
-                      </span>
-                    </div>
-                    <p className={`text-[9.5px] truncate mt-0.5 leading-none ${
-                      isDarkMode ? 'text-zinc-600' : 'text-zinc-300'
-                    }`}>
-                      {conv.lastMessage.content}
-                    </p>
-                  </div>
-
-                  {/* Action button at bottom right */}
-                  <div className="flex justify-end mt-0">
-                    <span className={`px-1.5 py-0.5 rounded text-[7.5px] font-extrabold uppercase tracking-wider transition-all duration-200 ${
-                      isDarkMode 
-                        ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-[0_1.5px_6px_rgba(244,63,94,0.3)]' 
-                        : 'bg-white text-zinc-950 hover:bg-zinc-100'
-                    }`}>
-                      View Chat
-                    </span>
-                  </div>
-                </div>
-
-                {/* Top card dismiss button */}
-                {isTop && (
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveCardIndex(prev => prev + 1);
-                    }}
-                    className="absolute -top-1 -right-1 p-0.5 rounded-full bg-rose-500 text-white shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer z-50 flex items-center justify-center"
-                    title="Dismiss message"
-                  >
-                    <Plus size={8} className="rotate-45" />
-                  </button>
-                )}
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-      </div>
-    );
-  };
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-6 lg:space-y-10 pb-20 pt-1 lg:pt-4">
@@ -874,6 +723,7 @@ function SuggestedEditorsCarousel({ index }: { index: number }) {
   const { isDarkMode } = useTheme();
   const user = useSelector(selectUser);
   const dispatch = useDispatch();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [profiles, setProfiles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -911,6 +761,7 @@ function SuggestedEditorsCarousel({ index }: { index: number }) {
         const slug = isEditor ? 'yt_influencer' : 'video_editor';
         const response = await api.get(`/profile/category/${slug}`);
         if (response.data?.success && response.data.data?.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const mapped = response.data.data.map((p: any, idx: number) => ({
             id: p.userId || p.id,
             name: p.name,

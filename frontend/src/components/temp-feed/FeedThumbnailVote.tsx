@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MoreHorizontal, Heart, MessageCircle, Share2, Bookmark, CheckCircle2 } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
@@ -45,11 +45,12 @@ export function FeedThumbnailVote({ post, isDarkMode }: { post: Post; isDarkMode
     return images.map(() => 0);
   });
 
-  useEffect(() => {
-    if (post.votes && post.votes.length === images.length) {
-      setVotesCount([...post.votes]);
-    }
-  }, [post.votes, images.length]);
+  // Keep track of the last seen post.votes prop to detect changes and sync state during render
+  const [prevVotes, setPrevVotes] = useState<number[] | undefined>(post.votes);
+  if (post.votes !== prevVotes) {
+    setPrevVotes(post.votes);
+    setVotesCount(post.votes && post.votes.length === images.length ? [...post.votes] : images.map(() => 0));
+  }
 
   const handleVote = async (index: number) => {
     if (votedIndex !== null) return;
