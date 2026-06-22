@@ -4,6 +4,7 @@
  */
 
 import prisma from "../../../config/prisma.js";
+import logger from "../../../utils/logger.js";
 // import { Message } from "../../connectivity/models/Message.js"; // DEPRECATED
 // import { Order } from "../../marketplace/models/Order.js"; // DEPRECATED
 // import User from "../../user/models/User.js"; // DEPRECATED (Using Prisma)
@@ -361,25 +362,20 @@ export const verifyPaymentCallback = async (req, res) => {
     await order.save();
 
     // Create Payment record
-    await Payment.create({
-      order: order._id,
-      client: order.client._id,
-      editor: order.editor._id,
-      amount: order.amount,
-      platformFee: order.platformFee,
-      editorEarning: order.editorEarning,
-      type: "escrow_deposit",
-      status: "completed",
-      transactionId: razorpay_payment_id,
-      orderSnapshot: {
-        orderNumber: order.orderNumber,
-        title: order.title,
-        description: order.description,
-        createdAt: order.createdAt,
-        deadline: order.deadline,
-      },
-      completedAt: new Date(),
-      notes: `Razorpay Payment ID: ${razorpay_payment_id} (Mobile Callback)`,
+    await prisma.payment.create({
+      data: {
+        order: order._id.toString(),
+        clientId: order.client._id.toString(),
+        editorId: order.editor._id.toString(),
+        amount: order.amount,
+        platformFee: order.platformFee,
+        editorEarning: order.editorEarning,
+        type: "escrow_deposit",
+        status: "completed",
+        transactionId: razorpay_payment_id,
+        completedAt: new Date(),
+        notes: `Razorpay Payment ID: ${razorpay_payment_id} (Mobile Callback)`,
+      }
     });
 
     // Create system message
