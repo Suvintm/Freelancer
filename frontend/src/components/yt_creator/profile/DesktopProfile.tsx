@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Youtube, Camera, Settings, Plus, BarChart3, Briefcase, Users2, Edit3, Lock, PlaySquare, LayoutGrid, Image as ImageIcon, Check, Trash2, X, Heart, MessageCircle, Play } from 'lucide-react';
 import { selectUser, updateUser } from '../../../store/slices/authSlice';
 import { api } from '../../../api/client';
+import { useTheme } from '../../../hooks/useTheme';
 import SILVER_BTN from '../../../assets/playbuttons/silverbtn.png';
 import GOLD_BTN from '../../../assets/playbuttons/goldenbtn.png';
 import DIAMOND_BTN from '../../../assets/playbuttons/diamondbtn.png';
@@ -17,10 +18,12 @@ const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1524666041070-9d87656c
 export const DesktopProfile = () => {
   const user = useSelector(selectUser);
   const dispatch = useDispatch();
+  const { isDarkMode } = useTheme();
   const [activeTab, setActiveTab] = useState('yt_posts');
   const [reels, setReels] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
   const [ytVideos, setYtVideos] = useState<any[]>([]);
+  const [thumbnailVotes, setThumbnailVotes] = useState<any[]>([]);
   const [isLoadingFeed, setIsLoadingFeed] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<any | null>(null);
 
@@ -36,6 +39,7 @@ export const DesktopProfile = () => {
         setReels(creatorFeed.filter((item: any) => item.type === 'reel'));
         setPosts(creatorFeed.filter((item: any) => item.type === 'post'));
         setYtVideos(creatorFeed.filter((item: any) => item.type === 'yt_video'));
+        setThumbnailVotes(creatorFeed.filter((item: any) => item.type === 'thumbnail_vote'));
       }
     } catch (err) {
       console.error('Failed to fetch temp feed for profile:', err);
@@ -57,6 +61,7 @@ export const DesktopProfile = () => {
         setReels((prev) => prev.filter((item) => item._id !== id));
         setPosts((prev) => prev.filter((item) => item._id !== id));
         setYtVideos((prev) => prev.filter((item) => item._id !== id));
+        setThumbnailVotes((prev) => prev.filter((item) => item._id !== id));
         if (selectedMedia?._id === id) {
           setSelectedMedia(null);
         }
@@ -142,6 +147,7 @@ export const DesktopProfile = () => {
     { id: 'yt_videos', label: 'YT Videos', icon: Play },
     { id: 'posts',    label: 'Posts',    icon: LayoutGrid },
     { id: 'reels',    label: 'Reels',    icon: PlaySquare },
+    { id: 'thumbnail_vote', label: 'Thumbnails', icon: ImageIcon },
   ];
 
   if (!user) return null;
@@ -776,6 +782,93 @@ export const DesktopProfile = () => {
                   </div>
                 )}
               </div>
+            )}
+
+            {/* Thumbnails Tab - Dynamic Poll results */}
+            {activeTab === 'thumbnail_vote' && (
+              isLoadingFeed ? (
+                <div className="w-full py-20 flex items-center justify-center">
+                  <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : thumbnailVotes.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {thumbnailVotes.map((item) => {
+                    const images = item.images || [];
+                    const votes = item.votes || new Array(images.length).fill(0);
+                    const totalVotes = votes.reduce((a: number, b: number) => a + b, 0);
+
+                    return (
+                      <div 
+                        key={item._id}
+                        className={`border rounded-3xl p-4 flex flex-col justify-between transition-all ${
+                          isDarkMode ? 'bg-[#0a0a0a] border-border-main' : 'bg-white border-zinc-200 shadow-sm'
+                        }`}
+                      >
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-[10px] font-bold text-text-muted">
+                            {new Date(item.createdAt).toLocaleDateString()}
+                          </span>
+                          <button 
+                            onClick={(e) => handleDeleteItem(item._id, e)}
+                            className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-full transition-colors"
+                            title="Delete Thumbnail Vote"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+
+                        {/* Caption */}
+                        <p className="text-xs font-semibold text-text-main line-clamp-2 mb-4">
+                          {item.comment || "Thumbnail Choice Vote"}
+                        </p>
+
+                        {/* Thumbnail Grid with Stats */}
+                        <div className="grid grid-cols-2 gap-2 mb-4">
+                          {images.map((img: string, idx: number) => {
+                            const voteCount = votes[idx] || 0;
+                            const percentage = totalVotes === 0 ? 0 : Math.round((voteCount / totalVotes) * 100);
+                            const isWinner = totalVotes > 0 && voteCount === Math.max(...votes);
+
+                            return (
+                              <div key={idx} className="relative aspect-video rounded-xl overflow-hidden bg-zinc-900 border border-white/5">
+                                <img src={img} alt="" className="w-full h-full object-cover" />
+                                {/* Overlay Vote Results */}
+                                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-1">
+                                  <span className="text-white font-extrabold text-[15px]">{percentage}%</span>
+                                  <span className="text-[9px] text-zinc-300 font-medium">{voteCount} votes</span>
+                                  {isWinner && (
+                                    <span className="absolute top-1 right-1 bg-yellow-500 text-black text-[7px] font-black uppercase px-1 rounded">
+                                      Winner
+                                    </span>
+                                  )}
+                                </div>
+                                {/* Badge */}
+                                <span className="absolute top-1 left-1 bg-black/70 px-1 py-0.5 rounded text-[8px] text-white font-bold leading-none">
+                                  No. {idx + 1}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Summary Footer */}
+                        <div className="border-t border-border-main/50 pt-2 flex items-center justify-between text-[11px] font-bold text-text-muted">
+                          <span>Total Votes: {totalVotes}</span>
+                          <span className="text-blue-500 uppercase text-[9px] tracking-wider bg-blue-500/10 px-2 py-0.5 rounded-full">
+                            Active Poll
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="w-full py-20 flex flex-col items-center justify-center border border-dashed border-border-main rounded-2xl">
+                  <ImageIcon size={32} className="text-text-muted mb-2" />
+                  <p className="text-sm font-bold text-text-muted uppercase tracking-widest">No thumbnail votes uploaded yet</p>
+                </div>
+              )
             )}
           </div>
         </div>

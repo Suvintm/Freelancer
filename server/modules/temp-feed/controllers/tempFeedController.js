@@ -60,7 +60,7 @@ export const createTempFeedItem = async (req, res) => {
       return res.status(400).json({ success: false, message: "Type and User are required fields." });
     }
 
-    if (!["reel", "post", "yt_video"].includes(type)) {
+    if (!["reel", "post", "yt_video", "thumbnail_vote"].includes(type)) {
       return res.status(400).json({ success: false, message: "Invalid feed item type." });
     }
 
@@ -121,14 +121,18 @@ export const createTempFeedItem = async (req, res) => {
 
       feedData.videoUrl = safeVideoUrl;
       feedData.videoPublicId = uploadResult.public_id;
-    } else if (type === "post") {
+    } else if (type === "post" || type === "thumbnail_vote") {
       // Expect one or more image files
       const imageFiles = req.files?.images;
       if (!imageFiles || imageFiles.length === 0) {
-        return res.status(400).json({ success: false, message: "At least one image is required for a post." });
+        return res.status(400).json({ success: false, message: `At least one image is required for ${type}.` });
       }
 
-      logger.info(`🛰️ [TEMP-FEED] Uploading ${imageFiles.length} image(s) to Cloudinary...`);
+      if (type === "thumbnail_vote" && imageFiles.length < 2) {
+        return res.status(400).json({ success: false, message: "Please select at least 2 images for a thumbnail vote." });
+      }
+
+      logger.info(`🛰️ [TEMP-FEED] Uploading ${imageFiles.length} image(s) to Cloudinary for ${type}...`);
       const uploadPromises = imageFiles.map((file) =>
         uploadToCloudinary(file.buffer, "image", "temp_feed/images")
       );
@@ -136,6 +140,10 @@ export const createTempFeedItem = async (req, res) => {
       const uploadResults = await Promise.all(uploadPromises);
       feedData.images = uploadResults.map((res) => res.secure_url);
       feedData.imagesPublicIds = uploadResults.map((res) => res.public_id);
+
+      if (type === "thumbnail_vote") {
+        feedData.votes = new Array(uploadResults.length).fill(0);
+      }
     }
 
     const newItem = new TempFeed(feedData);
@@ -196,5 +204,62 @@ export const deleteTempFeedItem = async (req, res) => {
   } catch (error) {
     logger.error(`❌ [TEMP-FEED] Delete item failed: ${error.message}`);
     return res.status(500).json({ success: false, message: "Server error deleting feed item." });
+  }
+};
+
+/**
+ * Register a vote for a specific thumbnail option
+ */
+export const voteTempFeedItem = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { imageIndex, previousImageIndex } = req.body;
+
+    if (imageIndex === undefined || typeof imageIndex !== 'number') {
+      return res.status(400).json({ success: false, message: "imageIndex is required and must be a number." });
+    }
+
+    const item = await TempFeed.findById(id);
+    if (!item) {
+      return res.status(404).json({ success: false, message: "Feed item not found." });
+    }
+
+    if (item.type !== 'thumbnail_vote') {
+      return res.status(400).json({ success: false, message: "Only thumbnail_vote items can be voted on." });
+    }
+
+    // Initialize votes array if it doesn't exist or is not the correct length
+    if (!item.votes || item.votes.length !== item.images.length) {
+      const newVotes = new Array(item.images.length).fill(0);
+      if (item.votes) {
+        for (let i = 0; i < Math.min(item.votes.length, newVotes.length); i++) {
+          newVotes[i] = item.votes[i];
+        }
+      }
+      item.votes = newVotes;
+    }
+
+    if (imageIndex < 0 || imageIndex >= item.images.length) {
+      return res.status(400).json({ success: false, message: "Invalid imageIndex." });
+    }
+
+    // Decrement previous vote if provided and positive
+    if (previousImageIndex !== undefined && typeof previousImageIndex === 'number') {
+      if (previousImageIndex >= 0 && previousImageIndex < item.images.length) {
+        if (item.votes[previousImageIndex] > 0) {
+          item.votes[previousImageIndex] -= 1;
+        }
+      }
+    }
+
+    item.votes[imageIndex] += 1;
+    item.markModified('votes');
+    await item.save();
+
+    logger.info(`✅ [TEMP-FEED] Vote registered for item ${id} at image index ${imageIndex} (previous: ${previousImageIndex})`);
+    return res.status(200).json({ success: true, data: item });
+  } catch (error) {
+    logger.error(`❌ [TEMP-FEED] Vote failed: ${error.message}`);
+    return res.status(500).json({ success: false, message: "Server error registering vote." });
   }
 };

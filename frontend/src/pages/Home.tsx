@@ -80,6 +80,7 @@ interface Post {
   type?: string;
   tags?: string[];
   watchOnYtLink?: string;
+  votes?: number[];
 }
 
 const POSTS: Post[] = [
@@ -320,6 +321,7 @@ interface DbFeedItem {
   videoUrl?: string;
   type: string;
   watchOnYtLink?: string;
+  votes?: number[];
 }
 
 export default function Home() {
@@ -432,6 +434,7 @@ export default function Home() {
             isYtVideo: item.type === 'yt_video',
             type: item.type,
             watchOnYtLink: item.watchOnYtLink || '',
+            votes: item.votes || [],
           }));
           
           // Shuffling dynamically on page refresh to show fresh content
