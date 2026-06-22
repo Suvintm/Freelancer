@@ -12,11 +12,13 @@ const uploadToCloudinary = (fileBuffer, resourceType = "auto", folder = "temp_fe
       folder: folder,
     };
 
-    // Force standard web-compatible H.264/AAC MP4 format for all video uploads
+    // Force standard web-compatible H.264/AAC MP4 format for all video uploads eagerly
+    // This prevents mobile HEVC/HDR videos from showing a black screen on laptops.
     if (resourceType === "video") {
-      uploadOptions.transformation = [
-        { format: "mp4", video_codec: "h264", audio_codec: "aac" }
+      uploadOptions.eager = [
+        { format: "mp4", video_codec: "h264", audio_codec: "aac", quality: "auto" }
       ];
+      uploadOptions.eager_async = true;
     }
 
     const uploadStream = cloudinary.uploader.upload_stream(
@@ -52,13 +54,13 @@ const deleteFromCloudinary = async (publicId, resourceType = "image") => {
  */
 export const createTempFeedItem = async (req, res) => {
   try {
-    const { type, user, location, comment, tags, ytChannelName, ytSubscribeLink } = req.body;
+    const { type, user, location, comment, tags, ytChannelName, ytSubscribeLink, watchOnYtLink } = req.body;
 
     if (!type || !user) {
       return res.status(400).json({ success: false, message: "Type and User are required fields." });
     }
 
-    if (!["reel", "post", "yt_video"].includes(type)) {
+    if (!["reel", "post", "yt_video", "thumbnail_vote"].includes(type)) {
       return res.status(400).json({ success: false, message: "Invalid feed item type." });
     }
 
@@ -83,6 +85,7 @@ export const createTempFeedItem = async (req, res) => {
       likedByAvatars: dummyFaces,
       ytChannelName: ytChannelName || "",
       ytSubscribeLink: ytSubscribeLink || "",
+      watchOnYtLink: watchOnYtLink || "",
     };
 
     if (type === "reel" || type === "yt_video") {
@@ -96,16 +99,40 @@ export const createTempFeedItem = async (req, res) => {
       logger.info(`🛰️ [TEMP-FEED] Uploading video to Cloudinary for ${type}...`);
       const uploadResult = await uploadToCloudinary(videoFile.buffer, "video", "temp_feed/videos");
       
-      feedData.videoUrl = uploadResult.secure_url;
+      // Ensure universal playback across laptops by rewriting URL to specifically request H.264 MP4 format
+      const rawUrl = uploadResult.secure_url;
+      let safeVideoUrl = rawUrl;
+      
+      if (rawUrl.includes('/upload/')) {
+        const urlParts = rawUrl.split('/upload/');
+        let pathPart = urlParts[1];
+        
+        // Strip out the original extension (e.g. .mov) and force .mp4
+        const lastDotIndex = pathPart.lastIndexOf('.');
+        if (lastDotIndex !== -1) {
+          pathPart = pathPart.substring(0, lastDotIndex) + '.mp4';
+        } else {
+          pathPart += '.mp4';
+        }
+        
+        // Inject Cloudinary delivery transformations
+        safeVideoUrl = `${urlParts[0]}/upload/f_mp4,vc_h264,ac_aac,q_auto/${pathPart}`;
+      }
+
+      feedData.videoUrl = safeVideoUrl;
       feedData.videoPublicId = uploadResult.public_id;
-    } else if (type === "post") {
+    } else if (type === "post" || type === "thumbnail_vote") {
       // Expect one or more image files
       const imageFiles = req.files?.images;
       if (!imageFiles || imageFiles.length === 0) {
-        return res.status(400).json({ success: false, message: "At least one image is required for a post." });
+        return res.status(400).json({ success: false, message: `At least one image is required for ${type}.` });
       }
 
-      logger.info(`🛰️ [TEMP-FEED] Uploading ${imageFiles.length} image(s) to Cloudinary...`);
+      if (type === "thumbnail_vote" && imageFiles.length < 2) {
+        return res.status(400).json({ success: false, message: "Please select at least 2 images for a thumbnail vote." });
+      }
+
+      logger.info(`🛰️ [TEMP-FEED] Uploading ${imageFiles.length} image(s) to Cloudinary for ${type}...`);
       const uploadPromises = imageFiles.map((file) =>
         uploadToCloudinary(file.buffer, "image", "temp_feed/images")
       );
@@ -113,6 +140,10 @@ export const createTempFeedItem = async (req, res) => {
       const uploadResults = await Promise.all(uploadPromises);
       feedData.images = uploadResults.map((res) => res.secure_url);
       feedData.imagesPublicIds = uploadResults.map((res) => res.public_id);
+
+      if (type === "thumbnail_vote") {
+        feedData.votes = new Array(uploadResults.length).fill(0);
+      }
     }
 
     const newItem = new TempFeed(feedData);
@@ -173,5 +204,62 @@ export const deleteTempFeedItem = async (req, res) => {
   } catch (error) {
     logger.error(`❌ [TEMP-FEED] Delete item failed: ${error.message}`);
     return res.status(500).json({ success: false, message: "Server error deleting feed item." });
+  }
+};
+
+/**
+ * Register a vote for a specific thumbnail option
+ */
+export const voteTempFeedItem = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { imageIndex, previousImageIndex } = req.body;
+
+    if (imageIndex === undefined || typeof imageIndex !== 'number') {
+      return res.status(400).json({ success: false, message: "imageIndex is required and must be a number." });
+    }
+
+    const item = await TempFeed.findById(id);
+    if (!item) {
+      return res.status(404).json({ success: false, message: "Feed item not found." });
+    }
+
+    if (item.type !== 'thumbnail_vote') {
+      return res.status(400).json({ success: false, message: "Only thumbnail_vote items can be voted on." });
+    }
+
+    // Initialize votes array if it doesn't exist or is not the correct length
+    if (!item.votes || item.votes.length !== item.images.length) {
+      const newVotes = new Array(item.images.length).fill(0);
+      if (item.votes) {
+        for (let i = 0; i < Math.min(item.votes.length, newVotes.length); i++) {
+          newVotes[i] = item.votes[i];
+        }
+      }
+      item.votes = newVotes;
+    }
+
+    if (imageIndex < 0 || imageIndex >= item.images.length) {
+      return res.status(400).json({ success: false, message: "Invalid imageIndex." });
+    }
+
+    // Decrement previous vote if provided and positive
+    if (previousImageIndex !== undefined && typeof previousImageIndex === 'number') {
+      if (previousImageIndex >= 0 && previousImageIndex < item.images.length) {
+        if (item.votes[previousImageIndex] > 0) {
+          item.votes[previousImageIndex] -= 1;
+        }
+      }
+    }
+
+    item.votes[imageIndex] += 1;
+    item.markModified('votes');
+    await item.save();
+
+    logger.info(`✅ [TEMP-FEED] Vote registered for item ${id} at image index ${imageIndex} (previous: ${previousImageIndex})`);
+    return res.status(200).json({ success: true, data: item });
+  } catch (error) {
+    logger.error(`❌ [TEMP-FEED] Vote failed: ${error.message}`);
+    return res.status(500).json({ success: false, message: "Server error registering vote." });
   }
 };

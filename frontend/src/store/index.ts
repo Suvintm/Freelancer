@@ -5,7 +5,7 @@ import storageModule from 'redux-persist/lib/storage';
 
 const storage = (storageModule as { default?: typeof storageModule }).default || storageModule;
 import { authReducer } from './slices/authSlice';
-import type { AuthUser } from './slices/authSlice';
+import type { AuthState } from './slices/authSlice';
 import { onboardingReducer } from './slices/onboardingSlice';
 import type { TempSignupData, YouTubeChannel } from './slices/onboardingSlice';
 import { uiReducer } from './slices/uiSlice';
@@ -13,7 +13,7 @@ import { uiReducer } from './slices/uiSlice';
 const authPersistConfig = {
   key: 'auth',
   storage,
-  whitelist: ['token', 'refreshToken', 'user', 'isAuthenticated'],
+  whitelist: ['sessions', 'activeUserId'],
 };
 
 const onboardingPersistConfig = {
@@ -39,13 +39,7 @@ export const store = configureStore({
 export const persistor = persistStore(store);
 
 export interface RootState {
-  auth: {
-    token: string | null;
-    refreshToken: string | null;
-    user: AuthUser | null;
-    isAuthenticated: boolean;
-    isInitialized: boolean;
-  };
+  auth: AuthState;
   onboarding: {
     tempSignupData: TempSignupData;
     youtubeDiscovery: {

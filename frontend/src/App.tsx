@@ -8,6 +8,7 @@ import YouTubeConnect from './pages/YouTubeConnect';
 import YouTubeNiche from './pages/YouTubeNiche';
 import Home from './pages/Home';
 import Explore from './pages/Explore';
+import CommunicationHub from './pages/CommunicationHub';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import Nearby from './pages/Nearby';
@@ -17,6 +18,8 @@ import OAuthSuccess from './pages/OAuthSuccess';
 import CompleteProfile from './pages/CompleteProfile';
 import Notifications from './pages/Notifications';
 import TempUploadPortal from './pages/TempUploadPortal';
+import YTDashboard from './pages/YTDashboard';
+import Subscription from './pages/Subscription';
 import { AppLayout } from './components/layout/AppLayout';
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -174,6 +177,16 @@ function App() {
           } 
         />
         <Route 
+          path="/communication-hub" 
+          element={
+            <AuthGuard>
+              <AppLayout>
+                <CommunicationHub />
+              </AppLayout>
+            </AuthGuard>
+          } 
+        />
+        <Route 
           path="/nearby" 
           element={
             <AuthGuard>
@@ -234,6 +247,16 @@ function App() {
           } 
         />
         <Route 
+          path="/subscription" 
+          element={
+            <AuthGuard>
+              <AppLayout>
+                <Subscription />
+              </AppLayout>
+            </AuthGuard>
+          } 
+        />
+        <Route 
           path="/settings" 
           element={
             <AuthGuard>
@@ -249,6 +272,36 @@ function App() {
             <AuthGuard>
               <AppLayout>
                 <TempUploadPortal />
+              </AppLayout>
+            </AuthGuard>
+          } 
+        />
+        <Route 
+          path="/youtube-dashboard" 
+          element={
+            <AuthGuard>
+              <AppLayout>
+                <YTDashboard />
+              </AppLayout>
+            </AuthGuard>
+          } 
+        />
+        <Route 
+          path="/youtube-dashboard/:channelId" 
+          element={
+            <AuthGuard>
+              <AppLayout>
+                <YTDashboard />
+              </AppLayout>
+            </AuthGuard>
+          } 
+        />
+        <Route 
+          path="/channel/:channelId" 
+          element={
+            <AuthGuard>
+              <AppLayout>
+                <YTDashboard />
               </AppLayout>
             </AuthGuard>
           } 

@@ -124,6 +124,18 @@ const setupSocketHandlers = () => {
       }
     });
 
+    socket.on("typing:start", ({ receiverId }) => {
+      if (socket.userId) {
+        emitToUser(receiverId, "typing:start", { senderId: socket.userId });
+      }
+    });
+
+    socket.on("typing:stop", ({ receiverId }) => {
+      if (socket.userId) {
+        emitToUser(receiverId, "typing:stop", { senderId: socket.userId });
+      }
+    });
+
     socket.on("disconnect", () => {
       delete userSocketMap[userId];
       io.emit("users:online", Object.keys(userSocketMap));

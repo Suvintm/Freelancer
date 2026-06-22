@@ -253,10 +253,139 @@ export const updateCoverBanner = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Follow a user
+// @route   POST /api/user/follow
+// @access  Private
+export const followUser = asyncHandler(async (req, res) => {
+  const followerId = req.user?.id;
+  const { targetUserId } = req.body;
+
+  if (!followerId) throw new ApiError(401, "Unauthorized");
+  if (!targetUserId) throw new ApiError(400, "Target user ID is required");
+  if (followerId === targetUserId) throw new ApiError(400, "You cannot follow yourself");
+
+  // Verify target user exists
+  const targetUser = await prisma.user.findUnique({
+    where: { id: targetUserId }
+  });
+  if (!targetUser) throw new ApiError(404, "Target user not found");
+
+  // Create follow record and update stats atomically in a transaction
+  await prisma.$transaction(async (tx) => {
+    // Check if already following
+    const existing = await tx.userFollow.findFirst({
+      where: {
+        followerId,
+        followingId: targetUserId
+      }
+    });
+
+    if (!existing) {
+      await tx.userFollow.create({
+        data: {
+          followerId,
+          followingId: targetUserId
+        }
+      });
+
+      // Increment stats
+      await tx.userStats.upsert({
+        where: { userId: followerId },
+        update: { following_count: { increment: 1 } },
+        create: { userId: followerId, following_count: 1 }
+      });
+
+      await tx.userStats.upsert({
+        where: { userId: targetUserId },
+        update: { followers_count: { increment: 1 } },
+        create: { userId: targetUserId, followers_count: 1 }
+      });
+    }
+  });
+
+  // Fetch updated list of following IDs
+  const follows = await prisma.userFollow.findMany({
+    where: { followerId },
+    select: { followingId: true }
+  });
+
+  const followingIds = follows.map(f => f.followingId);
+
+  return res.status(200).json({
+    success: true,
+    message: "Successfully followed user",
+    followingIds
+  });
+});
+
+// @desc    Unfollow a user
+// @route   POST /api/user/unfollow
+// @access  Private
+export const unfollowUser = asyncHandler(async (req, res) => {
+  const followerId = req.user?.id;
+  const { targetUserId } = req.body;
+
+  if (!followerId) throw new ApiError(401, "Unauthorized");
+  if (!targetUserId) throw new ApiError(400, "Target user ID is required");
+
+  // Delete follow record and update stats atomically in a transaction
+  await prisma.$transaction(async (tx) => {
+    // Check if following
+    const existing = await tx.userFollow.findFirst({
+      where: {
+        followerId,
+        followingId: targetUserId
+      }
+    });
+
+    if (existing) {
+      await tx.userFollow.delete({
+        where: {
+          id: existing.id
+        }
+      });
+
+      // Decrement stats safely (min 0)
+      const fStat = await tx.userStats.findUnique({ where: { userId: followerId } });
+      if (fStat) {
+        await tx.userStats.update({
+          where: { userId: followerId },
+          data: { following_count: Math.max(0, fStat.following_count - 1) }
+        });
+      }
+
+      const tStat = await tx.userStats.findUnique({ where: { userId: targetUserId } });
+      if (tStat) {
+        await tx.userStats.update({
+          where: { userId: targetUserId },
+          data: { followers_count: Math.max(0, tStat.followers_count - 1) }
+        });
+      }
+    }
+  });
+
+  // Fetch updated list of following IDs
+  const follows = await prisma.userFollow.findMany({
+    where: { followerId },
+    select: { followingId: true }
+  });
+
+  const followingIds = follows.map(f => f.followingId);
+
+  return res.status(200).json({
+    success: true,
+    message: "Successfully unfollowed user",
+    followingIds
+  });
+});
+
 export default {
   getMyBasicInfo,
   updateMyBasicInfo,
   updateProfilePicture,
   updateMinimalProfile,
-  updateCoverBanner
+  updateCoverBanner,
+  followUser,
+  unfollowUser
 };
+

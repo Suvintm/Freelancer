@@ -1,5 +1,5 @@
 import { ReactLenis } from 'lenis/react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { GlobalHeader } from './GlobalHeader';
 import { RightSidebar } from './RightSidebar';
@@ -10,11 +10,14 @@ import { useState } from 'react';
 
 export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const isExplorePage = location.pathname === '/explore';
   const isNotificationsPage = location.pathname === '/notifications';
   const isProfilePage = location.pathname === '/profile';
   const isNearbyPage = location.pathname === '/nearby';
-  const isFullPage = isExplorePage || isNotificationsPage;
+  const isChatPage = location.pathname === '/communication-hub';
+  const hasActiveChat = searchParams.has('userId');
+  const isFullPage = isExplorePage || isNotificationsPage || isChatPage;
   const isNoPaddingMobile = isFullPage || isProfilePage || isNearbyPage;
   const { isDarkMode } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -38,7 +41,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
         <div className="flex-1 min-w-0 h-full flex flex-col relative bg-page lg:py-4 lg:px-2">
           {/* Floating Canvas with Rounded Corners */}
           <div className={`w-full h-full lg:rounded-[48px] border-b lg:border border-border-main shadow-xl dark:shadow-2xl flex flex-col relative overflow-hidden transition-colors duration-300 ${isFullPage || location.pathname === '/home' ? (isDarkMode ? 'bg-[#000000]' : 'bg-white') : 'bg-container'}`}>
-            {location.pathname === '/nearby' ? (
+            {location.pathname === '/nearby' || location.pathname === '/communication-hub' ? (
               <div className="w-full h-full relative overflow-hidden">
                 {children}
               </div>
@@ -65,7 +68,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
       </div>
 
       {/* Mobile Bottom Navigation (Persistent) */}
-      <BottomNav />
+      {!(isChatPage && hasActiveChat) && <BottomNav />}
     </div>
   );
 };

@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Youtube, Camera, Settings, Plus, BarChart3, Briefcase, Users2, Edit3, Lock, PlaySquare, LayoutGrid, Image as ImageIcon, Check } from 'lucide-react';
+import { Youtube, Camera, Settings, Plus, BarChart3, Briefcase, Users2, Edit3, Lock, PlaySquare, LayoutGrid, Image as ImageIcon, Check, Trash2, X, Heart, MessageCircle, Play } from 'lucide-react';
 import { selectUser, updateUser } from '../../../store/slices/authSlice';
 import { api } from '../../../api/client';
+import { useTheme } from '../../../hooks/useTheme';
 import SILVER_BTN from '../../../assets/playbuttons/silverbtn.png';
 import GOLD_BTN from '../../../assets/playbuttons/goldenbtn.png';
 import DIAMOND_BTN from '../../../assets/playbuttons/diamondbtn.png';
@@ -14,10 +15,87 @@ const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1524666041070-9d87656c
  * DesktopProfile (YT Creator)
  * Desktop only view for the YT Creator Profile
  */
+interface FeedItem {
+  _id: string;
+  id?: string | number;
+  user: string;
+  type: 'reel' | 'post' | 'yt_video' | 'thumbnail_vote';
+  img: string;
+  images?: string[];
+  comment?: string;
+  votes?: number[];
+  likes?: string | number;
+  createdAt: string;
+  videoUrl?: string;
+  commentsCount?: number;
+  location?: string;
+  tags?: string[];
+}
+
 export const DesktopProfile = () => {
   const user = useSelector(selectUser);
   const dispatch = useDispatch();
+  const { isDarkMode } = useTheme();
   const [activeTab, setActiveTab] = useState('yt_posts');
+  const [reels, setReels] = useState<FeedItem[]>([]);
+  const [posts, setPosts] = useState<FeedItem[]>([]);
+  const [ytVideos, setYtVideos] = useState<FeedItem[]>([]);
+  const [thumbnailVotes, setThumbnailVotes] = useState<FeedItem[]>([]);
+  const [isLoadingFeed, setIsLoadingFeed] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<FeedItem | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const fetchFeed = async () => {
+      // Force execution to be asynchronous to avoid React cascading render warnings
+      await Promise.resolve();
+      if (!active || !user?.username) return;
+      setIsLoadingFeed(true);
+      try {
+        const response = await api.get('/temp-feed');
+        if (response.data.success && active) {
+          const creatorFeed = response.data.data.filter(
+            (item: FeedItem) => item.user === user.username
+          );
+          setReels(creatorFeed.filter((item: FeedItem) => item.type === 'reel'));
+          setPosts(creatorFeed.filter((item: FeedItem) => item.type === 'post'));
+          setYtVideos(creatorFeed.filter((item: FeedItem) => item.type === 'yt_video'));
+          setThumbnailVotes(creatorFeed.filter((item: FeedItem) => item.type === 'thumbnail_vote'));
+        }
+      } catch (err) {
+        console.error('Failed to fetch temp feed for profile:', err);
+      } finally {
+        if (active) {
+          setIsLoadingFeed(false);
+        }
+      }
+    };
+
+    fetchFeed();
+    return () => {
+      active = false;
+    };
+  }, [user?.username]);
+
+  const handleDeleteItem = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this item?')) return;
+    try {
+      const response = await api.delete(`/temp-feed/${id}`);
+      if (response.data.success) {
+        setReels((prev) => prev.filter((item) => item._id !== id));
+        setPosts((prev) => prev.filter((item) => item._id !== id));
+        setYtVideos((prev) => prev.filter((item) => item._id !== id));
+        setThumbnailVotes((prev) => prev.filter((item) => item._id !== id));
+        if (selectedMedia?._id === id) {
+          setSelectedMedia(null);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete feed item:', err);
+      alert('Error deleting item');
+    }
+  };
   const [showBannerMenu, setShowBannerMenu] = useState(false);
   const [isEditingBio, setIsEditingBio] = useState(false);
   const [bioText, setBioText] = useState(user?.bio || '');
@@ -91,8 +169,10 @@ export const DesktopProfile = () => {
 
   const TABS = [
     { id: 'yt_posts', label: 'YT Posts', icon: Youtube },
+    { id: 'yt_videos', label: 'YT Videos', icon: Play },
     { id: 'posts',    label: 'Posts',    icon: LayoutGrid },
     { id: 'reels',    label: 'Reels',    icon: PlaySquare },
+    { id: 'thumbnail_vote', label: 'Thumbnails', icon: ImageIcon },
   ];
 
   if (!user) return null;
@@ -519,16 +599,160 @@ export const DesktopProfile = () => {
           <div className="py-6">
             {/* Reels Tab - Vertical Grid (Instagram Style) */}
             {activeTab === 'reels' && (
-              <div className="w-full py-20 flex items-center justify-center border border-dashed border-border-main rounded-2xl">
-                <p className="text-sm font-bold text-text-muted uppercase tracking-widest">Reels feed coming soon</p>
-              </div>
+              isLoadingFeed ? (
+                <div className="w-full py-20 flex items-center justify-center">
+                  <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : reels.length > 0 ? (
+                <div className="grid grid-cols-3 gap-6">
+                  {reels.map((reel) => (
+                    <div 
+                      key={reel._id} 
+                      onClick={() => setSelectedMedia(reel)}
+                      className="group relative aspect-[9/16] rounded-2xl overflow-hidden bg-border-secondary border border-border-secondary cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300"
+                    >
+                      <video 
+                        src={reel.videoUrl} 
+                        preload="metadata" 
+                        className="w-full h-full object-cover"
+                      />
+                      {/* Hover Info Overlay */}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4">
+                        <div className="flex justify-end">
+                          <button 
+                            onClick={(e) => handleDeleteItem(reel._id, e)}
+                            className="p-2 bg-red-500/80 hover:bg-red-600 rounded-full text-white transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                        <div className="flex flex-col gap-1.5 text-white">
+                          <p className="text-xs font-bold line-clamp-2 leading-snug">{reel.comment}</p>
+                          <div className="flex items-center gap-4 text-xs font-black">
+                            <span className="flex items-center gap-1"><Heart size={14} fill="white" /> {reel.likes || 0}</span>
+                            <span className="flex items-center gap-1"><MessageCircle size={14} fill="white" /> {reel.commentsCount || 0}</span>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Play Icon overlay (default state) */}
+                      <div className="absolute bottom-4 left-4 p-2 bg-black/60 backdrop-blur-md border border-white/10 rounded-full text-white group-hover:scale-110 transition-transform duration-300">
+                        <PlaySquare size={16} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="w-full py-20 flex flex-col items-center justify-center border border-dashed border-border-main rounded-2xl">
+                  <PlaySquare size={32} className="text-text-muted mb-2" />
+                  <p className="text-sm font-bold text-text-muted uppercase tracking-widest">No reels uploaded yet</p>
+                </div>
+              )
+            )}
+
+            {/* YT Videos Tab - Landscape Video Grid (YouTube Style) */}
+            {activeTab === 'yt_videos' && (
+              isLoadingFeed ? (
+                <div className="w-full py-20 flex items-center justify-center">
+                  <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : ytVideos.length > 0 ? (
+                <div className="grid grid-cols-3 gap-6">
+                  {ytVideos.map((video) => (
+                    <div 
+                      key={video._id} 
+                      onClick={() => setSelectedMedia(video)}
+                      className="group relative aspect-video rounded-2xl overflow-hidden bg-border-secondary border border-border-secondary cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300"
+                    >
+                      <video 
+                        src={video.videoUrl} 
+                        preload="metadata" 
+                        className="w-full h-full object-cover"
+                      />
+                      {/* Hover Info Overlay */}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4">
+                        <div className="flex justify-end">
+                          <button 
+                            onClick={(e) => handleDeleteItem(video._id, e)}
+                            className="p-2 bg-red-500/80 hover:bg-red-600 rounded-full text-white transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                        <div className="flex flex-col gap-1.5 text-white">
+                          <p className="text-xs font-bold line-clamp-2 leading-snug">{video.comment}</p>
+                          <div className="flex items-center gap-4 text-xs font-black">
+                            <span className="flex items-center gap-1"><Heart size={14} fill="white" /> {video.likes || 0}</span>
+                            <span className="flex items-center gap-1"><MessageCircle size={14} fill="white" /> {video.commentsCount || 0}</span>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Play Icon overlay (default state) */}
+                      <div className="absolute bottom-4 left-4 p-2 bg-black/60 backdrop-blur-md border border-white/10 rounded-full text-white group-hover:scale-110 transition-transform duration-300">
+                        <Play size={16} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="w-full py-20 flex flex-col items-center justify-center border border-dashed border-border-main rounded-2xl">
+                  <Play size={32} className="text-text-muted mb-2" />
+                  <p className="text-sm font-bold text-text-muted uppercase tracking-widest">No platform videos uploaded yet</p>
+                </div>
+              )
             )}
 
             {/* Posts Tab - Square Grid (Instagram Style) */}
             {activeTab === 'posts' && (
-              <div className="w-full py-20 flex items-center justify-center border border-dashed border-border-main rounded-2xl">
-                <p className="text-sm font-bold text-text-muted uppercase tracking-widest">Posts grid coming soon</p>
-              </div>
+              isLoadingFeed ? (
+                <div className="w-full py-20 flex items-center justify-center">
+                  <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : posts.length > 0 ? (
+                <div className="grid grid-cols-3 gap-6">
+                  {posts.map((post) => (
+                    <div 
+                      key={post._id} 
+                      onClick={() => setSelectedMedia(post)}
+                      className="group relative aspect-square rounded-2xl overflow-hidden bg-border-secondary border border-border-secondary cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300"
+                    >
+                      <img 
+                        src={post.images?.[0]} 
+                        alt={post.comment} 
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      {/* Multi-Image indicator badge */}
+                      {post.images && post.images.length > 1 && (
+                        <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md border border-white/10 p-1.5 rounded-lg text-white">
+                          <LayoutGrid size={14} />
+                        </div>
+                      )}
+                      {/* Hover Info Overlay */}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4">
+                        <div className="flex justify-end">
+                          <button 
+                            onClick={(e) => handleDeleteItem(post._id, e)}
+                            className="p-2 bg-red-500/80 hover:bg-red-600 rounded-full text-white transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                        <div className="flex flex-col gap-1.5 text-white">
+                          <p className="text-xs font-bold line-clamp-2 leading-snug">{post.comment}</p>
+                          <div className="flex items-center gap-4 text-xs font-black">
+                            <span className="flex items-center gap-1"><Heart size={14} fill="white" /> {post.likes || 0}</span>
+                            <span className="flex items-center gap-1"><MessageCircle size={14} fill="white" /> {post.commentsCount || 0}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="w-full py-20 flex flex-col items-center justify-center border border-dashed border-border-main rounded-2xl">
+                  <LayoutGrid size={32} className="text-text-muted mb-2" />
+                  <p className="text-sm font-bold text-text-muted uppercase tracking-widest">No posts uploaded yet</p>
+                </div>
+              )
             )}
 
             {/* YT Posts Feed */}
@@ -584,9 +808,257 @@ export const DesktopProfile = () => {
                 )}
               </div>
             )}
+
+            {/* Thumbnails Tab - Dynamic Poll results */}
+            {activeTab === 'thumbnail_vote' && (
+              isLoadingFeed ? (
+                <div className="w-full py-20 flex items-center justify-center">
+                  <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : thumbnailVotes.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {thumbnailVotes.map((item) => {
+                    const images = item.images || [];
+                    const votes = item.votes || new Array(images.length).fill(0);
+                    const totalVotes = votes.reduce((a: number, b: number) => a + b, 0);
+
+                    return (
+                      <div 
+                        key={item._id}
+                        className={`border rounded-3xl p-4 flex flex-col justify-between transition-all ${
+                          isDarkMode ? 'bg-[#0a0a0a] border-border-main' : 'bg-white border-zinc-200 shadow-sm'
+                        }`}
+                      >
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-[10px] font-bold text-text-muted">
+                            {new Date(item.createdAt).toLocaleDateString()}
+                          </span>
+                          <button 
+                            onClick={(e) => handleDeleteItem(item._id, e)}
+                            className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-full transition-colors"
+                            title="Delete Thumbnail Vote"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+
+                        {/* Caption */}
+                        <p className="text-xs font-semibold text-text-main line-clamp-2 mb-4">
+                          {item.comment || "Thumbnail Choice Vote"}
+                        </p>
+
+                        {/* Thumbnail Grid with Stats */}
+                        <div className="grid grid-cols-2 gap-2 mb-4">
+                          {images.map((img: string, idx: number) => {
+                            const voteCount = votes[idx] || 0;
+                            const percentage = totalVotes === 0 ? 0 : Math.round((voteCount / totalVotes) * 100);
+                            const isWinner = totalVotes > 0 && voteCount === Math.max(...votes);
+
+                            return (
+                              <div key={idx} className="relative aspect-video rounded-xl overflow-hidden bg-zinc-900 border border-white/5">
+                                <img src={img} alt="" className="w-full h-full object-cover" />
+                                {/* Overlay Vote Results */}
+                                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-1">
+                                  <span className="text-white font-extrabold text-[15px]">{percentage}%</span>
+                                  <span className="text-[9px] text-zinc-300 font-medium">{voteCount} votes</span>
+                                  {isWinner && (
+                                    <span className="absolute top-1 right-1 bg-yellow-500 text-black text-[7px] font-black uppercase px-1 rounded">
+                                      Winner
+                                    </span>
+                                  )}
+                                </div>
+                                {/* Badge */}
+                                <span className="absolute top-1 left-1 bg-black/70 px-1 py-0.5 rounded text-[8px] text-white font-bold leading-none">
+                                  No. {idx + 1}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Summary Footer */}
+                        <div className="border-t border-border-main/50 pt-2 flex items-center justify-between text-[11px] font-bold text-text-muted">
+                          <span>Total Votes: {totalVotes}</span>
+                          <span className="text-blue-500 uppercase text-[9px] tracking-wider bg-blue-500/10 px-2 py-0.5 rounded-full">
+                            Active Poll
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="w-full py-20 flex flex-col items-center justify-center border border-dashed border-border-main rounded-2xl">
+                  <ImageIcon size={32} className="text-text-muted mb-2" />
+                  <p className="text-sm font-bold text-text-muted uppercase tracking-widest">No thumbnail votes uploaded yet</p>
+                </div>
+              )
+            )}
           </div>
         </div>
       </div>
+
+      {/* Immersive Media Details Modal */}
+      <AnimatePresence>
+        {selectedMedia && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-6 backdrop-blur-sm"
+            onClick={() => setSelectedMedia(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-4xl h-[70vh] bg-page border border-border-main rounded-3xl overflow-hidden shadow-2xl flex"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close Button */}
+              <button 
+                onClick={() => setSelectedMedia(null)}
+                className="absolute top-4 right-4 z-10 p-2 bg-black/50 text-white rounded-full hover:bg-black/75 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+
+              {/* Left Column: Media Display */}
+              <div className="flex-1 bg-black flex items-center justify-center relative select-none">
+                {selectedMedia.type === 'reel' ? (
+                  <video 
+                    src={selectedMedia.videoUrl} 
+                    controls 
+                    autoPlay 
+                    loop 
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <PostImageSlider images={selectedMedia.images || []} />
+                )}
+              </div>
+
+              {/* Right Column: Information Panel */}
+              <div className="w-[340px] border-l border-border-main flex flex-col h-full bg-page">
+                {/* Creator Header */}
+                <div className="p-4 border-b border-border-main flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src={user.profilePicture || DEFAULT_AVATAR} 
+                      className="w-10 h-10 rounded-full object-cover border border-border-main" 
+                      alt="" 
+                    />
+                    <div>
+                      <h4 className="text-sm font-black text-text-main leading-tight">{displayName}</h4>
+                      <p className="text-xs text-text-muted">{username}</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => handleDeleteItem(selectedMedia._id)}
+                    className="p-2 text-text-muted hover:text-red-500 transition-colors hover:bg-red-500/10 rounded-full cursor-pointer"
+                    title="Delete Post"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+
+                {/* Details Section */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {selectedMedia.location && (
+                    <div className="flex items-center gap-1.5 text-xs text-text-muted font-bold">
+                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                      <span>{selectedMedia.location}</span>
+                    </div>
+                  )}
+
+                  {selectedMedia.comment && (
+                    <p className="text-sm text-text-main leading-relaxed font-medium">
+                      {selectedMedia.comment}
+                    </p>
+                  )}
+
+                  {selectedMedia.tags && selectedMedia.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedMedia.tags.map((tag: string, idx: number) => (
+                        <span 
+                          key={idx} 
+                          className="px-2 py-0.5 bg-border-secondary border border-border-secondary text-[10px] font-black text-text-muted rounded-md uppercase tracking-wider"
+                        >
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="text-[10px] text-text-muted font-bold">
+                    Uploaded {new Date(selectedMedia.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+
+                {/* Footer Section */}
+                <div className="p-4 border-t border-border-main bg-border-secondary/30 space-y-3">
+                  <div className="flex items-center justify-between text-xs font-black text-text-main">
+                    <span className="flex items-center gap-1.5"><Heart size={16} className="text-red-500 fill-red-500" /> {selectedMedia.likes || 0} Likes</span>
+                    <span className="flex items-center gap-1.5"><MessageCircle size={16} className="text-text-muted" /> {selectedMedia.commentsCount || 0} Comments</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const PostImageSlider = ({ images }: { images: string[] }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  if (images.length === 0) return null;
+
+  return (
+    <div className="relative w-full h-full flex items-center justify-center bg-black">
+      <img 
+        src={images[currentIndex]} 
+        alt="" 
+        className="w-full h-full object-contain select-none"
+      />
+
+      {images.length > 1 && (
+        <>
+          {/* Left Arrow */}
+          <button 
+            onClick={() => setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1))}
+            className="absolute left-4 p-2 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors border border-white/10 cursor-pointer"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          {/* Right Arrow */}
+          <button 
+            onClick={() => setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0))}
+            className="absolute right-4 p-2 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors border border-white/10 cursor-pointer"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+
+          {/* Dots Indicator */}
+          <div className="absolute bottom-4 flex gap-1.5">
+            {images.map((_, idx) => (
+              <div 
+                key={idx}
+                className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'bg-white scale-125' : 'bg-white/40'}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 };

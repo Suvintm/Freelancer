@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../store/slices/authSlice';
 import { useTheme } from '../hooks/useTheme';
@@ -35,11 +35,24 @@ interface TempFeedItem {
 
 export default function TempUploadPortal() {
   const navigate = useNavigate();
+  const routeLocation = useLocation();
   const { isDarkMode } = useTheme();
   const user = useSelector(selectUser);
 
   // Form states
   const [activeTab, setActiveTab] = useState<UploadType>('reel');
+
+  useEffect(() => {
+    const initTab = async () => {
+      await Promise.resolve();
+      const params = new URLSearchParams(routeLocation.search);
+      const typeParam = params.get('type') as UploadType;
+      if (typeParam && ['reel', 'post', 'yt_video', 'thumbnail_vote'].includes(typeParam)) {
+        setActiveTab(typeParam);
+      }
+    };
+    initTab();
+  }, [routeLocation.search]);
   const [username, setUsername] = useState(user?.username || 'suvix_creator');
   const [location, setLocation] = useState('');
   const [caption, setCaption] = useState('');
@@ -47,6 +60,7 @@ export default function TempUploadPortal() {
   const [tags, setTags] = useState('');
   const [ytChannelName, setYtChannelName] = useState('');
   const [ytSubscribeLink, setYtSubscribeLink] = useState('');
+  const [watchOnYtLink, setWatchOnYtLink] = useState('');
   
   // File states
   const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
@@ -155,6 +169,10 @@ export default function TempUploadPortal() {
         formData.append('ytSubscribeLink', ytSubscribeLink);
       }
       
+      if (watchOnYtLink) {
+        formData.append('watchOnYtLink', watchOnYtLink);
+      }
+      
       if (activeTab === 'reel') {
         formData.append('comment', description);
         if (!selectedVideo) {
@@ -211,6 +229,7 @@ export default function TempUploadPortal() {
     setTags('');
     setYtChannelName('');
     setYtSubscribeLink('');
+    setWatchOnYtLink('');
     setSelectedVideo(null);
     setVideoPreview('');
     setSelectedImages([]);
@@ -381,6 +400,27 @@ export default function TempUploadPortal() {
                   value={tags}
                   onChange={(e) => setTags(e.target.value)}
                   placeholder="e.g. funny, tech, viral"
+                  className={`w-full h-11 rounded-xl pl-10 pr-4 text-[13px] font-medium transition-all focus:outline-none ${
+                    isDarkMode 
+                      ? 'bg-zinc-950/60 border border-border-secondary text-white placeholder-text-muted/40 focus:border-zinc-500' 
+                      : 'bg-white border-[1.5px] border-zinc-950 text-zinc-950 placeholder-zinc-400 focus:bg-zinc-50'
+                  }`}
+                />
+              </div>
+            </div>
+
+            {/* Watch on YT Link (Available for all tabs) */}
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-bold uppercase tracking-[0.12em] text-text-muted">
+                "Watch on YT" Link (Optional)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted"><Youtube size={14} /></span>
+                <input
+                  type="url"
+                  value={watchOnYtLink}
+                  onChange={(e) => setWatchOnYtLink(e.target.value)}
+                  placeholder="https://youtube.com/watch?v=..."
                   className={`w-full h-11 rounded-xl pl-10 pr-4 text-[13px] font-medium transition-all focus:outline-none ${
                     isDarkMode 
                       ? 'bg-zinc-950/60 border border-border-secondary text-white placeholder-text-muted/40 focus:border-zinc-500' 

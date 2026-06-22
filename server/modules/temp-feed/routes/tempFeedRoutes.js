@@ -4,7 +4,8 @@ import { upload } from "../../../middleware/upload.js";
 import { 
   createTempFeedItem, 
   getTempFeed, 
-  deleteTempFeedItem 
+  deleteTempFeedItem,
+  voteTempFeedItem
 } from "../controllers/tempFeedController.js";
 
 const router = express.Router();
@@ -18,5 +19,6 @@ const uploadMiddleware = upload.fields([
 router.post("/", authenticate, uploadMiddleware, createTempFeedItem);
 router.get("/", getTempFeed);
 router.delete("/:id", authenticate, deleteTempFeedItem);
+router.post("/:id/vote", voteTempFeedItem);
 
 export default router;

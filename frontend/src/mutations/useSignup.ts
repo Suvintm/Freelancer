@@ -21,6 +21,7 @@ export const useSignup = () => {
           })
         );
         queryClient.setQueryData(CURRENT_USER_QUERY_KEY, data.user);
+        sessionStorage.removeItem('isAddingAccount');
       }
     },
   });

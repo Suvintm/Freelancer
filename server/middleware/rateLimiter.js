@@ -93,15 +93,20 @@ export const impressionLimiter = rateLimit({
 });
 
 // ─── TIER 6: PUBLIC API (General) ─────────────────────────────────────────
-// Catch-all for API navigation. 300 req / 15 min.
+// Catch-all for API navigation. 500 req / 15 min in prod, 3000 in dev.
 export const publicApiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: process.env.NODE_ENV === "production" ? 2500 : 5000,
   store: makeRedisStore("general"),
   handler: (req, res, next, options) => limitHandler(req, res, next, { ...options, prefix: 'GENERAL' }),
   message: { success: false, message: "Too many navigation requests. Please slow down." },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    if (req.publicApiLimiterRun) return true;
+    req.publicApiLimiterRun = true;
+    return false;
+  },
 });
 
 // Legacy exports for backward compatibility during migration

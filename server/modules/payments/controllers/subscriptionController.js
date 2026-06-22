@@ -1,14 +1,13 @@
 /**
- * Subscription Controller
+ * Subscription Controller (PostgreSQL / Prisma version)
  * Handles subscription plans, payments, and user subscriptions
  */
 
 import razorpay from "../../../config/razorpay.js";
 import crypto from "crypto";
-import { Subscription } from "../models/Subscription.js";
-import { SubscriptionPlan } from "../models/SubscriptionPlan.js";
+import prisma from "../../../config/prisma.js";
 import { asyncHandler } from "../../../middleware/errorHandler.js";
-import { createNotification } from "../../connectivity/controllers/notificationController.js";
+import notificationService from "../../notification/services/notificationService.js";
 import { withCache, deleteCache, CacheKey, TTL } from "../../../utils/cache.js";
 
 // ============ GET ALL PLANS ============
@@ -17,43 +16,86 @@ export const getPlans = asyncHandler(async (req, res) => {
   const cacheKey = CacheKey.subscriptionPlans(feature || "all");
 
   const plans = await withCache(cacheKey, TTL.SUBSCRIPTION_PLANS, async () => {
-    const query = { isActive: true };
-    if (feature) query.feature = feature;
-    return SubscriptionPlan.find(query).sort({ sortOrder: 1 }).lean();
+    const where = { isActive: true };
+    if (feature) where.feature = feature;
+    return prisma.subscriptionPlan.findMany({
+      where,
+      orderBy: { sortOrder: "asc" }
+    });
   });
 
-  res.status(200).json({ success: true, plans });
+  const formattedPlans = plans.map(plan => ({
+    ...plan,
+    _id: plan.id,
+  }));
+
+  res.status(200).json({ success: true, plans: formattedPlans });
 });
 
 // ============ GET MY SUBSCRIPTIONS ============
 export const getMySubscriptions = asyncHandler(async (req, res) => {
-  const subscriptions = await Subscription.find({ user: req.user._id })
-    .populate("plan")
-    .sort({ createdAt: -1 })
-    .lean();
+  const userId = req.user._id || req.user.id;
+  const subscriptions = await prisma.subscription.findMany({
+    where: { userId },
+    include: { plan: true },
+    orderBy: { created_at: "desc" }
+  });
+
+  // Map to align with mongoose populate format (_id, plan mapping)
+  const formatted = subscriptions.map(sub => ({
+    ...sub,
+    _id: sub.id,
+    user: sub.userId,
+    plan: {
+      ...sub.plan,
+      _id: sub.plan.id
+    }
+  }));
 
   res.status(200).json({
     success: true,
-    subscriptions,
+    subscriptions: formatted,
   });
 });
 
 // ============ CHECK SUBSCRIPTION STATUS ============
 export const checkSubscriptionStatus = asyncHandler(async (req, res) => {
   const { feature } = req.params;
+  const userId = req.user._id || req.user.id;
 
-  const subscription = await Subscription.getActiveSubscription(
-    req.user._id,
-    feature
-  );
+  const subscription = await prisma.subscription.findFirst({
+    where: {
+      userId,
+      feature: { in: [feature, "all"] },
+      status: { in: ["active", "trial"] },
+      endDate: { gte: new Date() }
+    },
+    include: { plan: true }
+  });
 
-  const hasUsedTrial = await Subscription.hasUsedTrial(req.user._id, feature);
+  const trialSub = await prisma.subscription.findFirst({
+    where: {
+      userId,
+      feature: { in: [feature, "all"] },
+      isTrial: true
+    }
+  });
+
+  const formattedSub = subscription ? {
+    ...subscription,
+    _id: subscription.id,
+    user: subscription.userId,
+    plan: {
+      ...subscription.plan,
+      _id: subscription.plan.id
+    }
+  } : null;
 
   res.status(200).json({
     success: true,
     hasSubscription: !!subscription,
-    subscription: subscription || null,
-    hasUsedTrial,
+    subscription: formattedSub,
+    hasUsedTrial: !!trialSub,
     feature,
   });
 });
@@ -61,9 +103,12 @@ export const checkSubscriptionStatus = asyncHandler(async (req, res) => {
 // ============ START FREE TRIAL ============
 export const startTrial = asyncHandler(async (req, res) => {
   const { planId } = req.body;
+  const userId = req.user._id || req.user.id;
 
   // Get the plan
-  const plan = await SubscriptionPlan.findById(planId);
+  const plan = await prisma.subscriptionPlan.findUnique({
+    where: { id: planId }
+  });
   if (!plan) {
     return res.status(404).json({
       success: false,
@@ -72,12 +117,15 @@ export const startTrial = asyncHandler(async (req, res) => {
   }
 
   // Check if trial already used
-  const hasUsedTrial = await Subscription.hasUsedTrial(
-    req.user._id,
-    plan.feature
-  );
+  const trialSub = await prisma.subscription.findFirst({
+    where: {
+      userId,
+      feature: { in: [plan.feature, "all"] },
+      isTrial: true
+    }
+  });
 
-  if (hasUsedTrial) {
+  if (trialSub) {
     return res.status(400).json({
       success: false,
       message: "You have already used your free trial for this feature",
@@ -85,10 +133,14 @@ export const startTrial = asyncHandler(async (req, res) => {
   }
 
   // Check if already has active subscription
-  const existingSubscription = await Subscription.getActiveSubscription(
-    req.user._id,
-    plan.feature
-  );
+  const existingSubscription = await prisma.subscription.findFirst({
+    where: {
+      userId,
+      feature: { in: [plan.feature, "all"] },
+      status: { in: ["active", "trial"] },
+      endDate: { gte: new Date() }
+    }
+  });
 
   if (existingSubscription) {
     return res.status(400).json({
@@ -98,27 +150,53 @@ export const startTrial = asyncHandler(async (req, res) => {
   }
 
   // Start trial
-  const subscription = await Subscription.startTrial(req.user._id, {
-    planId: plan._id,
-    planName: plan.name,
-    planType: plan.duration,
-    feature: plan.feature,
-    trialDays: plan.trialDays || 3,
+  const startDate = new Date();
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + (plan.trialDays || 3));
+
+  const subscription = await prisma.subscription.create({
+    data: {
+      userId,
+      planId: plan.id,
+      planName: plan.name,
+      planType: plan.duration,
+      feature: plan.feature,
+      planTier: plan.planTier,
+      status: "trial",
+      startDate,
+      endDate,
+      trialEndDate: endDate,
+      isTrial: true,
+      amount: 0,
+      currency: plan.currency,
+    }
   });
+
+  // Invalidate user profile cache so the new trial subscription status is active immediately
+  await deleteCache(CacheKey.userProfile(userId));
+
+  const formattedSub = {
+    ...subscription,
+    _id: subscription.id,
+    user: subscription.userId,
+  };
 
   res.status(201).json({
     success: true,
     message: `${plan.trialDays || 3}-day free trial activated!`,
-    subscription,
+    subscription: formattedSub,
   });
 });
 
 // ============ CREATE RAZORPAY ORDER ============
 export const createOrder = asyncHandler(async (req, res) => {
   const { planId } = req.body;
+  const userId = req.user._id || req.user.id;
 
   // Get the plan
-  const plan = await SubscriptionPlan.findById(planId);
+  const plan = await prisma.subscriptionPlan.findUnique({
+    where: { id: planId }
+  });
   if (!plan) {
     return res.status(404).json({
       success: false,
@@ -137,10 +215,10 @@ export const createOrder = asyncHandler(async (req, res) => {
   const options = {
     amount: Math.round(plan.price * 100), // Ensure integer
     currency: plan.currency,
-    receipt: `sub_${req.user._id.toString().slice(-10)}_${Date.now()}`,
+    receipt: `sub_${userId.toString().slice(-10)}_${Date.now()}`,
     notes: {
-      userId: req.user._id.toString(),
-      planId: plan._id.toString(),
+      userId: userId.toString(),
+      planId: plan.id.toString(),
       feature: plan.feature,
     },
   };
@@ -152,18 +230,21 @@ export const createOrder = asyncHandler(async (req, res) => {
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + plan.durationDays);
 
-    const subscription = await Subscription.create({
-      user: req.user._id,
-      plan: plan._id,
-      planName: plan.name,
-      planType: plan.duration,
-      feature: plan.feature,
-      status: "payment_pending",
-      startDate: new Date(),
-      endDate,
-      amount: plan.price,
-      currency: plan.currency,
-      razorpayOrderId: order.id,
+    const subscription = await prisma.subscription.create({
+      data: {
+        userId,
+        planId: plan.id,
+        planName: plan.name,
+        planType: plan.duration,
+        feature: plan.feature,
+        planTier: plan.planTier,
+        status: "payment_pending",
+        startDate: new Date(),
+        endDate,
+        amount: plan.price,
+        currency: plan.currency,
+        razorpayOrderId: order.id,
+      }
     });
 
     res.status(200).json({
@@ -171,7 +252,7 @@ export const createOrder = asyncHandler(async (req, res) => {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      subscriptionId: subscription._id,
+      subscriptionId: subscription.id,
       keyId: process.env.RAZORPAY_KEY_ID,
       plan: {
         name: plan.name,
@@ -185,15 +266,6 @@ export const createOrder = asyncHandler(async (req, res) => {
       return res.status(400).json({
         success: false,
         message: `Payment Error: ${error.error.description}`,
-      });
-    }
-
-    // Handle Mongoose validation errors
-    if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map(e => e.message);
-      return res.status(400).json({
-        success: false,
-        message: messages.join(", "),
       });
     }
 
@@ -224,7 +296,9 @@ export const verifyPayment = asyncHandler(async (req, res) => {
   }
 
   // Find and update subscription
-  const subscription = await Subscription.findById(subscriptionId);
+  const subscription = await prisma.subscription.findUnique({
+    where: { id: subscriptionId }
+  });
   if (!subscription) {
     return res.status(404).json({
       success: false,
@@ -239,48 +313,71 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     });
   }
 
-  // Activate subscription
-  subscription.status = "active";
-  subscription.razorpayPaymentId = paymentId;
-  subscription.razorpaySignature = signature;
-  subscription.startDate = new Date();
-  
   // Recalculate end date from now
-  const plan = await SubscriptionPlan.findById(subscription.plan);
+  const plan = await prisma.subscriptionPlan.findUnique({
+    where: { id: subscription.planId }
+  });
+
+  const endDate = new Date();
   if (plan) {
-    const endDate = new Date();
     endDate.setDate(endDate.getDate() + plan.durationDays);
-    subscription.endDate = endDate;
-    
-    // Increment plan subscription count
-    await SubscriptionPlan.incrementSubscriptions(plan._id);
   }
 
-  await subscription.save();
+  // Activate subscription and increment plan subscription count in a transaction
+  const [updatedSub] = await prisma.$transaction([
+    prisma.subscription.update({
+      where: { id: subscriptionId },
+      data: {
+        status: "active",
+        razorpayPaymentId: paymentId,
+        razorpaySignature: signature,
+        startDate: new Date(),
+        endDate,
+      }
+    }),
+    ...(plan ? [
+      prisma.subscriptionPlan.update({
+        where: { id: plan.id },
+        data: { totalSubscriptions: { increment: 1 } }
+      })
+    ] : [])
+  ]);
+
+  // Invalidate user profile cache so new subscription details are reflected immediately
+  await deleteCache(CacheKey.userProfile(subscription.userId));
 
   // Send notification
-  await createNotification({
-    recipient: subscription.user,
-    type: "success",
+  await notificationService.notify({
+    userId: subscription.userId,
+    type: "SYSTEM",
     title: "Subscription Activated",
-    message: `You have successfully upgraded to the ${plan.name} plan! Enjoy ${plan.duration} of premium features.`,
-    link: "/subscription/plans",
+    body: `You have successfully upgraded to the ${subscription.planName} plan! Enjoy ${subscription.planType} of premium features.`,
+    metadata: { link: "/subscription/plans" },
   });
+
+  const formattedSub = {
+    ...updatedSub,
+    _id: updatedSub.id,
+    user: updatedSub.userId,
+  };
 
   res.status(200).json({
     success: true,
     message: "Subscription activated successfully!",
-    subscription,
+    subscription: formattedSub,
   });
 });
 
 // ============ CANCEL SUBSCRIPTION ============
 export const cancelSubscription = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const userId = req.user._id || req.user.id;
 
-  const subscription = await Subscription.findOne({
-    _id: id,
-    user: req.user._id,
+  const subscription = await prisma.subscription.findFirst({
+    where: {
+      id,
+      userId
+    }
   });
 
   if (!subscription) {
@@ -297,15 +394,28 @@ export const cancelSubscription = asyncHandler(async (req, res) => {
     });
   }
 
-  subscription.status = "cancelled";
-  subscription.cancelledAt = new Date();
-  subscription.autoRenew = false;
-  await subscription.save();
+  const updatedSubscription = await prisma.subscription.update({
+    where: { id },
+    data: {
+      status: "cancelled",
+      cancelledAt: new Date(),
+      autoRenew: false
+    }
+  });
+
+  // Invalidate user profile cache so new subscription details are reflected immediately
+  await deleteCache(CacheKey.userProfile(subscription.userId));
+
+  const formattedSub = {
+    ...updatedSubscription,
+    _id: updatedSubscription.id,
+    user: updatedSubscription.userId,
+  };
 
   res.status(200).json({
     success: true,
     message: "Subscription cancelled. You will retain access until the end date.",
-    subscription,
+    subscription: formattedSub,
   });
 });
 
@@ -318,18 +428,14 @@ export const upsertPlan = async (req, res) => {
 
     let plan;
     if (planId) {
-      plan = await SubscriptionPlan.findByIdAndUpdate(planId, planData, {
-        new: true,
-        runValidators: true,
+      plan = await prisma.subscriptionPlan.update({
+        where: { id: planId },
+        data: planData
       });
-      if (!plan) {
-        return res.status(404).json({
-          success: false,
-          message: "Plan not found",
-        });
-      }
     } else {
-      plan = await SubscriptionPlan.create(planData);
+      plan = await prisma.subscriptionPlan.create({
+        data: planData
+      });
     }
 
     console.log("Plan saved:", plan);
@@ -348,17 +454,8 @@ export const upsertPlan = async (req, res) => {
   } catch (error) {
     console.error("upsertPlan error:", error);
     
-    // Handle mongoose validation errors
-    if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map(e => e.message);
-      return res.status(400).json({
-        success: false,
-        message: messages.join(", "),
-      });
-    }
-
-    // Handle duplicate key error
-    if (error.code === 11000) {
+    // Handle Prisma duplicate key error (P2002)
+    if (error.code === "P2002") {
       return res.status(400).json({
         success: false,
         message: "A plan with this slug already exists",
@@ -376,23 +473,64 @@ export const upsertPlan = async (req, res) => {
 export const getAllSubscriptions = asyncHandler(async (req, res) => {
   const { status, feature, page = 1, limit = 20 } = req.query;
 
-  const query = {};
-  if (status) query.status = status;
-  if (feature) query.feature = feature;
+  const where = {};
+  if (status) where.status = status;
+  if (feature) where.feature = feature;
 
-  const subscriptions = await Subscription.find(query)
-    .populate("user", "name email profilePicture")
-    .populate("plan", "name duration price")
-    .sort({ createdAt: -1 })
-    .skip((page - 1) * limit)
-    .limit(parseInt(limit))
-    .lean();
+  const subscriptions = await prisma.subscription.findMany({
+    where,
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          profile: {
+            select: {
+              name: true,
+              profile_picture: true
+            }
+          }
+        }
+      },
+      plan: {
+        select: {
+          name: true,
+          duration: true,
+          price: true
+        }
+      }
+    },
+    orderBy: { created_at: "desc" },
+    skip: (page - 1) * limit,
+    take: parseInt(limit)
+  });
 
-  const total = await Subscription.countDocuments(query);
+  const total = await prisma.subscription.count({ where });
+
+  // Map to align nested postgres objects with legacy mongoose formats
+  const formatted = subscriptions.map(sub => {
+    const formattedUser = sub.user ? {
+      _id: sub.user.id,
+      id: sub.user.id,
+      email: sub.user.email,
+      name: sub.user.profile?.name || "",
+      profilePicture: sub.user.profile?.profile_picture || null
+    } : null;
+
+    return {
+      ...sub,
+      _id: sub.id,
+      user: formattedUser,
+      plan: sub.plan ? {
+        ...sub.plan,
+        _id: sub.planId
+      } : null
+    };
+  });
 
   res.status(200).json({
     success: true,
-    subscriptions,
+    subscriptions: formatted,
     pagination: {
       page: parseInt(page),
       limit: parseInt(limit),
@@ -401,9 +539,3 @@ export const getAllSubscriptions = asyncHandler(async (req, res) => {
     },
   });
 });
-
-
-
-
-
-

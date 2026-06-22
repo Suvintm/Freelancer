@@ -40,6 +40,7 @@ import oauthRoutes from "./modules/auth/routes/oauthRoutes.js";
 import userRoutes from "./modules/user/routes/userRoutes.js";
 import notificationRoutes from "./modules/notification/routes/notificationRoutes.js";
 import paymentGatewayRoutes from "./modules/payments/routes/paymentGatewayRoutes.js";
+import subscriptionRoutes from "./modules/payments/routes/subscriptionRoutes.js";
 import youtubeRoutes from "./modules/youtube-creator/routes/youtubeRoutes.js";
 import mediaRoutes from "./modules/storage/media.routes.js";
 import socialRoutes from "./modules/social/routes/postRoutes.js";
@@ -47,6 +48,7 @@ import storyRoutes from "./modules/story/routes/storyRoutes.js";
 import profileRoutes from "./modules/profile/profile.routes.js";
 import communityRoutes from "./modules/community/routes/communityRoutes.js";
 import tempFeedRoutes from "./modules/temp-feed/routes/tempFeedRoutes.js";
+import messageRoutes from "./modules/message/routes/messageRoutes.js";
 
 // PostgreSQL Support
 import { connectPostgres } from "./config/prisma.js";
@@ -173,6 +175,7 @@ app.use("/api/social/stories", storyRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/youtube-creator", youtubeRoutes);
 app.use("/api/communities", communityRoutes);
+app.use("/api/messages", messageRoutes);
 
 // ============ SECURITY: NOSQL SANITIZATION ============
 // This protects MongoDB-specific routes (Reels, Feed, etc.)
@@ -192,6 +195,7 @@ app.use((req, res, next) => {
 
 // ============ RELEVANT API ROUTES ============
 app.use("/api/payment-gateway", paymentGatewayRoutes);
+app.use("/api/payments", subscriptionRoutes);
 app.use("/api/temp-feed", tempFeedRoutes);
 
 // Health checks

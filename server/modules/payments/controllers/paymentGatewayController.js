@@ -4,11 +4,12 @@
  */
 
 import prisma from "../../../config/prisma.js";
+import logger from "../../../utils/logger.js";
 // import { Message } from "../../connectivity/models/Message.js"; // DEPRECATED
 // import { Order } from "../../marketplace/models/Order.js"; // DEPRECATED
 // import User from "../../user/models/User.js"; // DEPRECATED (Using Prisma)
 // import { SiteSettings } from "../../system/models/SiteSettings.js"; // DEPRECATED
-import { Payment } from "../models/Payment.js";
+
 import PaymentService, {
   isPaymentSupported,
   getCurrencyInfo,
@@ -251,16 +252,16 @@ export const verifyPayment = async (req, res) => {
     */
 
     // Notify editor now that payment is confirmed
-    const { createNotification } = await import("../../connectivity/controllers/notificationController.js");
-    await createNotification({
-      recipient: order.editor,
-      type: "success",
+    const notificationService = (await import("../../notification/services/notificationService.js")).default;
+    await notificationService.notify({
+      userId: order.editor,
+      type: "ORDER_UPDATE",
       title: "💰 Payment Received!",
-      message: `${populatedOrder.client?.name || "A client"} paid ₹${order.amount} for "${order.title}". Start working!`,
-      link: `/chat/${order._id}`,
-      metaData: {
-        orderId: order._id,
-        senderId: order.client,
+      body: `${populatedOrder.client?.name || "A client"} paid ₹${order.amount} for "${order.title}". Start working!`,
+      metadata: {
+        link: `/chat/${order._id}`,
+        orderId: order._id.toString(),
+        senderId: order.client.toString(),
         type: "new_order"
       }
     });
@@ -361,58 +362,57 @@ export const verifyPaymentCallback = async (req, res) => {
     await order.save();
 
     // Create Payment record
-    await Payment.create({
-      order: order._id,
-      client: order.client._id,
-      editor: order.editor._id,
-      amount: order.amount,
-      platformFee: order.platformFee,
-      editorEarning: order.editorEarning,
-      type: "escrow_deposit",
-      status: "completed",
-      transactionId: razorpay_payment_id,
-      orderSnapshot: {
-        orderNumber: order.orderNumber,
-        title: order.title,
-        description: order.description,
-        createdAt: order.createdAt,
-        deadline: order.deadline,
-      },
-      completedAt: new Date(),
-      notes: `Razorpay Payment ID: ${razorpay_payment_id} (Mobile Callback)`,
+    await prisma.payment.create({
+      data: {
+        order: order._id.toString(),
+        clientId: order.client._id.toString(),
+        editorId: order.editor._id.toString(),
+        amount: order.amount,
+        platformFee: order.platformFee,
+        editorEarning: order.editorEarning,
+        type: "escrow_deposit",
+        status: "completed",
+        transactionId: razorpay_payment_id,
+        completedAt: new Date(),
+        notes: `Razorpay Payment ID: ${razorpay_payment_id} (Mobile Callback)`,
+      }
     });
 
     // Create system message
-    const MessageClass = (await import("../../connectivity/models/Message.js")).Message || (await import("../../connectivity/models/Message.js")).default;
-    if (order.type === "request") {
-      await MessageClass.create({
-        order: order._id,
-        sender: order.client._id,
-        type: "system",
-        content: `✅ Payment of ₹${order.amount} confirmed via Mobile Redirect! Chat is now enabled.`,
-        systemAction: "payment_confirmed",
-      });
-    } else {
-      await MessageClass.create({
-        order: order._id,
-        sender: order.client._id,
-        type: "system",
-        content: `Payment of ₹${order.amount} confirmed via Mobile Redirect. Order created for "${order.title}"`,
-        systemAction: "payment_confirmed",
-      });
+    try {
+      const MessageClass = (await import("../../connectivity/models/Message.js")).Message || (await import("../../connectivity/models/Message.js")).default;
+      if (order.type === "request") {
+        await MessageClass.create({
+          order: order._id,
+          sender: order.client._id,
+          type: "system",
+          content: `✅ Payment of ₹${order.amount} confirmed via Mobile Redirect! Chat is now enabled.`,
+          systemAction: "payment_confirmed",
+        });
+      } else {
+        await MessageClass.create({
+          order: order._id,
+          sender: order.client._id,
+          type: "system",
+          content: `Payment of ₹${order.amount} confirmed via Mobile Redirect. Order created for "${order.title}"`,
+          systemAction: "payment_confirmed",
+        });
+      }
+    } catch (msgErr) {
+      logger.warn(`[PAYMENT] Skipping legacy system message: ${msgErr.message}`);
     }
 
     // Notify editor
-    const { createNotification } = await import("../../connectivity/controllers/notificationController.js");
-    await createNotification({
-      recipient: order.editor._id,
-      type: "success",
+    const notificationService = (await import("../../notification/services/notificationService.js")).default;
+    await notificationService.notify({
+      userId: order.editor._id,
+      type: "ORDER_UPDATE",
       title: "💰 Payment Received!",
-      message: `${order.client?.name || "A client"} paid ₹${order.amount} for "${order.title}". Start working!`,
-      link: `/chat/${order._id}`,
-      metaData: {
-        orderId: order._id,
-        senderId: order.client._id,
+      body: `${order.client?.name || "A client"} paid ₹${order.amount} for "${order.title}". Start working!`,
+      metadata: {
+        link: `/chat/${order._id}`,
+        orderId: order._id.toString(),
+        senderId: order.client._id.toString(),
         type: "new_order"
       }
     });
@@ -509,63 +509,62 @@ async function handlePaymentCaptured(payment) {
   await order.save();
 
   // Create Payment record if it doesn't exist
-  const existingPayment = await Payment.findOne({ transactionId: payment.id });
+  const existingPayment = await prisma.payment.findUnique({ where: { transactionId: payment.id } });
   if (!existingPayment) {
-    await Payment.create({
-      order: order._id,
-      client: order.client._id,
-      editor: order.editor._id,
-      amount: order.amount,
-      platformFee: order.platformFee,
-      editorEarning: order.editorEarning,
-      type: "escrow_deposit",
-      status: "completed",
-      transactionId: payment.id,
-      orderSnapshot: {
-        orderNumber: order.orderNumber,
-        title: order.title,
-        description: order.description,
-        createdAt: order.createdAt,
-        deadline: order.deadline,
-      },
-      completedAt: new Date(),
-      notes: "Created via Webhook (payment.captured)",
+    await prisma.payment.create({
+      data: {
+        order: order._id.toString(),
+        clientId: order.client._id.toString(),
+        editorId: order.editor._id.toString(),
+        amount: order.amount,
+        platformFee: order.platformFee,
+        editorEarning: order.editorEarning,
+        type: "escrow_deposit",
+        status: "completed",
+        transactionId: payment.id,
+        completedAt: new Date(),
+        notes: "Created via Webhook (payment.captured)",
+      }
     });
   }
 
   // If we just transitioned the status, send notifications and messages
   if (!wasAlreadyProcessed) {
     // Create system message
-    const { Message } = await import("../../connectivity/models/Message.js");
-    if (order.type === "request") {
-      await Message.create({
-        order: order._id,
-        sender: order.client._id,
-        type: "system",
-        content: `✅ Payment of ₹${order.amount} confirmed via Webhook! Chat is now enabled. ${order.editor?.name || "Editor"}, you can start working.`,
-        systemAction: "payment_confirmed",
-      });
-    } else {
-      await Message.create({
-        order: order._id,
-        sender: order.client._id,
-        type: "system",
-        content: `Payment of ₹${order.amount} confirmed via Webhook. Order created for "${order.title}"`,
-        systemAction: "payment_confirmed",
-      });
+    try {
+      const { Message } = await import("../../connectivity/models/Message.js");
+      if (order.type === "request") {
+        await Message.create({
+          order: order._id,
+          sender: order.client._id,
+          type: "system",
+          content: `✅ Payment of ₹${order.amount} confirmed via Webhook! Chat is now enabled. ${order.editor?.name || "Editor"}, you can start working.`,
+          systemAction: "payment_confirmed",
+        });
+      } else {
+        await Message.create({
+          order: order._id,
+          sender: order.client._id,
+          type: "system",
+          content: `Payment of ₹${order.amount} confirmed via Webhook. Order created for "${order.title}"`,
+          systemAction: "payment_confirmed",
+        });
+      }
+    } catch (msgErr) {
+      logger.warn(`[PAYMENT] Skipping legacy system message: ${msgErr.message}`);
     }
 
     // Notify editor
-    const { createNotification } = await import("../../connectivity/controllers/notificationController.js");
-    await createNotification({
-      recipient: order.editor._id,
-      type: "success",
+    const notificationService = (await import("../../notification/services/notificationService.js")).default;
+    await notificationService.notify({
+      userId: order.editor._id,
+      type: "ORDER_UPDATE",
       title: "💰 Payment Received!",
-      message: `${order.client?.name || "A client"} paid ₹${order.amount} for "${order.title}" (Verified via Webhook).`,
-      link: `/chat/${order._id}`,
-      metaData: {
-        orderId: order._id,
-        senderId: order.client._id,
+      body: `${order.client?.name || "A client"} paid ₹${order.amount} for "${order.title}" (Verified via Webhook).`,
+      metadata: {
+        link: `/chat/${order._id}`,
+        orderId: order._id.toString(),
+        senderId: order.client._id.toString(),
         type: "new_order"
       }
     });

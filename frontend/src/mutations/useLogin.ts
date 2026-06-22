@@ -22,6 +22,9 @@ export const useLogin = () => {
         );
         // Set the cache query data for current user to avoid an extra API call on redirect
         queryClient.setQueryData(CURRENT_USER_QUERY_KEY, data.user);
+        
+        // Clear the adding account flag if it was set
+        sessionStorage.removeItem('isAddingAccount');
       }
     },
   });

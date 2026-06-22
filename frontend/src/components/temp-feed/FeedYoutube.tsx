@@ -17,6 +17,7 @@ interface Post {
   likedByAvatars?: string[];
   ytChannelName?: string;
   ytSubscribeLink?: string;
+  watchOnYtLink?: string;
 }
 
 export function FeedYoutube({ 
@@ -134,7 +135,10 @@ export function FeedYoutube({
         </div>
       </div>
 
-      <div className="w-full aspect-video bg-black relative flex items-center justify-center cursor-pointer" onClick={() => { if (isPlaying) { pauseMedia(); } else { playMedia(); } }}>
+      <div 
+        className={`w-full max-h-[min(75vh,580px)] relative overflow-hidden flex items-center justify-center cursor-pointer ${isDarkMode ? 'bg-black' : 'bg-zinc-50'}`}
+        onClick={() => { if (isPlaying) { pauseMedia(); } else { playMedia(); } }}
+      >
         <video 
           ref={videoRef}
           src={post.videoUrl}
@@ -144,7 +148,7 @@ export function FeedYoutube({
           onLoadedMetadata={() => {
             if (videoRef.current) videoRef.current.muted = true;
           }}
-          className="w-full h-full object-cover"
+          className="w-full h-auto max-h-[min(75vh,580px)] object-contain"
         />
 
         <div className="absolute top-3 left-3 bg-red-600 backdrop-blur-sm px-2.5 py-1 rounded-full flex items-center gap-1.5 text-white text-[9px] font-semibold tracking-wide border border-white/10 select-none z-15 shadow-md">
@@ -159,6 +163,17 @@ export function FeedYoutube({
               style={{ width: `${progress}%` }}
             />
           </div>
+        )}
+
+        {/* Watch on YT Button */}
+        {post.watchOnYtLink && (
+          <button 
+            onClick={(e) => { e.stopPropagation(); window.open(post.watchOnYtLink, '_blank'); }}
+            className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md hover:bg-black/80 px-3 py-1.5 rounded-full flex items-center gap-2 text-white text-[11px] font-semibold tracking-wide border border-white/20 transition-all z-20 shadow-lg cursor-pointer"
+          >
+            <Youtube size={14} className="text-red-500" />
+            Watch full video on YT
+          </button>
         )}
       </div>
       <div className="p-4 lg:p-6 space-y-4">

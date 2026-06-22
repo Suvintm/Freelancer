@@ -55,4 +55,19 @@ export const getProfileReels = async (req, res) => {
   }
 };
 
-export default { getProfilePosts, getProfileReels };
+export const getProfilesByCategory = async (req, res) => {
+  try {
+    const { categorySlug } = req.params;
+    const data = await profileService.getProfilesByCategory(categorySlug);
+
+    res.json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    logger.error(`❌ [PROFILE_CTRL] getProfilesByCategory Error: ${error.message}`);
+    res.status(500).json({ success: false, message: "Failed to fetch profiles by category" });
+  }
+};
+
+export default { getProfilePosts, getProfileReels, getProfilesByCategory };

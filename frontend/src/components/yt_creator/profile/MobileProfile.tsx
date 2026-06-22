@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Youtube, Camera, Settings, Plus, BarChart3, Briefcase, Users2, Edit3,
   Lock, PlaySquare, LayoutGrid, CheckCircle2, Globe,
-  Trash2, ChevronRight, AlertCircle, Play, Image as ImageIcon, Check, Eye
+  Trash2, ChevronRight, AlertCircle, Play, Image as ImageIcon, Check, Eye,
+  X, Heart, MessageCircle
 } from 'lucide-react';
 import { selectUser, updateUser } from '../../../store/slices/authSlice';
 import { api } from '../../../api/client';
@@ -14,10 +16,87 @@ import DIAMOND_BTN from '../../../assets/playbuttons/diamondbtn.png';
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1524666041070-9d87656c25bb?auto=format&fit=crop&q=80&w=400';
 
+interface FeedItem {
+  _id: string;
+  id?: string | number;
+  user: string;
+  type: 'reel' | 'post' | 'yt_video' | 'thumbnail_vote';
+  img: string;
+  images?: string[];
+  comment?: string;
+  votes?: number[];
+  likes?: string | number;
+  createdAt: string;
+  videoUrl?: string;
+  commentsCount?: number;
+  location?: string;
+  tags?: string[];
+}
+
 export const MobileProfile = () => {
   const user = useSelector(selectUser);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('yt_posts');
+  const [reels, setReels] = useState<FeedItem[]>([]);
+  const [posts, setPosts] = useState<FeedItem[]>([]);
+  const [ytVideos, setYtVideos] = useState<FeedItem[]>([]);
+  const [thumbnailVotes, setThumbnailVotes] = useState<FeedItem[]>([]);
+  const [isLoadingFeed, setIsLoadingFeed] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<FeedItem | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const fetchFeed = async () => {
+      // Force execution to be asynchronous to avoid React cascading render warnings
+      await Promise.resolve();
+      if (!active || !user?.username) return;
+      setIsLoadingFeed(true);
+      try {
+        const response = await api.get('/temp-feed');
+        if (response.data.success && active) {
+          const creatorFeed = response.data.data.filter(
+            (item: FeedItem) => item.user === user.username
+          );
+          setReels(creatorFeed.filter((item: FeedItem) => item.type === 'reel'));
+          setPosts(creatorFeed.filter((item: FeedItem) => item.type === 'post'));
+          setYtVideos(creatorFeed.filter((item: FeedItem) => item.type === 'yt_video'));
+          setThumbnailVotes(creatorFeed.filter((item: FeedItem) => item.type === 'thumbnail_vote'));
+        }
+      } catch (err) {
+        console.error('Failed to fetch temp feed for profile:', err);
+      } finally {
+        if (active) {
+          setIsLoadingFeed(false);
+        }
+      }
+    };
+
+    fetchFeed();
+    return () => {
+      active = false;
+    };
+  }, [user?.username]);
+
+  const handleDeleteItem = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this item?')) return;
+    try {
+      const response = await api.delete(`/temp-feed/${id}`);
+      if (response.data.success) {
+        setReels((prev) => prev.filter((item) => item._id !== id));
+        setPosts((prev) => prev.filter((item) => item._id !== id));
+        setYtVideos((prev) => prev.filter((item) => item._id !== id));
+        setThumbnailVotes((prev) => prev.filter((item) => item._id !== id));
+        if (selectedMedia?._id === id) {
+          setSelectedMedia(null);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete feed item:', err);
+      alert('Error deleting item');
+    }
+  };
   const [showBannerMenu, setShowBannerMenu] = useState(false);
   const [isEditingBio, setIsEditingBio] = useState(false);
   const [bioText, setBioText] = useState(user?.bio || '');
@@ -84,8 +163,10 @@ export const MobileProfile = () => {
 
   const TABS = [
     { id: 'yt_posts', label: 'YT Posts', icon: Youtube },
+    { id: 'yt_videos', label: 'YT Videos', icon: Play },
     { id: 'posts',    label: 'Posts',    icon: LayoutGrid },
     { id: 'reels',    label: 'Reels',    icon: PlaySquare },
+    { id: 'thumbnail_vote', label: 'Thumbnails', icon: ImageIcon },
   ];
 
   if (!user) return null;
@@ -482,7 +563,10 @@ export const MobileProfile = () => {
       <div className="px-4 pt-3 pb-4">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[13px] font-bold text-white">Linked Channels ({youtubeProfiles.length})</h3>
-          <button className="flex items-center gap-1.5 bg-[#0B0B0B] px-2.5 py-1.5 rounded-lg border border-white/20 active:scale-95 cursor-pointer">
+          <button 
+            onClick={() => navigate('/youtube-connect')}
+            className="flex items-center gap-1.5 bg-[#0B0B0B] px-2.5 py-1.5 rounded-lg border border-white/20 active:scale-95 cursor-pointer"
+          >
             <Plus size={12} className="text-white" />
             <span className="text-[10px] font-bold text-white">Add Another</span>
           </button>
@@ -490,7 +574,11 @@ export const MobileProfile = () => {
 
         <div className="flex flex-col gap-3">
           {youtubeProfiles.length > 0 ? youtubeProfiles.map((channel, i) => (
-            <div key={channel.id || i} className="bg-[#0B0B0B] rounded-xl p-3 border border-[#1A1A1B]">
+            <div 
+              key={channel.id || i} 
+              onClick={() => navigate(`/channel/${channel.channel_id}`)}
+              className="bg-[#0B0B0B] hover:bg-[#111112] transition-colors rounded-xl p-3 border border-[#1A1A1B] cursor-pointer"
+            >
               <div className="flex items-center gap-3">
                 <img
                   src={channel.thumbnail_url || DEFAULT_AVATAR}
@@ -543,14 +631,20 @@ export const MobileProfile = () => {
               </div>
 
               {/* Bottom divider row — verified + delete + analytics */}
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#1A1A1B]">
+              <div 
+                className="flex items-center justify-between mt-3 pt-3 border-t border-[#1A1A1B]"
+                onClick={(e) => e.stopPropagation()} // Prevent card navigation when clicking specific action buttons
+              >
                 <div className="flex items-center gap-2">
                   <CheckCircle2 size={15} className="text-[#FF0000]" />
                   <button className="p-0.5 active:scale-90 cursor-pointer">
                     <Trash2 size={14} className="text-[#A1A1AA]/60 hover:text-[#FF3040] transition-colors" />
                   </button>
                 </div>
-                <button className="flex items-center gap-0.5 active:opacity-70 cursor-pointer">
+                <button 
+                  onClick={() => navigate(`/channel/${channel.channel_id}`)}
+                  className="flex items-center gap-0.5 active:opacity-70 cursor-pointer"
+                >
                   <span className="text-[10px] font-bold text-[#FF3040]">Analytics</span>
                   <ChevronRight size={12} className="text-[#FF3040]" />
                 </button>
@@ -744,22 +838,329 @@ export const MobileProfile = () => {
           </div>
         )}
 
+        {/* ── YT VIDEOS TAB ─────────────────────────────────── */}
+        {activeTab === 'yt_videos' && (
+          isLoadingFeed ? (
+            <div className="w-full py-10 flex items-center justify-center">
+              <div className="w-6 h-6 border-2 border-[#FF3040] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : ytVideos.length > 0 ? (
+            <div className="grid grid-cols-3 gap-1 px-1">
+              {ytVideos.map((video) => (
+                <div 
+                  key={video._id} 
+                  onClick={() => setSelectedMedia(video)}
+                  className="relative aspect-video bg-[#0B0B0B] border border-[#1A1A1B] active:opacity-75 overflow-hidden"
+                >
+                  <video 
+                    src={video.videoUrl} 
+                    preload="metadata" 
+                    className="w-full h-full object-cover pointer-events-none"
+                  />
+                  <div className="absolute bottom-1.5 left-1.5 bg-black/60 p-1 rounded-full text-white scale-75">
+                    <Play size={12} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mx-4 mt-4 text-center py-10 border border-dashed border-[#1A1A1B] rounded-xl">
+              <Play size={24} className="text-[#A1A1AA]/30 mx-auto mb-2" />
+              <p className="text-[10px] font-bold text-[#A1A1AA]/40 uppercase tracking-widest">No platform videos uploaded yet</p>
+            </div>
+          )
+        )}
+
         {/* ── POSTS TAB ─────────────────────────────────────── */}
         {activeTab === 'posts' && (
-          <div className="mx-4 mt-4 text-center py-10 border border-dashed border-[#1A1A1B] rounded-xl">
-            <LayoutGrid size={28} className="text-[#A1A1AA]/30 mx-auto mb-2" />
-            <p className="text-[11px] font-bold text-[#A1A1AA]/40 uppercase tracking-widest">Posts grid coming soon</p>
-          </div>
+          isLoadingFeed ? (
+            <div className="w-full py-10 flex items-center justify-center">
+              <div className="w-6 h-6 border-2 border-[#FF3040] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : posts.length > 0 ? (
+            <div className="grid grid-cols-3 gap-1 px-1">
+              {posts.map((post) => (
+                <div 
+                  key={post._id} 
+                  onClick={() => setSelectedMedia(post)}
+                  className="relative aspect-square bg-[#0B0B0B] border border-[#1A1A1B] active:opacity-75 overflow-hidden"
+                >
+                  <img 
+                    src={post.images?.[0]} 
+                    alt={post.comment} 
+                    className="w-full h-full object-cover"
+                  />
+                  {post.images && post.images.length > 1 && (
+                    <div className="absolute top-1.5 right-1.5 bg-black/60 p-1 rounded text-white scale-75">
+                      <LayoutGrid size={12} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mx-4 mt-4 text-center py-10 border border-dashed border-[#1A1A1B] rounded-xl">
+              <LayoutGrid size={24} className="text-[#A1A1AA]/30 mx-auto mb-2" />
+              <p className="text-[10px] font-bold text-[#A1A1AA]/40 uppercase tracking-widest">No posts uploaded yet</p>
+            </div>
+          )
+        )}
+
+        {/* ── THUMBNAILS TAB ─────────────────────────────────── */}
+        {activeTab === 'thumbnail_vote' && (
+          isLoadingFeed ? (
+            <div className="w-full py-10 flex items-center justify-center">
+              <div className="w-6 h-6 border-2 border-[#FF3040] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : thumbnailVotes.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4 px-4 mt-2">
+              {thumbnailVotes.map((item) => {
+                const images = item.images || [];
+                const votes = item.votes || new Array(images.length).fill(0);
+                const totalVotes = votes.reduce((a: number, b: number) => a + b, 0);
+
+                return (
+                  <div 
+                    key={item._id}
+                    className="border border-[#1A1A1B] rounded-2xl p-4 bg-[#0B0B0B] flex flex-col justify-between"
+                  >
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[9px] font-bold text-[#A1A1AA]">
+                        {new Date(item.createdAt).toLocaleDateString()}
+                      </span>
+                      <button 
+                        onClick={(e) => handleDeleteItem(item._id, e)}
+                        className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-full transition-colors"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+
+                    {/* Caption */}
+                    <p className="text-xs font-semibold text-white mb-3 line-clamp-2">
+                      {item.comment || "Thumbnail Choice Vote"}
+                    </p>
+
+                    {/* Image Grid with Stats */}
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      {images.map((img: string, idx: number) => {
+                        const voteCount = votes[idx] || 0;
+                        const percentage = totalVotes === 0 ? 0 : Math.round((voteCount / totalVotes) * 100);
+                        const isWinner = totalVotes > 0 && voteCount === Math.max(...votes);
+
+                        return (
+                          <div key={idx} className="relative aspect-video rounded-xl overflow-hidden bg-zinc-900 border border-white/5">
+                            <img src={img} alt="" className="w-full h-full object-cover" />
+                            {/* Overlay Vote Results */}
+                            <div className="absolute inset-0 bg-black/65 flex flex-col items-center justify-center p-1">
+                              <span className="text-white font-extrabold text-[13px]">{percentage}%</span>
+                              <span className="text-[8px] text-zinc-300 font-medium">{voteCount} votes</span>
+                              {isWinner && (
+                                <span className="absolute top-1 right-1 bg-yellow-500 text-black text-[6px] font-black uppercase px-1 rounded">
+                                  Winner
+                                </span>
+                              )}
+                            </div>
+                            {/* Badge */}
+                            <span className="absolute top-1 left-1 bg-black/70 px-1 py-0.5 rounded text-[7px] text-white font-bold leading-none">
+                              No. {idx + 1}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Summary Footer */}
+                    <div className="border-t border-[#1A1A1B] pt-2 flex items-center justify-between text-[10px] text-[#A1A1AA]">
+                      <span>Total Votes: {totalVotes}</span>
+                      <span className="text-blue-400 uppercase text-[8px] tracking-wider bg-blue-500/10 px-2 py-0.5 rounded-full">
+                        Active Poll
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="mx-4 mt-4 text-center py-10 border border-dashed border-[#1A1A1B] rounded-xl">
+              <ImageIcon size={24} className="text-[#A1A1AA]/30 mx-auto mb-2" />
+              <p className="text-[10px] font-bold text-[#A1A1AA]/40 uppercase tracking-widest">No thumbnail votes uploaded yet</p>
+            </div>
+          )
         )}
 
         {/* ── REELS TAB ─────────────────────────────────────── */}
         {activeTab === 'reels' && (
-          <div className="mx-4 mt-4 text-center py-10 border border-dashed border-[#1A1A1B] rounded-xl">
-            <PlaySquare size={28} className="text-[#A1A1AA]/30 mx-auto mb-2" />
-            <p className="text-[11px] font-bold text-[#A1A1AA]/40 uppercase tracking-widest">Reels feed coming soon</p>
-          </div>
+          isLoadingFeed ? (
+            <div className="w-full py-10 flex items-center justify-center">
+              <div className="w-6 h-6 border-2 border-[#FF3040] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : reels.length > 0 ? (
+            <div className="grid grid-cols-3 gap-1 px-1">
+              {reels.map((reel) => (
+                <div 
+                  key={reel._id} 
+                  onClick={() => setSelectedMedia(reel)}
+                  className="relative aspect-[9/16] bg-[#0B0B0B] border border-[#1A1A1B] active:opacity-75 overflow-hidden"
+                >
+                  <video 
+                    src={reel.videoUrl} 
+                    preload="metadata" 
+                    className="w-full h-full object-cover pointer-events-none"
+                  />
+                  <div className="absolute bottom-1.5 left-1.5 bg-black/60 p-1 rounded-full text-white scale-75">
+                    <PlaySquare size={12} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mx-4 mt-4 text-center py-10 border border-dashed border-[#1A1A1B] rounded-xl">
+              <PlaySquare size={24} className="text-[#A1A1AA]/30 mx-auto mb-2" />
+              <p className="text-[10px] font-bold text-[#A1A1AA]/40 uppercase tracking-widest">No reels uploaded yet</p>
+            </div>
+          )
         )}
       </div>
+
+      {/* Immersive Media Details Modal (Mobile-Optimized) */}
+      <AnimatePresence>
+        {selectedMedia && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed inset-0 z-50 bg-[#000000] flex flex-col justify-between"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-[#1A1A1B] bg-black">
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => setSelectedMedia(null)}
+                  className="p-1 text-white active:scale-95 cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+                <div className="flex items-center gap-2">
+                  <img 
+                    src={user.profilePicture || DEFAULT_AVATAR} 
+                    className="w-8 h-8 rounded-full object-cover border border-[#1A1A1B]" 
+                    alt="" 
+                  />
+                  <div>
+                    <h4 className="text-xs font-bold text-white leading-tight">{displayName}</h4>
+                    <p className="text-[10px] text-[#A1A1AA]">@{user.username || 'creator'}</p>
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => handleDeleteItem(selectedMedia._id)}
+                className="p-2 text-[#A1A1AA] hover:text-red-500 active:scale-90 cursor-pointer"
+                title="Delete Post"
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
+
+            {/* Media Area */}
+            <div className="flex-1 bg-black flex items-center justify-center relative overflow-hidden select-none">
+              {selectedMedia.type === 'reel' ? (
+                <video 
+                  src={selectedMedia.videoUrl} 
+                  controls 
+                  autoPlay 
+                  loop 
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <PostImageSlider images={selectedMedia.images || []} />
+              )}
+            </div>
+
+            {/* Footer / Caption Area */}
+            <div className="p-4 bg-black/95 border-t border-[#1A1A1B] space-y-3">
+              <div className="flex items-center justify-between text-xs font-bold text-white">
+                <span className="flex items-center gap-1.5"><Heart size={16} className="text-[#FF3040] fill-[#FF3040]" /> {selectedMedia.likes || 0} Likes</span>
+                <span className="flex items-center gap-1.5"><MessageCircle size={16} className="text-[#A1A1AA]" /> {selectedMedia.commentsCount || 0} Comments</span>
+              </div>
+              
+              <div className="space-y-1.5">
+                {selectedMedia.location && (
+                  <p className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider">{selectedMedia.location}</p>
+                )}
+                {selectedMedia.comment && (
+                  <p className="text-xs text-white leading-relaxed font-medium">
+                    {selectedMedia.comment}
+                  </p>
+                )}
+                {selectedMedia.tags && selectedMedia.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {selectedMedia.tags.map((tag: string, idx: number) => (
+                      <span 
+                        key={idx} 
+                        className="text-[9px] font-bold text-[#FF3040] uppercase tracking-wider mr-1.5"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const PostImageSlider = ({ images }: { images: string[] }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  if (images.length === 0) return null;
+
+  return (
+    <div className="relative w-full h-full flex items-center justify-center bg-black">
+      <img 
+        src={images[currentIndex]} 
+        alt="" 
+        className="w-full h-full object-contain select-none"
+      />
+
+      {images.length > 1 && (
+        <>
+          {/* Left Arrow */}
+          <button 
+            onClick={() => setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1))}
+            className="absolute left-4 p-2 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors border border-white/10 cursor-pointer"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          {/* Right Arrow */}
+          <button 
+            onClick={() => setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0))}
+            className="absolute right-4 p-2 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors border border-white/10 cursor-pointer"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+
+          {/* Dots Indicator */}
+          <div className="absolute bottom-4 flex gap-1.5">
+            {images.map((_, idx) => (
+              <div 
+                key={idx}
+                className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'bg-white scale-125' : 'bg-white/40'}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 };

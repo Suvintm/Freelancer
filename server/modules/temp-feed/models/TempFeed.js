@@ -4,7 +4,7 @@ const tempFeedSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ["reel", "post", "yt_video"],
+      enum: ["reel", "post", "yt_video", "thumbnail_vote"],
       required: true,
     },
     user: {
@@ -45,6 +45,11 @@ const tempFeedSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    // Vote counts for each thumbnail option (index-aligned with images)
+    votes: {
+      type: [Number],
+      default: [],
+    },
     // New metadata fields for production-level UI
     tags: {
       type: [String],
@@ -59,6 +64,10 @@ const tempFeedSchema = new mongoose.Schema(
       default: "",
     },
     ytSubscribeLink: {
+      type: String,
+      default: "",
+    },
+    watchOnYtLink: {
       type: String,
       default: "",
     },

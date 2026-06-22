@@ -54,6 +54,7 @@ export const USER_INCLUDE = {
     },
   },
   stats: true,
+  follows: true,
 };
 
 // ─── Primary Identity Resolver ────────────────────────────────────────────
@@ -141,7 +142,7 @@ export const generateUserTokens = (user, familyId, deviceId = null) => {
 // ✅ isOnboarded is always a strict boolean via !!(...)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const formatAuthResponse = (user) => {
+export const formatAuthResponse = (user, subscription = null) => {
   const identity = resolvePrimaryIdentity(user);
 
   // Ensure name and username are always strings
@@ -186,6 +187,7 @@ export const formatAuthResponse = (user) => {
 
   return {
     id: user.id,
+    _id: user.id,
     name,
     displayName: user.profile?.display_name || name,
     username,
@@ -230,5 +232,7 @@ export const formatAuthResponse = (user) => {
 
     followers: user.stats?.followers_count || 0,
     following: user.stats?.following_count || 0,
+    followingIds: (user.follows || []).map((f) => f.followingId),
+    subscription,
   };
 };

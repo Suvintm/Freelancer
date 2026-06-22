@@ -26,6 +26,9 @@ export interface AuthUser {
     view_count?: string | number;
     subCategoryName?: string;
     banner_url?: string | null;
+    custom_url?: string;
+    country?: string;
+    description?: string;
     videos?: Array<{
       id: string;
       title: string;
@@ -51,6 +54,15 @@ export interface AuthUser {
   bio?: string;
   followers?: number;
   following?: number;
+  followingIds?: string[];
+  subscription?: {
+    tier: 'free' | 'creator' | 'pro' | 'elite';
+    features: string[];
+    expiresAt?: string;
+    isTrial?: boolean;
+    daysRemaining?: number;
+    planTier?: string;
+  };
 }
 
 export interface SignupPayload {
@@ -86,19 +98,21 @@ export interface SignupPayload {
   pushToken?: string;
 }
 
+export interface AuthSession {
+  user: AuthUser;
+  token: string;
+  refreshToken: string;
+}
+
 export interface AuthState {
-  token: string | null;
-  refreshToken: string | null;
-  user: AuthUser | null;
-  isAuthenticated: boolean;
+  sessions: AuthSession[];
+  activeUserId: string | null;
   isInitialized: boolean;
 }
 
 const initialState: AuthState = {
-  token: null,
-  refreshToken: null,
-  user: null,
-  isAuthenticated: false,
+  sessions: [],
+  activeUserId: null,
   isInitialized: false,
 };
 
@@ -107,46 +121,116 @@ export const authSlice = createSlice({
   initialState,
   reducers: {
     setAuth: (state, action: PayloadAction<{ user: AuthUser; token: string; refreshToken: string }>) => {
-      state.user = action.payload.user;
-      state.token = action.payload.token;
-      state.refreshToken = action.payload.refreshToken;
-      state.isAuthenticated = true;
+      const { user, token, refreshToken } = action.payload;
+      const existingSessionIndex = state.sessions.findIndex(s => s.user.id === user.id);
+      
+      if (existingSessionIndex !== -1) {
+        state.sessions[existingSessionIndex] = { user, token, refreshToken };
+      } else {
+        state.sessions.push({ user, token, refreshToken });
+      }
+      
+      state.activeUserId = user.id;
       state.isInitialized = true;
     },
     setTokens: (state, action: PayloadAction<{ token: string; refreshToken: string; user?: AuthUser }>) => {
-      state.token = action.payload.token;
-      state.refreshToken = action.payload.refreshToken;
-      if (action.payload.user) {
-        state.user = action.payload.user;
+      const activeSession = state.sessions.find(s => s.user.id === state.activeUserId);
+      if (activeSession) {
+        activeSession.token = action.payload.token;
+        activeSession.refreshToken = action.payload.refreshToken;
+        if (action.payload.user) {
+          activeSession.user = action.payload.user;
+        }
+      } else if (action.payload.user) {
+        // Fallback if no active session but user is provided
+        state.sessions.push({
+          user: action.payload.user,
+          token: action.payload.token,
+          refreshToken: action.payload.refreshToken,
+        });
+        state.activeUserId = action.payload.user.id;
       }
     },
     updateUser: (state, action: PayloadAction<Partial<AuthUser>>) => {
-      if (state.user) {
-        state.user = { ...state.user, ...action.payload };
+      const activeSession = state.sessions.find(s => s.user.id === state.activeUserId);
+      if (activeSession) {
+        activeSession.user = { ...activeSession.user, ...action.payload };
       }
     },
     clearAuth: (state) => {
-      state.token = null;
-      state.refreshToken = null;
-      state.user = null;
-      state.isAuthenticated = false;
+      // Clears the active session only
+      if (state.activeUserId) {
+        state.sessions = state.sessions.filter(s => s.user.id !== state.activeUserId);
+        state.activeUserId = state.sessions.length > 0 ? state.sessions[0].user.id : null;
+      }
       state.isInitialized = true;
+    },
+    clearAllAuth: (state) => {
+      state.sessions = [];
+      state.activeUserId = null;
+      state.isInitialized = true;
+    },
+    switchSession: (state, action: PayloadAction<string>) => {
+      if (state.sessions.some(s => s.user.id === action.payload)) {
+        state.activeUserId = action.payload;
+      }
+    },
+    removeSession: (state, action: PayloadAction<string>) => {
+      state.sessions = state.sessions.filter(s => s.user.id !== action.payload);
+      if (state.activeUserId === action.payload) {
+        state.activeUserId = state.sessions.length > 0 ? state.sessions[0].user.id : null;
+      }
     },
     setInitialized: (state, action: PayloadAction<boolean>) => {
       state.isInitialized = action.payload;
     },
     setAuthenticated: (state, action: PayloadAction<boolean>) => {
-      state.isAuthenticated = action.payload;
+      // For backward compatibility: if false, log out active session
+      if (!action.payload && state.activeUserId) {
+        state.sessions = state.sessions.filter(s => s.user.id !== state.activeUserId);
+        state.activeUserId = state.sessions.length > 0 ? state.sessions[0].user.id : null;
+      }
     },
   },
 });
 
-export const { setAuth, setTokens, updateUser, clearAuth, setInitialized, setAuthenticated } = authSlice.actions;
+export const { 
+  setAuth, 
+  setTokens, 
+  updateUser, 
+  clearAuth, 
+  clearAllAuth,
+  switchSession,
+  removeSession,
+  setInitialized, 
+  setAuthenticated 
+} = authSlice.actions;
+
 export const authReducer = authSlice.reducer;
 
 // Selectors
-export const selectToken = (state: { auth: AuthState }) => state.auth.token;
-export const selectRefreshToken = (state: { auth: AuthState }) => state.auth.refreshToken;
-export const selectUser = (state: { auth: AuthState }) => state.auth.user;
-export const selectIsAuthenticated = (state: { auth: AuthState }) => state.auth.isAuthenticated;
+export const selectActiveSession = (state: { auth: AuthState }) => 
+  state.auth.sessions.find(s => s.user.id === state.auth.activeUserId) || null;
+
+export const selectAllSessions = (state: { auth: AuthState }) => state.auth.sessions;
+
+export const selectToken = (state: { auth: AuthState }) => {
+  const session = selectActiveSession(state);
+  return session ? session.token : null;
+};
+
+export const selectRefreshToken = (state: { auth: AuthState }) => {
+  const session = selectActiveSession(state);
+  return session ? session.refreshToken : null;
+};
+
+export const selectUser = (state: { auth: AuthState }) => {
+  const session = selectActiveSession(state);
+  return session ? session.user : null;
+};
+
+export const selectIsAuthenticated = (state: { auth: AuthState }) => {
+  return selectActiveSession(state) !== null;
+};
+
 export const selectIsInitialized = (state: { auth: AuthState }) => state.auth.isInitialized;
