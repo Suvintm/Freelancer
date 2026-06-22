@@ -4,10 +4,25 @@ import { selectUser } from '../store/slices/authSlice';
 import { useTheme } from '../hooks/useTheme';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
-  Youtube, Eye, Video, Calendar, ArrowLeft, ExternalLink, 
-  ChevronDown, Search, Play, ArrowUpRight, Award, MapPin, 
-  TrendingUp, RefreshCw, BarChart2, ShieldAlert, Sparkles, Clock, Plus
+  Youtube, Eye, Video, ArrowLeft, ExternalLink, 
+  ChevronDown, Search, Play, ArrowUpRight, MapPin, 
+  TrendingUp, ShieldAlert, Sparkles, Clock, Plus
 } from 'lucide-react';
+
+interface YouTubeVideo {
+  id: string;
+  video_id?: string;
+  youtubeProfileId?: string;
+  channel_id?: string;
+  title: string;
+  thumbnail: string;
+  viewCount?: string | number;
+  view_count?: string | number;
+  duration?: string;
+  published_at?: string;
+  publishedAt?: string;
+  description?: string;
+}
 import { motion, AnimatePresence } from 'framer-motion';
 
 import SILVER_BTN from '../assets/playbuttons/silverbtn.png';
@@ -34,7 +49,7 @@ export default function YTDashboard() {
   const channelVideos = useMemo(() => {
     if (!activeChannel) return [];
     return (user?.youtubeVideos || []).filter(
-      (v: any) => v.youtubeProfileId === activeChannel.id || v.channel_id === activeChannel.channel_id
+      (v: YouTubeVideo) => v.youtubeProfileId === activeChannel.id || v.channel_id === activeChannel.channel_id
     );
   }, [user?.youtubeVideos, activeChannel]);
 
@@ -93,7 +108,7 @@ export default function YTDashboard() {
         return bViews - aViews;
       });
     } else {
-      const getVal = (v: any) => new Date(v.published_at || v.publishedAt || 0).getTime();
+      const getVal = (v: YouTubeVideo) => new Date(v.published_at || v.publishedAt || 0).getTime();
       result.sort((a, b) => getVal(b) - getVal(a));
     }
     return result;
@@ -229,7 +244,7 @@ export default function YTDashboard() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {channels.map((channel, i) => {
+            {channels.map((channel) => {
               const hasMilestone = (channel.subscriber_count || 0) >= 100;
               const milestoneImg = (channel.subscriber_count || 0) >= 10000 
                 ? DIAMOND_BTN 

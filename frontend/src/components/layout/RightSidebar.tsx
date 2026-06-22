@@ -35,6 +35,18 @@ function formatTimeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d`;
 }
 
+interface SidebarConversation {
+  user: {
+    id: string;
+    name: string;
+    profilePicture?: string;
+  };
+  lastMessage: {
+    createdAt: string;
+    content: string;
+  };
+}
+
 export const RightSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -42,7 +54,7 @@ export const RightSidebar = () => {
   const user = useSelector(selectUser);
   const avatarUrl = user?.profilePicture || defaultProfile;
 
-  const [conversations, setConversations] = useState<any[]>([]);
+  const [conversations, setConversations] = useState<SidebarConversation[]>([]);
   const [activeCardIndex, setActiveCardIndex] = useState(0);
 
   useEffect(() => {

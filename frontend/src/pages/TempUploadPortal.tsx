@@ -43,11 +43,15 @@ export default function TempUploadPortal() {
   const [activeTab, setActiveTab] = useState<UploadType>('reel');
 
   useEffect(() => {
-    const params = new URLSearchParams(routeLocation.search);
-    const typeParam = params.get('type') as UploadType;
-    if (typeParam && ['reel', 'post', 'yt_video', 'thumbnail_vote'].includes(typeParam)) {
-      setActiveTab(typeParam);
-    }
+    const initTab = async () => {
+      await Promise.resolve();
+      const params = new URLSearchParams(routeLocation.search);
+      const typeParam = params.get('type') as UploadType;
+      if (typeParam && ['reel', 'post', 'yt_video', 'thumbnail_vote'].includes(typeParam)) {
+        setActiveTab(typeParam);
+      }
+    };
+    initTab();
   }, [routeLocation.search]);
   const [username, setUsername] = useState(user?.username || 'suvix_creator');
   const [location, setLocation] = useState('');

@@ -16,7 +16,7 @@ export const PremiumGate: React.FC<PremiumGateProps> = ({
   fallback,
   blurFallback = true 
 }) => {
-  const { hasFeature, isPremium } = useSubscription();
+  const { hasFeature } = useSubscription();
   const navigate = useNavigate();
 
   if (hasFeature(feature)) {

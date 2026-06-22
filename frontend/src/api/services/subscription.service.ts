@@ -39,6 +39,7 @@ export interface UserSubscription {
   isTrial: boolean;
   createdAt: string;
   updatedAt: string;
+  planTier?: string;
 }
 
 export const subscriptionService = {

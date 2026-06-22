@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { selectUser, selectToken } from '../store/slices/authSlice';
 import { useTheme } from '../hooks/useTheme';
@@ -57,14 +57,12 @@ export default function CommunicationHub() {
 
   // States
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [filteredConversations, setFilteredConversations] = useState<Conversation[]>([]);
   const [activeChat, setActiveChat] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isContactsOpen, setIsContactsOpen] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
   const [contactSearch, setContactSearch] = useState('');
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   
@@ -197,55 +195,59 @@ export default function CommunicationHub() {
 
   // Initial Load conversations
   useEffect(() => {
-    fetchConversations();
+    const init = async () => {
+      await Promise.resolve();
+      fetchConversations();
+    };
+    init();
   }, []);
 
   // Load target chat from query parameter
   useEffect(() => {
-    if (targetUserId && !isLoadingConvs) {
+    const handleTargetUser = async () => {
+      await Promise.resolve();
+      if (!targetUserId || isLoadingConvs) return;
       const existing = conversations.find(c => c.user.id === targetUserId);
       if (existing) {
         setActiveChat(existing);
         fetchMessageHistory(existing.user.id);
       } else {
         // Resolve contact details
-        const resolveContact = async () => {
-          try {
-            const response = await api.get('/messages/contacts');
-            if (response.data?.success) {
-              const matched = response.data.data.find((c: any) => c.id === targetUserId);
-              if (matched) {
-                const mockConversation: Conversation = {
+        try {
+          const response = await api.get('/messages/contacts');
+          if (response.data?.success) {
+            const matched = response.data.data.find((c: { id: string; name: string; username: string; profilePicture: string | null; primaryRole: string }) => c.id === targetUserId);
+            if (matched) {
+              const mockConversation: Conversation = {
+                id: matched.id,
+                user: {
                   id: matched.id,
-                  user: {
-                    id: matched.id,
-                    name: matched.name,
-                    username: matched.username,
-                    profilePicture: matched.profilePicture,
-                    primaryRole: matched.primaryRole
-                  },
-                  lastMessage: {
-                    id: '',
-                    content: '',
-                    type: 'text',
-                    isRead: true,
-                    senderId: '',
-                    receiverId: '',
-                    createdAt: new Date().toISOString()
-                  },
-                  unreadCount: 0
-                };
-                setActiveChat(mockConversation);
-                setMessages([]);
-              }
+                  name: matched.name,
+                  username: matched.username,
+                  profilePicture: matched.profilePicture,
+                  primaryRole: matched.primaryRole
+                },
+                lastMessage: {
+                  id: '',
+                  content: '',
+                  type: 'text',
+                  isRead: true,
+                  senderId: '',
+                  receiverId: '',
+                  createdAt: new Date().toISOString()
+                },
+                unreadCount: 0
+              };
+              setActiveChat(mockConversation);
+              setMessages([]);
             }
-          } catch (err) {
-            console.error('Failed to resolve target contact:', err);
           }
-        };
-        resolveContact();
+        } catch (err) {
+          console.error('Failed to resolve target contact:', err);
+        }
       }
-    }
+    };
+    handleTargetUser();
   }, [targetUserId, conversations, isLoadingConvs]);
 
   // Cleanup typing timeout on unmount
@@ -255,36 +257,30 @@ export default function CommunicationHub() {
     };
   }, []);
 
-  // Filter Conversations
-  useEffect(() => {
+  // Filter Conversations (derived state via useMemo)
+  const filteredConversations = useMemo(() => {
     if (!searchQuery.trim()) {
-      setFilteredConversations(conversations);
-    } else {
-      const query = searchQuery.toLowerCase();
-      setFilteredConversations(
-        conversations.filter(
-          c =>
-            c.user.name.toLowerCase().includes(query) ||
-            c.user.username.toLowerCase().includes(query)
-        )
-      );
+      return conversations;
     }
+    const query = searchQuery.toLowerCase();
+    return conversations.filter(
+      c =>
+        c.user.name.toLowerCase().includes(query) ||
+        c.user.username.toLowerCase().includes(query)
+    );
   }, [searchQuery, conversations]);
 
-  // Filter Contacts
-  useEffect(() => {
+  // Filter Contacts (derived state via useMemo)
+  const filteredContacts = useMemo(() => {
     if (!contactSearch.trim()) {
-      setFilteredContacts(contacts);
-    } else {
-      const query = contactSearch.toLowerCase();
-      setFilteredContacts(
-        contacts.filter(
-          c =>
-            c.name.toLowerCase().includes(query) ||
-            c.username.toLowerCase().includes(query)
-        )
-      );
+      return contacts;
     }
+    const query = contactSearch.toLowerCase();
+    return contacts.filter(
+      c =>
+        c.name.toLowerCase().includes(query) ||
+        c.username.toLowerCase().includes(query)
+    );
   }, [contactSearch, contacts]);
 
   // Scroll to bottom helper

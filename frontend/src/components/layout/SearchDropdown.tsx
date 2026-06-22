@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
 import { useTheme } from '../../hooks/useTheme';
 import { 
-  MdSearch, 
   MdHome, 
   MdExplore, 
   MdMap, 
@@ -48,20 +47,18 @@ export const SearchDropdown = ({ query, setQuery, onClose }: SearchDropdownProps
   const { isDarkMode, toggleTheme } = useTheme();
   const user = useSelector(selectUser);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Load recent searches
-  useEffect(() => {
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     const saved = localStorage.getItem('suvix_recent_searches');
     if (saved) {
       try {
-        setRecentSearches(JSON.parse(saved));
+        return JSON.parse(saved);
       } catch (e) {
         console.error(e);
       }
     }
-  }, []);
+    return [];
+  });
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Click outside listener
   useEffect(() => {
@@ -75,21 +72,33 @@ export const SearchDropdown = ({ query, setQuery, onClose }: SearchDropdownProps
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
-  const saveRecentSearch = (searchText: string) => {
+  const saveRecentSearch = useCallback((searchText: string) => {
     if (!searchText.trim()) return;
-    const updated = [
-      searchText,
-      ...recentSearches.filter(s => s !== searchText)
-    ].slice(0, 4);
-    setRecentSearches(updated);
-    localStorage.setItem('suvix_recent_searches', JSON.stringify(updated));
-  };
+    setRecentSearches(prev => {
+      const updated = [
+        searchText,
+        ...prev.filter(s => s !== searchText)
+      ].slice(0, 4);
+      localStorage.setItem('suvix_recent_searches', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
   const clearRecentSearches = (e: React.MouseEvent) => {
     e.stopPropagation();
     setRecentSearches([]);
     localStorage.removeItem('suvix_recent_searches');
   };
+
+  const handleSelect = useCallback((item: SearchItem) => {
+    saveRecentSearch(item.title);
+    if (item.action) {
+      item.action();
+    } else if (item.url) {
+      navigate(item.url);
+      onClose();
+    }
+  }, [navigate, onClose, saveRecentSearch]);
 
   // Pure monochrome icon styling class
   const iconClass = "text-[16px]";
@@ -234,7 +243,7 @@ export const SearchDropdown = ({ query, setQuery, onClose }: SearchDropdownProps
 
   // Map user's YouTube channels
   const youtubeChannels = user?.youtubeProfile || [];
-  const channelItems: SearchItem[] = youtubeChannels.map((channel: any) => ({
+  const channelItems: SearchItem[] = youtubeChannels.map((channel: { channel_id: string; channel_name: string; subscriber_count?: string | number }) => ({
     id: `channel-${channel.channel_id}`,
     title: channel.channel_name,
     subtitle: `YouTube Channel • ${Number(channel.subscriber_count || 0).toLocaleString()} Subs`,
@@ -303,17 +312,7 @@ export const SearchDropdown = ({ query, setQuery, onClose }: SearchDropdownProps
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [filteredItems, selectedIndex, onClose]);
-
-  const handleSelect = (item: SearchItem) => {
-    saveRecentSearch(item.title);
-    if (item.action) {
-      item.action();
-    } else if (item.url) {
-      navigate(item.url);
-      onClose();
-    }
-  };
+  }, [filteredItems, selectedIndex, onClose, handleSelect]);
 
   // Group items by category
   const groupedItems = filteredItems.reduce((acc, item) => {

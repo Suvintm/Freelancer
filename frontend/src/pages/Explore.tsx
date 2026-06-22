@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutGrid, Users, Play, Camera, CheckCircle2, UserPlus, MoreHorizontal, Loader2, Youtube, MessageSquare } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
@@ -6,6 +7,17 @@ import { selectUser, updateUser } from '../store/slices/authSlice';
 import { useTheme } from '../hooks/useTheme';
 import defaultProfile from '../assets/defaultprofile.png';
 import { api } from '../api/client';
+
+interface ExploreProfile {
+  id: string;
+  userId: string;
+  name: string;
+  username: string;
+  profilePicture: string | null;
+  location?: string;
+  bio?: string;
+  roles?: string[];
+}
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
@@ -24,6 +36,7 @@ const SectionHeader = ({ title, actionText, onAction }: { title: string; actionT
 };
 
 export default function Explore() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('All');
   const user = useSelector(selectUser);
   const { isDarkMode } = useTheme();
@@ -54,9 +67,9 @@ export default function Explore() {
     }
   };
 
-  const [editors, setEditors] = useState<any[]>([]);
+  const [editors, setEditors] = useState<ExploreProfile[]>([]);
   const [isLoadingEditors, setIsLoadingEditors] = useState(false);
-  const [creators, setCreators] = useState<any[]>([]);
+  const [creators, setCreators] = useState<ExploreProfile[]>([]);
   const [isLoadingCreators, setIsLoadingCreators] = useState(false);
 
   useEffect(() => {

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Home, Search, Compass, MapPin, PlaySquare, Briefcase, PlusSquare, Settings, User,
-  LogOut, Plus, Moon, MoreVertical, X, Youtube, MessageSquare
+  LogOut, Plus, Moon, X, Youtube, MessageSquare
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -11,6 +11,19 @@ import { useLogout } from '../../mutations/useLogout';
 import { useTheme } from '../../hooks/useTheme';
 import defaultProfile from '../../assets/defaultprofile.png';
 import { AccountSwitcher } from '../profile/AccountSwitcher';
+
+const NAV_ITEMS = [
+  { icon: Home,       label: 'Feed',      path: '/home'    },
+  { icon: Search,     label: 'Explore',   path: '/explore' },
+  { icon: Compass,    label: 'Discover',  path: '/discover'},
+  { icon: MapPin,     label: 'Nearby',    path: '/nearby'  },
+  { icon: PlaySquare, label: 'Reels',     path: '/reels'   },
+  { icon: Briefcase,  label: 'Jobs',      path: '/jobs'    },
+  { icon: MessageSquare, label: 'Chats',  path: '/communication-hub' },
+  { icon: PlusSquare, label: 'Upload Portal', path: '/upload-portal' },
+  { icon: Settings,   label: 'Settings',  path: '/settings'},
+  { icon: User,       label: 'Profile',   path: '/profile' }
+];
 
 interface MobileSidebarProps {
   isOpen: boolean;
@@ -24,19 +37,6 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
   const { mutateAsync: logout } = useLogout();
   const { isDarkMode, toggleTheme } = useTheme();
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
-
-  const NAV_ITEMS = [
-    { icon: Home,       label: 'Feed',      path: '/home'    },
-    { icon: Search,     label: 'Explore',   path: '/explore' },
-    { icon: Compass,    label: 'Discover',  path: '/discover'},
-    { icon: MapPin,     label: 'Nearby',    path: '/nearby'  },
-    { icon: PlaySquare, label: 'Reels',     path: '/reels'   },
-    { icon: Briefcase,  label: 'Jobs',      path: '/jobs'    },
-    { icon: MessageSquare, label: 'Chats',  path: '/communication-hub' },
-    { icon: PlusSquare, label: 'Upload Portal', path: '/upload-portal' },
-    { icon: Settings,   label: 'Settings',  path: '/settings'},
-    { icon: User,       label: 'Profile',   path: '/profile' }
-  ];
 
   const hasYoutube = user?.primaryRole?.category === 'yt_influencer' && user?.youtubeProfile && user.youtubeProfile.length > 0;
 

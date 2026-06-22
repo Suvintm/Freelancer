@@ -1,8 +1,8 @@
 import { useSelector } from 'react-redux';
-import type { RootState } from '../store';
+import { selectUser } from '../store/slices/authSlice';
 
 export const useSubscription = () => {
-  const user = useSelector((state: RootState) => state.auth.user);
+  const user = useSelector(selectUser);
   
   const subscription = user?.subscription;
   const tier = subscription?.tier || 'free';

@@ -26,6 +26,9 @@ export interface AuthUser {
     view_count?: string | number;
     subCategoryName?: string;
     banner_url?: string | null;
+    custom_url?: string;
+    country?: string;
+    description?: string;
     videos?: Array<{
       id: string;
       title: string;
@@ -58,6 +61,7 @@ export interface AuthUser {
     expiresAt?: string;
     isTrial?: boolean;
     daysRemaining?: number;
+    planTier?: string;
   };
 }
 

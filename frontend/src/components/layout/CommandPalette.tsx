@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
@@ -48,28 +48,27 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const user = useSelector(selectUser);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('suvix_recent_searches');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Load recent searches from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('suvix_recent_searches');
-    if (saved) {
-      try {
-        setRecentSearches(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to parse recent searches', e);
-      }
-    }
-  }, [isOpen]);
 
   // Autofocus input when modal opens
   useEffect(() => {
     if (isOpen) {
-      setQuery('');
-      setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      const resetState = async () => {
+        await Promise.resolve();
+        setQuery('');
+        setSelectedIndex(0);
+        setTimeout(() => inputRef.current?.focus(), 50);
+      };
+      resetState();
     }
   }, [isOpen]);
 
@@ -88,15 +87,17 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     };
   }, [isOpen, onClose]);
 
-  const saveRecentSearch = (searchText: string) => {
+  const saveRecentSearch = useCallback((searchText: string) => {
     if (!searchText.trim()) return;
-    const updated = [
-      searchText,
-      ...recentSearches.filter(s => s !== searchText)
-    ].slice(0, 5); // Keep last 5 searches
-    setRecentSearches(updated);
-    localStorage.setItem('suvix_recent_searches', JSON.stringify(updated));
-  };
+    setRecentSearches(prev => {
+      const updated = [
+        searchText,
+        ...prev.filter(s => s !== searchText)
+      ].slice(0, 5); // Keep last 5 searches
+      localStorage.setItem('suvix_recent_searches', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
   const clearRecentSearches = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -244,7 +245,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
 
   // Map user's YouTube channels
   const youtubeChannels = user?.youtubeProfile || [];
-  const channelItems: SearchItem[] = youtubeChannels.map((channel: any) => ({
+  const channelItems: SearchItem[] = youtubeChannels.map((channel: { channel_id: string; channel_name: string; subscriber_count?: number | string; }) => ({
     id: `channel-${channel.channel_id}`,
     title: channel.channel_name,
     subtitle: `Connected YouTube Channel • ${Number(channel.subscriber_count || 0).toLocaleString()} Subscribers`,
@@ -292,6 +293,16 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         return searchText.includes(query.toLowerCase());
       });
 
+  const handleSelect = useCallback((item: SearchItem) => {
+    saveRecentSearch(item.title);
+    if (item.action) {
+      item.action();
+    } else if (item.url) {
+      navigate(item.url);
+      onClose();
+    }
+  }, [navigate, onClose, saveRecentSearch]);
+
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -318,17 +329,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, filteredItems, selectedIndex]);
-
-  const handleSelect = (item: SearchItem) => {
-    saveRecentSearch(item.title);
-    if (item.action) {
-      item.action();
-    } else if (item.url) {
-      navigate(item.url);
-      onClose();
-    }
-  };
+  }, [isOpen, filteredItems, selectedIndex, handleSelect, onClose]);
 
   if (!isOpen) return null;
 

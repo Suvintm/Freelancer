@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectUser, setTokens } from '../store/slices/authSlice';
@@ -9,7 +9,6 @@ import { useTheme } from '../hooks/useTheme';
 
 import { 
   MdCheck, 
-  MdKeyboardArrowRight, 
   MdKeyboardArrowUp, 
   MdKeyboardArrowDown, 
   MdInfoOutline, 
@@ -78,8 +77,8 @@ export default function Subscription() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('monthly');
-  const [showComparison, setShowComparison] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [now] = useState(() => Date.now());
 
   useEffect(() => {
     const script = document.createElement('script');
@@ -91,7 +90,14 @@ export default function Subscription() {
     };
   }, []);
 
-  const loadData = async () => {
+  const triggerToast = useCallback((message: string, type: 'success' | 'error' | 'info') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, show: false }));
+    }, 5000);
+  }, []);
+
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const plansRes = await subscriptionService.getPlans();
@@ -110,23 +116,21 @@ export default function Subscription() {
           setActiveSub(null);
         }
       }
-    } catch (err: any) {
-      triggerToast(err.response?.data?.message || 'Failed to load subscription data', 'error');
+    } catch (err: unknown) {
+      const errorMsg = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      triggerToast(errorMsg || 'Failed to load subscription data', 'error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [triggerToast]);
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  const triggerToast = (message: string, type: 'success' | 'error' | 'info') => {
-    setToast({ show: true, message, type });
-    setTimeout(() => {
-      setToast(prev => ({ ...prev, show: false }));
-    }, 5000);
-  };
+    const init = async () => {
+      await Promise.resolve();
+      loadData();
+    };
+    init();
+  }, [loadData]);
 
   const refreshUserProfile = async () => {
     try {
@@ -154,8 +158,9 @@ export default function Subscription() {
         await loadData();
         await refreshUserProfile();
       }
-    } catch (err: any) {
-      triggerToast(err.response?.data?.message || 'Failed to activate trial', 'error');
+    } catch (err: unknown) {
+      const errorMsg = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      triggerToast(errorMsg || 'Failed to activate trial', 'error');
     } finally {
       setActionLoading(null);
     }
@@ -199,8 +204,9 @@ export default function Subscription() {
             } else {
               triggerToast('Payment verification failed. Please contact support.', 'error');
             }
-          } catch (err: any) {
-            triggerToast(err.response?.data?.message || 'Failed to verify payment', 'error');
+          } catch (err: unknown) {
+            const errorMsg = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+            triggerToast(errorMsg || 'Failed to verify payment', 'error');
           } finally {
             setActionLoading(null);
           }
@@ -216,8 +222,9 @@ export default function Subscription() {
 
       const rzp = new window.Razorpay(options);
       rzp.open();
-    } catch (err: any) {
-      triggerToast(err.response?.data?.message || 'Failed to initiate checkout', 'error');
+    } catch (err: unknown) {
+      const errorMsg = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      triggerToast(errorMsg || 'Failed to initiate checkout', 'error');
     } finally {
       setActionLoading(null);
     }
@@ -234,8 +241,9 @@ export default function Subscription() {
         await loadData();
         await refreshUserProfile();
       }
-    } catch (err: any) {
-      triggerToast(err.response?.data?.message || 'Cancellation failed', 'error');
+    } catch (err: unknown) {
+      const errorMsg = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      triggerToast(errorMsg || 'Cancellation failed', 'error');
     } finally {
       setActionLoading(null);
     }
@@ -399,7 +407,7 @@ export default function Subscription() {
           <div className={`w-full max-w-[800px] mb-8 rounded-lg border p-4 flex flex-col md:flex-row items-center justify-between gap-4 ${isDarkMode ? 'border-zinc-800 bg-zinc-900/40' : 'border-[#e0e0e0] bg-white shadow-sm'}`}>
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-md ${isDarkMode ? 'bg-[#1a73e8]/20 text-[#8ab4f8]' : 'bg-[#e8f0fe] text-[#1a73e8]'}`}>
-                {getTierIcon(activeSub.planTier, 20)}
+                {getTierIcon(activeSub.planTier || 'free', 20)}
               </div>
               <div className="text-left">
                 <p className="text-[10px] font-medium uppercase tracking-wide text-[#1a73e8] mb-0.5">
@@ -417,7 +425,7 @@ export default function Subscription() {
             
             <div className="flex flex-col items-end gap-2">
               <div className={`px-3 py-1.5 rounded-md text-xs font-medium border ${isDarkMode ? 'border-zinc-700 bg-zinc-800' : 'border-[#e0e0e0] bg-[#f8f9fa]'}`}>
-                {Math.max(0, Math.ceil((new Date(activeSub.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} days remaining
+                {Math.max(0, Math.ceil((new Date(activeSub.endDate).getTime() - now) / (1000 * 60 * 60 * 24)))} days remaining
               </div>
               {activeSub.status !== 'cancelled' && activeSub.autoRenew && (
                 <button
@@ -448,8 +456,8 @@ export default function Subscription() {
                 : plan.price;
               
               const calculatedOriginal = billingCycle === 'annually'
-                ? Math.round(plan.originalPrice * 0.8)
-                : plan.originalPrice;
+                ? Math.round((plan.originalPrice || 0) * 0.8)
+                : (plan.originalPrice || 0);
 
               return (
                 <div
